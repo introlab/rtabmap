@@ -115,6 +115,9 @@ public class ARCoreSharedCamera {
 	// Image reader that continuously processes CPU images.
 	public TOF_ImageReader mTOFImageReader = new TOF_ImageReader();
 	private boolean mTOFAvailable = false;
+
+	ByteBuffer mPreviousDepth = null;
+	double mPreviousDepthStamp = 0.0;
 	
 	public boolean isDepthSupported() {return mTOFAvailable;}
 
@@ -698,6 +701,7 @@ public class ARCoreSharedCamera {
 							mToast.setText(msg);
 						}
 						previousAnchorPose = null;
+						arCoreCorrection = Pose.IDENTITY;
 					}
 				}
 			});
@@ -718,7 +722,8 @@ public class ARCoreSharedCamera {
 				final double speed = Math.sqrt(t[0]*t[0]+t[1]*t[1]+t[2]*t[2])/((double)(frame.getTimestamp()-previousAnchorTimeStamp)/10e8);
 				if(speed>=mARCoreLocalizationFilteringSpeed)
 				{
-					arCoreCorrection = arCoreCorrection.compose(previousAnchorPose).compose(pose.inverse());
+					// Only correct the translation to not lose rotation aligned with gravity
+					arCoreCorrection = arCoreCorrection.compose(previousAnchorPose.compose(pose.inverse()).extractTranslation());
 					t = arCoreCorrection.getTranslation();
 					Log.e(TAG, String.format("POTENTIAL TELEPORTATION!!!!!!!!!!!!!! previous anchor moved (speed=%f), new arcorrection: %f %f %f", speed, t[0], t[1], t[2]));
 					
@@ -744,7 +749,6 @@ public class ARCoreSharedCamera {
 								{
 									mToast.setText(msg);
 								}
-								previousAnchorPose = null;
 							}
 						}
 					});
@@ -755,9 +759,8 @@ public class ARCoreSharedCamera {
 			previousAnchorTimeStamp = frame.getTimestamp();
 			
 			double stamp = (double)frame.getTimestamp()/10e8;
-			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f q=%f %f %f %f stamp=%f", odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), stamp));
+			if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("pose=%f %f %f arcore %f %f %f cor= %f %f %f stamp=%f", odomPose.tx(), odomPose.ty(), odomPose.tz(), pose.tx(), pose.ty(), pose.tz(), arCoreCorrection.tx(), arCoreCorrection.ty(), arCoreCorrection.tz(), stamp));
 			RTABMapLib.postCameraPoseEvent(RTABMapActivity.nativeApplication, odomPose.tx(), odomPose.ty(), odomPose.tz(), odomPose.qx(), odomPose.qy(), odomPose.qz(), odomPose.qw(), stamp);
-			
 			CameraIntrinsics intrinsics = camera.getImageIntrinsics();
 			try{
 				Image image = frame.acquireCameraImage();
@@ -813,6 +816,12 @@ public class ARCoreSharedCamera {
 						depth = mTOFImageReader.depth16_raw;
 						depthStamp = (double)mTOFImageReader.timestamp/10e8;
 					}
+
+					if(mPreviousDepth == null)
+					{
+						mPreviousDepth = depth;
+						mPreviousDepthStamp = depthStamp;
+					}
 					
 					if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("Depth %dx%d len=%dbytes format=%d stamp=%f",
 							mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, depth.limit(), ImageFormat.DEPTH16, depthStamp));
@@ -825,13 +834,17 @@ public class ARCoreSharedCamera {
 							rgbExtrinsics.tx(), rgbExtrinsics.ty(), rgbExtrinsics.tz(), rgbExtrinsics.qx(), rgbExtrinsics.qy(), rgbExtrinsics.qz(), rgbExtrinsics.qw(),
 							depthExtrinsics.tx(), depthExtrinsics.ty(), depthExtrinsics.tz(), depthExtrinsics.qx(), depthExtrinsics.qy(), depthExtrinsics.qz(), depthExtrinsics.qw(),
 							stamp,
-							depthStamp,
+							depthStamp>stamp?mPreviousDepthStamp:depthStamp,
 							y, u, v, y.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
-							depth, depth.limit(), mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16,
+							depthStamp>stamp?mPreviousDepth:depth, depthStamp>stamp?mPreviousDepth.limit():depth.limit(), mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16,
 							points, points.limit()/4,
 							viewMatrix[12], viewMatrix[13], viewMatrix[14], quat[1], quat[2], quat[3], quat[0],
 							p[0], p[5], p[8], p[9], p[10], p[11], p[14],
                             texCoord[0],texCoord[1],texCoord[2],texCoord[3],texCoord[4],texCoord[5],texCoord[6],texCoord[7]);
+					
+					
+					mPreviousDepthStamp = depthStamp;
+					mPreviousDepth = depth;
 				}
 				else
 				{

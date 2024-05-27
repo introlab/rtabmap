@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/RegistrationVis.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d_features.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/util2d.h>
@@ -69,7 +70,10 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_PnPReprojError(Parameters::defaultVisPnPReprojError()),
 		_PnPFlags(Parameters::defaultVisPnPFlags()),
 		_PnPRefineIterations(Parameters::defaultVisPnPRefineIterations()),
+		_PnPVarMedianRatio(Parameters::defaultVisPnPVarianceMedianRatio()),
 		_PnPMaxVar(Parameters::defaultVisPnPMaxVariance()),
+		_PnPSplitLinearCovarianceComponents(Parameters::defaultVisPnPSplitLinearCovComponents()),
+		_multiSamplingPolicy(Parameters::defaultVisPnPSamplingPolicy()),
 		_correspondencesApproach(Parameters::defaultVisCorType()),
 		_flowWinSize(Parameters::defaultVisCorFlowWinSize()),
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
@@ -98,6 +102,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), _featureParameters.at(Parameters::kVisCorNNDR())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), _featureParameters.at(Parameters::kVisFeatureType())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxFeatures(), _featureParameters.at(Parameters::kVisMaxFeatures())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpSSC(), _featureParameters.at(Parameters::kVisSSC())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxDepth(), _featureParameters.at(Parameters::kVisMaxDepth())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpMinDepth(), _featureParameters.at(Parameters::kVisMinDepth())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpRoiRatios(), _featureParameters.at(Parameters::kVisRoiRatios())));
@@ -125,7 +130,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _PnPReprojError);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _PnPFlags);
 	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _PnPRefineIterations);
+	Parameters::parse(parameters, Parameters::kVisPnPVarianceMedianRatio(), _PnPVarMedianRatio);
 	Parameters::parse(parameters, Parameters::kVisPnPMaxVariance(), _PnPMaxVar);
+	Parameters::parse(parameters, Parameters::kVisPnPSplitLinearCovComponents(), _PnPSplitLinearCovarianceComponents);
+	Parameters::parse(parameters, Parameters::kVisPnPSamplingPolicy(), _multiSamplingPolicy);
 	Parameters::parse(parameters, Parameters::kVisCorType(), _correspondencesApproach);
 	Parameters::parse(parameters, Parameters::kVisCorFlowWinSize(), _flowWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
@@ -227,6 +235,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxFeatures(), parameters.at(Parameters::kVisMaxFeatures())));
 	}
+	if(uContains(parameters, Parameters::kVisSSC()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kKpSSC(), parameters.at(Parameters::kVisSSC())));
+	}
 	if(uContains(parameters, Parameters::kVisMaxDepth()))
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpMaxDepth(), parameters.at(Parameters::kVisMaxDepth())));
@@ -290,6 +302,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%f", Parameters::kVisPnPReprojError().c_str(), _PnPReprojError);
 	UDEBUG("%s=%d", Parameters::kVisPnPFlags().c_str(), _PnPFlags);
 	UDEBUG("%s=%f", Parameters::kVisPnPMaxVariance().c_str(), _PnPMaxVar);
+	UDEBUG("%s=%f", Parameters::kVisPnPSplitLinearCovComponents().c_str(), _PnPSplitLinearCovarianceComponents);
 	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowWinSize().c_str(), _flowWinSize);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
@@ -484,6 +497,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			if(!imageFrom.empty() && !imageTo.empty())
 			{
+				UASSERT(!toSignature.sensorData().cameraModels().empty() || !toSignature.sensorData().stereoCameraModels().empty());
 				std::vector<cv::Point2f> cornersFrom;
 				cv::KeyPoint::convert(kptsFrom, cornersFrom);
 				std::vector<cv::Point2f> cornersTo;
@@ -506,7 +520,48 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 					else
 					{
-						UERROR("Optical flow guess with multi-cameras is not implemented, guess ignored...");
+						UTimer t;
+						int nCameras = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels().size():toSignature.sensorData().stereoCameraModels().size();
+						cornersTo = cornersFrom;
+						// compute inverse transforms one time
+						std::vector<Transform> inverseTransforms(nCameras);
+						for(int c=0; c<nCameras; ++c)
+						{
+							Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c].localTransform():toSignature.sensorData().stereoCameraModels()[c].left().localTransform();
+							inverseTransforms[c] = (guess * localTransform).inverse();
+							UDEBUG("inverse transforms: cam %d -> %s", c, inverseTransforms[c].prettyPrint().c_str());
+						}
+						// Project 3D points in each camera
+						int inFrame = 0;
+						UASSERT(kptsFrom3D.size() == cornersTo.size());
+						int subImageWidth = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].imageWidth():toSignature.sensorData().stereoCameraModels()[0].left().imageWidth();
+						UASSERT(subImageWidth>0);
+						for(size_t i=0; i<kptsFrom3D.size(); ++i)
+						{
+							// Start from camera having the reference corner first (in case there is overlap between the cameras)
+							int startIndex = cornersFrom[i].x/subImageWidth;
+							UASSERT(startIndex < nCameras);
+							for(int c=startIndex; (c+1)%nCameras != 0; ++c)
+							{
+								const CameraModel & model = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c]:toSignature.sensorData().stereoCameraModels()[c].left();
+								cv::Point3f ptsInCamFrame = util3d::transformPoint(kptsFrom3D[i], inverseTransforms[c]);
+								if(ptsInCamFrame.z > 0)
+								{
+									float u,v;
+									model.reproject(ptsInCamFrame.x, ptsInCamFrame.y, ptsInCamFrame.z, u, v);
+									if(model.inFrame(u,v))
+									{
+										cornersTo[i].x = u+model.imageWidth()*c;
+										cornersTo[i].y = v;
+										++inFrame;
+										break;
+									}
+								}
+							}
+						}
+				
+						UDEBUG("Projected %d/%ld points inside %d cameras (time=%fs)", 
+							inFrame, cornersTo.size(), nCameras, t.ticks());
 					}
 				}
 
@@ -1048,7 +1103,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::vector<std::vector<float> > dists;
 							float radius = (float)_guessWinSize; // pixels
 							rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
-							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams());
+							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams(32, 0, false));
 
 							UASSERT(indices.size() == cornersProjectedMat.rows);
 							UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
@@ -1578,17 +1633,20 @@ Transform RegistrationVis::computeTransformationImpl(
 									words3A,
 									wordsB,
 									models,
+									_multiSamplingPolicy,
 									_minInliers,
 									_iterations,
 									_PnPReprojError,
 									_PnPFlags,
 									_PnPRefineIterations,
+									_PnPVarMedianRatio,
 									_PnPMaxVar,
 									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 									words3B,
 									&covariances[dir],
 									&matchesV,
-									&inliersV);
+									&inliersV,
+									_PnPSplitLinearCovarianceComponents);
 							inliers[dir] = inliersV;
 							matches[dir] = matchesV;
 						}
@@ -1605,12 +1663,14 @@ Transform RegistrationVis::computeTransformationImpl(
 									_PnPReprojError,
 									_PnPFlags,
 									_PnPRefineIterations,
+									_PnPVarMedianRatio,
 									_PnPMaxVar,
 									dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 									words3B,
 									&covariances[dir],
 									&matchesV,
-									&inliersV);
+									&inliersV,
+									_PnPSplitLinearCovarianceComponents);
 							inliers[dir] = inliersV;
 							matches[dir] = matchesV;
 						}

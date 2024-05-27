@@ -1,5 +1,5 @@
 # Top-Level CmakeLists.txt
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.14)
 PROJECT( RTABMap )
 SET(PROJECT_PREFIX rtabmap)
 
@@ -20,7 +20,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 21)
-SET(RTABMAP_PATCH_VERSION 1)
+SET(RTABMAP_PATCH_VERSION 5)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
   
@@ -203,11 +203,12 @@ option(WITH_REALSENSE_SLAM "Include RealSenseSlam support"       ON)
 option(WITH_REALSENSE2    "Include RealSense support"            ON)
 option(WITH_MYNTEYE       "Include mynteye-s support"            ON)
 option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
-option(WITH_OCTOMAP       "Include Octomap support"              ON)
+option(WITH_OCTOMAP       "Include OctoMap support"              ON)
+option(WITH_GRIDMAP       "Include GridMap support"              ON)
 option(WITH_CPUTSDF       "Include CPUTSDF support"              OFF)
 option(WITH_OPENCHISEL    "Include open_chisel support"          OFF)
 option(WITH_ALICE_VISION  "Include AliceVision support"          OFF)
-option(WITH_FOVIS         "Include FOVIS support"                OFF)
+option(WITH_FOVIS         "Include FOVIS supp++ort"                OFF)
 option(WITH_VISO2         "Include VISO2 support"                OFF)
 option(WITH_DVO           "Include DVO support"                  OFF)
 option(WITH_ORB_SLAM      "Include ORB_SLAM2 or ORB_SLAM3  support" OFF)
@@ -218,7 +219,7 @@ option(WITH_OPENVINS      "Include OpenVINS support"             OFF)
 option(WITH_MADGWICK      "Include Madgwick IMU filtering support" ON)
 option(WITH_FASTCV        "Include FastCV support"               ON)
 option(WITH_OPENMP        "Include OpenMP support"               ON)
-option(WITH_OPENGV        "Include OpenGV support"               OFF)
+option(WITH_OPENGV        "Include OpenGV support"               ON)
 IF(MOBILE_BUILD)
 option(PCL_OMP            "With PCL OMP implementations"         OFF)
 ELSE()
@@ -228,7 +229,7 @@ ENDIF()
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
 set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
+FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
 
 IF(WITH_QT)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
@@ -251,10 +252,10 @@ endif()
 
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
-FIND_PACKAGE(Sqlite3 QUIET)
-IF(Sqlite3_FOUND)
-   MESSAGE(STATUS "Found Sqlite3: ${Sqlite3_INCLUDE_DIRS} ${Sqlite3_LIBRARIES}")
-ENDIF(Sqlite3_FOUND)
+FIND_PACKAGE(SQLite3 QUIET)
+IF(SQLite3_FOUND)
+   MESSAGE(STATUS "Found SQLite3: ${SQLite3_INCLUDE_DIRS} ${SQLite3_LIBRARIES}")
+ENDIF(SQLite3_FOUND)
 
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
    # fix libproj.so not found on Xenial
@@ -293,14 +294,20 @@ SET(ADD_VTK_GUI_SUPPORT_QT_TO_CONF FALSE)
 IF(WITH_QT)
     FIND_PACKAGE(VTK)
     IF(NOT VTK_FOUND)
-        MESSAGE(FATAL_ERROR "VTK is required when using Qt. Set -DWITH_QT=OFF if you don't want gui tools.")
+      MESSAGE(FATAL_ERROR "VTK is required when using Qt. Set -DWITH_QT=OFF if you don't want gui tools.")
     ENDIF(NOT VTK_FOUND)
 
     # If Qt is here, the GUI will be built
     IF(NOT(${VTK_MAJOR_VERSION} LESS 9))
-	  IF(NOT VTK_QT_VERSION)
-	    MESSAGE(FATAL_ERROR "WITH_QT option is ON, but VTK ${VTK_MAJOR_VERSION} has not been built with Qt support, disabling Qt.")
-	  ENDIF()
+      IF(NOT VTK_QT_VERSION)
+        MESSAGE(FATAL_ERROR "WITH_QT option is ON, but VTK ${VTK_MAJOR_VERSION} has not been built with Qt support, disabling Qt.")
+      ENDIF()
+
+      option(VTK_GLOBAL_WARNING_DISPLAY  "Show VTK warning display on runtime" OFF)
+      IF(NOT VTK_GLOBAL_WARNING_DISPLAY)
+        ADD_DEFINITIONS(-DVTK_GLOBAL_WARNING_DISPLAY_OFF)
+      ENDIF()
+
       MESSAGE(STATUS "VTK>=9 detected, will use VTK_QT_VERSION=${VTK_QT_VERSION} for Qt version.")
       IF(${VTK_QT_VERSION} EQUAL 6)
         FIND_PACKAGE(Qt6 COMPONENTS Widgets Core Gui OpenGL PrintSupport QUIET OPTIONAL_COMPONENTS Svg)
@@ -325,6 +332,11 @@ IF(WITH_QT)
     ENDIF()
         
     IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+        # For VCPKG build, set those global variables to off, 
+        # we will enable them for jsut specific targets
+        set(CMAKE_AUTOMOC OFF)
+        set(CMAKE_AUTORCC OFF)
+        set(CMAKE_AUTOUIC OFF)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
             FIND_PACKAGE(QVTK REQUIRED) # only for VTK 5
         ELSE()
@@ -389,6 +401,7 @@ IF(WITH_PYTHON)
     FIND_PACKAGE(Python3 COMPONENTS Interpreter Development NumPy)
     IF(Python3_FOUND)
         MESSAGE(STATUS "Found Python3")
+        FIND_PACKAGE(pybind11 REQUIRED)
     ENDIF(Python3_FOUND)
 ENDIF(WITH_PYTHON)
 
@@ -518,7 +531,19 @@ ENDIF(WITH_CVSBA)
 IF(WITH_POINTMATCHER)
     find_package(libpointmatcher QUIET)
     IF(libpointmatcher_FOUND)
-       MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
+        MESSAGE(STATUS "Found libpointmatcher: ${libpointmatcher_INCLUDE_DIRS}")
+        string(FIND "${libpointmatcher_LIBRARIES}" "libnabo" value)
+        IF(value EQUAL -1)
+            # Find libnabo (Issue #1117):
+            find_package(libnabo REQUIRED PATHS ${LIBNABO_INSTALL_DIR})
+            message(STATUS "libnabo found, version ${libnabo_VERSION} (Config mode)")
+            SET(libpointmatcher_LIBRARIES "${libpointmatcher_LIBRARIES};libnabo::nabo")
+        ENDIF(value EQUAL -1)
+        string(FIND "${libpointmatcher_LIBRARIES}" "yaml-cpp::yaml-cpp" value)
+        IF(NOT value EQUAL -1)
+            # Find yaml-cpp (Issue #1268):
+            find_package(yaml-cpp QUIET)
+        ENDIF(NOT value EQUAL -1)
     ENDIF(libpointmatcher_FOUND)
 ENDIF(WITH_POINTMATCHER)
 
@@ -631,7 +656,7 @@ IF(WITH_MYNTEYE)
 ENDIF(WITH_MYNTEYE)
 
 IF(WITH_DEPTHAI)
-    FIND_PACKAGE(depthai 2 QUIET)
+    FIND_PACKAGE(depthai 2.24 QUIET)
     IF(depthai_FOUND)
        MESSAGE(STATUS "Found depthai-core (targets)")
     ENDIF(depthai_FOUND)
@@ -646,6 +671,13 @@ IF(WITH_OCTOMAP)
        ENDIF(octomap_VERSION VERSION_LESS 1.8)
     ENDIF(octomap_FOUND)
 ENDIF(WITH_OCTOMAP)
+
+IF(WITH_GRIDMAP)
+    FIND_PACKAGE(grid_map_core QUIET)
+    IF(grid_map_core_FOUND)
+       MESSAGE(STATUS "Found grid_map_core ${grid_map_core_VERSION}: ${grid_map_core_INCLUDE_DIRS}")
+    ENDIF(grid_map_core_FOUND)
+ENDIF(WITH_GRIDMAP)
 
 IF(WITH_CPUTSDF)
     FIND_PACKAGE(CPUTSDF QUIET)
@@ -766,7 +798,7 @@ IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 ENDIF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 
 IF(NOT MSVC)
-    IF(Qt6_FOUND OR (G2O_FOUND AND G2O_CPP11 EQUAL 1))
+    IF(Qt6_FOUND OR (G2O_FOUND AND G2O_CPP11 EQUAL 1) OR TORCH_FOUND)
       # Qt6 requires c++17
       include(CheckCXXCompilerFlag)
       CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
@@ -777,8 +809,8 @@ IF(NOT MSVC)
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler if you want to use Qt6.")
       ENDIF()
     ENDIF()
-    IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND ((NOT WITH_MSCKF_VIO OR NOT msckf_vio_FOUND) AND (loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR TORCH_FOUND OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND)))
-     #LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14, but MSCKF_VIO requires c++11
+    IF((NOT (${CMAKE_CXX_STANDARD} STREQUAL "17")) AND (msckf_vio_FOUND OR loam_velodyne_FOUND OR floam_FOUND OR PCL_VERSION VERSION_GREATER "1.9.1" OR G2O_FOUND OR CCCoreLib_FOUND OR Open3D_FOUND))
+     #MSCKF_VIO, LOAM, PCL>=1.10, latest g2o and CCCoreLib require c++14
      include(CheckCXXCompilerFlag)
       CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
       IF(COMPILER_SUPPORTS_CXX14)
@@ -789,22 +821,7 @@ IF(NOT MSVC)
       ENDIF()
     ENDIF()
 
-    IF( (NOT (${CMAKE_CXX_STANDARD} STREQUAL "17") AND NOT (${CMAKE_CXX_STANDARD} STREQUAL "14")) AND (
-           G2O_FOUND OR
-           GTSAM_FOUND OR
-           CERES_FOUND OR
-           ZED_FOUND OR
-           ZEDOC_FOUND OR
-           ANDROID OR
-           RealSense_FOUND OR
-           realsense2_FOUND OR
-           ORB_SLAM_FOUND OR
-           okvis_FOUND OR
-           open_chisel_FOUND OR
-           msckf_vio_FOUND OR
-           vins_FOUND OR
-           ov_msckf_FOUND OR
-           libpointmatcher_FOUND))
+    IF(NOT ("${CMAKE_CXX_STANDARD}" STREQUAL "17") AND NOT ("${CMAKE_CXX_STANDARD}" STREQUAL "14"))
      #Newest versions require std11
      include(CheckCXXCompilerFlag)
       CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -818,6 +835,7 @@ IF(NOT MSVC)
       ENDIF()
     ENDIF()
 ENDIF()
+
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
@@ -879,9 +897,9 @@ ENDIF()
 IF(NOT MRPT_FOUND)
    SET(MRPT "//")
 ENDIF(NOT MRPT_FOUND)
-IF(NOT CERES_FOUND)
+IF(NOT WITH_CERES OR NOT CERES_FOUND)
    SET(CERES "//")
-ENDIF(NOT CERES_FOUND)
+ENDIF(NOT WITH_CERES OR NOT CERES_FOUND)
 IF(NOT WITH_TORO)
    SET(TORO "//")
 ENDIF(NOT WITH_TORO)
@@ -903,9 +921,9 @@ ENDIF(NOT Open3D_FOUND)
 IF(NOT FastCV_FOUND)
    SET(FASTCV "//")
 ENDIF(NOT FastCV_FOUND)
-IF(NOT opengv_FOUND)
+IF(NOT opengv_FOUND OR NOT WITH_OPENGV)
    SET(OPENGV "//")
-ENDIF(NOT opengv_FOUND)
+ENDIF(NOT opengv_FOUND OR NOT WITH_OPENGV)
 IF(NOT PDAL_FOUND)
    SET(PDAL "//")
 ENDIF(NOT PDAL_FOUND)
@@ -977,16 +995,22 @@ IF(NOT mynteye_FOUND)
    SET(MYNTEYE "//")
 ENDIF(NOT mynteye_FOUND)
 IF(NOT depthai_FOUND)
-   SET(CONF_DEPTH_AI OFF)
+   SET(CONF_WITH_DEPTH_AI 0)
    SET(DEPTHAI "//")
 ELSE()
-   SET(CONF_DEPTH_AI ON) 
+   SET(CONF_WITH_DEPTH_AI 1)
 ENDIF()
 IF(NOT octomap_FOUND)
    SET(OCTOMAP "//")
    SET(CONF_WITH_OCTOMAP 0)
 ELSE()
    SET(CONF_WITH_OCTOMAP 1)
+ENDIF()
+IF(NOT grid_map_core_FOUND)
+   SET(GRIDMAP "//")
+   SET(CONF_WITH_GRIDMAP 0)
+ELSE()
+   SET(CONF_WITH_GRIDMAP 1)
 ENDIF()
 IF(NOT CPUTSDF_FOUND)
    SET(CPUTSDF "//")
@@ -1029,6 +1053,9 @@ IF(NOT TORCH_FOUND)
 ENDIF()
 IF(NOT WITH_PYTHON OR NOT Python3_FOUND)
    SET(PYTHON "//")
+   SET(CONF_WITH_PYTHON 0)
+ELSE()
+   SET(CONF_WITH_PYTHON 1)
 ENDIF()
 IF(ADD_VTK_GUI_SUPPORT_QT_TO_CONF)
    SET(CONF_VTK_QT true)
@@ -1067,6 +1094,7 @@ ENDIF(BUILD_EXAMPLES)
 #######################
 # Uninstall target, for "make uninstall"
 #######################
+IF (NOT TARGET uninstall)
 CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
@@ -1074,6 +1102,7 @@ CONFIGURE_FILE(
 
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+ENDIF()
 
 ####
 # Global Export Target
@@ -1308,10 +1337,10 @@ ELSE()
 MESSAGE(STATUS "  With Qt                   = NO (Qt not found)")
 ENDIF()
 
-IF(Sqlite3_FOUND)
+IF(SQLite3_FOUND)
 MESSAGE(STATUS "  With external SQLite3     = YES (License: Public Domain)")
 ELSE()
-MESSAGE(STATUS "  With external SQLite3     = NO (sqlite3 not found, internal version is used for convenience)")
+MESSAGE(STATUS "  With external SQLite3     = NO (SQLite3 not found, internal version is used for convenience)")
 ENDIF()
 
 IF(WITH_ORB_OCTREE)
@@ -1382,12 +1411,8 @@ ELSE()
 MESSAGE(STATUS " *With GTSAM                = NO (GTSAM not found)")
 ENDIF()
 
-IF(CERES_FOUND)
-IF(WITH_CERES)
+IF(WITH_CERES AND CERES_FOUND)
 MESSAGE(STATUS " *With Ceres ${Ceres_VERSION}         = YES (License: BSD)")
-ELSE()
-MESSAGE(STATUS " *With Ceres ${Ceres_VERSION}         = YES (License: BSD, WITH_CERES=OFF but it is enabled by okvis or floam dependencies)")
-ENDIF()
 ELSEIF(NOT WITH_CERES)
 MESSAGE(STATUS " *With Ceres                = NO (WITH_CERES=OFF)")
 ELSE()
@@ -1446,7 +1471,7 @@ ELSE()
 MESSAGE(STATUS "  With Open3D               = NO (Open3D not found)")
 ENDIF()
 
-IF(opengv_FOUND)
+IF(opengv_FOUND AND WITH_OPENGV)
 MESSAGE(STATUS "  With OpenGV ${opengv_VERSION}           = YES (License: BSD)")
 ELSEIF(NOT WITH_OPENGV)
 MESSAGE(STATUS "  With OpenGV               = NO (WITH_OPENGV=OFF)")
@@ -1457,11 +1482,19 @@ ENDIF()
 MESSAGE(STATUS "")
 MESSAGE(STATUS " Reconstruction Approaches:")
 IF(octomap_FOUND)
-MESSAGE(STATUS "  With OCTOMAP ${octomap_VERSION}        = YES (License: BSD)")
+MESSAGE(STATUS "  With OctoMap ${octomap_VERSION}        = YES (License: BSD)")
 ELSEIF(NOT WITH_OCTOMAP)
-MESSAGE(STATUS "  With OCTOMAP              = NO (WITH_OCTOMAP=OFF)")
+MESSAGE(STATUS "  With OctoMap              = NO (WITH_OCTOMAP=OFF)")
 ELSE()
-MESSAGE(STATUS "  With OCTOMAP              = NO (octomap not found)")
+MESSAGE(STATUS "  With OctoMap              = NO (octomap not found)")
+ENDIF()
+
+IF(grid_map_core_FOUND)
+MESSAGE(STATUS "  With GridMap ${grid_map_core_VERSION}        = YES (License: BSD)")
+ELSEIF(NOT WITH_OCTOMAP)
+MESSAGE(STATUS "  With GridMap              = NO (WITH_GRIDMAP=OFF)")
+ELSE()
+MESSAGE(STATUS "  With GridMap              = NO (grid_map_core not found)")
 ENDIF()
 
 IF(CPUTSDF_FOUND)

@@ -334,11 +334,12 @@ void CameraARCore::setScreenRotationAndSize(ScreenRotation colorCameraToDisplayR
 	}
 }
 
-SensorData CameraARCore::captureImage(CameraInfo * info)
+SensorData CameraARCore::updateDataOnRender(Transform & pose)
 {
 	UScopeMutex lock(arSessionMutex_);
 	//LOGI("Capturing image...");
 
+	pose.setNull();
 	SensorData data;
 	if(!arSession_)
 	{
@@ -370,7 +371,7 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 	if (geometry_changed != 0 || !uvs_initialized_) {
 		ArFrame_transformCoordinates2d(
 				arSession_, arFrame_, AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES,
-				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVertices, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
+				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVerticesDevice, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
 				transformed_uvs_);
 		UASSERT(transformed_uvs_);
 		uvs_initialized_ = true;
@@ -393,7 +394,6 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
-	Transform pose;
 	CameraModel model;
 	if(camera_tracking_state == AR_TRACKING_STATE_TRACKING)
 	{
@@ -401,23 +401,12 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 		float pose_raw[7];
 		ArCamera_getPose(arSession_, ar_camera, arPose_);
 		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
-		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
-		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+		Transform poseArCore = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
+		poseArCore = rtabmap::rtabmap_world_T_opengl_world * poseArCore * rtabmap::opengl_world_T_rtabmap_world;
 
-		Transform poseArCore = pose;
-		if(pose.isNull())
+		if(poseArCore.isNull())
 		{
 			LOGE("CameraARCore: Pose is null");
-		}
-		else
-		{
-			this->poseReceived(pose);
-			// adjust origin
-			if(!getOriginOffset().isNull())
-			{
-				pose = getOriginOffset() * pose;
-			}
-			info->odomPose = pose;
 		}
 
 		// Get calibration parameters
@@ -551,6 +540,17 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 
 						data = SensorData(scan, rgb, depthFromMotion_?getOcclusionImage():cv::Mat(), model, 0, stamp);
 						data.setFeatures(kpts,  kpts3, cv::Mat());
+
+						if(!poseArCore.isNull())
+						{
+							pose = poseArCore;
+							this->poseReceived(pose, stamp);
+							// adjust origin
+							if(!getOriginOffset().isNull())
+							{
+								pose = getOriginOffset() * pose;
+							}
+						}
 					}
 				}
 				else
@@ -571,134 +571,6 @@ SensorData CameraARCore::captureImage(CameraInfo * info)
 	ArCamera_release(ar_camera);
 
 	return data;
-
-}
-
-void CameraARCore::capturePoseOnly()
-{
-	UScopeMutex lock(arSessionMutex_);
-	//LOGI("Capturing image...");
-
-	if(!arSession_)
-	{
-		return;
-	}
-
-	if(textureId_ != 0)
-	{
-		glBindTexture(GL_TEXTURE_EXTERNAL_OES, textureId_);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		ArSession_setCameraTextureName(arSession_, textureId_);
-	}
-
-	// Update session to get current frame and render camera background.
-	if (ArSession_update(arSession_, arFrame_) != AR_SUCCESS) {
-		LOGE("CameraARCore::capturePoseOnly() ArSession_update error");
-		return;
-	}
-
-	// If display rotation changed (also includes view size change), we need to
-	// re-query the uv coordinates for the on-screen portion of the camera image.
-	int32_t geometry_changed = 0;
-	ArFrame_getDisplayGeometryChanged(arSession_, arFrame_, &geometry_changed);
-	if (geometry_changed != 0 || !uvs_initialized_) {
-		ArFrame_transformCoordinates2d(
-				arSession_, arFrame_, AR_COORDINATES_2D_OPENGL_NORMALIZED_DEVICE_COORDINATES,
-				BackgroundRenderer::kNumVertices, BackgroundRenderer_kVertices, AR_COORDINATES_2D_TEXTURE_NORMALIZED,
-				transformed_uvs_);
-		UASSERT(transformed_uvs_);
-		uvs_initialized_ = true;
-	}
-
-	ArCamera* ar_camera;
-	ArFrame_acquireCamera(arSession_, arFrame_, &ar_camera);
-
-	ArCamera_getViewMatrix(arSession_, ar_camera, glm::value_ptr(viewMatrix_));
-	ArCamera_getProjectionMatrix(arSession_, ar_camera,
-							   /*near=*/0.1f, /*far=*/100.f,
-							   glm::value_ptr(projectionMatrix_));
-
-	// adjust origin
-	if(!getOriginOffset().isNull())
-	{
-		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-	}
-
-	ArTrackingState camera_tracking_state;
-	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
-
-	Transform pose;
-	CameraModel model;
-	if(camera_tracking_state == AR_TRACKING_STATE_TRACKING)
-	{
-		// pose in OpenGL coordinates
-		float pose_raw[7];
-		ArCamera_getPose(arSession_, ar_camera, arPose_);
-		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
-		pose = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
-		if(!pose.isNull())
-		{
-			pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
-			this->poseReceived(pose);
-
-			if(!getOriginOffset().isNull())
-			{
-				pose = getOriginOffset() * pose;
-			}
-		}
-
-		int32_t is_depth_supported = 0;
-		ArSession_isDepthModeSupported(arSession_, AR_DEPTH_MODE_AUTOMATIC, &is_depth_supported);
-
-		if(is_depth_supported)
-		{
-			LOGD("Acquire depth image!");
-			ArImage * depthImage = nullptr;
-			ArFrame_acquireDepthImage(arSession_, arFrame_, &depthImage);
-
-			ArImageFormat format;
-			ArImage_getFormat(arSession_, depthImage, &format);
-			if(format == AR_IMAGE_FORMAT_DEPTH16)
-			{
-				LOGD("Depth format detected!");
-				int planeCount;
-				ArImage_getNumberOfPlanes(arSession_, depthImage, &planeCount);
-				LOGD("planeCount=%d", planeCount);
-				UASSERT_MSG(planeCount == 1, uFormat("Error: getNumberOfPlanes() planceCount = %d", planeCount).c_str());
-				const uint8_t *data = nullptr;
-				int len = 0;
-				int stride;
-				int width;
-				int height;
-				ArImage_getWidth(arSession_, depthImage, &width);
-				ArImage_getHeight(arSession_, depthImage, &height);
-				ArImage_getPlaneRowStride(arSession_, depthImage, 0, &stride);
-				ArImage_getPlaneData(arSession_, depthImage, 0, &data, &len);
-
-				LOGD("width=%d, height=%d, bytes=%d stride=%d", width, height, len, stride);
-
-				cv::Mat occlusionImage = cv::Mat(height, width, CV_16UC1, (void*)data).clone();
-
-				float fx,fy, cx, cy;
-				int32_t rgb_width, rgb_height;
-				ArCamera_getImageIntrinsics(arSession_, ar_camera, arCameraIntrinsics_);
-				ArCameraIntrinsics_getFocalLength(arSession_, arCameraIntrinsics_, &fx, &fy);
-				ArCameraIntrinsics_getPrincipalPoint(arSession_, arCameraIntrinsics_, &cx, &cy);
-				ArCameraIntrinsics_getImageDimensions(arSession_, arCameraIntrinsics_, &rgb_width, &rgb_height);
-
-				float scaleX = (float)width / (float)rgb_width;
-				float scaleY = (float)height / (float)rgb_height;
-				CameraModel occlusionModel(fx*scaleX, fy*scaleY, cx*scaleX, cy*scaleY, pose*deviceTColorCamera_, 0, cv::Size(width, height));
-				this->setOcclusionImage(occlusionImage, occlusionModel);
-			}
-			ArImage_release(depthImage);
-		}
-	}
-
-	ArCamera_release(ar_camera);
 }
 
 } /* namespace rtabmap */

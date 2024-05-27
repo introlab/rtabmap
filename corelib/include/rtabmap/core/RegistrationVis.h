@@ -82,7 +82,10 @@ private:
 	float _PnPReprojError;
 	int _PnPFlags;
 	int _PnPRefineIterations;
+	int  _PnPVarMedianRatio;
 	float _PnPMaxVar;
+	bool _PnPSplitLinearCovarianceComponents;
+	unsigned int _multiSamplingPolicy;
 	int _correspondencesApproach;
 	int _flowWinSize;
 	int _flowIterations;

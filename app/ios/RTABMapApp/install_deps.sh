@@ -122,7 +122,7 @@ git clone https://github.com/PointCloudLibrary/pcl.git
 cd pcl
 git checkout tags/pcl-1.11.1
 # patch
-curl -L https://gist.github.com/matlabbe/f3ba9366eb91e1b855dadd2ddce5746d/raw/4a66ebb9faa1dfe997a0860d733bc5473cff20ee/pcl_1_11_1_vtk_ios_support.patch -o pcl_1_11_1_vtk_ios_support.patch
+curl -L https://gist.github.com/matlabbe/f3ba9366eb91e1b855dadd2ddce5746d/raw/6869cf26211ab15492599e557b0e729b23b2c119/pcl_1_11_1_vtk_ios_support.patch -o pcl_1_11_1_vtk_ios_support.patch
 git apply pcl_1_11_1_vtk_ios_support.patch
 mkdir build
 cd build

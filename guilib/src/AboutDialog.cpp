@@ -107,6 +107,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_octomap->setText("No");
 	_ui->label_octomap_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_GRIDMAP
+	_ui->label_gridmap->setText("Yes");
+	_ui->label_gridmap_license->setEnabled(true);
+#else
+	_ui->label_gridmap->setText("No");
+	_ui->label_gridmap_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_CPUTSDF
 	_ui->label_cputsdf->setText("Yes");
 	_ui->label_cputsdf_license->setEnabled(true);
@@ -182,6 +189,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_cccorelib->setText("No");
 	_ui->label_cccorelib_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_OPEN3D
+	_ui->label_open3d->setText("Yes");
+	_ui->label_open3d_license->setEnabled(true);
+#else
+	_ui->label_open3d->setText("No");
+	_ui->label_open3d_license->setEnabled(false);
 #endif
 
 #ifdef RTABMAP_FOVIS

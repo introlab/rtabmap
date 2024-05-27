@@ -268,70 +268,111 @@ void Feature2D::filterKeypointsByDisparity(
 	}
 }
 
-void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints)
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, const cv::Size & imageSize, bool ssc)
 {
 	cv::Mat descriptors;
-	limitKeypoints(keypoints, descriptors, maxKeypoints);
+	limitKeypoints(keypoints, descriptors, maxKeypoints, imageSize, ssc);
 }
 
-void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints)
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize, bool ssc)
 {
 	std::vector<cv::Point3f> keypoints3D;
-	limitKeypoints(keypoints, keypoints3D, descriptors, maxKeypoints);
+	limitKeypoints(keypoints, keypoints3D, descriptors, maxKeypoints, imageSize, ssc);
 }
 
-void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints)
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize, bool ssc)
 {
 	UASSERT_MSG((int)keypoints.size() == descriptors.rows || descriptors.rows == 0, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
 	UASSERT_MSG(keypoints.size() == keypoints3D.size() || keypoints3D.size() == 0, uFormat("keypoints=%d keypoints3D=%d", (int)keypoints.size(), (int)keypoints3D.size()).c_str());
 	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
 	{
 		UTimer timer;
-		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
-		// Remove words under the new hessian threshold
-
-		// Sort words by hessian
-		std::multimap<float, int> hessianMap; // <hessian,id>
-		for(unsigned int i = 0; i <keypoints.size(); ++i)
-		{
-			//Keep track of the data, to be easier to manage the data in the next step
-			hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
-		}
-
-		// Remove them from the signature
-		int removed = (int)hessianMap.size()-maxKeypoints;
-		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
-		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
+		int removed;
+		std::vector<cv::KeyPoint> kptsTmp;
 		std::vector<cv::Point3f> kpts3DTmp;
-		if(!keypoints3D.empty())
-		{
-			kpts3DTmp.resize(maxKeypoints);
-		}
 		cv::Mat descriptorsTmp;
-		if(descriptors.rows)
+		if(ssc)
 		{
-			descriptorsTmp = cv::Mat(maxKeypoints, descriptors.cols, descriptors.type());
-		}
-		for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
-		{
-			kptsTmp[k] = keypoints[iter->second];
-			if(keypoints3D.size())
+			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+			static constexpr float tolerance = 0.1;
+			auto ResultVec = util2d::SSC(keypoints, maxKeypoints, tolerance, imageSize.width, imageSize.height);
+			removed = keypoints.size()-ResultVec.size();
+			// retrieve final keypoints
+			kptsTmp.resize(ResultVec.size());
+			if(!keypoints3D.empty())
 			{
-				kpts3DTmp[k] = keypoints3D[iter->second];
+				kpts3DTmp.resize(ResultVec.size());
 			}
 			if(descriptors.rows)
 			{
-				if(descriptors.type() == CV_32FC1)
+				descriptorsTmp = cv::Mat(ResultVec.size(), descriptors.cols, descriptors.type());
+			}
+			for(unsigned int k=0; k<ResultVec.size(); ++k)
+			{
+				kptsTmp[k] = keypoints[ResultVec[k]];
+				if(keypoints3D.size())
 				{
-					memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(iter->second), descriptors.cols*sizeof(float));
+					kpts3DTmp[k] = keypoints3D[ResultVec[k]];
 				}
-				else
+				if(descriptors.rows)
 				{
-					memcpy(descriptorsTmp.ptr<char>(k), descriptors.ptr<char>(iter->second), descriptors.cols*sizeof(char));
+					if(descriptors.type() == CV_32FC1)
+					{
+						memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(ResultVec[k]), descriptors.cols*sizeof(float));
+					}
+					else
+					{
+						memcpy(descriptorsTmp.ptr<char>(k), descriptors.ptr<char>(ResultVec[k]), descriptors.cols*sizeof(char));
+					}
 				}
 			}
 		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)kptsTmp.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
+		else
+		{
+			ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+			// Remove words under the new hessian threshold
+
+			// Sort words by hessian
+			std::multimap<float, int> hessianMap; // <hessian,id>
+			for(unsigned int i = 0; i <keypoints.size(); ++i)
+			{
+				//Keep track of the data, to be easier to manage the data in the next step
+				hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
+			}
+
+			// Remove them from the signature
+			removed = (int)hessianMap.size()-maxKeypoints;
+			std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+			kptsTmp.resize(maxKeypoints);
+			if(!keypoints3D.empty())
+			{
+				kpts3DTmp.resize(maxKeypoints);
+			}
+			if(descriptors.rows)
+			{
+				descriptorsTmp = cv::Mat(maxKeypoints, descriptors.cols, descriptors.type());
+			}
+			for(unsigned int k=0; k<kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
+			{
+				kptsTmp[k] = keypoints[iter->second];
+				if(keypoints3D.size())
+				{
+					kpts3DTmp[k] = keypoints3D[iter->second];
+				}
+				if(descriptors.rows)
+				{
+					if(descriptors.type() == CV_32FC1)
+					{
+						memcpy(descriptorsTmp.ptr<float>(k), descriptors.ptr<float>(iter->second), descriptors.cols*sizeof(float));
+					}
+					else
+					{
+						memcpy(descriptorsTmp.ptr<char>(k), descriptors.ptr<char>(iter->second), descriptors.cols*sizeof(char));
+					}
+				}
+			}
+		}
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)kptsTmp.size(), !ssc&&kptsTmp.size()?kptsTmp.back().response:0.0f);
 		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		keypoints = kptsTmp;
 		keypoints3D = kpts3DTmp;
@@ -342,31 +383,46 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 	}
 }
 
-void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints)
+void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, bool ssc)
 {
 	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
 	{
 		UTimer timer;
-		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", (int)keypoints.size());
-		// Remove words under the new hessian threshold
-
-		// Sort words by hessian
-		std::multimap<float, int> hessianMap; // <hessian,id>
-		for(unsigned int i = 0; i <keypoints.size(); ++i)
-		{
-			//Keep track of the data, to be easier to manage the data in the next step
-			hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
-		}
-
-		// Keep keypoints with highest response
-		int removed = (int)hessianMap.size()-maxKeypoints;
-		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
-		inliers.resize(keypoints.size(), false);
 		float minimumHessian = 0.0f;
-		for(int k=0; k < maxKeypoints && iter!=hessianMap.rend(); ++k, ++iter)
+		int removed;
+		inliers.resize(keypoints.size(), false);
+		if(ssc)
 		{
-			inliers[iter->second] = true;
-			minimumHessian = iter->first;
+			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+			static constexpr float tolerance = 0.1;
+			auto ResultVec = util2d::SSC(keypoints, maxKeypoints, tolerance, imageSize.width, imageSize.height);
+			removed = keypoints.size()-ResultVec.size();
+			for(unsigned int k=0; k<ResultVec.size(); ++k)
+			{
+				inliers[ResultVec[k]] = true;
+			}
+		}
+		else
+		{
+			ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+			// Remove words under the new hessian threshold
+
+			// Sort words by hessian
+			std::multimap<float, int> hessianMap; // <hessian,id>
+			for(unsigned int i = 0; i<keypoints.size(); ++i)
+			{
+				//Keep track of the data, to be easier to manage the data in the next step
+				hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
+			}
+
+			// Keep keypoints with highest response
+			removed = (int)hessianMap.size()-maxKeypoints;
+			std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+			for(int k=0; k<maxKeypoints && iter!=hessianMap.rend(); ++k, ++iter)
+			{
+				inliers[iter->second] = true;
+				minimumHessian = iter->first;
+			}
 		}
 		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, maxKeypoints, minimumHessian);
 		ULOGGER_DEBUG("filter keypoints time = %f s", timer.ticks());
@@ -378,7 +434,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 	}
 }
 
-void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols)
+void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols, bool ssc)
 {
 	if(maxKeypoints <= 0 || (int)keypoints.size() <= maxKeypoints)
 	{
@@ -406,7 +462,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 	for(size_t i=0; i<keypointsPerCell.size(); ++i)
 	{
 		std::vector<bool> inliersCell;
-		limitKeypoints(keypointsPerCell[i], inliersCell, maxKeypointsPerCell);
+		limitKeypoints(keypointsPerCell[i], inliersCell, maxKeypointsPerCell, cv::Size(colSize, rowSize), ssc);
 		for(size_t j=0; j<inliersCell.size(); ++j)
 		{
 			if(inliersCell[j])
@@ -432,6 +488,7 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 /////////////////////
 Feature2D::Feature2D(const ParametersMap & parameters) :
 		maxFeatures_(Parameters::defaultKpMaxFeatures()),
+		SSC_(Parameters::defaultKpSSC()),
 		_maxDepth(Parameters::defaultKpMaxDepth()),
 		_minDepth(Parameters::defaultKpMinDepth()),
 		_roiRatios(std::vector<float>(4, 0.0f)),
@@ -453,6 +510,7 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 	uInsert(parameters_, parameters);
 
 	Parameters::parse(parameters, Parameters::kKpMaxFeatures(), maxFeatures_);
+	Parameters::parse(parameters, Parameters::kKpSSC(), SSC_);
 	Parameters::parse(parameters, Parameters::kKpMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kKpMinDepth(), _minDepth);
 	Parameters::parse(parameters, Parameters::kKpSubPixWinSize(), _subPixWinSize);
@@ -732,19 +790,22 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		for (int j = 0; j<gridCols_; ++j)
 		{
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
-			std::vector<cv::KeyPoint> sub_keypoints;
-			sub_keypoints = this->generateKeypointsImpl(image, roi, mask);
-			limitKeypoints(sub_keypoints, maxFeatures);
+			std::vector<cv::KeyPoint> subKeypoints;
+			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
+			{
+				limitKeypoints(subKeypoints, maxFeatures, roi.size(), this->getSSC());
+			}
 			if(roi.x || roi.y)
 			{
 				// Adjust keypoint position to raw image
-				for(std::vector<cv::KeyPoint>::iterator iter=sub_keypoints.begin(); iter!=sub_keypoints.end(); ++iter)
+				for(std::vector<cv::KeyPoint>::iterator iter=subKeypoints.begin(); iter!=subKeypoints.end(); ++iter)
 				{
 					iter->pt.x += roi.x;
 					iter->pt.y += roi.y;
 				}
 			}
-			keypoints.insert( keypoints.end(), sub_keypoints.begin(), sub_keypoints.end() );
+			keypoints.insert( keypoints.end(), subKeypoints.begin(), subKeypoints.end() );
 		}
 	}
 	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (grid=%dx%d, mask empty=%d)",
@@ -2119,9 +2180,27 @@ std::vector<cv::KeyPoint> ORBOctree::generateKeypointsImpl(const cv::Mat & image
 
 	(*_orb)(imgRoi, maskRoi, keypoints, descriptors_);
 
+	// OrbOctree ignores the mask, so we have to apply it manually here
+	if(!keypoints.empty() && !maskRoi.empty())
+	{
+		std::vector<cv::KeyPoint> validKeypoints;
+		validKeypoints.reserve(keypoints.size());
+		cv::Mat validDescriptors;
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			if(maskRoi.at<unsigned char>(keypoints[i].pt.y+roi.y, keypoints[i].pt.x+roi.x) != 0)
+			{
+				validKeypoints.push_back(keypoints[i]);
+				validDescriptors.push_back(descriptors_.row(i));
+			}
+		}
+		keypoints = validKeypoints;
+		descriptors_ = validDescriptors;
+	}
+
 	if((int)keypoints.size() > this->getMaxFeatures())
 	{
-		limitKeypoints(keypoints, descriptors_, this->getMaxFeatures());
+		limitKeypoints(keypoints, descriptors_, this->getMaxFeatures(), roi.size(), this->getSSC());
 	}
 #else
 	UWARN("RTAB-Map is not built with ORB OcTree option enabled so ORB OcTree feature cannot be used!");

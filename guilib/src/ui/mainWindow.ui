@@ -105,16 +105,6 @@
      <property name="title">
       <string>Select source</string>
      </property>
-     <widget class="QMenu" name="menuImage">
-      <property name="title">
-       <string>RGB camera</string>
-      </property>
-      <property name="icon">
-       <iconset resource="../GuiLib.qrc">
-        <normaloff>:/images/webcam.png</normaloff>:/images/webcam.png</iconset>
-      </property>
-      <addaction name="actionUsbCamera"/>
-     </widget>
      <widget class="QMenu" name="menuRGB_D_camera">
       <property name="title">
        <string>RGB-D camera</string>
@@ -332,6 +322,16 @@
        </property>
        <addaction name="actionDepthAI_oakdlite"/>
       </widget>
+      <widget class="QMenu" name="menuOAK_D_Pro">
+       <property name="title">
+        <string>OAK-D Pro</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/oakdpro.png</normaloff>:/images/oakdpro.png</iconset>
+       </property>
+       <addaction name="actionDepthAI_oakdpro"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
       <addaction name="menuTara_Camera"/>
@@ -339,10 +339,17 @@
       <addaction name="menuMynt_Eye_S"/>
       <addaction name="menuOAK_D"/>
       <addaction name="menuOAK_D_Lite"/>
+      <addaction name="menuOAK_D_Pro"/>
+     </widget>
+     <widget class="QMenu" name="menuLiDAR">
+      <property name="title">
+       <string>LiDAR</string>
+      </property>
+      <addaction name="actionVelodyne_VLP_16"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
-     <addaction name="menuImage"/>
+     <addaction name="menuLiDAR"/>
      <addaction name="actionMore_options"/>
     </widget>
     <addaction name="menuSelect_source"/>
@@ -1244,18 +1251,6 @@
     <string>240p</string>
    </property>
   </action>
-  <action name="actionUsbCamera">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../GuiLib.qrc">
-     <normaloff>:/images/webcam.png</normaloff>:/images/webcam.png</iconset>
-   </property>
-   <property name="text">
-    <string>Usb camera</string>
-   </property>
-  </action>
   <action name="actionPrint_loop_closure_IDs_to_console">
    <property name="text">
     <string>Print loop closure IDs to console</string>
@@ -1720,6 +1715,22 @@
    </property>
    <property name="text">
     <string>Depth AI</string>
+   </property>
+  </action>
+  <action name="actionDepthAI_oakdpro">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Depth AI</string>
+   </property>
+  </action>
+  <action name="actionVelodyne_VLP_16">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Velodyne VLP-16</string>
    </property>
   </action>
  </widget>

@@ -243,7 +243,7 @@ std::string CameraStereoVideo::getSerial() const
 	return cameraName_;
 }
 
-SensorData CameraStereoVideo::captureImage(CameraInfo * info)
+SensorData CameraStereoVideo::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 

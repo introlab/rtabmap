@@ -36,48 +36,15 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/EditMapArea.h
 	../include/${PROJECT_PREFIX}/gui/MultiSessionLocWidget.h
 	../include/${PROJECT_PREFIX}/gui/MultiSessionLocSubView.h
-)
-
-SET(uis
-    ./ui/mainWindow.ui
-    ./ui/preferencesDialog.ui
-    ./ui/aboutDialog.ui
-    ./ui/consoleWidget.ui
-    ./ui/DatabaseViewer.ui
-    ./ui/loopClosureViewer.ui
-    ./ui/exportDialog.ui
-    ./ui/postProcessingDialog.ui
-    ./ui/exportCloudsDialog.ui
-    ./ui/calibrationDialog.ui
-    ./ui/createSimpleCalibrationDialog.ui
-    ./ui/depthCalibrationDialog.ui
-    ./ui/exportBundlerDialog.ui
-    ./ui/editConstraintDialog.ui
-    ./ui/multiSessionLocSubView.ui
+	../include/${PROJECT_PREFIX}/gui/LinkRefiningDialog.h
 )
 
 SET(qrc 
     ./GuiLib.qrc
 )
 
-IF(QT4_FOUND)
-    # generate rules for building source files from the resources
-    QT4_ADD_RESOURCES(srcs_qrc ${qrc})
-
-    #Generate .h files from the .ui files
-    QT4_WRAP_UI(moc_uis ${uis})
-
-    #This will generate moc_* for Qt
-    QT4_WRAP_CPP(moc_srcs ${headers_ui})
-    ### Qt Gui stuff  end###
-ELSEIF(Qt5_FOUND)
-    QT5_ADD_RESOURCES(srcs_qrc ${qrc})
-    QT5_WRAP_UI(moc_uis ${uis})
-    QT5_WRAP_CPP(moc_srcs ${headers_ui})
-ELSE()
-    QT6_ADD_RESOURCES(srcs_qrc ${qrc})
-    QT6_WRAP_UI(moc_uis ${uis})
-    QT6_WRAP_CPP(moc_srcs ${headers_ui})
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+    set(CMAKE_AUTOUIC_SEARCH_PATHS ./ui/)
 ENDIF()
 
 
@@ -115,12 +82,11 @@ SET(SRC_FILES
 	./CreateSimpleCalibrationDialog.cpp
 	./ParametersToolBox.cpp
 	./DepthCalibrationDialog.cpp
+	./LinkRefiningDialog.cpp
 	./3rdParty/QMultiComboBox.cpp
 	./opencv/vtkImageMatSource.cpp
-	
-	${moc_srcs} 
-	${moc_uis} 
-	${srcs_qrc}
+	${qrc}
+	${headers_ui}
 )
 
 # to get includes in visual studio
@@ -211,8 +177,28 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 add_definitions(${PCL_DEFINITIONS})
 
+# Include presets
+SET(RESOURCES
+	${PROJECT_SOURCE_DIR}/data/presets/camera_tof_icp.ini
+	${PROJECT_SOURCE_DIR}/data/presets/lidar3d_icp.ini
+)
+
+foreach(arg ${RESOURCES})
+   get_filename_component(filename ${arg} NAME)
+   string(REPLACE "." "_" output ${filename})
+   set(RESOURCES_HEADERS "${RESOURCES_HEADERS}" "${CMAKE_CURRENT_BINARY_DIR}/${output}.h")
+   set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/${output}.h" PROPERTY SKIP_AUTOGEN ON)
+endforeach(arg ${RESOURCES})
+
+ADD_CUSTOM_COMMAND(
+	OUTPUT ${RESOURCES_HEADERS}
+	COMMAND res_tool -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+	COMMENT "[Creating resources]"
+	DEPENDS ${RESOURCES}
+)
+
 # create a library from the source files
-ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
+ADD_LIBRARY(rtabmap_gui ${SRC_FILES} ${RESOURCES_HEADERS})
 ADD_LIBRARY(rtabmap::gui ALIAS rtabmap_gui)
 
 generate_export_header(rtabmap_gui
@@ -235,6 +221,9 @@ SET_TARGET_PROPERTIES(
      VERSION ${RTABMAP_VERSION}
      SOVERSION ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}
      EXPORT_NAME "gui"
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
 )
 
 INSTALL(TARGETS rtabmap_gui EXPORT rtabmap_guiTargets

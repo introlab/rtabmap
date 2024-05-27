@@ -430,7 +430,7 @@ bool importPoses(
 			else if(format == 1 || format==10 || format==11) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
-				if((strList.size() ==  8 && format!=11) || (strList.size() ==  9 && format==11))
+				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
 				{
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
@@ -902,7 +902,7 @@ void computeMaxGraphErrors(
 		float & maxAngularError,
 		const Link ** maxLinearErrorLink,
 		const Link ** maxAngularErrorLink,
-		bool for3DoF)
+		bool force3DoF)
 {
 	maxLinearErrorRatio = -1;
 	maxAngularErrorRatio = -1;
@@ -912,17 +912,44 @@ void computeMaxGraphErrors(
 	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		// ignore links with high variance, priors and landmarks
-		if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to() && iter->second.type() != Link::kLandmark)
+		// ignore priors
+		if(iter->second.from() != iter->second.to())
 		{
 			Transform t1 = uValue(poses, iter->second.from(), Transform());
 			Transform t2 = uValue(poses, iter->second.to(), Transform());
+
+			if( t1.isNull() ||
+				t2.isNull() ||
+				!t1.isInvertible() ||
+				!t2.isInvertible())
+			{
+				UWARN("Poses are null or not invertible, aborting optimized graph max error check! (Pose %d=%s Pose %d=%s)",
+					iter->second.from(),
+					t1.prettyPrint().c_str(),
+					iter->second.to(),
+					t2.prettyPrint().c_str());
+
+				if(maxLinearErrorLink)
+				{
+					*maxLinearErrorLink = 0;
+				}
+				if(maxAngularErrorLink)
+				{
+					*maxAngularErrorLink = 0;
+				}
+				maxLinearErrorRatio = -1;
+				maxAngularErrorRatio = -1;
+				maxLinearError = -1;
+				maxAngularError = -1;
+				return;
+			}
+
 			Transform t = t1.inverse()*t2;
 
 			float linearError = uMax3(
 					fabs(iter->second.transform().x() - t.x()),
 					fabs(iter->second.transform().y() - t.y()),
-					for3DoF?0:fabs(iter->second.transform().z() - t.z()));
+					force3DoF?0:fabs(iter->second.transform().z() - t.z()));
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
@@ -936,25 +963,30 @@ void computeMaxGraphErrors(
 				}
 			}
 
-			float opt_roll,opt_pitch,opt_yaw;
-			float link_roll,link_pitch,link_yaw;
-			t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-			iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-			float angularError = uMax3(
-					for3DoF?0:fabs(opt_roll - link_roll),
-					for3DoF?0:fabs(opt_pitch - link_pitch),
-					fabs(opt_yaw - link_yaw));
-			angularError = angularError>M_PI?2*M_PI-angularError:angularError;
-			UASSERT(iter->second.rotVariance(false)>0.0);
-			float stddevAngular = sqrt(iter->second.rotVariance(false));
-			float angularErrorRatio = angularError/stddevAngular;
-			if(angularErrorRatio > maxAngularErrorRatio)
+			// For landmark links, don't compute angular error if it doesn't estimate orientation
+			if(iter->second.type() != Link::kLandmark ||
+				1.0 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0)
 			{
-				maxAngularError = angularError;
-				maxAngularErrorRatio = angularErrorRatio;
-				if(maxAngularErrorLink)
+				float opt_roll,opt_pitch,opt_yaw;
+				float link_roll,link_pitch,link_yaw;
+				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
+				iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+				float angularError = uMax3(
+						force3DoF?0:fabs(opt_roll - link_roll),
+						force3DoF?0:fabs(opt_pitch - link_pitch),
+						fabs(opt_yaw - link_yaw));
+				angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				UASSERT(iter->second.rotVariance(false)>0.0);
+				float stddevAngular = sqrt(iter->second.rotVariance(false));
+				float angularErrorRatio = angularError/stddevAngular;
+				if(angularErrorRatio > maxAngularErrorRatio)
 				{
-					*maxAngularErrorLink = &iter->second;
+					maxAngularError = angularError;
+					maxAngularErrorRatio = angularErrorRatio;
+					if(maxAngularErrorLink)
+					{
+						*maxAngularErrorLink = &iter->second;
+					}
 				}
 			}
 		}
@@ -1022,6 +1054,39 @@ std::multimap<int, Link>::iterator findLink(
 	return links.end();
 }
 
+std::multimap<int, std::pair<int, Link::Type> >::iterator findLink(
+		std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays,
+		Link::Type type)
+{
+	std::multimap<int, std::pair<int, Link::Type> >::iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
 std::multimap<int, int>::iterator findLink(
 		std::multimap<int, int> & links,
 		int from,
@@ -1077,6 +1142,39 @@ std::multimap<int, Link>::const_iterator findLink(
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
+std::multimap<int, std::pair<int, Link::Type> >::const_iterator findLink(
+		const std::multimap<int, std::pair<int, Link::Type> > & links,
+		int from,
+		int to,
+		bool checkBothWays,
+		Link::Type type)
+{
+	std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
 			{
 				return iter;
 			}
@@ -2218,7 +2316,7 @@ std::map<int, Transform> findNearestPoses(
 	{
 		foundPoses.insert(*poses.find(iter->first));
 	}
-	UDEBUG("found nodes=%d", (int)foundPoses.size());
+	UDEBUG("found nodes=%d/%d (radius=%f, angle=%f, k=%d)", (int)foundPoses.size(), (int)poses.size(), radius, angle, k);
 	return foundPoses;
 }
 

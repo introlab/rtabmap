@@ -105,7 +105,7 @@ bool CameraOpenNICV::isCalibrated() const
 	return true;
 }
 
-SensorData CameraOpenNICV::captureImage(CameraInfo * info)
+SensorData CameraOpenNICV::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 	if(_capture.isOpened())

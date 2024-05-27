@@ -25,11 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/SensorEvent.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/Camera.h"
-#include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/ParamEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/UserDataEvent.h"
@@ -371,11 +371,11 @@ bool RtabmapThread::handleEvent(UEvent* event)
 			// IMU events are published at high frequency, early exit
 			return false;
 		}
-		else if(event->getClassName().compare("CameraEvent") == 0)
+		else if(event->getClassName().compare("SensorEvent") == 0)
 		{
-			UDEBUG("CameraEvent");
-			CameraEvent * e = (CameraEvent*)event;
-			if(e->getCode() == CameraEvent::kCodeData)
+			UDEBUG("SensorEvent");
+			SensorEvent * e = (SensorEvent*)event;
+			if(e->getCode() == SensorEvent::kCodeData)
 			{
 				if (_rtabmap->isRGBDMode())
 				{

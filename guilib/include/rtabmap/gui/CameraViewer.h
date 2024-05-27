@@ -53,6 +53,7 @@ public:
 		QWidget * parent = 0,
 		const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraViewer();
+	void setDecimation(int value);
 
 public Q_SLOTS:
 	void showImage(const rtabmap::SensorData & data);

@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryViso2.h"
 #include "rtabmap/core/odometry/OdometryDVO.h"
 #include "rtabmap/core/odometry/OdometryOkvis.h"
-#include "rtabmap/core/odometry/OdometryORBSLAM.h"
+#include "rtabmap/core/odometry/OdometryORBSLAM3.h"
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryFLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 
 #include <pcl/pcl_base.h>
+#include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 namespace rtabmap {
 
@@ -84,7 +85,11 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		odometry = new OdometryDVO(parameters);
 		break;
 	case Odometry::kTypeORBSLAM:
-		odometry = new OdometryORBSLAM(parameters);
+#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+		odometry = new OdometryORBSLAM2(parameters);
+#else
+		odometry = new OdometryORBSLAM3(parameters);
+#endif
 		break;
 	case Odometry::kTypeOkvis:
 		odometry = new OdometryOkvis(parameters);
@@ -135,6 +140,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_alignWithGround(Parameters::defaultOdomAlignWithGround()),
 		_publishRAMUsage(Parameters::defaultRtabmapPublishRAMUsage()),
 		_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
+		_deskewing(Parameters::defaultOdomDeskewing()),
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
@@ -164,6 +170,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomAlignWithGround(), _alignWithGround);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishRAMUsage(), _publishRAMUsage);
 	Parameters::parse(parameters, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
+	Parameters::parse(parameters, Parameters::kOdomDeskewing(), _deskewing);
 
 	if(_imageDecimation == 0)
 	{
@@ -324,6 +331,19 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				imus_.erase(imus_.begin());
 			}
 		}
+		else
+		{
+			UWARN("Received IMU doesn't have orientation set! It is ignored.");
+		}
+	}
+
+	if(!data.imageRaw().empty())
+	{
+		UDEBUG("Processing image data %dx%d: rgbd models=%ld, stereo models=%ld",
+			data.imageRaw().cols,
+			data.imageRaw().rows,
+			data.cameraModels().size(),
+			data.stereoCameraModels().size());
 	}
 
 
@@ -602,6 +622,75 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	}
 
 	UTimer time;
+
+	// Deskewing lidar
+	if( _deskewing &&
+		!data.laserScanRaw().empty() &&
+		data.laserScanRaw().hasTime() &&
+		dt > 0 &&
+		!guess.isNull())
+	{
+		UDEBUG("Deskewing begin");
+		// Recompute velocity
+		float vx,vy,vz, vroll,vpitch,vyaw;
+		guess.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
+
+		// transform to velocity
+		vx /= dt;
+		vy /= dt;
+		vz /= dt;
+		vroll /= dt;
+		vpitch /= dt;
+		vyaw /= dt;
+
+		if(!imus_.empty())
+		{
+			float scanTime =
+				data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()] -
+				data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
+
+			// replace orientation velocity based on IMU (if available)
+			Transform imuFirstScan = Transform::getTransform(imus_,
+					data.stamp() +
+					data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()]);
+			Transform imuLastScan = Transform::getTransform(imus_,
+					data.stamp() +
+					data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()]);
+			if(!imuFirstScan.isNull() && !imuLastScan.isNull())
+			{
+				Transform orientation = imuFirstScan.inverse() * imuLastScan;
+				orientation.getEulerAngles(vroll, vpitch, vyaw);
+				if(_force3DoF)
+				{
+					vroll=0;
+					vpitch=0;
+					vyaw /= scanTime;
+				}
+				else
+				{
+					vroll /= scanTime;
+					vpitch /= scanTime;
+					vyaw /= scanTime;
+				}
+			}
+		}
+
+		Transform velocity(vx,vy,vz,vroll,vpitch,vyaw);
+		LaserScan scanDeskewed = util3d::deskew(data.laserScanRaw(), data.stamp(), velocity);
+		if(!scanDeskewed.isEmpty())
+		{
+			data.setLaserScan(scanDeskewed);
+		}
+		info->timeDeskewing = time.ticks();
+		UDEBUG("Deskewing end");
+	}
+	if(data.laserScanRaw().isOrganized())
+	{
+		// Laser scans should be dense passing this point
+		data.setLaserScan(data.laserScanRaw().densify());
+	}
+
+
 	Transform t;
 	if(_imageDecimation > 1 && !data.imageRaw().empty())
 	{
@@ -671,12 +760,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UASSERT(info->newCorners.size() == info->refCorners.size() || info->refCorners.empty());
 			for(unsigned int i=0; i<info->newCorners.size(); ++i)
 			{
-				info->refCorners[i].x *= _imageDecimation;
-				info->refCorners[i].y *= _imageDecimation;
+				info->newCorners[i].x *= _imageDecimation;
+				info->newCorners[i].y *= _imageDecimation;
 				if(!info->refCorners.empty())
 				{
-					info->newCorners[i].x *= _imageDecimation;
-					info->newCorners[i].y *= _imageDecimation;
+					info->refCorners[i].x *= _imageDecimation;
+					info->refCorners[i].y *= _imageDecimation;
 				}
 			}
 			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)
@@ -897,6 +986,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Odometry automatically reset to latest pose!");
 			this->reset(_pose);
+			_resetCurrentCount = _resetCountdown;
 			if(info)
 			{
 				*info = OdometryInfo();

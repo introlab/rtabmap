@@ -95,8 +95,9 @@ public:
 	StatsToolBox(QWidget * parent);
 	virtual ~StatsToolBox();
 
-	void getFiguresSetup(QList<int> & curvesPerFigure, QStringList & curveNames);
+	void getFiguresSetup(QList<int> & curvesPerFigure, QStringList & curveNames, QStringList & curveThresholds);
 	void addCurve(const QString & name, bool newFigure = true, bool cacheOn = false);
+	void addThreshold(const QString & name, qreal value); // Add to latest figure
 	void setWorkingDirectory(const QString & workingDirectory);
 	void setNewFigureMaxItems(int value) {_newFigureMaxItems = value;}
 	void closeFigures();

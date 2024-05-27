@@ -25,9 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/SensorEvent.h>
 #include "rtabmap/gui/CameraViewer.h"
 
-#include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/util3d_filtering.h>
@@ -58,6 +58,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 
 	imageView_->setImageDepthShown(true);
 	imageView_->setMinimumSize(320, 240);
+	imageView_->setVisible(false);
 	QHBoxLayout * layout = new QHBoxLayout();
 	layout->setContentsMargins(0,0,0,0);
 	layout->addWidget(imageView_,1);
@@ -108,10 +109,16 @@ CameraViewer::~CameraViewer()
 	this->unregisterFromEventsManager();
 }
 
+void CameraViewer::setDecimation(int value)
+{
+	decimationSpin_->setValue(value);
+}
+
 void CameraViewer::showImage(const rtabmap::SensorData & data)
 {
 	processingImages_ = true;
 	QString sizes;
+	imageView_->setVisible(!data.imageRaw().empty() || !data.imageRaw().empty());
 	if(!data.imageRaw().empty())
 	{
 		imageView_->setImage(uCvMat2QImage(data.imageRaw()));
@@ -199,10 +206,10 @@ bool CameraViewer::handleEvent(UEvent * event)
 {
 	if(!pause_->isChecked())
 	{
-		if(event->getClassName().compare("CameraEvent") == 0)
+		if(event->getClassName().compare("SensorEvent") == 0)
 		{
-			CameraEvent * camEvent = (CameraEvent*)event;
-			if(camEvent->getCode() == CameraEvent::kCodeData)
+			SensorEvent * camEvent = (SensorEvent*)event;
+			if(camEvent->getCode() == SensorEvent::kCodeData)
 			{
 				if(camEvent->data().isValid())
 				{

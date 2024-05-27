@@ -59,6 +59,7 @@ void showUsage()
 			"  Options:\n"
 			"     --diff                   Show only modified parameters.\n"
 			"     --diff  \"other_map.db\"   Compare parameters with other database.\n"
+			"     --dump  \"config.ini\"     Dump parameters in ini file.\n"
 			"\n");
 	exit(1);
 }
@@ -81,18 +82,32 @@ int main(int argc, char * argv[])
 	}
 
 	std::string otherDatabasePath;
+	std::string dumpFilePath;
 	bool diff = false;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(strcmp(argv[i], "--diff") == 0)
 		{
 			++i;
-			if(i<argc-1)
+			if(i<argc-1 && argv[i][0] != '-')
 			{
 				otherDatabasePath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
 				printf("Comparing with other database \"%s\"...\n", otherDatabasePath.c_str());
 			}
 			diff = true;
+		}
+		if(strcmp(argv[i], "--dump") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				dumpFilePath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+			}
+			else
+			{
+				printf("--dump should have an output file path\n");
+				showUsage();
+			}
 		}
 	}
 
@@ -112,6 +127,12 @@ int main(int argc, char * argv[])
 	}
 
 	ParametersMap parameters = driver->getLastParameters();
+	if(!dumpFilePath.empty())
+	{
+		Parameters::writeINI(dumpFilePath, parameters);
+		printf("%ld parameters exported to \"%s\".\n", parameters.size(), dumpFilePath.c_str());
+		return 0;
+	}
 	ParametersMap defaultParameters = Parameters::getDefaultParameters();
 	ParametersMap removedParameters = Parameters::getBackwardCompatibilityMap();
 	std::string otherDatabasePathName;
@@ -326,7 +347,9 @@ int main(int argc, char * argv[])
 		driver->getAllLinks(links, true, true);
 		bool reducedGraph = false;
 		std::vector<int> linkTypes(Link::kEnd, 0);
-		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		std::vector<std::vector<float> > linkLengths(Link::kEnd);
+		std::multimap<int, Link> uniqueLinks = graph::filterDuplicateLinks(links);
+		for(std::multimap<int, Link>::iterator iter=uniqueLinks.begin(); iter!=uniqueLinks.end(); ++iter)
 		{
 			if(iter->second.type() == Link::kNeighborMerged)
 			{
@@ -335,6 +358,7 @@ int main(int argc, char * argv[])
 			if(iter->second.type()>=0 && iter->second.type()<Link::kEnd)
 			{
 				++linkTypes[iter->second.type()];
+				linkLengths[iter->second.type()].push_back(iter->second.transform().getNorm());
 			}
 		}
 		if(reducedGraph)
@@ -387,7 +411,19 @@ int main(int argc, char * argv[])
 		std::cout << (uFormat("Links:\n"));
 		for(size_t i=0; i<linkTypes.size(); ++i)
 		{
-			std::cout << (uFormat("%s%d\n", pad(uFormat("  %s:", Link::typeName((Link::Type)i).c_str())).c_str(), linkTypes[i]));
+			float avg = uMean(linkLengths[i]);
+			float std = uVariance(linkLengths[i], avg);
+			float max = uMax(linkLengths[i]);
+			if(std>0)
+			{
+				std = std::sqrt(std);
+			}
+			std::cout << (uFormat("%s%d\t(length avg: %.2fm, std: %.2fm, max: %.2fm)\n", 
+				pad(uFormat("  %s:", Link::typeName((Link::Type)i).c_str())).c_str(),
+				linkTypes[i],
+				avg,
+				std,
+				max));
 		}
 		std::cout << ("\n");
 		long total = 0;

@@ -473,7 +473,7 @@ std::string CameraOpenNI2::getSerial() const
 	return "";
 }
 
-SensorData CameraOpenNI2::captureImage(CameraInfo * info)
+SensorData CameraOpenNI2::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_OPENNI2

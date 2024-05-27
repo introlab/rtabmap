@@ -1,0 +1,16 @@
+name: RTAB-Map Scheduled Stats Extraction From GitHub
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '0 5 * * *'
+jobs:
+    get_stats:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Update Stats
+              uses: introlab/github-stats-action@v1
+              with:
+                  github-stats-token: ${{ secrets.STATS_TOKEN }}
+                  google-application-credentials: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+                  spreadsheet-id: ${{ secrets.SPREADSHEET_ID }}

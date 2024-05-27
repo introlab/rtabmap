@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/CameraModel.h>
 #include <vector>
 
 namespace rtabmap
@@ -155,6 +156,35 @@ cv::Mat RTABMAP_CORE_EXPORT exposureFusion(
 	const std::vector<cv::Mat> & images);
 
 void RTABMAP_CORE_EXPORT HSVtoRGB( float *r, float *g, float *b, float h, float s, float v );
+
+void RTABMAP_CORE_EXPORT NMS(
+		const std::vector<cv::KeyPoint> & ptsIn,
+		const cv::Mat & descriptorsIn,
+		std::vector<cv::KeyPoint> & ptsOut,
+		cv::Mat & descriptorsOut,
+		int border, int dist_thresh, int img_width, int img_height);
+
+std::vector<int> RTABMAP_CORE_EXPORT SSC(
+	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows);
+
+/**
+ * @brief Rotate images and camera model so that the top of the image is up.
+ *
+ * The roll value of local transform of the camera model is used to estimate
+ * if the images have to be rotated. If there is a pitch value higher than
+ * 45 deg, the original images and camera model will be returned (no rotation will happen).
+ * The return local transform of the camera model is updated accordingly. The distortion
+ * model is ignored and won't be transfered to modified camera model, so this function
+ * expects already rectified images.
+ *
+ * @param model a valid camera model
+ * @param rgb a rgb/grayscale image (set cv::Mat() if not used)
+ * @param depth a depth image (set cv::Mat() if not used)
+ */
+void RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
+	CameraModel & model,
+	cv::Mat & rgb,
+	cv::Mat & depth);
 
 } // namespace util3d
 } // namespace rtabmap

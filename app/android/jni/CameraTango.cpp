@@ -101,7 +101,7 @@ void onPoseAvailableRouter(void* context, const TangoPoseData* pose)
 	if(pose->status_code == TANGO_POSE_VALID)
 	{
 		CameraTango* app = static_cast<CameraTango*>(context);
-		app->poseReceived(rtabmap_world_T_tango_world * app->tangoPoseToTransform(pose) * tango_device_T_rtabmap_world);
+		app->poseReceived(rtabmap_world_T_tango_world * app->tangoPoseToTransform(pose) * tango_device_T_rtabmap_world, pose->timestamp);
 	}
 }
 
@@ -444,7 +444,7 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 		//LOGD("Depth received! %fs (%d points)", timestamp, cloud.cols);
 
 		UASSERT(cloud.type() == CV_32FC4);
-		boost::mutex::scoped_lock  lock(dataMutex_);
+		boost::mutex::scoped_lock  lock(tangoDataMutex_);
 
 		// From post: http://stackoverflow.com/questions/29236110/timing-issues-with-tango-image-frames
 		// "In the current version of Project Tango Tablet RGB IR camera
@@ -463,7 +463,7 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 
 			if(dt >= 0.0 && dt < 0.5)
 			{
-				bool notify = !data_.isValid();
+				bool notify = !tangoData_.isValid();
 
 				cv::Mat tangoImage = tangoColor_;
 				cv::Mat rgb;
@@ -495,7 +495,7 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 				else
 				{
 					LOGE("Not supported color format : %d.", tangoColorType);
-					data_ = SensorData();
+					tangoData_ = SensorData();
 					return;
 				}
 
@@ -678,24 +678,24 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 
 					if(rawScanPublished_)
 					{
-						data_ = SensorData(LaserScan::backwardCompatibility(scan, cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
+						tangoData_ = SensorData(LaserScan::backwardCompatibility(scan, cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 					}
 					else
 					{
-						data_ = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
+						tangoData_ = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
 					}
-					data_.setGroundTruth(odom);
+					tangoData_.setGroundTruth(odom);
 				}
 				else
 				{
 					LOGE("Could not get depth and rgb images!?!");
-					data_ = SensorData();
+					tangoData_ = SensorData();
 					return;
 				}
 
 				if(notify)
 				{
-					dataReady_.release();
+					tangoDataReady_.release();
 				}
 				LOGD("process cloud received %fs", timer.ticks());
 			}
@@ -709,7 +709,7 @@ void CameraTango::rgbReceived(const cv::Mat & tangoImage, int type, double times
 	{
 		//LOGD("RGB received! %fs", timestamp);
 
-		boost::mutex::scoped_lock  lock(dataMutex_);
+		boost::mutex::scoped_lock  lock(tangoDataMutex_);
 
 		tangoColor_ = tangoImage.clone();
 		tangoColorStamp_ = timestamp;
@@ -775,10 +775,11 @@ rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp)
 	return pose;
 }
 
-SensorData CameraTango::captureImage(CameraInfo * info)
+SensorData CameraTango::updateDataOnRender(Transform & pose)
 {
 	//LOGI("Capturing image...");
 
+	pose.setNull();
 	if(textureId_ == 0)
 	{
 		glGenTextures(1, &textureId_);
@@ -797,10 +798,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 		if (status == TANGO_SUCCESS)
 		{
-			if(info)
-			{
-				info->odomPose = getPoseAtTimestamp(video_overlay_timestamp);
-			}
+			pose = getPoseAtTimestamp(video_overlay_timestamp);
 
 			int rotation = static_cast<int>(getScreenRotation()) + 1; // remove 90deg camera rotation
 			  if (rotation > 3) {
@@ -876,16 +874,13 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 	}
 
 	SensorData data;
-	if(dataReady_.acquireTry(1))
+	if(tangoDataReady_.acquireTry(1))
 	{
-		boost::mutex::scoped_lock  lock(dataMutex_);
-		data = data_;
-		data_ = SensorData();
-		if(info)
-		{
-			info->odomPose = data.groundTruth();
-			data.setGroundTruth(Transform());
-		}
+		boost::mutex::scoped_lock  lock(tangoDataMutex_);
+		data = tangoData_;
+		tangoData_ = SensorData();
+		pose = data.groundTruth();
+		data.setGroundTruth(Transform());
 	}
 	return data;
 

@@ -57,8 +57,9 @@ class RegistrationInfo;
 class RegistrationIcp;
 class RegistrationVis;
 class Stereo;
-class OccupancyGrid;
+class LocalGridMaker;
 class MarkerDetector;
+class GlobalDescriptorExtractor;
 
 class RTABMAP_CORE_EXPORT Memory
 {
@@ -330,8 +331,10 @@ private:
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
 	bool _useOdometryGravity;
+	bool _rotateImagesUpsideUp;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
+	bool _visSSC;
 	bool _imagesAlreadyRectified;
 	bool _rectifyOnlyFeatures;
 	bool _covOffDiagonalIgnored;
@@ -371,9 +374,11 @@ private:
 	RegistrationIcp * _registrationIcpMulti;
 	RegistrationVis * _registrationVis;
 
-	OccupancyGrid * _occupancy;
+	LocalGridMaker * _localMapMaker;
 
 	MarkerDetector * _markerDetector;
+
+	GlobalDescriptorExtractor * _globalDescriptorExtractor;
 };
 
 } // namespace rtabmap

@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QToolTip>
 
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -61,6 +62,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if QT_VERSION >= 0x050000
 	#include <QStandardPaths>
 #endif
+
+#include <fstream>
 
 namespace rtabmap {
 
@@ -249,10 +252,10 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		QString str = QString("%1->%2 (%3 m)").arg(_from).arg(_to).arg(_poseA.getDistance(_poseB));
+		QString str = QString("%1->%2 (type=%3 length=%4 m)").arg(_from).arg(_to).arg(_link.type()).arg(_poseA.getDistance(_poseB));
 		if(!_link.transform().isNull())
 		{
-			str.append(QString("\n%1\n%2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
+			str.append(QString("\n%1\nvar= %2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
 		}
 		this->setToolTip(str);
 		QPen pen = this->pen();
@@ -314,6 +317,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_loopClosureOutlierThr(0),
 		_maxLinkLength(0.02f),
 		_orientationENU(false),
+		_mouseTracking(false),
 		_viewPlane(XY),
 		_ensureFrameVisible(true)
 {
@@ -564,7 +568,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				itemIter = _linkItems.find(iter->first);
 				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
 				{
-					if(itemIter.value()->to() == idTo)
+					if(itemIter.value()->to() == idTo && itemIter.value()->type() == iter->second.type())
 					{
 						itemIter.value()->setPoses(poseA, poseB, _viewPlane);
 						itemIter.value()->show();
@@ -1787,6 +1791,50 @@ void GraphViewer::wheelEvent ( QWheelEvent * event )
 	}
 }
 
+void GraphViewer::mouseMoveEvent(QMouseEvent * event)
+{
+	QPointF scenePoint = mapToScene(event->pos());
+	if(_mouseTracking && _viewPlane==XY && this->sceneRect().contains(scenePoint))
+	{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+		QToolTip::showText(event->globalPosition().toPoint(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
+#else
+		QToolTip::showText(event->globalPos(), QString("%1m %2m").arg(-scenePoint.y()/100.0).arg(-scenePoint.x()/100.0));
+#endif
+	}
+	else
+	{
+		QToolTip::hideText();
+	}
+	QGraphicsView::mouseMoveEvent(event);
+}
+
+void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
+{
+	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
+	if(item)
+	{
+		NodeItem *nodeItem = qgraphicsitem_cast<NodeItem*>(item);
+		LinkItem *linkItem = qgraphicsitem_cast<LinkItem*>(item);
+		if(nodeItem && nodeItem->parentItem() == _graphRoot && nodeItem->id() != 0)
+		{
+			Q_EMIT nodeSelected(nodeItem->id());
+		}
+		else if(linkItem && linkItem->parentItem() == _graphRoot && linkItem->from() != 0 && linkItem->to() != 0)
+		{
+			Q_EMIT linkSelected(linkItem->from(), linkItem->to());
+		}
+		else
+		{
+			QGraphicsView::mouseDoubleClickEvent(event);
+		}
+	}
+	else
+	{
+		QGraphicsView::mouseDoubleClickEvent(event);
+	}
+}
+
 QIcon createIcon(const QColor & color)
 {
 	QPixmap pixmap(50, 50);
@@ -1798,6 +1846,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QMenu menu;
 	QAction * aScreenShot = menu.addAction(tr("Take a screenshot..."));
+	QAction * aExportGridMap = menu.addAction(tr("Export grid map..."));
+	aExportGridMap->setEnabled(!_gridMap->pixmap().isNull());
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
@@ -1874,6 +1924,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideGPSGraph;
 	QAction * aShowHideOdomCacheOverlay;
 	QAction * aOrientationENU;
+	QAction * aMouseTracking;
 	QAction * aViewPlaneXY;
 	QAction * aViewPlaneXZ;
 	QAction * aViewPlaneYZ;
@@ -1972,6 +2023,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aOrientationENU = menu.addAction(tr("ENU Orientation"));
 	aOrientationENU->setCheckable(true);
 	aOrientationENU->setChecked(_orientationENU);
+	aMouseTracking = menu.addAction(tr("Show mouse cursor position (m)"));
+	aMouseTracking->setCheckable(true);
+	aMouseTracking->setChecked(_mouseTracking);
+	aMouseTracking->setEnabled(_viewPlane == XY);
 	aShowHideGraph->setEnabled(_nodeItems.size() && _viewPlane == XY);
 	aShowHideGraphNodes->setEnabled(_nodeItems.size() && _graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
@@ -2094,6 +2149,48 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			}
 		}
 		return; // without emitting configChanged
+	}
+	else if(r == aExportGridMap)
+	{
+		float xMin, yMin, cellSize;
+
+		cellSize = _gridCellSize;
+		xMin = -_gridMap->y()/100.0f;
+		yMin = -_gridMap->x()/100.0f;
+
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				"map.pgm",
+				tr("Map (*.pgm)"));
+
+		if(!path.isEmpty())
+		{
+			if(QFileInfo(path).suffix() == "")
+			{
+				path += ".pgm";
+			}
+			_gridMap->pixmap().save(path);
+
+			QFileInfo info(path);
+			QString yaml = info.absolutePath() + "/" +  info.baseName() + ".yaml";
+
+			float occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+
+			std::ofstream file;
+			file.open (yaml.toStdString());
+			file << "image: " << info.baseName().toStdString() << ".pgm" << std::endl;
+			file << "resolution: " << cellSize << std::endl;
+			file << "origin: [" << xMin << ", " << yMin << ", 0.0]" << std::endl;
+			file << "negate: 0" << std::endl;
+			file << "occupied_thresh: " << occupancyThr << std::endl;
+			file << "free_thresh: 0.196" << std::endl;
+			file << std::endl;
+			file.close();
+
+
+			QMessageBox::information(this, tr("Export 2D map"), tr("Exported %1 and %2!").arg(path).arg(yaml));
+		}
 	}
 	else if(r == aSetIntraInterSessionColors)
 	{
@@ -2358,6 +2455,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aOrientationENU)
 	{
 		this->setOrientationENU(!this->isOrientationENU());
+	}
+	else if(r == aMouseTracking)
+	{
+		_mouseTracking = aMouseTracking->isChecked();
 	}
 	else if(r == aViewPlaneXY)
 	{

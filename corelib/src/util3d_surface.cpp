@@ -2398,7 +2398,7 @@ bool multiBandTexturing(
 	std::string tmpImageDirectory = outputDirectory+"/rtabmap_tmp_textures";
 	UDirectory::removeDir(tmpImageDirectory);
 	UDirectory::makeDir(tmpImageDirectory);
-	UINFO("Temporary saving images in directory \"%s\"...", tmpImageDirectory.c_str());
+	UINFO("Temporary saving images from %ld nodes in directory \"%s\"...", cameraPoses.size(), tmpImageDirectory.c_str());
 	int viewId = 0;
 	for(std::map<int, Transform>::const_iterator iter = cameraPoses.lower_bound(1); iter!=cameraPoses.end(); ++iter)
 	{
@@ -2510,28 +2510,45 @@ bool multiBandTexturing(
 				imageSize.height = image.rows;
 				imageSize.width = image.cols;
 			}
+
 			UASSERT(image.cols % imageSize.width == 0);
 			cv::Mat imageRoi = image.colRange(i*imageSize.width, (i+1)*imageSize.width);
+
 			if(gains.find(camId) != gains.end() &&
 			   gains.at(camId).find(i) != gains.at(camId).end())
 			{
 				const cv::Vec4d & g = gains.at(camId).at(i);
-				std::vector<cv::Mat> channels;
-				cv::split(imageRoi, channels);
+				if(imageRoi.channels() == 1)
+				{
+					cv::multiply(imageRoi, g.val[0], imageRoi);
+				}
+				else
+				{
+					std::vector<cv::Mat> channels;
+					cv::split(imageRoi, channels);
 
-				// assuming BGR
-				cv::multiply(channels[0], g.val[gainRGB?3:0], channels[0]);
-				cv::multiply(channels[1], g.val[gainRGB?2:0], channels[1]);
-				cv::multiply(channels[2], g.val[gainRGB?1:0], channels[2]);
+					// assuming BGR
+					cv::multiply(channels[0], g.val[gainRGB?3:0], channels[0]);
+					cv::multiply(channels[1], g.val[gainRGB?2:0], channels[1]);
+					cv::multiply(channels[2], g.val[gainRGB?1:0], channels[2]);
 
-				cv::Mat output;
-				cv::merge(channels, output);
-				imageRoi = output;
+					cv::Mat output;
+					cv::merge(channels, output);
+					imageRoi = output;
+				}
 			}
 
 			if(blendingGains.find(camId) != blendingGains.end() &&
 			   blendingGains.at(camId).find(i) != blendingGains.at(camId).end())
 			{
+				// Should be color for blending options
+				if(imageRoi.channels() == 1)
+				{
+					cv::Mat imageRoiColor;
+					cv::cvtColor(imageRoi, imageRoiColor, CV_GRAY2BGR);
+					imageRoi = imageRoiColor;
+				}
+
 				cv::Mat g = blendingGains.at(camId).at(i);
 				cv::Mat dst;
 				cv::blur(g, dst, cv::Size(3,3));
@@ -2559,9 +2576,7 @@ bool multiBandTexturing(
 			sfmData.intrinsics.insert(std::make_pair((IndexT)viewId, camPtr));
 
 			std::string imagePath = tmpImageDirectory+uFormat("/%d.jpg", viewId);
-
 			cv::imwrite(imagePath, imageRoi);
-
 			std::shared_ptr<sfmData::View> viewPtr = std::make_shared<sfmData::View>(
 					imagePath,
 					(IndexT)viewId,
@@ -2572,8 +2587,9 @@ bool multiBandTexturing(
 			sfmData.views.insert(std::make_pair((IndexT)viewId, viewPtr));
 			++viewId;
 		}
+		UDEBUG("camId=%d", camId);
 	}
-	UINFO("Temporary saving images in directory \"%s\"... done (%d images). %fs", tmpImageDirectory.c_str(), viewId, (int)cameraPoses.size(), timer.ticks());
+	UINFO("Temporary saving images in directory \"%s\"... done (%d images of %d nodes). %fs", tmpImageDirectory.c_str(), viewId, (int)cameraPoses.size(), timer.ticks());
 
 	mvsUtils::MultiViewParams mp(sfmData);
 
@@ -3502,22 +3518,25 @@ LaserScan adjustNormalsToViewPoint(
 		int nz = ny+1;
 		cv::Mat output = scan.data().clone();
 		#pragma omp parallel for
-		for(int i=0; i<scan.size(); ++i)
+		for(int j=0; j<scan.data().rows; ++j)
 		{
-			float * ptr = output.ptr<float>(0, i);
-			if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
+			for(int i=0; i<scan.data().cols; ++i)
 			{
-				Eigen::Vector3f v = viewpoint - Eigen::Vector3f(ptr[0], ptr[1], ptr[2]);
-				Eigen::Vector3f n(ptr[nx], ptr[ny], ptr[nz]);
-
-				float result = v.dot(n);
-				if(result < 0
-				 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+				float * ptr = output.ptr<float>(j, i);
+				if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
 				{
-					//reverse normal
-					ptr[nx] *= -1.0f;
-					ptr[ny] *= -1.0f;
-					ptr[nz] *= -1.0f;
+					Eigen::Vector3f v = viewpoint - Eigen::Vector3f(ptr[0], ptr[1], ptr[2]);
+					Eigen::Vector3f n(ptr[nx], ptr[ny], ptr[nz]);
+
+					float result = v.dot(n);
+					if(result < 0
+					 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+					{
+						//reverse normal
+						ptr[nx] *= -1.0f;
+						ptr[ny] *= -1.0f;
+						ptr[nz] *= -1.0f;
+					}
 				}
 			}
 		}

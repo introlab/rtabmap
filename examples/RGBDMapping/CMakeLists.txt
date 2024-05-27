@@ -15,17 +15,21 @@ if(NOT internal)
 	FIND_PACKAGE(RTABMap REQUIRED COMPONENTS gui)
 endif()
 
-IF(QT4_FOUND)
-    QT4_WRAP_CPP(moc_srcs MapBuilder.h)
-ELSEIF(Qt5_FOUND)
-    QT5_WRAP_CPP(moc_srcs MapBuilder.h)
-ELSE()
-    QT6_WRAP_CPP(moc_srcs MapBuilder.h)
+IF(QT4_FOUND OR Qt5_FOUND OR Qt6_FOUND)
+    SET(moc_srcs MapBuilder.h)
 ENDIF()
 
 ADD_EXECUTABLE(rgbd_mapping main.cpp ${moc_srcs})
   
 TARGET_LINK_LIBRARIES(rgbd_mapping rtabmap::gui)
+
+SET_TARGET_PROPERTIES(
+     rgbd_mapping
+   PROPERTIES
+	 AUTOUIC ON
+     AUTOMOC ON
+     AUTORCC ON
+)
 
 if(internal)
   SET_TARGET_PROPERTIES( rgbd_mapping 

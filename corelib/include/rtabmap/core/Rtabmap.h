@@ -151,6 +151,8 @@ public:
 
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms
+	int getMemoryThreshold() const {return _maxMemoryAllowed;} // in nodes
+	void setMemoryThreshold(int maxMemoryAllowed); // in nodes
 
 	void setInitialPose(const Transform & initialPose);
 	int triggerNewMap();
@@ -282,6 +284,7 @@ private:
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;
 	float _loopRatio;
+	int _virtualPlaceLikelihoodRatio;
 	float _maxLoopClosureDistance;
 	bool _verifyLoopClosureHypothesis;
 	unsigned int _maxRetrieved;
@@ -322,10 +325,13 @@ private:
 	int _pathStuckIterations;
 	float _pathLinearVelocity;
 	float _pathAngularVelocity;
+	bool _forceOdom3doF;
 	bool _restartAtOrigin;
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	bool _localizationSmoothing;
+	double _localizationPriorInf;
 	bool _createGlobalScanMap;
 	float _markerPriorsLinearVariance;
 	float _markerPriorsAngularVariance;

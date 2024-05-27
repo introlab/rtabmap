@@ -111,6 +111,7 @@ private:
 	bool _alignWithGround;
 	bool _publishRAMUsage;
 	bool _imagesAlreadyRectified;
+	bool _deskewing;
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;

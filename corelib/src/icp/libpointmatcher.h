@@ -513,15 +513,27 @@ public:
 			for (int i = 0; i < pointsCount; ++i)
 			{
 				float minDistance = std::numeric_limits<float>::max();
+				bool minDistFound = false;
 				for(int k=0; k<knn && k<filteredReferenceIntensity.rows(); ++k)
 				{
-					float distIntensity = fabs(filteredReadingIntensity(0,i) - filteredReferenceIntensity(0, matches.ids.coeff(k, i)));
-					if(distIntensity < minDistance)
+					int matchesIdsCoeff = matches.ids.coeff(k, i);
+					if (matchesIdsCoeff!=-1)
 					{
-						matchesOrderedByIntensity.ids.coeffRef(0, i) = matches.ids.coeff(k, i);
-						matchesOrderedByIntensity.dists.coeffRef(0, i) = matches.dists.coeff(k, i);
-						minDistance = distIntensity;
+						float distIntensity = fabs(filteredReadingIntensity(0,i) - filteredReferenceIntensity(0, matchesIdsCoeff));
+						if(distIntensity < minDistance)
+						{
+							matchesOrderedByIntensity.ids.coeffRef(0, i) = matches.ids.coeff(k, i);
+							matchesOrderedByIntensity.dists.coeffRef(0, i) = matches.dists.coeff(k, i);
+							minDistance = distIntensity;
+							minDistFound = true;
+						}
 					}
+				}
+
+				if (!minDistFound)
+				{
+					matchesOrderedByIntensity.ids.coeffRef(0, i) = matches.ids.coeff(0, i);
+					matchesOrderedByIntensity.dists.coeffRef(0, i) = matches.dists.coeff(0, i);
 				}
 			}
 			matches = matchesOrderedByIntensity;

@@ -70,7 +70,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
-#include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
+#include "rtabmap/core/global_map/CloudMap.h"
 #include "rtabmap/core/GeodeticCoords.h"
 #include "rtabmap/core/Recovery.h"
 #include "rtabmap/gui/DataRecorder.h"
@@ -82,6 +83,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/gui/ExportDialog.h"
 #include "rtabmap/gui/EditConstraintDialog.h"
+#include "rtabmap/gui/LinkRefiningDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/ParametersToolBox.h"
 #include "rtabmap/gui/RecoveryState.h"
@@ -92,9 +94,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/crop_box.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/common.h>
+#include <rtabmap/core/LocalGridMaker.h>
 
 #ifdef RTABMAP_OCTOMAP
-#include "rtabmap/core/OctoMap.h"
+#include "rtabmap/core/global_map/OctoMap.h"
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+#include "rtabmap/core/global_map/GridMap.h"
 #endif
 
 namespace rtabmap {
@@ -106,6 +113,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	exportDialog_(new ExportCloudsDialog(this)),
 	editDepthDialog_(new QDialog(this)),
 	editMapDialog_(new QDialog(this)),
+	linkRefiningDialog_(new LinkRefiningDialog(this)),
 	savedMaximized_(false),
 	firstCall_(true),
 	iniFilePath_(ini),
@@ -196,6 +204,13 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->checkBox_octomap->setChecked(false);
 #endif
 
+#ifndef RTABMAP_GRIDMAP
+	ui_->checkBox_showElevation->setEnabled(false);
+	ui_->checkBox_showElevation->setChecked(false);
+	ui_->checkBox_grid_elevation->setEnabled(false);
+	ui_->checkBox_grid_elevation->setChecked(false);
+#endif
+
 	ParametersMap parameters;
 	uInsert(parameters, Parameters::getDefaultParameters("SURF"));
 	uInsert(parameters, Parameters::getDefaultParameters("SIFT"));
@@ -233,9 +248,11 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->checkBox_grid_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+	ui_->checkBox_grid_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 	ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->label_octomap_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+	ui_->label_octomap_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
@@ -251,6 +268,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->dockWidget_statistics->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateStatistics()));
 	connect(ui_->dockWidget_info->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateInfo()));
 
+	connect(ui_->graphViewer, SIGNAL(nodeSelected(int)), this , SLOT(graphNodeSelected(int)));
+	connect(ui_->graphViewer, SIGNAL(linkSelected(int,int)), this , SLOT(graphLinkSelected(int,int)));
 
 	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
 
@@ -293,8 +312,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionUpdate_all_neighbor_covariances, SIGNAL(triggered()), this, SLOT(updateAllNeighborCovariances()));
 	connect(ui_->actionUpdate_all_loop_closure_covariances, SIGNAL(triggered()), this, SLOT(updateAllLoopClosureCovariances()));
 	connect(ui_->actionUpdate_all_landmark_covariances, SIGNAL(triggered()), this, SLOT(updateAllLandmarkCovariances()));
-	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
-	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
+	connect(ui_->actionRefine_links, SIGNAL(triggered()), this, SLOT(refineLinks()));
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
 	connect(ui_->actionRegenerate_local_grid_maps_selected, SIGNAL(triggered()), this, SLOT(regenerateCurrentLocalMaps()));
 	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
@@ -333,6 +351,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_B, SIGNAL(valueChanged(int)), this, SLOT(sliderBValueChanged(int)));
 	connect(ui_->horizontalSlider_A, SIGNAL(sliderMoved(int)), this, SLOT(sliderAMoved(int)));
 	connect(ui_->horizontalSlider_B, SIGNAL(sliderMoved(int)), this, SLOT(sliderBMoved(int)));
+	connect(ui_->toolButton_edit_priorA, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
+	connect(ui_->toolButton_edit_priorB, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
+	connect(ui_->toolButton_remove_priorA, SIGNAL(clicked(bool)), this, SLOT(rejectConstraint()));
+	connect(ui_->toolButton_remove_priorB, SIGNAL(clicked(bool)), this, SLOT(rejectConstraint()));
 
 	connect(ui_->spinBox_mesh_angleTolerance, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_mesh_minClusterSize, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
@@ -346,6 +368,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_showScan, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showMap, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showGrid, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showElevation, SIGNAL(stateChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_odomFrame_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_gravity_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 
@@ -385,10 +408,13 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLandmarks, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_grid_grid, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_grid_elevation, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->comboBox_octomap_rendering_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->spinBox_grid_depth, SIGNAL(valueChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->checkBox_grid_empty, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->checkBox_grid_frontiers, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
@@ -446,12 +472,15 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_emptyColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
+	connect(ui_->lineEdit_frontierColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
 	connect(ui_->lineEdit_emptyColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
+	connect(ui_->lineEdit_frontierColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
 	connect(ui_->toolButton_obstacleColor, SIGNAL(clicked(bool)), this, SLOT(selectObstacleColor()));
 	connect(ui_->toolButton_groundColor, SIGNAL(clicked(bool)), this, SLOT(selectGroundColor()));
 	connect(ui_->toolButton_emptyColor, SIGNAL(clicked(bool)), this, SLOT(selectEmptyColor()));
+	connect(ui_->toolButton_frontierColor, SIGNAL(clicked(bool)), this, SLOT(selectFrontierColor()));
 	connect(ui_->spinBox_cropRadius, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_grid_showProbMap, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_grid_showProbMap, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -568,6 +597,7 @@ void DatabaseViewer::readSettings()
 	ui_->lineEdit_obstacleColor->setText(settings.value("colorObstacle", ui_->lineEdit_obstacleColor->text()).toString());
 	ui_->lineEdit_groundColor->setText(settings.value("colorGround", ui_->lineEdit_groundColor->text()).toString());
 	ui_->lineEdit_emptyColor->setText(settings.value("colorEmpty", ui_->lineEdit_emptyColor->text()).toString());
+	ui_->lineEdit_frontierColor->setText(settings.value("colorFrontier", ui_->lineEdit_frontierColor->text()).toString());
 	ui_->spinBox_cropRadius->setValue(settings.value("cropRadius", ui_->spinBox_cropRadius->value()).toInt());
 	ui_->checkBox_grid_showProbMap->setChecked(settings.value("probMap", ui_->checkBox_grid_showProbMap->isChecked()).toBool());
 	settings.endGroup();
@@ -657,6 +687,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("colorObstacle", ui_->lineEdit_obstacleColor->text());
 	settings.setValue("colorGround", ui_->lineEdit_groundColor->text());
 	settings.setValue("colorEmpty", ui_->lineEdit_emptyColor->text());
+	settings.setValue("colorFrontier", ui_->lineEdit_frontierColor->text());
 	settings.setValue("cropRadius", ui_->spinBox_cropRadius->value());
 	settings.setValue("probMap", ui_->checkBox_grid_showProbMap->isChecked());
 	settings.endGroup();
@@ -744,10 +775,12 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
 	ui_->doubleSpinBox_posefilteringAngle->setValue(30);
 	ui_->checkBox_grid_empty->setChecked(true);
+	ui_->checkBox_grid_frontiers->setChecked(false);
 	ui_->checkBox_octomap->setChecked(false);
 	ui_->lineEdit_obstacleColor->setText(QColor(Qt::red).name());
 	ui_->lineEdit_groundColor->setText(QColor(Qt::green).name());
 	ui_->lineEdit_emptyColor->setText(QColor(Qt::yellow).name());
+	ui_->lineEdit_frontierColor->setText(QColor(Qt::cyan).name());
 	ui_->spinBox_cropRadius->setValue(1);
 	ui_->checkBox_grid_showProbMap->setChecked(false);
 
@@ -780,7 +813,7 @@ void DatabaseViewer::openDatabase()
 	}
 }
 
-bool DatabaseViewer::openDatabase(const QString & path)
+bool DatabaseViewer::openDatabase(const QString & path, const ParametersMap & overriddenParameters)
 {
 	UDEBUG("Open database \"%s\"", path.toStdString().c_str());
 	if(QFile::exists(path))
@@ -814,6 +847,9 @@ bool DatabaseViewer::openDatabase(const QString & path)
 
 				// look if there are saved parameters
 				ParametersMap parameters = dbDriver_->getLastParameters();
+
+				// add overridden parameters
+				uInsert(parameters, overriddenParameters);
 
 				if(parameters.size())
 				{
@@ -915,12 +951,14 @@ bool DatabaseViewer::closeDatabase()
 					if(refinedIter != linksRefined_.end())
 					{
 						dbDriver_->addLink(refinedIter->second);
-						dbDriver_->addLink(refinedIter->second.inverse());
+						if(refinedIter->second.from() != refinedIter->second.to())
+							dbDriver_->addLink(refinedIter->second.inverse());
 					}
 					else
 					{
 						dbDriver_->addLink(iter->second);
-						dbDriver_->addLink(iter->second.inverse());
+						if(iter->second.from() != iter->second.to())
+							dbDriver_->addLink(iter->second.inverse());
 					}
 				}
 
@@ -930,7 +968,8 @@ bool DatabaseViewer::closeDatabase()
 					if(!containsLink(linksAdded_, iter->second.from(), iter->second.to()))
 					{
 						dbDriver_->updateLink(iter->second);
-						dbDriver_->updateLink(iter->second.inverse());
+						if(iter->second.from() != iter->second.to())
+							dbDriver_->updateLink(iter->second.inverse());
 					}
 				}
 
@@ -938,7 +977,8 @@ bool DatabaseViewer::closeDatabase()
 				for(std::multimap<int, rtabmap::Link>::iterator iter=linksRemoved_.begin(); iter!=linksRemoved_.end(); ++iter)
 				{
 					dbDriver_->removeLink(iter->second.to(), iter->second.from());
-					dbDriver_->removeLink(iter->second.from(), iter->second.to());
+					if(iter->second.from() != iter->second.to())
+						dbDriver_->removeLink(iter->second.from(), iter->second.to());
 				}
 				linksAdded_.clear();
 				linksRefined_.clear();
@@ -974,24 +1014,20 @@ bool DatabaseViewer::closeDatabase()
 
 			if(button == QMessageBox::Yes)
 			{
-				UASSERT(generatedLocalMaps_.size() == generatedLocalMapsInfo_.size());
-				std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat > >::iterator mapIter = generatedLocalMaps_.begin();
-				std::map<int, std::pair<float, cv::Point3f> >::iterator infoIter = generatedLocalMapsInfo_.begin();
-				for(; mapIter!=generatedLocalMaps_.end(); ++mapIter, ++infoIter)
+				for(std::map<int, LocalGrid>::const_iterator mapIter = generatedLocalMaps_.localGrids().begin();
+					mapIter!=generatedLocalMaps_.localGrids().end();
+					++mapIter)
 				{
-					UASSERT(mapIter->first == infoIter->first);
 					dbDriver_->updateOccupancyGrid(
 							mapIter->first,
-							mapIter->second.first.first,
-							mapIter->second.first.second,
-							mapIter->second.second,
-							infoIter->second.first,
-							infoIter->second.second);
+							mapIter->second.groundCells,
+							mapIter->second.obstacleCells,
+							mapIter->second.emptyCells,
+							mapIter->second.cellSize,
+							mapIter->second.viewPoint);
 				}
 				generatedLocalMaps_.clear();
-				generatedLocalMapsInfo_.clear();
 				localMaps_.clear();
-				localMapsInfo_.clear();
 
 				// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
 				dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
@@ -1049,9 +1085,7 @@ bool DatabaseViewer::closeDatabase()
 		linksRefined_.clear();
 		linksRemoved_.clear();
 		localMaps_.clear();
-		localMapsInfo_.clear();
 		generatedLocalMaps_.clear();
-		generatedLocalMapsInfo_.clear();
 		modifiedLaserScans_.clear();
 		ui_->graphViewer->clearAll();
 		occupancyGridViewer_->clear();
@@ -1073,8 +1107,11 @@ bool DatabaseViewer::closeDatabase()
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
 		ui_->checkBox_alignPosesWithGPS->setVisible(false);
+		ui_->checkBox_alignPosesWithGPS->setEnabled(false);
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+		ui_->checkBox_alignPosesWithGroundTruth->setEnabled(false);
 		ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
+		ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(false);
 		ui_->doubleSpinBox_optimizationScale->setVisible(false);
 		ui_->label_scale_title->setVisible(false);
 		ui_->label_rmse->setVisible(false);
@@ -1140,6 +1177,10 @@ bool DatabaseViewer::closeDatabase()
 		stereoViewer_->refreshView();
 
 		ui_->toolBox_statistics->clear();
+
+		// This will re-init the dialog
+		delete linkRefiningDialog_;
+		linkRefiningDialog_ = new LinkRefiningDialog(this);
 	}
 
 	ui_->actionClose_database->setEnabled(dbDriver_ != 0);
@@ -1558,13 +1599,13 @@ void DatabaseViewer::extractImages()
 							StereoCameraModel model(
 									cameraName,
 									data.imageRaw().size(),
-									data.stereoCameraModels()[i].left().K(),
-									data.stereoCameraModels()[i].left().D(),
+									data.stereoCameraModels()[i].left().K_raw(),
+									data.stereoCameraModels()[i].left().D_raw(),
 									data.stereoCameraModels()[i].left().R(),
 									data.stereoCameraModels()[i].left().P(),
 									data.rightRaw().size(),
-									data.stereoCameraModels()[i].right().K(),
-									data.stereoCameraModels()[i].right().D(),
+									data.stereoCameraModels()[i].right().K_raw(),
+									data.stereoCameraModels()[i].right().D_raw(),
 									data.stereoCameraModels()[i].right().R(),
 									data.stereoCameraModels()[i].right().P(),
 									data.stereoCameraModels()[i].R(),
@@ -1616,8 +1657,8 @@ void DatabaseViewer::extractImages()
 							}
 							CameraModel model(cameraName,
 									data.imageRaw().size(),
-									data.cameraModels()[i].K(),
-									data.cameraModels()[i].D(),
+									data.cameraModels()[i].K_raw(),
+									data.cameraModels()[i].D_raw(),
 									data.cameraModels()[i].R(),
 									data.cameraModels()[i].P(),
 									data.cameraModels()[i].localTransform());
@@ -1706,8 +1747,11 @@ void DatabaseViewer::updateIds()
 	lastSliderIndexBrowsed_ = 0;
 	ui_->checkBox_wmState->setVisible(false);
 	ui_->checkBox_alignPosesWithGPS->setVisible(false);
+	ui_->checkBox_alignPosesWithGPS->setEnabled(false);
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+	ui_->checkBox_alignPosesWithGroundTruth->setEnabled(false);
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
+	ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(false);
 	ui_->doubleSpinBox_optimizationScale->setVisible(false);
 	ui_->label_scale_title->setVisible(false);
 	ui_->label_rmse->setVisible(false);
@@ -1717,6 +1761,10 @@ void DatabaseViewer::updateIds()
 	ui_->label_alignPosesWithGPS->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
 	ui_->label_alignScansCloudsWithGroundTruth->setVisible(false);
+	ui_->toolButton_edit_priorA->setVisible(false);
+	ui_->toolButton_edit_priorB->setVisible(false);
+	ui_->toolButton_remove_priorA->setVisible(false);
+	ui_->toolButton_remove_priorB->setVisible(false);
 	ui_->menuEdit->setEnabled(true);
 	ui_->actionGenerate_3D_map_pcd->setEnabled(true);
 	ui_->actionExport->setEnabled(true);
@@ -1903,10 +1951,13 @@ void DatabaseViewer::updateIds()
 	ui_->label_rmse_title->setVisible(!groundTruthPoses_.empty());
 
 	ui_->checkBox_alignPosesWithGPS->setVisible(!gpsPoses_.empty());
+	ui_->checkBox_alignPosesWithGPS->setEnabled(!gpsPoses_.empty());
 	ui_->label_alignPosesWithGPS->setVisible(!gpsPoses_.empty());
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(!groundTruthPoses_.empty());
+	ui_->checkBox_alignPosesWithGroundTruth->setEnabled(!groundTruthPoses_.empty());
 	ui_->label_alignPosesWithGroundTruth->setVisible(!groundTruthPoses_.empty());
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(!groundTruthPoses_.empty());
+	ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(!groundTruthPoses_.empty());
 	ui_->label_alignScansCloudsWithGroundTruth->setVisible(!groundTruthPoses_.empty());
 
 	if(!gpsValues_.empty())
@@ -2323,6 +2374,14 @@ void DatabaseViewer::selectEmptyColor()
 		ui_->lineEdit_emptyColor->setText(c.name());
 	}
 }
+void DatabaseViewer::selectFrontierColor()
+{
+	QColor c = QColorDialog::getColor(ui_->lineEdit_frontierColor->text(), this);
+	if(c.isValid())
+	{
+		ui_->lineEdit_frontierColor->setText(c.name());
+	}
+}
 void DatabaseViewer::editDepthImage()
 {
 	if(dbDriver_ && ids_.size())
@@ -2551,11 +2610,12 @@ void DatabaseViewer::exportPoses(int format)
 			optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
 		}
 
-		if(ui_->checkBox_alignPosesWithGPS->isChecked() ||
-		   ui_->checkBox_alignPosesWithGroundTruth->isChecked())
+		if((ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked()) ||
+		   (ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked()))
 		{
 			std::map<int, Transform> refPoses = groundTruthPoses_;
-			if(ui_->checkBox_alignPosesWithGPS->isChecked())
+			if(ui_->checkBox_alignPosesWithGPS->isEnabled() && 
+			   ui_->checkBox_alignPosesWithGPS->isChecked())
 			{
 				refPoses = gpsPoses_;
 			}
@@ -2710,13 +2770,23 @@ void DatabaseViewer::exportPoses(int format)
 			}
 		}
 
-		if(format != 4 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
+		if(format != 4 && format != 11 && !poses.empty() && poses.begin()->first<0) // not g2o, landmark not supported
 		{
-			UWARN("Only g2o format (4) can export landmarks, they are ignored with format %d", format);
-			std::map<int, Transform>::iterator iter=poses.begin();
-			while(iter!=poses.end() && iter->first < 0)
+			UWARN("Only g2o format (4) and RGBD format with ID format can export landmarks, they are ignored with format %d", format);
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0;)
 			{
 				poses.erase(iter++);
+			}
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end();)
+			{
+				if(iter->second.from() < 0 || iter->second.to() < 0)
+				{
+					links.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
 
@@ -2725,17 +2795,24 @@ void DatabaseViewer::exportPoses(int format)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				Transform p, g;
-				int w;
-				std::string l;
-				double stamp=0.0;
-				int mapId;
-				std::vector<float> v;
-				GPS gps;
-				EnvSensors sensors;
-				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
+				if(iter->first<0 && format == 11) // in case of landmarks
 				{
-					stamps.insert(std::make_pair(iter->first, stamp));
+					stamps.insert(std::make_pair(iter->first, 0));
+				}
+				else
+				{
+					Transform p, g;
+					int w;
+					std::string l;
+					double stamp=0.0;
+					int mapId;
+					std::vector<float> v;
+					GPS gps;
+					EnvSensors sensors;
+					if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors))
+					{
+						stamps.insert(std::make_pair(iter->first, stamp));
+					}
 				}
 			}
 			if(stamps.size()!=poses.size())
@@ -2957,9 +3034,9 @@ void DatabaseViewer::editSaved2DMap()
 				LaserScan scan;
 				data.uncompressData(0,0,&scan,0,&gridGround,&gridObstacles,&gridEmpty);
 
-				if(generatedLocalMaps_.find(iter->first) != generatedLocalMaps_.end())
+				if(generatedLocalMaps_.localGrids().find(iter->first) != generatedLocalMaps_.localGrids().end())
 				{
-					gridObstacles = generatedLocalMaps_.find(iter->first)->second.first.second;
+					gridObstacles = generatedLocalMaps_.localGrids().at(iter->first).obstacleCells;
 				}
 				if(!gridObstacles.empty())
 				{
@@ -3007,19 +3084,19 @@ void DatabaseViewer::editSaved2DMap()
 						UINFO("Grid %d filtered %d -> %d", iter->first, gridObstacles.cols, oi);
 
 						// update
-						std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> value;
-						if(generatedLocalMaps_.find(iter->first) != generatedLocalMaps_.end())
+						cv::Mat newObstacles = cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi));
+						if(generatedLocalMaps_.localGrids().find(iter->first) != generatedLocalMaps_.localGrids().end())
 						{
-							value = generatedLocalMaps_.at(iter->first);
+							LocalGrid value = generatedLocalMaps_.localGrids().at(iter->first);
+							value.obstacleCells = newObstacles;
+							generatedLocalMaps_.add(iter->first, value);
 						}
 						else
 						{
-							value.first.first = gridGround;
-							value.second = gridEmpty;
-							uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(data.gridCellSize(), data.gridViewPoint())));
+							LocalGrid value(gridGround, newObstacles, gridEmpty, data.gridCellSize(), data.gridViewPoint());
+							generatedLocalMaps_.add(iter->first, value);
 						}
-						value.first.second = cv::Mat(filtered, cv::Range::all(), cv::Range(0, oi));
-						uInsert(generatedLocalMaps_, std::make_pair(iter->first, value));
+
 					}
 				}
 
@@ -3280,19 +3357,7 @@ void DatabaseViewer::regenerateSavedMap()
 	if(type.compare("From OctoMap projection") == 0)
 	{
 		//create local octomap
-		OctoMap octomap(ui_->parameters_toolbox->getParameters());
-		for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end(); ++iter)
-		{
-			if(iter->second.first.first.channels() == 2 || iter->second.first.second.channels() == 2)
-			{
-				QMessageBox::warning(this, tr(""),
-						tr("Some local occupancy grids are 2D, but OctoMap requires 3D local "
-							"occupancy grids. Select default occupancy grid or generate "
-							"3D local occupancy grids (\"Grid/3D\" core parameter)."));
-				return;
-			}
-			octomap.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second, localMapsInfo_.at(iter->first).second);
-		}
+		OctoMap octomap(&localMaps_, ui_->parameters_toolbox->getParameters());
 
 		octomap.update(graphes_.back());
 		map = octomap.createProjectionMap(xMin, yMin, gridCellSize, 0);
@@ -3300,11 +3365,7 @@ void DatabaseViewer::regenerateSavedMap()
 	else
 #endif
 	{
-		OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
-		for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end(); ++iter)
-		{
-			grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);
-		}
+		OccupancyGrid grid(&localMaps_, ui_->parameters_toolbox->getParameters());
 		grid.update(graphes_.back());
 		map = grid.getMap(xMin, yMin);
 	}
@@ -3519,7 +3580,9 @@ void DatabaseViewer::updateOptimizedMesh()
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+	   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked()
+	   && !groundTruthPoses_.empty())
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
@@ -3734,10 +3797,9 @@ void DatabaseViewer::generateLocalGraph()
 
 void DatabaseViewer::regenerateLocalMaps()
 {
-	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+	LocalGridMaker localMapMaker(ui_->parameters_toolbox->getParameters());
 
 	generatedLocalMaps_.clear();
-	generatedLocalMapsInfo_.clear();
 
 	rtabmap::ProgressDialog progressDialog(this);
 	progressDialog.setMaximumSteps(ids_.size());
@@ -3842,17 +3904,16 @@ void DatabaseViewer::regenerateLocalMaps()
 						}
 					}
 
-					grid.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
+					localMapMaker.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
 			{
-				grid.createLocalMap(s, ground, obstacles, empty, viewpoint);
+				localMapMaker.createLocalMap(s, ground, obstacles, empty, viewpoint);
 			}
 
 			gridCreationTime = timer.ticks()*1000.0;
-			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(std::make_pair(ground, obstacles), empty)));
-			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
+			generatedLocalMaps_.add(data.id(), ground, obstacles, empty, localMapMaker.getCellSize(), viewpoint);
 			msg = QString("Generated local occupancy grid map %1/%2").arg(i+1).arg((int)ids_.size());
 
 			totalCurve->addValue(ids_.at(i), obstacles.cols+ground.cols+empty.cols);
@@ -3888,7 +3949,7 @@ void DatabaseViewer::regenerateLocalMaps()
 void DatabaseViewer::regenerateCurrentLocalMaps()
 {
 	UTimer time;
-	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+	LocalGridMaker localMapMaker(ui_->parameters_toolbox->getParameters());
 
 	if(ids_.size() == 0)
 	{
@@ -3911,9 +3972,6 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 
 	for(int i =0; i<ids.size(); ++i)
 	{
-		generatedLocalMaps_.erase(ids.at(i));
-		generatedLocalMapsInfo_.erase(ids.at(i));
-
 		SensorData data;
 		dbDriver_->getNodeData(ids.at(i), data);
 		data.uncompressData();
@@ -3986,17 +4044,15 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 						}
 					}
 
-					grid.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
+					localMapMaker.createLocalMap(util3d::laserScanFromPointCloud(*cloud), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
 			{
-				grid.createLocalMap(s, ground, obstacles, empty, viewpoint);
+				localMapMaker.createLocalMap(s, ground, obstacles, empty, viewpoint);
 			}
 
-
-			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(std::make_pair(ground, obstacles),empty)));
-			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
+			generatedLocalMaps_.add(data.id(), ground, obstacles, empty, localMapMaker.getCellSize(), viewpoint);
 			msg = QString("Generated local occupancy grid map %1/%2 (%3s)").arg(i+1).arg((int)ids.size()).arg(time.ticks());
 		}
 
@@ -4036,7 +4092,9 @@ void DatabaseViewer::view3DMap()
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+	   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() &&
+	   !groundTruthPoses_.empty())
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
@@ -4087,7 +4145,9 @@ void DatabaseViewer::generate3DMap()
 	}
 
 	std::map<int, Transform> optimizedPoses;
-	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+	   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() &&
+	   !groundTruthPoses_.empty())
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
@@ -4261,7 +4321,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 
 void DatabaseViewer::updateAllNeighborCovariances()
 {
-	updateAllCovariances(neighborLinks_);
+	updateCovariances(neighborLinks_);
 }
 void DatabaseViewer::updateAllLoopClosureCovariances()
 {
@@ -4273,7 +4333,7 @@ void DatabaseViewer::updateAllLoopClosureCovariances()
 			links.push_back(loopLinks_.at(i));
 		}
 	}
-	updateAllCovariances(links);
+	updateCovariances(links);
 }
 void DatabaseViewer::updateAllLandmarkCovariances()
 {
@@ -4285,10 +4345,10 @@ void DatabaseViewer::updateAllLandmarkCovariances()
 			links.push_back(loopLinks_.at(i));
 		}
 	}
-	updateAllCovariances(links);
+	updateCovariances(links);
 }
 
-void DatabaseViewer::updateAllCovariances(const QList<Link> & links)
+void DatabaseViewer::updateCovariances(const QList<Link> & links)
 {
 	if(links.size())
 	{
@@ -4376,15 +4436,79 @@ void DatabaseViewer::updateAllCovariances(const QList<Link> & links)
 	}
 }
 
-void DatabaseViewer::refineAllNeighborLinks()
+void DatabaseViewer::refineLinks()
 {
-	refineAllLinks(neighborLinks_);
+	int minNodeId = 0;
+	int maxNodeId = 0;
+	int minMapId = 0;
+	int maxMapId = 0;
+	std::multimap<int, Link> allLinks = updateLinksWithModifications(links_);
+	for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
+	{
+		int minId = iter->second.from()>iter->second.to()?iter->second.to():iter->second.from();
+		int maxId = iter->second.from()<iter->second.to()?iter->second.to():iter->second.from();
+		if(minNodeId == 0 || minNodeId > minId)
+		{
+			minNodeId = minId;
+		}
+		if(maxNodeId == 0 || maxNodeId < maxId)
+		{
+			maxNodeId = maxId;
+		}
+	}
+	if(minNodeId > 0)
+	{
+		minMapId = uValue(mapIds_, minNodeId, 0);
+		maxMapId = uValue(mapIds_, maxNodeId, minMapId);
+
+		linkRefiningDialog_->setMinMax(
+			minNodeId,
+			maxNodeId,
+			minMapId,
+			maxMapId);
+
+		if(linkRefiningDialog_->exec() == QDialog::Accepted)
+		{
+			QList<Link> links;
+			Link::Type type = linkRefiningDialog_->getLinkType();
+			linkRefiningDialog_->getRangeNodeId(minNodeId, maxNodeId);
+			linkRefiningDialog_->getRangeNodeId(minMapId, maxMapId);
+			bool intra, inter;
+			linkRefiningDialog_->getIntraInterSessions(intra, inter);
+			for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
+			{
+				if(type==Link::kEnd || type == iter->second.type())
+				{
+					int from = iter->second.from();
+					int to = iter->second.to();
+					int mapFrom = uValue(mapIds_, from, 0);
+					int mapTo = uValue(mapIds_, to, 0);
+					if(((linkRefiningDialog_->isRangeByNodeId() && 
+						((from >= minNodeId && from <= maxNodeId) ||
+							(to >= minNodeId && to <= maxNodeId))) ||
+						(linkRefiningDialog_->isRangeByMapId() && 
+						((mapFrom >= minMapId && mapFrom <= maxMapId) ||
+							(mapTo >= minMapId && mapTo <= maxMapId)))) &&
+					   ((intra && mapTo == mapFrom) ||
+					    (inter && mapTo != mapFrom)))
+					{
+						links.push_back(iter->second);
+					}
+				}
+			}
+			if(links.isEmpty())
+			{
+				QMessageBox::warning(this, tr("Refine links"), tr("No links found matching the requested parameters."));
+				return;
+			}
+			else
+			{
+				refineLinks(links);
+			}
+		}
+	}
 }
-void DatabaseViewer::refineAllLoopClosureLinks()
-{
-	refineAllLinks(loopLinks_);
-}
-void DatabaseViewer::refineAllLinks(const QList<Link> & links)
+void DatabaseViewer::refineLinks(const QList<Link> & links)
 {
 	if(links.size())
 	{
@@ -4434,11 +4558,31 @@ void DatabaseViewer::resetAllChanges()
 		linksRefined_.clear();
 		linksRemoved_.clear();
 		generatedLocalMaps_.clear();
-		generatedLocalMapsInfo_.clear();
 		modifiedLaserScans_.clear();
 		updateLoopClosuresSlider();
 		this->updateGraphView();
 	}
+}
+
+void DatabaseViewer::graphNodeSelected(int id)
+{
+	if(id>0 && idToIndex_.contains(id))
+	{
+		static bool updateA = true;
+		if(updateA)
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(id));
+		else
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(id));
+		updateA = !updateA;
+	}
+}
+
+void DatabaseViewer::graphLinkSelected(int from, int to)
+{
+	if(from>0 && idToIndex_.contains(from))
+		ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
+	if(to>0 && idToIndex_.contains(to))
+		ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
 }
 
 void DatabaseViewer::sliderAValueChanged(int value)
@@ -4460,6 +4604,8 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_scanA,
 			ui_->label_gravityA,
 			ui_->label_priorA,
+			ui_->toolButton_edit_priorA,
+			ui_->toolButton_remove_priorA,
 			ui_->label_gpsA,
 			ui_->label_gtA,
 			ui_->label_sensorsA,
@@ -4485,6 +4631,8 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_scanB,
 			ui_->label_gravityB,
 			ui_->label_priorB,
+			ui_->toolButton_edit_priorB,
+			ui_->toolButton_remove_priorB,
 			ui_->label_gpsB,
 			ui_->label_gtB,
 			ui_->label_sensorsB,
@@ -4508,6 +4656,8 @@ void DatabaseViewer::update(int value,
 						QLabel * labelScan,
 						QLabel * labelGravity,
 						QLabel * labelPrior,
+						QToolButton * editPriorButton,
+						QToolButton * removePriorButton,
 						QLabel * labelGps,
 						QLabel * labelGt,
 						QLabel * labelSensors,
@@ -4530,6 +4680,8 @@ void DatabaseViewer::update(int value,
 	labelScan ->clear();
 	labelGravity->clear();
 	labelPrior->clear();
+	editPriorButton->setVisible(false);
+	removePriorButton->setVisible(false);
 	labelGps->clear();
 	labelGt->clear();
 	labelSensors->clear();
@@ -4579,7 +4731,12 @@ void DatabaseViewer::update(int value,
 				QRectF rect;
 				if(!img.isNull())
 				{
-					view->setImage(img);
+					Transform pose;
+					if(!graphes_.empty() && graphes_.back().find(data.id())!=graphes_.back().end())
+					{
+						pose = graphes_.back().at(data.id());
+					}
+					view->setImage(img, data.cameraModels(), pose);
 					rect = img.rect();
 				}
 				else
@@ -4667,15 +4824,25 @@ void DatabaseViewer::update(int value,
 					labelGravity->setToolTip(QString("roll=%1 pitch=%2 yaw=%3").arg(roll).arg(pitch).arg(yaw));
 				}
 
-				std::multimap<int, Link> priorLink;
-				dbDriver_->loadLinks(id, priorLink, Link::kPosePrior);
-				if(!priorLink.empty())
+				std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+				if(graph::findLink(links, id, id, false, Link::kPosePrior)!=links.end())
 				{
-					priorLink.begin()->second.transform().getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+					Link & priorLink = graph::findLink(links, id, id, false, Link::kPosePrior)->second;
+					priorLink.transform().getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
 					labelPrior->setText(QString("xyz=(%1,%2,%3)\nrpy=(%4,%5,%6)").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
 					std::stringstream out;
-					out << priorLink.begin()->second.infMatrix().inv();
+					out << priorLink.infMatrix().inv();
 					labelPrior->setToolTip(QString("%1").arg(out.str().c_str()));
+					removePriorButton->setVisible(true);
+					editPriorButton->setToolTip(tr("Edit Prior"));
+					editPriorButton->setText("...");
+					editPriorButton->setVisible(true);
+				}
+				else if(!odomPose.isNull())
+				{
+					editPriorButton->setToolTip(tr("Add Prior"));
+					editPriorButton->setText("+");
+					editPriorButton->setVisible(true);
 				}
 
 				if(gps.stamp()>0.0)
@@ -4860,15 +5027,10 @@ void DatabaseViewer::update(int value,
 				{
 					cloudViewer_->removeAllLines();
 					cloudViewer_->removeAllFrustums();
-					cloudViewer_->removeCloud("mesh");
-					cloudViewer_->removeCloud("cloud");
-					cloudViewer_->removeCloud("scan");
-					cloudViewer_->removeCloud("map");
-					cloudViewer_->removeCloud("ground");
-					cloudViewer_->removeCloud("obstacles");
-					cloudViewer_->removeCloud("empty_cells");
-					cloudViewer_->removeCloud("words");
+					cloudViewer_->removeOccupancyGridMap();
+					cloudViewer_->removeAllClouds();
 					cloudViewer_->removeOctomap();
+					cloudViewer_->removeElevationMap();
 
 					Transform pose = Transform::getIdentity();
 					if(signatures.size() && ui_->checkBox_odomFrame_3dview->isChecked())
@@ -5031,8 +5193,8 @@ void DatabaseViewer::update(int value,
 						{
 							if(!data.imageRaw().empty())
 							{
-								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-								pcl::IndicesPtr indices(new std::vector<int>);
+								std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+								std::vector<pcl::IndicesPtr> allIndices;
 								if(!data.depthRaw().empty() && data.cameraModels().size()==1)
 								{
 									cv::Mat depth = data.depthRaw();
@@ -5040,96 +5202,110 @@ void DatabaseViewer::update(int value,
 									{
 										depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
 									}
-									cloud = util3d::cloudFromDepthRGB(
+									pcl::IndicesPtr indices(new std::vector<int>);
+									pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 											data.imageRaw(),
 											depth,
 											data.cameraModels()[0],
 											ui_->spinBox_decimation->value(),0,0,indices.get());
 									if(indices->size())
 									{
-										cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
+										clouds.push_back(util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform()));
+										allIndices.push_back(indices);
 									}
-
 								}
 								else
 								{
-									cloud = util3d::cloudRGBFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
+									clouds = util3d::cloudsRGBFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, &allIndices, ui_->parameters_toolbox->getParameters());
 								}
-								if(indices->size())
+								UASSERT(clouds.size() == allIndices.size());
+								for(size_t i=0; i<allIndices.size(); ++i)
 								{
-									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+									if(allIndices[i]->size())
 									{
-										cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
-									}
-
-									if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
-									{
-										Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-										if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = clouds[i];
+										pcl::IndicesPtr indices = allIndices[i];
+										if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 										{
-											viewpoint[0] = data.cameraModels()[0].localTransform().x();
-											viewpoint[1] = data.cameraModels()[0].localTransform().y();
-											viewpoint[2] = data.cameraModels()[0].localTransform().z();
+											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 										}
-										else if(data.stereoCameraModels().size() && !data.stereoCameraModels()[0].localTransform().isNull())
-										{
-											viewpoint[0] = data.stereoCameraModels()[0].localTransform().x();
-											viewpoint[1] = data.stereoCameraModels()[0].localTransform().y();
-											viewpoint[2] = data.stereoCameraModels()[0].localTransform().z();
-										}
-										std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-												cloud,
-												float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
-												ui_->checkBox_mesh_quad->isChecked(),
-												ui_->spinBox_mesh_triangleSize->value(),
-												viewpoint);
 
-										if(ui_->spinBox_mesh_minClusterSize->value())
+										if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
 										{
-											// filter polygons
-											std::vector<std::set<int> > neighbors;
-											std::vector<std::set<int> > vertexToPolygons;
-											util3d::createPolygonIndexes(polygons,
-													cloud->size(),
-													neighbors,
-													vertexToPolygons);
-											std::list<std::list<int> > clusters = util3d::clusterPolygons(
-													neighbors,
-													ui_->spinBox_mesh_minClusterSize->value());
-											std::vector<pcl::Vertices> filteredPolygons(polygons.size());
-											int oi=0;
-											for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+											Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+											if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
 											{
-												for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-												{
-													filteredPolygons[oi++] = polygons.at(*jter);
-												}
+												viewpoint[0] = data.cameraModels()[0].localTransform().x();
+												viewpoint[1] = data.cameraModels()[0].localTransform().y();
+												viewpoint[2] = data.cameraModels()[0].localTransform().z();
 											}
-											filteredPolygons.resize(oi);
-											polygons = filteredPolygons;
-										}
+											else if(data.stereoCameraModels().size() && !data.stereoCameraModels()[0].localTransform().isNull())
+											{
+												viewpoint[0] = data.stereoCameraModels()[0].localTransform().x();
+												viewpoint[1] = data.stereoCameraModels()[0].localTransform().y();
+												viewpoint[2] = data.stereoCameraModels()[0].localTransform().z();
+											}
+											std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+													cloud,
+													float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
+													ui_->checkBox_mesh_quad->isChecked(),
+													ui_->spinBox_mesh_triangleSize->value(),
+													viewpoint);
 
-										cloudViewer_->addCloudMesh("mesh", cloud, polygons, pose);
-									}
-									if(ui_->checkBox_showCloud->isChecked())
-									{
-										cloudViewer_->addCloud("cloud", cloud, pose);
+											if(ui_->spinBox_mesh_minClusterSize->value())
+											{
+												// filter polygons
+												std::vector<std::set<int> > neighbors;
+												std::vector<std::set<int> > vertexToPolygons;
+												util3d::createPolygonIndexes(polygons,
+														cloud->size(),
+														neighbors,
+														vertexToPolygons);
+												std::list<std::list<int> > clusters = util3d::clusterPolygons(
+														neighbors,
+														ui_->spinBox_mesh_minClusterSize->value());
+												std::vector<pcl::Vertices> filteredPolygons(polygons.size());
+												int oi=0;
+												for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+												{
+													for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+													{
+														filteredPolygons[oi++] = polygons.at(*jter);
+													}
+												}
+												filteredPolygons.resize(oi);
+												polygons = filteredPolygons;
+											}
+
+											cloudViewer_->addCloudMesh(uFormat("mesh_%d", i), cloud, polygons, pose);
+										}
+										if(ui_->checkBox_showCloud->isChecked())
+										{
+											cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+										}
 									}
 								}
 							}
 							else if(ui_->checkBox_showCloud->isChecked())
 							{
-								pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-								pcl::IndicesPtr indices(new std::vector<int>);
-								cloud = util3d::cloudFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
-								if(indices->size())
-								{
-									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-									{
-										cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
-									}
+								std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
+								std::vector<pcl::IndicesPtr> allIndices;
 
-									cloudViewer_->addCloud("cloud", cloud, pose);
+								clouds = util3d::cloudsFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, &allIndices, ui_->parameters_toolbox->getParameters());
+								UASSERT(clouds.size() == allIndices.size());
+								for(size_t i=0; i<allIndices.size(); ++i)
+								{
+									if(allIndices[i]->size())
+									{
+										pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = clouds[i];
+										pcl::IndicesPtr indices = allIndices[i];
+										if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+										{
+											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
+										}
+
+										cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+									}
 								}
 							}
 						}
@@ -5176,21 +5352,20 @@ void DatabaseViewer::update(int value,
 					}
 
 					//add occupancy grid
-					if(ui_->checkBox_showMap->isChecked() || ui_->checkBox_showGrid->isChecked())
+					if(ui_->checkBox_showMap->isChecked() ||
+					   ui_->checkBox_showGrid->isChecked() ||
+					   ui_->checkBox_showElevation->checkState() != Qt::Unchecked)
 					{
-						std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > localMaps;
-						std::map<int, std::pair<float, cv::Point3f> > localMapsInfo;
-						if(generatedLocalMaps_.find(data.id()) != generatedLocalMaps_.end())
+						LocalGridCache combinedLocalMaps;
+						if(generatedLocalMaps_.shareTo(data.id(), combinedLocalMaps))
 						{
-							localMaps.insert(*generatedLocalMaps_.find(data.id()));
-							localMapsInfo.insert(*generatedLocalMapsInfo_.find(data.id()));
+							// add local grid
 						}
 						else if(!data.gridGroundCellsRaw().empty() || !data.gridObstacleCellsRaw().empty())
 						{
-							localMaps.insert(std::make_pair(data.id(), std::make_pair(std::make_pair(data.gridGroundCellsRaw(), data.gridObstacleCellsRaw()), data.gridEmptyCellsRaw())));
-							localMapsInfo.insert(std::make_pair(data.id(), std::make_pair(data.gridCellSize(), data.gridViewPoint())));
+							combinedLocalMaps.add(data.id(), data.gridGroundCellsRaw(), data.gridObstacleCellsRaw(), data.gridEmptyCellsRaw(), data.gridCellSize(), data.gridViewPoint());
 						}
-						if(!localMaps.empty())
+						if(!combinedLocalMaps.empty())
 						{
 							std::map<int, Transform> poses;
 							poses.insert(std::make_pair(data.id(), pose));
@@ -5198,29 +5373,26 @@ void DatabaseViewer::update(int value,
 #ifdef RTABMAP_OCTOMAP
 							OctoMap * octomap = 0;
 							if(ui_->checkBox_octomap->isChecked() &&
-								(!localMaps.begin()->second.first.first.empty() || !localMaps.begin()->second.first.second.empty()) &&
-								(localMaps.begin()->second.first.first.empty() || localMaps.begin()->second.first.first.channels() > 2) &&
-								(localMaps.begin()->second.first.second.empty() || localMaps.begin()->second.first.second.channels() > 2) &&
-								(localMaps.begin()->second.second.empty() || localMaps.begin()->second.second.channels() > 2) &&
-								localMapsInfo.begin()->second.first > 0.0f)
+								(!combinedLocalMaps.localGrids().begin()->second.groundCells.empty() || !combinedLocalMaps.localGrids().begin()->second.obstacleCells.empty()) &&
+								combinedLocalMaps.localGrids().begin()->second.is3D() &&
+								combinedLocalMaps.localGrids().begin()->second.cellSize > 0.0f)
 							{
 								//create local octomap
 								ParametersMap params;
-								params.insert(ParametersPair(Parameters::kGridCellSize(), uNumber2Str(localMapsInfo.begin()->second.first)));
-								octomap = new OctoMap(params);
-								octomap->addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second, localMapsInfo.begin()->second.second);
+								params.insert(ParametersPair(Parameters::kGridCellSize(), uNumber2Str(combinedLocalMaps.localGrids().begin()->second.cellSize)));
+								octomap = new OctoMap(&combinedLocalMaps, params);
 								octomap->update(poses);
 							}
 #endif
-
+							ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 							if(ui_->checkBox_showMap->isChecked())
 							{
 								float xMin=0.0f, yMin=0.0f;
 								cv::Mat map8S;
-								ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 								float gridCellSize = Parameters::defaultGridCellSize();
 								Parameters::parse(parameters, Parameters::kGridCellSize(), gridCellSize);
 								parameters = Parameters::filterParameters(parameters, "GridGlobal", true);
+
 #ifdef RTABMAP_OCTOMAP
 								if(octomap)
 								{
@@ -5229,9 +5401,7 @@ void DatabaseViewer::update(int value,
 								else
 #endif
 								{
-									OccupancyGrid grid(parameters);
-									grid.setCellSize(gridCellSize);
-									grid.addToCache(data.id(), localMaps.begin()->second.first.first, localMaps.begin()->second.first.second, localMaps.begin()->second.second);
+									OccupancyGrid grid(&combinedLocalMaps, parameters);
 									grid.update(poses);
 									map8S = grid.getMap(xMin, yMin);
 								}
@@ -5296,7 +5466,7 @@ void DatabaseViewer::update(int value,
 #endif
 								{
 									// occupancy cloud
-									LaserScan scan = LaserScan::backwardCompatibility(localMaps.begin()->second.first.first);
+									LaserScan scan = LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.groundCells);
 									if(scan.hasRGB())
 									{
 										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
@@ -5305,7 +5475,7 @@ void DatabaseViewer::update(int value,
 									{
 										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloud(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
 									}
-									scan = LaserScan::backwardCompatibility(localMaps.begin()->second.first.second);
+									scan = LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.obstacleCells);
 									if(scan.hasRGB())
 									{
 										cloudViewer_->addCloud("obstacles", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_obstacleColor->text()));
@@ -5321,7 +5491,7 @@ void DatabaseViewer::update(int value,
 									if(ui_->checkBox_grid_empty->isChecked())
 									{
 										cloudViewer_->addCloud("empty_cells",
-												util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localMaps.begin()->second.second)),
+												util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(combinedLocalMaps.localGrids().begin()->second.emptyCells)),
 												pose,
 												QColor(ui_->lineEdit_emptyColor->text()));
 										cloudViewer_->setCloudPointSize("empty_cells", 5);
@@ -5333,6 +5503,34 @@ void DatabaseViewer::update(int value,
 							if(octomap)
 							{
 								delete octomap;
+							}
+#endif
+
+#ifdef RTABMAP_GRIDMAP
+							if(ui_->checkBox_showElevation->checkState() != Qt::Unchecked) // Show elevation map?
+							{
+								GridMap gridMap(&combinedLocalMaps, parameters);
+
+								if(combinedLocalMaps.localGrids().begin()->second.is3D())
+								{
+									gridMap.update(poses);
+									if(ui_->checkBox_showElevation->checkState() == Qt::PartiallyChecked)
+									{
+										float xMin, yMin, gridCellSize;
+										cv::Mat elevationMap = gridMap.createHeightMap(xMin, yMin, gridCellSize);
+										cloudViewer_->addElevationMap(elevationMap, gridCellSize, xMin, yMin, 1.0f);
+									}
+									else
+									{
+										pcl::PolygonMesh::Ptr mesh = gridMap.createTerrainMesh();
+										cloudViewer_->addCloudMesh("elevation_mesh", mesh);
+									}
+									cloudViewer_->refreshView();
+								}
+								else
+								{
+									UWARN("Local grid is not 3D, cannot generate an elevation map");
+								}
 							}
 #endif
 						}
@@ -5534,6 +5732,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		// generate kpts
 		std::vector<cv::KeyPoint> kpts;
 		uInsert(parameters, ParametersPair(Parameters::kKpMaxFeatures(), parameters.at(Parameters::kVisMaxFeatures())));
+		uInsert(parameters, ParametersPair(Parameters::kKpSSC(), parameters.at(Parameters::kVisSSC())));
 		uInsert(parameters, ParametersPair(Parameters::kKpMinDepth(), parameters.at(Parameters::kVisMinDepth())));
 		uInsert(parameters, ParametersPair(Parameters::kKpMaxDepth(), parameters.at(Parameters::kVisMaxDepth())));
 		uInsert(parameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));
@@ -5823,16 +6022,38 @@ void DatabaseViewer::editConstraint()
 {
 	if(ids_.size())
 	{
-		Link link;
-		if(ui_->label_type->text().toInt() == Link::kLandmark)
+		Link link(0,0,Link::kUndef, Transform::getIdentity());
+		int priorId = sender() == ui_->toolButton_edit_priorA?ids_.at(ui_->horizontalSlider_A->value()):
+					  sender() == ui_->toolButton_edit_priorB?ids_.at(ui_->horizontalSlider_B->value()):0;
+		if(priorId>0)
 		{
-			int position = ui_->horizontalSlider_loops->value();
-			link = loopLinks_.at(position);
+			// Prior
+			std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+			if(graph::findLink(links, priorId, priorId, false, Link::kPosePrior) != links.end())
+			{
+				link = graph::findLink(links, priorId, priorId, false, Link::kPosePrior)->second;
+			}
+			else if(odomPoses_.find(priorId) != odomPoses_.end())
+			{
+				// fallback to odom pose
+				// set undef to go in "add" branch below
+				link = Link(priorId, priorId, Link::kUndef, odomPoses_.at(priorId));
+			}
+			else
+			{
+				QMessageBox::warning(this, tr(""), tr("Node %1 doesn't have odometry pose, cannot add a prior for it!").arg(priorId));
+				return;
+			}
+		}
+		else if(ui_->label_type->text().toInt() == Link::kLandmark)
+		{
+			link = loopLinks_.at(ui_->horizontalSlider_loops->value());
 		}
 		else
 		{
 			link = this->findActiveLink(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
 		}
+		bool updated = false;
 		if(link.isValid())
 		{
 			cv::Mat covBefore = link.infMatrix().inv();
@@ -5841,7 +6062,6 @@ void DatabaseViewer::editConstraint()
 					covBefore.at<double>(5,5)<9999.0?std::sqrt(covBefore.at<double>(5,5)):0.0);
 			if(dialog.exec() == QDialog::Accepted)
 			{
-				bool updated = false;
 				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
 				if(dialog.getLinearVariance()>0)
 				{
@@ -5877,7 +6097,7 @@ void DatabaseViewer::editConstraint()
 					linksRefined_.insert(std::make_pair(newLink.from(), newLink));
 					updated = true;
 				}
-				if(updated)
+				if(priorId==0)
 				{
 					this->updateGraphView();
 					updateConstraintView();
@@ -5886,7 +6106,10 @@ void DatabaseViewer::editConstraint()
 		}
 		else
 		{
-			EditConstraintDialog dialog(Transform::getIdentity());
+			EditConstraintDialog dialog(
+				link.transform(),
+				priorId>0?0.001:1,
+				priorId>0?0.001:1);
 			if(dialog.exec() == QDialog::Accepted)
 			{
 				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
@@ -5906,12 +6129,12 @@ void DatabaseViewer::editConstraint()
 				{
 					covariance(cv::Range(3,6), cv::Range(3,6)) *= 9999.9;
 				}
-				int from = ids_.at(ui_->horizontalSlider_A->value());
-				int to = ids_.at(ui_->horizontalSlider_B->value());
+				int from = priorId>0?priorId:ids_.at(ui_->horizontalSlider_A->value());
+				int to = priorId>0?priorId:ids_.at(ui_->horizontalSlider_B->value());
 				Link newLink(
 						from,
 						to,
-						Link::kUserClosure,
+						priorId>0?Link::kPosePrior:Link::kUserClosure,
 						dialog.getTransform(),
 						covariance.inv());
 				if(newLink.from() < newLink.to())
@@ -5919,9 +6142,45 @@ void DatabaseViewer::editConstraint()
 					newLink = newLink.inverse();
 				}
 				linksAdded_.insert(std::make_pair(newLink.from(), newLink));
-				this->updateGraphView();
-				updateLoopClosuresSlider(from, to);
+				updated = true;
+				if(priorId==0)
+				{
+					this->updateGraphView();
+					updateLoopClosuresSlider(from, to);
+				}
 			}
+		}
+
+		if(updated && priorId>0)
+		{
+			bool priorsIgnored = Parameters::defaultOptimizerPriorsIgnored();
+			Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kOptimizerPriorsIgnored(), priorsIgnored);
+			if(priorsIgnored)
+			{
+				if(QMessageBox::question(this,
+					tr("Updating Prior"),
+					tr("Parameter %1 is true, do you want to turn it off to update the graph with the updated prior?").arg(Parameters::kOptimizerPriorsIgnored().c_str()),
+					QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::Yes) == QMessageBox::Yes)
+				{
+					priorsIgnored = false;
+					ui_->parameters_toolbox->updateParameter(Parameters::kOptimizerPriorsIgnored(), "false");
+				}
+			}
+			int indexA = ui_->horizontalSlider_A->value();
+			int indexB = ui_->horizontalSlider_B->value();
+			if(!priorsIgnored)
+			{
+				this->updateGraphView();
+			}
+			if(ui_->horizontalSlider_A->value() != indexA)
+				ui_->horizontalSlider_A->setValue(indexA);
+			else
+				sliderAValueChanged(indexA);
+			if(ui_->horizontalSlider_B->value() != indexB)
+				ui_->horizontalSlider_B->setValue(indexB);
+			else
+				sliderBValueChanged(indexB);
 		}
 	}
 }
@@ -6080,6 +6339,8 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_scanA,
 						ui_->label_gravityA,
 						ui_->label_priorA,
+						ui_->toolButton_edit_priorA,
+						ui_->toolButton_remove_priorA,
 						ui_->label_gpsA,
 						ui_->label_gtA,
 						ui_->label_sensorsA,
@@ -6103,6 +6364,8 @@ void DatabaseViewer::updateConstraintView(
 						ui_->label_scanB,
 						ui_->label_gravityB,
 						ui_->label_priorB,
+						ui_->toolButton_edit_priorB,
+						ui_->toolButton_remove_priorB,
 						ui_->label_gpsB,
 						ui_->label_gtB,
 						ui_->label_sensorsB,
@@ -6665,7 +6928,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
 
 		std::map<int, Transform> refPoses = groundTruthPoses_;
-		if(ui_->checkBox_alignPosesWithGPS->isChecked())
+		if(ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked())
 		{
 			refPoses = gpsPoses_;
 		}
@@ -6729,8 +6992,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("rotational_min=%f", rotational_min);
 			UINFO("rotational_max=%f", rotational_max);
 
-			if((ui_->checkBox_alignPosesWithGPS->isChecked() ||
-				ui_->checkBox_alignPosesWithGroundTruth->isChecked()) &&
+			if(((ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked()) ||
+				(ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked())) &&
 			   !gtToMap.isIdentity())
 			{
 				for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
@@ -6741,7 +7004,9 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		}
 
 		std::map<int, rtabmap::Transform> graphFiltered;
-		if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+		if(ui_->checkBox_alignScansCloudsWithGroundTruth->isEnabled() &&
+		   ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() &&
+		   !groundTruthPoses_.empty())
 		{
 			graphFiltered = groundTruthPoses_;
 		}
@@ -6755,14 +7020,10 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					ui_->doubleSpinBox_posefilteringRadius->value(),
 					ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
 		}
-		std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > localMaps;
-		std::map<int, std::pair<float, cv::Point3f> > localMapsInfo;
+		LocalGridCache combinedLocalMaps;
 #ifdef RTABMAP_OCTOMAP
-		if(octomap_)
-		{
-			delete octomap_;
-			octomap_ = 0;
-		}
+		delete octomap_;
+		octomap_ = 0;
 #endif
 		if(ui_->dockWidget_graphView->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
 		{
@@ -6771,48 +7032,28 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			std::vector<int> ids = uKeys(graphFiltered);
 			for(unsigned int i=0; i<ids.size(); ++i)
 			{
-				if(generatedLocalMaps_.find(ids[i]) != generatedLocalMaps_.end())
+				if(generatedLocalMaps_.shareTo(ids[i], combinedLocalMaps) ||
+				   localMaps_.shareTo(ids[i], combinedLocalMaps))
 				{
-					localMaps.insert(*generatedLocalMaps_.find(ids[i]));
-					localMapsInfo.insert(*generatedLocalMapsInfo_.find(ids[i]));
-				}
-				else if(localMaps_.find(ids[i]) != localMaps_.end())
-				{
-					if(!localMaps_.find(ids[i])->second.first.first.empty() || !localMaps_.find(ids[i])->second.first.second.empty())
-					{
-						localMaps.insert(*localMaps_.find(ids.at(i)));
-						localMapsInfo.insert(*localMapsInfo_.find(ids[i]));
-					}
+					// Added to combined maps
 				}
 				else if(ids.at(i)>0)
 				{
 					SensorData data;
 					dbDriver_->getNodeData(ids.at(i), data, false, false, false);
 					cv::Mat ground, obstacles, empty;
-					data.uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
-					localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(std::make_pair(ground, obstacles), empty)));
-					localMapsInfo_.insert(std::make_pair(ids.at(i), std::make_pair(data.gridCellSize(), data.gridViewPoint())));
+					if(data.gridCellSize()>0.0f)
+					{
+						data.uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
+					}
+					localMaps_.add(ids.at(i), ground, obstacles, empty, data.gridCellSize()>0.0f?data.gridCellSize():Parameters::defaultGridCellSize(), data.gridViewPoint());
 					if(!ground.empty() || !obstacles.empty())
 					{
-						localMaps.insert(std::make_pair(ids.at(i), std::make_pair(std::make_pair(ground, obstacles), empty)));
-						localMapsInfo.insert(std::make_pair(ids.at(i), std::make_pair(data.gridCellSize(), data.gridViewPoint())));
+						localMaps_.shareTo(ids.at(i), combinedLocalMaps);
 					}
 				}
 			}
-			//cleanup
-			for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps_.begin(); iter!=localMaps_.end();)
-			{
-				if(graphFiltered.find(iter->first) == graphFiltered.end())
-				{
-					localMapsInfo_.erase(iter->first);
-					localMaps_.erase(iter++);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-			UINFO("Update local maps list... done (%d local maps, graph size=%d)", (int)localMaps.size(), (int)graph.size());
+			UINFO("Update local maps list... done (%d local maps, graph size=%d)", (int)combinedLocalMaps.size(), (int)graph.size());
 		}
 
 		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
@@ -6845,7 +7086,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		QGraphicsRectItem * rectScaleItem = 0;
 		ui_->graphViewer->clearMap();
 		occupancyGridViewer_->clear();
-		if(graph.size() && localMaps.size() &&
+		if(graph.size() && combinedLocalMaps.size() &&
 			(ui_->graphViewer->isGridMapVisible() || ui_->dockWidget_occupancyGridView->isVisible()))
 		{
 			QElapsedTimer time;
@@ -6854,28 +7095,10 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 #ifdef RTABMAP_OCTOMAP
 			if(ui_->checkBox_octomap->isChecked())
 			{
-				octomap_ = new OctoMap(parameters);
-				bool updateAborted = false;
-				for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
-				{
-					if(iter->second.first.first.channels() == 2 || iter->second.first.second.channels() == 2)
-					{
-						QMessageBox::warning(this, tr(""),
-								tr("Some local occupancy grids are 2D, but OctoMap requires 3D local "
-									"occupancy grids. Uncheck OctoMap under GUI parameters or generate "
-									"3D local occupancy grids (\"Grid/3D\" core parameter)."));
-						updateAborted = true;
-						break;
-					}
-					octomap_->addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second, localMapsInfo.at(iter->first).second);
-				}
-				if(!updateAborted)
-				{
-					octomap_->update(graphFiltered);
-				}
+				octomap_ = new OctoMap(&combinedLocalMaps, parameters);
+				octomap_->update(graphFiltered);
 			}
 #endif
-
 			// Generate 2d grid map?
 			if((ui_->dockWidget_graphView->isVisible() && ui_->graphViewer->isGridMapVisible()) ||
 			   (ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_2d->isChecked()))
@@ -6897,12 +7120,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					{
 						uInsert(parameters, ParametersPair(Parameters::kGridGlobalEroded(), "true"));
 					}
-					OccupancyGrid grid(parameters);
-					grid.setCellSize(cellSize);
-					for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
-					{
-						grid.addToCache(iter->first, iter->second.first.first, iter->second.first.second, iter->second.second);
-					}
+					OccupancyGrid grid(&combinedLocalMaps, parameters);
 					grid.update(graphFiltered);
 					if(ui_->checkBox_grid_showProbMap->isChecked())
 					{
@@ -6996,7 +7214,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 
 			// Generate 3d grid map?
-			if(ui_->dockWidget_occupancyGridView->isVisible())
+			if(ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_grid->isChecked())
 			{
 #ifdef RTABMAP_OCTOMAP
 				if(ui_->checkBox_octomap->isChecked())
@@ -7006,116 +7224,66 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				else
 #endif
 				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr groundXYZ(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesXYZ(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCellsXYZ(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundRGB(new pcl::PointCloud<pcl::PointXYZRGB>);
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesRGB(new pcl::PointCloud<pcl::PointXYZRGB>);
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr emptyCellsRGB(new pcl::PointCloud<pcl::PointXYZRGB>);
+					CloudMap cloudMap(&combinedLocalMaps, parameters);
 
-					for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
-					{
-						Transform pose = graphFiltered.at(iter->first);
-						float x,y,z,roll,pitch,yaw;
-						pose.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-						Transform pose2d(x,y, 0, 0, 0, yaw);
-						if(!iter->second.first.first.empty())
-						{
-							if(iter->second.first.first.channels() == 4)
-							{
-								*groundRGB += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(iter->second.first.first), pose);
-							}
-							else
-							{
-								*groundXYZ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(iter->second.first.first), iter->second.first.first.channels()==2?pose2d:pose);
-							}
-						}
-						if(!iter->second.first.second.empty())
-						{
-							if(iter->second.first.second.channels() == 4)
-							{
-								*obstaclesRGB += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(iter->second.first.second), pose);
-							}
-							else
-							{
-								*obstaclesXYZ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(iter->second.first.second), iter->second.first.second.channels()==2?pose2d:pose);
-							}
-						}
-						if(ui_->checkBox_grid_empty->isChecked())
-						{
-							if(!iter->second.second.empty())
-							{
-								if(iter->second.second.channels() == 4)
-								{
-									*emptyCellsRGB += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(iter->second.second), pose);
-								}
-								else
-								{
-									*emptyCellsXYZ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(iter->second.second), iter->second.second.channels()==2?pose2d:pose);
-								}
-							}
-						}
-					}
+					cloudMap.update(graphFiltered);
+
+					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & groundCells = cloudMap.getMapGround();
+					const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacleCells = cloudMap.getMapObstacles();
+					const pcl::PointCloud<pcl::PointXYZ>::Ptr & emptyCells = cloudMap.getMapEmptyCells();
+
 					// occupancy cloud
-					if(groundRGB->size())
+					if(groundCells->size())
 					{
-						groundRGB = util3d::voxelize(groundRGB, cellSize);
-						occupancyGridViewer_->addCloud("groundRGB",
-								groundRGB,
+						occupancyGridViewer_->addCloud("groundCells",
+								groundCells,
 								Transform::getIdentity(),
 								QColor(ui_->lineEdit_groundColor->text()));
-						occupancyGridViewer_->setCloudPointSize("groundRGB", 5);
+						occupancyGridViewer_->setCloudPointSize("groundCells", 5);
 					}
-					if(groundXYZ->size())
+					if(obstacleCells->size())
 					{
-						groundXYZ = util3d::voxelize(groundXYZ, cellSize);
-						occupancyGridViewer_->addCloud("groundXYZ",
-								groundXYZ,
-								Transform::getIdentity(),
-								QColor(ui_->lineEdit_groundColor->text()));
-						occupancyGridViewer_->setCloudPointSize("groundXYZ", 5);
-					}
-					if(obstaclesRGB->size())
-					{
-						obstaclesRGB = util3d::voxelize(obstaclesRGB, cellSize);
-						occupancyGridViewer_->addCloud("obstaclesRGB",
-								obstaclesRGB,
+						occupancyGridViewer_->addCloud("obstacleCells",
+								obstacleCells,
 								Transform::getIdentity(),
 								QColor(ui_->lineEdit_obstacleColor->text()));
-						occupancyGridViewer_->setCloudPointSize("obstaclesRGB", 5);
+						occupancyGridViewer_->setCloudPointSize("obstacleCells", 5);
 					}
-					if(obstaclesXYZ->size())
+					if(ui_->checkBox_grid_empty->isChecked() && emptyCells->size())
 					{
-						obstaclesXYZ = util3d::voxelize(obstaclesXYZ, cellSize);
-						occupancyGridViewer_->addCloud("obstaclesXYZ",
-								obstaclesXYZ,
-								Transform::getIdentity(),
-								QColor(ui_->lineEdit_obstacleColor->text()));
-						occupancyGridViewer_->setCloudPointSize("obstaclesXYZ", 5);
-					}
-					if(emptyCellsRGB->size())
-					{
-						emptyCellsRGB = util3d::voxelize(emptyCellsRGB, cellSize);
-						occupancyGridViewer_->addCloud("emptyCellsRGB",
-								emptyCellsRGB,
+						occupancyGridViewer_->addCloud("emptyCells",
+								emptyCells,
 								Transform::getIdentity(),
 								QColor(ui_->lineEdit_emptyColor->text()));
-						occupancyGridViewer_->setCloudPointSize("emptyCellsRGB", 5);
-						occupancyGridViewer_->setCloudOpacity("emptyCellsRGB", 0.5);
-					}
-					if(emptyCellsXYZ->size())
-					{
-						emptyCellsXYZ = util3d::voxelize(emptyCellsXYZ, cellSize);
-						occupancyGridViewer_->addCloud("emptyCellsXYZ",
-								emptyCellsXYZ,
-								Transform::getIdentity(),
-								QColor(ui_->lineEdit_emptyColor->text()));
-						occupancyGridViewer_->setCloudPointSize("emptyCellsXYZ", 5);
-						occupancyGridViewer_->setCloudOpacity("emptyCellsXYZ", 0.5);
+						occupancyGridViewer_->setCloudPointSize("emptyCells", 5);
+						occupancyGridViewer_->setCloudOpacity("emptyCells", 0.5);
 					}
 					occupancyGridViewer_->refreshView();
 				}
 			}
+
+#ifdef RTABMAP_GRIDMAP
+			// Show elevation map ?
+			if(ui_->dockWidget_occupancyGridView->isVisible() &&
+			   ui_->checkBox_grid_elevation->checkState() != Qt::Unchecked)
+			{
+				GridMap gridMap(&combinedLocalMaps, parameters);
+
+				gridMap.update(graphFiltered);
+				if(ui_->checkBox_grid_elevation->checkState() == Qt::PartiallyChecked)
+				{
+					float xMin, yMin;
+					cv::Mat elevationMap = gridMap.createHeightMap(xMin, yMin, cellSize);
+					occupancyGridViewer_->addElevationMap(elevationMap, cellSize, xMin, yMin, 1.0f);
+				}
+				else
+				{
+					pcl::PolygonMesh::Ptr mesh = gridMap.createTerrainMesh();
+					occupancyGridViewer_->addCloudMesh("elevation_mesh", mesh);
+				}
+				occupancyGridViewer_->refreshView();
+			}
+#endif
 		}
 		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 		if(rectScaleItem != 0)
@@ -7337,15 +7505,25 @@ void DatabaseViewer::updateGraphView()
 		int totalPriors = 0;
 		int totalLandmarks = 0;
 		int totalGravity = 0;
+		std::multimap<int, int> uniqueLinks;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
+			bool isUnique = iter->second.from() ==  iter->second.to(); // Count all self-reference links
+			if(graph::findLink(uniqueLinks, iter->second.from(), iter->second.to(), true) == uniqueLinks.end())
+			{
+				uniqueLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
+				isUnique = true;
+			}
+
 			if(iter->second.type() == Link::kNeighbor)
 			{
-				++totalNeighbor;
+				if(isUnique)
+					++totalNeighbor;
 			}
 			else if(iter->second.type() == Link::kNeighborMerged)
 			{
-				++totalNeighborMerged;
+				if(isUnique)
+					++totalNeighborMerged;
 			}
 			else if(iter->second.type() == Link::kGlobalClosure)
 			{
@@ -7355,7 +7533,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalGlobal;
+				if(isUnique)
+					++totalGlobal;
 			}
 			else if(iter->second.type() == Link::kLocalSpaceClosure)
 			{
@@ -7365,7 +7544,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalLocalSpace;
+				if(isUnique)
+					++totalLocalSpace;
 			}
 			else if(iter->second.type() == Link::kLocalTimeClosure)
 			{
@@ -7375,7 +7555,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalLocalTime;
+				if(isUnique)
+					++totalLocalTime;
 			}
 			else if(iter->second.type() == Link::kUserClosure)
 			{
@@ -7385,7 +7566,8 @@ void DatabaseViewer::updateGraphView()
 					continue;
 				}
 				loopLinks_.push_back(iter->second);
-				++totalUser;
+				if(isUnique)
+					++totalUser;
 			}
 			else if(iter->second.type() == Link::kLandmark)
 			{
@@ -7400,7 +7582,8 @@ void DatabaseViewer::updateGraphView()
 					poses.insert(std::make_pair(iter->second.to(), poses.at(iter->second.from())*iter->second.transform()));
 				}
 				loopLinks_.push_back(iter->second);
-				++totalLandmarks;
+				if(isUnique)
+					++totalLandmarks;
 
 				// add landmark priors if there are some
 				int markerId = iter->second.to();
@@ -7412,16 +7595,19 @@ void DatabaseViewer::updateGraphView()
 					links.insert(std::make_pair(markerId, Link(markerId, markerId, Link::kPosePrior, markerPriors.at(markerId), infMatrix)));
 					UDEBUG("Added prior %d : %s (variance: lin=%f ang=%f)", markerId, markerPriors.at(markerId).prettyPrint().c_str(),
 							markerPriorsLinearVariance, markerPriorsAngularVariance);
-					++totalPriors;
+					if(isUnique)
+						++totalPriors;
 				}
 			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
-				++totalPriors;
+				if(isUnique)
+					++totalPriors;
 			}
 			else if(iter->second.type() == Link::kGravity)
 			{
-				++totalGravity;
+				if(isUnique)
+					++totalGravity;
 			}
 			else
 			{
@@ -7455,12 +7641,17 @@ void DatabaseViewer::updateGraphView()
 					while(uContains(weights_, link.to()) && weights_.at(link.to()) < 0)
 					{
 						std::multimap<int, Link>::iterator uter = links.find(link.to());
+						while(uter != links.end() && 
+							  uter->first==link.to() && 
+							  uter->second.from()>uter->second.to())
+						{
+							++uter;
+						}
 						if(uter != links.end())
 						{
-							UASSERT(links.count(link.to()) == 1);
 							poses.erase(link.to());
 							link = link.merge(uter->second, uter->second.type());
-							links.erase(uter);
+							links.erase(uter->first);
 						}
 						else
 						{
@@ -7623,9 +7814,9 @@ void DatabaseViewer::updateGraphView()
 			ui_->spinBox_optimizationsFrom->setEnabled(true);
 			ui_->checkBox_spanAllMaps->setEnabled(true);
 			ui_->checkBox_wmState->setEnabled(true);
-			ui_->checkBox_alignPosesWithGPS->setEnabled(true);
-			ui_->checkBox_alignPosesWithGroundTruth->setEnabled(true);
-			ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(true);
+			ui_->checkBox_alignPosesWithGPS->setEnabled(ui_->checkBox_alignPosesWithGPS->isVisible());
+			ui_->checkBox_alignPosesWithGroundTruth->setEnabled(ui_->checkBox_alignPosesWithGroundTruth->isVisible());
+			ui_->checkBox_alignScansCloudsWithGroundTruth->setEnabled(ui_->checkBox_alignScansCloudsWithGroundTruth->isVisible());
 			ui_->checkBox_ignoreIntermediateNodes->setEnabled(true);
 		}
 		updateGraphRotation();
@@ -7673,9 +7864,11 @@ void DatabaseViewer::updateGrid()
 		ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->checkBox_grid_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->checkBox_grid_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 		ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->label_octomap_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 
 		update3dView();
 		updateGraphView();
@@ -7688,9 +7881,11 @@ void DatabaseViewer::updateOctomapView()
 		ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->checkBox_grid_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->checkBox_grid_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 		ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->label_octomap_empty->setVisible(!ui_->checkBox_octomap->isChecked() || ui_->comboBox_octomap_rendering_type->currentIndex()==0);
+		ui_->label_octomap_frontiers->setVisible(ui_->checkBox_octomap->isChecked() && ui_->comboBox_octomap_rendering_type->currentIndex()==0);
 
 		if(ui_->checkBox_octomap->isChecked())
 		{
@@ -7698,7 +7893,12 @@ void DatabaseViewer::updateOctomapView()
 			{
 				occupancyGridViewer_->removeOctomap();
 				occupancyGridViewer_->removeCloud("octomap_obstacles");
+				occupancyGridViewer_->removeCloud("octomap_ground");
 				occupancyGridViewer_->removeCloud("octomap_empty");
+				occupancyGridViewer_->removeCloud("octomap_frontiers");
+				occupancyGridViewer_->removeCloud("groundCells");
+				occupancyGridViewer_->removeCloud("obstacleCells");
+				occupancyGridViewer_->removeCloud("emptyCells");
 				if(ui_->comboBox_octomap_rendering_type->currentIndex()>0)
 				{
 					occupancyGridViewer_->addOctomap(octomap_, ui_->spinBox_grid_depth->value(), ui_->comboBox_octomap_rendering_type->currentIndex()>1);
@@ -7708,6 +7908,7 @@ void DatabaseViewer::updateOctomapView()
 					pcl::IndicesPtr obstacles(new std::vector<int>);
 					pcl::IndicesPtr empty(new std::vector<int>);
 					pcl::IndicesPtr ground(new std::vector<int>);
+					pcl::IndicesPtr frontiers(new std::vector<int>);
 					std::vector<double> prob;
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap_->createCloud(
 							ui_->spinBox_grid_depth->value(),
@@ -7715,7 +7916,7 @@ void DatabaseViewer::updateOctomapView()
 							empty.get(),
 							ground.get(),
 							true,
-							0,
+							frontiers.get(),
 							&prob);
 
 					if(octomap_->hasColor())
@@ -7774,6 +7975,15 @@ void DatabaseViewer::updateOctomapView()
 							occupancyGridViewer_->setCloudOpacity("octomap_empty", 0.5);
 							occupancyGridViewer_->setCloudPointSize("octomap_empty", 5);
 						}
+					}
+
+					if(ui_->checkBox_grid_frontiers->isChecked())
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr frontiersCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::copyPointCloud(*cloud, *frontiers, *frontiersCloud);
+						occupancyGridViewer_->addCloud("octomap_frontiers", frontiersCloud, Transform::getIdentity(), QColor(ui_->lineEdit_frontierColor->text()));
+						occupancyGridViewer_->setCloudOpacity("octomap_frontiers", 0.5);
+						occupancyGridViewer_->setCloudPointSize("octomap_frontiers", 5);
 					}
 				}
 				occupancyGridViewer_->refreshView();
@@ -8826,9 +9036,12 @@ void DatabaseViewer::resetConstraint()
 
 void DatabaseViewer::rejectConstraint()
 {
-	int from = ids_.at(ui_->horizontalSlider_A->value());
-	int to = ids_.at(ui_->horizontalSlider_B->value());
-	if(ui_->label_type->text().toInt() == Link::kLandmark)
+	int priorId = sender() == ui_->toolButton_remove_priorA?ids_.at(ui_->horizontalSlider_A->value()):
+				  sender() == ui_->toolButton_remove_priorB?ids_.at(ui_->horizontalSlider_B->value()):0;
+
+	int from = priorId>0?priorId:ids_.at(ui_->horizontalSlider_A->value());
+	int to = priorId>0?priorId:ids_.at(ui_->horizontalSlider_B->value());
+	if(priorId==0 && ui_->label_type->text().toInt() == Link::kLandmark)
 	{
 		int position = ui_->horizontalSlider_loops->value();
 		const rtabmap::Link & link = loopLinks_.at(position);
@@ -8843,7 +9056,7 @@ void DatabaseViewer::rejectConstraint()
 		from = tmp;
 	}
 
-	if(from == to)
+	if(priorId==0 && from == to)
 	{
 		UWARN("Cannot reject link to same node");
 		return;
@@ -8885,9 +9098,31 @@ void DatabaseViewer::rejectConstraint()
 	}
 	if(removed)
 	{
-		this->updateGraphView();
+		if(priorId==0)
+		{
+			this->updateGraphView();
+			updateLoopClosuresSlider();
+		}
+		else
+		{
+			bool priorsIgnored = Parameters::defaultOptimizerPriorsIgnored();
+			Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kOptimizerPriorsIgnored(), priorsIgnored);
+			int indexA = ui_->horizontalSlider_A->value();
+			int indexB = ui_->horizontalSlider_B->value();
+			if(!priorsIgnored)
+			{
+				this->updateGraphView();
+			}
+			if(ui_->horizontalSlider_A->value() != indexA)
+				ui_->horizontalSlider_A->setValue(indexA);
+			else
+				sliderAValueChanged(indexA);
+			if(ui_->horizontalSlider_B->value() != indexB)
+				ui_->horizontalSlider_B->setValue(indexB);
+			else
+				sliderBValueChanged(indexB);
+		}
 	}
-	updateLoopClosuresSlider();
 }
 
 std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(

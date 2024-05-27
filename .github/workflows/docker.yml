@@ -6,22 +6,75 @@ on:
       - 'master'
 
 jobs:
-  docker:
+  docker_deps:
     runs-on: ubuntu-latest
     
     strategy:
+      fail-fast: false
       matrix:
-        docker_tag: [xenial, bionic, focal, focal-foxy, jammy, android23, android24, android26, android30]
+        docker_tag: [focal-deps, jammy-deps, jammy-iron-deps]
         include:
-        - docker_tag: xenial
+        - docker_tag: focal-deps
           docker_tags: |
-            introlab3it/rtabmap:xenial
-            introlab3it/rtabmap:16.04
-          docker_args: |
-            NOT_USED=0
+            introlab3it/rtabmap:focal-deps
           docker_platforms: |
             linux/amd64
-          docker_path: 'xenial'
+            linux/arm64
+            linux/arm/v7
+          docker_path: 'focal/deps'
+        - docker_tag: jammy-deps
+          docker_tags: |
+            introlab3it/rtabmap:jammy-deps
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'jammy/deps'
+        - docker_tag: jammy-iron-deps
+          docker_tags: |
+            introlab3it/rtabmap:jammy-iron-deps
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'jammy-iron/deps'
+    
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      - 
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.docker_platforms }}
+          file: ./docker/${{ matrix.docker_path }}/Dockerfile
+          tags: ${{ matrix.docker_tags }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
+          cache-to: type=inline
+  
+  docker:
+    needs: docker_deps
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_tag: [bionic, focal, jammy, jammy-iron, android23, android24, android26, android30]
+        include:
         - docker_tag: bionic
           docker_tags: |
             introlab3it/rtabmap:bionic
@@ -42,17 +95,8 @@ jobs:
           docker_platforms: |
             linux/amd64
             linux/arm64
+            linux/arm/v7
           docker_path: 'focal'
-        - docker_tag: focal-foxy
-          docker_tags: |
-            introlab3it/rtabmap:focal-foxy
-            introlab3it/rtabmap:20.04-foxy
-          docker_args: |
-            NOT_USED=0
-          docker_platforms: |
-            linux/amd64
-            linux/arm64
-          docker_path: 'focal-foxy'
         - docker_tag: jammy
           docker_tags: |
             introlab3it/rtabmap:jammy
@@ -63,6 +107,14 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'jammy'
+        - docker_tag: jammy-iron
+          docker_tags: |
+            introlab3it/rtabmap:jammy-iron
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+          docker_path: 'jammy-iron'
         - docker_tag: android23
           docker_tags: |
             introlab3it/rtabmap:android23

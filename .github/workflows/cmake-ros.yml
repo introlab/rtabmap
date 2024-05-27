@@ -21,28 +21,23 @@ jobs:
     name: Build on ros ${{ matrix.ros_distribution }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        ros_distribution: [ noetic, foxy, humble, rolling]
+        ros_distribution: [ noetic, humble, iron]
         include:
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
-        - ros_distribution: 'foxy'
-          os: ubuntu-20.04
         - ros_distribution: 'humble'
           os: ubuntu-22.04
-        - ros_distribution: 'rolling'
+        - ros_distribution: 'iron'
           os: ubuntu-22.04
 
-    steps:
-    - name: Workaround dpkg grub-efi-amd64-signed error
-      run: |
-        sudo apt-mark hold grub-efi-amd64-signed
-    
-    - uses: ros-tooling/setup-ros@v0.5
+    steps:   
+    - uses: ros-tooling/setup-ros@v0.6
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
     
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |

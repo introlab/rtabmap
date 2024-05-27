@@ -1,27 +1,34 @@
 
 FIND_PACKAGE(yaml-cpp QUIET)
 
-IF(NOT yaml-cpp_FOUND)
+IF(yaml-cpp_FOUND)
+  IF (TARGET yaml-cpp::yaml-cpp)
+    # yaml-cpp 0.8.0 uses target yaml-cpp::yaml-cpp.
+    SET(YAML_CPP_LIBRARIES yaml-cpp::yaml-cpp)
+  ELSEIF (TARGET yaml-cpp)
+    # yaml-cpp 0.7.0 uses target yaml-cpp (VCPKG).
+    SET(YAML_CPP_LIBRARIES yaml-cpp)
+  ENDIF()
+ELSE()
    find_package(PkgConfig QUIET)
    IF(PKG_CONFIG_FOUND)
       pkg_check_modules(yaml_cpp QUIET yaml-cpp)
 	  IF(yaml_cpp_FOUND)
          SET(YAML_CPP_LIBRARIES ${yaml_cpp_LIBRARIES})
-         SET(YAML_CPP_INCLUDE_DIRS ${yaml_cpp_INCLUDEDIR})
+         SET(YAML_CPP_INCLUDE_DIR ${yaml_cpp_INCLUDEDIR})
          SET(yaml-cpp_FOUND ${yaml_cpp_FOUND})
 	  ENDIF(yaml_cpp_FOUND)
    ENDIF(PKG_CONFIG_FOUND)
-ENDIF(NOT yaml-cpp_FOUND)
+ENDIF(yaml-cpp_FOUND)
 
 IF(yaml-cpp_FOUND)
 
 SET(INCLUDE_DIRS
-    ${YAML_CPP_INCLUDE_DIRS}
+    ${YAML_CPP_INCLUDE_DIR}
 )
 
 SET(LIBRARIES
 	${YAML_CPP_LIBRARIES}
-	yaml-cpp
 )
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS} yaml-cpp)

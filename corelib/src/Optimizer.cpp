@@ -190,8 +190,7 @@ void Optimizer::getConnectedGraph(
 		const std::map<int, Transform> & posesIn,
 		const std::multimap<int, Link> & linksIn,
 		std::map<int, Transform> & posesOut,
-		std::multimap<int, Link> & linksOut,
-		bool adjustPosesWithConstraints) const
+		std::multimap<int, Link> & linksOut) const
 {
 	UDEBUG("IN: fromId=%d poses=%d links=%d priorsIgnored=%d landmarksIgnored=%d", fromId, (int)posesIn.size(), (int)linksIn.size(), priorsIgnored()?1:0, landmarksIgnored()?1:0);
 	UASSERT(fromId>0);
@@ -202,15 +201,15 @@ void Optimizer::getConnectedGraph(
 
 	std::set<int> nextPoses;
 	nextPoses.insert(fromId);
-	std::multimap<int, int> biLinks;
+	std::multimap<int, std::pair<int, Link::Type> > biLinks;
 	for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
 	{
 		if(iter->second.from() != iter->second.to())
 		{
-			if(graph::findLink(biLinks, iter->second.from(), iter->second.to()) == biLinks.end())
+			if(graph::findLink(biLinks, iter->second.from(), iter->second.to(), true, iter->second.type()) == biLinks.end())
 			{
-				biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
-				biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+				biLinks.insert(std::make_pair(iter->second.from(), std::make_pair(iter->second.to(), iter->second.type())));
+				biLinks.insert(std::make_pair(iter->second.to(), std::make_pair(iter->second.from(), iter->second.type())));
 			}
 		}
 	}
@@ -234,41 +233,35 @@ void Optimizer::getConnectedGraph(
 			}
 		}
 
-		for(std::multimap<int, int>::const_iterator iter=biLinks.find(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
+		for(std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter=biLinks.find(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
 		{
-			int toId = iter->second;
+			int toId = iter->second.first;
+			Link::Type type = iter->second.second;
 			if(posesIn.find(toId) != posesIn.end() && (!landmarksIgnored() || toId>0))
 			{
-				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, currentId, toId);
+				std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, currentId, toId, true, type);
 				if(nextPoses.find(toId) == nextPoses.end())
 				{
 					if(!uContains(posesOut, toId))
 					{
-						if(adjustPosesWithConstraints)
+						const Transform & poseToIn = posesIn.at(toId);
+						Transform t = kter->second.from()==currentId?kter->second.transform():kter->second.transform().inverse();
+						if(isSlam2d() && kter->second.type() == Link::kLandmark && toId>0 && (poseToIn.is3DoF() || poseToIn.is4DoF()))
 						{
-							if(isSlam2d() && kter->second.type() == Link::kLandmark && toId>0)
+							if(poseToIn.is3DoF())
 							{
-								Transform t;
-								if(kter->second.from()==currentId)
-								{
-									t = kter->second.transform();
-								}
-								else
-								{
-									t = kter->second.transform().inverse();
-								}
 								posesOut.insert(std::make_pair(toId, (posesOut.at(currentId) * t).to3DoF()));
 							}
 							else
 							{
-								Transform t = posesOut.at(currentId) * (kter->second.from()==currentId?kter->second.transform():kter->second.transform().inverse());
-								posesOut.insert(std::make_pair(toId, t));
+								posesOut.insert(std::make_pair(toId, (posesOut.at(currentId) * t).to4DoF()));
 							}
 						}
 						else
 						{
-							posesOut.insert(*posesIn.find(toId));
+							posesOut.insert(std::make_pair(toId, posesOut.at(currentId)* t));
 						}
+
 						// add prior links
 						for(std::multimap<int, Link>::const_iterator pter=linksIn.find(toId); pter!=linksIn.end() && pter->first==toId; ++pter)
 						{
@@ -282,7 +275,7 @@ void Optimizer::getConnectedGraph(
 					}
 
 					// only add unique links
-					if(graph::findLink(linksOut, currentId, toId) == linksOut.end())
+					if(graph::findLink(linksOut, currentId, toId, true, kter->second.type()) == linksOut.end())
 					{
 						if(kter->second.to() < 0)
 						{

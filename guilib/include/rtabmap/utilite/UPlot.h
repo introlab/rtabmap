@@ -270,6 +270,7 @@ public:
 	 */
 	UPlotCurveThreshold(const QString & name, qreal thesholdValue, Qt::Orientation orientation = Qt::Horizontal, QObject * parent = 0);
 	virtual ~UPlotCurveThreshold();
+	qreal getThreshold() const {return _threshold;}
 
 public Q_SLOTS:
 	/**
@@ -288,6 +289,7 @@ protected:
 
 private:
 	Qt::Orientation _orientation;
+	qreal _threshold;
 };
 
 /**
@@ -509,8 +511,10 @@ public:
 	/**
 	 * Get all curve names.
 	 */
-	QStringList curveNames();
-	bool contains(const QString & curveName);
+	QStringList curveNames() const;
+	bool contains(const QString & curveName) const;
+	bool isThreshold(const QString & curveName) const;
+	double getThresholdValue(const QString & curveName) const;
 	void removeCurves();
 	QString getAllCurveDataAsText() const;
 	/**

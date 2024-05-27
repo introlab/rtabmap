@@ -296,25 +296,24 @@ void ParametersToolBox::addParameter(
 	{
 		addParameter(layout, key.c_str(), QString::fromStdString(value));
 	}
-	else if(type.compare("int") == 0)
+	else if(type.compare("int") == 0 ||
+	        type.compare("uint") == 0 ||
+	        type.compare("unsigned int") == 0)
 	{
 		addParameter(layout, key.c_str(), uStr2Int(value));
 	}
-	else if(type.compare("uint") == 0)
-	{
-		addParameter(layout, key.c_str(), uStr2Int(value));
-	}
-	else if(type.compare("double") == 0)
-	{
-		addParameter(layout, key.c_str(), uStr2Double(value));
-	}
-	else if(type.compare("float") == 0)
+	else if(type.compare("double") == 0 ||
+	        type.compare("float") == 0)
 	{
 		addParameter(layout, key.c_str(), uStr2Double(value));
 	}
 	else if(type.compare("bool") == 0)
 	{
 		addParameter(layout, key.c_str(), uStr2Bool(value));
+	}
+	else
+	{
+	    UWARN("Not implemented type \"%s\" for parameter \"%s\". Parameter is not added to toolbox.", type.c_str(), key.c_str());
 	}
 }
 
