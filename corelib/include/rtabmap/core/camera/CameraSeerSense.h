@@ -1,8 +1,8 @@
 #pragma once
 
-#include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/Version.h"
+#include "rtabmap/utilite/USemaphore.h"
 
 #ifdef RTABMAP_XVSDK
 #include <xv-sdk.h>
@@ -27,6 +27,11 @@ public:
 	void setIMU(bool imuPublished, bool publishInterIMU);
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
 #ifdef RTABMAP_XVSDK
@@ -38,6 +43,7 @@ private:
 	std::pair<double, std::pair<cv::Mat, cv::Mat>> lastData_;
 	UMutex imuMutex_;
 	UMutex dataMutex_;
+	USemaphore dataReady_;
 #endif
 };
 

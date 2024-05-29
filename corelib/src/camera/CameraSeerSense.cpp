@@ -35,6 +35,8 @@ CameraSeerSense::~CameraSeerSense()
 
     if(device_->tofCamera())
 		device_->tofCamera()->stop();
+
+	dataReady_.release();
 }
 
 void CameraSeerSense::setIMU(bool imuPublished, bool publishInterIMU)
@@ -123,7 +125,10 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 				pixel = *reinterpret_cast<float const *>(xvDepthColorImage.data.get() + (position[0]*cameraModel_.imageWidth()+position[1]) * 7 + 3);
 			});
 			UScopeMutex lock(dataMutex_);
+			bool notify = !lastData_.first;
 			lastData_ = std::make_pair(xvDepthColorImage.hostTimestamp, std::make_pair(color, depth));
+			if(notify)
+				dataReady_.release();
 		}
 	});
 
@@ -132,6 +137,76 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 	UERROR("CameraSeerSense: RTAB-Map is not built with XVisio SDK support!");
 #endif
 	return false;
+}
+
+bool CameraSeerSense::isCalibrated() const
+{
+	return true;
+}
+
+std::string CameraSeerSense::getSerial() const
+{
+#ifdef RTABMAP_XVSDK
+	return device_->id();
+#endif
+	return "";
+}
+
+SensorData CameraSeerSense::captureImage(SensorCaptureInfo * info)
+{
+	SensorData data;
+#ifdef RTABMAP_XVSDK
+	if(!dataReady_.acquire(1, 3000))
+	{
+		UERROR("Did not receive frame since 3 seconds...");
+		return data;
+	}
+
+	dataMutex_.lock();
+	if(!lastData_.first)
+	{
+		data = SensorData(lastData_.second.first.clone(), lastData_.second.second.clone(), cameraModel_, this->getNextSeqID(), lastData_.first);
+		lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
+	}
+	dataMutex_.unlock();
+
+	if(imuPublished_ && !publishInterIMU_)
+	{
+		cv::Vec3d gyro, acc;
+		std::map<double, std::pair<cv::Vec3d, cv::Vec3d>>::const_iterator iterA, iterB;
+
+		imuMutex_.lock();
+		while(imuBuffer_.empty() || imuBuffer_.rbegin()->first < data.stamp())
+		{
+			imuMutex_.unlock();
+			uSleep(1);
+			imuMutex_.lock();
+		}
+
+		iterB = imuBuffer_.lower_bound(data.stamp());
+		iterA = iterB;
+		if(iterA != imuBuffer_.begin())
+			iterA = --iterA;
+		if(iterA == iterB || data.stamp() == iterB->first)
+		{
+			gyro = iterB->second.first;
+			acc = iterB->second.second;
+		}
+		else if(data.stamp() > iterA->first && data.stamp() < iterB->first)
+		{
+			float t = (data.stamp()-iterA->first) / (iterB->first-iterA->first);
+			gyro = iterA->second.first + t*(iterB->second.first - iterA->second.first);
+			acc = iterA->second.second + t*(iterB->second.second - iterA->second.second);
+		}
+		imuBuffer_.erase(imuBuffer_.begin(), iterB);
+
+		imuMutex_.unlock();
+		data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), this->getLocalTransform()));
+	}
+#else
+	UERROR("CameraSeerSense: RTAB-Map is not built with XVisio SDK support!");
+#endif
+	return data;
 }
 
 } // namespace rtabmap
