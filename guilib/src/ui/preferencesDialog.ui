@@ -3515,6 +3515,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <string>Kinect for Azure</string>
                                    </property>
                                   </item>
+                                  <item>
+                                    <property name="text">
+                                     <string>SeerSense</string>
+                                    </property>
+                                   </item>
                                  </widget>
                                 </item>
                                 <item row="0" column="1">

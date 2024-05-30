@@ -96,6 +96,7 @@ public:
 		kSrcK4W2           = 8,
 		kSrcRealSense2     = 9,
 		kSrcK4A            = 10,
+		kSrcSeerSense      = 11,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,

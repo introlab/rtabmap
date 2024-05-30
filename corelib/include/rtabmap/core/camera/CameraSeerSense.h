@@ -38,6 +38,8 @@ private:
 	CameraModel cameraModel_;
 	bool imuPublished_;
 	bool publishInterIMU_;
+	int imuId_;
+	int tofId_;
 	std::shared_ptr<xv::Device> device_;
 	std::map<double, std::pair<cv::Vec3d, cv::Vec3d>> imuBuffer_;
 	std::pair<double, std::pair<cv::Mat, cv::Mat>> lastData_;

@@ -17,7 +17,9 @@ CameraSeerSense::CameraSeerSense(float imageRate, const Transform & localTransfo
 #ifdef RTABMAP_XVSDK
 	,
 	imuPublished_(true),
-	publishInterIMU_(false)
+	publishInterIMU_(false),
+	imuId_(0),
+	tofId_(0)
 #endif
 {
 #ifdef RTABMAP_XVSDK
@@ -27,6 +29,12 @@ CameraSeerSense::CameraSeerSense(float imageRate, const Transform & localTransfo
 
 CameraSeerSense::~CameraSeerSense()
 {
+	if(imuId_)
+		device_->imuSensor()->unregisterCallback(imuId_);
+	
+	if(tofId_)
+		device_->tofCamera()->unregisterColorDepthImageCallback(tofId_);
+
     if(device_->imuSensor())
 		device_->imuSensor()->stop();
 
@@ -62,7 +70,8 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 	device_ = devices.begin()->second;
 
 	UASSERT(device_->imuSensor());
-	device_->imuSensor()->registerCallback([this](const xv::Imu & xvImu) {
+	device_->imuSensor()->start();
+	imuId_ = device_->imuSensor()->registerCallback([this](const xv::Imu & xvImu) {
 		if(imuPublished_ && xvImu.hostTimestamp > 0)
 		{
 			if(publishInterIMU_)
@@ -97,6 +106,7 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 
 	UASSERT(device_->colorCamera());
 	device_->colorCamera()->setResolution(xv::ColorCamera::Resolution::RGB_640x480);
+	device_->colorCamera()->start();
 	UASSERT(device_->tofCamera());
 	device_->tofCamera()->setSonyTofSetting(xv::TofCamera::SonyTofLibMode::IQMIX_DF, xv::TofCamera::Resolution::QVGA, frameRate);
 	device_->tofCamera()->start();
@@ -112,7 +122,7 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 		), 0.0f, cv::Size(xvTofCalib.pdcm[0].w, xvTofCalib.pdcm[0].h)).scaled(0.5);
 
 	lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
-	device_->tofCamera()->registerColorDepthImageCallback([this](const xv::DepthColorImage & xvDepthColorImage) {
+	tofId_ = device_->tofCamera()->registerColorDepthImageCallback([this](const xv::DepthColorImage & xvDepthColorImage) {
 		if(xvDepthColorImage.hostTimestamp > 0)
 		{
 			cv::Mat color = cv::Mat::zeros(cameraModel_.imageSize(), CV_8UC3);
@@ -163,11 +173,8 @@ SensorData CameraSeerSense::captureImage(SensorCaptureInfo * info)
 	}
 
 	dataMutex_.lock();
-	if(!lastData_.first)
-	{
-		data = SensorData(lastData_.second.first.clone(), lastData_.second.second.clone(), cameraModel_, this->getNextSeqID(), lastData_.first);
-		lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
-	}
+	data = SensorData(lastData_.second.first.clone(), lastData_.second.second.clone(), cameraModel_, this->getNextSeqID(), lastData_.first);
+	lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
 	dataMutex_.unlock();
 
 	if(imuPublished_ && !publishInterIMU_)
