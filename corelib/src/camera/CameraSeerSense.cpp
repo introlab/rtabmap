@@ -114,12 +114,22 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 	UASSERT(!device_->tofCamera()->calibration().empty());
 	auto xvTofCalib = device_->tofCamera()->calibration()[0];
 	UASSERT(!xvTofCalib.pdcm.empty());
-	cameraModel_ = CameraModel(device_->id(), xvTofCalib.pdcm[0].fx, xvTofCalib.pdcm[0].fy, xvTofCalib.pdcm[0].u0, xvTofCalib.pdcm[0].v0,
+	cv::Mat D(1, xvTofCalib.pdcm[0].distor.size(), CV_64FC1, xvTofCalib.pdcm[0].distor.begin());
+	cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+	cv::Mat P = cv::Mat::eye(3, 4, CV_64FC1);
+	P.at<double>(0,0) = xvTofCalib.pdcm[0].fx;
+	P.at<double>(1,1) = xvTofCalib.pdcm[0].fy;
+	P.at<double>(0,2) = xvTofCalib.pdcm[0].u0;
+	P.at<double>(1,2) = xvTofCalib.pdcm[0].v0;
+	cv::Mat K = P.colRange(0, 3);
+	cameraModel_ = CameraModel(device_->id(), cv::Size(xvTofCalib.pdcm[0].w, xvTofCalib.pdcm[0].h), K, D, R, P,
 		this->getLocalTransform() * Transform(
 			xvTofCalib.pose.rotation()[0], xvTofCalib.pose.rotation()[1], xvTofCalib.pose.rotation()[2], xvTofCalib.pose.translation()[0],
 			xvTofCalib.pose.rotation()[3], xvTofCalib.pose.rotation()[4], xvTofCalib.pose.rotation()[5], xvTofCalib.pose.translation()[1],
 			xvTofCalib.pose.rotation()[6], xvTofCalib.pose.rotation()[7], xvTofCalib.pose.rotation()[8], xvTofCalib.pose.translation()[2]
-		), 0.0f, cv::Size(xvTofCalib.pdcm[0].w, xvTofCalib.pdcm[0].h)).scaled(0.5);
+		)).scaled(0.5);
+	UASSERT(cameraModel_.isValidForRectification());
+	cameraModel_.initRectificationMap();
 
 	lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
 	tofId_ = device_->tofCamera()->registerColorDepthImageCallback([this](const xv::DepthColorImage & xvDepthColorImage) {
@@ -173,7 +183,10 @@ SensorData CameraSeerSense::captureImage(SensorCaptureInfo * info)
 	}
 
 	dataMutex_.lock();
-	data = SensorData(lastData_.second.first.clone(), lastData_.second.second.clone(), cameraModel_, this->getNextSeqID(), lastData_.first);
+	data = SensorData(
+		cameraModel_.rectifyImage(lastData_.second.first, cv::INTER_CUBIC),
+		cameraModel_.rectifyImage(lastData_.second.second, cv::INTER_NEAREST),
+		cameraModel_, this->getNextSeqID(), lastData_.first);
 	lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
 	dataMutex_.unlock();
 
