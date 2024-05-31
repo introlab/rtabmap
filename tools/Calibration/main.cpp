@@ -264,7 +264,7 @@ int main(int argc, char * argv[])
 		camera = new rtabmap::CameraRealSense2();
 		((rtabmap::CameraRealSense2*)camera)->setImagesRectified(false);
 		dialog.setStereoMode(true);
-		dialog.setFisheyeImages(true);
+		dialog.setFisheyeModel();
 	}
 	else
 	{

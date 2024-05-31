@@ -68,7 +68,9 @@ public:
 	void setCameraName(const QString & name);
 	void setProgressVisibility(bool visible);
 	void setSwitchedImages(bool switched);
-	void setFisheyeImages(bool enabled);
+	void setFisheyeModel();
+	void setPlumbobModel();
+	void setRationalModel();
 	void setStereoMode(bool stereo, const QString & leftSuffix = "left", const QString & rightSuffix = "right");
 	void setSavingDirectory(const QString & savingDirectory) {savingDirectory_ = savingDirectory;}
 
@@ -78,6 +80,7 @@ public Q_SLOTS:
 	void setBoardWidth(int width);
 	void setBoardHeight(int height);
 	void setSquareSize(double size);
+	void setCalibrationDataSaved(bool enabled);
 	void setExpectedStereoBaseline(double length);
 	void setMaxScale(int scale);
 
@@ -114,10 +117,14 @@ private:
 	QString cameraName_;
 	bool processingData_;
 	bool savedCalibration_;
+	int currentId_;
+	QString timestamp_;
 
 	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;
 	std::vector<std::vector<std::vector<float> > > imageParams_;
+	std::vector<std::vector<int > > imageIds_;
 	std::vector<std::vector<std::vector<cv::Point2f> > > stereoImagePoints_;
+	std::vector<int> stereoImageIds_;
 	std::vector<cv::Size > imageSize_;
 	std::vector<rtabmap::CameraModel> models_;
 	rtabmap::StereoCameraModel stereoModel_;
