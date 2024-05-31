@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCloseEvent>
+#include <QDateTime>
 
 #include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/utilite/UCv2Qt.h>
@@ -60,10 +61,12 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	rightSuffix_("right"),
 	savingDirectory_(savingDirectory),
 	processingData_(false),
-	savedCalibration_(false)
+	savedCalibration_(false),
+	currentId_(0)
 {
 	imagePoints_.resize(2);
 	imageParams_.resize(2);
+	imageIds_.resize(2);
 	imageSize_.resize(2);
 	stereoImagePoints_.resize(2);
 	models_.resize(2);
@@ -89,6 +92,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
+	connect(ui_->checkBox_saveCalibrationData, SIGNAL(toggled(bool)), this, SLOT(setCalibrationDataSaved(bool)));
 	connect(ui_->doubleSpinBox_stereoBaseline, SIGNAL(valueChanged(double)), this, SLOT(setExpectedStereoBaseline(double)));
 	connect(ui_->spinBox_maxScale, SIGNAL(valueChanged(int)), this, SLOT(setMaxScale(int)));
 
@@ -105,9 +109,11 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 
 	ui_->checkBox_switchImages->setChecked(switchImages);
 
-	ui_->checkBox_fisheye->setChecked(false);
+	ui_->comboBox_calib_model->setCurrentIndex(1);
 
 	this->setStereoMode(stereo_);
+
+	timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 }
 
 CalibrationDialog::~CalibrationDialog()
@@ -125,8 +131,10 @@ void CalibrationDialog::saveSettings(QSettings & settings, const QString & group
 	settings.setValue("board_width", ui_->spinBox_boardWidth->value());
 	settings.setValue("board_height", ui_->spinBox_boardHeight->value());
 	settings.setValue("board_square_size", ui_->doubleSpinBox_squareSize->value());
+	settings.setValue("calibration_data_saved", ui_->checkBox_saveCalibrationData->isChecked());
 	settings.setValue("max_scale", ui_->spinBox_maxScale->value());
 	settings.setValue("geometry", this->saveGeometry());
+	settings.setValue("calibration_model", ui_->comboBox_calib_model->currentIndex());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -142,7 +150,21 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	this->setBoardWidth(settings.value("board_width", ui_->spinBox_boardWidth->value()).toInt());
 	this->setBoardHeight(settings.value("board_height", ui_->spinBox_boardHeight->value()).toInt());
 	this->setSquareSize(settings.value("board_square_size", ui_->doubleSpinBox_squareSize->value()).toDouble());
+	this->setCalibrationDataSaved(settings.value("calibration_data_saved", ui_->checkBox_saveCalibrationData->isChecked()).toBool());
 	this->setMaxScale(settings.value("max_scale", ui_->spinBox_maxScale->value()).toDouble());
+	int model = settings.value("calibration_model", ui_->comboBox_calib_model->currentIndex()).toInt();
+	if(model == 0)
+	{
+		this->setFisheyeModel();
+	}
+	else if(model ==2)
+	{
+		this->setRationalModel();
+	}
+	else
+	{
+		this->setPlumbobModel();
+	}
 	QByteArray bytes = settings.value("geometry", QByteArray()).toByteArray();
 	if(!bytes.isEmpty())
 	{
@@ -176,9 +198,19 @@ void CalibrationDialog::setSwitchedImages(bool switched)
 	ui_->checkBox_switchImages->setChecked(switched);
 }
 
-void CalibrationDialog::setFisheyeImages(bool enabled)
+void CalibrationDialog::setFisheyeModel()
 {
-	ui_->checkBox_fisheye->setChecked(enabled);
+	ui_->comboBox_calib_model->setCurrentIndex(0);
+}
+
+void CalibrationDialog::setPlumbobModel()
+{
+	ui_->comboBox_calib_model->setCurrentIndex(1);
+}
+
+void CalibrationDialog::setRationalModel()
+{
+	ui_->comboBox_calib_model->setCurrentIndex(2);
 }
 
 void CalibrationDialog::setStereoMode(bool stereo, const QString & leftSuffix, const QString & rightSuffix)
@@ -200,6 +232,8 @@ void CalibrationDialog::setStereoMode(bool stereo, const QString & leftSuffix, c
 	ui_->label_fy_2->setVisible(stereo_);
 	ui_->label_cx_2->setVisible(stereo_);
 	ui_->label_cy_2->setVisible(stereo_);
+	ui_->label_fovx_2->setVisible(stereo_);
+	ui_->label_fovy_2->setVisible(stereo_);
 	ui_->label_error_2->setVisible(stereo_);
 	ui_->label_baseline->setVisible(stereo_);
 	ui_->label_baseline_name->setVisible(stereo_);
@@ -249,6 +283,15 @@ void CalibrationDialog::setSquareSize(double size)
 	if(size != ui_->doubleSpinBox_squareSize->value())
 	{
 		ui_->doubleSpinBox_squareSize->setValue(size);
+		this->restart();
+	}
+}
+
+void CalibrationDialog::setCalibrationDataSaved(bool enabled)
+{
+	if(enabled != ui_->checkBox_saveCalibrationData->isChecked())
+	{
+		ui_->checkBox_saveCalibrationData->setChecked(enabled);
 		this->restart();
 	}
 }
@@ -366,6 +409,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 	std::vector<std::vector<cv::Point2f> > pointBuf(2);
 
 	bool depthDetected = false;
+	bool sampleAdded = false;
 	for(int id=0; id<(stereo_?2:1); ++id)
 	{
 		cv::Mat viewGray;
@@ -465,6 +509,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 						cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
 
 				// Draw the corners.
+				images[id] = images[id].clone();
 				cv::drawChessboardCorners(images[id], boardSize, cv::Mat(pointBuf[id]), boardFound[id]);
 
 				std::vector<float> params(4,0);
@@ -483,12 +528,17 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 				}
 				if(addSample)
 				{
+					sampleAdded = true;
 					boardAccepted[id] = true;
+					imageIds_[id].push_back(currentId_);
 
 					imagePoints_[id].push_back(pointBuf[id]);
 					imageParams_[id].push_back(params);
-
 					UINFO("[%d] Added board, total=%d. (x=%f, y=%f, size=%f, skew=%f)", id, (int)imagePoints_[id].size(), params[0], params[1], params[2], params[3]);
+				}
+				else
+				{
+					//break;
 				}
 
 				// update statistics
@@ -548,7 +598,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 				if(imagePoints_[id].size() >= COUNT_MIN &&
 						xGood > 0.5 &&
 						yGood > 0.5 &&
-						(sizeGood > 0.4 || (ui_->checkBox_fisheye->isChecked() && sizeGood > 0.25)) &&
+						(sizeGood > 0.4 || (ui_->comboBox_calib_model->currentIndex()==0 && sizeGood > 0.25)) &&
 						skewGood > 0.5)
 				{
 					readyToCalibrate[id] = true;
@@ -587,10 +637,32 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 	ui_->label_baseline->setVisible(!depthDetected);
 	ui_->label_baseline_name->setVisible(!depthDetected);
 
+	if(ui_->checkBox_saveCalibrationData->isChecked() && (boardAccepted[0] || boardAccepted[1]))
+	{
+		for(int id=0; id<(stereo_?2:1); ++id)
+		{
+			QString rawImagesDir = savingDirectory_+"/"+cameraName_+"_"+timestamp_+(stereo_?"/"+(id==0?leftSuffix_:rightSuffix_):"images");
+			QString imagesWithBoardDir = rawImagesDir+"_board_detection";
+			if(!QDir(rawImagesDir).exists())
+			{
+				UINFO("Creating dir %s", rawImagesDir.toStdString().c_str());
+				QDir().mkpath(rawImagesDir);
+			}
+			if(!QDir(imagesWithBoardDir).exists())
+			{
+				UINFO("Creating dir %s", imagesWithBoardDir.toStdString().c_str());
+				QDir().mkpath(imagesWithBoardDir);
+			}
+			cv::imwrite((rawImagesDir+"/"+QString::number(currentId_)+".png").toStdString(), inputRawImages[id]);
+			cv::imwrite((imagesWithBoardDir+"/"+QString::number(currentId_)+".png").toStdString(), images[id]);
+		}
+	}
+
 	if(stereo_ && ((boardAccepted[0] && boardFound[1]) || (boardAccepted[1] && boardFound[0])))
 	{
 		stereoImagePoints_[0].push_back(pointBuf[0]);
 		stereoImagePoints_[1].push_back(pointBuf[1]);
+		stereoImageIds_.push_back(currentId_);
 		UINFO("Add stereo image points (size=%d)", (int)stereoImagePoints_[0].size());
 	}
 
@@ -645,18 +717,25 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		ui_->image_view_2->setImage(uCvMat2QImage(images[1]).mirrored(ui_->checkBox_mirror->isChecked(), false));
 	}
 	processingData_ = false;
+	if(sampleAdded)
+		++currentId_;
 }
 
 void CalibrationDialog::restart()
 {
 	// restart
 	savedCalibration_ = false;
+	currentId_ = 0;
+	timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 	imagePoints_[0].clear();
 	imagePoints_[1].clear();
 	imageParams_[0].clear();
 	imageParams_[1].clear();
+	imageIds_[0].clear();
+	imageIds_[1].clear();
 	stereoImagePoints_[0].clear();
 	stereoImagePoints_[1].clear();
+	stereoImageIds_.clear();
 	models_[0] = CameraModel();
 	models_[1] = CameraModel();
 	stereoModel_ = StereoCameraModel();
@@ -690,8 +769,11 @@ void CalibrationDialog::restart()
 	ui_->label_fy->setNum(0);
 	ui_->label_cx->setNum(0);
 	ui_->label_cy->setNum(0);
+	ui_->label_fovx->setNum(0);
+	ui_->label_fovy->setNum(0);
 	ui_->label_baseline->setNum(0);
 	ui_->label_error->setNum(0);
+	ui_->label_error_2->setNum(0);
 	ui_->lineEdit_K->clear();
 	ui_->lineEdit_D->clear();
 	ui_->lineEdit_R->clear();
@@ -747,7 +829,7 @@ void CalibrationDialog::calibrate()
 		//Find intrinsic and extrinsic camera parameters
 		double rms = 0.0;
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
-		bool fishEye = ui_->checkBox_fisheye->isChecked();
+		bool fishEye = ui_->comboBox_calib_model->currentIndex()==0;
 
 		if(fishEye)
 		{
@@ -775,13 +857,28 @@ void CalibrationDialog::calibrate()
 		else
 #endif
 		{
+			cv::Mat stdDevsMatInt, stdDevsMatExt;
+			cv::Mat perViewErrorsMat;
 			rms = cv::calibrateCamera(objectPoints,
 					imagePoints_[id],
 					imageSize_[id],
 					K,
 					D,
 					rvecs,
-					tvecs);
+					tvecs,
+					stdDevsMatInt,
+					stdDevsMatExt,
+					perViewErrorsMat,
+					ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0);
+			if((int)imageIds_[id].size() == perViewErrorsMat.rows &&
+			   ULogger::level() >= ULogger::kInfo)
+			{
+				UINFO("Per view errors:");
+				for(int i=0; i<perViewErrorsMat.rows; ++i)
+				{
+					UINFO("Image %d: %f", imageIds_[id][i], perViewErrorsMat.at<double>(i,0));
+				}
+			}
 		}
 
 		UINFO("Re-projection error reported by calibrateCamera: %f", rms);
@@ -846,6 +943,8 @@ void CalibrationDialog::calibrate()
 			ui_->label_fy->setNum(models_[id].fy());
 			ui_->label_cx->setNum(models_[id].cx());
 			ui_->label_cy->setNum(models_[id].cy());
+			ui_->label_fovx->setNum(models_[id].horizontalFOV());
+			ui_->label_fovy->setNum(models_[id].verticalFOV());
 			ui_->label_error->setNum(totalAvgErr);
 
 			std::stringstream strK, strD, strR, strP;
@@ -864,6 +963,8 @@ void CalibrationDialog::calibrate()
 			ui_->label_fy_2->setNum(models_[id].fy());
 			ui_->label_cx_2->setNum(models_[id].cx());
 			ui_->label_cy_2->setNum(models_[id].cy());
+			ui_->label_fovx_2->setNum(models_[id].horizontalFOV());
+			ui_->label_fovy_2->setNum(models_[id].verticalFOV());
 			ui_->label_error_2->setNum(totalAvgErr);
 
 			std::stringstream strK, strD, strR, strP;
@@ -887,7 +988,7 @@ void CalibrationDialog::calibrate()
 		   stereoModel_.baseline() != ui_->doubleSpinBox_stereoBaseline->value())
 		{
 			UWARN("Expected stereo baseline is set to %f m, but computed baseline is %f m. Rescaling baseline...",
-					stereoModel_.baseline(), ui_->doubleSpinBox_stereoBaseline->value());
+					ui_->doubleSpinBox_stereoBaseline->value(), stereoModel_.baseline());
 			cv::Mat P = stereoModel_.right().P().clone();
 			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
 			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
@@ -910,20 +1011,12 @@ void CalibrationDialog::calibrate()
 		ui_->lineEdit_R_2->setText(strR2.str().c_str());
 		ui_->lineEdit_P_2->setText(strP2.str().c_str());
 
+		ui_->label_fovx->setNum(stereoModel_.left().horizontalFOV());
+		ui_->label_fovx_2->setNum(stereoModel_.right().horizontalFOV());
+		ui_->label_fovy->setNum(stereoModel_.left().verticalFOV());
+		ui_->label_fovy_2->setNum(stereoModel_.right().verticalFOV());
 		ui_->label_baseline->setNum(stereoModel_.baseline());
 		//ui_->label_error_stereo->setNum(totalAvgErr);
-
-		if(!stereoModel_.left().P().empty() &&
-		   !stereoModel_.left().K_raw().empty() &&
-		   fabs(stereoModel_.left().P().at<double>(0,0) - stereoModel_.left().K_raw().at<double>(0,0)) > 5)
-		{
-			QMessageBox::warning(this, tr("Stereo Calibration"),
-					tr("\"fx\" after stereo rectification (%1) is not close from original "
-					   "calibration (%2), the difference would have to be under 5. You may "
-					   "restart the calibration or keep it as is.")
-					   .arg(stereoModel_.left().P().at<double>(0,0))
-					   .arg(stereoModel_.left().K_raw().at<double>(0,0)));
-		}
 	}
 
 	if(stereo_)
@@ -1148,7 +1241,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				right.K_raw(), right.D_raw(),
 				imageSize, R, T, E, F,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
-				cv::CALIB_FIX_INTRINSIC);
+				cv::CALIB_FIX_INTRINSIC | (ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0));
 #else
 		rms = cv::stereoCalibrate(
 				objectPoints,
@@ -1157,7 +1250,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				left.K_raw(), left.D_raw(),
 				right.K_raw(), right.D_raw(),
 				imageSize, R, T, E, F,
-				cv::CALIB_FIX_INTRINSIC,
+				cv::CALIB_FIX_INTRINSIC | (ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0),
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
 #endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
@@ -1185,7 +1278,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			double err = 0;
 			int npoints = 0;
 			std::vector<cv::Vec3f> lines[2];
-			UINFO("Computing avg re-projection error...");
+			UINFO("Computing re-projection errors...");
 			for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
 			{
 				int npt = (int)stereoImagePoints_[0][i].size();
@@ -1197,14 +1290,17 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
 				computeCorrespondEpilines(imgpt1, 2, F, lines[1]);
 
+				double sampleErr = 0.0;
 				for(int j = 0; j < npt; j++ )
 				{
 					double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
 										stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
 								   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
 										stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
-					err += errij;
+					sampleErr += errij;
 				}
+				UINFO("Stereo image %d: %f", stereoImageIds_[i], sampleErr/npt);
+				err += sampleErr;
 				npoints += npt;
 			}
 			double totalAvgErr = err/(double)npoints;
@@ -1251,6 +1347,12 @@ bool CalibrationDialog::save()
 				UINFO("Saved \"%s\"!", filePath.toStdString().c_str());
 				savedCalibration_ = true;
 				saved = true;
+
+				if(ui_->checkBox_saveCalibrationData->isChecked())
+				{
+					// save a copy in calibration data folder
+					QFile::copy(filePath, savingDirectory_+"/"+cameraName_+"_"+timestamp_+"/"+QFileInfo(filePath).fileName());
+				}
 			}
 			else
 			{
@@ -1281,6 +1383,14 @@ bool CalibrationDialog::save()
 				UINFO("Saved \"%s\" and \"%s\"!", leftPath.c_str(), rightPath.c_str());
 				savedCalibration_ = true;
 				saved = true;
+
+				if(ui_->checkBox_saveCalibrationData->isChecked())
+				{
+					// save a copy in calibration data folder
+					QFile::copy(leftPath.c_str(), savingDirectory_+"/"+cameraName_+"_"+timestamp_+"/"+QFileInfo(leftPath.c_str()).fileName());
+					QFile::copy(rightPath.c_str(), savingDirectory_+"/"+cameraName_+"_"+timestamp_+"/"+QFileInfo(rightPath.c_str()).fileName());
+					QFile::copy(posePath.c_str(), savingDirectory_+"/"+cameraName_+"_"+timestamp_+"/"+QFileInfo(posePath.c_str()).fileName());
+				}
 			}
 			else
 			{

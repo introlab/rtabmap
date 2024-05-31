@@ -7561,11 +7561,11 @@ void PreferencesDialog::calibrate()
 		}
 
 		bool freenect2 = driver == kSrcFreenect2;
-		bool fisheye = driver == kSrcStereoRealSense2;
 		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB && driver != kSrcRealSense, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
 		_calibrationDialog->setCameraName("");
 		_calibrationDialog->setSwitchedImages(freenect2);
-		_calibrationDialog->setFisheyeImages(fisheye);
+		if(driver == kSrcStereoRealSense2)
+			_calibrationDialog->setFisheyeModel();
 		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 		_calibrationDialog->registerToEventsManager();
 

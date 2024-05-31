@@ -60,7 +60,7 @@ CameraModel::CameraModel(
 		localTransform_(localTransform)
 {
 	UASSERT(K_.empty() || (K_.rows == 3 && K_.cols == 3 && K_.type() == CV_64FC1));
-	UASSERT(D_.empty() || (D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8) && D_.type() == CV_64FC1));
+	UASSERT(D_.empty() || (D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8 || D_.cols == 12 || D_.cols == 14) && D_.type() == CV_64FC1));
 	UASSERT(R_.empty() || (R_.rows == 3 && R_.cols == 3 && R_.type() == CV_64FC1));
 	UASSERT(P_.empty() || (P_.rows == 3 && P_.cols == 4 && P_.type() == CV_64FC1));
 }
@@ -156,7 +156,7 @@ CameraModel::CameraModel(
 bool CameraModel::initRectificationMap()
 {
 	UASSERT(imageSize_.height > 0 && imageSize_.width > 0);
-	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8));
+	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8 || D_.cols == 12 || D_.cols == 14));
 	UASSERT(R_.rows == 3 && R_.cols == 3);
 	UASSERT(P_.rows == 3 && P_.cols == 4);
 	// init rectification map
@@ -279,7 +279,7 @@ bool CameraModel::load(const std::string & filePath)
 				std::vector<double> data;
 				n["data"] >> data;
 				UASSERT(rows*cols == (int)data.size());
-				UASSERT(rows == 1 && (cols == 4 || cols == 5 || cols == 8));
+				UASSERT(rows == 1 && (cols == 4 || cols == 5 || cols == 8 || cols == 12 || cols == 14));
 				D_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
 			}
 			else
