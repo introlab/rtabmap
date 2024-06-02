@@ -1729,7 +1729,7 @@ void DatabaseViewer::updateIds()
 	UINFO("Loading all IDs...");
 	std::set<int> ids;
 	dbDriver_->getAllNodeIds(ids);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 3)
 	ids_ = QList<int>(ids.begin(), ids.end());
 #else
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
@@ -3960,7 +3960,7 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 	QSet<int> idsSet;
 	idsSet.insert(ids_.at(ui_->horizontalSlider_A->value()));
 	idsSet.insert(ids_.at(ui_->horizontalSlider_B->value()));
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 3)
 	QList<int> ids(idsSet.begin(), idsSet.end());
 #else
 	QList<int> ids = idsSet.toList();

@@ -789,7 +789,7 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 				{
 					QPointF intersection;
 					QLineF::IntersectType type;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 3)
 					type = lineItem->line().intersects(QLineF(limits.topLeft(), limits.bottomLeft()), &intersection);
 #else
 					type = lineItem->line().intersect(QLineF(limits.topLeft(), limits.bottomLeft()), &intersection);
@@ -800,7 +800,7 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 					}
 					else
 					{
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 3)
 						type = lineItem->line().intersects(QLineF(limits.topLeft(), limits.topRight()), &intersection);
 #else
 						type = lineItem->line().intersect(QLineF(limits.topLeft(), limits.topRight()), &intersection);
@@ -811,7 +811,7 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 						}
 						else
 						{
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 3)
 							type = lineItem->line().intersects(QLineF(limits.bottomLeft(), limits.bottomRight()), &intersection);
 #else
 							type = lineItem->line().intersect(QLineF(limits.bottomLeft(), limits.bottomRight()), &intersection);
@@ -822,7 +822,7 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 							}
 							else
 							{
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 3)
 								type = lineItem->line().intersects(QLineF(limits.topRight(), limits.bottomRight()), &intersection);
 #else
 								type = lineItem->line().intersect(QLineF(limits.topRight(), limits.bottomRight()), &intersection);

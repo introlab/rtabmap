@@ -10828,7 +10828,7 @@ generate the number of words requested.</string>
                           </widget>
                          </item>
                          <item row="6" column="1">
-                          <widget class="QLabel" name="label_755">
+                          <widget class="QLabel" name="label_7551">
                            <property name="text">
                             <string>If true, SSC (Suppression via Square Covering) is applied to limit keypoints.</string>
                            </property>
