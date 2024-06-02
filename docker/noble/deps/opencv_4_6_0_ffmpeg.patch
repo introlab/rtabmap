@@ -1,0 +1,12 @@
+diff --git a/modules/videoio/src/ffmpeg_codecs.hpp b/modules/videoio/src/ffmpeg_codecs.hpp
+index 61788e0345..faad2596ed 100644
+--- a/modules/videoio/src/ffmpeg_codecs.hpp
++++ b/modules/videoio/src/ffmpeg_codecs.hpp
+@@ -60,6 +60,7 @@ extern "C" {
+ #include <errno.h>
+ #endif
+ 
++#include <libavcodec/version.h>
+ #include <libavformat/avformat.h>
+ 
+ #ifdef __cplusplus

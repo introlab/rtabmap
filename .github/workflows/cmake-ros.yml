@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ noetic, humble, iron]
+        ros_distribution: [ noetic, humble, iron, jazzy]
         include:
         - ros_distribution: 'noetic'
           os: ubuntu-20.04
@@ -31,6 +31,8 @@ jobs:
           os: ubuntu-22.04
         - ros_distribution: 'iron'
           os: ubuntu-22.04
+        - ros_distribution: 'jazzy'
+          os: ubuntu-24.04
 
     steps:   
     - uses: ros-tooling/setup-ros@v0.6
