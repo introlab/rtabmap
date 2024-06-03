@@ -105,20 +105,6 @@ RUN git clone --branch 4.6.0 https://github.com/opencv/opencv.git && \
     cd ../.. && \
     rm -rf opencv opencv_contrib
 
-# OpenGV
-RUN git clone https://github.com/laurentkneip/opengv.git && \
-    cd opengv && \
-    git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
-    wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
-    git apply opengv_disable_march_native.patch && \
-    mkdir build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd && \
-    rm -r opengv
-
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 COPY ./docker/noble/deps/ros_entrypoint.sh /ros_entrypoint.sh
