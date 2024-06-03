@@ -19,16 +19,17 @@ public:
 
 public:
 	CameraSeerSense(
-		float imageRate=0.0f,
+		bool computeOdometry = false,
+		float imageRate = 0.0f,
 		const Transform & localTransform = Transform::getIdentity()
 	);
 	virtual ~CameraSeerSense();
 
-	void setIMU(bool imuPublished, bool publishInterIMU);
-
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	virtual bool odomProvided() const;
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.0);
 
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -36,8 +37,7 @@ protected:
 private:
 #ifdef RTABMAP_XVSDK
 	CameraModel cameraModel_;
-	bool imuPublished_;
-	bool publishInterIMU_;
+	bool computeOdometry_;
 	int imuId_;
 	int tofId_;
 	std::shared_ptr<xv::Device> device_;

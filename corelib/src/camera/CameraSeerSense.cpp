@@ -12,12 +12,11 @@ bool CameraSeerSense::available()
 #endif
 }
 
-CameraSeerSense::CameraSeerSense(float imageRate, const Transform & localTransform) :
+CameraSeerSense::CameraSeerSense(bool computeOdometry, float imageRate, const Transform & localTransform) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_XVSDK
 	,
-	imuPublished_(true),
-	publishInterIMU_(false),
+	computeOdometry_(computeOdometry),
 	imuId_(0),
 	tofId_(0)
 #endif
@@ -35,6 +34,9 @@ CameraSeerSense::~CameraSeerSense()
 	if(tofId_)
 		device_->tofCamera()->unregisterColorDepthImageCallback(tofId_);
 
+	if(device_->slam())
+        device_->slam()->stop();
+
     if(device_->imuSensor())
 		device_->imuSensor()->stop();
 
@@ -45,16 +47,6 @@ CameraSeerSense::~CameraSeerSense()
 		device_->tofCamera()->stop();
 
 	dataReady_.release();
-}
-
-void CameraSeerSense::setIMU(bool imuPublished, bool publishInterIMU)
-{
-#ifdef RTABMAP_XVSDK
-	imuPublished_ = imuPublished;
-	publishInterIMU_ = publishInterIMU;
-#else
-	UERROR("CameraSeerSense: RTAB-Map is not built with XVisio SDK support!");
-#endif
 }
 
 bool CameraSeerSense::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -72,14 +64,14 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 	UASSERT(device_->imuSensor());
 	device_->imuSensor()->start();
 	imuId_ = device_->imuSensor()->registerCallback([this](const xv::Imu & xvImu) {
-		if(imuPublished_ && xvImu.hostTimestamp > 0)
+		if(xvImu.hostTimestamp > 0)
 		{
-			if(publishInterIMU_)
+			if(isInterIMUPublishing())
 			{
 				IMU imu(cv::Vec3d(xvImu.gyro[0], xvImu.gyro[1], xvImu.gyro[2]), cv::Mat::eye(3,3,CV_64FC1),
 						cv::Vec3d(xvImu.accel[0], xvImu.accel[1], xvImu.accel[2]), cv::Mat::eye(3,3,CV_64FC1),
 						this->getLocalTransform());
-				UEventsManager::post(new IMUEvent(imu, xvImu.hostTimestamp));
+				this->postInterIMU(imu, xvImu.hostTimestamp);
 			}
 			else
 			{
@@ -89,6 +81,12 @@ bool CameraSeerSense::init(const std::string & calibrationFolder, const std::str
 			}
 		}
 	});
+
+	if(computeOdometry_)
+	{
+		UASSERT(device_->slam());
+		device_->slam()->start(xv::Slam::Mode::Mixed);
+	}
 
 	auto frameRate = xv::TofCamera::Framerate::FPS_30;
 	if(this->getImageRate() > 25)
@@ -172,6 +170,34 @@ std::string CameraSeerSense::getSerial() const
 	return "";
 }
 
+bool CameraSeerSense::odomProvided() const
+{
+#ifdef RTABMAP_XVSDK
+	return computeOdometry_;
+#else
+	return false;
+#endif
+}
+
+bool CameraSeerSense::getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
+{
+#ifdef RTABMAP_XVSDK
+	xv::Pose xvPose;
+	if(computeOdometry_ && device_->slam()->getPoseAt(xvPose, stamp))
+	{
+		pose = this->getLocalTransform() *
+		Transform(
+			xvPose.transform().rotation()[0], xvPose.transform().rotation()[1], xvPose.transform().rotation()[2], xvPose.transform().translation()[0],
+			xvPose.transform().rotation()[3], xvPose.transform().rotation()[4], xvPose.transform().rotation()[5], xvPose.transform().translation()[1],
+			xvPose.transform().rotation()[6], xvPose.transform().rotation()[7], xvPose.transform().rotation()[8], xvPose.transform().translation()[2]) *
+		this->getLocalTransform().inverse();
+		covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.0005;
+		return true;
+	}
+#endif
+	return false;
+}
+
 SensorData CameraSeerSense::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
@@ -190,7 +216,7 @@ SensorData CameraSeerSense::captureImage(SensorCaptureInfo * info)
 	lastData_ = std::pair<double, std::pair<cv::Mat, cv::Mat>>();
 	dataMutex_.unlock();
 
-	if(imuPublished_ && !publishInterIMU_)
+	if(!isInterIMUPublishing())
 	{
 		cv::Vec3d gyro, acc;
 		std::map<double, std::pair<cv::Vec3d, cv::Vec3d>>::const_iterator iterA, iterB;
@@ -222,6 +248,18 @@ SensorData CameraSeerSense::captureImage(SensorCaptureInfo * info)
 
 		imuMutex_.unlock();
 		data.setIMU(IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), this->getLocalTransform()));
+	}
+
+	xv::Pose xvPose;
+	if(computeOdometry_ && device_->slam()->getPoseAt(xvPose, data.stamp()))
+	{
+		info->odomPose = this->getLocalTransform() *
+		Transform(
+			xvPose.transform().rotation()[0], xvPose.transform().rotation()[1], xvPose.transform().rotation()[2], xvPose.transform().translation()[0],
+			xvPose.transform().rotation()[3], xvPose.transform().rotation()[4], xvPose.transform().rotation()[5], xvPose.transform().translation()[1],
+			xvPose.transform().rotation()[6], xvPose.transform().rotation()[7], xvPose.transform().rotation()[8], xvPose.transform().translation()[2]) *
+		this->getLocalTransform().inverse();
+		info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.0005;
 	}
 #else
 	UERROR("CameraSeerSense: RTAB-Map is not built with XVisio SDK support!");

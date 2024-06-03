@@ -8144,6 +8144,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <string>ZED sdk</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>SeerSense</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="0" column="1">
@@ -8741,7 +8746,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <property name="currentIndex">
                           <number>1</number>
                          </property>
-                         <widget class="QWidget" name="page_99">
+                         <widget class="QWidget" name="page_98">
                           <layout class="QVBoxLayout" name="verticalLayout_177">
                            <item>
                             <spacer name="verticalSpacer_83">
@@ -11892,7 +11897,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                        </widget>
                       </item>
                       <item row="4" column="1">
-                       <widget class="QLabel" name="label_755">
+                       <widget class="QLabel" name="label_757">
                         <property name="text">
                          <string>Likelihood ratio for VP.</string>
                         </property>

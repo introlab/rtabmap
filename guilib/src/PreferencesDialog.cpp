@@ -425,6 +425,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if (!CameraSeerSense::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcSeerSense - kSrcRGBD, 0, Qt::UserRole - 1);
+		_ui->comboBox_odom_sensor->setItemData(3, 0, Qt::UserRole - 1);
 	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
@@ -6240,6 +6241,11 @@ PreferencesDialog::Src PreferencesDialog::getOdomSourceDriver() const
 		//Zed SDK
 		return kSrcStereoZed;
 	}
+	else if(_ui->comboBox_odom_sensor->currentIndex() == 3)
+	{
+		//XVisio SDK
+		return kSrcSeerSense;
+	}
 	else if(_ui->comboBox_odom_sensor->currentIndex() != 0)
 	{
 		UERROR("Not implemented!");
@@ -6408,7 +6414,7 @@ Camera * PreferencesDialog::createCamera(
 		bool odomOnly,
 		bool odomSensorExtrinsicsCalib)
 {
-	if(odomOnly && !(driver == kSrcStereoRealSense2 || driver == kSrcStereoZed))
+	if(odomOnly && !(driver == kSrcStereoRealSense2 || driver == kSrcStereoZed || driver == kSrcSeerSense))
 	{
 		QMessageBox::warning(this, tr("Odometry Sensor"),
 				tr("Driver %1 cannot support odometry only mode.").arg(driver), QMessageBox::Ok);
@@ -6807,9 +6813,13 @@ Camera * PreferencesDialog::createCamera(
 	{
 		UDEBUG("SeerSense");
 		camera = new CameraSeerSense(
+			getOdomSourceDriver() == kSrcSeerSense,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
-		((CameraSeerSense*)camera)->setIMU(true, _ui->checkbox_publishInterIMU->isChecked());
+		camera->setInterIMUPublishing(
+			_ui->checkbox_publishInterIMU->isChecked(),
+			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
 	}
 	else if(driver == kSrcUsbDevice)
 	{
