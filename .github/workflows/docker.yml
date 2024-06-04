@@ -125,7 +125,7 @@ jobs:
         - docker_tag: noble
           docker_tags: |
             introlab3it/rtabmap:noble
-            introlab3it/rtabmap:22.04
+            introlab3it/rtabmap:24.04
           docker_args: |
             NOT_USED=0
           docker_platforms: |
