@@ -66,6 +66,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	currentId_(0)
 {
 	imagePoints_.resize(2);
+	objectPoints_.resize(2);
 	imageParams_.resize(2);
 	imageIds_.resize(2);
 	imageSize_.resize(2);
@@ -132,7 +133,7 @@ void CalibrationDialog::saveSettings(QSettings & settings, const QString & group
 	{
 		settings.beginGroup(group);
 	}
-	settings.setValue("board_type", ui_->comboBox_boardType->currentIndex());
+	settings.setValue("board_type", ui_->comboBox_board_type->currentIndex());
 	settings.setValue("board_width", ui_->spinBox_boardWidth->value());
 	settings.setValue("board_height", ui_->spinBox_boardHeight->value());
 	settings.setValue("board_square_size", ui_->doubleSpinBox_squareSize->value());
@@ -155,14 +156,12 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	{
 		settings.beginGroup(group);
 	}
-	this->setBoardType(settings.value("board_type", ui_->comboBox_boardType->currentIndex()).toInt());
+	this->setBoardType(settings.value("board_type", ui_->comboBox_board_type->currentIndex()).toInt());
 	this->setBoardWidth(settings.value("board_width", ui_->spinBox_boardWidth->value()).toInt());
 	this->setBoardHeight(settings.value("board_height", ui_->spinBox_boardHeight->value()).toInt());
 	this->setSquareSize(settings.value("board_square_size", ui_->doubleSpinBox_squareSize->value()).toDouble());
-	this->setMarkerDictionary(settings.value("marker_type", ui_->comboBox_markerDictionary->currentIndex()).toInt());
+	this->setMarkerDictionary(settings.value("marker_type", ui_->comboBox_marker_dictionary->currentIndex()).toInt());
 	this->setMarkerLength(settings.value("marker_length", ui_->doubleSpinBox_markerLength->value()).toDouble());
-	settings.setValue("marker_type", ui_->comboBox_marker_dictionary->value());
-	settings.setValue("marker_length", ui_->doubleSpinBox_markerLength->value());
 	this->setCalibrationDataSaved(settings.value("calibration_data_saved", ui_->checkBox_saveCalibrationData->isChecked()).toBool());
 	this->setMaxScale(settings.value("max_scale", ui_->spinBox_maxScale->value()).toDouble());
 	int model = settings.value("calibration_model", ui_->comboBox_calib_model->currentIndex()).toInt();
@@ -191,9 +190,11 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 
 void CalibrationDialog::resetSettings()
 {
+	this->setBoardType(0);
 	this->setBoardWidth(8);
 	this->setBoardHeight(6);
 	this->setSquareSize(0.033);
+	this->setMarkerLength(0.02475);
 }
 
 void CalibrationDialog::setCameraName(const QString & name)
@@ -280,18 +281,18 @@ double CalibrationDialog::markerLength() const
 
 void CalibrationDialog::setBoardType(int type)
 {
-	if(type != ui_->comboBox_boardType->currentIndex())
+	if(type != ui_->comboBox_board_type->currentIndex())
 	{
-		ui_->comboBox_boardType->setCurrentIndex(type);
+		ui_->comboBox_board_type->setCurrentIndex(type);
 	}
 	this->restart();
 }
 
 void CalibrationDialog::setMarkerDictionary(int dictionary)
 {
-	if(dictionary != ui_->comboBox_markerDictionary->currentIndex())
+	if(dictionary != ui_->comboBox_marker_dictionary->currentIndex())
 	{
-		ui_->comboBox_markerDictionary->setCurrentIndex(dictionary);
+		ui_->comboBox_marker_dictionary->setCurrentIndex(dictionary);
 	}
 	this->restart();
 }
@@ -320,14 +321,37 @@ void CalibrationDialog::setSquareSize(double size)
 	{
 		ui_->doubleSpinBox_squareSize->setValue(size);
 	}
+	if(ui_->doubleSpinBox_markerLength->value() >= ui_->doubleSpinBox_squareSize->value())
+	{
+		if(ui_->comboBox_board_type->currentIndex()==0)
+		{
+			ui_->doubleSpinBox_markerLength->setValue(ui_->doubleSpinBox_squareSize->value()-0.000001);
+		}
+		else
+		{
+			UWARN("Marker length (%f) cannot be larger than square size (%f), setting square size to %f. Decrease marker length first.", 
+				ui_->doubleSpinBox_markerLength->value(),
+				ui_->doubleSpinBox_squareSize->value(),
+				ui_->doubleSpinBox_squareSize->value()+0.000001);
+			ui_->doubleSpinBox_squareSize->setValue(ui_->doubleSpinBox_markerLength->value()+0.000001);
+		}
+	}
 	this->restart();
 }
 
-void CalibrationDialog::setMarkerSize(double size)
+void CalibrationDialog::setMarkerLength(double length)
 {
-	if(size != ui_->doubleSpinBox_markerSize->value())
+	if(length != ui_->doubleSpinBox_markerLength->value())
 	{
-		ui_->doubleSpinBox_markerSize->setValue(size);
+		ui_->doubleSpinBox_markerLength->setValue(length);
+	}
+	if(ui_->doubleSpinBox_markerLength->value() >= ui_->doubleSpinBox_squareSize->value())
+	{
+		UWARN("Marker length (%f) cannot be larger than square size (%f), setting marker length to %f. Increase square size first.", 
+			ui_->doubleSpinBox_markerLength->value(),
+			ui_->doubleSpinBox_squareSize->value(),
+			ui_->doubleSpinBox_markerLength->value()-0.000001);
+		ui_->doubleSpinBox_markerLength->setValue(ui_->doubleSpinBox_squareSize->value()-0.000001);
 	}
 	this->restart();
 }
@@ -411,11 +435,30 @@ bool CalibrationDialog::handleEvent(UEvent * event)
 	return false;
 }
 
+void matchCharucoImagePoints(
+		const cv::aruco::CharucoBoard &board,
+		const std::vector< cv::Point2f > & detectedCorners,
+		const std::vector< int > & detectedIds,
+		std::vector< cv::Point3f > & objectPoints)
+{
+	UASSERT(detectedIds.size() == detectedCorners.size());
+	objectPoints.clear();
+    objectPoints.reserve(detectedIds.size());
+
+    // look for detected markers that belong to the board and get their information
+    for(size_t i = 0; i < detectedIds.size(); i++) {
+       	int pointId = detectedIds[i];
+		UASSERT(pointId >= 0 && pointId < (int)board.chessboardCorners.size());
+		objectPoints.push_back(board.chessboardCorners[pointId]);
+    }
+}
+
+
 void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName)
 {
 	UDEBUG("Processing images");
 	processingData_ = true;
-	if(cameraName_.isEmpty())
+	if(cameraName_.isEmpty() && !cameraName.isEmpty())
 	{
 		cameraName_ = cameraName;
 	}
@@ -453,6 +496,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 	std::vector<std::vector<cv::Point2f> > pointBuf(2);
 	std::vector<std::vector<cv::Point3f> > objectBuf(2);
+	std::vector<std::vector< int > > pointIds(2);
 
 	bool depthDetected = false;
 	bool sampleAdded = false;
@@ -509,7 +553,8 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		//Dot it only if not yet calibrated
 		if(!ui_->pushButton_save->isEnabled())
 		{
-			cv::Mat markerCorners, markerIds;
+			std::vector< int > markerIds;
+			std::vector< std::vector< cv::Point2f > > markerCorners;
 			cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
 			if(!viewGray.empty())
 			{
@@ -526,20 +571,51 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 						else
 							cv::resize(viewGray, timg, cv::Size(), scale, scale, CV_INTER_CUBIC);
 
-						if(charucoBoard)
+						if(ui_->comboBox_board_type->currentIndex() == 1)
 						{
-							// Detect ChArUco board
-							charucoDetector.detectBoard(timg, markerCorners, markerIds);
-							if(markerCorners.total() > 3) {
-								// Match image points
-								board.matchImagePoints(markerCorners, markerIds, objectBuf[id], pointBuf[id]);
-								boardFound[id] == !objectBuf[id].empty() && objectBuf[id].size() == pointBuf[id].size();
+							std::vector< std::vector< cv::Point2f > > rejected;
+							UASSERT(charucoBoard_.get());
+
+							// detect markers
+							cv::aruco::detectMarkers(timg, markerDictionary_, markerCorners, markerIds, arucoDetectorParams_, rejected);
+
+							// refine strategy to detect more markers
+							cv::aruco::refineDetectedMarkers(timg, charucoBoard_, markerCorners, markerIds, rejected);
+
+							// interpolate charuco corners
+							if(markerIds.size() > 0)
+							{
+								UASSERT(markerIds.size() == markerCorners.size());
+								cv::aruco::interpolateCornersCharuco(markerCorners, markerIds, timg, charucoBoard_, pointBuf[id], pointIds[id]);
+								if(pointBuf[id].size() > 3) {
+									// Match image points
+									matchCharucoImagePoints(*charucoBoard_, pointBuf[id], pointIds[id], objectBuf[id]);
+									boardFound[id] = !objectBuf[id].empty() && objectBuf[id].size() == pointBuf[id].size();
+								}
 							}
 						}
 						else // standard checkerboard
 						{
 							boardFound[id] = cv::findChessboardCorners(timg, boardSize, pointBuf[id], flags);
-							objectBuf[id] = checkerboardPoints_;
+							objectBuf[id] = chessboardPoints_;
+							pointIds[id] = chessboardPointIds_;
+
+							if(boardFound[id])
+							{
+								// improve the found corners' coordinate accuracy for chessboard
+								float minSquareDistance = -1.0f;
+								for(unsigned int i=0; i<pointBuf[id].size()-1; ++i)
+								{
+									float d = cv::norm(pointBuf[id][i] - pointBuf[id][i+1]);
+									if(minSquareDistance == -1.0f || minSquareDistance > d)
+									{
+										minSquareDistance = d;
+									}
+								}
+								float radius = minSquareDistance/2.0f +0.5f;
+								cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
+										cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
+							}
 						}
 
 						if(boardFound[id])
@@ -557,24 +633,13 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 			if(boardFound[id]) // If done with success,
 			{
-				// improve the found corners' coordinate accuracy for chessboard
-				float minSquareDistance = -1.0f;
-				for(unsigned int i=0; i<pointBuf[id].size()-1; ++i)
-				{
-					float d = cv::norm(pointBuf[id][i] - pointBuf[id][i+1]);
-					if(minSquareDistance == -1.0f || minSquareDistance > d)
-					{
-						minSquareDistance = d;
-					}
-				}
-				float radius = minSquareDistance/2.0f +0.5f;
-				cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
-						cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
-
 				// Draw the corners.
 				images[id] = images[id].clone();
-				if(charucoBoard) {
-					cv::aruco::drawDetectedCornersCharuco(images[id], markerCorners, markerIds);
+				if(ui_->comboBox_board_type->currentIndex() == 1) {
+					if(markerIds.size() > 0)
+						cv::aruco::drawDetectedMarkers(images[id], markerCorners);
+					if(pointBuf[id].size() > 0)
+						cv::aruco::drawDetectedCornersCharuco(images[id], pointBuf[id]/*, pointIds[id]*/);
 				}
 				else {
 					cv::drawChessboardCorners(images[id], boardSize, cv::Mat(pointBuf[id]), boardFound[id]);
@@ -599,10 +664,9 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					sampleAdded = true;
 					boardAccepted[id] = true;
 					imageIds_[id].push_back(currentId_);
-
 					imagePoints_[id].push_back(pointBuf[id]);
 					imageParams_[id].push_back(params);
-					objectPoints_[id].push_back(objectBuf[id])
+					objectPoints_[id].push_back(objectBuf[id]);
 					UINFO("[%d] Added board, total=%d. (x=%f, y=%f, size=%f, skew=%f)", id, (int)imagePoints_[id].size(), params[0], params[1], params[2], params[3]);
 				}
 				else
@@ -730,10 +794,37 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 	if(stereo_ && ((boardAccepted[0] && boardFound[1]) || (boardAccepted[1] && boardFound[0])))
 	{
-		stereoImagePoints_[0].push_back(pointBuf[0]);
-		stereoImagePoints_[1].push_back(pointBuf[1]);
-		stereoObjectPoints_[0].push_back(objectBuf[0]);
-		stereoObjectPoints_[1].push_back(objectBuf[1]);
+		if(ui_->comboBox_board_type->currentIndex() == 1)
+		{
+			// Find same corners detected in both boards
+			std::vector< int > combinedCharucoIds;
+			std::vector<cv::Point2f> leftCharucoCorners;
+			std::vector<cv::Point2f> rightCharucoCorners;
+			for(size_t i=0; i<pointIds[0].size(); ++i)
+			{
+				for(size_t j=0; j<pointIds[1].size(); ++j)
+				{
+					if(pointIds[0][i] == pointIds[1][j])
+					{
+						leftCharucoCorners.push_back(pointBuf[0][i]);
+						rightCharucoCorners.push_back(pointBuf[1][j]);
+						combinedCharucoIds.push_back(pointIds[0][i]);
+						break;
+					}
+				}
+			}
+			std::vector<cv::Point3f> tmpObjectBuf;
+			matchCharucoImagePoints(*charucoBoard_, leftCharucoCorners, combinedCharucoIds, tmpObjectBuf);
+			stereoImagePoints_[0].push_back(leftCharucoCorners);
+			stereoImagePoints_[1].push_back(rightCharucoCorners);
+			stereoObjectPoints_.push_back(tmpObjectBuf);
+		}
+		else
+		{
+			stereoImagePoints_[0].push_back(pointBuf[0]);
+			stereoImagePoints_[1].push_back(pointBuf[1]);
+			stereoObjectPoints_.push_back(chessboardPoints_);
+		}
 		stereoImageIds_.push_back(currentId_);
 		UINFO("Add stereo image points (size=%d)", (int)stereoImagePoints_[0].size());
 	}
@@ -801,6 +892,8 @@ void CalibrationDialog::restart()
 	timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 	imagePoints_[0].clear();
 	imagePoints_[1].clear();
+	objectPoints_[0].clear();
+	objectPoints_[1].clear();
 	imageParams_[0].clear();
 	imageParams_[1].clear();
 	imageIds_[0].clear();
@@ -808,6 +901,7 @@ void CalibrationDialog::restart()
 	stereoImagePoints_[0].clear();
 	stereoImagePoints_[1].clear();
 	stereoImageIds_.clear();
+	stereoObjectPoints_.clear();
 	models_[0] = CameraModel();
 	models_[1] = CameraModel();
 	stereoModel_ = StereoCameraModel();
@@ -862,9 +956,15 @@ void CalibrationDialog::restart()
 	ui_->lineEdit_R_2->clear();
 	ui_->lineEdit_P_2->clear();
 
-	checkerboardPoints_.clear();
+	chessboardPoints_.clear();
+	chessboardPointIds_.clear();
+	markerDictionary_.reset();
+	arucoDetectorParams_.reset();
+	charucoBoard_.reset();
 	if(ui_->comboBox_board_type->currentIndex() == 1)
 	{
+		arucoDetectorParams_ = cv::aruco::DetectorParameters::create();
+
 		int arucoDictionary = ui_->comboBox_marker_dictionary->currentIndex();
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 		if(arucoDictionary >= 17)
@@ -884,26 +984,34 @@ void CalibrationDialog::restart()
 		}
 #endif
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
-		cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(arucoDictionary));
+		markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(arucoDictionary));
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
-		cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arucoDictionary));
+		markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arucoDictionary));
 #else
-		cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arucoDictionary));
+		markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arucoDictionary));
 #endif
+		UINFO("Creating charuco board: %dx%d square=%f marker=%f aruco dict=%d", 
+			ui_->spinBox_boardWidth->value(),
+			ui_->spinBox_boardHeight->value(), 
+			ui_->doubleSpinBox_squareSize->value(), 
+			ui_->doubleSpinBox_markerLength->value(),
+			arucoDictionary);
 
-		cv::aruco::CharucoBoard charucoBoard(
-			cv::Size(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value()), 
+		charucoBoard_ = cv::aruco::CharucoBoard::create(
+			ui_->spinBox_boardWidth->value(),
+			ui_->spinBox_boardHeight->value(), 
 			ui_->doubleSpinBox_squareSize->value(), 
 			ui_->doubleSpinBox_markerLength->value(), 
-			dictionary);
-		
-		charucoDetector_ = cv::aruco::CharucoDetector(charucoBoard);
+			markerDictionary_);
 	}
 	else //checkerboard
 	{
-		for( int i = 0; i < ui_->spinBox_boardHeight->value(); ++i )
-			for( int j = 0; j < ui_->spinBox_boardWidth->value(); ++j )
-				checkerboardPoints_.push_back(cv::Point3f(float( j*ui_->doubleSpinBox_squareSize->value() ), float( i*ui_->doubleSpinBox_squareSize->value() ), 0));
+		for( int i = 0; i < ui_->spinBox_boardHeight->value(); ++i ) {
+			for( int j = 0; j < ui_->spinBox_boardWidth->value(); ++j ) {
+				chessboardPoints_.push_back(cv::Point3f(float( j*ui_->doubleSpinBox_squareSize->value() ), float( i*ui_->doubleSpinBox_squareSize->value() ), 0));
+				chessboardPointIds_.push_back(i*ui_->spinBox_boardWidth->value() + j);
+			}
+		}
 	}
 
 	ui_->comboBox_marker_dictionary->setVisible(ui_->comboBox_board_type->currentIndex() == 1);
@@ -942,19 +1050,26 @@ void CalibrationDialog::calibrate()
 		}
 	}
 
-	std::cout << "Board width = " << boardSize.width << std::endl;
-	std::cout << "Board height = " << boardSize.height << std::endl;
-	std::cout << "Square size = " << squareSize << std::endl;
-	logStream << "Board width = " << boardSize.width << endl;
-	logStream << "Board height = " << boardSize.height << endl;
-	logStream << "Square size = " << squareSize << endl;
+	std::cout << "Board type = " << ui_->comboBox_board_type->currentIndex() << std::endl;
+	std::cout << "Board width = " << ui_->spinBox_boardWidth->value() << std::endl;
+	std::cout << "Board height = " << ui_->spinBox_boardHeight->value() << std::endl;
+	std::cout << "Square size = " << ui_->doubleSpinBox_squareSize->value() << std::endl;
+	logStream << "Board type = " << ui_->comboBox_board_type->currentIndex() << Qt::endl;
+	logStream << "Board width = " << ui_->spinBox_boardWidth->value() << Qt::endl;
+	logStream << "Board height = " << ui_->spinBox_boardHeight->value() << Qt::endl;
+	logStream << "Square size = " << ui_->doubleSpinBox_squareSize->value() << Qt::endl;
+	if(ui_->comboBox_board_type->currentIndex() == 1)
+	{
+		std::cout << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << std::endl;
+		std::cout << "Marker length = " << ui_->doubleSpinBox_markerLength->value() << std::endl;
+		logStream << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << Qt::endl;
+		logStream << "Marker length = " << ui_->doubleSpinBox_markerLength->value() << Qt::endl;
+	}
 
 	for(int id=0; id<(stereo_?2:1); ++id)
 	{
 		UINFO("Calibrating camera %d (samples=%d)", id, (int)imagePoints_[id].size());
-		logStream << "Calibrating camera " << id << " (samples=" << imagePoints_[id].size() << ")" << endl;
-
-		objectPoints.resize(imagePoints_[id].size(), objectPoints[0]);
+		logStream << "Calibrating camera " << id << " (samples=" << imagePoints_[id].size() << ")" << Qt::endl;
 
 		//calibrate
 		std::vector<cv::Mat> rvecs, tvecs;
@@ -971,7 +1086,8 @@ void CalibrationDialog::calibrate()
 		{
 			try
 			{
-				rms = cv::fisheye::calibrate(objectPoints,
+				rms = cv::fisheye::calibrate(
+					objectPoints_[id],
 					imagePoints_[id],
 					imageSize_[id],
 					K,
@@ -995,7 +1111,8 @@ void CalibrationDialog::calibrate()
 		{
 			cv::Mat stdDevsMatInt, stdDevsMatExt;
 			cv::Mat perViewErrorsMat;
-			rms = cv::calibrateCamera(objectPoints,
+			rms = cv::calibrateCamera(
+					objectPoints_[id],
 					imagePoints_[id],
 					imageSize_[id],
 					K,
@@ -1009,39 +1126,39 @@ void CalibrationDialog::calibrate()
 			if((int)imageIds_[id].size() == perViewErrorsMat.rows)
 			{
 				UINFO("Per view errors:");
-				logStream << "Per view errors:" << endl;
+				logStream << "Per view errors:" << Qt::endl;
 				for(int i=0; i<perViewErrorsMat.rows; ++i)
 				{
 					UINFO("Image %d: %f", imageIds_[id][i], perViewErrorsMat.at<double>(i,0));
-					logStream << "Image " << imageIds_[id][i] << ": " << perViewErrorsMat.at<double>(i,0) << endl;
+					logStream << "Image " << imageIds_[id][i] << ": " << perViewErrorsMat.at<double>(i,0) << Qt::endl;
 				}
 			}
 		}
 
 		UINFO("Re-projection error reported by calibrateCamera: %f", rms);
-		logStream << "Re-projection error reported by calibrateCamera: " << rms << endl;
+		logStream << "Re-projection error reported by calibrateCamera: " << rms << Qt::endl;
 
 		// compute reprojection errors
 		std::vector<cv::Point2f> imagePoints2;
 		int i, totalPoints = 0;
 		double totalErr = 0, err;
-		reprojErrs.resize(objectPoints.size());
+		reprojErrs.resize(objectPoints_[id].size());
 
-		for( i = 0; i < (int)objectPoints.size(); ++i )
+		for( i = 0; i < (int)objectPoints_[id].size(); ++i )
 		{
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 			if(fishEye)
 			{
-				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], K, D);
+				cv::fisheye::projectPoints( cv::Mat(objectPoints_[id][i]), imagePoints2, rvecs[i], tvecs[i], K, D);
 			}
 			else
 #endif
 			{
-				cv::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+				cv::projectPoints( cv::Mat(objectPoints_[id][i]), rvecs[i], tvecs[i], K, D, imagePoints2);
 			}
 			err = cv::norm(cv::Mat(imagePoints_[id][i]), cv::Mat(imagePoints2), CV_L2);
 
-			int n = (int)objectPoints[i].size();
+			int n = (int)objectPoints_[id][i].size();
 			reprojErrs[i] = (float) std::sqrt(err*err/n);
 			totalErr        += err*err;
 			totalPoints     += n;
@@ -1050,7 +1167,7 @@ void CalibrationDialog::calibrate()
 		double totalAvgErr =  std::sqrt(totalErr/totalPoints);
 
 		UINFO("avg re projection error = %f", totalAvgErr);
-		logStream << "avg re projection error = " << totalAvgErr << endl;
+		logStream << "avg re projection error = " << totalAvgErr << Qt::endl;
 
 		cv::Mat P(3,4,CV_64FC1);
 		P.at<double>(2,3) = 1;
@@ -1078,12 +1195,12 @@ void CalibrationDialog::calibrate()
 		UINFO("FOV horizontal=%f vertical=%f", models_[id].horizontalFOV(), models_[id].verticalFOV());
 
 		std::string strStream;
-		logStream << "K = " << (strStream << K).c_str() << endl;
+		logStream << "K = " << (strStream << K).c_str() << Qt::endl;
 		strStream.clear();
-		logStream << "D = " << (strStream << D).c_str() << endl;
-		logStream << "width = " << imageSize_[id].width << endl;
-		logStream << "height = " << imageSize_[id].height << endl;
-		logStream << "FOV horizontal=" << models_[id].horizontalFOV() << " vertical=" << models_[id].verticalFOV() << endl;
+		logStream << "D = " << (strStream << D).c_str() << Qt::endl;
+		logStream << "width = " << imageSize_[id].width << Qt::endl;
+		logStream << "height = " << imageSize_[id].height << Qt::endl;
+		logStream << "FOV horizontal=" << models_[id].horizontalFOV() << " vertical=" << models_[id].verticalFOV() << Qt::endl;
 
 		if(id == 0)
 		{
@@ -1141,7 +1258,7 @@ void CalibrationDialog::calibrate()
 			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
 			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
 			UWARN("Scale %f (setting square size from %f to %f)", scale, ui_->doubleSpinBox_squareSize->value(), ui_->doubleSpinBox_squareSize->value()*scale);
-			logStream << "Baseline rescaled from " << stereoModel_.baseline() << " to " << ui_->doubleSpinBox_stereoBaseline->value() << " scale=" << scale << endl;
+			logStream << "Baseline rescaled from " << stereoModel_.baseline() << " to " << ui_->doubleSpinBox_stereoBaseline->value() << " scale=" << scale << Qt::endl;
 			ui_->doubleSpinBox_squareSize->setValue(ui_->doubleSpinBox_squareSize->value()*scale);
 			stereoModel_ = StereoCameraModel(
 					stereoModel_.name(),
@@ -1167,9 +1284,9 @@ void CalibrationDialog::calibrate()
 		ui_->label_baseline->setNum(stereoModel_.baseline());
 		//ui_->label_error_stereo->setNum(totalAvgErr);
 		UINFO("Baseline=%f FOV horizontal=%f vertical=%f", stereoModel_.baseline(), stereoModel_.left().horizontalFOV(), stereoModel_.left().verticalFOV());
-		logStream << "Baseline = " << stereoModel_.baseline() << endl;
-		logStream << "Stereo horizontal FOV = " << stereoModel_.left().horizontalFOV() << endl;
-		logStream << "Stereo vertical FOV = " << stereoModel_.left().verticalFOV() << endl;
+		logStream << "Baseline = " << stereoModel_.baseline() << Qt::endl;
+		logStream << "Stereo horizontal FOV = " << stereoModel_.left().horizontalFOV() << Qt::endl;
+		logStream << "Stereo vertical FOV = " << stereoModel_.left().verticalFOV() << Qt::endl;
 	}
 
 	if(stereo_)
@@ -1230,7 +1347,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		return output;
 	}
 	UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
-	if(logStream) (*logStream) << "stereo calibration (samples=" << stereoImagePoints_[0].size() <<")..." << endl;
+	if(logStream) (*logStream) << "stereo calibration (samples=" << stereoImagePoints_[0].size() <<")..." << Qt::endl;
 
 	if (left.K_raw().empty() || left.D_raw().empty())
 	{
@@ -1261,22 +1378,12 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 	cv::Size imageSize = imageSize_[0].width > imageSize_[1].width ? imageSize_[0] : imageSize_[1];
 	cv::Mat R, T, E, F;
 
-	cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
-	float squareSize = ui_->doubleSpinBox_squareSize->value();
-
 	double rms = 0.0;
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 	bool fishEye = left.D_raw().cols == 6;
 	// calibrate extrinsic
 	if(fishEye)
 	{
-		// compute board corner positions
-		std::vector<std::vector<cv::Point3d> > objectPoints(1);
-		for (int i = 0; i < boardSize.height; ++i)
-			for (int j = 0; j < boardSize.width; ++j)
-				objectPoints[0].push_back(cv::Point3d(double(j*squareSize), double(i*squareSize), 0));
-		objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
-
 		cv::Vec3d Tvec;
 		cv::Vec4d D_left(left.D_raw().at<double>(0,0), left.D_raw().at<double>(0,1), left.D_raw().at<double>(0,4), left.D_raw().at<double>(0,5));
 		cv::Vec4d D_right(right.D_raw().at<double>(0,0), right.D_raw().at<double>(0,1), right.D_raw().at<double>(0,4), right.D_raw().at<double>(0,5));
@@ -1301,7 +1408,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		try
 		{
 			rms = cv::fisheye::stereoCalibrate(
-					objectPoints,
+					stereoObjectPoints_,
 					leftPoints,
 					rightPoints,
 					left.K_raw(), D_left, right.K_raw(), D_right,
@@ -1390,16 +1497,9 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 	else
 #endif
 	{
-		// compute board corner positions
-		std::vector<std::vector<cv::Point3f> > objectPoints(1);
-		for (int i = 0; i < boardSize.height; ++i)
-			for (int j = 0; j < boardSize.width; ++j)
-				objectPoints[0].push_back(cv::Point3f(float(j*squareSize), float(i*squareSize), 0));
-		objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
-
 #if CV_MAJOR_VERSION < 3
 		rms = cv::stereoCalibrate(
-				objectPoints,
+				stereoObjectPoints_,
 				stereoImagePoints_[0],
 				stereoImagePoints_[1],
 				left.K_raw(), left.D_raw(),
@@ -1410,7 +1510,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 #else
 		cv::Mat perViewErrorsMat;
 		rms = cv::stereoCalibrate(
-				objectPoints,
+				stereoObjectPoints_,
 				stereoImagePoints_[0],
 				stereoImagePoints_[1],
 				left.K_raw(), left.D_raw(),
@@ -1422,16 +1522,16 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		if((int)stereoImageIds_.size() == perViewErrorsMat.rows)
 		{
 			UINFO("Per stereo view errors: %dx%d", perViewErrorsMat.rows, perViewErrorsMat.cols);
-			if(logStream) (*logStream) << "Per stereo view errors:" << endl;
+			if(logStream) (*logStream) << "Per stereo view errors:" << Qt::endl;
 			for(int i=0; i<perViewErrorsMat.rows; ++i)
 			{
 				UINFO("Image %d: %f <-> %f", stereoImageIds_[i], perViewErrorsMat.at<double>(i,0), perViewErrorsMat.at<double>(i,1));
-				if(logStream) (*logStream) << "Image " << stereoImageIds_[i] << ": " << perViewErrorsMat.at<double>(i,0) << " <-> " << perViewErrorsMat.at<double>(i,0) << endl;
+				if(logStream) (*logStream) << "Image " << stereoImageIds_[i] << ": " << perViewErrorsMat.at<double>(i,0) << " <-> " << perViewErrorsMat.at<double>(i,0) << Qt::endl;
 			}
 		}
 #endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
-		if(logStream) (*logStream) << "stereo calibration... done with RMS error=" << rms << endl;
+		if(logStream) (*logStream) << "stereo calibration... done with RMS error=" << rms << Qt::endl;
 		ui_->label_stereoError->setNum(rms);
 
 		std::cout << "R = " << R << std::endl;
@@ -1440,13 +1540,13 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		std::cout << "F = " << F << std::endl;
 
 		std::string strStream;
-		if(logStream) (*logStream) << "R = " << (strStream<<R).c_str() << endl;
+		if(logStream) (*logStream) << "R = " << (strStream<<R).c_str() << Qt::endl;
 		strStream.clear();
-		if(logStream) (*logStream) << "T = " << (strStream<<T).c_str() << endl;
+		if(logStream) (*logStream) << "T = " << (strStream<<T).c_str() << Qt::endl;
 		strStream.clear();
-		if(logStream) (*logStream) << "E = " << (strStream<<E).c_str() << endl;
+		if(logStream) (*logStream) << "E = " << (strStream<<E).c_str() << Qt::endl;
 		strStream.clear();
-		if(logStream) (*logStream) << "F = " << (strStream<<F).c_str() << endl;
+		if(logStream) (*logStream) << "F = " << (strStream<<F).c_str() << Qt::endl;
 		strStream.clear();
 
 		if(imageSize_[0] == imageSize_[1] && !ignoreStereoRectification)
@@ -1464,19 +1564,19 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			std::cout << "R2 = " << R2 << std::endl;
 			std::cout << "P2 = " << P2 << std::endl;
 
-			if(logStream) (*logStream) << "R1 = " << (strStream<<R1).c_str() << endl;
+			if(logStream) (*logStream) << "R1 = " << (strStream<<R1).c_str() << Qt::endl;
 			strStream.clear();
-			if(logStream) (*logStream) << "P1 = " << (strStream<<P1).c_str() << endl;
+			if(logStream) (*logStream) << "P1 = " << (strStream<<P1).c_str() << Qt::endl;
 			strStream.clear();
-			if(logStream) (*logStream) << "R2 = " << (strStream<<R2).c_str() << endl;
+			if(logStream) (*logStream) << "R2 = " << (strStream<<R2).c_str() << Qt::endl;
 			strStream.clear();
-			if(logStream) (*logStream) << "P2 = " << (strStream<<P2).c_str() << endl;
+			if(logStream) (*logStream) << "P2 = " << (strStream<<P2).c_str() << Qt::endl;
 
 			double err = 0;
 			int npoints = 0;
 			std::vector<cv::Vec3f> lines[2];
 			UINFO("Computing re-projection errors...");
-			if(logStream) (*logStream) << "Computing re-projection epipolar errors..." << endl;
+			if(logStream) (*logStream) << "Computing re-projection epipolar errors..." << Qt::endl;
 			for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
 			{
 				int npt = (int)stereoImagePoints_[0][i].size();
@@ -1498,13 +1598,13 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 					sampleErr += errij;
 				}
 				UINFO("Stereo image %d: %f", stereoImageIds_[i], sampleErr/npt);
-				if(logStream) (*logStream) << "Stereo image " << stereoImageIds_[i] << ": " << sampleErr/npt << endl;
+				if(logStream) (*logStream) << "Stereo image " << stereoImageIds_[i] << ": " << sampleErr/npt << Qt::endl;
 				err += sampleErr;
 				npoints += npt;
 			}
 			double totalAvgErr = err/(double)npoints;
 			UINFO("stereo avg re projection error = %f", totalAvgErr);
-			if(logStream) (*logStream) << "stereo avg re projection error = " << totalAvgErr << endl;
+			if(logStream) (*logStream) << "stereo avg re projection error = " << totalAvgErr << Qt::endl;
 
 			output = StereoCameraModel(
 							cameraName_.toStdString(),

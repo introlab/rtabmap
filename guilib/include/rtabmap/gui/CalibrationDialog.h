@@ -63,6 +63,7 @@ public:
 	int boardWidth() const;
 	int boardHeight() const;
 	double squareSize() const;
+	double markerLength() const;
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
@@ -80,10 +81,13 @@ public:
 	StereoCameraModel stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification, QTextStream * logStream = 0) const;
 
 public Q_SLOTS:
+
+	void setBoardType(int type);
 	void setBoardWidth(int width);
 	void setBoardHeight(int height);
 	void setSquareSize(double size);
-	void setMarkerSize(double size);
+	void setMarkerDictionary(int dictionary);
+	void setMarkerLength(double length);
 	void setCalibrationDataSaved(bool enabled);
 	void setExpectedStereoBaseline(double length);
 	void setMaxScale(int scale);
@@ -124,8 +128,11 @@ private:
 	int currentId_;
 	QString timestamp_;
 
-	std::vector<cv::Point3f> checkerboardPoints_;
-	cv::aruco::CharucoDetector charucoDetector_;
+	std::vector<cv::Point3f> chessboardPoints_;
+	std::vector<int> chessboardPointIds_;
+	cv::Ptr<cv::aruco::Dictionary> markerDictionary_;
+	cv::Ptr<cv::aruco::DetectorParameters> arucoDetectorParams_;
+    cv::Ptr<cv::aruco::CharucoBoard> charucoBoard_;
 
 
 	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;
@@ -133,7 +140,7 @@ private:
 	std::vector<std::vector<std::vector<float> > > imageParams_;
 	std::vector<std::vector<int > > imageIds_;
 	std::vector<std::vector<std::vector<cv::Point2f> > > stereoImagePoints_;
-	std::vector<std::vector<std::vector<cv::Point3f> > > stereoObjectPoints_;
+	std::vector<std::vector<cv::Point3f> > stereoObjectPoints_;
 	std::vector<int> stereoImageIds_;
 	std::vector<cv::Size > imageSize_;
 	std::vector<rtabmap::CameraModel> models_;

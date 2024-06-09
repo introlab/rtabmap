@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1192</width>
+    <width>1193</width>
     <height>928</height>
    </rect>
   </property>
@@ -14,26 +14,8 @@
    <string>Dialog</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_5">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="leftMargin">
-    <number>0</number>
-   </property>
-   <property name="topMargin">
-    <number>0</number>
-   </property>
-   <property name="rightMargin">
-    <number>0</number>
-   </property>
-   <property name="bottomMargin">
-    <number>0</number>
-   </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
-     <property name="sizeConstraint">
-      <enum>QLayout::SetMaximumSize</enum>
-     </property>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <property name="spacing">
@@ -186,7 +168,7 @@
          <item>
           <widget class="QGroupBox" name="groupBox">
            <property name="title">
-            <string>Chessboard</string>
+            <string>Configuration</string>
            </property>
            <layout class="QGridLayout" name="gridLayout_3">
             <item row="0" column="0">
@@ -226,7 +208,7 @@
              <widget class="QComboBox" name="comboBox_board_type">
               <item>
                <property name="text">
-                <string>Checker Board</string>
+                <string>Chessboard</string>
                </property>
               </item>
               <item>
@@ -437,7 +419,7 @@
                <double>1.000000000000000</double>
               </property>
               <property name="value">
-               <double>0.033000000000000</double>
+               <double>0.024750000000000</double>
               </property>
              </widget>
             </item>

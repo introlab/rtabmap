@@ -60,7 +60,7 @@ public:
 	void setExtendedDisparity(bool extendedDisparity);
 	void setSubpixelMode(bool enabled, int fractionalBits = 3);
 	void setCompanding(bool enabled, int width=96);
-	void setRectification(bool useSpecTranslation, float alphaScaling = 0.0f);
+	void setRectification(bool useSpecTranslation, float alphaScaling = 0.0f, bool enabled=true);
 	void setIMU(bool imuPublished, bool publishInterIMU);
 	void setIrIntensity(float dotIntensity = 0.0f, float floodIntensity = 0.0f);
 	void setDetectFeatures(int detectFeatures = 0);
@@ -90,6 +90,7 @@ private:
 	int compandingWidth_;
 	bool useSpecTranslation_;
 	float alphaScaling_;
+	bool imagesRectified_;
 	bool imuPublished_;
 	bool publishInterIMU_;
 	float dotIntensity_;
