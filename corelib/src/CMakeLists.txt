@@ -40,6 +40,7 @@ SET(SRC_FILES
     camera/CameraVideo.cpp
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
+	camera/CameraSeerSense.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -382,6 +383,13 @@ IF(depthai_FOUND)
 		depthai::opencv
 	)
 ENDIF(depthai_FOUND)
+
+IF(xvsdk_FOUND)
+	SET(PUBLIC_LIBRARIES
+		${PUBLIC_LIBRARIES}
+		${xvsdk_LIBRARIES}
+	)
+ENDIF(xvsdk_FOUND)
 
 IF(TARGET OpenMP::OpenMP_CXX)
 	SET(LIBRARIES

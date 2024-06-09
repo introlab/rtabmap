@@ -229,6 +229,16 @@
        </property>
        <addaction name="actionOpenNI2_orbbec"/>
       </widget>
+      <widget class="QMenu" name="menuXvisio_SeerSense">
+       <property name="title">
+        <string>Xvisio SeerSense</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/seer_sense_DS80.png</normaloff>:/images/seer_sense_DS80.png</iconset>
+       </property>
+       <addaction name="actionXvisio_SeerSense"/>
+      </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuOrbbec_Astra"/>
@@ -240,6 +250,7 @@
       <addaction name="menuRealSense_SR300"/>
       <addaction name="menuRealSense_D435"/>
       <addaction name="menuRealSense_L515"/>
+      <addaction name="menuXvisio_SeerSense"/>
      </widget>
      <widget class="QMenu" name="menuStereo_camera">
       <property name="title">
@@ -1728,6 +1739,14 @@
    </property>
    <property name="text">
     <string>Velodyne VLP-16</string>
+   </property>
+  </action>
+  <action name="actionXvisio_SeerSense">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Xvisio</string>
    </property>
   </action>
  </widget>

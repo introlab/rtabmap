@@ -422,6 +422,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoDepthAI - kSrcStereo, 0, Qt::UserRole - 1);
 	}
+	if (!CameraSeerSense::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcSeerSense - kSrcRGBD, 0, Qt::UserRole - 1);
+		_ui->comboBox_odom_sensor->setItemData(3, 0, Qt::UserRole - 1);
+	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
@@ -5620,7 +5625,8 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
-			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2-kSrcRGBD));
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense-kSrcRGBD));
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
@@ -5695,6 +5701,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect - kSrcRGBD) || //Kinect360
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD) || //K4A
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD) || //D435i
+			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense - kSrcRGBD) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo) || // ZEDm, ZED2
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo) || // MYNT EYE S
@@ -6234,6 +6241,11 @@ PreferencesDialog::Src PreferencesDialog::getOdomSourceDriver() const
 		//Zed SDK
 		return kSrcStereoZed;
 	}
+	else if(_ui->comboBox_odom_sensor->currentIndex() == 3)
+	{
+		//XVisio SDK
+		return kSrcSeerSense;
+	}
 	else if(_ui->comboBox_odom_sensor->currentIndex() != 0)
 	{
 		UERROR("Not implemented!");
@@ -6402,7 +6414,7 @@ Camera * PreferencesDialog::createCamera(
 		bool odomOnly,
 		bool odomSensorExtrinsicsCalib)
 {
-	if(odomOnly && !(driver == kSrcStereoRealSense2 || driver == kSrcStereoZed))
+	if(odomOnly && !(driver == kSrcStereoRealSense2 || driver == kSrcStereoZed || driver == kSrcSeerSense))
 	{
 		QMessageBox::warning(this, tr("Odometry Sensor"),
 				tr("Driver %1 cannot support odometry only mode.").arg(driver), QMessageBox::Ok);
@@ -6796,6 +6808,18 @@ Camera * PreferencesDialog::createCamera(
 		{
 			((CameraDepthAI*)camera)->setSuperPointDetector(_ui->doubleSpinBox_sptorch_threshold->value(), _ui->checkBox_sptorch_nms->isChecked(), _ui->spinBox_sptorch_minDistance->value());
 		}
+	}
+	else if (driver == kSrcSeerSense)
+	{
+		UDEBUG("SeerSense");
+		camera = new CameraSeerSense(
+			getOdomSourceDriver() == kSrcSeerSense || odomOnly,
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+		camera->setInterIMUPublishing(
+			_ui->checkbox_publishInterIMU->isChecked(),
+			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
 	}
 	else if(driver == kSrcUsbDevice)
 	{

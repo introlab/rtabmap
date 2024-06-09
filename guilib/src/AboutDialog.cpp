@@ -155,6 +155,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_mynteye->setText(CameraMyntEye::available() ? "Yes" : "No");
 	_ui->label_depthai->setText(CameraDepthAI::available() ? "Yes" : "No");
 	_ui->label_depthai_license->setEnabled(CameraDepthAI::available());
+	_ui->label_xvsdk->setText(CameraSeerSense::available() ? "Yes" : "No");
 
 	_ui->label_toro->setText(Optimizer::isAvailable(Optimizer::kTypeTORO)?"Yes":"No");
 	_ui->label_toro_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeTORO)?true:false);
