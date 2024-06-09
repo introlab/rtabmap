@@ -6813,7 +6813,7 @@ Camera * PreferencesDialog::createCamera(
 	{
 		UDEBUG("SeerSense");
 		camera = new CameraSeerSense(
-			getOdomSourceDriver() == kSrcSeerSense,
+			getOdomSourceDriver() == kSrcSeerSense || odomOnly,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		camera->setInterIMUPublishing(

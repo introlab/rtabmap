@@ -45,5 +45,6 @@
         <file>images/oakd_lite.png</file>
         <file>images/astra.png</file>
         <file>images/oakdpro.png</file>
+        <file>images/seer_sense_DS80.png</file>
     </qresource>
 </RCC>

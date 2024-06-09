@@ -28,6 +28,7 @@ CameraSeerSense::CameraSeerSense(bool computeOdometry, float imageRate, const Tr
 
 CameraSeerSense::~CameraSeerSense()
 {
+#ifdef RTABMAP_XVSDK
 	if(imuId_)
 		device_->imuSensor()->unregisterCallback(imuId_);
 	
@@ -47,6 +48,7 @@ CameraSeerSense::~CameraSeerSense()
 		device_->tofCamera()->stop();
 
 	dataReady_.release();
+#endif
 }
 
 bool CameraSeerSense::init(const std::string & calibrationFolder, const std::string & cameraName)

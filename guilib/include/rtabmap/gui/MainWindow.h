@@ -192,6 +192,7 @@ protected Q_SLOTS:
 	void selectDepthAIOAKD();
 	void selectDepthAIOAKDLite();
 	void selectDepthAIOAKDPro();
+	void selectXvisioSeerSense();
 	void selectVLP16();
 	void dumpTheMemory();
 	void dumpThePrediction();
