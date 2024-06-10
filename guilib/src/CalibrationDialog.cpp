@@ -45,6 +45,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QCloseEvent>
 #include <QDateTime>
 #include <QTextStream>
+#include <QtGlobal>
+
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+#define ENDL Qt::endl
+#else
+#define ENDL endl
+#endif
 
 #include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/utilite/UCv2Qt.h>
@@ -1054,22 +1061,22 @@ void CalibrationDialog::calibrate()
 	std::cout << "Board width = " << ui_->spinBox_boardWidth->value() << std::endl;
 	std::cout << "Board height = " << ui_->spinBox_boardHeight->value() << std::endl;
 	std::cout << "Square size = " << ui_->doubleSpinBox_squareSize->value() << std::endl;
-	logStream << "Board type = " << ui_->comboBox_board_type->currentIndex() << Qt::endl;
-	logStream << "Board width = " << ui_->spinBox_boardWidth->value() << Qt::endl;
-	logStream << "Board height = " << ui_->spinBox_boardHeight->value() << Qt::endl;
-	logStream << "Square size = " << ui_->doubleSpinBox_squareSize->value() << Qt::endl;
+	logStream << "Board type = " << ui_->comboBox_board_type->currentIndex() << ENDL;
+	logStream << "Board width = " << ui_->spinBox_boardWidth->value() << ENDL;
+	logStream << "Board height = " << ui_->spinBox_boardHeight->value() << ENDL;
+	logStream << "Square size = " << ui_->doubleSpinBox_squareSize->value() << ENDL;
 	if(ui_->comboBox_board_type->currentIndex() == 1)
 	{
 		std::cout << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << std::endl;
 		std::cout << "Marker length = " << ui_->doubleSpinBox_markerLength->value() << std::endl;
-		logStream << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << Qt::endl;
-		logStream << "Marker length = " << ui_->doubleSpinBox_markerLength->value() << Qt::endl;
+		logStream << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << ENDL;
+		logStream << "Marker length = " << ui_->doubleSpinBox_markerLength->value() << ENDL;
 	}
 
 	for(int id=0; id<(stereo_?2:1); ++id)
 	{
 		UINFO("Calibrating camera %d (samples=%d)", id, (int)imagePoints_[id].size());
-		logStream << "Calibrating camera " << id << " (samples=" << imagePoints_[id].size() << ")" << Qt::endl;
+		logStream << "Calibrating camera " << id << " (samples=" << imagePoints_[id].size() << ")" << ENDL;
 
 		//calibrate
 		std::vector<cv::Mat> rvecs, tvecs;
@@ -1126,17 +1133,17 @@ void CalibrationDialog::calibrate()
 			if((int)imageIds_[id].size() == perViewErrorsMat.rows)
 			{
 				UINFO("Per view errors:");
-				logStream << "Per view errors:" << Qt::endl;
+				logStream << "Per view errors:" << ENDL;
 				for(int i=0; i<perViewErrorsMat.rows; ++i)
 				{
 					UINFO("Image %d: %f", imageIds_[id][i], perViewErrorsMat.at<double>(i,0));
-					logStream << "Image " << imageIds_[id][i] << ": " << perViewErrorsMat.at<double>(i,0) << Qt::endl;
+					logStream << "Image " << imageIds_[id][i] << ": " << perViewErrorsMat.at<double>(i,0) << ENDL;
 				}
 			}
 		}
 
 		UINFO("Re-projection error reported by calibrateCamera: %f", rms);
-		logStream << "Re-projection error reported by calibrateCamera: " << rms << Qt::endl;
+		logStream << "Re-projection error reported by calibrateCamera: " << rms << ENDL;
 
 		// compute reprojection errors
 		std::vector<cv::Point2f> imagePoints2;
@@ -1167,7 +1174,7 @@ void CalibrationDialog::calibrate()
 		double totalAvgErr =  std::sqrt(totalErr/totalPoints);
 
 		UINFO("avg re projection error = %f", totalAvgErr);
-		logStream << "avg re projection error = " << totalAvgErr << Qt::endl;
+		logStream << "avg re projection error = " << totalAvgErr << ENDL;
 
 		cv::Mat P(3,4,CV_64FC1);
 		P.at<double>(2,3) = 1;
@@ -1195,12 +1202,12 @@ void CalibrationDialog::calibrate()
 		UINFO("FOV horizontal=%f vertical=%f", models_[id].horizontalFOV(), models_[id].verticalFOV());
 
 		std::string strStream;
-		logStream << "K = " << (strStream << K).c_str() << Qt::endl;
+		logStream << "K = " << (strStream << K).c_str() << ENDL;
 		strStream.clear();
-		logStream << "D = " << (strStream << D).c_str() << Qt::endl;
-		logStream << "width = " << imageSize_[id].width << Qt::endl;
-		logStream << "height = " << imageSize_[id].height << Qt::endl;
-		logStream << "FOV horizontal=" << models_[id].horizontalFOV() << " vertical=" << models_[id].verticalFOV() << Qt::endl;
+		logStream << "D = " << (strStream << D).c_str() << ENDL;
+		logStream << "width = " << imageSize_[id].width << ENDL;
+		logStream << "height = " << imageSize_[id].height << ENDL;
+		logStream << "FOV horizontal=" << models_[id].horizontalFOV() << " vertical=" << models_[id].verticalFOV() << ENDL;
 
 		if(id == 0)
 		{
@@ -1258,7 +1265,7 @@ void CalibrationDialog::calibrate()
 			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
 			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
 			UWARN("Scale %f (setting square size from %f to %f)", scale, ui_->doubleSpinBox_squareSize->value(), ui_->doubleSpinBox_squareSize->value()*scale);
-			logStream << "Baseline rescaled from " << stereoModel_.baseline() << " to " << ui_->doubleSpinBox_stereoBaseline->value() << " scale=" << scale << Qt::endl;
+			logStream << "Baseline rescaled from " << stereoModel_.baseline() << " to " << ui_->doubleSpinBox_stereoBaseline->value() << " scale=" << scale << ENDL;
 			ui_->doubleSpinBox_squareSize->setValue(ui_->doubleSpinBox_squareSize->value()*scale);
 			stereoModel_ = StereoCameraModel(
 					stereoModel_.name(),
@@ -1284,9 +1291,9 @@ void CalibrationDialog::calibrate()
 		ui_->label_baseline->setNum(stereoModel_.baseline());
 		//ui_->label_error_stereo->setNum(totalAvgErr);
 		UINFO("Baseline=%f FOV horizontal=%f vertical=%f", stereoModel_.baseline(), stereoModel_.left().horizontalFOV(), stereoModel_.left().verticalFOV());
-		logStream << "Baseline = " << stereoModel_.baseline() << Qt::endl;
-		logStream << "Stereo horizontal FOV = " << stereoModel_.left().horizontalFOV() << Qt::endl;
-		logStream << "Stereo vertical FOV = " << stereoModel_.left().verticalFOV() << Qt::endl;
+		logStream << "Baseline = " << stereoModel_.baseline() << ENDL;
+		logStream << "Stereo horizontal FOV = " << stereoModel_.left().horizontalFOV() << ENDL;
+		logStream << "Stereo vertical FOV = " << stereoModel_.left().verticalFOV() << ENDL;
 	}
 
 	if(stereo_)
@@ -1347,7 +1354,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		return output;
 	}
 	UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
-	if(logStream) (*logStream) << "stereo calibration (samples=" << stereoImagePoints_[0].size() <<")..." << Qt::endl;
+	if(logStream) (*logStream) << "stereo calibration (samples=" << stereoImagePoints_[0].size() <<")..." << ENDL;
 
 	if (left.K_raw().empty() || left.D_raw().empty())
 	{
@@ -1522,16 +1529,16 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		if((int)stereoImageIds_.size() == perViewErrorsMat.rows)
 		{
 			UINFO("Per stereo view errors: %dx%d", perViewErrorsMat.rows, perViewErrorsMat.cols);
-			if(logStream) (*logStream) << "Per stereo view errors:" << Qt::endl;
+			if(logStream) (*logStream) << "Per stereo view errors:" << ENDL;
 			for(int i=0; i<perViewErrorsMat.rows; ++i)
 			{
 				UINFO("Image %d: %f <-> %f", stereoImageIds_[i], perViewErrorsMat.at<double>(i,0), perViewErrorsMat.at<double>(i,1));
-				if(logStream) (*logStream) << "Image " << stereoImageIds_[i] << ": " << perViewErrorsMat.at<double>(i,0) << " <-> " << perViewErrorsMat.at<double>(i,0) << Qt::endl;
+				if(logStream) (*logStream) << "Image " << stereoImageIds_[i] << ": " << perViewErrorsMat.at<double>(i,0) << " <-> " << perViewErrorsMat.at<double>(i,0) << ENDL;
 			}
 		}
 #endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
-		if(logStream) (*logStream) << "stereo calibration... done with RMS error=" << rms << Qt::endl;
+		if(logStream) (*logStream) << "stereo calibration... done with RMS error=" << rms << ENDL;
 		ui_->label_stereoError->setNum(rms);
 
 		std::cout << "R = " << R << std::endl;
@@ -1540,13 +1547,13 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		std::cout << "F = " << F << std::endl;
 
 		std::string strStream;
-		if(logStream) (*logStream) << "R = " << (strStream<<R).c_str() << Qt::endl;
+		if(logStream) (*logStream) << "R = " << (strStream<<R).c_str() << ENDL;
 		strStream.clear();
-		if(logStream) (*logStream) << "T = " << (strStream<<T).c_str() << Qt::endl;
+		if(logStream) (*logStream) << "T = " << (strStream<<T).c_str() << ENDL;
 		strStream.clear();
-		if(logStream) (*logStream) << "E = " << (strStream<<E).c_str() << Qt::endl;
+		if(logStream) (*logStream) << "E = " << (strStream<<E).c_str() << ENDL;
 		strStream.clear();
-		if(logStream) (*logStream) << "F = " << (strStream<<F).c_str() << Qt::endl;
+		if(logStream) (*logStream) << "F = " << (strStream<<F).c_str() << ENDL;
 		strStream.clear();
 
 		if(imageSize_[0] == imageSize_[1] && !ignoreStereoRectification)
@@ -1564,19 +1571,19 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			std::cout << "R2 = " << R2 << std::endl;
 			std::cout << "P2 = " << P2 << std::endl;
 
-			if(logStream) (*logStream) << "R1 = " << (strStream<<R1).c_str() << Qt::endl;
+			if(logStream) (*logStream) << "R1 = " << (strStream<<R1).c_str() << ENDL;
 			strStream.clear();
-			if(logStream) (*logStream) << "P1 = " << (strStream<<P1).c_str() << Qt::endl;
+			if(logStream) (*logStream) << "P1 = " << (strStream<<P1).c_str() << ENDL;
 			strStream.clear();
-			if(logStream) (*logStream) << "R2 = " << (strStream<<R2).c_str() << Qt::endl;
+			if(logStream) (*logStream) << "R2 = " << (strStream<<R2).c_str() << ENDL;
 			strStream.clear();
-			if(logStream) (*logStream) << "P2 = " << (strStream<<P2).c_str() << Qt::endl;
+			if(logStream) (*logStream) << "P2 = " << (strStream<<P2).c_str() << ENDL;
 
 			double err = 0;
 			int npoints = 0;
 			std::vector<cv::Vec3f> lines[2];
 			UINFO("Computing re-projection errors...");
-			if(logStream) (*logStream) << "Computing re-projection epipolar errors..." << Qt::endl;
+			if(logStream) (*logStream) << "Computing re-projection epipolar errors..." << ENDL;
 			for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
 			{
 				int npt = (int)stereoImagePoints_[0][i].size();
@@ -1598,13 +1605,13 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 					sampleErr += errij;
 				}
 				UINFO("Stereo image %d: %f", stereoImageIds_[i], sampleErr/npt);
-				if(logStream) (*logStream) << "Stereo image " << stereoImageIds_[i] << ": " << sampleErr/npt << Qt::endl;
+				if(logStream) (*logStream) << "Stereo image " << stereoImageIds_[i] << ": " << sampleErr/npt << ENDL;
 				err += sampleErr;
 				npoints += npt;
 			}
 			double totalAvgErr = err/(double)npoints;
 			UINFO("stereo avg re projection error = %f", totalAvgErr);
-			if(logStream) (*logStream) << "stereo avg re projection error = " << totalAvgErr << Qt::endl;
+			if(logStream) (*logStream) << "stereo avg re projection error = " << totalAvgErr << ENDL;
 
 			output = StereoCameraModel(
 							cameraName_.toStdString(),
