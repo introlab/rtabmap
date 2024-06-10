@@ -81,7 +81,10 @@ void OccupancyGrid::setMap(const cv::Mat & map, float xMin, float yMin, float ce
 		minValues_[0] = xMin;
 		minValues_[1] = yMin;
 		cellSize_ = cellSize;
-		addAssembledNode(poses.lower_bound(1)->first, poses.lower_bound(1)->second);
+		for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
+		{
+			addAssembledNode(iter->first, iter->second);
+		}
 	}
 }
 
