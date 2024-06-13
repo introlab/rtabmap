@@ -5187,7 +5187,14 @@ void PreferencesDialog::makeObsoleteLoggingPanel()
 
 void PreferencesDialog::makeObsoleteSourcePanel()
 {
+	ULOGGER_DEBUG("");
 	_obsoletePanels = _obsoletePanels | kPanelSource;
+}
+
+void PreferencesDialog::makeObsoleteCalibrationPanel()
+{
+	ULOGGER_DEBUG("");
+	_obsoletePanels = _obsoletePanels | kPanelCalibration;
 }
 
 QList<QGroupBox*> PreferencesDialog::getGroupBoxes()
@@ -7558,6 +7565,7 @@ void PreferencesDialog::calibrate()
 
 		cameraThread.join(true);
 	}
+	makeObsoleteCalibrationPanel();
 }
 
 void PreferencesDialog::calibrateSimple()

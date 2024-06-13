@@ -182,7 +182,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 		{
 			if(i==0)
 			{
-				*imageWithDetections = image.clone();
+				*imageWithDetections = cv::Mat(image.size(), subImageWithDetections.type());
 			}
 			if(!subImageWithDetections.empty())
 			{
@@ -363,7 +363,14 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 	if(imageWithDetections)
 	{
-		image.copyTo(*imageWithDetections);
+		if(image.channels()==1)
+		{
+			cv::cvtColor(image, *imageWithDetections, cv::COLOR_GRAY2BGR);
+		}
+		else
+		{
+			image.copyTo(*imageWithDetections);
+		}
 		if(!ids.empty())
 		{
 			cv::aruco::drawDetectedMarkers(*imageWithDetections, corners, ids);

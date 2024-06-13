@@ -58,9 +58,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/ULogger.h>
 
+#define kArucoDictNameSize 21
+static const char * kArucoDictNames[kArucoDictNameSize] = {
+"4X4_50",
+"4X4_100",
+"4X4_250",
+"4X4_1000",
+"5X5_50",
+"5X5_100",
+"5X5_250",
+"5X5_1000",
+"6X6_50",
+"6X6_100",
+"6X6_250",
+"6X6_1000",
+"7X7_50",
+"7X7_100",
+"7X7_250",
+"7X7_1000",
+"ARUCO_ORIGINAL",
+"APRILTAG_16h5",
+"APRILTAG_25h9",
+"APRILTAG_36h10",
+"APRILTAG_36h11"
+};
+
+
 namespace rtabmap {
 
-#define COUNT_MIN 40
+#define COUNT_MIN 70
 
 CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirectory, bool switchImages, QWidget * parent) :
 	QDialog(parent),
@@ -92,6 +118,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	ui_ = new Ui_calibrationDialog();
 	ui_->setupUi(this);
 
+	connect(ui_->toolButton_generateBoard, SIGNAL(clicked()), this, SLOT(generateBoard()));
 	connect(ui_->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
 	connect(ui_->pushButton_save, SIGNAL(clicked()), this, SLOT(save()));
@@ -104,6 +131,8 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
 	connect(ui_->doubleSpinBox_markerLength, SIGNAL(valueChanged(double)), this, SLOT(setMarkerLength(double)));
+	connect(ui_->doubleSpinBox_subpixel_error, SIGNAL(valueChanged(double)), this, SLOT(setSubpixelMaxError(double)));
+	connect(ui_->checkBox_subpixel_refinement, SIGNAL(toggled(bool)), this, SLOT(setSubpixelRefinement(bool)));
 	connect(ui_->checkBox_saveCalibrationData, SIGNAL(toggled(bool)), this, SLOT(setCalibrationDataSaved(bool)));
 	connect(ui_->doubleSpinBox_stereoBaseline, SIGNAL(valueChanged(double)), this, SLOT(setExpectedStereoBaseline(double)));
 	connect(ui_->spinBox_maxScale, SIGNAL(valueChanged(int)), this, SLOT(setMaxScale(int)));
@@ -146,6 +175,8 @@ void CalibrationDialog::saveSettings(QSettings & settings, const QString & group
 	settings.setValue("board_square_size", ui_->doubleSpinBox_squareSize->value());
 	settings.setValue("marker_type", ui_->comboBox_marker_dictionary->currentIndex());
 	settings.setValue("marker_length", ui_->doubleSpinBox_markerLength->value());
+	settings.setValue("subpixel_refinement", ui_->checkBox_subpixel_refinement->isChecked());
+	settings.setValue("subpixel_max_error", ui_->doubleSpinBox_subpixel_error->value());
 	settings.setValue("calibration_data_saved", ui_->checkBox_saveCalibrationData->isChecked());
 	settings.setValue("max_scale", ui_->spinBox_maxScale->value());
 	settings.setValue("geometry", this->saveGeometry());
@@ -169,6 +200,8 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	this->setSquareSize(settings.value("board_square_size", ui_->doubleSpinBox_squareSize->value()).toDouble());
 	this->setMarkerDictionary(settings.value("marker_type", ui_->comboBox_marker_dictionary->currentIndex()).toInt());
 	this->setMarkerLength(settings.value("marker_length", ui_->doubleSpinBox_markerLength->value()).toDouble());
+	this->setSubpixelRefinement(settings.value("subpixel_refinement", ui_->checkBox_subpixel_refinement->isChecked()).toBool());
+	this->setSubpixelMaxError(settings.value("subpixel_max_error", ui_->doubleSpinBox_subpixel_error->value()).toDouble());
 	this->setCalibrationDataSaved(settings.value("calibration_data_saved", ui_->checkBox_saveCalibrationData->isChecked()).toBool());
 	this->setMaxScale(settings.value("max_scale", ui_->spinBox_maxScale->value()).toDouble());
 	int model = settings.value("calibration_model", ui_->comboBox_calib_model->currentIndex()).toInt();
@@ -202,6 +235,70 @@ void CalibrationDialog::resetSettings()
 	this->setBoardHeight(6);
 	this->setSquareSize(0.033);
 	this->setMarkerLength(0.02475);
+}
+
+cv::Mat drawChessboard(int squareSize, int boardWidth, int boardHeight, int borderSize)
+{
+    int imageWidth = squareSize*boardWidth + borderSize;
+	int imageHeight = squareSize*boardHeight + borderSize;
+    cv::Mat chessboard(imageWidth, imageHeight, CV_8UC1, 255);
+	unsigned char color = 0;
+	for(int i=borderSize;i<imageHeight-borderSize; i=i+squareSize) {
+		color=~color;
+		for(int j=borderSize;j<imageWidth-borderSize;j=j+squareSize) {
+			cv::Mat roi=chessboard(cv::Rect(i,j,squareSize,squareSize));
+			roi.setTo(color);
+			color=~color;
+		}
+	}
+	return chessboard;
+}
+
+void CalibrationDialog::generateBoard()
+{
+	int squareSizeInPixels = 200;
+	cv::Mat image;
+	QString filename;
+	QTextStream stream(&filename);
+	if(ui_->comboBox_board_type->currentIndex() == 1)
+	{
+		try {
+			charucoBoard_->draw(
+				cv::Size(squareSizeInPixels*ui_->spinBox_boardWidth->value(),
+						squareSizeInPixels*ui_->spinBox_boardHeight->value()), 
+				image, 
+				squareSizeInPixels/4, 1);
+
+			int arucoDict = ui_->comboBox_marker_dictionary->currentIndex();
+			stream << "charuco_" << (arucoDict<kArucoDictNameSize?kArucoDictNames[arucoDict]:"NA") << "_" 
+				<< ui_->spinBox_boardWidth->value() << "x" << ui_->spinBox_boardHeight->value() 
+				<< "_ratio" << float(ui_->doubleSpinBox_markerLength->value())/float(ui_->doubleSpinBox_squareSize->value());
+		}
+		catch(const cv::Exception & e)
+		{
+			UERROR("%f", e.what());
+			QMessageBox::critical(this, tr("Generating Board"),
+				tr("Cannot generate the board. Make sure the dictionary "
+				   "selected is big enough for the board size. Error:\"%1\"").arg(e.what()));
+			return;
+		}
+	}
+	else
+	{
+		image = drawChessboard(
+			squareSizeInPixels, 
+			ui_->spinBox_boardWidth->value(),
+			ui_->spinBox_boardHeight->value(), 
+			squareSizeInPixels/4);
+
+		stream << "/chessboard_" << ui_->spinBox_boardWidth->value() << "x" << ui_->spinBox_boardHeight->value();
+
+	}
+	QString filePath = QFileDialog::getSaveFileName(this, tr("Save"), savingDirectory_+"/"+filename+".png", "*.png");
+	if(!filePath.isEmpty())
+	{
+		cv::imwrite(filePath.toStdString(), image);
+	}
 }
 
 void CalibrationDialog::setCameraName(const QString & name)
@@ -363,6 +460,24 @@ void CalibrationDialog::setMarkerLength(double length)
 	this->restart();
 }
 
+void CalibrationDialog::setSubpixelRefinement(bool enabled)
+{
+	if(enabled != ui_->checkBox_subpixel_refinement->isChecked())
+	{
+		ui_->checkBox_subpixel_refinement->setChecked(enabled);
+	}
+	this->restart();
+}
+
+void CalibrationDialog::setSubpixelMaxError(double value)
+{
+	if(value != ui_->doubleSpinBox_subpixel_error->value())
+	{
+		ui_->doubleSpinBox_subpixel_error->setValue(value);
+	}
+	this->restart();
+}
+
 void CalibrationDialog::setCalibrationDataSaved(bool enabled)
 {
 	if(enabled != ui_->checkBox_saveCalibrationData->isChecked())
@@ -420,6 +535,7 @@ void CalibrationDialog::closeEvent(QCloseEvent* event)
 	{
 		this->unregisterFromEventsManager();
 	}
+	cameraName_.clear();
 }
 
 bool CalibrationDialog::handleEvent(UEvent * event)
@@ -457,6 +573,34 @@ void matchCharucoImagePoints(
        	int pointId = detectedIds[i];
 		UASSERT(pointId >= 0 && pointId < (int)board.chessboardCorners.size());
 		objectPoints.push_back(board.chessboardCorners[pointId]);
+    }
+}
+
+// Modified from original versoin in opencv_contrib to remove "id="
+void drawDetectedCornersCharuco(cv::InputOutputArray image, cv::InputArray charucoCorners,
+                                cv::InputArray charucoIds = cv::noArray(),
+                                cv::Scalar cornerColor = cv::Scalar(255, 0, 0)) {
+
+    CV_Assert(image.getMat().total() != 0 &&
+              (image.getMat().channels() == 1 || image.getMat().channels() == 3));
+    CV_Assert((charucoCorners.getMat().total() == charucoIds.getMat().total()) ||
+              charucoIds.getMat().total() == 0);
+
+    unsigned int nCorners = (unsigned int)charucoCorners.getMat().total();
+    for(unsigned int i = 0; i < nCorners; i++) {
+        cv::Point2f corner = charucoCorners.getMat().at< cv::Point2f >(i);
+
+        // draw first corner mark
+        cv::rectangle(image, corner - cv::Point2f(3, 3), corner + cv::Point2f(3, 3), cornerColor, 1, cv::LINE_AA);
+
+        // draw ID
+        if(charucoIds.total() != 0) {
+            int id = charucoIds.getMat().at< int >(i);
+            std::stringstream s;
+            s << id;
+            cv::putText(image, s.str(), corner + cv::Point2f(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                    cornerColor, 2);
+        }
     }
 }
 
@@ -506,7 +650,6 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 	std::vector<std::vector< int > > pointIds(2);
 
 	bool depthDetected = false;
-	bool sampleAdded = false;
 	for(int id=0; id<(stereo_?2:1); ++id)
 	{
 		cv::Mat viewGray;
@@ -593,8 +736,8 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 							if(markerIds.size() > 0)
 							{
 								UASSERT(markerIds.size() == markerCorners.size());
-								cv::aruco::interpolateCornersCharuco(markerCorners, markerIds, timg, charucoBoard_, pointBuf[id], pointIds[id]);
-								if(pointBuf[id].size() > 3) {
+								cv::aruco::interpolateCornersCharuco(markerCorners, markerIds, timg, charucoBoard_, pointBuf[id], pointIds[id], cv::noArray(), cv::noArray(), 1);
+								if(pointBuf[id].size() >= 12) {
 									// Match image points
 									matchCharucoImagePoints(*charucoBoard_, pointBuf[id], pointIds[id], objectBuf[id]);
 									boardFound[id] = !objectBuf[id].empty() && objectBuf[id].size() == pointBuf[id].size();
@@ -606,23 +749,6 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 							boardFound[id] = cv::findChessboardCorners(timg, boardSize, pointBuf[id], flags);
 							objectBuf[id] = chessboardPoints_;
 							pointIds[id] = chessboardPointIds_;
-
-							if(boardFound[id])
-							{
-								// improve the found corners' coordinate accuracy for chessboard
-								float minSquareDistance = -1.0f;
-								for(unsigned int i=0; i<pointBuf[id].size()-1; ++i)
-								{
-									float d = cv::norm(pointBuf[id][i] - pointBuf[id][i+1]);
-									if(minSquareDistance == -1.0f || minSquareDistance > d)
-									{
-										minSquareDistance = d;
-									}
-								}
-								float radius = minSquareDistance/2.0f +0.5f;
-								cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
-										cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
-							}
 						}
 
 						if(boardFound[id])
@@ -632,6 +758,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 								cv::Mat cornersMat(pointBuf[id]);
 								cornersMat *= 1./scale;
 							}
+
 							break;
 						}
 					}
@@ -640,135 +767,214 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 			if(boardFound[id]) // If done with success,
 			{
+				// refine corners?
+				std::vector<cv::Point2f> originalPoints = pointBuf[id];
+				std::vector<cv::Point2f> rejectedPoints;
+				std::vector<int> rejectedPointIds;
+				if(ui_->checkBox_subpixel_refinement->isChecked())
+				{
+					// improve the found corners' coordinate accuracy
+					float minSquareDistance = -1.0f;
+					for(unsigned int i=0; i<pointBuf[id].size()-1; ++i)
+					{
+						float d = cv::norm(pointBuf[id][i] - pointBuf[id][i+1]);
+						if(minSquareDistance == -1.0f || minSquareDistance > d)
+						{
+							minSquareDistance = d;
+						}
+					}
+					float ratio = ui_->comboBox_board_type->currentIndex() == 1?6.0f:2.0f;
+					float radius = minSquareDistance==-1.0f?5.0f:(minSquareDistance/ratio);
+					cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
+							cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
+					
+					// Filter points that drifted to far (caused by reflection or bad subpixel gradient)
+					float threshold = ui_->doubleSpinBox_subpixel_error->value();
+					if(threshold>0)
+					{
+						std::vector<cv::Point3f> filteredObjectPts;
+						std::vector<cv::Point2f> filteredPoints;
+						std::vector<int> filteredPointIds;
+						for(size_t i=0; i<pointBuf[id].size(); ++i)
+						{
+							float d = cv::norm(pointBuf[id][i] - originalPoints[i]);
+							if(d<threshold)
+							{
+								filteredObjectPts.push_back(objectBuf[id][i]);
+								filteredPoints.push_back(pointBuf[id][i]);
+								filteredPointIds.push_back(pointIds[id][i]);
+							}
+							else
+							{
+								UWARN("Filtered point: subpix error for image=%d cam=%d pt=%d radius=%f: %f > %f", currentId_, id, pointIds[id][i], radius, d, threshold);
+								rejectedPoints.push_back(pointBuf[id][i]);
+								rejectedPointIds.push_back(pointIds[id][i]);						
+							}
+						}
+						objectBuf[id] = filteredObjectPts;
+						pointBuf[id] = filteredPoints;
+						pointIds[id] = filteredPointIds;
+					}
+				}
+
 				// Draw the corners.
 				images[id] = images[id].clone();
 				if(ui_->comboBox_board_type->currentIndex() == 1) {
 					if(markerIds.size() > 0)
-						cv::aruco::drawDetectedMarkers(images[id], markerCorners);
-					if(pointBuf[id].size() > 0)
-						cv::aruco::drawDetectedCornersCharuco(images[id], pointBuf[id]/*, pointIds[id]*/);
+						cv::aruco::drawDetectedMarkers(images[id], markerCorners, cv::noArray(), cv::Scalar(255,0,0));
 				}
-				else {
-					cv::drawChessboardCorners(images[id], boardSize, cv::Mat(pointBuf[id]), boardFound[id]);
-				}
+				if(pointBuf[id].size() > 0)
+					drawDetectedCornersCharuco(images[id], pointBuf[id], pointIds[id], cv::Scalar(0,255,0)); // Accepted Green
+				if(rejectedPoints.size() > 0)
+					drawDetectedCornersCharuco(images[id], rejectedPoints, rejectedPointIds, cv::Scalar(0,0,255)); // Rejected Red
 
-				std::vector<float> params(4,0);
-				getParams(pointBuf[id], boardSize, imageSize_[id], params[0], params[1], params[2], params[3]);
-
-				bool addSample = true;
-				for(unsigned int i=0; i<imageParams_[id].size(); ++i)
+				if(pointBuf[id].size() < rejectedPoints.size())
 				{
-					if(fabs(params[0] - imageParams_[id][i].at(0)) < 0.1 && // x
-						fabs(params[1] - imageParams_[id][i].at(1)) < 0.1 && // y
-						fabs(params[2] - imageParams_[id][i].at(2)) < 0.05 && // size
-						fabs(params[3] - imageParams_[id][i].at(3)) < 0.1) // skew
-					{
-						addSample = false;
-					}
-				}
-				if(addSample)
-				{
-					sampleAdded = true;
-					boardAccepted[id] = true;
-					imageIds_[id].push_back(currentId_);
-					imagePoints_[id].push_back(pointBuf[id]);
-					imageParams_[id].push_back(params);
-					objectPoints_[id].push_back(objectBuf[id]);
-					UINFO("[%d] Added board, total=%d. (x=%f, y=%f, size=%f, skew=%f)", id, (int)imagePoints_[id].size(), params[0], params[1], params[2], params[3]);
+					// don't add if more than 50% of valid points were filtered
+					UWARN("Ignoring whole board of image %d cam=%d because too many points were filtered.", currentId_, id);
+					boardFound[id] = false;
 				}
 				else
 				{
-					//break;
-				}
-
-				// update statistics
-				std::vector<float> xRange(2, imageParams_[id][0].at(0));
-				std::vector<float> yRange(2, imageParams_[id][0].at(1));
-				std::vector<float> sizeRange(2, imageParams_[id][0].at(2));
-				std::vector<float> skewRange(2, imageParams_[id][0].at(3));
-				for(unsigned int i=1; i<imageParams_[id].size(); ++i)
-				{
-					xRange[0] = imageParams_[id][i].at(0) < xRange[0] ? imageParams_[id][i].at(0) : xRange[0];
-					xRange[1] = imageParams_[id][i].at(0) > xRange[1] ? imageParams_[id][i].at(0) : xRange[1];
-					yRange[0] = imageParams_[id][i].at(1) < yRange[0] ? imageParams_[id][i].at(1) : yRange[0];
-					yRange[1] = imageParams_[id][i].at(1) > yRange[1] ? imageParams_[id][i].at(1) : yRange[1];
-					sizeRange[0] = imageParams_[id][i].at(2) < sizeRange[0] ? imageParams_[id][i].at(2) : sizeRange[0];
-					sizeRange[1] = imageParams_[id][i].at(2) > sizeRange[1] ? imageParams_[id][i].at(2) : sizeRange[1];
-					skewRange[0] = imageParams_[id][i].at(3) < skewRange[0] ? imageParams_[id][i].at(3) : skewRange[0];
-					skewRange[1] = imageParams_[id][i].at(3) > skewRange[1] ? imageParams_[id][i].at(3) : skewRange[1];
-				}
-				//UINFO("Stats [%d]:", id);
-				//UINFO("  Count = %d", (int)imagePoints_[id].size());
-				//UINFO("  x =    [%f -> %f]", xRange[0], xRange[1]);
-				//UINFO("  y =    [%f -> %f]", yRange[0], yRange[1]);
-				//UINFO("  size = [%f -> %f]", sizeRange[0], sizeRange[1]);
-				//UINFO("  skew = [%f -> %f]", skewRange[0], skewRange[1]);
-
-				float xGood = xRange[1] - xRange[0];
-				float yGood = yRange[1] - yRange[0];
-				float sizeGood = sizeRange[1] - sizeRange[0];
-				float skewGood = skewRange[1] - skewRange[0];
-
-				if(id == 0)
-				{
-					ui_->progressBar_x->setValue(xGood*100);
-					ui_->progressBar_y->setValue(yGood*100);
-					ui_->progressBar_size->setValue(sizeGood*100);
-					ui_->progressBar_skew->setValue(skewGood*100);
-					if((int)imagePoints_[id].size() > ui_->progressBar_count->maximum())
+					std::vector<float> params(4,0);
+					getParams(originalPoints, boardSize, imageSize_[id], params[0], params[1], params[2], params[3]);
+					if(ui_->comboBox_board_type->currentIndex() == 1)
 					{
-						ui_->progressBar_count->setMaximum((int)imagePoints_[id].size());
+						//params[2] = float(pointBuf[id].size()) / float(boardSize.width * boardSize.height); // number of markers seen
+						float area = getArea(markerCorners[markerCorners.size()/2], cv::Size(4,4)) * (boardSize.width*boardSize.height);
+						params[2] = std::sqrt(area / (imageSize_[id].width * imageSize_[id].height));
+						params[2] = params[2]>1?1:params[2];
+						params[3] = getSkew(markerCorners[markerCorners.size()/2]);
 					}
-					ui_->progressBar_count->setValue((int)imagePoints_[id].size());
-				}
-				else
-				{
-					ui_->progressBar_x_2->setValue(xGood*100);
-					ui_->progressBar_y_2->setValue(yGood*100);
-					ui_->progressBar_size_2->setValue(sizeGood*100);
-					ui_->progressBar_skew_2->setValue(skewGood*100);
 
-					if((int)imagePoints_[id].size() > ui_->progressBar_count_2->maximum())
+					bool addSample = true;
+					if(!ui_->checkBox_keep_all->isChecked())
 					{
-						ui_->progressBar_count_2->setMaximum((int)imagePoints_[id].size());
+						for(unsigned int i=0; i<imageParams_[id].size(); ++i)
+						{
+							if(fabs(params[0] - imageParams_[id][i].at(0)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1) && // x
+								fabs(params[1] - imageParams_[id][i].at(1)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1) && // y
+								fabs(params[2] - imageParams_[id][i].at(2)) < 0.05 && // size
+								(params[3]==0 || params[3]==1.0f || imageParams_[id][i].at(3) == 0 || imageParams_[id][i].at(3) == 1.0f || fabs(params[3] - imageParams_[id][i].at(3)) < 0.1)) // skew
+							{
+								addSample = false;
+								break;
+							}
+						}
 					}
-					ui_->progressBar_count_2->setValue((int)imagePoints_[id].size());
-				}
-
-				if(imagePoints_[id].size() >= COUNT_MIN &&
-						xGood > 0.5 &&
-						yGood > 0.5 &&
-						(sizeGood > 0.4 || (ui_->comboBox_calib_model->currentIndex()==0 && sizeGood > 0.25)) &&
-						skewGood > 0.5)
-				{
-					readyToCalibrate[id] = true;
-				}
-
-				//update IR values
-				if(inputRawImages[id].type() == CV_16UC1)
-				{
-					//update min max IR if the chessboard was found
-					minIrs_[id] = 0xFFFF;
-					maxIrs_[id] = 0;
-					for(size_t i = 0; i < pointBuf[id].size(); ++i)
+					if(addSample)
 					{
-						const cv::Point2f &p = pointBuf[id][i];
-						cv::Rect roi(std::max(0, (int)p.x - 3), std::max(0, (int)p.y - 3), 6, 6);
+						boardAccepted[id] = true;
+						imageIds_[id].push_back(currentId_);
+						imagePoints_[id].push_back(pointBuf[id]);
+						imageParams_[id].push_back(params);
+						objectPoints_[id].push_back(objectBuf[id]);
+						UINFO("[%d] Added board %d, total=%d. (x=%f, y=%f, size=%f, skew=%f)", id, currentId_, (int)imagePoints_[id].size(), params[0], params[1], params[2], params[3]);
 
-						roi.width = std::min(roi.width, inputRawImages[id].cols - roi.x);
-						roi.height = std::min(roi.height, inputRawImages[id].rows - roi.y);
+						// update statistics
+						std::vector<float> xRange(2, imageParams_[id][0].at(0));
+						std::vector<float> yRange(2, imageParams_[id][0].at(1));
+						std::vector<float> sizeRange(2, imageParams_[id][0].at(2));
+						std::vector<float> skewRange(2, imageParams_[id][0].at(3));
+						for(unsigned int i=1; i<imageParams_[id].size(); ++i)
+						{
+							xRange[0] = imageParams_[id][i].at(0) < xRange[0] ? imageParams_[id][i].at(0) : xRange[0];
+							xRange[1] = imageParams_[id][i].at(0) > xRange[1] ? imageParams_[id][i].at(0) : xRange[1];
+							yRange[0] = imageParams_[id][i].at(1) < yRange[0] ? imageParams_[id][i].at(1) : yRange[0];
+							yRange[1] = imageParams_[id][i].at(1) > yRange[1] ? imageParams_[id][i].at(1) : yRange[1];
+							sizeRange[0] = imageParams_[id][i].at(2) < sizeRange[0] ? imageParams_[id][i].at(2) : sizeRange[0];
+							sizeRange[1] = imageParams_[id][i].at(2) > sizeRange[1] ? imageParams_[id][i].at(2) : sizeRange[1];
+							if(imageParams_[id][i].at(3) != 0 && imageParams_[id][i].at(3) != 1) {
+								if(skewRange[0] == 0 || skewRange[0] == 1)
+								{
+									skewRange[0] = imageParams_[id][i].at(3);
+									skewRange[1] = imageParams_[id][i].at(3);
+								}
+								else
+								{
+									skewRange[0] = imageParams_[id][i].at(3) < skewRange[0] ? imageParams_[id][i].at(3) : skewRange[0];
+									skewRange[1] = imageParams_[id][i].at(3) > skewRange[1] ? imageParams_[id][i].at(3) : skewRange[1];
+								}
+							}
+						}
+						//UINFO("Stats [%d]:", id);
+						//UINFO("  Count = %d", (int)imagePoints_[id].size());
+						//UINFO("  x =    [%f -> %f]", xRange[0], xRange[1]);
+						//UINFO("  y =    [%f -> %f]", yRange[0], yRange[1]);
+						//UINFO("  size = [%f -> %f]", sizeRange[0], sizeRange[1]);
+						//UINFO("  skew = [%f -> %f]", skewRange[0], skewRange[1]);
 
-						//find minMax in the roi
-						double min, max;
-						cv::minMaxLoc(inputRawImages[id](roi), &min, &max);
-						if(min < minIrs_[id])
+						float xGood = xRange[1] - xRange[0];
+						float yGood = yRange[1] - yRange[0];
+						float sizeGood = sizeRange[1] - sizeRange[0];
+						float skewGood = skewRange[1] - skewRange[0];
+
+						if(id == 0)
 						{
-							minIrs_[id] = min;
+							ui_->progressBar_x->setValue(xGood*100);
+							ui_->progressBar_y->setValue(yGood*100);
+							ui_->progressBar_size->setValue(sizeGood*100);
+							ui_->progressBar_skew->setValue(skewGood*100);
+							if((int)imagePoints_[id].size() > ui_->progressBar_count->maximum())
+							{
+								ui_->progressBar_count->setMaximum((int)imagePoints_[id].size());
+							}
+							ui_->progressBar_count->setValue((int)imagePoints_[id].size());
 						}
-						if(max > maxIrs_[id])
+						else
 						{
-							maxIrs_[id] = max;
+							ui_->progressBar_x_2->setValue(xGood*100);
+							ui_->progressBar_y_2->setValue(yGood*100);
+							ui_->progressBar_size_2->setValue(sizeGood*100);
+							ui_->progressBar_skew_2->setValue(skewGood*100);
+
+							if((int)imagePoints_[id].size() > ui_->progressBar_count_2->maximum())
+							{
+								ui_->progressBar_count_2->setMaximum((int)imagePoints_[id].size());
+							}
+							ui_->progressBar_count_2->setValue((int)imagePoints_[id].size());
 						}
+
+						if(imagePoints_[id].size() >= COUNT_MIN/2 &&
+								xGood > 0.5 &&
+								yGood > 0.5 &&
+								(sizeGood > 0.4 || (ui_->comboBox_calib_model->currentIndex()==0 && sizeGood > 0.25)) &&
+								skewGood > 0.5)
+						{
+							readyToCalibrate[id] = true;
+						}
+
+						//update IR values
+						if(inputRawImages[id].type() == CV_16UC1)
+						{
+							//update min max IR if the chessboard was found
+							minIrs_[id] = 0xFFFF;
+							maxIrs_[id] = 0;
+							for(size_t i = 0; i < pointBuf[id].size(); ++i)
+							{
+								const cv::Point2f &p = pointBuf[id][i];
+								cv::Rect roi(std::max(0, (int)p.x - 3), std::max(0, (int)p.y - 3), 6, 6);
+
+								roi.width = std::min(roi.width, inputRawImages[id].cols - roi.x);
+								roi.height = std::min(roi.height, inputRawImages[id].rows - roi.y);
+
+								//find minMax in the roi
+								double min, max;
+								cv::minMaxLoc(inputRawImages[id](roi), &min, &max);
+								if(min < minIrs_[id])
+								{
+									minIrs_[id] = min;
+								}
+								if(max > maxIrs_[id])
+								{
+									maxIrs_[id] = max;
+								}
+							}
+						}
+					}
+					else
+					{
+						//break;
 					}
 				}
 			}
@@ -799,41 +1005,36 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		}
 	}
 
-	if(stereo_ && ((boardAccepted[0] && boardFound[1]) || (boardAccepted[1] && boardFound[0])))
+	if(stereo_ && boardFound[0] && boardFound[1] && (boardAccepted[0] || boardAccepted[1]))
 	{
-		if(ui_->comboBox_board_type->currentIndex() == 1)
+		// Find same corners detected in both boards
+		std::vector< int > combinedIds;
+		std::vector<cv::Point2f> leftCorners;
+		std::vector<cv::Point2f> rightCorners;
+		std::vector<cv::Point3f> objectPoints;
+		for(size_t i=0; i<pointIds[0].size(); ++i)
 		{
-			// Find same corners detected in both boards
-			std::vector< int > combinedCharucoIds;
-			std::vector<cv::Point2f> leftCharucoCorners;
-			std::vector<cv::Point2f> rightCharucoCorners;
-			for(size_t i=0; i<pointIds[0].size(); ++i)
+			for(size_t j=0; j<pointIds[1].size(); ++j)
 			{
-				for(size_t j=0; j<pointIds[1].size(); ++j)
+				if(pointIds[0][i] == pointIds[1][j])
 				{
-					if(pointIds[0][i] == pointIds[1][j])
-					{
-						leftCharucoCorners.push_back(pointBuf[0][i]);
-						rightCharucoCorners.push_back(pointBuf[1][j]);
-						combinedCharucoIds.push_back(pointIds[0][i]);
-						break;
-					}
+					leftCorners.push_back(pointBuf[0][i]);
+					rightCorners.push_back(pointBuf[1][j]);
+					objectPoints.push_back(objectBuf[0][i]);
+					combinedIds.push_back(pointIds[0][i]);
+					break;
 				}
 			}
-			std::vector<cv::Point3f> tmpObjectBuf;
-			matchCharucoImagePoints(*charucoBoard_, leftCharucoCorners, combinedCharucoIds, tmpObjectBuf);
-			stereoImagePoints_[0].push_back(leftCharucoCorners);
-			stereoImagePoints_[1].push_back(rightCharucoCorners);
-			stereoObjectPoints_.push_back(tmpObjectBuf);
 		}
-		else
+		if(objectPoints.size() >=6)
 		{
-			stereoImagePoints_[0].push_back(pointBuf[0]);
-			stereoImagePoints_[1].push_back(pointBuf[1]);
-			stereoObjectPoints_.push_back(chessboardPoints_);
+			stereoImagePoints_[0].push_back(leftCorners);
+			stereoImagePoints_[1].push_back(rightCorners);
+			stereoObjectPoints_.push_back(objectPoints);
+
+			stereoImageIds_.push_back(currentId_);
+			UINFO("Added board %d for stereo image points (size=%d)", currentId_, (int)stereoImagePoints_[0].size());
 		}
-		stereoImageIds_.push_back(currentId_);
-		UINFO("Add stereo image points (size=%d)", (int)stereoImagePoints_[0].size());
 	}
 
 	if(!stereo_ && readyToCalibrate[0])
@@ -887,16 +1088,23 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		ui_->image_view_2->setImage(uCvMat2QImage(images[1]).mirrored(ui_->checkBox_mirror->isChecked(), false));
 	}
 	processingData_ = false;
-	if(sampleAdded)
-		++currentId_;
+	++currentId_;
 }
 
 void CalibrationDialog::restart()
 {
 	// restart
+	if(!savingDirectory_.isEmpty() && !cameraName_.isEmpty() && !savedCalibration_ && ui_->comboBox_board_type->isEnabled())
+	{
+		//overwrite previous data not used.
+		QDir(savingDirectory_+"/"+cameraName_+"_"+timestamp_).removeRecursively();
+	}
+	else
+	{
+		timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
+	}
 	savedCalibration_ = false;
 	currentId_ = 0;
-	timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 	imagePoints_[0].clear();
 	imagePoints_[1].clear();
 	objectPoints_[0].clear();
@@ -916,6 +1124,16 @@ void CalibrationDialog::restart()
 	maxIrs_[0] = 0x7fff;
 	minIrs_[1] = 0x0000;
 	maxIrs_[1] = 0x7fff;
+
+	ui_->comboBox_board_type->setEnabled(true);
+	ui_->comboBox_marker_dictionary->setEnabled(true);
+	ui_->spinBox_boardWidth->setEnabled(true);
+	ui_->spinBox_boardHeight->setEnabled(true);
+	ui_->doubleSpinBox_squareSize->setEnabled(true);
+	ui_->doubleSpinBox_markerLength->setEnabled(true);
+	ui_->checkBox_subpixel_refinement->setEnabled(true);
+	ui_->doubleSpinBox_subpixel_error->setEnabled(true);
+	ui_->checkBox_saveCalibrationData->setEnabled(true);
 
 	ui_->pushButton_calibrate->setEnabled(ui_->checkBox_unlock->isChecked());
 	ui_->pushButton_save->setEnabled(false);
@@ -971,6 +1189,7 @@ void CalibrationDialog::restart()
 	if(ui_->comboBox_board_type->currentIndex() == 1)
 	{
 		arucoDetectorParams_ = cv::aruco::DetectorParameters::create();
+		arucoDetectorParams_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_CONTOUR;
 
 		int arucoDictionary = ui_->comboBox_marker_dictionary->currentIndex();
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
@@ -988,6 +1207,7 @@ void CalibrationDialog::restart()
 			// DICT_APRILTAG_36h11=20
 			//
 			arucoDictionary = 0;
+			arucoDetectorParams_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
 		}
 #endif
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
@@ -997,7 +1217,7 @@ void CalibrationDialog::restart()
 #else
 		markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arucoDictionary));
 #endif
-		UINFO("Creating charuco board: %dx%d square=%f marker=%f aruco dict=%d", 
+		UDEBUG("Creating charuco board: %dx%d square=%f marker=%f aruco dict=%d", 
 			ui_->spinBox_boardWidth->value(),
 			ui_->spinBox_boardHeight->value(), 
 			ui_->doubleSpinBox_squareSize->value(), 
@@ -1037,6 +1257,16 @@ void CalibrationDialog::calibrate()
 	processingData_ = true;
 	savedCalibration_ = false;
 
+	ui_->comboBox_board_type->setEnabled(false);
+	ui_->comboBox_marker_dictionary->setEnabled(false);
+	ui_->spinBox_boardWidth->setEnabled(false);
+	ui_->spinBox_boardHeight->setEnabled(false);
+	ui_->doubleSpinBox_squareSize->setEnabled(false);
+	ui_->doubleSpinBox_markerLength->setEnabled(false);
+	ui_->checkBox_subpixel_refinement->setEnabled(false);
+	ui_->doubleSpinBox_subpixel_error->setEnabled(false);
+	ui_->checkBox_saveCalibrationData->setEnabled(false);
+
 	QMessageBox mb(QMessageBox::Information,
 			tr("Calibrating..."),
 			tr("Operation in progress..."));
@@ -1061,10 +1291,14 @@ void CalibrationDialog::calibrate()
 	std::cout << "Board width = " << ui_->spinBox_boardWidth->value() << std::endl;
 	std::cout << "Board height = " << ui_->spinBox_boardHeight->value() << std::endl;
 	std::cout << "Square size = " << ui_->doubleSpinBox_squareSize->value() << std::endl;
+	std::cout << "Subpixel refinement = " << ui_->checkBox_subpixel_refinement->isChecked() << std::endl;
+	std::cout << "Subpixel max error = " << ui_->doubleSpinBox_subpixel_error->value() << std::endl;
 	logStream << "Board type = " << ui_->comboBox_board_type->currentIndex() << ENDL;
 	logStream << "Board width = " << ui_->spinBox_boardWidth->value() << ENDL;
 	logStream << "Board height = " << ui_->spinBox_boardHeight->value() << ENDL;
 	logStream << "Square size = " << ui_->doubleSpinBox_squareSize->value() << ENDL;
+	logStream << "Subpixel refinement = " << ui_->checkBox_subpixel_refinement->isChecked() << ENDL;
+	logStream << "Subpixel max error = " << ui_->doubleSpinBox_subpixel_error->value() << ENDL;
 	if(ui_->comboBox_board_type->currentIndex() == 1)
 	{
 		std::cout << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << std::endl;
@@ -1701,16 +1935,39 @@ float CalibrationDialog::getArea(const std::vector<cv::Point2f> & corners, const
 	//The projected checkerboard is assumed to be a convex quadrilateral, and the area computed as
 	//|p X q|/2; see http://mathworld.wolfram.com/Quadrilateral.html.
 
-	cv::Point2f up_left = corners[0];
-	cv::Point2f up_right = corners[boardSize.width-1];
-	cv::Point2f down_right = corners[corners.size()-1];
-	cv::Point2f down_left = corners[corners.size()-boardSize.width];
+	cv::Point2f up_left;
+	cv::Point2f up_right;
+	cv::Point2f down_right;
+	cv::Point2f down_left;
+	if((int)corners.size() == (boardSize.width * boardSize.height))
+	{
+		up_left = corners[0];
+		up_right = corners[boardSize.width-1];
+		down_right = corners[corners.size()-1];
+		down_left = corners[corners.size()-boardSize.width];
+	}
+	else
+	{
+		cv::Rect rect = cv::boundingRect(corners);
+		up_left = cv::Point2f(rect.x, rect.y);
+		up_right = cv::Point2f(rect.x+rect.width, rect.y);
+		down_right = cv::Point2f(rect.x+rect.width, rect.y+rect.height);
+		down_left = cv::Point2f(rect.x, rect.y+rect.height);
+	}
 	cv::Point2f a = up_right - up_left;
 	cv::Point2f b = down_right - up_right;
 	cv::Point2f c = down_left - down_right;
 	cv::Point2f p = b + c;
 	cv::Point2f q = a + b;
 	return std::fabs(p.x*q.y - p.y*q.x) / 2.0f;
+}
+
+float CalibrationDialog::getSkew(const std::vector<cv::Point2f> & fourCorners)
+{
+	UASSERT(fourCorners.size() == 4);
+	std::vector<cv::Point2f> corners = fourCorners;
+	corners.resize(3);
+	return getSkew(corners, cv::Size(2,1));
 }
 
 float CalibrationDialog::getSkew(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize)
@@ -1722,7 +1979,6 @@ float CalibrationDialog::getSkew(const std::vector<cv::Point2f> & corners, const
 	cv::Point2f up_left = corners[0];
 	cv::Point2f up_right = corners[boardSize.width-1];
 	cv::Point2f down_right = corners[corners.size()-1];
-
 
 	//  Return angle between lines ab, bc
 	cv::Point2f ab = up_left - up_right;

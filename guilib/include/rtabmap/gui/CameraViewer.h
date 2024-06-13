@@ -44,6 +44,7 @@ namespace rtabmap {
 
 class ImageView;
 class CloudViewer;
+class MarkerDetector;
 
 class RTABMAP_GUI_EXPORT CameraViewer : public QDialog, public UEventsHandler
 {
@@ -70,6 +71,8 @@ private:
 	QLabel * imageSizeLabel_;
 	QCheckBox * showCloudCheckbox_;
 	QCheckBox * showScanCheckbox_;
+	QCheckBox * markerCheckbox_;
+	MarkerDetector * markerDetector_;
 };
 
 } /* namespace rtabmap */

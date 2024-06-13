@@ -535,12 +535,14 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 			for(int row = 0; row<3; ++row)
 			{
 				intrinsicsLeft[row].resize(3);
+				intrinsicsRight[row].resize(3);
 				for(int col = 0; col<3; ++col)
 				{
 					intrinsicsLeft[row][col] = stereoModel_.left().K_raw().at<double>(row,col);
 					intrinsicsRight[row][col] = stereoModel_.right().K_raw().at<double>(row,col);
 				}
 			}
+
 			std::vector<float> distortionsLeft = stereoModel_.left().D_raw();
 			std::vector<float> distortionsRight = stereoModel_.right().D_raw();
 			std::vector<std::vector<float> > rotationMatrix(3);
@@ -552,16 +554,19 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 					rotationMatrix[row][col] = stereoModel_.stereoTransform()(row,col);
 				}
 			}
+
 			std::vector<float> translation(3);
-			translation[0] = stereoModel_.stereoTransform().x();
-			translation[1] = stereoModel_.stereoTransform().y();
-			translation[2] = stereoModel_.stereoTransform().z();
+			translation[0] = stereoModel_.stereoTransform().x()*100.0f;
+			translation[1] = stereoModel_.stereoTransform().y()*100.0f;
+			translation[2] = stereoModel_.stereoTransform().z()*100.0f;
+
 			if(outputMode_ == 2)
 			{
 				// Only set RGB intrinsics
 				calibHandler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_A, intrinsicsLeft, stereoModel_.left().imageWidth(), stereoModel_.left().imageHeight());
 				calibHandler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_A, distortionsLeft);
-				calibHandler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, rotationMatrix, translation);
+				std::vector<float> specTranslation = calibHandler.getCameraTranslationVector(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, true);
+				calibHandler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, rotationMatrix, translation, specTranslation);
 			}
 			else
 			{
@@ -569,11 +574,28 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 				calibHandler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_B, distortionsLeft);
 				calibHandler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_C, intrinsicsRight, stereoModel_.right().imageWidth(), stereoModel_.right().imageHeight());
 				calibHandler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_C, distortionsRight);
-				calibHandler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, rotationMatrix, translation);
+				std::vector<float> specTranslation = calibHandler.getCameraTranslationVector(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, true);
+				calibHandler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, rotationMatrix, translation, specTranslation);
 			}
 
 			try {
+				UINFO("Flashing camera with calibration from %s with camera name %s", calibrationFolder.c_str(), cameraName.c_str());
+				if(ULogger::level() <= ULogger::kInfo)
+				{
+					std::cout << "K left: " << stereoModel_.left().K_raw() << std::endl;
+					std::cout << "K right: " << stereoModel_.right().K_raw() << std::endl;
+					std::cout << "D left: " << stereoModel_.left().D_raw() << std::endl;
+					std::cout << "D right: " << stereoModel_.right().D_raw() << std::endl;
+					std::cout << "Extrinsics: " << stereoModel_.stereoTransform() << std::endl;
+					std::cout << "Expected K with rectification_alpha=0: " << stereoModel_.left().K()*(double(targetSize_.width)/double(stereoModel_.left().imageWidth())) << std::endl;
+				}
 				device_->flashCalibration2(calibHandler);
+				uSleep(2000);
+				UINFO("Closing device...");
+				device_->close();
+				uSleep(2000);
+				UINFO("Restarting pipeline...");
+				device_.reset(new dai::Device(p, deviceToUse));
 			}
 			catch(const std::runtime_error & e) {
 				UERROR("Failed flashing calibration: %s", e.what());
@@ -613,12 +635,15 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	double fy = newCameraMatrix.at<double>(1, 1);
 	double cx = newCameraMatrix.at<double>(0, 2);
 	double cy = newCameraMatrix.at<double>(1, 2);
-	double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, useSpecTranslation_)/100.0;
-	UINFO("fx=%f fy=%f cx=%f cy=%f baseline=%f", fx, fy, cx, cy, baseline);
-	if(outputMode_ == 2)
-		stereoModel_ = StereoCameraModel(device_->getDeviceName(), fx, fy, cx, cy, baseline, this->getLocalTransform(), targetSize_);
-	else
-		stereoModel_ = StereoCameraModel(device_->getDeviceName(), fx, fy, cx, cy, baseline, this->getLocalTransform()*Transform(-calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_A)/100.0, 0, 0), targetSize_);
+	UINFO("fx=%f fy=%f cx=%f cy=%f (target size = %dx%d)", fx, fy, cx, cy, targetSize_.width, targetSize_.height);
+	if(outputMode_ == 2) {
+		stereoModel_ = StereoCameraModel(device_->getDeviceName(), fx, fy, cx, cy, 0, this->getLocalTransform(), targetSize_);
+	}
+	else {
+		double baseline = calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, false)/100.0;
+		UINFO("baseline=%f", baseline);
+		stereoModel_ = StereoCameraModel(device_->getDeviceName(), fx, fy, cx, cy, outputMode_==0?baseline:0, this->getLocalTransform()*Transform(-calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_A)/100.0, 0, 0), targetSize_);
+	}
 
 	if(imuPublished_)
 	{

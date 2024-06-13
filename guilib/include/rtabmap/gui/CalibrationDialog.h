@@ -88,11 +88,14 @@ public Q_SLOTS:
 	void setSquareSize(double size);
 	void setMarkerDictionary(int dictionary);
 	void setMarkerLength(double length);
+	void setSubpixelRefinement(bool enabled);
+	void setSubpixelMaxError(double value);
 	void setCalibrationDataSaved(bool enabled);
 	void setExpectedStereoBaseline(double length);
 	void setMaxScale(int scale);
 
 	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);
+	void generateBoard();
 	void calibrate();
 	void restart();
 	bool save();
@@ -106,6 +109,7 @@ protected:
 
 private:
 	float getArea(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize);
+	float getSkew(const std::vector<cv::Point2f> & fourCorners);
 	float getSkew(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize);
 
 	// x -> [0, 1] (left, right)
