@@ -513,6 +513,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	device_.reset(new dai::Device(p, deviceToUse));
 
+	UINFO("Device serial: %s", device_->getMxId().c_str());
 	UINFO("Available camera sensors: ");
 	for(auto& sensor : device_->getCameraSensorNames()) {
 		UINFO("Socket: CAM_%c - %s", 'A'+(unsigned char)sensor.first, sensor.second.c_str());
@@ -590,10 +591,8 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 					std::cout << "Expected K with rectification_alpha=0: " << stereoModel_.left().K()*(double(targetSize_.width)/double(stereoModel_.left().imageWidth())) << std::endl;
 				}
 				device_->flashCalibration2(calibHandler);
-				uSleep(2000);
 				UINFO("Closing device...");
 				device_->close();
-				uSleep(2000);
 				UINFO("Restarting pipeline...");
 				device_.reset(new dai::Device(p, deviceToUse));
 			}
