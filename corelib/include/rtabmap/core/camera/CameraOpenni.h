@@ -34,11 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/pcl_config.h>
 
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 #if __linux__ && __i386__ && __cplusplus >= 201103L
 #warning "Openni driver is not available on i386 when building with c++11 support"
-#else
-#ifdef RTABMAP_OPENNI
 #include <pcl/io/openni_camera/openni_depth_image.h>
 #include <pcl/io/openni_camera/openni_image.h>
 #endif
