@@ -136,6 +136,8 @@ AboutDialog::AboutDialog(QWidget * parent) :
 
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_freenect_license->setEnabled(CameraFreenect::available());
+	_ui->label_openni->setText(CameraOpenni::available()?"Yes":"No");
+	_ui->label_openni_license->setEnabled(CameraOpenni::available());
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
 	_ui->label_openni2_license->setEnabled(CameraOpenNI2::available());
 	_ui->label_freenect2->setText(CameraFreenect2::available()?"Yes":"No");

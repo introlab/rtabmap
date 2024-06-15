@@ -472,6 +472,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionXvisio_SeerSense, SIGNAL(triggered()), this, SLOT(selectXvisioSeerSense()));
 	connect(_ui->actionVelodyne_VLP_16, SIGNAL(triggered()), this, SLOT(selectVLP16()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
+	_ui->actionOpenNI_PCL->setEnabled(CameraOpenni::available());
+	_ui->actionOpenNI_PCL_ASUS->setEnabled(CameraOpenni::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI2->setEnabled(CameraOpenNI2::available());

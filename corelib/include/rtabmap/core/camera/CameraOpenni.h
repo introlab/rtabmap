@@ -37,9 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_OPENNI
 #if __linux__ && __i386__ && __cplusplus >= 201103L
 #warning "Openni driver is not available on i386 when building with c++11 support"
+#endif
 #include <pcl/io/openni_camera/openni_depth_image.h>
 #include <pcl/io/openni_camera/openni_image.h>
-#endif
 #endif
 
 #include <boost/signals2/connection.hpp>
@@ -72,7 +72,7 @@ public:
 			float constant);
 #else
     void image_cb (
-    		const boost::shared_ptr<openni_wrapper::Image>& rgb,
+    	const boost::shared_ptr<openni_wrapper::Image>& rgb,
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
 			float constant);
 #endif
