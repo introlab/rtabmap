@@ -719,6 +719,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With OpenNI:";
+#ifdef RTABMAP_OPENNI
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With OpenNI2:";
 #ifdef RTABMAP_OPENNI2
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
