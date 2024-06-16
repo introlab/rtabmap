@@ -491,7 +491,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	}
 
 	// Ground alignment
-	if(_pose.isIdentity() && _alignWithGround)
+	if(_pose.x() == 0 && _pose.y() == 0 && _pose.z() == 0 && this->framesProcessed() == 0 && _alignWithGround)
 	{
 		if(data.depthOrRightRaw().empty())
 		{
@@ -507,6 +507,11 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			if(indices->size())
 			{
 				cloud = util3d::voxelize(cloud, indices, 0.01);
+				if(!_pose.isIdentity())
+				{
+					// In case we are already aligned with gravity
+					cloud = util3d::transformPointCloud(cloud, _pose);
+				}
 				util3d::segmentObstaclesFromGround<pcl::PointXYZ>(cloud, ground, obstacles, 20, M_PI/4.0f, 0.02, 200, true);
 				if(ground->size())
 				{
@@ -535,11 +540,22 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					//get rotation from z to n;
 					Eigen::Matrix3f R;
 					R = Eigen::Quaternionf().setFromTwoVectors(n,z);
-					Transform rotation(
-							R(0,0), R(0,1), R(0,2), 0,
-							R(1,0), R(1,1), R(1,2), 0,
-							R(2,0), R(2,1), R(2,2), coefficients.values.at(3));
-					this->reset(rotation);
+					if(_pose.r11() == 1.0f && _pose.r22() == 1.0f && _pose.r33() == 1.0f)
+					{
+						Transform rotation(
+								R(0,0), R(0,1), R(0,2), 0,
+								R(1,0), R(1,1), R(1,2), 0,
+								R(2,0), R(2,1), R(2,2), coefficients.values.at(3));
+						this->reset(rotation);
+					}
+					else
+					{
+						// Rotation is already set (e.g., from IMU/gravity), just update Z
+						UWARN("Rotation was already initialized, just offseting z to %f", coefficients.values.at(3));
+						Transform pose = _pose;
+						pose.z() = coefficients.values.at(3);
+						this->reset(pose);
+					}
 					success = true;
 				}
 			}
