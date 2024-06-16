@@ -2666,7 +2666,7 @@ bool Rtabmap::process(
 				UDEBUG("got %d paths", (int)nearestPathsNotSorted.size());
 				// sort nearest paths by highest likelihood (if two have same likelihood, sort by id)
 				std::map<NearestPathKey, std::map<int, Transform> > nearestPaths;
-				Transform currentPoseInv = _optimizedPoses.at(signature->id());
+				Transform currentPoseInv = _optimizedPoses.at(signature->id()).inverse();
 				for(std::map<int, std::map<int, Transform> >::const_iterator iter=nearestPathsNotSorted.begin();iter!=nearestPathsNotSorted.end(); ++iter)
 				{
 					const std::map<int, Transform> & path = iter->second;
