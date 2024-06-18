@@ -629,13 +629,45 @@
              </layout>
             </item>
             <item>
-             <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0">
-              <item row="5" column="0">
-               <widget class="QLabel" name="label_4">
-                <property name="text">
-                 <string>Skew</string>
-                </property>
-               </widget>
+             <layout class="QGridLayout" name="gridLayout">
+              <item row="0" column="1">
+               <layout class="QHBoxLayout" name="horizontalLayout_8">
+                <item>
+                 <widget class="QCheckBox" name="checkBox_keep_all">
+                  <property name="text">
+                   <string>Keep all</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_sample_factor">
+                  <property name="toolTip">
+                   <string>Sample factor to adjust how often a new sample is added. The larger the factor is, less samples are generated.</string>
+                  </property>
+                  <property name="keyboardTracking">
+                   <bool>false</bool>
+                  </property>
+                  <property name="suffix">
+                   <string>x</string>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>9.900000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item row="0" column="2">
                <widget class="QCheckBox" name="checkBox_switchImages">
@@ -755,6 +787,13 @@
                 </property>
                </widget>
               </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="label_4">
+                <property name="text">
+                 <string>Skew</string>
+                </property>
+               </widget>
+              </item>
               <item row="5" column="1">
                <widget class="QProgressBar" name="progressBar_skew">
                 <property name="value">
@@ -769,13 +808,6 @@
                 </property>
                 <property name="invertedAppearance">
                  <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QCheckBox" name="checkBox_keep_all">
-                <property name="text">
-                 <string>Keep all</string>
                 </property>
                </widget>
               </item>

@@ -749,7 +749,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 bool CameraDepthAI::isCalibrated() const
 {
 #ifdef RTABMAP_DEPTHAI
-	return stereoModel_.isValidForProjection();
+	return outputMode_ == 0?stereoModel_.isValidForProjection():stereoModel_.left().isValidForProjection();
 #else
 	return false;
 #endif

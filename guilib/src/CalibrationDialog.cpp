@@ -852,10 +852,10 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					{
 						for(unsigned int i=0; i<imageParams_[id].size(); ++i)
 						{
-							if(fabs(params[0] - imageParams_[id][i].at(0)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1) && // x
-								fabs(params[1] - imageParams_[id][i].at(1)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1) && // y
-								fabs(params[2] - imageParams_[id][i].at(2)) < 0.05 && // size
-								(params[3]==0 || params[3]==1.0f || imageParams_[id][i].at(3) == 0 || imageParams_[id][i].at(3) == 1.0f || fabs(params[3] - imageParams_[id][i].at(3)) < 0.1)) // skew
+							if(fabs(params[0] - imageParams_[id][i].at(0)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1)*ui_->doubleSpinBox_sample_factor->value() && // x
+								fabs(params[1] - imageParams_[id][i].at(1)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1)*ui_->doubleSpinBox_sample_factor->value() && // y
+								fabs(params[2] - imageParams_[id][i].at(2)) < 0.05*ui_->doubleSpinBox_sample_factor->value() && // size
+								(params[3]==0 || params[3]==1.0f || imageParams_[id][i].at(3) == 0 || imageParams_[id][i].at(3) == 1.0f || fabs(params[3] - imageParams_[id][i].at(3)) < 0.1*ui_->doubleSpinBox_sample_factor->value())) // skew
 							{
 								addSample = false;
 								break;
