@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-640</y>
+            <y>0</y>
             <width>713</width>
             <height>4653</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -9538,6 +9538,45 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <string>Thresholds</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_44" columnstretch="0,1">
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_maxWmSize">
+                         <property name="text">
+                          <string>Maximum signatures allowed in Working Memory (0 means inf).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_96">
+                         <property name="text">
+                          <string>T_ratio : The loop closure hypothesis must be over T_ratio x lastHypothesisValue.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_hardThr">
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.950000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="0">
                         <widget class="QDoubleSpinBox" name="general_doubleSpinBox_timeThr">
                          <property name="suffix">
@@ -9580,32 +9619,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_maxWmSize">
-                         <property name="text">
-                          <string>Maximum signatures allowed in Working Memory (0 means inf).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_hardThr">
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.950000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_93">
                          <property name="text">
@@ -9619,7 +9632,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
+                       <item row="4" column="0">
                         <widget class="QDoubleSpinBox" name="general_doubleSpinBox_loopRatio">
                          <property name="maximum">
                           <double>1.000000000000000</double>
@@ -9633,15 +9646,28 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </widget>
                        </item>
                        <item row="3" column="1">
-                        <widget class="QLabel" name="label_96">
+                        <widget class="QLabel" name="label_332">
                          <property name="text">
-                          <string>T_ratio : The loop closure hypothesis must be over T_ratio x lastHypothesisValue.</string>
+                          <string>Loop closure threshold used (overriding T_loop) when a new mapping session is not yet linked to a map of the highest loop closure hypothesis. In localization mode, this threshold is used when there are no loop closure constraints with any map in the cache (see &quot;Max odometry cache size&quot; under RGB-D SLAM panel). In all cases, the goal is to aggressively loop on a previous map in the database that is not linked to current map. Only used when RGB-D SLAM mode is enabled. Set 1 to disable.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_agressiveThr">
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.050000000000000</double>
                          </property>
                         </widget>
                        </item>

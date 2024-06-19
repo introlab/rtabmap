@@ -284,6 +284,7 @@ private:
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;
 	float _loopRatio;
+	float _aggressiveLoopThr;
 	int _virtualPlaceLikelihoodRatio;
 	float _maxLoopClosureDistance;
 	bool _verifyLoopClosureHypothesis;

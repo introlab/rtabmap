@@ -103,6 +103,7 @@ Rtabmap::Rtabmap() :
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
+	_aggressiveLoopThr(Parameters::defaultRGBDAggressiveLoopThr()),
 	_virtualPlaceLikelihoodRatio(Parameters::defaultRtabmapVirtualPlaceLikelihoodRatio()),
 	_maxLoopClosureDistance(Parameters::defaultRGBDMaxLoopClosureDistance()),
 	_verifyLoopClosureHypothesis(Parameters::defaultVhEpEnabled()),
@@ -568,6 +569,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopRatio(), _loopRatio);
+	Parameters::parse(parameters, Parameters::kRGBDAggressiveLoopThr(), _aggressiveLoopThr);
 	Parameters::parse(parameters, Parameters::kRtabmapVirtualPlaceLikelihoodRatio(), _virtualPlaceLikelihoodRatio);
 
 	Parameters::parse(parameters, Parameters::kRGBDMaxLoopClosureDistance(), _maxLoopClosureDistance);
@@ -2104,21 +2106,26 @@ bool Rtabmap::process(
 			if(_highestHypothesis.first > 0)
 			{
 				float loopThr = _loopThr;
-				if((_startNewMapOnLoopClosure || !_memory->isIncremental()) &&
-					graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 && // alone in the current map
-					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
-					(int)_memory->getWorkingMem().size()<=_memory->getMaxStMemSize() &&
-					_rgbdSlamMode)
+				bool hasLoopClosureConstraints = false;
+				for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end() && !hasLoopClosureConstraints; ++iter)
 				{
-					// If the map is very small (under STM size) and we need to find
-					// a loop closure before continuing the map or localizing,
+					hasLoopClosureConstraints =
+							iter->second.type() == Link::kGlobalClosure ||
+							iter->second.type() == Link::kLocalSpaceClosure ||
+							iter->second.type() == Link::kLandmark;
+				}
+				if(	(( _memory->isIncremental() && !uContains(_optimizedPoses, _highestHypothesis.first) == 0) || // not linked to previous map of that hypothesis
+					 (!_memory->isIncremental() && !hasLoopClosureConstraints)) && // not yet localized to any previous sessions
+					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
+					_rgbdSlamMode &&
+					loopThr > _aggressiveLoopThr)
+				{
 					// use the best hypothesis directly.
-					loopThr = 0.0f;
+					UDEBUG("Using %s=%f", Parameters::kRGBDAggressiveLoopThr().c_str(), _aggressiveLoopThr);
+					loopThr = _aggressiveLoopThr;
 				}
 
 				// Loop closure Threshold
-				// When _loopThr=0, accept loop closure if the hypothesis is over
-				// the virtual (new) place hypothesis.
 				if(_highestHypothesis.second >= loopThr)
 				{
 					rejectedGlobalLoopClosure = true;
