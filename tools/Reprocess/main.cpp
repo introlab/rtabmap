@@ -600,7 +600,7 @@ int main(int argc, char * argv[])
 		printf("Custom parameters:\n");
 		for(ParametersMap::iterator iter=customParameters.begin(); iter!=customParameters.end(); ++iter)
 		{
-			printf("  %s\t= %s\n", iter->first.c_str(), iter->second.c_str());
+			printf("  %s %s\n", uPad(iter->first+" =", 25).c_str(), iter->second.c_str());
 		}
 	}
 

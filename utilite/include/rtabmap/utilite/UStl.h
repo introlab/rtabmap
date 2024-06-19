@@ -809,4 +809,14 @@ inline int uCompareVersion(const std::string & version, int major, int minor=-1,
 	return -1;
 }
 
+inline std::string uPad(const std::string & title, int padding = 20)
+{
+	int emptySize = padding - (int)title.size();
+	if(emptySize>0)
+	{
+		return title + std::string(emptySize, ' ');
+	}
+	return title;
+}
+
 #endif /* USTL_H */
