@@ -2114,7 +2114,7 @@ bool Rtabmap::process(
 							iter->second.type() == Link::kLocalSpaceClosure ||
 							iter->second.type() == Link::kLandmark;
 				}
-				if(	(( _memory->isIncremental() && !uContains(_optimizedPoses, _highestHypothesis.first) == 0) || // not linked to previous map of that hypothesis
+				if(	(( _memory->isIncremental() && !uContains(_optimizedPoses, _highestHypothesis.first)) || // not linked to previous map of that hypothesis
 					 (!_memory->isIncremental() && !hasLoopClosureConstraints)) && // not yet localized to any previous sessions
 					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
 					_rgbdSlamMode &&
