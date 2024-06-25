@@ -83,9 +83,9 @@ void showUsage()
 			"    --report           Export all evaluation statistics values in report.txt \n"
 			"    --loc [#]          Show localization statistics for each \"Statistic/Id\" per\n"
 			"                       session. Optionally set number 1=min,2=max,4=mean,8=stddev,16=total,32=nonnull%%\n"
-			"                       to show cumulative results on console.\n"
-			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds)\n"
-			"                       (it is a mask, we can combine those numbers, e.g., 63 for all) \n"
+			"                       to show cumulative results on console (it is a mask, \n"
+			"                       we can combine those numbers, e.g., 63 for all) \n"
+			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds).\n"
 			"    --ignore_inter_nodes  Ignore intermediate poses and statistics.\n"
 			"    --udebug           Show debug log.\n"
 			"    --help,-h          Show usage\n\n");

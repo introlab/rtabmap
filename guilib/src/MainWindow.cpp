@@ -5851,7 +5851,12 @@ void MainWindow::startDetection()
 		}
 	}
 
-	if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef)
+	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase &&
+	   camera && camera->odomProvided())
+	{
+		odomSensor = camera;
+	}
+	else if(_preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef)
 	{
 		if(camera == 0 ||
 		   (_preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&

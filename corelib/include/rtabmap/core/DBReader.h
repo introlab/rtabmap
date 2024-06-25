@@ -82,6 +82,7 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	virtual bool odomProvided() const {return !_odometryIgnored;}
+	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.06);
 
 	const DBDriver * driver() const {return _dbDriver;}
 

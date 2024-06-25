@@ -462,7 +462,11 @@ void SensorCaptureThread::mainLoop()
 
 		Transform pose;
 		cv::Mat covariance;
-		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
+		if(!info.odomPose.isNull() && _lidar == 0 && _odomSensor == _camera)
+		{
+			// Do nothing, we have already the pose
+		}
+		else if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance, _poseWaitTime>0?_poseWaitTime:0))
 		{
 			info.odomPose = pose;
 			info.odomCovariance = covariance;

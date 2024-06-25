@@ -268,6 +268,12 @@ std::string DBReader::getSerial() const
 	return "DBReader";
 }
 
+bool DBReader::getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
+{
+	UERROR("DBReader only provides pose when capturing data, it cannot provide asynchronous pose.");
+	return false;
+}
+
 SensorData DBReader::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data = this->getNextData(info);
