@@ -15,14 +15,14 @@
   <build_depend>proj</build_depend>
   <depend>cv_bridge</depend>
   <depend>libg2o</depend>
-  <depend>gtsam</depend>
+  <!-- <depend>gtsam</depend> // Uncomment when this issue https://github.com/borglab/gtsam/issues/1759 is fixed and new binaries are available-->
   <!-- <depend>libopenni2-dev</depend> --> <!-- not available on Jessie -->
   <depend>libpcl-all-dev</depend> <!--  include libvtk-qt -->
   <depend>libpointmatcher</depend> <!-- optional but recommended if lidar is used, also not available on 32 bits system, but rtabmap can be built without it -->
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
   <depend>octomap</depend>
-  <depend>grid_map_core</depend>
+<!--  <depend>grid_map_core</depend> // Uncomment when available on jazzy -->
   <depend>qt_gui_cpp</depend> <!-- libqt4-dev or libqt5-dev -->
   <depend>zlib</depend>
 
