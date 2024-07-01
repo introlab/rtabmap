@@ -5193,7 +5193,14 @@ void PreferencesDialog::makeObsoleteLoggingPanel()
 
 void PreferencesDialog::makeObsoleteSourcePanel()
 {
+	ULOGGER_DEBUG("");
 	_obsoletePanels = _obsoletePanels | kPanelSource;
+}
+
+void PreferencesDialog::makeObsoleteCalibrationPanel()
+{
+	ULOGGER_DEBUG("");
+	_obsoletePanels = _obsoletePanels | kPanelCalibration;
 }
 
 QList<QGroupBox*> PreferencesDialog::getGroupBoxes()
@@ -6796,7 +6803,7 @@ Camera * PreferencesDialog::createCamera(
 		((CameraDepthAI*)camera)->setExtendedDisparity(_ui->checkBox_depthai_extended_disparity->isChecked());
 		((CameraDepthAI*)camera)->setSubpixelMode(_ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()!=0, _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()==2?4:_ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()==3?5:3);
 		((CameraDepthAI*)camera)->setCompanding(_ui->comboBox_depthai_disparity_companding->currentIndex()!=0, _ui->comboBox_depthai_disparity_companding->currentIndex()==1?64:96);
-		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value());
+		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value(), !useRawImages);
 		((CameraDepthAI*)camera)->setIMU(_ui->checkBox_depthai_imu_published->isChecked(), _ui->checkbox_publishInterIMU->isChecked());
 		((CameraDepthAI*)camera)->setIrIntensity(_ui->doubleSpinBox_depthai_dot_intensity->value(), _ui->doubleSpinBox_depthai_flood_intensity->value());
 		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
@@ -7562,11 +7569,14 @@ void PreferencesDialog::calibrate()
 		}
 
 		bool freenect2 = driver == kSrcFreenect2;
-		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB && driver != kSrcRealSense, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
+		bool rgbDepth = freenect2 || (driver==kSrcStereoDepthAI && _ui->comboBox_depthai_output_mode->currentIndex() == 2);
+		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB && driver != kSrcRealSense, rgbDepth?"rgb":"left", rgbDepth?"depth":"right"); // RGB+Depth or left+right
 		_calibrationDialog->setCameraName("");
 		_calibrationDialog->setSwitchedImages(freenect2);
 		if(driver == kSrcStereoRealSense2)
 			_calibrationDialog->setFisheyeModel();
+		if(driver == kSrcStereoDepthAI)
+			_calibrationDialog->setRationalModel();
 		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 		_calibrationDialog->registerToEventsManager();
 
@@ -7580,6 +7590,7 @@ void PreferencesDialog::calibrate()
 
 		cameraThread.join(true);
 	}
+	makeObsoleteCalibrationPanel();
 }
 
 void PreferencesDialog::calibrateSimple()

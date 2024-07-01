@@ -39,7 +39,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UEventsHandler.h>
 
+#include <opencv2/aruco/charuco.hpp>
+
 class Ui_calibrationDialog;
+class QTextStream;
 
 namespace rtabmap {
 
@@ -60,6 +63,7 @@ public:
 	int boardWidth() const;
 	int boardHeight() const;
 	double squareSize() const;
+	double markerLength() const;
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
@@ -74,17 +78,24 @@ public:
 	void setStereoMode(bool stereo, const QString & leftSuffix = "left", const QString & rightSuffix = "right");
 	void setSavingDirectory(const QString & savingDirectory) {savingDirectory_ = savingDirectory;}
 
-	StereoCameraModel stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification) const;
+	StereoCameraModel stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification, QTextStream * logStream = 0) const;
 
 public Q_SLOTS:
+
+	void setBoardType(int type);
 	void setBoardWidth(int width);
 	void setBoardHeight(int height);
 	void setSquareSize(double size);
+	void setMarkerDictionary(int dictionary);
+	void setMarkerLength(double length);
+	void setSubpixelRefinement(bool enabled);
+	void setSubpixelMaxError(double value);
 	void setCalibrationDataSaved(bool enabled);
 	void setExpectedStereoBaseline(double length);
 	void setMaxScale(int scale);
 
 	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);
+	void generateBoard();
 	void calibrate();
 	void restart();
 	bool save();
@@ -98,6 +109,7 @@ protected:
 
 private:
 	float getArea(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize);
+	float getSkew(const std::vector<cv::Point2f> & fourCorners);
 	float getSkew(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize);
 
 	// x -> [0, 1] (left, right)
@@ -120,10 +132,19 @@ private:
 	int currentId_;
 	QString timestamp_;
 
+	std::vector<cv::Point3f> chessboardPoints_;
+	std::vector<int> chessboardPointIds_;
+	cv::Ptr<cv::aruco::Dictionary> markerDictionary_;
+	cv::Ptr<cv::aruco::DetectorParameters> arucoDetectorParams_;
+    cv::Ptr<cv::aruco::CharucoBoard> charucoBoard_;
+
+
 	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;
+	std::vector<std::vector<std::vector<cv::Point3f> > > objectPoints_;
 	std::vector<std::vector<std::vector<float> > > imageParams_;
 	std::vector<std::vector<int > > imageIds_;
 	std::vector<std::vector<std::vector<cv::Point2f> > > stereoImagePoints_;
+	std::vector<std::vector<cv::Point3f> > stereoObjectPoints_;
 	std::vector<int> stereoImageIds_;
 	std::vector<cv::Size > imageSize_;
 	std::vector<rtabmap::CameraModel> models_;

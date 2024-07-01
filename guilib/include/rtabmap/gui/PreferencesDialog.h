@@ -76,7 +76,8 @@ public:
 		kPanelCloudRendering = 2,
 		kPanelLogging = 4,
 		kPanelSource = 8,
-		kPanelAll = 15
+		kPanelCalibration = 16,
+		kPanelAll = 31
 	};
 	// TODO, tried to change the name of PANEL_FLAGS to PanelFlags... but signals/slots errors appeared...
 	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
@@ -347,6 +348,7 @@ private Q_SLOTS:
 	void makeObsoleteCloudRenderingPanel();
 	void makeObsoleteLoggingPanel();
 	void makeObsoleteSourcePanel();
+	void makeObsoleteCalibrationPanel();
 	void clicked(const QModelIndex & current, const QModelIndex & previous);
 	void addParameter(int value);
 	void addParameter(bool value);

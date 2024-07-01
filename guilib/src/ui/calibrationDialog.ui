@@ -6,34 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1189</width>
-    <height>692</height>
+    <width>1100</width>
+    <height>828</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_5">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="leftMargin">
-    <number>0</number>
-   </property>
-   <property name="topMargin">
-    <number>0</number>
-   </property>
-   <property name="rightMargin">
-    <number>0</number>
-   </property>
-   <property name="bottomMargin">
-    <number>0</number>
-   </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
-     <property name="sizeConstraint">
-      <enum>QLayout::SetMaximumSize</enum>
-     </property>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <property name="spacing">
@@ -155,9 +137,6 @@
        <property name="horizontalScrollBarPolicy">
         <enum>Qt::ScrollBarAlwaysOff</enum>
        </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QAbstractScrollArea::AdjustToContents</enum>
-       </property>
        <property name="widgetResizable">
         <bool>false</bool>
        </property>
@@ -166,8 +145,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>387</width>
-          <height>928</height>
+          <width>428</width>
+          <height>1070</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
@@ -186,20 +165,274 @@
          <item>
           <widget class="QGroupBox" name="groupBox">
            <property name="title">
-            <string>Chessboard</string>
+            <string>Configuration</string>
            </property>
            <layout class="QGridLayout" name="gridLayout_3">
-            <item row="8" column="0">
-             <widget class="QLabel" name="label_stereoBaseline_2">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_13">
               <property name="toolTip">
-               <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
+               <string>Number of inner squares on the board</string>
               </property>
               <property name="text">
-               <string>Calibration Model</string>
+               <string>Board Type</string>
               </property>
              </widget>
             </item>
+            <item row="0" column="2" colspan="3">
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <item>
+               <widget class="QComboBox" name="comboBox_board_type">
+                <item>
+                 <property name="text">
+                  <string>Chessboard</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ChArUco Board</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QToolButton" name="toolButton_generateBoard">
+                <property name="toolTip">
+                 <string>Generate image of the board</string>
+                </property>
+                <property name="text">
+                 <string>...</string>
+                </property>
+                <property name="autoRaise">
+                 <bool>false</bool>
+                </property>
+                <property name="arrowType">
+                 <enum>Qt::RightArrow</enum>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_markerDictionary">
+              <property name="toolTip">
+               <string>Number of inner squares on the board</string>
+              </property>
+              <property name="text">
+               <string>Marker Dictionary</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2" colspan="3">
+             <widget class="QComboBox" name="comboBox_marker_dictionary">
+              <property name="currentIndex">
+               <number>3</number>
+              </property>
+              <item>
+               <property name="text">
+                <string>4X4_50</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>4X4_100</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>4X4_250</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>4X4_1000</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5X5_50</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5X5_100</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5X5_250</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5X5_1000</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6X6_50</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6X6_100</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6X6_250</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6X6_1000</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>7X7_50</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>7X7_100</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>7X7_250</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>7X7_1000</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>ARUCO_ORIGINAL</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>APRILTAG_16h5</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>APRILTAG_25h9</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>APRILTAG_36h10</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>APRILTAG_36h11</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_15">
+              <property name="toolTip">
+               <string/>
+              </property>
+              <property name="text">
+               <string>Square Size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="2" colspan="3">
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <item>
+               <widget class="QSpinBox" name="spinBox_boardWidth">
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="value">
+                 <number>8</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="spinBox_boardHeight">
+                <property name="keyboardTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="value">
+                 <number>6</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
             <item row="3" column="0">
+             <widget class="QLabel" name="label_12">
+              <property name="toolTip">
+               <string>Number of inner squares on the board</string>
+              </property>
+              <property name="text">
+               <string>Board Size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2" colspan="3">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_squareSize">
+              <property name="keyboardTracking">
+               <bool>false</bool>
+              </property>
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>6</number>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.033000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="label_markerLength">
+              <property name="toolTip">
+               <string/>
+              </property>
+              <property name="text">
+               <string>Marker Length</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2" colspan="3">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_markerLength">
+              <property name="keyboardTracking">
+               <bool>false</bool>
+              </property>
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>6</number>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.024750000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
              <widget class="QLabel" name="label_22">
               <property name="toolTip">
                <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
@@ -209,7 +442,78 @@
               </property>
              </widget>
             </item>
-            <item row="6" column="1">
+            <item row="5" column="2" colspan="2">
+             <widget class="QSpinBox" name="spinBox_maxScale">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>3</number>
+              </property>
+              <property name="value">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QLabel" name="label_stereoBaseline_4">
+              <property name="toolTip">
+               <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
+              </property>
+              <property name="text">
+               <string>Sub Pixel Refinement</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="2">
+             <widget class="QCheckBox" name="checkBox_subpixel_refinement">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="4">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_subpixel_error">
+              <property name="toolTip">
+               <string>0 means infinity (accept all)</string>
+              </property>
+              <property name="keyboardTracking">
+               <bool>false</bool>
+              </property>
+              <property name="suffix">
+               <string> pix</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>9.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>1.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="0">
+             <widget class="QLabel" name="label_stereoBaseline">
+              <property name="toolTip">
+               <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
+              </property>
+              <property name="text">
+               <string>Stereo Expected Baseline</string>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="2" colspan="3">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_stereoBaseline">
               <property name="toolTip">
                <string>If you know the exact baseline of the stereo cameras, you can set it here in case the square size is not super accurate.</string>
@@ -228,40 +532,17 @@
               </property>
              </widget>
             </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="label_20">
-              <property name="toolTip">
-               <string>Number of inner squares on the board</string>
-              </property>
-              <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/introlab/rtabmap/raw/master/data/check-108.pdf&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Sample8x6&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="openExternalLinks">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QLabel" name="label_stereoBaseline">
+            <item row="8" column="0">
+             <widget class="QLabel" name="label_stereoBaseline_2">
               <property name="toolTip">
                <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
               </property>
               <property name="text">
-               <string>Stereo Expected Baseline</string>
+               <string>Calibration Model</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_15">
-              <property name="toolTip">
-               <string/>
-              </property>
-              <property name="text">
-               <string>Square Size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="8" column="1">
+            <item row="8" column="2" colspan="3">
              <widget class="QComboBox" name="comboBox_calib_model">
               <property name="currentIndex">
                <number>1</number>
@@ -283,16 +564,6 @@
               </item>
              </widget>
             </item>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_21">
-              <property name="toolTip">
-               <string/>
-              </property>
-              <property name="text">
-               <string>Download</string>
-              </property>
-             </widget>
-            </item>
             <item row="9" column="0">
              <widget class="QLabel" name="label_stereoBaseline_3">
               <property name="toolTip">
@@ -303,73 +574,20 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_squareSize">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>4</number>
-              </property>
-              <property name="maximum">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.033000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_12">
-              <property name="toolTip">
-               <string>Number of inner squares on the board</string>
-              </property>
-              <property name="text">
-               <string>Board Size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <layout class="QHBoxLayout" name="horizontalLayout">
-              <item>
-               <widget class="QSpinBox" name="spinBox_boardWidth">
-                <property name="minimum">
-                 <number>2</number>
-                </property>
-                <property name="value">
-                 <number>8</number>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBox" name="spinBox_boardHeight">
-                <property name="minimum">
-                 <number>2</number>
-                </property>
-                <property name="value">
-                 <number>6</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="3" column="1">
-             <widget class="QSpinBox" name="spinBox_maxScale">
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>3</number>
-              </property>
-              <property name="value">
-               <number>1</number>
-              </property>
-             </widget>
-            </item>
-            <item row="9" column="1">
+            <item row="9" column="2">
              <widget class="QCheckBox" name="checkBox_saveCalibrationData">
               <property name="text">
                <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="3">
+             <widget class="QLabel" name="label_stereoBaseline_5">
+              <property name="toolTip">
+               <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
+              </property>
+              <property name="text">
+               <string>Max Error</string>
               </property>
              </widget>
             </item>
@@ -390,22 +608,15 @@
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_6">
             <item>
-             <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0">
-              <item row="5" column="0">
-               <widget class="QLabel" name="label_4">
-                <property name="text">
-                 <string>Skew</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_6">
+              <item>
                <widget class="QLabel" name="label_19">
                 <property name="text">
                  <string>Serial</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
+              <item>
                <widget class="QLabel" name="label_serial">
                 <property name="text">
                  <string>0</string>
@@ -414,6 +625,49 @@
                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                 </property>
                </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="gridLayout">
+              <item row="0" column="1">
+               <layout class="QHBoxLayout" name="horizontalLayout_8">
+                <item>
+                 <widget class="QCheckBox" name="checkBox_keep_all">
+                  <property name="text">
+                   <string>Keep all</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_sample_factor">
+                  <property name="toolTip">
+                   <string>Sample factor to adjust how often a new sample is added. The larger the factor is, less samples are generated.</string>
+                  </property>
+                  <property name="keyboardTracking">
+                   <bool>false</bool>
+                  </property>
+                  <property name="suffix">
+                   <string>x</string>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>9.900000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item row="0" column="2">
                <widget class="QCheckBox" name="checkBox_switchImages">
@@ -530,6 +784,13 @@
                 </property>
                 <property name="invertedAppearance">
                  <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="label_4">
+                <property name="text">
+                 <string>Skew</string>
                 </property>
                </widget>
               </item>
@@ -703,8 +964,11 @@
                </item>
                <item row="7" column="0">
                 <widget class="QLabel" name="label_baseline_name">
+                 <property name="toolTip">
+                  <string>Stereo</string>
+                 </property>
                  <property name="text">
-                  <string>baseline</string>
+                  <string>Baseline/Err</string>
                  </property>
                 </widget>
                </item>
@@ -768,16 +1032,6 @@
                </item>
                <item row="3" column="2">
                 <widget class="QLabel" name="label_cx_2">
-                 <property name="text">
-                  <string>0</string>
-                 </property>
-                 <property name="textInteractionFlags">
-                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="2">
-                <widget class="QLabel" name="label_baseline">
                  <property name="text">
                   <string>0</string>
                  </property>
@@ -897,6 +1151,26 @@
                 <widget class="QLabel" name="label_error_2">
                  <property name="text">
                   <string>0</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="1">
+                <widget class="QLabel" name="label_baseline">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                 <property name="textInteractionFlags">
+                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="2">
+                <widget class="QLabel" name="label_stereoError">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                 <property name="textInteractionFlags">
+                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                  </property>
                 </widget>
                </item>
