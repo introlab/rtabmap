@@ -39,7 +39,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UEventsHandler.h>
 
+#if defined(HAVE_OPENCV_ARUCO) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
 #include <opencv2/aruco/charuco.hpp>
+#define HAVE_CHARUCO
+#endif
 
 class Ui_calibrationDialog;
 class QTextStream;
@@ -134,9 +137,11 @@ private:
 
 	std::vector<cv::Point3f> chessboardPoints_;
 	std::vector<int> chessboardPointIds_;
+#ifdef HAVE_CHARUCO
 	cv::Ptr<cv::aruco::Dictionary> markerDictionary_;
 	cv::Ptr<cv::aruco::DetectorParameters> arucoDetectorParams_;
     cv::Ptr<cv::aruco::CharucoBoard> charucoBoard_;
+#endif
 
 
 	std::vector<std::vector<std::vector<cv::Point2f> > > imagePoints_;

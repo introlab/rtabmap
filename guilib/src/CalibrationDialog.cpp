@@ -58,6 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/ULogger.h>
 
+#ifdef HAVE_CHARUCO
 #define kArucoDictNameSize 21
 static const char * kArucoDictNames[kArucoDictNameSize] = {
 "4X4_50",
@@ -82,6 +83,7 @@ static const char * kArucoDictNames[kArucoDictNameSize] = {
 "APRILTAG_36h10",
 "APRILTAG_36h11"
 };
+#endif
 
 
 namespace rtabmap {
@@ -156,7 +158,10 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 
 	timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 7)
+#ifndef HAVE_CHARUCO
+	ui_->comboBox_board_type->setItemData(1, 0, Qt::UserRole - 1);
+	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
+#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 7)
 	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
 #endif
 }
@@ -264,6 +269,7 @@ void CalibrationDialog::generateBoard()
 	cv::Mat image;
 	QString filename;
 	QTextStream stream(&filename);
+#ifdef HAVE_CHARUCO
 	if(ui_->comboBox_board_type->currentIndex() >= 1 )
 	{
 		try {
@@ -296,6 +302,7 @@ void CalibrationDialog::generateBoard()
 		}
 	}
 	else
+#endif
 	{
 		image = drawChessboard(
 			squareSizeInPixels, 
@@ -570,6 +577,7 @@ bool CalibrationDialog::handleEvent(UEvent * event)
 	return false;
 }
 
+#ifdef HAVE_CHARUCO
 void matchCharucoImagePoints(
 		const cv::aruco::CharucoBoard &board,
 		const std::vector< cv::Point2f > & detectedCorners,
@@ -592,6 +600,7 @@ void matchCharucoImagePoints(
 	board.matchImagePoints(detectedCorners, detectedIds, objectPoints, cv::noArray());
 #endif
 }
+#endif
 
 // Modified from original versoin in opencv_contrib to remove "id="
 void drawDetectedCornersCharuco(cv::InputOutputArray image, cv::InputArray charucoCorners,
@@ -620,7 +629,6 @@ void drawDetectedCornersCharuco(cv::InputOutputArray image, cv::InputArray charu
         }
     }
 }
-
 
 void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName)
 {
@@ -738,6 +746,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 						else
 							cv::resize(viewGray, timg, cv::Size(), scale, scale, CV_INTER_CUBIC);
 
+#ifdef HAVE_CHARUCO
 						if(ui_->comboBox_board_type->currentIndex() >= 1 )
 						{
 							std::vector< std::vector< cv::Point2f > > rejected;
@@ -762,6 +771,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 							}
 						}
 						else // standard checkerboard
+#endif
 						{
 							boardFound[id] = cv::findChessboardCorners(timg, boardSize, pointBuf[id], flags);
 							objectBuf[id] = chessboardPoints_;
@@ -836,10 +846,12 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 				// Draw the corners.
 				images[id] = images[id].clone();
+#ifdef HAVE_CHARUCO
 				if(ui_->comboBox_board_type->currentIndex() >= 1 ) {
 					if(markerIds.size() > 0)
 						cv::aruco::drawDetectedMarkers(images[id], markerCorners, cv::noArray(), cv::Scalar(255,0,0));
 				}
+#endif
 				if(pointBuf[id].size() > 0)
 					drawDetectedCornersCharuco(images[id], pointBuf[id], pointIds[id], cv::Scalar(0,255,0)); // Accepted Green
 				if(rejectedPoints.size() > 0)
@@ -1200,9 +1212,10 @@ void CalibrationDialog::restart()
 
 	chessboardPoints_.clear();
 	chessboardPointIds_.clear();
-	markerDictionary_.reset();
-	arucoDetectorParams_.reset();
-	charucoBoard_.reset();
+#ifdef HAVE_CHARUCO
+	markerDictionary_.release();
+	arucoDetectorParams_.release();
+	charucoBoard_.release();
 	if(ui_->comboBox_board_type->currentIndex() >= 1 )
 	{
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
@@ -1210,12 +1223,17 @@ void CalibrationDialog::restart()
 #else
 		arucoDetectorParams_ = cv::aruco::DetectorParameters::create();
 #endif
+
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
 		arucoDetectorParams_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_CONTOUR;
+#else
+		arucoDetectorParams_->doCornerRefinement = true;
+#endif
 
 		int arucoDictionary = ui_->comboBox_marker_dictionary->currentIndex();
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 		if(arucoDictionary >= 17)
 		{
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 			UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
 					"current version is %s.", CV_VERSION);
 
@@ -1228,9 +1246,11 @@ void CalibrationDialog::restart()
 			// DICT_APRILTAG_36h11=20
 			//
 			arucoDictionary = 0;
+#else
 			arucoDetectorParams_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
-		}
 #endif
+		}
+
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
 		markerDictionary_.reset(new cv::aruco::Dictionary());
 		*markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(arucoDictionary));
@@ -1263,6 +1283,7 @@ void CalibrationDialog::restart()
 #endif
 	}
 	else //checkerboard
+#endif
 	{
 		for( int i = 0; i < ui_->spinBox_boardHeight->value(); ++i ) {
 			for( int j = 0; j < ui_->spinBox_boardWidth->value(); ++j ) {
@@ -1466,10 +1487,12 @@ void CalibrationDialog::calibrate()
 		std::cout << "height = " << imageSize_[id].height << std::endl;
 		UINFO("FOV horizontal=%f vertical=%f", models_[id].horizontalFOV(), models_[id].verticalFOV());
 
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION > 2)
 		std::string strStream;
 		logStream << "K = " << (strStream << K).c_str() << ENDL;
 		strStream.clear();
 		logStream << "D = " << (strStream << D).c_str() << ENDL;
+#endif
 		logStream << "width = " << imageSize_[id].width << ENDL;
 		logStream << "height = " << imageSize_[id].height << ENDL;
 		logStream << "FOV horizontal=" << models_[id].horizontalFOV() << " vertical=" << models_[id].verticalFOV() << ENDL;
@@ -1779,6 +1802,17 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				imageSize, R, T, E, F,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
 				cv::CALIB_FIX_INTRINSIC | (ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0));
+#elif CV_MAJOR_VERSION == 3 and (CV_MINOR_VERSION < 4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION < 1))
+		//OpenCV < 3.4.1
+		rms = cv::stereoCalibrate(
+				stereoObjectPoints_,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				left.K_raw(), left.D_raw(),
+				right.K_raw(), right.D_raw(),
+				imageSize, R, T, E, F,
+				cv::CALIB_FIX_INTRINSIC | (ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0),
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
 #else
 		cv::Mat perViewErrorsMat;
 		rms = cv::stereoCalibrate(
@@ -1811,6 +1845,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		std::cout << "E = " << E << std::endl;
 		std::cout << "F = " << F << std::endl;
 
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION > 2)
 		std::string strStream;
 		if(logStream) (*logStream) << "R = " << (strStream<<R).c_str() << ENDL;
 		strStream.clear();
@@ -1820,6 +1855,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		strStream.clear();
 		if(logStream) (*logStream) << "F = " << (strStream<<F).c_str() << ENDL;
 		strStream.clear();
+#endif
 
 		if(imageSize_[0] == imageSize_[1] && !ignoreStereoRectification)
 		{
@@ -1836,6 +1872,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			std::cout << "R2 = " << R2 << std::endl;
 			std::cout << "P2 = " << P2 << std::endl;
 
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION > 2)
 			if(logStream) (*logStream) << "R1 = " << (strStream<<R1).c_str() << ENDL;
 			strStream.clear();
 			if(logStream) (*logStream) << "P1 = " << (strStream<<P1).c_str() << ENDL;
@@ -1843,6 +1880,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			if(logStream) (*logStream) << "R2 = " << (strStream<<R2).c_str() << ENDL;
 			strStream.clear();
 			if(logStream) (*logStream) << "P2 = " << (strStream<<P2).c_str() << ENDL;
+#endif
 
 			double err = 0;
 			int npoints = 0;
