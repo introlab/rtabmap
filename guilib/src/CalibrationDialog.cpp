@@ -155,6 +155,10 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	this->setStereoMode(stereo_);
 
 	timestamp_ = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
+
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 7)
+	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
+#endif
 }
 
 CalibrationDialog::~CalibrationDialog()
@@ -260,14 +264,22 @@ void CalibrationDialog::generateBoard()
 	cv::Mat image;
 	QString filename;
 	QTextStream stream(&filename);
-	if(ui_->comboBox_board_type->currentIndex() == 1)
+	if(ui_->comboBox_board_type->currentIndex() >= 1 )
 	{
 		try {
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+			charucoBoard_->generateImage(
+				cv::Size(squareSizeInPixels*ui_->spinBox_boardWidth->value(),
+						squareSizeInPixels*ui_->spinBox_boardHeight->value()), 
+				image, 
+				squareSizeInPixels/4, 1);
+#else
 			charucoBoard_->draw(
 				cv::Size(squareSizeInPixels*ui_->spinBox_boardWidth->value(),
 						squareSizeInPixels*ui_->spinBox_boardHeight->value()), 
 				image, 
 				squareSizeInPixels/4, 1);
+#endif
 
 			int arucoDict = ui_->comboBox_marker_dictionary->currentIndex();
 			stream << "charuco_" << (arucoDict<kArucoDictNameSize?kArucoDictNames[arucoDict]:"NA") << "_" 
@@ -566,6 +578,8 @@ void matchCharucoImagePoints(
 {
 	UASSERT(detectedIds.size() == detectedCorners.size());
 	objectPoints.clear();
+
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 7)
     objectPoints.reserve(detectedIds.size());
 
     // look for detected markers that belong to the board and get their information
@@ -574,6 +588,9 @@ void matchCharucoImagePoints(
 		UASSERT(pointId >= 0 && pointId < (int)board.chessboardCorners.size());
 		objectPoints.push_back(board.chessboardCorners[pointId]);
     }
+#else
+	board.matchImagePoints(detectedCorners, detectedIds, objectPoints, cv::noArray());
+#endif
 }
 
 // Modified from original versoin in opencv_contrib to remove "id="
@@ -721,7 +738,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 						else
 							cv::resize(viewGray, timg, cv::Size(), scale, scale, CV_INTER_CUBIC);
 
-						if(ui_->comboBox_board_type->currentIndex() == 1)
+						if(ui_->comboBox_board_type->currentIndex() >= 1 )
 						{
 							std::vector< std::vector< cv::Point2f > > rejected;
 							UASSERT(charucoBoard_.get());
@@ -783,7 +800,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 							minSquareDistance = d;
 						}
 					}
-					float ratio = ui_->comboBox_board_type->currentIndex() == 1?6.0f:2.0f;
+					float ratio = ui_->comboBox_board_type->currentIndex() >= 1 ?6.0f:2.0f;
 					float radius = minSquareDistance==-1.0f?5.0f:(minSquareDistance/ratio);
 					cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
 							cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
@@ -819,7 +836,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 				// Draw the corners.
 				images[id] = images[id].clone();
-				if(ui_->comboBox_board_type->currentIndex() == 1) {
+				if(ui_->comboBox_board_type->currentIndex() >= 1 ) {
 					if(markerIds.size() > 0)
 						cv::aruco::drawDetectedMarkers(images[id], markerCorners, cv::noArray(), cv::Scalar(255,0,0));
 				}
@@ -838,7 +855,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 				{
 					std::vector<float> params(4,0);
 					getParams(originalPoints, boardSize, imageSize_[id], params[0], params[1], params[2], params[3]);
-					if(ui_->comboBox_board_type->currentIndex() == 1)
+					if(ui_->comboBox_board_type->currentIndex() >= 1 )
 					{
 						//params[2] = float(pointBuf[id].size()) / float(boardSize.width * boardSize.height); // number of markers seen
 						float area = getArea(markerCorners[markerCorners.size()/2], cv::Size(4,4)) * (boardSize.width*boardSize.height);
@@ -852,8 +869,8 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					{
 						for(unsigned int i=0; i<imageParams_[id].size(); ++i)
 						{
-							if(fabs(params[0] - imageParams_[id][i].at(0)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1)*ui_->doubleSpinBox_sample_factor->value() && // x
-								fabs(params[1] - imageParams_[id][i].at(1)) < (ui_->comboBox_board_type->currentIndex() == 1?0.2:0.1)*ui_->doubleSpinBox_sample_factor->value() && // y
+							if(fabs(params[0] - imageParams_[id][i].at(0)) < (ui_->comboBox_board_type->currentIndex() >= 1 ?0.2:0.1)*ui_->doubleSpinBox_sample_factor->value() && // x
+								fabs(params[1] - imageParams_[id][i].at(1)) < (ui_->comboBox_board_type->currentIndex() >= 1 ?0.2:0.1)*ui_->doubleSpinBox_sample_factor->value() && // y
 								fabs(params[2] - imageParams_[id][i].at(2)) < 0.05*ui_->doubleSpinBox_sample_factor->value() && // size
 								(params[3]==0 || params[3]==1.0f || imageParams_[id][i].at(3) == 0 || imageParams_[id][i].at(3) == 1.0f || fabs(params[3] - imageParams_[id][i].at(3)) < 0.1*ui_->doubleSpinBox_sample_factor->value())) // skew
 							{
@@ -1186,9 +1203,13 @@ void CalibrationDialog::restart()
 	markerDictionary_.reset();
 	arucoDetectorParams_.reset();
 	charucoBoard_.reset();
-	if(ui_->comboBox_board_type->currentIndex() == 1)
+	if(ui_->comboBox_board_type->currentIndex() >= 1 )
 	{
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+		arucoDetectorParams_.reset(new cv::aruco::DetectorParameters());
+#else
 		arucoDetectorParams_ = cv::aruco::DetectorParameters::create();
+#endif
 		arucoDetectorParams_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_CONTOUR;
 
 		int arucoDictionary = ui_->comboBox_marker_dictionary->currentIndex();
@@ -1211,7 +1232,8 @@ void CalibrationDialog::restart()
 		}
 #endif
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
-		markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(arucoDictionary));
+		markerDictionary_.reset(new cv::aruco::Dictionary());
+		*markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(arucoDictionary));
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 		markerDictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arucoDictionary));
 #else
@@ -1224,12 +1246,21 @@ void CalibrationDialog::restart()
 			ui_->doubleSpinBox_markerLength->value(),
 			arucoDictionary);
 
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+		charucoBoard_.reset(new cv::aruco::CharucoBoard(
+			cv::Size(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value()), 
+			ui_->doubleSpinBox_squareSize->value(), 
+			ui_->doubleSpinBox_markerLength->value(), 
+			*markerDictionary_));
+		charucoBoard_->setLegacyPattern(ui_->comboBox_board_type->currentIndex()==1);
+#else
 		charucoBoard_ = cv::aruco::CharucoBoard::create(
 			ui_->spinBox_boardWidth->value(),
 			ui_->spinBox_boardHeight->value(), 
 			ui_->doubleSpinBox_squareSize->value(), 
 			ui_->doubleSpinBox_markerLength->value(), 
 			markerDictionary_);
+#endif
 	}
 	else //checkerboard
 	{
@@ -1241,10 +1272,10 @@ void CalibrationDialog::restart()
 		}
 	}
 
-	ui_->comboBox_marker_dictionary->setVisible(ui_->comboBox_board_type->currentIndex() == 1);
-	ui_->doubleSpinBox_markerLength->setVisible(ui_->comboBox_board_type->currentIndex() == 1);
-	ui_->label_markerDictionary->setVisible(ui_->comboBox_board_type->currentIndex() == 1);
-	ui_->label_markerLength->setVisible(ui_->comboBox_board_type->currentIndex() == 1);
+	ui_->comboBox_marker_dictionary->setVisible(ui_->comboBox_board_type->currentIndex() >= 1 );
+	ui_->doubleSpinBox_markerLength->setVisible(ui_->comboBox_board_type->currentIndex() >= 1 );
+	ui_->label_markerDictionary->setVisible(ui_->comboBox_board_type->currentIndex() >= 1 );
+	ui_->label_markerLength->setVisible(ui_->comboBox_board_type->currentIndex() >= 1 );
 }
 
 void CalibrationDialog::unlock()
@@ -1299,7 +1330,7 @@ void CalibrationDialog::calibrate()
 	logStream << "Square size = " << ui_->doubleSpinBox_squareSize->value() << ENDL;
 	logStream << "Subpixel refinement = " << ui_->checkBox_subpixel_refinement->isChecked() << ENDL;
 	logStream << "Subpixel max error = " << ui_->doubleSpinBox_subpixel_error->value() << ENDL;
-	if(ui_->comboBox_board_type->currentIndex() == 1)
+	if(ui_->comboBox_board_type->currentIndex() >= 1 )
 	{
 		std::cout << "Marker dictionary = " << ui_->comboBox_marker_dictionary->currentIndex() << std::endl;
 		std::cout << "Marker length = " << ui_->doubleSpinBox_markerLength->value() << std::endl;

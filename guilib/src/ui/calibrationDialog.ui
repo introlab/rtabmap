@@ -182,9 +182,17 @@
              <layout class="QHBoxLayout" name="horizontalLayout_7">
               <item>
                <widget class="QComboBox" name="comboBox_board_type">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Legacy setting creates chessboard patterns starting with a white box in the upper left corner if there is an even row count of chessboard boxes, otherwise it starts with a black box. This setting ensures compatibility to patterns created with OpenCV versions prior OpenCV 4.7.0.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
                 <item>
                  <property name="text">
                   <string>Chessboard</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ChArUco Board Legacy</string>
                  </property>
                 </item>
                 <item>
