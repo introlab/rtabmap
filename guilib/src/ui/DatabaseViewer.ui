@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>307</width>
+           <width>417</width>
            <height>389</height>
           </rect>
          </property>
@@ -392,7 +392,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>306</width>
+           <width>416</width>
            <height>389</height>
           </rect>
          </property>
@@ -1634,7 +1634,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -2458,24 +2458,17 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>226</width>
-          <height>192</height>
+          <y>-42</y>
+          <width>298</width>
+          <height>272</height>
          </rect>
         </property>
         <attribute name="label">
          <string>Detect more loop closures</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
-         <item row="4" column="1">
-          <widget class="QLabel" name="label_32">
-           <property name="text">
-            <string>Intra-session</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radius">
+         <item row="1" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radiusMin">
            <property name="suffix">
             <string> m</string>
            </property>
@@ -2489,14 +2482,48 @@
             <double>0.100000000000000</double>
            </property>
            <property name="value">
-            <double>1.000000000000000</double>
+            <double>0.000000000000000</double>
            </property>
           </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_36">
+           <property name="text">
+            <string>Radius Min</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QLabel" name="label_32">
+           <property name="text">
+            <string>Intra-session</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
+          <spacer name="verticalSpacer_5">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
          </item>
          <item row="0" column="1">
           <widget class="QLabel" name="label_29">
            <property name="text">
             <string>Radius Max</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="label_30">
+           <property name="text">
+            <string>Angle</string>
            </property>
           </widget>
          </item>
@@ -2519,10 +2546,22 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
-          <widget class="QLabel" name="label_30">
-           <property name="text">
-            <string>Angle</string>
+         <item row="0" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radius">
+           <property name="suffix">
+            <string> m</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
+           <property name="maximum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="value">
+            <double>1.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -2539,6 +2578,13 @@
            </property>
           </widget>
          </item>
+         <item row="4" column="0">
+          <widget class="QCheckBox" name="checkBox_detectMore_intraSession">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
          <item row="3" column="1">
           <widget class="QLabel" name="label_31">
            <property name="text">
@@ -2546,30 +2592,10 @@
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
-          <spacer name="verticalSpacer_5">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
          <item row="5" column="1">
           <widget class="QLabel" name="label_34">
            <property name="text">
             <string>Inter-session</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
-          <widget class="QCheckBox" name="checkBox_detectMore_intraSession">
-           <property name="text">
-            <string/>
            </property>
           </widget>
          </item>
@@ -2580,29 +2606,23 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_36">
+         <item row="6" column="0">
+          <widget class="QCheckBox" name="checkBox_opt_graph_as_guess">
            <property name="text">
-            <string>Radius Min</string>
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radiusMin">
-           <property name="suffix">
-            <string> m</string>
+         <item row="6" column="1">
+          <widget class="QLabel" name="label_37">
+           <property name="text">
+            <string>Use optimized graph as guess</string>
            </property>
-           <property name="decimals">
-            <number>2</number>
-           </property>
-           <property name="maximum">
-            <double>10.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.100000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.000000000000000</double>
+           <property name="wordWrap">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -2613,8 +2633,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>185</width>
-          <height>485</height>
+          <width>432</width>
+          <height>196</height>
          </rect>
         </property>
         <attribute name="label">
