@@ -17,12 +17,12 @@
 * M. Labbé and F. Michaud, “[Long-term online multi-session graph-based SPLAM with memory management](https://arxiv.org/abs/2301.00050),” in _Autonomous Robots_, vol. 42, no. 6, pp. 1133-1150, 2018.  ([Springer](http://dx.doi.org/10.1007/s10514-017-9682-5)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:Tyk-4Ss8FVUC))
 
 #### Multi-session SLAM
-* M. Labbé and F. Michaud, “[Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2014. ([IEEE Xplore](http://ieeexplore.ieee.org/document/6942926/)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:9yKSN-GCB0IC))
+* M. Labbé and F. Michaud, “[Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM](https://introlab.3it.usherbrooke.ca/images/e/eb/Labbe14-IROS.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2014. ([IEEE Xplore](http://ieeexplore.ieee.org/document/6942926/)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:9yKSN-GCB0IC))
     * Results shown in this paper can be reproduced by the [Multi-session mapping](https://github.com/introlab/rtabmap/wiki/Multi-session) tutorial.
    
 #### Loop closure detection
-* M. Labbé and F. Michaud, “[Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/b/bc/TRO2013.pdf),” in _IEEE Transactions on Robotics_, vol. 29, no. 3, pp. 734-745, 2013. ([IEEE Xplore](http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:u-x6o8ySG0sC))
-* M. Labbé and F. Michaud, “[Memory management for real-time appearance-based loop closure detection](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/f/f0/Labbe11memory.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2011, pp. 1271–1276. ([IEEE Xplore](http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:u5HHmVD_uO8C))
+* M. Labbé and F. Michaud, “[Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation](https://introlab.3it.usherbrooke.ca/images/b/bc/TRO2013.pdf),” in _IEEE Transactions on Robotics_, vol. 29, no. 3, pp. 734-745, 2013. ([IEEE Xplore](http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:u-x6o8ySG0sC))
+* M. Labbé and F. Michaud, “[Memory management for real-time appearance-based loop closure detection](https://introlab.3it.usherbrooke.ca/images/f/f0/Labbe11memory.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2011, pp. 1271–1276. ([IEEE Xplore](http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602)) ([Google Scholar](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=G3BrBkMAAAAJ&citation_for_view=G3BrBkMAAAAJ:u5HHmVD_uO8C))
     * Visit [RTAB-Map's page on IntRoLab](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map) for detailed information on the loop closure detection approach and related datasets.
 
 ## Install 
@@ -42,7 +42,7 @@
 * Visit the [wiki](https://github.com/introlab/rtabmap/wiki).
 * Ask a question on [RTAB-Map Forum](http://official-rtab-map-forum.206.s1.nabble.com/) (**New address! August 9, 2021**).
 * Post an [issue on GitHub](https://github.com/introlab/rtabmap/issues) 
-* For the loop closure detection approach, visit [RTAB-Map on IntRoLab website](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map)
+* For the loop closure detection approach, visit [RTAB-Map on IntRoLab website](https://introlab.3it.usherbrooke.ca/index.php/RTAB-Map)
 * Enabled [Github Discussions](https://github.com/introlab/rtabmap/discussions) (**New! November 2022**)
 
 **ROS**
@@ -61,9 +61,9 @@ RTAB-Map App on [Google Play Store](https://play.google.com/store/apps/details?i
 This website uses Google Analytics. See their Privacy Policy [here](https://support.google.com/analytics/answer/6004245?hl=en).
 
 ## Author
-* [Mathieu Labbé](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php?title=Mathieu_Labbe&setlang=en)
-    * [RTAB-Map's page at IntRoLab](http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map)
-    * [Papers](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map#Publications)
+* [Mathieu Labbé](https://introlab.3it.usherbrooke.ca/index.php?title=Mathieu_Labbe&setlang=en)
+    * [RTAB-Map's page at IntRoLab](http://introlab.3it.usherbrooke.ca/index.php/RTAB-Map)
+    * [Papers](https://introlab.3it.usherbrooke.ca/index.php/RTAB-Map#Publications)
     * Similar projects: [Find-Object](http://introlab.github.io/find-object/)
     * If you find this project useful and to help me keeping this project updated, you can buy me a cup of coffee with the link below :P. It is also nice to receive new sensors to test with and even supporting them in RTAB-Map for quick SLAM demonstrations (e.g., stereo cameras, RGB-D cameras, 2D/3D LiDARs). Thanks [Stereolabs](https://www.stereolabs.com/) for the [ZED](https://www.stereolabs.com/zed/specs/), thanks Walt (with Tango coupon discount) and Google for [Google Tango Development Kits](https://store.google.com/product/tango_tablet_development_kit), thanks [Luxonis](https://www.luxonis.com/) for OAK-D camera and thanks to all contributors (for donations, reporting bugs, helping me fixing bugs or making pull requests).
 
@@ -122,7 +122,7 @@ New release [v0.20.2](https://github.com/introlab/rtabmap/releases/tag/0.20.2)!
 
 ### July 2017
 * New version 0.13 of RTAB-Map Tango. See it on [play store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en).
-* I uploaded a [presentation](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/3/31/Labbe2015ULaval.pdf) that I did in 2015 at Université Laval in Québec! A summary of RTAB-Map as a RGBD-SLAM approach:
+* I uploaded a [presentation](https://introlab.3it.usherbrooke.ca/images/3/31/Labbe2015ULaval.pdf) that I did in 2015 at Université Laval in Québec! A summary of RTAB-Map as a RGBD-SLAM approach:
 
     <img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Labbe2015ULavalOverview.jpg" alt="RTAB-Map overview" width="400">
  
@@ -212,7 +212,7 @@ New release [v0.20.2](https://github.com/introlab/rtabmap/releases/tag/0.20.2)!
 
 ### June 2014
 
-* I'm glad to announce that my paper submitted to [IROS 2014](http://www.iros2014.org/) was accepted! [This paper](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf) explains in details how RGB-D mapping with RTAB-Map is done. Results shown in this paper can be reproduced by the [Multi-session mapping](https://github.com/introlab/rtabmap/wiki/Multi-session) tutorial:
+* I'm glad to announce that my paper submitted to [IROS 2014](http://www.iros2014.org/) was accepted! [This paper](https://introlab.3it.usherbrooke.ca/images/e/eb/Labbe14-IROS.pdf) explains in details how RGB-D mapping with RTAB-Map is done. Results shown in this paper can be reproduced by the [Multi-session mapping](https://github.com/introlab/rtabmap/wiki/Multi-session) tutorial:
 
     <a href="https://github.com/introlab/rtabmap/wiki/Multi-session"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSession/3.png" alt="Multi-session mapping" width="600"></a>
 
@@ -233,4 +233,4 @@ New release [v0.20.2](https://github.com/introlab/rtabmap/releases/tag/0.20.2)!
 
    <a href="http://www.youtube.com/watch?v=1dImRinTJSE"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/newcollegeomni.jpeg" alt="video" title="video"></a>
 
-* More loop closure detection videos [here](http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map).
+* More loop closure detection videos [here](http://introlab.3it.usherbrooke.ca/index.php/RTAB-Map).
