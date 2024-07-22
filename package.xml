@@ -21,7 +21,7 @@
   <depend>libpointmatcher</depend> <!-- optional but recommended if lidar is used, also not available on 32 bits system, but rtabmap can be built without it -->
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
-  <depend>octomap</depend>
+  <depend>liboctomap-dev</depend>
 <!--  <depend>grid_map_core</depend> # not available on Rolling -->
   <depend>qtbase5-dev</depend>
   <depend>zlib</depend>
