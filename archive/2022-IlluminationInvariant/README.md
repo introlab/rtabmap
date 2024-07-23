@@ -62,7 +62,7 @@ We provide two formats: the first one is more general and the second one is used
 
 6. Use the MatLab/Octave scripts in this folder to show results you want. Set `dataDir` to directory containing the exported statistics. 
 ```
-sudo apt install install octave liboctave-dev
+sudo apt install octave liboctave-dev
 
 # In octave:
 pkg install -forge control signal
