@@ -468,6 +468,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_intraSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_interSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_opt_graph_as_guess, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
@@ -635,6 +636,7 @@ void DatabaseViewer::readSettings()
 	ui_->spinBox_detectMore_iterations->setValue(settings.value("iterations", ui_->spinBox_detectMore_iterations->value()).toInt());
 	ui_->checkBox_detectMore_intraSession->setChecked(settings.value("intra_session", ui_->checkBox_detectMore_intraSession->isChecked()).toBool());
 	ui_->checkBox_detectMore_interSession->setChecked(settings.value("inter_session", ui_->checkBox_detectMore_interSession->isChecked()).toBool());
+	ui_->checkBox_opt_graph_as_guess->setChecked(settings.value("opt_graph_as_guess", ui_->checkBox_opt_graph_as_guess->isChecked()).toBool());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -725,6 +727,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("iterations", ui_->spinBox_detectMore_iterations->value());
 	settings.setValue("intra_session", ui_->checkBox_detectMore_intraSession->isChecked());
 	settings.setValue("inter_session", ui_->checkBox_detectMore_interSession->isChecked());
+	settings.setValue("opt_graph_as_guess", ui_->checkBox_opt_graph_as_guess->isChecked());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -802,6 +805,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->spinBox_detectMore_iterations->setValue(5);
 	ui_->checkBox_detectMore_intraSession->setChecked(true);
 	ui_->checkBox_detectMore_interSession->setChecked(true);
+	ui_->checkBox_opt_graph_as_guess->setChecked(true);
 }
 
 void DatabaseViewer::openDatabase()
@@ -4215,6 +4219,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	std::pair<int, int> lastAdded(0,0);
 	bool intraSession = ui_->checkBox_detectMore_intraSession->isChecked();
 	bool interSession = ui_->checkBox_detectMore_interSession->isChecked();
+	bool useOptimizedGraphAsGuess = ui_->checkBox_opt_graph_as_guess->isChecked();
 	if(!interSession && !intraSession)
 	{
 		QMessageBox::warning(this, tr("Cannot detect more loop closures"), tr("Intra and inter session parameters are disabled! Enable one or both."));
@@ -4268,7 +4273,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 						   delta.getNorm() >= ui_->doubleSpinBox_detectMore_radiusMin->value())
 						{
 							checkedLoopClosures.insert(std::make_pair(from, to));
-							if(addConstraint(from, to, true))
+							if(addConstraint(from, to, true, useOptimizedGraphAsGuess))
 							{
 								UINFO("Added new loop closure between %d and %d.", from, to);
 								++added;
@@ -8560,7 +8565,7 @@ void DatabaseViewer::addConstraint()
 	addConstraint(from, to, false);
 }
 
-bool DatabaseViewer::addConstraint(int from, int to, bool silent)
+bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool silentlyUseOptimizedGraphAsGuess)
 {
 	bool switchedIds = false;
 	if(from == to)
@@ -8728,7 +8733,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 								guessFromGraphRejected = true;
 							}
 						}
-						else
+						else if(silentlyUseOptimizedGraphAsGuess)
 						{
 							guess = fromIter->second.inverse() * toIter->second;
 						}

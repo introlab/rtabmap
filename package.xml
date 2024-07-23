@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>rtabmap</name>
-  <version>0.21.5</version>
+  <version>0.21.6</version>
   <description>RTAB-Map's standalone library. RTAB-Map is a RGB-D SLAM approach with real-time constraints.</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
   <author>Mathieu Labbe</author>
@@ -15,13 +15,14 @@
   <build_depend>proj</build_depend>
   <depend>cv_bridge</depend>
   <depend>libg2o</depend>
-  <!-- <depend>gtsam</depend> // Uncomment when this issue https://github.com/borglab/gtsam/issues/1759 is fixed and new binaries are available-->
+  <depend>gtsam</depend>
+  <depend>tbb</depend> <!-- till tbb is added to gtsam dependencies https://github.com/borglab/gtsam/issues/1759 -->
   <!-- <depend>libopenni2-dev</depend> --> <!-- not available on Jessie -->
   <depend>libpcl-all-dev</depend> <!--  include libvtk-qt -->
   <depend>libpointmatcher</depend> <!-- optional but recommended if lidar is used, also not available on 32 bits system, but rtabmap can be built without it -->
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
-  <depend>octomap</depend>
+  <depend>liboctomap-dev</depend>
 <!--  <depend>grid_map_core</depend> // Uncomment when available on jazzy -->
   <depend>qt_gui_cpp</depend> <!-- libqt4-dev or libqt5-dev -->
   <depend>zlib</depend>
