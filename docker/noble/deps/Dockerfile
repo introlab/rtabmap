@@ -27,7 +27,7 @@ RUN apt-get update && \
       libtbb-dev \
       libproj-dev \
       libpcl-dev \
-      liboctomap-dev
+      liboctomap-dev \
       ros-jazzy-ros-base \
       ros-dev-tools \
       ros-jazzy-cv-bridge \
