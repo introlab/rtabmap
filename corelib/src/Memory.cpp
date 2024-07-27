@@ -4546,7 +4546,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	bool isIntermediateNode = data.id() < 0 || (data.imageRaw().empty() && data.keypoints().empty() && data.laserScanRaw().empty());
+	bool isIntermediateNode = data.id() < 0;
 	int id = data.id();
 	if(_generateIds)
 	{
@@ -5492,7 +5492,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 
 	Landmarks landmarks = data.landmarks();
-	if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
+	if(!landmarks.empty() && isIntermediateNode)
+	{
+		UDEBUG("Landmarks provided (size=%ld) are ignored because this signature is set as intermediate.", landmarks.size());
+		landmarks.clear();
+	}
+	else if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
 	{
 		UDEBUG("Detecting markers...");
 		if(landmarks.empty())
@@ -5982,16 +5987,23 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
 
-	std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
-	if(_globalDescriptorExtractor)
+	if(!isIntermediateNode)
 	{
-		GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
-		if(!gdescriptor.data().empty())
+		std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
+		if(_globalDescriptorExtractor)
 		{
-			globalDescriptors.push_back(gdescriptor);
+			GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
+			if(!gdescriptor.data().empty())
+			{
+				globalDescriptors.push_back(gdescriptor);
+			}
 		}
+		s->sensorData().setGlobalDescriptors(globalDescriptors);
 	}
-	s->sensorData().setGlobalDescriptors(globalDescriptors);
+	else if(!data.globalDescriptors().empty())
+	{
+		UDEBUG("Global descriptors provided (size=%ld) are ignored because this signature is set as intermediate.", data.globalDescriptors().size());
+	}
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
