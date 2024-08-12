@@ -4717,13 +4717,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		cv::Mat rotatedDepthImages;
 		std::vector<CameraModel> rotatedCameraModels;
 		bool allOutputSizesAreOkay = true;
+		bool atLeastOneCameraRotated = false;
 		for(size_t i=0; i<data.cameraModels().size(); ++i)
 		{
 			UDEBUG("Rotating camera %ld", i);
 			cv::Mat rgb = cv::Mat(data.imageRaw(), cv::Rect(subInputImageWidth*i, 0, subInputImageWidth, data.imageRaw().rows));
 			cv::Mat depth = !data.depthRaw().empty()?cv::Mat(data.depthRaw(), cv::Rect(subInputDepthWidth*i, 0, subInputDepthWidth, data.depthRaw().rows)):cv::Mat();
 			CameraModel model = data.cameraModels()[i];
-			util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
+			atLeastOneCameraRotated |= util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
 			if(rotatedColorImages.empty())
 			{
 				rotatedColorImages = cv::Mat(cv::Size(rgb.cols * data.cameraModels().size(), rgb.rows), rgb.type());
@@ -4757,7 +4758,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			rotatedCameraModels.push_back(model);
 		}
-		if(allOutputSizesAreOkay)
+		if(allOutputSizesAreOkay && atLeastOneCameraRotated)
 		{
 			data.setRGBDImage(rotatedColorImages, rotatedDepthImages, rotatedCameraModels);
 

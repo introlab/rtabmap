@@ -4952,6 +4952,7 @@ void DatabaseViewer::update(int value,
 							if( data.cameraModels()[i].D_raw().total()) calibrationDetails << "D=" << data.cameraModels()[i].D_raw() << std::endl;
 							if( data.cameraModels()[i].R().total()) calibrationDetails << "R=" << data.cameraModels()[i].R() << std::endl;
 							if( data.cameraModels()[i].P().total()) calibrationDetails << "P=" << data.cameraModels()[i].P() << std::endl;
+							calibrationDetails << "BaseToCam(without opt rot)=" << (data.cameraModels()[i].localTransform()*CameraModel::opticalRotation().inverse()).prettyPrint() << std::endl;
 						}
 
 					}
@@ -4988,6 +4989,7 @@ void DatabaseViewer::update(int value,
 							if( data.stereoCameraModels()[i].T().total()) calibrationDetails << " T=" << data.stereoCameraModels()[i].T() << std::endl;
 							if( data.stereoCameraModels()[i].F().total()) calibrationDetails << " F=" << data.stereoCameraModels()[i].F() << std::endl;
 							if( data.stereoCameraModels()[i].E().total()) calibrationDetails << " E=" << data.stereoCameraModels()[i].E() << std::endl;
+							calibrationDetails << "BaseToLeftCam(without opt rot)=" << (data.stereoCameraModels()[i].left().localTransform()*CameraModel::opticalRotation().inverse()).prettyPrint() << std::endl;
 						}
 					}
 					labelCalib->setToolTip(calibrationDetails.str().c_str());

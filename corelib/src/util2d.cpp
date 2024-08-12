@@ -2279,7 +2279,7 @@ std::vector<int> SSC(
 	return ResultVec;
 }
 
-void rotateImagesUpsideUpIfNecessary(
+bool rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,
 	cv::Mat & rgb,
 	cv::Mat & depth)
@@ -2293,7 +2293,7 @@ void rotateImagesUpsideUpIfNecessary(
 	{
 		// Return original because of ambiguity for what would be considered up...
 		UDEBUG("Ignoring image rotation as pitch(%f)>Pi/4", pitch);
-		return;
+		return false;
 	}
 	if(roll<0)
 	{
@@ -2368,7 +2368,9 @@ void rotateImagesUpsideUpIfNecessary(
 	else
 	{
 		UDEBUG("ROTATION_0 (roll=%f)", roll);
+		return false;
 	}
+	return true;
 }
 
 }

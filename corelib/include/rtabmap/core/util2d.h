@@ -180,8 +180,9 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @param model a valid camera model
  * @param rgb a rgb/grayscale image (set cv::Mat() if not used)
  * @param depth a depth image (set cv::Mat() if not used)
+ * @return true if the model/images have been rotated, false otherwise
  */
-void RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
+bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,
 	cv::Mat & rgb,
 	cv::Mat & depth);
