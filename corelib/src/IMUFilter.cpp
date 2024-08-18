@@ -35,13 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-IMUFilter * IMUFilter::create(const ParametersMap & parameters)
-{
-	int type = Parameters::defaultKpDetectorStrategy();
-	Parameters::parse(parameters, Parameters::kKpDetectorStrategy(), type);
-	return create((IMUFilter::Type)type, parameters);
-}
-
 IMUFilter * IMUFilter::create(IMUFilter::Type type, const ParametersMap & parameters)
 {
 #ifndef RTABMAP_MADGWICK
@@ -62,7 +55,6 @@ IMUFilter * IMUFilter::create(IMUFilter::Type type, const ParametersMap & parame
 #endif
 	default:
 		filter = new ComplementaryFilter(parameters);
-		type = IMUFilter::kComplementaryFilter;
 		break;
 
 	}

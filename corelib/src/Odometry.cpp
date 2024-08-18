@@ -646,7 +646,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		dt > 0 &&
 		!guess.isNull())
 	{
-		UDEBUG("Deskewing begin");
+		UDEBUG("Deskewing begin (with imu=%d)", !imus_.empty()?1:0);
 		// Recompute velocity
 		float vx,vy,vz, vroll,vpitch,vyaw;
 		guess.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
@@ -672,7 +672,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			Transform imuLastScan = Transform::getTransform(imus_,
 					data.stamp() +
 					data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()]);
-			if(!imuFirstScan.isNull() && !imuLastScan.isNull())
+			if(!imuFirstScan.isNull() || !imuLastScan.isNull())
 			{
 				Transform orientation = imuFirstScan.inverse() * imuLastScan;
 				orientation.getEulerAngles(vroll, vpitch, vyaw);
@@ -689,6 +689,18 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					vyaw /= scanTime;
 				}
 			}
+			if(imuFirstScan.isNull())
+			{
+				UWARN("We are receiving IMUs but we could not find one for the "
+				      "first lidar stamp %f to be used for deskewing.", 
+					  data.stamp() + data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()]);
+			}
+			if(imuLastScan.isNull())
+			{
+				UWARN("We are receiving IMUs but we could not find one for the "
+				      "last lidar stamp %f to be used for deskewing.", 
+					  data.stamp() + data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()]);
+			}
 		}
 
 		Transform velocity(vx,vy,vz,vroll,vpitch,vyaw);
@@ -703,6 +715,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	if(data.laserScanRaw().isOrganized())
 	{
 		// Laser scans should be dense passing this point
+		UDEBUG("Densify scan");
 		data.setLaserScan(data.laserScanRaw().densify());
 	}
 

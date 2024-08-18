@@ -41,6 +41,8 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
 	camera/CameraSeerSense.cpp
+
+	lidar/LidarOuster.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -390,6 +392,14 @@ IF(xvsdk_FOUND)
 		${xvsdk_LIBRARIES}
 	)
 ENDIF(xvsdk_FOUND)
+
+IF(OusterSDK_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		OusterSDK::ouster_client
+		OusterSDK::ouster_pcap
+	)
+ENDIF(OusterSDK_FOUND)
 
 IF(TARGET OpenMP::OpenMP_CXX)
 	SET(LIBRARIES

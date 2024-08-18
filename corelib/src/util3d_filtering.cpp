@@ -328,6 +328,7 @@ LaserScan commonFiltering(
 			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,10), groundNormalsUp);
 		}
 	}
+	UDEBUG("scan size=%d format=%d, organized=%d", scan.size(), (int)scan.format(), scan.isOrganized()?1:0);
 	return scan;
 }
 
