@@ -28,6 +28,7 @@ RUN apt-get update && \
       libproj-dev \
       libpcl-dev \
       liboctomap-dev \
+      libfreenect-dev \
       ros-jazzy-ros-base \
       ros-dev-tools \
       ros-jazzy-cv-bridge \
