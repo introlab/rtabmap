@@ -48,8 +48,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-lidar_mapping [OPTIONS] 0 IP PORT\n"
-			"rtabmap-lidar_mapping [OPTIONS] 1 IP\n"
+			"rtabmap-lidar_mapping [OPTIONS] DRIVER ...\n"
+			"rtabmap-lidar_mapping [OPTIONS] 0 IP PORT (with VLP16 LiDAR)\n"
+			"rtabmap-lidar_mapping [OPTIONS] 1 IP      (with Ouster LiDAR)\n"
 			"rtabmap-lidar_mapping [OPTIONS] DRIVER PCAP_FILEPATH [JSON_FILEPATH]\n"
 			"\n"
 			"DRIVER: 0=VLP16, 1=Ouster\n"
@@ -68,7 +69,7 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kWarning);
+	ULogger::setLevel(ULogger::kInfo);
 
 	std::string pcapFile;
 	std::string jsonFile;
@@ -305,6 +306,8 @@ int main(int argc, char * argv[])
 	{
 		printf("Saving rtabmap_trajectory.txt... failed!\n");
 	}
+
+	rtabmap->close(false);
 
 	return 0;
 }
