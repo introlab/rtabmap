@@ -46,5 +46,7 @@
         <file>images/astra.png</file>
         <file>images/oakdpro.png</file>
         <file>images/seer_sense_DS80.png</file>
+        <file>images/ouster.png</file>
+        <file>images/vlp16.png</file>
     </qresource>
 </RCC>

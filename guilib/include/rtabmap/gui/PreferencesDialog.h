@@ -121,6 +121,7 @@ public:
 
 		kSrcLidar           = 400,
 		kSrcLidarVLP16      = 400,
+		kSrcLidarOuster     = 401,
 	};
 
 public:
@@ -403,6 +404,8 @@ private Q_SLOTS:
 	void selectSourceRealsense2JsonPath();
 	void selectSourceDepthaiBlobPath();
 	void selectVlp16PcapPath();
+	void selectOusterPcapPath();
+	void selectOusterJsonPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();

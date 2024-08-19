@@ -44,6 +44,8 @@ struct PointXYZIT {
 
 class RTABMAP_CORE_EXPORT LidarVLP16 :public Lidar, public pcl::VLPGrabber {
 public:
+	static bool available();
+public:
 	LidarVLP16(
 			const std::string& pcapFile,
 			bool organized = false,

@@ -474,7 +474,7 @@ LidarOuster::LidarOuster(
 	pcapFile_(pcapFile),
 	jsonFile_(jsonFile)
 {
-	UASSERT(!pcapFile.empty() && !jsonFile.empty());
+	UASSERT(!pcapFile.empty());
 	UDEBUG("Using PCAP file \"%s\" and JSON file \"%s\"", pcapFile.c_str(), jsonFile.c_str());
 }
 LidarOuster::~LidarOuster()
@@ -525,7 +525,7 @@ bool LidarOuster::init(const std::string &, const std::string &)
 			(ouster::sensor::timestamp_mode)timestampMode_);
 		
 		if(!clientHandle) {
-			UERROR("Failed to connect to sensor!");
+			UERROR("Failed to connect to sensor! Verify that the Ouster can be reached on the network at this address \"%s\".", sensorHostname_.c_str());
 			return false;
 		}
 		
@@ -540,6 +540,11 @@ bool LidarOuster::init(const std::string &, const std::string &)
 	}
 	else if(!pcapFile_.empty())
 	{
+		if(jsonFile_.empty())
+		{
+			UERROR("A JSON path should be provided when a PCAP path is used.");
+			return false;
+		}
 		UDEBUG("");
 		auto pcapHandle = ouster::sensor_utils::replay_initialize(pcapFile_);
 		if(!pcapHandle) {

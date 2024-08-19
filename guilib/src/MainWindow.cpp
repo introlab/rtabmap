@@ -32,6 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/Lidar.h"
+#include "rtabmap/core/lidar/LidarVLP16.h"
+#include "rtabmap/core/lidar/LidarOuster.h"
 #include "rtabmap/core/IMUThread.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/Parameters.h"
@@ -471,6 +473,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionDepthAI_oakdpro, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKDPro()));
 	connect(_ui->actionXvisio_SeerSense, SIGNAL(triggered()), this, SLOT(selectXvisioSeerSense()));
 	connect(_ui->actionVelodyne_VLP_16, SIGNAL(triggered()), this, SLOT(selectVLP16()));
+	connect(_ui->actionOuster_SDK, SIGNAL(triggered()), this, SLOT(selectOuster()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_PCL->setEnabled(CameraOpenni::available());
 	_ui->actionOpenNI_PCL_ASUS->setEnabled(CameraOpenni::available());
@@ -499,6 +502,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
     _ui->actionDepthAI_oakdlite->setEnabled(CameraDepthAI::available());
     _ui->actionDepthAI_oakdpro->setEnabled(CameraDepthAI::available());
 	_ui->actionXvisio_SeerSense->setEnabled(CameraSeerSense::available());
+	_ui->actionVelodyne_VLP_16->setEnabled(LidarVLP16::available());
+	_ui->actionOuster_SDK->setEnabled(LidarOuster::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -5305,6 +5310,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionDepthAI_oakdpro->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 	_ui->actionXvisio_SeerSense->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcSeerSense);
 	_ui->actionVelodyne_VLP_16->setChecked(_preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcLidarVLP16);
+	_ui->actionOuster_SDK->setChecked(_preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcLidarOuster);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -7246,6 +7252,11 @@ void MainWindow::selectXvisioSeerSense()
 void MainWindow::selectVLP16()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcLidarVLP16);
+}
+
+void MainWindow::selectOuster()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcLidarOuster);
 }
 
 void MainWindow::dumpTheMemory()

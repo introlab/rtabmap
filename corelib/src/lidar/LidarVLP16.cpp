@@ -124,6 +124,15 @@ LidarVLP16::~LidarVLP16()
 	UDEBUG("Stopped lidar!");
 }
 
+bool LidarVLP16::available()
+{
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+	return true;
+#else
+	return false;
+#endif
+}
+
 void LidarVLP16::setOrganized(bool enable)
 {
 	organized_ = true;

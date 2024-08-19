@@ -181,6 +181,8 @@ add_definitions(${PCL_DEFINITIONS})
 SET(RESOURCES
 	${PROJECT_SOURCE_DIR}/data/presets/camera_tof_icp.ini
 	${PROJECT_SOURCE_DIR}/data/presets/lidar3d_icp.ini
+	${PROJECT_SOURCE_DIR}/data/presets/lidar3d_icp_indoor.ini
+	${PROJECT_SOURCE_DIR}/data/presets/lidar3d_icp_outdoor.ini
 )
 
 foreach(arg ${RESOURCES})
