@@ -105,7 +105,7 @@ class OusterCaptureThread : public UThread {
 			{
 				UERROR("Not received any frames since 5 seconds, try to restart the camera again.");
 			}
-			else
+			else if(this->isRunning())
 			{
 				ouster::LidarScan scan;
 				{
