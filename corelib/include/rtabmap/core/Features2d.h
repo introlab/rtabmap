@@ -45,6 +45,7 @@ namespace gpu {
 	class SURF_GPU;
 	class ORB_GPU;
 	class FAST_GPU;
+	class GoodFeaturesToTrackDetector_GPU;
 }
 }
 typedef cv::SIFT CV_SIFT;
@@ -57,13 +58,14 @@ typedef cv::BRISK CV_BRISK;
 typedef cv::gpu::SURF_GPU CV_SURF_GPU;
 typedef cv::gpu::ORB_GPU CV_ORB_GPU;
 typedef cv::gpu::FAST_GPU CV_FAST_GPU;
+typedef cv::gpu::GoodFeaturesToTrackDetector_GPU CV_GFTT_GPU;
 #else
 namespace cv{
 namespace xfeatures2d {
 class FREAK;
 class DAISY;
 class BriefDescriptorExtractor;
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+#if (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 class SIFT;
 #endif
 class SURF;
@@ -72,9 +74,10 @@ namespace cuda {
 class FastFeatureDetector;
 class ORB;
 class SURF_CUDA;
+class CornersDetector;
 }
 }
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+#if (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 typedef cv::xfeatures2d::SIFT CV_SIFT;
 #else
 typedef cv::SIFT CV_SIFT; // SIFT is back in features2d since 4.4.0 / 3.4.11
@@ -90,7 +93,12 @@ typedef cv::ORB CV_ORB;
 typedef cv::cuda::SURF_CUDA CV_SURF_GPU;
 typedef cv::cuda::ORB CV_ORB_GPU;
 typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
+typedef cv::cuda::CornersDetector CV_GFTT_GPU;
 #endif
+
+// CudaSift fork: https://github.com/kzampog/CudaSift
+class SiftEngine;
+class SiftData;
 
 namespace rtabmap {
 
@@ -295,8 +303,12 @@ private:
 	double edgeThreshold_;
 	double sigma_;
 	bool rootSIFT_;
+	bool gpu_;
 
 	cv::Ptr<CV_SIFT> _sift;
+	SiftEngine * _cudaSiftEngine;
+	SiftData * _cudaSiftData;
+	cv::Mat _cudaSiftDescriptors;
 };
 
 //ORB
@@ -425,8 +437,10 @@ private:
 	int _blockSize;
 	bool _useHarrisDetector;
 	double _k;
+	bool _gpu;
 
 	cv::Ptr<CV_GFTT> _gftt;
+	cv::Ptr<CV_GFTT_GPU> _gpuGftt;
 };
 
 //GFTT_BRIEF

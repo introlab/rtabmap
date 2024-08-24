@@ -236,6 +236,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.21.7
+		removedParameters_.insert(std::make_pair("SIFT/NFeatures",    std::make_pair(false, "")));
+
 		// 0.21.3
 		removedParameters_.insert(std::make_pair("GridGlobal/FullUpdate",    std::make_pair(false, "")));
 
@@ -679,6 +682,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With PDAL:";
 #ifdef RTABMAP_PDAL
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With CudaSift:";
+#ifdef RTABMAP_CUDASIFT
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

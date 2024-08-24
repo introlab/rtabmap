@@ -159,10 +159,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->checkBox_ORBGpu->setEnabled(false);
 		_ui->label_orbGpu->setEnabled(false);
 
+		_ui->checkBox_GFTT_gpu->setEnabled(false);
+		_ui->label_GFTT_gpu->setEnabled(false);
+
 		// disable BruteForceGPU option
 		_ui->comboBox_dictionary_strategy->setItemData(4, 0, Qt::UserRole - 1);
 		_ui->reextract_nn->setItemData(4, 0, Qt::UserRole - 1);
 	}
+#ifndef RTABMAP_CUDASIFT
+	_ui->sift_checkBox_gpu->setEnabled(false);
+	_ui->sift_label_gpu->setEnabled(false);
+#endif
 
 #ifndef RTABMAP_OCTOMAP
 	_ui->groupBox_octomap->setChecked(false);
@@ -1063,12 +1070,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->surf_doubleSpinBox_gpuKeypointsRatio->setObjectName(Parameters::kSURFGpuKeypointsRatio().c_str());
 
 	//SIFT detector
-	_ui->sift_spinBox_nFeatures->setObjectName(Parameters::kSIFTNFeatures().c_str());
 	_ui->sift_spinBox_nOctaveLayers->setObjectName(Parameters::kSIFTNOctaveLayers().c_str());
 	_ui->sift_doubleSpinBox_contrastThr->setObjectName(Parameters::kSIFTContrastThreshold().c_str());
 	_ui->sift_doubleSpinBox_edgeThr->setObjectName(Parameters::kSIFTEdgeThreshold().c_str());
 	_ui->sift_doubleSpinBox_sigma->setObjectName(Parameters::kSIFTSigma().c_str());
 	_ui->sift_checkBox_rootsift->setObjectName(Parameters::kSIFTRootSIFT().c_str());
+	_ui->sift_checkBox_gpu->setObjectName(Parameters::kSIFTGpu().c_str());
 
 	//BRIEF descriptor
 	_ui->briefBytes->setObjectName(Parameters::kBRIEFBytes().c_str());
@@ -1106,6 +1113,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_GFTT_blockSize->setObjectName(Parameters::kGFTTBlockSize().c_str());
 	_ui->checkBox_GFTT_useHarrisDetector->setObjectName(Parameters::kGFTTUseHarrisDetector().c_str());
 	_ui->doubleSpinBox_GFTT_k->setObjectName(Parameters::kGFTTK().c_str());
+	_ui->checkBox_GFTT_gpu->setObjectName(Parameters::kGFTTGpu().c_str());
 
 	//BRISK
 	_ui->spinBox_BRISK_thresh->setObjectName(Parameters::kBRISKThresh().c_str());

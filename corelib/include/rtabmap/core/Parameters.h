@@ -281,12 +281,12 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SURF, GpuVersion,        bool, false,  "GPU-SURF: Use GPU version of SURF. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
     RTABMAP_PARAM(SURF, GpuKeypointsRatio,  float, 0.01, "Used with SURF GPU.");
 
-    RTABMAP_PARAM(SIFT, NFeatures,         int, 0,       "The number of best features to retain. The features are ranked by their scores (measured in SIFT algorithm as the local contrast).");
     RTABMAP_PARAM(SIFT, NOctaveLayers,     int, 3,       "The number of layers in each octave. 3 is the value used in D. Lowe paper. The number of octaves is computed automatically from the image resolution.");
     RTABMAP_PARAM(SIFT, ContrastThreshold, double, 0.04, "The contrast threshold used to filter out weak features in semi-uniform (low-contrast) regions. The larger the threshold, the less features are produced by the detector.");
     RTABMAP_PARAM(SIFT, EdgeThreshold,     double, 10,   "The threshold used to filter out edge-like features. Note that the its meaning is different from the contrastThreshold, i.e. the larger the edgeThreshold, the less features are filtered out (more features are retained).");
     RTABMAP_PARAM(SIFT, Sigma,             double, 1.6,  "The sigma of the Gaussian applied to the input image at the octave #0. If your image is captured with a weak camera with soft lenses, you might want to reduce the number.");
     RTABMAP_PARAM(SIFT, RootSIFT,          bool,  false, "Apply RootSIFT normalization of the descriptors.");
+    RTABMAP_PARAM(SIFT, Gpu,               bool, false,  "CudaSift: Use GPU version of SIFT. This option is enabled only RTAB-Map is built with CudaSift dependency and GPUs are detected.");
 
     RTABMAP_PARAM(BRIEF, Bytes,            int, 32,      "Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
 
@@ -305,6 +305,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(GFTT, BlockSize,         int, 3,       "");
     RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false,  "");
     RTABMAP_PARAM(GFTT, K,                 double, 0.04, "");
+    RTABMAP_PARAM(GFTT, Gpu,               bool, false,  "GPU-GFTT: Use GPU version of GFTT. This option is enabled only if OpenCV>=3 is built with CUDA and GPUs are detected.");
 
     RTABMAP_PARAM(ORB, ScaleFactor,   float, 2,  "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
     RTABMAP_PARAM(ORB, NLevels,       int, 3,      "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
