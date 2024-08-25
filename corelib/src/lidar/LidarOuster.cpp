@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
 
-#define RTABMAP_OUSTER
 #ifdef RTABMAP_OUSTER
 #include "ouster/client.h"
 #include "ouster/os_pcap.h"
