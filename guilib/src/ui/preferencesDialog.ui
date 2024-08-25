@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-3879</y>
             <width>713</width>
-            <height>4720</height>
+            <height>4737</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>0</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -9188,7 +9188,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <item row="4" column="2">
                                <widget class="QLabel" name="label_759">
                                 <property name="text">
-                                 <string>Path to a *.PCAP file. IP is ignored if PCAP file is used. A JSON file should be provided, see below.</string>
+                                 <string>Path to a *.PCAP or *.OSF file. IP is ignored if PCAP/OSF file is used. A JSON file should be provided if PCAP is used, see below.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>

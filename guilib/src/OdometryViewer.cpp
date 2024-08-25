@@ -185,6 +185,8 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 	bool lost = false;
 	bool lostStateChanged = false;
 
+	imageView_->setVisible(!odom.data().imageRaw().empty() || !odom.data().depthOrRightRaw().empty());
+
 	if(odom.pose().isNull())
 	{
 		UDEBUG("odom lost"); // use last pose
@@ -489,6 +491,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 	imageView_->update();
 	cloudView_->update();
+	cloudView_->refreshView();
 	QApplication::processEvents();
 	processingData_ = false;
 }

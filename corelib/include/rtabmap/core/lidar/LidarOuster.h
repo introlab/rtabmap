@@ -38,22 +38,14 @@ public:
 	static bool available();
 public:
 	LidarOuster(
-		const std::string& sensorHostname,
+		const std::string& ipOrHostnameOrPcapOrOsf,
+		const std::string& dataDestinationOrJson = "",
 		int lidarMode = 0,
 		int timestampMode = 0,
-		const std::string& dataDestination = 0,
 		bool useReflectivityForIntensityChannel = true,
 		bool publishIMU = false,
 		float frameRate = 0.0f,
 		Transform localTransform = Transform::getIdentity());
-
-	LidarOuster(
-			const std::string& pcapFile,
-			const std::string& jsonFile,
-			bool useReflectivityForIntensityChannel = true,
-			bool publishIMU = false,
-			float frameRate = 0.0f,
-			Transform localTransform = Transform::getIdentity());
 	virtual ~LidarOuster();
 
 	SensorData takeScan(SensorCaptureInfo * info = 0) {return takeData(info);}
@@ -68,10 +60,8 @@ private:
 	OusterCaptureThread * ousterCaptureThread_;
 	bool imuPublished_;
 	bool useReflectivityForIntensityChannel_;
-	std::string pcapFile_;
-	std::string jsonFile_;
-	std::string sensorHostname_;
-	std::string dataDestination_;
+	std::string ipOrHostnameOrPcapOrOsf_;
+	std::string dataDestinationOrJson_;
 	int lidarMode_;
 	int timestampMode_;
 

@@ -398,6 +398,7 @@ IF(OusterSDK_FOUND)
 		${LIBRARIES}
 		OusterSDK::ouster_client
 		OusterSDK::ouster_pcap
+		OusterSDK::ouster_osf
 	)
 ENDIF(OusterSDK_FOUND)
 

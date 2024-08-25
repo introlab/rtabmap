@@ -4810,10 +4810,14 @@ void PreferencesDialog::selectOusterPcapPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ouster recording (*.pcap)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ouster recording (*.pcap *.osf)"));
 	if (!path.isEmpty())
 	{
 		_ui->lineEdit_ouster_pcap_path->setText(path);
+		if(QFileInfo(path).suffix() == "pcap")
+		{
+			selectOusterJsonPath();
+		}
 	}
 }
 
@@ -7115,10 +7119,12 @@ Lidar * PreferencesDialog::createLidar()
 		{
 			if(!_ui->lineEdit_ouster_pcap_path->text().isEmpty())
 			{
-				// PCAP mode
+				// PCAP/OSF mode
 				lidar = new LidarOuster(
 						_ui->lineEdit_ouster_pcap_path->text().toStdString(),
 						_ui->lineEdit_ouster_json_path->text().toStdString(),
+						0, // lidar mode ignored
+						0, // timestamp mode ignored
 						_ui->checkBox_ouster_reflectivity->isChecked(),
 						_ui->checkBox_ouster_imu->isChecked(),
 						this->getGeneralInputRate(),
@@ -7130,9 +7136,9 @@ Lidar * PreferencesDialog::createLidar()
 
 				lidar = new LidarOuster(
 						_ui->lineEdit_ouster_ip_hostname->text().toStdString(),
+						"", // data destination ignored
 						_ui->comboBox_ouster_lidar_mode->currentIndex(),
 						_ui->comboBox_ouster_timestamp->currentIndex(),
-						"", // data destination
 						_ui->checkBox_ouster_reflectivity->isChecked(),
 						_ui->checkBox_ouster_imu->isChecked(),
 						this->getGeneralInputRate(),
@@ -7297,8 +7303,9 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
-	Camera * camera = this->createCamera();
-	if(!camera)
+	Camera * camera = this->getSourceDriver()!=-1?this->createCamera():0;
+	Lidar * lidar = this->getLidarSourceDriver()!=-1?this->createLidar():0;
+	if(!camera && !lidar)
 	{
 		return;
 	}
@@ -7356,18 +7363,30 @@ void PreferencesDialog::testOdometry()
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
 	odomViewer->registerToEventsManager();
 
-	SensorCaptureThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
-	cameraThread.setMirroringEnabled(isSourceMirroring());
-	cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
-	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
-	cameraThread.setHistogramMethod(_ui->comboBox_source_histogramMethod->currentIndex());
+	SensorCaptureThread  * cameraThread;
+	if(lidar && camera)
+	{
+		cameraThread = new SensorCaptureThread(lidar, camera, this->getAllParameters()); // take ownership of lidar and camera
+	}
+	else if(camera)
+	{
+		cameraThread = new SensorCaptureThread(camera, this->getAllParameters()); // take ownership of camera
+	}
+	else // lidar 
+	{
+		cameraThread = new SensorCaptureThread(lidar, this->getAllParameters()); // take ownership of lidar
+	}
+	cameraThread->setMirroringEnabled(isSourceMirroring());
+	cameraThread->setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
+	cameraThread->setImageDecimation(_ui->spinBox_source_imageDecimation->value());
+	cameraThread->setHistogramMethod(_ui->comboBox_source_histogramMethod->currentIndex());
 	if(_ui->checkbox_source_feature_detection->isChecked())
 	{
-		cameraThread.enableFeatureDetection(this->getAllParameters());
+		cameraThread->enableFeatureDetection(this->getAllParameters());
 	}
-	cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
-	cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
-	cameraThread.setScanParameters(
+	cameraThread->setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
+	cameraThread->setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
+	cameraThread->setScanParameters(
 			_ui->checkBox_source_scanFromDepth->isChecked(),
 			_ui->spinBox_source_scanDownsampleStep->value(),
 			_ui->doubleSpinBox_source_scanRangeMin->value(),
@@ -7379,23 +7398,23 @@ void PreferencesDialog::testOdometry()
 			_ui->checkBox_source_scanDeskewing->isChecked());
 	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters(), _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
+		cameraThread->enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters(), _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
 	}
 	if(isDepthFilteringAvailable())
 	{
 		if(_ui->groupBox_bilateral->isChecked())
 		{
-			cameraThread.enableBilateralFiltering(
+			cameraThread->enableBilateralFiltering(
 					_ui->doubleSpinBox_bilateral_sigmaS->value(),
 					_ui->doubleSpinBox_bilateral_sigmaR->value());
 		}
 		if(!_ui->lineEdit_source_distortionModel->text().isEmpty())
 		{
-			cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+			cameraThread->setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
 		}
 	}
 
-	UEventsManager::createPipe(&cameraThread, &odomThread, "SensorEvent");
+	UEventsManager::createPipe(cameraThread, &odomThread, "SensorEvent");
 	if(imuThread)
 	{
 		UEventsManager::createPipe(imuThread, &odomThread, "IMUEvent");
@@ -7404,7 +7423,7 @@ void PreferencesDialog::testOdometry()
 	UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
 
 	odomThread.start();
-	cameraThread.start();
+	cameraThread->start();
 
 	if(imuThread)
 	{
@@ -7419,8 +7438,9 @@ void PreferencesDialog::testOdometry()
 		imuThread->join(true);
 		delete imuThread;
 	}
-	cameraThread.join(true);
+	cameraThread->join(true);
 	odomThread.join(true);
+	delete cameraThread;
 }
 
 void PreferencesDialog::testCamera()

@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsManager.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UFile.h"
 #include <QApplication>
 #include <stdio.h>
 #include <pcl/io/pcd_io.h>
@@ -103,10 +104,11 @@ int main(int argc, char * argv[])
 			printf("Not supported driver %d!\n", driver);
 			showUsage();
 		}
-		if(uStrContains(uToLowerCase(argv[i]), "pcap"))
+		std::string ext = UFile::getExtension(uToLowerCase(argv[i]));
+		if(ext == "pcap" || ext == "osf")
 		{
 			pcapFile = argv[i++];
-			if(driver == 1)
+			if(driver == 1 && ext == "pcap")
 			{
 				if(i<argc) {
 					jsonFile=argv[i];
@@ -119,7 +121,7 @@ int main(int argc, char * argv[])
 		}
 		else if(i<argc-1) {
 			ip = argv[i++];
-			if(driver == 0 && i<argc) {
+			if(i<argc) {
 				port = uStr2Int(argv[i]);
 			}
 			else {

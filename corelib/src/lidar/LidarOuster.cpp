@@ -29,13 +29,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/IMUFilter.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
 
+#define RTABMAP_OUSTER
 #ifdef RTABMAP_OUSTER
 #include "ouster/client.h"
 #include "ouster/os_pcap.h"
 #include "ouster/types.h"
 #include "ouster/impl/build.h"
 #include "ouster/lidar_scan.h"
+#include "ouster/osf/reader.h"
+#include "ouster/osf/stream_lidar_scan.h"
+#include "ouster/osf/meta_lidar_sensor.h"
+#include "ouster/osf/meta_extrinsics.h"
+#include "ouster/osf/meta_streaming_info.h"
 #endif
 
 namespace rtabmap {
@@ -55,7 +62,7 @@ class OusterCaptureThread : public UThread {
 			intensityChannel_(useReflectivityForIntensityChannel?
 				ouster::sensor::ChanField::REFLECTIVITY:
 				ouster::sensor::ChanField::SIGNAL),
-		sleepTimeMs_(0)
+			endOfFileReached_(false)
 	{
 		UDEBUG("");
 		init(imuPublished);
@@ -72,18 +79,28 @@ class OusterCaptureThread : public UThread {
 			intensityChannel_(useReflectivityForIntensityChannel?
 				ouster::sensor::ChanField::REFLECTIVITY:
 				ouster::sensor::ChanField::SIGNAL),
-			sleepTimeMs_(100)
+			endOfFileReached_(false)
 	{
 		UDEBUG("");
-		std::string lidarMode = ouster::sensor::to_string(info_.config.lidar_mode.value_or(ouster::sensor::lidar_mode::MODE_UNSPEC));
-		std::list<std::string> lidarModeSplit = uSplit(lidarMode, 'x');
-		if(lidarModeSplit.size() == 2) {
-			int rate = uStr2Int(*lidarModeSplit.rbegin());
-			UASSERT(rate > 0);
-			sleepTimeMs_ = 1000/rate;
-			UINFO("Setting frame rate to %d Hz (lidar mode = %s) wil sleep %ld ms after each frame", rate, lidarMode.c_str(), sleepTimeMs_);
-		}
+		init(imuPublished);
+	}
 
+	OusterCaptureThread(
+		std::shared_ptr<ouster::osf::Reader> & osfReader,
+		const ouster::sensor::sensor_info & info,
+		bool imuPublished,
+		bool useReflectivityForIntensityChannel) :
+			scanBatcher_(info),
+			pf_(ouster::sensor::get_format(info)),
+			osfReader_(osfReader),
+			osfIter_(osfReader_->messages().begin()),
+			info_(info),
+			intensityChannel_(useReflectivityForIntensityChannel?
+				ouster::sensor::ChanField::REFLECTIVITY:
+				ouster::sensor::ChanField::SIGNAL),
+			endOfFileReached_(false)
+	{
+		UDEBUG("");
 		init(imuPublished);
 	}
 
@@ -99,61 +116,76 @@ class OusterCaptureThread : public UThread {
 
 	bool getScan(LaserScan & output, double & stamp)
 	{
-		if(this->isRunning())
+		if(clientHandle_.get() == 0)
 		{
-			if(!scanReady_.acquire(1, 5000))
+			// We are reading from file, call mainLoop till a scan is received or end of stream
+			while(scanReady_.value() == 0 && !endOfFileReached_)
+				this->mainLoop();
+		}
+	
+		if(!endOfFileReached_ && !scanReady_.acquire(1, 5000))
+		{
+			UERROR("Not received any frames since 5 seconds, try to restart the camera again.");
+		}
+		else if(!endOfFileReached_ || this->isRunning())
+		{
+			ouster::LidarScan scan;
 			{
-				UERROR("Not received any frames since 5 seconds, try to restart the camera again.");
+				UScopeMutex s(scanMutex_);
+				scan = lastScan_;
+				lastScan_ = ouster::LidarScan();
 			}
-			else if(this->isRunning())
-			{
-				ouster::LidarScan scan;
-				{
-					UScopeMutex s(scanMutex_);
-					scan = lastScan_;
-					lastScan_ = ouster::LidarScan();
-				}
 
-				UASSERT(scan.has_field(ouster::sensor::ChanField::RANGE));
-				UASSERT(scan.has_field(intensityChannel_));
+			UASSERT(scan.has_field(ouster::sensor::ChanField::RANGE));
+			UASSERT(scan.has_field(intensityChannel_));
 
-				ouster::LidarScan::Points cloud = ouster::cartesian(scan, lut_);
+			ouster::LidarScan::Points cloud = ouster::cartesian(scan, lut_);
 
-				// Convert to our LaserScan format XYZIT
-				output = LaserScan(cv::Mat(cv::Size(scan.w,scan.h), CV_32FC(5)), LaserScan::kXYZIT, 0, 0, 0, 0, 0, lidarSensorT_);
+			// Convert to our LaserScan format XYZIT
+			output = LaserScan(cv::Mat(cv::Size(scan.w,scan.h), CV_32FC(5)), LaserScan::kXYZIT, 0, 0, 0, 0, 0, lidarSensorT_);
+			auto timestamp = scan.timestamp();
+			auto scan_ts = timestamp[scan.w-1]; // stamp with last reading
 
-				auto timestamp = scan.timestamp();
-				auto scan_ts = timestamp[scan.w-1]; // stamp with last reading
-
-				//UWARN("Prepare scan %f -> %f", double(timestamp[0])/10e8, double(timestamp[scan.w-1])/10e8);
-
-				auto intensityOffset = output.getIntensityOffset();
-				auto timeOffset = output.getTimeOffset();
-
-				float bad_point = std::numeric_limits<float>::quiet_NaN ();
-				auto intensity = scan.field<uint32_t>(intensityChannel_);
-				for (size_t u = 0; u < scan.h; u++) {
-					for (size_t v = 0; v < scan.w; v++) {
-						auto ts = scan_ts-timestamp[v];
-						auto index = u*scan.w+v;
-						if(cloud(index, 0) != 0.0)
-						{
-							output.field(index, 0) = cloud(index, 0);
-							output.field(index, 1) = cloud(index, 1);
-							output.field(index, 2) = cloud(index, 2);
-						}
-						else
-						{
-							output.field(index, 0) = output.field(index, 1) = output.field(index, 2) = bad_point;
-						}
-						output.field(index, intensityOffset) = intensity.data()[index];
-						output.field(index, timeOffset) = -float(ts)/10e8;
+			//UWARN("Prepare scan %f -> %f", double(timestamp[0])/10e8, double(timestamp[scan.w-1])/10e8);
+			auto intensityOffset = output.getIntensityOffset();
+			auto timeOffset = output.getTimeOffset();
+			float bad_point = std::numeric_limits<float>::quiet_NaN ();
+			ouster::FieldType intensityType = scan.field_type(intensityChannel_==ouster::sensor::ChanField::REFLECTIVITY?"REFLECTIVITY":"SIGNAL");
+			for (size_t u = 0; u < scan.h; u++) {
+				for (size_t v = 0; v < scan.w; v++) {
+					auto ts = scan_ts-timestamp[v];
+					auto index = u*scan.w+v;
+					if(cloud(index, 0) != 0.0)
+					{
+						output.field(index, 0) = cloud(index, 0);
+						output.field(index, 1) = cloud(index, 1);
+						output.field(index, 2) = cloud(index, 2);
 					}
+					else
+					{
+						output.field(index, 0) = output.field(index, 1) = output.field(index, 2) = bad_point;
+					}
+					if(intensityType.element_type == ouster::sensor::ChanFieldType::UINT32)
+					{
+						output.field(index, intensityOffset) = scan.field<uint32_t>(intensityChannel_).data()[index];
+					}
+					else if(intensityType.element_type == ouster::sensor::ChanFieldType::UINT16)
+					{
+						output.field(index, intensityOffset) = scan.field<uint16_t>(intensityChannel_).data()[index];
+					}
+					else if(intensityType.element_type == ouster::sensor::ChanFieldType::UINT8)
+					{
+						output.field(index, intensityOffset) = scan.field<uint8_t>(intensityChannel_).data()[index];
+					}
+					else
+					{
+						UFATAL("Intensity format %d not supported!", intensityType.element_type);
+					}
+					output.field(index, timeOffset) = -float(ts)/10e8;
 				}
-
-				stamp = double(scan_ts)/10e8;
-				return true;
 			}
+			stamp = double(scan_ts)/10e8;
+			return true;
 		}
 		return false;
 	}
@@ -230,7 +262,6 @@ private:
 	void init(bool imuPublished)
 	{
 		imuFilter_ = 0;
-		lastSleepStamp_ = UTimer::now();
 		
 		UINFO("imuPublished=%d", imuPublished?1:0);
 		size_t w = info_.format.columns_per_frame;
@@ -318,7 +349,7 @@ private:
 			if(!ouster::sensor_utils::next_packet_info(*pcapHandle_, packet_info))
 			{
 				UWARN("No more data");
-				this->kill();
+				endOfFileReached_ = true;
 				return;
 			}
 
@@ -341,6 +372,33 @@ private:
 				}
 			}
 		}
+		else if(osfReader_.get())
+		{
+			// read next message from OSF in timestamp order
+			if(osfIter_ == osfReader_->messages().end())
+			{
+				UWARN("No more data");
+				endOfFileReached_ = true;
+				return;
+			}
+			if(osfIter_->is<ouster::osf::LidarScanStream>())
+			{
+				// Decoding LidarScan messages
+				auto ls = osfIter_->decode_msg<ouster::osf::LidarScanStream>();
+				{
+					UScopeMutex s(scanMutex_);
+					bool notify = lastScan_.w == 0;
+					lastScan_ = *ls;
+					if(lastScan_.w != 0 && notify)
+					{
+						scanReady_.release();
+					}
+				}
+			}
+			//else if(m.is<ouster::osf::LidarImuStream>()) // Seems not implemented in ouster-sdk
+
+			++osfIter_;
+		}
 		else {
 			UFATAL("");
 		}
@@ -360,13 +418,6 @@ private:
 						{
 							scanReady_.release();
 						}
-					}
-					if(sleepTimeMs_>0) {
-						unsigned int deltaMs = int((UTimer::now() - lastSleepStamp_)*1000);
-						if(deltaMs < sleepTimeMs_) {
-							uSleep(sleepTimeMs_-deltaMs);
-						}
-						lastSleepStamp_ = UTimer::now();
 					}
                 }
             }
@@ -423,6 +474,8 @@ private:
 	ouster::sensor::ImuPacket imuPacket_;
 	std::shared_ptr<ouster::sensor::client> clientHandle_;
 	std::shared_ptr<ouster::sensor_utils::playback_handle> pcapHandle_;
+	std::shared_ptr<ouster::osf::Reader> osfReader_;
+	ouster::osf::MessagesStreamingIter osfIter_;
 	ouster::sensor::sensor_info info_;
 	ouster::sensor::cf_type intensityChannel_;
 	ouster::XYZLut lut_;
@@ -430,16 +483,15 @@ private:
 	Transform imuLocalTransform_;
 	IMUFilter * imuFilter_;
 	std::map<double, IMU> imuBuffer_;
-	unsigned int sleepTimeMs_;
-	double lastSleepStamp_;
+	bool endOfFileReached_;
 };
 #endif
 
 LidarOuster::LidarOuster(
-		const std::string& sensorHostname,
+		const std::string& ipOrHostnameOrPcapOrOsf,
+		const std::string& dataDestinationOrJson,
 		int lidarMode,
 		int timestampMode,
-		const std::string& dataDestination,
 		bool useReflectivityForIntensityChannel,
 		bool publishIMU,
 		float frameRate,
@@ -448,35 +500,18 @@ LidarOuster::LidarOuster(
 	ousterCaptureThread_(0),
 	imuPublished_(publishIMU),
 	useReflectivityForIntensityChannel_(useReflectivityForIntensityChannel),
-	sensorHostname_(sensorHostname),
-	dataDestination_(dataDestination),
+	ipOrHostnameOrPcapOrOsf_(ipOrHostnameOrPcapOrOsf),
+	dataDestinationOrJson_(dataDestinationOrJson),
 	lidarMode_(lidarMode),
 	timestampMode_(timestampMode)
 {
-	UASSERT(!sensorHostname_.empty());
-	UDEBUG("Using sensor hostname \"%s\" and destination (optional) \"%s\"", sensorHostname_.c_str(), dataDestination_.c_str());
+	UASSERT(!ipOrHostnameOrPcapOrOsf.empty());
 #ifdef RTABMAP_OUSTER
 	UASSERT(lidarMode>=ouster::sensor::lidar_mode::MODE_UNSPEC && lidarMode<=ouster::sensor::lidar_mode::MODE_4096x5);
 	UASSERT(timestampMode>=ouster::sensor::timestamp_mode::TIME_FROM_UNSPEC && timestampMode<=ouster::sensor::timestamp_mode::TIME_FROM_PTP_1588);
 #endif
 }
-LidarOuster::LidarOuster(
-		const std::string& pcapFile,
-		const std::string& jsonFile,
-		bool useReflectivityForIntensityChannel,
-		bool publishIMU,
-		float frameRate,
-		Transform localTransform) :
-	Lidar(frameRate, localTransform),
-	ousterCaptureThread_(0),
-	imuPublished_(publishIMU),
-	useReflectivityForIntensityChannel_(useReflectivityForIntensityChannel),
-	pcapFile_(pcapFile),
-	jsonFile_(jsonFile)
-{
-	UASSERT(!pcapFile.empty());
-	UDEBUG("Using PCAP file \"%s\" and JSON file \"%s\"", pcapFile.c_str(), jsonFile.c_str());
-}
+
 LidarOuster::~LidarOuster()
 {
 #ifdef RTABMAP_OUSTER
@@ -513,19 +548,74 @@ bool LidarOuster::init(const std::string &, const std::string &)
 	delete ousterCaptureThread_;
 	ousterCaptureThread_ = 0;
 
+	bool readingFromFile = false;
 	ouster::sensor::sensor_info info;
-
-	if(!sensorHostname_.empty())
+	std::string ext = uToLowerCase(UFile::getExtension(ipOrHostnameOrPcapOrOsf_));
+	if(ext == "pcap")
 	{
+		UINFO("Using PCAP file \"%s\" and JSON file \"%s\"", ipOrHostnameOrPcapOrOsf_.c_str(), dataDestinationOrJson_.c_str());
+		if(dataDestinationOrJson_.empty())
+		{
+			UERROR("A JSON path should be provided when a PCAP path is used.");
+			return false;
+		}
+
 		UDEBUG("");
+		auto pcapHandle = ouster::sensor_utils::replay_initialize(ipOrHostnameOrPcapOrOsf_);
+		if(!pcapHandle) {
+			UERROR("Failed to open pcap file \"%s\"!", ipOrHostnameOrPcapOrOsf_.c_str());
+			return false;
+		}
+    	info = ouster::sensor::metadata_from_json(dataDestinationOrJson_);
+
+		ousterCaptureThread_ = new OusterCaptureThread(
+			pcapHandle,
+			info,
+			imuPublished_,
+			useReflectivityForIntensityChannel_);
+		readingFromFile = true;
+	}
+	else if(ext == "osf")
+	{
+		UINFO("Using OSF file \"%s\"", ipOrHostnameOrPcapOrOsf_.c_str());
+		if(imuPublished_)
+		{
+			UWARN("Imu publishing it not supported for OSF files.");
+			imuPublished_ = false;
+		}
+		try {
+			std::shared_ptr<ouster::osf::Reader> osfReader(new ouster::osf::Reader(ipOrHostnameOrPcapOrOsf_));
+			auto sensors = osfReader->meta_store().find<ouster::osf::LidarSensor>();
+			std::cout << "sensors: " << sensors.size() << std::endl;
+
+			// Use first sensor and get its sensor_info
+			info = sensors.begin()->second->info();
+
+			ousterCaptureThread_ = new OusterCaptureThread(
+				osfReader,
+				info,
+				imuPublished_,
+				useReflectivityForIntensityChannel_);
+			
+			readingFromFile = true;
+		}
+		catch(std::exception & e) {
+			return false;
+		}
+	}
+	else // ip / hostname
+	{
+		UINFO("Using sensor hostname \"%s\" and destination (optional) \"%s\"",
+			ipOrHostnameOrPcapOrOsf_.c_str(), dataDestinationOrJson_.c_str());
 		auto clientHandle = ouster::sensor::init_client(
-			sensorHostname_, 
-			dataDestination_,
+			ipOrHostnameOrPcapOrOsf_, 
+			dataDestinationOrJson_,
 			(ouster::sensor::lidar_mode)lidarMode_,
 			(ouster::sensor::timestamp_mode)timestampMode_);
 		
 		if(!clientHandle) {
-			UERROR("Failed to connect to sensor! Verify that the Ouster can be reached on the network at this address \"%s\".", sensorHostname_.c_str());
+			UERROR("Failed to connect to sensor! Verify that the Ouster can be reached on the network at this address \"%s\".",
+				ipOrHostnameOrPcapOrOsf_.c_str());
 			return false;
 		}
 		
@@ -536,29 +626,11 @@ bool LidarOuster::init(const std::string &, const std::string &)
 		// Raw metadata can be parsed into a `sensor_info` struct
 		info = ouster::sensor::sensor_info(metadata);
 
-		ousterCaptureThread_ = new OusterCaptureThread(clientHandle, info, imuPublished_, useReflectivityForIntensityChannel_);
-	}
-	else if(!pcapFile_.empty())
-	{
-		if(jsonFile_.empty())
-		{
-			UERROR("A JSON path should be provided when a PCAP path is used.");
-			return false;
-		}
-		UDEBUG("");
-		auto pcapHandle = ouster::sensor_utils::replay_initialize(pcapFile_);
-		if(!pcapHandle) {
-			UERROR("Failed to open pcap file \"%s\"!", pcapFile_.c_str());
-			return false;
-		}
-    	info = ouster::sensor::metadata_from_json(jsonFile_);
-
-		ousterCaptureThread_ = new OusterCaptureThread(pcapHandle, info, imuPublished_, useReflectivityForIntensityChannel_);
-	}
-	else // OSF?
-	{
-		UERROR("Not implemented");
-		return false;
+		ousterCaptureThread_ = new OusterCaptureThread(
+			clientHandle,
+			info,
+			imuPublished_,
+			useReflectivityForIntensityChannel_);
 	}
 	
 	UINFO("Firmware version: %s", info.fw_rev.c_str());
@@ -567,7 +639,25 @@ bool LidarOuster::init(const std::string &, const std::string &)
 	UINFO("Scan dimensions:  %ld x %ld", info.format.columns_per_frame, info.format.pixels_per_column);
 	//UINFO("Column window:    [%d,%d]", info.column_window.first, info.column_window.second);
 
-	ousterCaptureThread_->start();
+	if(!readingFromFile)
+	{
+		ousterCaptureThread_->start();
+	}
+	else if(this->getFrameRate() == 0.0f)
+	{ 
+		std::string lidarMode = ouster::sensor::to_string(info.config.lidar_mode.value_or(ouster::sensor::lidar_mode::MODE_UNSPEC));
+		std::list<std::string> lidarModeSplit = uSplit(lidarMode, 'x');
+		if(lidarModeSplit.size() == 2) {
+			int rate = uStr2Int(*lidarModeSplit.rbegin());
+			UASSERT(rate > 0);
+			this->setFrameRate(rate);
+			UINFO("Setting frame rate to %d Hz (lidar mode = %s)", rate, lidarMode.c_str());
+		}
+		else
+		{
+			UERROR("Unknown lidar mode \"%s\", framerate is kept to 0.", lidarMode.c_str());
+		}
+	}
 
 	return true;
 #else
