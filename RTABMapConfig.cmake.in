@@ -1,7 +1,7 @@
 include(CMakeFindDependencyMacro)
 
 # Mandatory dependencies
-find_dependency(OpenCV COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco xfeatures2d nonfree gpu cudafeatures2d)
+find_dependency(OpenCV COMPONENTS core calib3d imgproc highgui stitching photo video OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d)
 
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/RTABMap_guiTargets.cmake")
     find_dependency(PCL 1.7 COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
