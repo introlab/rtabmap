@@ -169,6 +169,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_CUDASIFT
 	_ui->sift_checkBox_gpu->setEnabled(false);
 	_ui->sift_label_gpu->setEnabled(false);
+	_ui->sift_doubleSpinBox_gaussianDiffThreshold->setEnabled(false);
+	_ui->sift_label_gaussianThreshold->setEnabled(false);
 #endif
 
 #ifndef RTABMAP_OCTOMAP

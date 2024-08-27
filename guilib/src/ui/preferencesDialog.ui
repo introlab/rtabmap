@@ -25647,7 +25647,7 @@ Lower the ratio -&gt; higher the precision.</string>
                      </widget>
                     </item>
                     <item row="6" column="1">
-                     <widget class="QLabel" name="sift_label_gpu_2">
+                     <widget class="QLabel" name="sift_label_gaussianThreshold">
                       <property name="text">
                        <string>CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.</string>
                       </property>
