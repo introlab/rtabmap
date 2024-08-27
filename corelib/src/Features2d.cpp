@@ -81,7 +81,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef RTABMAP_CUDASIFT
-#include <cuda_sift/sift_engine.hpp>
+#include <cudasift/cudaImage.h>
+#include <cudasift/cudaSift.h>
 #endif
 namespace rtabmap {
 
@@ -1148,8 +1149,9 @@ SIFT::SIFT(const ParametersMap & parameters) :
 	sigma_(Parameters::defaultSIFTSigma()),
 	rootSIFT_(Parameters::defaultSIFTRootSIFT()),
 	gpu_(Parameters::defaultSIFTGpu()),
-	_cudaSiftEngine(0),
-	_cudaSiftData(0)
+	guaussianThreshold_(Parameters::defaultSIFTGaussianThreshold()),
+	cudaSiftData_(0),
+	cudaSiftMemory_(0)
 {
 	parseParameters(parameters);
 }
@@ -1157,12 +1159,12 @@ SIFT::SIFT(const ParametersMap & parameters) :
 SIFT::~SIFT()
 {
 #ifdef RTABMAP_CUDASIFT
-	if(_cudaSiftEngine) {
-		delete _cudaSiftEngine;
+	if(cudaSiftData_) {
+		FreeSiftData(*cudaSiftData_);
+		delete cudaSiftData_;
 	}
-	if(_cudaSiftData) {
-		FreeSiftData(*_cudaSiftData);
-		delete _cudaSiftData;
+	if(cudaSiftMemory_) {
+		FreeSiftTempMemory(cudaSiftMemory_);
 	}
 #endif
 }
@@ -1177,18 +1179,23 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 	Parameters::parse(parameters, Parameters::kSIFTRootSIFT(), rootSIFT_);
 	Parameters::parse(parameters, Parameters::kSIFTGpu(), gpu_);
-
+	Parameters::parse(parameters, Parameters::kSIFTGaussianThreshold(), guaussianThreshold_);
+	
 	if(gpu_)
 	{
 #ifdef RTABMAP_CUDASIFT
 		UDEBUG("Init SiftData");
-		if(_cudaSiftData) {
-			FreeSiftData(*_cudaSiftData);
-			delete _cudaSiftData;
+		if(cudaSiftData_) {
+			FreeSiftData(*cudaSiftData_);
+			delete cudaSiftData_;
 		}
-		_cudaSiftData = new SiftData();
-		InitSiftData(*_cudaSiftData, this->getMaxFeatures(), true, true);
-		_cudaSiftDescriptors = cv::Mat();
+		if(cudaSiftMemory_) {
+			FreeSiftTempMemory(cudaSiftMemory_);
+			cudaSiftMemory_ = 0;
+		}
+		cudaSiftData_ = new SiftData();
+		InitSiftData(*cudaSiftData_, this->getMaxFeatures(), true, true);
+		cudaSiftDescriptors_ = cv::Mat();
 #else
 		UWARN("RTAB-Map is not built with CudaSift so %s cannot be used!", Parameters::kSIFTGpu().c_str());
 		gpu_ = false;
@@ -1200,15 +1207,15 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 		#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
-		_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
+		sift_ = cv::Ptr<CV_SIFT>(new CV_SIFT(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
 #else
-		_sift = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
+		sift_ = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #endif
 #else
 		UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 #else // >=4.4, >=3.4.11
-		_sift = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
+		sift_ = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #endif
 	}
 
@@ -1222,36 +1229,46 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 #ifdef RTABMAP_CUDASIFT
 	if(gpu_)
 	{
-		if(_cudaSiftEngine == 0)
-		{
-			UDEBUG("Init SiftEngine for the first time with image %dx%d", imgRoi.cols, imgRoi.rows);
-			_cudaSiftEngine = new SiftEngine(imgRoi.cols, imgRoi.rows);
-		}
 		/* Read image using OpenCV and convert to floating point. */
-		cv::Mat limg;
-		imgRoi.convertTo(limg, CV_32FC1);
-		_cudaSiftEngine->uploadImageData((float*) limg.data);
+		int w = imgRoi.cols;
+		int h = imgRoi.rows;
+		cv::Mat img_h;
+		imgRoi.convertTo(img_h, CV_32FC1);
+		CudaImage img_d;
+		img_d.Allocate(w, h, iAlignUp(w, 128), false, NULL, (float*)img_h.data);
+		img_d.Download();
 
-		int numOctaves = nOctaveLayers_;    /* Number of octaves in Gaussian pyramid */
+		bool upScale = true; // OpenCV upscales by default
+		// Compute number of octaves like OpenCV
+		int numOctaves = cvRound(std::log( (double)std::min(w*(upScale?2:1), h*(upScale?2:1)) ) / std::log(2.) - 3);
+		UASSERT(numOctaves >= 1);
 		float initBlur = sigma_; /* Amount of initial Gaussian blurring in standard deviations */
-		float thresh = 3.5f;   /* Threshold on difference of Gaussians for feature pruning */
+		float thresh = guaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
+		float edgeLimit = edgeThreshold_;   
 		float minScale = 0.0f; /* Minimum acceptable scale to remove fine-scale features */
-		bool upScale = false;  /* Whether to upscale image before extraction */
-		_cudaSiftEngine->extractFeatures(*_cudaSiftData, numOctaves, initBlur, thresh, minScale, upScale);
+		UDEBUG("numOctaves=%d initBlur=%f edgeLimit=%f minScale=%f upScale=%s w=%d h=%d", numOctaves, initBlur, edgeLimit, minScale, upScale?"true":"false", w, h);
 
+		if(cudaSiftMemory_ == 0) {
+			cudaSiftMemory_ = AllocSiftTempMemory(w, h, numOctaves, upScale);
+			UASSERT(cudaSiftMemory_ != 0);
+		}
+
+		ExtractSift(*cudaSiftData_, img_d, numOctaves, initBlur, thresh, edgeLimit, minScale, upScale, cudaSiftMemory_);
+		UDEBUG("%d features extracted", cudaSiftData_->numPts);
+		
 		// Convert CudaSift into OpenCV format
-		_cudaSiftDescriptors = cv::Mat(_cudaSiftData->numPts, 128, CV_32FC1);
-		keypoints.resize(_cudaSiftData->numPts);
-		for(int i=0; i<_cudaSiftData->numPts; ++i)
+		cudaSiftDescriptors_ = cv::Mat(cudaSiftData_->numPts, 128, CV_32FC1);
+		keypoints.resize(cudaSiftData_->numPts);
+		for(int i=0; i<cudaSiftData_->numPts; ++i)
 		{
-			float *desc = _cudaSiftData->h_data[i].data;
-			cv::Mat(1, 128, CV_32FC1, desc).copyTo(_cudaSiftDescriptors.row(i));
-			keypoints[i].pt.x = _cudaSiftData->h_data[i].xpos;
-			keypoints[i].pt.y = _cudaSiftData->h_data[i].ypos;
-			keypoints[i].size = _cudaSiftData->h_data[i].scale;
-			keypoints[i].angle = _cudaSiftData->h_data[i].orientation;
-			keypoints[i].response = _cudaSiftData->h_data[i].score;
-			keypoints[i].octave = _cudaSiftData->h_data[i].subsampling;
+			float *desc = cudaSiftData_->h_data[i].data;
+			cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(i));
+			keypoints[i].pt.x = cudaSiftData_->h_data[i].xpos;
+			keypoints[i].pt.y = cudaSiftData_->h_data[i].ypos;
+			keypoints[i].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
+			keypoints[i].angle = cudaSiftData_->h_data[i].orientation;
+			keypoints[i].response = 1.0f/cudaSiftData_->h_data[i].gaussian_diff; // The lower the gaussian the better, inverting
+			keypoints[i].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upScale?1:0);
 		}
 	}
 	else
@@ -1265,12 +1282,12 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifdef RTABMAP_NONFREE
-		_sift->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
+		sift_->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #else
 		UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 #else // >=4.4, >=3.4.11
-		_sift->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
+		sift_->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #endif
 	}
 	return keypoints;
@@ -1281,13 +1298,13 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 #ifdef RTABMAP_CUDASIFT
 	if(gpu_)
 	{
-		if((int)keypoints.size() == _cudaSiftDescriptors.rows)
+		if((int)keypoints.size() == cudaSiftDescriptors_.rows)
 		{
-			return _cudaSiftDescriptors.clone();
+			return cudaSiftDescriptors_.clone();
 		}
 		else
 		{
-			UERROR("CudaSift: keypoints size %ld is not equal to extracted descriptors size %d", keypoints.size(), _cudaSiftDescriptors.rows);
+			UERROR("CudaSift: keypoints size %ld is not equal to extracted descriptors size %d", keypoints.size(), cudaSiftDescriptors_.rows);
 			return cv::Mat();
 		}
 	}
@@ -1297,12 +1314,12 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 	cv::Mat descriptors;
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifdef RTABMAP_NONFREE
-	_sift->compute(image, keypoints, descriptors);
+	sift_->compute(image, keypoints, descriptors);
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 #else // >=4.4, >=3.4.11
-	_sift->compute(image, keypoints, descriptors);
+	sift_->compute(image, keypoints, descriptors);
 #endif
 	if( rootSIFT_ && !descriptors.empty())
 	{

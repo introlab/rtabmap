@@ -96,8 +96,7 @@ typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
 typedef cv::cuda::CornersDetector CV_GFTT_GPU;
 #endif
 
-// CudaSift fork: https://github.com/kzampog/CudaSift
-class SiftEngine;
+// CudaSift fork: https://github.com/matlabbe/CudaSift
 class SiftData;
 
 namespace rtabmap {
@@ -304,11 +303,12 @@ private:
 	double sigma_;
 	bool rootSIFT_;
 	bool gpu_;
+	float guaussianThreshold_;
 
-	cv::Ptr<CV_SIFT> _sift;
-	SiftEngine * _cudaSiftEngine;
-	SiftData * _cudaSiftData;
-	cv::Mat _cudaSiftDescriptors;
+	cv::Ptr<CV_SIFT> sift_;
+	SiftData * cudaSiftData_;
+	float * cudaSiftMemory_;
+	cv::Mat cudaSiftDescriptors_;
 };
 
 //ORB

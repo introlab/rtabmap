@@ -543,7 +543,7 @@ IF(CudaSift_FOUND)
 	#target
 	SET(LIBRARIES
 		${LIBRARIES}
-		CudaSift
+		cudasift
 	)
 ENDIF(CudaSift_FOUND)
 
