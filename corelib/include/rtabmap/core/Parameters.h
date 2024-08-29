@@ -287,7 +287,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SIFT, Sigma,             double, 1.6,  "The sigma of the Gaussian applied to the input image at the octave #0. If your image is captured with a weak camera with soft lenses, you might want to reduce the number.");
     RTABMAP_PARAM(SIFT, RootSIFT,          bool,  false, "Apply RootSIFT normalization of the descriptors.");
     RTABMAP_PARAM(SIFT, Gpu,               bool, false,  "CudaSift: Use GPU version of SIFT. This option is enabled only RTAB-Map is built with CudaSift dependency and GPUs are detected.");
-    RTABMAP_PARAM(SIFT, GaussianThreshold, float, 2.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.");
+    RTABMAP_PARAM(SIFT, GaussianThreshold, float, 6.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.");
 
     RTABMAP_PARAM(BRIEF, Bytes,            int, 32,      "Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
 

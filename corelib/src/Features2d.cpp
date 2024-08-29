@@ -1185,17 +1185,16 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	{
 #ifdef RTABMAP_CUDASIFT
 		UDEBUG("Init SiftData");
-		if(cudaSiftData_) {
+		if(cudaSiftData_ && cudaSiftData_->maxPts != this->getMaxFeatures()) {
+			// Max features changed, reset buffer
 			FreeSiftData(*cudaSiftData_);
 			delete cudaSiftData_;
+			cudaSiftData_ = 0;
 		}
-		if(cudaSiftMemory_) {
-			FreeSiftTempMemory(cudaSiftMemory_);
-			cudaSiftMemory_ = 0;
+		if(cudaSiftData_ == 0) {
+			cudaSiftData_ = new SiftData();
+			InitSiftData(*cudaSiftData_, this->getMaxFeatures()<=0?4096:this->getMaxFeatures(), true, true);
 		}
-		cudaSiftData_ = new SiftData();
-		InitSiftData(*cudaSiftData_, this->getMaxFeatures(), true, true);
-		cudaSiftDescriptors_ = cv::Mat();
 #else
 		UWARN("RTAB-Map is not built with CudaSift so %s cannot be used!", Parameters::kSIFTGpu().c_str());
 		gpu_ = false;
@@ -1238,7 +1237,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		img_d.Allocate(w, h, iAlignUp(w, 128), false, NULL, (float*)img_h.data);
 		img_d.Download();
 
-		bool upScale = true; // OpenCV upscales by default
+		bool upScale = false; // OpenCV upscales by default
 		// Compute number of octaves like OpenCV
 		int numOctaves = cvRound(std::log( (double)std::min(w*(upScale?2:1), h*(upScale?2:1)) ) / std::log(2.) - 3);
 		UASSERT(numOctaves >= 1);
@@ -1246,29 +1245,58 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		float thresh = guaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
 		float edgeLimit = edgeThreshold_;   
 		float minScale = 0.0f; /* Minimum acceptable scale to remove fine-scale features */
-		UDEBUG("numOctaves=%d initBlur=%f edgeLimit=%f minScale=%f upScale=%s w=%d h=%d", numOctaves, initBlur, edgeLimit, minScale, upScale?"true":"false", w, h);
+		UDEBUG("numOctaves=%d initBlur=%f thresh=%f edgeLimit=%f minScale=%f upScale=%s w=%d h=%d", numOctaves, initBlur, thresh, edgeLimit, minScale, upScale?"true":"false", w, h);
+
+		if(cudaSiftMemory_ && cudaSiftMemorySize_ != cv::Size(w, h)) {
+			// Resolution changed, reset buffer
+			FreeSiftTempMemory(cudaSiftMemory_);
+			cudaSiftMemory_ = 0;
+		}
 
 		if(cudaSiftMemory_ == 0) {
 			cudaSiftMemory_ = AllocSiftTempMemory(w, h, numOctaves, upScale);
 			UASSERT(cudaSiftMemory_ != 0);
+			cudaSiftMemorySize_ = cv::Size(w, h);
 		}
 
 		ExtractSift(*cudaSiftData_, img_d, numOctaves, initBlur, thresh, edgeLimit, minScale, upScale, cudaSiftMemory_);
 		UDEBUG("%d features extracted", cudaSiftData_->numPts);
 		
 		// Convert CudaSift into OpenCV format
-		cudaSiftDescriptors_ = cv::Mat(cudaSiftData_->numPts, 128, CV_32FC1);
-		keypoints.resize(cudaSiftData_->numPts);
-		for(int i=0; i<cudaSiftData_->numPts; ++i)
+		cudaSiftDescriptors_ = cv::Mat();
+		if(cudaSiftData_->numPts)
 		{
-			float *desc = cudaSiftData_->h_data[i].data;
-			cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(i));
-			keypoints[i].pt.x = cudaSiftData_->h_data[i].xpos;
-			keypoints[i].pt.y = cudaSiftData_->h_data[i].ypos;
-			keypoints[i].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
-			keypoints[i].angle = cudaSiftData_->h_data[i].orientation;
-			keypoints[i].response = 1.0f/cudaSiftData_->h_data[i].gaussian_diff; // The lower the gaussian the better, inverting
-			keypoints[i].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upScale?1:0);
+			cudaSiftDescriptors_ = cv::Mat(cudaSiftData_->numPts, 128, CV_32FC1);
+			keypoints.resize(cudaSiftData_->numPts);
+			int out = 0;
+			for(int i=0; i<cudaSiftData_->numPts; ++i)
+			{
+				float *desc = cudaSiftData_->h_data[i].data;
+				if(desc[0] != 0 && desc[0] == desc[63] && desc[0] == desc[127])
+				{
+					//UWARN("Invalid decsriptor? skipping: %f,%f,%f", cudaSiftData_->h_data[i].xpos, cudaSiftData_->h_data[i].ypos, cudaSiftData_->h_data[i].scale);
+					//std::cout << cv::Mat(1, 128*4, CV_8UC1, desc) << std::endl;
+					continue;
+				}
+				cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(out));
+				keypoints[out].pt.x = cudaSiftData_->h_data[i].xpos;
+				keypoints[out].pt.y = cudaSiftData_->h_data[i].ypos;
+				keypoints[out].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
+				keypoints[out].angle = cudaSiftData_->h_data[i].orientation;
+				keypoints[out].response = 1.0f/cudaSiftData_->h_data[i].gaussian_diff; // The lower the gaussian the better, inverting
+				keypoints[out].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upScale?1:0);
+				++out;
+			}
+			if(out == 0)
+			{
+				keypoints.clear();
+				cudaSiftDescriptors_ = cv::Mat();
+			}
+			else
+			{
+				keypoints.resize(out);
+				cudaSiftDescriptors_ = cudaSiftDescriptors_(cv::Range(0, out), cv::Range::all()).clone();
+			}
 		}
 	}
 	else

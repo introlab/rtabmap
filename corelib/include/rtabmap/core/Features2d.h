@@ -308,6 +308,7 @@ private:
 	cv::Ptr<CV_SIFT> sift_;
 	SiftData * cudaSiftData_;
 	float * cudaSiftMemory_;
+	cv::Size cudaSiftMemorySize_;
 	cv::Mat cudaSiftDescriptors_;
 };
 
