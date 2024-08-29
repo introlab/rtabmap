@@ -301,15 +301,18 @@ private:
 	double contrastThreshold_;
 	double edgeThreshold_;
 	double sigma_;
+	bool preciseUpscale_;
 	bool rootSIFT_;
 	bool gpu_;
 	float guaussianThreshold_;
+	bool upscale_;
 
 	cv::Ptr<CV_SIFT> sift_;
 	SiftData * cudaSiftData_;
 	float * cudaSiftMemory_;
 	cv::Size cudaSiftMemorySize_;
 	cv::Mat cudaSiftDescriptors_;
+	bool cudaSiftUpscaling_;
 };
 
 //ORB

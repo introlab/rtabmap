@@ -171,6 +171,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_label_gpu->setEnabled(false);
 	_ui->sift_doubleSpinBox_gaussianDiffThreshold->setEnabled(false);
 	_ui->sift_label_gaussianThreshold->setEnabled(false);
+	_ui->sift_checkBox_upscale->setEnabled(false);
+	_ui->sift_label_upscale->setEnabled(false);
 #endif
 
 #ifndef RTABMAP_OCTOMAP
@@ -250,6 +252,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(1, 0, Qt::UserRole - 1);
 #endif
+#endif
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 8)
+	_ui->sift_checkBox_preciseUpscale->setEnabled(false);
+	_ui->sift_label_preciseUpscale->setEnabled(false);
 #endif
 
 #if CV_MAJOR_VERSION >= 3 && !defined(HAVE_OPENCV_XFEATURES2D)
@@ -1076,9 +1082,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_doubleSpinBox_contrastThr->setObjectName(Parameters::kSIFTContrastThreshold().c_str());
 	_ui->sift_doubleSpinBox_edgeThr->setObjectName(Parameters::kSIFTEdgeThreshold().c_str());
 	_ui->sift_doubleSpinBox_sigma->setObjectName(Parameters::kSIFTSigma().c_str());
+	_ui->sift_checkBox_preciseUpscale->setObjectName(Parameters::kSIFTPreciseUpscale().c_str());
 	_ui->sift_checkBox_rootsift->setObjectName(Parameters::kSIFTRootSIFT().c_str());
 	_ui->sift_checkBox_gpu->setObjectName(Parameters::kSIFTGpu().c_str());
 	_ui->sift_doubleSpinBox_gaussianDiffThreshold->setObjectName(Parameters::kSIFTGaussianThreshold().c_str());
+	_ui->sift_checkBox_upscale->setObjectName(Parameters::kSIFTUpscale().c_str());
 
 	//BRIEF descriptor
 	_ui->briefBytes->setObjectName(Parameters::kBRIEFBytes().c_str());
