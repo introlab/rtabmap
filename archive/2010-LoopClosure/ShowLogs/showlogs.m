@@ -1,4 +1,4 @@
-function [LogF LogI] = showlogs(PathPrefix, GT_file)
+function [LogF LogI] = showlogs(PathPrefix, GT_file, LogPrefix)
 % [LogF LogI] = showlogs(PathPrefix, GT_file)
 % SHOWLOGS  Plot a RTAB-Map results (LogI.txt, LogF.txt). Just put this 
 %           file in the same directory as LogF.txt and LogI.txt files 
@@ -24,6 +24,7 @@ set(0,'defaultTextFontName', 'Times')
 
 close all
 
+if nargin < 3, LogPrefix = ''; end
 if nargin < 2, GT_file = ''; end
 if nargin < 1, PathPrefix = '.'; end
 
@@ -31,7 +32,7 @@ if nargin < 1, PathPrefix = '.'; end
 
 display(' ');
 display('Loading log files...');
-LogF = importfile([PathPrefix '/' 'LogF.txt']);
+LogF = importfile([PathPrefix '/' LogPrefix 'LogF.txt']);
 % COLUMN HEADERS : 
 % 1 totalTime
 % 2 timeMemoryUpdate,
@@ -54,7 +55,7 @@ LogF = importfile([PathPrefix '/' 'LogF.txt']);
 % 19 timeEmptyingTrash
 % 20 timeRetrievalDbAccess
 
-LogI = importfile([PathPrefix '/' 'LogI.txt']);
+LogI = importfile([PathPrefix '/' LogPrefix 'LogI.txt']);
 % COLUMN HEADERS : 
 % 1 lcHypothesisId,
 % 2 highestHypothesisId,
