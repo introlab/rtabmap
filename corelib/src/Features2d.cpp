@@ -333,7 +333,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		}
 		else
 		{
-			ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with the hessian threshold", keypoints.size());
 			// Remove words under the new hessian threshold
 
 			// Sort words by hessian
@@ -1198,7 +1198,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 		}
 		if(cudaSiftData_ == 0) {
 			cudaSiftData_ = new SiftData();
-			InitSiftData(*cudaSiftData_, this->getMaxFeatures()<=0?4096:this->getMaxFeatures(), true, true);
+			InitSiftData(*cudaSiftData_, 8192, true, true);
 		}
 #else
 		UWARN("RTAB-Map is not built with CudaSift so %s cannot be used!", Parameters::kSIFTGpu().c_str());
@@ -1245,8 +1245,16 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		img_d.Download();
 
 		// Compute number of octaves like OpenCV based on resolution
-		int numOctaves = cvRound(std::log( (double)std::min(w*(upscale_?2:1), h*(upscale_?2:1)) ) / std::log(2.) - 3);
-		UASSERT(numOctaves >= 1);
+		// ref: https://github.com/opencv/opencv/blob/4d665419992dda6e40364f741ae4765176b64bb0/modules/features2d/src/sift.dispatch.cpp#L538
+		// *** stack smashing detected *** if "-2" term is higher
+		int numOctaves = cvRound(std::log( (double)std::min(w*(upscale_?2:1), h*(upscale_?2:1)) ) / std::log(2.) - (upscale_?3:2));
+		if(numOctaves < 1) {
+			numOctaves = 1;
+		}
+		else if (numOctaves>8)
+		{
+			numOctaves = 8; // hard-coded limit in CudaSift
+		}
 		float initBlur = sigma_; /* Amount of initial Gaussian blurring in standard deviations */
 		float thresh = guaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
 		float edgeLimit = edgeThreshold_;   
@@ -1273,11 +1281,18 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		cudaSiftDescriptors_ = cv::Mat();
 		if(cudaSiftData_->numPts)
 		{
-			cudaSiftDescriptors_ = cv::Mat(cudaSiftData_->numPts, 128, CV_32FC1);
-			keypoints.resize(cudaSiftData_->numPts);
-			int out = 0;
+			int maxKeypoints = this->getMaxFeatures();
+			if(maxKeypoints == 0 || maxKeypoints > cudaSiftData_->numPts)
+			{
+				maxKeypoints = cudaSiftData_->numPts;
+			}
+
+			// Re-using same implementation of limitKeypoints() directly here to avoid doubling memory copies
+			// Sort words by hessian
+			std::multimap<float, int> hessianMap; // <hessian,id>
 			for(int i=0; i<cudaSiftData_->numPts; ++i)
 			{
+				// Ignore keypoints with invalid descriptors
 				float *desc = cudaSiftData_->h_data[i].data;
 				if(desc[0] != 0 && desc[0] == desc[63] && desc[0] == desc[127])
 				{
@@ -1285,24 +1300,29 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 					//std::cout << cv::Mat(1, 128*4, CV_8UC1, desc) << std::endl;
 					continue;
 				}
-				cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(out));
-				keypoints[out].pt.x = cudaSiftData_->h_data[i].xpos;
-				keypoints[out].pt.y = cudaSiftData_->h_data[i].ypos;
-				keypoints[out].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
-				keypoints[out].angle = cudaSiftData_->h_data[i].orientation;
-				keypoints[out].response = 1.0f/cudaSiftData_->h_data[i].gaussian_diff; // The lower the gaussian the better, inverting
-				keypoints[out].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upscale_?1:0);
-				++out;
+				//Keep track of the data, to be easier to manage the data in the next step
+				hessianMap.insert(std::pair<float, int>(cudaSiftData_->h_data[i].sharpness, i));
 			}
-			if(out == 0)
+
+			if((int)hessianMap.size() < maxKeypoints)
 			{
-				keypoints.clear();
-				cudaSiftDescriptors_ = cv::Mat();
+				maxKeypoints = hessianMap.size();
 			}
-			else
+
+			std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+			keypoints.resize(maxKeypoints);
+			cudaSiftDescriptors_ = cv::Mat(maxKeypoints, 128, CV_32FC1);
+			for(unsigned int k=0; k<keypoints.size() && iter!=hessianMap.rend(); ++k, ++iter)
 			{
-				keypoints.resize(out);
-				cudaSiftDescriptors_ = cudaSiftDescriptors_(cv::Range(0, out), cv::Range::all()).clone();
+				int i = iter->second;
+				float *desc = cudaSiftData_->h_data[i].data;
+				cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(k));
+				keypoints[k].pt.x = cudaSiftData_->h_data[i].xpos;
+				keypoints[k].pt.y = cudaSiftData_->h_data[i].ypos;
+				keypoints[k].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
+				keypoints[k].angle = cudaSiftData_->h_data[i].orientation;
+				keypoints[k].response = cudaSiftData_->h_data[i].sharpness; 
+				keypoints[k].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upscale_?1:0);
 			}
 		}
 	}
