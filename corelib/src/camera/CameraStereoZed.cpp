@@ -751,7 +751,6 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #else
 				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), double(timestamp.getNanoseconds())/10e8);
 #endif
-				UWARN("data stamp = %f", data.stamp());
 			}
 			else
 			{
