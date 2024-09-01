@@ -25,6 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// Should be first on windows to avoid "WinSock.h has already been included" error
+#include "rtabmap/core/lidar/LidarVLP16.h"
+
 #include "rtabmap/gui/MainWindow.h"
 
 #include "ui_mainWindow.h"
@@ -32,7 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/Lidar.h"
-#include "rtabmap/core/lidar/LidarVLP16.h"
 #include "rtabmap/core/lidar/LidarOuster.h"
 #include "rtabmap/core/IMUThread.h"
 #include "rtabmap/core/DBReader.h"
