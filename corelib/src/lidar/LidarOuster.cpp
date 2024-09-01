@@ -564,7 +564,7 @@ bool LidarOuster::init(const std::string &, const std::string &)
 
 		UDEBUG("");
 		auto pcapHandle = ouster::sensor_utils::replay_initialize(ipOrHostnameOrPcapOrOsf_);
-		if(!pcapHandle) {
+		if(pcapHandle.get() == 0) {
 			UERROR("Failed to open pcap file \"%s\"!", ipOrHostnameOrPcapOrOsf_.c_str());
 			return false;
 		}
@@ -588,7 +588,7 @@ bool LidarOuster::init(const std::string &, const std::string &)
 		try {
 			std::shared_ptr<ouster::osf::Reader> osfReader(new ouster::osf::Reader(ipOrHostnameOrPcapOrOsf_));
 			auto sensors = osfReader->meta_store().find<ouster::osf::LidarSensor>();
-			std::cout << "sensors: " << sensors.size() << std::endl;
+			UASSERT(sensors.size() >= 1);
 
 			// Use first sensor and get its sensor_info
 			info = sensors.begin()->second->info();
@@ -658,7 +658,8 @@ bool LidarOuster::init(const std::string &, const std::string &)
 		}
 		else
 		{
-			UERROR("Unknown lidar mode \"%s\", framerate is kept to 0.", lidarMode.c_str());
+			UERROR("Unknown lidar mode \"%s\", framerate is set to 10.", lidarMode.c_str());
+			this->setFrameRate(10);
 		}
 	}
 

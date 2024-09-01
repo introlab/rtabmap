@@ -287,8 +287,8 @@ int main(int argc, char * argv[])
 	}
 	if(cloud->size())
 	{
-		printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)cloud->size());
-		cloud = util3d::voxelize(cloud, 0.01f);
+		printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", resolution, (int)cloud->size());
+		cloud = util3d::voxelize(cloud, resolution);
 
 		pcl::io::savePLYFile("rtabmap_cloud.ply", *cloud); // to save in PLY format
 		printf("Saving rtabmap_cloud.ply... done! (%d points)\n", (int)cloud->size());
