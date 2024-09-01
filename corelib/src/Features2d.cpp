@@ -75,6 +75,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
   #include <opencv2/cudafeatures2d.hpp>
 #endif
+#ifdef HAVE_OPENCV_CUDAIMGPROC
+#include <opencv2/cudaimgproc.hpp>
+#endif
 
 #ifdef RTABMAP_FASTCV
 #include <fastcv.h>
