@@ -24,14 +24,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <rtabmap/core/lidar/LidarOuster.h>
-#include <rtabmap/utilite/UEventsManager.h>
-#include <rtabmap/utilite/UStl.h>
-#include <rtabmap/core/IMUFilter.h>
-#include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UFile.h>
-
+#include <rtabmap/core/Version.h>
 #ifdef RTABMAP_OUSTER
+// Ouster should be included first to avoid conflicts 
+// with defines set by Windows.h included indirectly below
 #include "ouster/client.h"
 #include "ouster/os_pcap.h"
 #include "ouster/types.h"
@@ -43,6 +39,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ouster/osf/meta_extrinsics.h"
 #include "ouster/osf/meta_streaming_info.h"
 #endif
+
+#include <rtabmap/core/lidar/LidarOuster.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/IMUFilter.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
 
 namespace rtabmap {
 
@@ -533,7 +536,7 @@ std::string LidarOuster::getSerial() const
 {
 #ifdef RTABMAP_OUSTER
 	if(ousterCaptureThread_) {
-		ousterCaptureThread_->getInfo().sn.c_str();
+		return ousterCaptureThread_->getInfo().sn.c_str();
 	}
 #endif
 	return "";
@@ -599,6 +602,7 @@ bool LidarOuster::init(const std::string &, const std::string &)
 			readingFromFile = true;
 		}
 		catch(std::exception & e) {
+			UERROR("Failed creating OSF reader: %s", e.what());
 			return false;
 		}
 	}
