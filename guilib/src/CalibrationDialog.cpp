@@ -161,8 +161,10 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 #ifndef HAVE_CHARUCO
 	ui_->comboBox_board_type->setItemData(1, 0, Qt::UserRole - 1);
 	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
-#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 7)
+#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 6)
 	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
+#elif CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 8
+	ui_->comboBox_board_type->setItemData(1, 0, Qt::UserRole - 1);
 #endif
 }
 
@@ -1289,7 +1291,9 @@ void CalibrationDialog::restart()
 			ui_->doubleSpinBox_squareSize->value(), 
 			ui_->doubleSpinBox_markerLength->value(), 
 			*markerDictionary_));
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 8)
 		charucoBoard_->setLegacyPattern(ui_->comboBox_board_type->currentIndex()==1);
+#endif
 		arucoDetector_.reset(new cv::aruco::ArucoDetector(*markerDictionary_, *arucoDetectorParams_));
 		charucoDetector_.reset(new cv::aruco::CharucoDetector(*charucoBoard_, cv::aruco::CharucoParameters(), *arucoDetectorParams_));
 #else

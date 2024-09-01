@@ -820,10 +820,6 @@ ADD_CUSTOM_COMMAND(
 
 add_definitions(${PCL_DEFINITIONS})
 
-
-# Make sure the compiler can find include files from our library.
-INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
-
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
@@ -833,7 +829,7 @@ generate_export_header(rtabmap_core
  DEPRECATED_MACRO_NAME RTABMAP_DEPRECATED)
 
 target_include_directories(rtabmap_core PUBLIC 
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include;${PUBLIC_INCLUDE_DIRS}>"
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include;${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
   "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR};${PUBLIC_INCLUDE_DIRS}>")
   
 TARGET_LINK_LIBRARIES(rtabmap_core 
