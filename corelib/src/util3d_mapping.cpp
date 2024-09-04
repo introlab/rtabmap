@@ -642,10 +642,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 		// Added margin to make sure that all points are inside the map (when rounded to integer)
 		float margin = cellSize*10.0f;
-		xMin = (unknownSpaceFilled && scanMaxRange > 0 && -scanMaxRange < min.x?-scanMaxRange:min.x) - margin;
-		yMin = (unknownSpaceFilled && scanMaxRange > 0 && -scanMaxRange < min.y?-scanMaxRange:min.y) - margin;
-		float xMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.x?scanMaxRange:max.x) + margin;
-		float yMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.y?scanMaxRange:max.y) + margin;
+		xMin = (scanMaxRange > 0 ? -scanMaxRange : min.x) - margin;
+		yMin = (scanMaxRange > 0 ? -scanMaxRange : min.y) - margin;
+		float xMax = (scanMaxRange > 0 ? scanMaxRange : max.x) + margin;
+		float yMax = (scanMaxRange > 0 ? scanMaxRange : max.y) + margin;
 
 		UDEBUG("map min=(%fm, %fm) max=(%fm,%fm) (margin=%fm, cellSize=%fm, scan range=%f, min=[%fm,%fm] max=[%fm,%fm])",
 				xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);

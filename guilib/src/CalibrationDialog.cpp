@@ -161,8 +161,10 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 #ifndef HAVE_CHARUCO
 	ui_->comboBox_board_type->setItemData(1, 0, Qt::UserRole - 1);
 	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
-#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 7)
+#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 6)
 	ui_->comboBox_board_type->setItemData(2, 0, Qt::UserRole - 1);
+#elif CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 8
+	ui_->comboBox_board_type->setItemData(1, 0, Qt::UserRole - 1);
 #endif
 }
 
@@ -597,7 +599,8 @@ void matchCharucoImagePoints(
 		objectPoints.push_back(board.chessboardCorners[pointId]);
     }
 #else
-	board.matchImagePoints(detectedCorners, detectedIds, objectPoints, cv::noArray());
+	cv::Mat imgPts;
+	board.matchImagePoints(detectedCorners, detectedIds, objectPoints, imgPts);
 #endif
 }
 #endif
@@ -753,16 +756,32 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 							UASSERT(charucoBoard_.get());
 
 							// detect markers
+							UDEBUG("Detecting aruco markers...");
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+							UASSERT(arucoDetector_.get());
+							arucoDetector_->detectMarkers(timg, markerCorners, markerIds, rejected);
+#else
 							cv::aruco::detectMarkers(timg, markerDictionary_, markerCorners, markerIds, arucoDetectorParams_, rejected);
-
+#endif
 							// refine strategy to detect more markers
+							UDEBUG("Refining aruco markers...");
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+							arucoDetector_->refineDetectedMarkers(timg, *charucoBoard_, markerCorners, markerIds, rejected);
+#else
 							cv::aruco::refineDetectedMarkers(timg, charucoBoard_, markerCorners, markerIds, rejected);
-
+#endif
 							// interpolate charuco corners
+							UDEBUG("Finding charuco corners (markers=%ld)...", markerCorners.size());
 							if(markerIds.size() > 0)
 							{
 								UASSERT(markerIds.size() == markerCorners.size());
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+								UASSERT(charucoDetector_.get());
+								charucoDetector_->detectBoard(timg, pointBuf[id], pointIds[id], markerCorners, markerIds);
+#else
 								cv::aruco::interpolateCornersCharuco(markerCorners, markerIds, timg, charucoBoard_, pointBuf[id], pointIds[id], cv::noArray(), cv::noArray(), 1);
+#endif
+								UDEBUG("Found %ld charuco corners (requires 12)", pointBuf[id].size());
 								if(pointBuf[id].size() >= 12) {
 									// Match image points
 									matchCharucoImagePoints(*charucoBoard_, pointBuf[id], pointIds[id], objectBuf[id]);
@@ -1272,7 +1291,11 @@ void CalibrationDialog::restart()
 			ui_->doubleSpinBox_squareSize->value(), 
 			ui_->doubleSpinBox_markerLength->value(), 
 			*markerDictionary_));
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 8)
 		charucoBoard_->setLegacyPattern(ui_->comboBox_board_type->currentIndex()==1);
+#endif
+		arucoDetector_.reset(new cv::aruco::ArucoDetector(*markerDictionary_, *arucoDetectorParams_));
+		charucoDetector_.reset(new cv::aruco::CharucoDetector(*charucoBoard_, cv::aruco::CharucoParameters(), *arucoDetectorParams_));
 #else
 		charucoBoard_ = cv::aruco::CharucoBoard::create(
 			ui_->spinBox_boardWidth->value(),
