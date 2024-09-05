@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef HAVE_OPENCV_CUDAOPTFLOW
 #include <opencv2/cudaoptflow.hpp>
+#include <opencv2/cudaimgproc.hpp>
 #endif
 
 #include <rtflann/flann.hpp>
