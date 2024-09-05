@@ -83,6 +83,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
 		_flowEps(Parameters::defaultVisCorFlowEps()),
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
+		_flowGpu(Parameters::defaultVisCorFlowGpu()),
 		_nndr(Parameters::defaultVisCorNNDR()),
 		_nnType(Parameters::defaultVisCorNNType()),
 		_gmsWithRotation(Parameters::defaultGMSWithRotation()),
@@ -143,6 +144,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), _flowEps);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
+	Parameters::parse(parameters, Parameters::kVisCorFlowGpu(), _flowGpu);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
 	Parameters::parse(parameters, Parameters::kVisCorNNType(), _nnType);
 	Parameters::parse(parameters, Parameters::kGMSWithRotation(), _gmsWithRotation);
@@ -163,6 +165,14 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	}
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
 	UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
+
+#ifndef HAVE_OPENCV_CUDAOPTFLOW
+	if(_flowGpu)
+	{
+		UERROR("%s is enabled but RTAB-Map is not built with OpenCV CUDA, disabling it.", Parameters::kVisCorFlowGpu().c_str());
+		_flowGpu = false;
+	}
+#endif
 
 	if(_nnType == 6)
 	{
@@ -471,18 +481,59 @@ Transform RegistrationVis::computeTransformationImpl(
 		if(_correspondencesApproach == 1) //Optical Flow
 		{
 			UDEBUG("");
-			// convert to grayscale
-			if(imageFrom.channels() > 1)
+#ifdef HAVE_OPENCV_CUDAOPTFLOW
+			cv::cuda::GpuMat d_imageFrom;
+			cv::cuda::GpuMat d_imageTo;
+			if (_flowGpu)
 			{
-				cv::Mat tmp;
-				cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
-				imageFrom = tmp;
+				UDEBUG("GPU optical flow: preparing GPU image data...");
+				d_imageFrom = fromSignature.sensorData().imageRawGpu();
+				if(d_imageFrom.empty() && !imageFrom.empty()) {
+					d_imageFrom = cv::cuda::GpuMat(imageFrom);
+				}
+				// convert to grayscale
+				if(d_imageFrom.channels() > 1) {
+					cv::cuda::GpuMat tmp;
+					cv::cuda::cvtColor(d_imageFrom, tmp, cv::COLOR_BGR2GRAY);
+					d_imageFrom = tmp;
+				}
+				if(fromSignature.sensorData().imageRawGpu().empty())
+				{
+					fromSignature.sensorData().setImageRawGpu(d_imageFrom); // buffer it
+				}
+				
+				d_imageTo = toSignature.sensorData().imageRawGpu();
+				if(d_imageTo.empty() && !imageTo.empty()) {
+					d_imageTo = cv::cuda::GpuMat(imageTo);
+				}
+				// convert to grayscale
+				if(d_imageTo.channels() > 1) {
+					cv::cuda::GpuMat tmp;
+					cv::cuda::cvtColor(d_imageTo, tmp, cv::COLOR_BGR2GRAY);
+					d_imageTo = tmp;
+				}
+				if(toSignature.sensorData().imageRawGpu().empty())
+				{
+					toSignature.sensorData().setImageRawGpu(d_imageTo); // buffer it
+				}
+				UDEBUG("GPU optical flow: preparing GPU image data... done!");
 			}
-			if(imageTo.channels() > 1)
+			else
+#endif
 			{
-				cv::Mat tmp;
-				cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
-				imageTo = tmp;
+				// convert to grayscale
+				if(imageFrom.channels() > 1)
+				{
+					cv::Mat tmp;
+					cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
+					imageFrom = tmp;
+				}
+				if(imageTo.channels() > 1)
+				{
+					cv::Mat tmp;
+					cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
+					imageTo = tmp;
+				}
 			}
 
 			std::vector<cv::Point3f> kptsFrom3D;
@@ -573,12 +624,9 @@ Transform RegistrationVis::computeTransformationImpl(
 				UDEBUG("guessSet = %d", guessSet?1:0);
 				std::vector<unsigned char> status;
 #ifdef HAVE_OPENCV_CUDAOPTFLOW
-				bool gpu = false;
-				if (gpu)
+				if (_flowGpu)
 				{
 					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer host to device begin");
-					cv::cuda::GpuMat d_imageFrom(imageFrom);
-					cv::cuda::GpuMat d_imageTo(imageTo);
 					cv::cuda::GpuMat d_cornersFrom(cornersFrom);
 					cv::cuda::GpuMat d_cornersTo(cornersTo);
 					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer host to device end");

@@ -175,6 +175,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_label_upscale->setEnabled(false);
 #endif
 
+#ifndef HAVE_OPENCV_CUDAOPTFLOW
+	_ui->odom_flow_gpu->setEnabled(false);
+	_ui->label_odom_flow_gpu->setEnabled(false);
+	_ui->stereo_flow_gpu->setObjectName(false);
+	_ui->label_stereo_flow_gpu->setObjectName(false);
+#endif
+
 #ifndef RTABMAP_OCTOMAP
 	_ui->groupBox_octomap->setChecked(false);
 	_ui->groupBox_octomap->setEnabled(false);
@@ -1284,10 +1291,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->subpix_winSize->setObjectName(Parameters::kVisSubPixWinSize().c_str());
 	_ui->subpix_iterations->setObjectName(Parameters::kVisSubPixIterations().c_str());
 	_ui->subpix_eps->setObjectName(Parameters::kVisSubPixEps().c_str());
-	_ui->odom_flow_winSize_2->setObjectName(Parameters::kVisCorFlowWinSize().c_str());
-	_ui->odom_flow_maxLevel_2->setObjectName(Parameters::kVisCorFlowMaxLevel().c_str());
-	_ui->odom_flow_iterations_2->setObjectName(Parameters::kVisCorFlowIterations().c_str());
-	_ui->odom_flow_eps_2->setObjectName(Parameters::kVisCorFlowEps().c_str());
+	_ui->odom_flow_winSize->setObjectName(Parameters::kVisCorFlowWinSize().c_str());
+	_ui->odom_flow_maxLevel->setObjectName(Parameters::kVisCorFlowMaxLevel().c_str());
+	_ui->odom_flow_iterations->setObjectName(Parameters::kVisCorFlowIterations().c_str());
+	_ui->odom_flow_eps->setObjectName(Parameters::kVisCorFlowEps().c_str());
+	_ui->odom_flow_gpu->setObjectName(Parameters::kVisCorFlowGpu().c_str());
 	_ui->loopClosure_bundle->setObjectName(Parameters::kVisBundleAdjustment().c_str());
 
 	//RegistrationIcp
@@ -1604,6 +1612,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereo_ssd->setObjectName(Parameters::kStereoSSD().c_str());
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
 	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());
+	_ui->stereo_flow_gpu->setObjectName(Parameters::kStereoGpu().c_str());
+	
 
 	// Odometry Open3D
 	_ui->odom_open3d_method->setObjectName(Parameters::kOdomOpen3DMethod().c_str());

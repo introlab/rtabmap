@@ -287,7 +287,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SIFT, Sigma,             double, 1.6,  "The sigma of the Gaussian applied to the input image at the octave #0. If your image is captured with a weak camera with soft lenses, you might want to reduce the number.");
     RTABMAP_PARAM(SIFT, PreciseUpscale,    bool, false,  "Whether to enable precise upscaling in the scale pyramid (OpenCV >= 4.8).");
     RTABMAP_PARAM(SIFT, RootSIFT,          bool, false,  "Apply RootSIFT normalization of the descriptors.");
-    RTABMAP_PARAM(SIFT, Gpu,               bool, false,  "CudaSift: Use GPU version of SIFT. This option is enabled only RTAB-Map is built with CudaSift dependency and GPUs are detected.");
+    RTABMAP_PARAM(SIFT, Gpu,               bool, false,  "CudaSift: Use GPU version of SIFT. This option is enabled only if RTAB-Map is built with CudaSift dependency and GPUs are detected.");
     RTABMAP_PARAM(SIFT, GaussianThreshold, float, 2.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.");
     RTABMAP_PARAM(SIFT, Upscale,           bool, false,  "CudaSift: Whether to enable upscaling.");
 
@@ -718,6 +718,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, CorFlowIterations,         int,   30,    uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowEps,                float, 0.01,  uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowMaxLevel,           int,   3,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorFlowGpu,                bool,  false, uFormat("[%s=1] Enable GPU version of the optical flow approach (only available if OpenCV is built with CUDA).", kVisCorType().c_str()));
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(Vis, BundleAdjustment,          int,   1,     "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
@@ -795,6 +796,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Stereo, OpticalFlow,           bool, true,    "Use optical flow to find stereo correspondences, otherwise a simple block matching approach is used.");
     RTABMAP_PARAM(Stereo, SSD,                   bool, true,    uFormat("[%s=false] Use Sum of Squared Differences (SSD) window, otherwise Sum of Absolute Differences (SAD) window is used.", kStereoOpticalFlow().c_str()));
     RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  uFormat("[%s=true] Epsilon stop criterion.", kStereoOpticalFlow().c_str()));
+    RTABMAP_PARAM(Stereo, Gpu,                   bool, false,   uFormat("[%s=true] Enable GPU version of the optical flow approach (only available if OpenCV is built with CUDA).", kStereoOpticalFlow().c_str()));
 
     RTABMAP_PARAM(Stereo, DenseStrategy,         int, 0,  "0=cv::StereoBM, 1=cv::StereoSGBM");
 

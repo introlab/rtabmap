@@ -865,15 +865,36 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 			data.stereoCameraModels()[0].isValidForProjection())
 		{
 			//stereo
-			cv::Mat imageMono;
-			// convert to grayscale
-			if(data.imageRaw().channels() > 1)
+			cv::Mat imageLeft = data.imageRaw();
+			cv::Mat imageRight = data.rightRaw();
+#ifdef HAVE_OPENCV_CUDEV
+			cv::cuda::GpuMat d_imageLeft;
+			cv::cuda::GpuMat d_imageRight;
+			if(_stereo->isGpuEnabled())
 			{
-				cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
+				d_imageLeft = data.imageRawGpu();
+				if(d_imageLeft.empty()) {
+					d_imageLeft = cv::cuda::GpuMat(imageLeft);
+				}
+				// convert to grayscale
+				if(d_imageLeft.channels() > 1) {
+					cv::cuda::GpuMat tmp;
+					cv::cuda::cvtColor(d_imageLeft, tmp, cv::COLOR_BGR2GRAY);
+					d_imageLeft = tmp;
+				}
+				d_imageRight = data.depthOrRightRawGpu();
+				if(d_imageRight.empty()) {
+					d_imageRight = cv::cuda::GpuMat(imageRight);
+				}
 			}
 			else
+#endif
 			{
-				imageMono = data.imageRaw();
+				// convert to grayscale (right image should be already grayscale)
+				if(imageLeft.channels() > 1)
+				{
+					cv::cvtColor(data.imageRaw(), imageLeft, cv::COLOR_BGR2GRAY);
+				}
 			}
 
 			std::vector<cv::Point2f> leftCorners;
@@ -884,11 +905,24 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 			if(data.stereoCameraModels().size() == 1)
 			{
 				std::vector<unsigned char> status;
-				rightCorners = _stereo->computeCorrespondences(
-						imageMono,
-						data.rightRaw(),
-						leftCorners,
-						status);
+#ifdef HAVE_OPENCV_CUDEV
+				if(_stereo->isGpuEnabled())
+				{
+					rightCorners = _stereo->computeCorrespondences(
+							d_imageLeft,
+							d_imageRight,
+							leftCorners,
+							status);
+				}
+#endif
+				else
+				{
+					rightCorners = _stereo->computeCorrespondences(
+							imageLeft,
+							imageRight,
+							leftCorners,
+							status);
+				}
 
 				if(ULogger::level() >= ULogger::kWarning)
 				{
@@ -923,8 +957,8 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 			}
 			else
 			{
-				int subImageWith = imageMono.cols / data.stereoCameraModels().size();
-				UASSERT(imageMono.cols % subImageWith == 0);
+				int subImageWith = imageLeft.cols / data.stereoCameraModels().size();
+				UASSERT(imageLeft.cols % subImageWith == 0);
 				std::vector<std::vector<cv::Point2f> > subLeftCorners(data.stereoCameraModels().size());
 				std::vector<std::vector<int> > subIndex(data.stereoCameraModels().size());
 				// Assign keypoints per camera
@@ -944,11 +978,24 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 					if(!subLeftCorners[i].empty())
 					{
 						std::vector<unsigned char> status;
-						rightCorners = _stereo->computeCorrespondences(
-								imageMono.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
-								data.rightRaw().colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+#ifdef HAVE_OPENCV_CUDEV
+						if(_stereo->isGpuEnabled())
+						{
+							rightCorners = _stereo->computeCorrespondences(
+								d_imageLeft.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								d_imageRight.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
 								subLeftCorners[i],
 								status);
+						}
+#endif
+						else
+						{
+							rightCorners = _stereo->computeCorrespondences(
+								imageLeft.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								imageRight.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),
+								subLeftCorners[i],
+								status);
+						}
 
 						std::vector<cv::Point3f> subKeypoints3D = util3d::generateKeypoints3DStereo(
 								subLeftCorners[i],
