@@ -914,8 +914,8 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 							leftCorners,
 							status);
 				}
-#endif
 				else
+#endif
 				{
 					rightCorners = _stereo->computeCorrespondences(
 							imageLeft,
@@ -987,8 +987,8 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 								subLeftCorners[i],
 								status);
 						}
-#endif
 						else
+#endif
 						{
 							rightCorners = _stereo->computeCorrespondences(
 								imageLeft.colRange(cv::Range(subImageWith*i, subImageWith*(i+1))),

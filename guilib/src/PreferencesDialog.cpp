@@ -178,8 +178,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef HAVE_OPENCV_CUDAOPTFLOW
 	_ui->odom_flow_gpu->setEnabled(false);
 	_ui->label_odom_flow_gpu->setEnabled(false);
-	_ui->stereo_flow_gpu->setObjectName(false);
-	_ui->label_stereo_flow_gpu->setObjectName(false);
+	_ui->stereo_flow_gpu->setEnabled(false);
+	_ui->label_stereo_flow_gpu->setEnabled(false);
 #endif
 
 #ifndef RTABMAP_OCTOMAP

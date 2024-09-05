@@ -124,7 +124,7 @@ void StereoOpticalFlow::parseParameters(const ParametersMap & parameters)
 #ifndef HAVE_OPENCV_CUDAOPTFLOW
 	if(gpu_)
 	{
-		UERROR("%s is enabled but RTAB-Map is not built with OpenCV CUDA, disabling it.", Parameters::kVisStereoGpu().c_str());
+		UERROR("%s is enabled but RTAB-Map is not built with OpenCV CUDA, disabling it.", Parameters::kStereoGpu().c_str());
 		gpu_ = false;
 	}
 #endif
