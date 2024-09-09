@@ -78,7 +78,8 @@ void postOdometryEventNative(const void *object,
                        const void * points, int pointsLen, int pointsChannels,
                        float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw,
                        float p00, float p11, float p02, float p12, float p22, float p32, float p23,
-                       float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7);
+                       float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7,
+                       bool trackingIsGood);
 
 void setOnlineBlendingNative(const void *object, bool enabled);
 void setMapCloudShownNative(const void *object, bool shown);
@@ -92,6 +93,7 @@ void setLightingNative(const void *object, bool enabled);
 void setBackfaceCullingNative(const void *object, bool enabled);
 void setWireframeNative(const void *object, bool enabled);
 void setLocalizationModeNative(const void *object, bool enabled);
+void setDataRecorderModeNative(const void *object, bool enabled);
 void setTrajectoryModeNative(const void *object, bool enabled);
 void setGraphOptimizationNative(const void *object, bool enabled);
 void setNodesFilteringNative(const void *object, bool enabled);
@@ -100,6 +102,7 @@ void setGridVisibleNative(const void *object, bool visible);
 void setFullResolutionNative(const void *object, bool enabled);
 void setSmoothingNative(const void *object, bool enabled);
 void setAppendModeNative(const void *object, bool enabled);
+void setLocalizationFilteringSpeedNative(const void *object, float value);
 void setMaxCloudDepthNative(const void *object, float value);
 void setMinCloudDepthNative(const void *object, float value);
 void setCloudDensityLevelNative(const void *object, int value);

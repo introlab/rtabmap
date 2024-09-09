@@ -96,7 +96,7 @@ public:
 	virtual void close(); // inherited classes should call its parent at the end of their close().
 	virtual std::string getSerial() const {return "CameraMobile";}
 
-	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
+	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord, bool trackingIsGood);
 	void updateOnRender();
 
 	const Transform & getOriginOffset() const {return originOffset_;} // in rtabmap frame
@@ -155,6 +155,7 @@ private:
 	UMutex dataMutex_;
 	SensorData data_;
 	Transform dataPose_;
+    bool dataGoodTracking_;
 
 	UMutex poseMutex_;
 	std::map<double, Transform> poseBuffer_; // <stamp, Pose>

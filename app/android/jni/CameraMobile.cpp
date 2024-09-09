@@ -18,6 +18,7 @@ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -60,7 +61,8 @@ CameraMobile::CameraMobile(bool smoothing) :
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false)
+		originUpdate_(false),
+		dataGoodTracking_(true)
 {
 }
 
@@ -84,12 +86,15 @@ void CameraMobile::close()
 	originUpdate_ = false;
 	dataPose_ = Transform();
 	data_ = SensorData();
+    dataGoodTracking_ = true;
 
     if(textureId_ != 0)
     {
         glDeleteTextures(1, &textureId_);
         textureId_ = 0;
     }
+    // in case someone is waiting on captureImage()
+    dataReady_.release();
 }
 
 void CameraMobile::resetOrigin()
@@ -99,6 +104,7 @@ void CameraMobile::resetOrigin()
 	lastEnvSensors_.clear();
 	dataPose_ = Transform();
 	data_ = SensorData();
+    dataGoodTracking_ = true;
 	originUpdate_ = true;
 }
 
@@ -213,7 +219,7 @@ void CameraMobile::addEnvSensor(int type, float value)
 	lastEnvSensors_.insert(std::make_pair((EnvSensor::Type)type, EnvSensor((EnvSensor::Type)type, value)));
 }
 
-void CameraMobile::update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord)
+void CameraMobile::update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord, bool trackingIsGood)
 {
 	UScopeMutex lock(dataMutex_);
 
@@ -222,6 +228,8 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
 	LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 	data_ = data;
     dataPose_ = pose;
+    if(dataGoodTracking_)
+    	dataGoodTracking_ = trackingIsGood;
 
     viewMatrix_ = viewMatrix;
     projectionMatrix_ = projectionMatrix;
@@ -272,12 +280,15 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
         }
     }
 
-	postUpdate();
-	
-	if(notify)
-	{
-		dataReady_.release();
-	}
+    if(data_.isValid())
+    {
+        postUpdate();
+
+        if(notify)
+        {
+            dataReady_.release();
+        }
+    }
 }
 
 void CameraMobile::updateOnRender()
@@ -424,7 +435,7 @@ void CameraMobile::postUpdate()
 SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
-	if(dataReady_.acquire(1, 5000))
+	if(dataReady_.acquire(1, 15000))
 	{
 		UScopeMutex lock(dataMutex_);
 		data = data_;
@@ -438,17 +449,28 @@ SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 		if(info)
 		{
 			// linear cov = 0.0001
-			info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame_?9999.0:0.0001);
+			info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame_?9999.0:0.00001);
 			if(!firstFrame_)
 			{
 				// angular cov = 0.000001
-				info->odomCovariance.at<double>(3,3) *= 0.01;
-				info->odomCovariance.at<double>(4,4) *= 0.01;
-				info->odomCovariance.at<double>(5,5) *= 0.01;
+                // roll/pitch should be fairly accurate with VIO input
+				info->odomCovariance.at<double>(3,3) *= 0.01; // roll
+				info->odomCovariance.at<double>(4,4) *= 0.01; // pitch
+                if(!dataGoodTracking_)
+                {
+                    UERROR("not good tracking!");
+                    // add slightly more error on translation
+                    // 0.001
+                    info->odomCovariance.at<double>(0,0) *= 10; // x
+                    info->odomCovariance.at<double>(1,1) *= 10; // y
+                    info->odomCovariance.at<double>(2,2) *= 10; // z
+                    info->odomCovariance.at<double>(5,5) *= 10; // yaw
+                }
 			}
 			info->odomPose = dataPose_;
 		}
 
+        dataGoodTracking_ = true;
 		firstFrame_ = false;
 	}
 	else

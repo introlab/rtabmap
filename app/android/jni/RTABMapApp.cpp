@@ -134,7 +134,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("800")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishLikelihood(), std::string("false")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishPdf(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapStartNewMapOnLoopClosure(), uBool2Str(!localizationMode_ && appendMode_)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapStartNewMapOnLoopClosure(), uBool2Str(!localizationMode_ && appendMode_ && !dataRecorderMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAggressiveLoopThr(), "0.0"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), uBool2Str(!trajectoryMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "10"));
@@ -188,10 +188,18 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(*rtabmap::Parameters::getDefaultParameters().find(rtabmap::Parameters::kMemMapLabelsAdded()));
 	if(dataRecorderMode_)
 	{
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("-1")));
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), std::string("1.0"))); // deactivate rehearsal
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemMapLabelsAdded(), "false")); // don't create map labels
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("true")));
+        // Example taken from https://github.com/introlab/rtabmap_ros/blob/master/rtabmap_launch/launch/data_recorder.launch
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // deactivate rehearsal
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "-1"));           // deactivate keypoints extraction
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), "0"));      // deactivate global retrieval
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDMaxLocalRetrieved(), "0"));    // deactivate local retrieval
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemMapLabelsAdded(), "false"));    // don't create map labels
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMemoryThr(), "2"));         // keep the WM empty
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "1"));               // STM=1 -->
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), "false"));
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), "0"));
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAngularUpdate(), "0"));
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("true")));
 	}
 
 	return parameters;
@@ -247,6 +255,9 @@ RTABMapApp::RTABMapApp() :
 		renderingTime_(0.0f),
 		lastPostRenderEventTime_(0.0),
 		lastPoseEventTime_(0.0),
+		localizationFilteringSpeed_(0.0f),
+		localizationCorrection_(rtabmap::Transform::getIdentity()),
+		previousAnchorStamp_(0),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		optMesh_(new pcl::TextureMesh),
@@ -386,6 +397,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
     lastPostRenderEventTime_ = 0.0;
     lastPoseEventTime_ = 0.0;
     bufferedStatsData_.clear();
+    graphOptimization_ = true;
 
 	this->registerToEventsManager();
 
@@ -475,7 +487,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	rtabmap_ = new rtabmap::Rtabmap();
 	rtabmap::ParametersMap parameters = getRtabmapParameters();
 
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), uBool2Str(databaseInMemory)));
+    parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), uBool2Str(databaseInMemory && !dataRecorderMode_)));
 	LOGI("Initializing database...");
 	rtabmap_->init(parameters, databasePath);
 	rtabmapThread_ = new rtabmap::RtabmapThread(rtabmap_);
@@ -931,6 +943,13 @@ bool RTABMapApp::startCamera()
 		UERROR("Unknown or not supported camera driver! %d", cameraDriver_);
 		return false;
 	}
+    
+    if(rtabmapThread_ && dataRecorderMode_)
+    {
+        // Don't update faster than we record, so that we see is what is recorded
+        camera_->setFrameRate(rtabmapThread_->getDetectorRate());
+        rtabmapThread_->setDetectorRate(0);
+    }
 
 	if(camera_->init())
 	{
@@ -967,11 +986,15 @@ void RTABMapApp::stopCamera()
 		boost::mutex::scoped_lock  lock(cameraMutex_);
 		if(sensorCaptureThread_!=0)
 		{
+            camera_->close();
 			sensorCaptureThread_->join(true);
 			delete sensorCaptureThread_; // camera_ is closed and deleted inside
 			sensorCaptureThread_ = 0;
 			camera_ = 0;
 		}
+        previousAnchorPose_.setNull();
+        previousAnchorStamp_ = 0.0;
+        localizationCorrection_.setIdentity();
 	}
     {
         boost::mutex::scoped_lock  lock(renderingMutex_);
@@ -1308,7 +1331,7 @@ int RTABMapApp::Render()
 						arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
 					}
 				}
-				if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
+				if(!visualizingMesh_ && !dataRecorderMode_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
 				{
 					rtabmap::CameraModel occlusionModel;
 					cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
@@ -1746,7 +1769,7 @@ int RTABMapApp::Render()
 				// Transform pose in OpenGL world
 				for(std::map<int, rtabmap::Transform>::iterator iter=posesWithMarkers.begin(); iter!=posesWithMarkers.end(); ++iter)
 				{
-					if(!graphOptimization_)
+					if(!graphOptimization_ && !dataRecorderMode_)
 					{
 						std::map<int, rtabmap::Transform>::iterator jter = rawPoses_.find(iter->first);
 						if(jter != rawPoses_.end())
@@ -2014,7 +2037,8 @@ int RTABMapApp::Render()
 					}
 				}
 			}
-			else
+			
+            if(dataRecorderMode_ || !rtabmapEvents.size())
 			{
 				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && sensorCaptureThread_!=0);
 
@@ -2417,6 +2441,11 @@ void RTABMapApp::setAppendMode(bool enabled)
 	}
 }
 
+void RTABMapApp::setLocalizationFilteringSpeed(float value)
+{
+    localizationFilteringSpeed_ = value;
+}
+
 void RTABMapApp::setDataRecorderMode(bool enabled)
 {
 	if(dataRecorderMode_ != enabled)
@@ -2599,11 +2628,14 @@ void RTABMapApp::save(const std::string & databasePath)
     std::multimap<int, rtabmap::Link> links = rtabmap_->getLocalConstraints();
 	rtabmap_->close(true, databasePath);
 	rtabmap_->init(getRtabmapParameters(), dataRecorderMode_?"":databasePath);
-	rtabmap_->setOptimizedPoses(poses, links);
 	if(dataRecorderMode_)
 	{
 		clearSceneOnNextRender_ = true;
 	}
+    else
+    {
+        rtabmap_->setOptimizedPoses(poses, links);
+    }
 }
 
 bool RTABMapApp::recover(const std::string & from, const std::string & to)
@@ -3725,7 +3757,7 @@ void RTABMapApp::postCameraPoseEvent(
 			return;
 		}
 		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
-		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
+		pose = rtabmap::rtabmap_world_T_opengl_world * localizationCorrection_ * pose * rtabmap::opengl_world_T_rtabmap_world;
 		camera_->poseReceived(pose, stamp);
 	}
 }
@@ -3742,9 +3774,10 @@ void RTABMapApp::postOdometryEvent(
         const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
         const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
         const float * points, int pointsLen, int pointsChannels,
-        const rtabmap::Transform & viewMatrix,
+        rtabmap::Transform viewMatrix,
         float p00, float p11, float p02, float p12, float p22, float p32, float p23,
-        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7)
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7,
+        bool trackingIsGood)
 {
 #if defined(RTABMAP_ARCORE) || defined(__APPLE__)
 	boost::mutex::scoped_lock  lock(cameraMutex_);
@@ -3760,7 +3793,7 @@ void RTABMapApp::postOdometryEvent(
 			   (depth==0 || depthFormat == AIMAGE_FORMAT_DEPTH16))
 #else //__APPLE__
             if(rgbFormat == 875704422 &&
-               (depth==0 || depthFormat == 1717855600))
+               (depth==0 || depthFormat == 1717855600))
 #endif
 			{
 				cv::Mat outputRGB;
@@ -3836,6 +3869,35 @@ void RTABMapApp::postOdometryEvent(
 
 				if(!outputRGB.empty())
 				{
+                    rtabmap::Transform rawPose = pose;
+                    // Remove upstream localization corrections by integrating pose from previous frame anchor
+                    if(localizationFilteringSpeed_>0.0f && !previousAnchorPose_.isNull())
+                    {
+                        rtabmap::Transform t = (previousAnchorPose_.inverse() * rawPose).translation();
+                        double speed = t.getNorm()/(stamp-previousAnchorStamp_);
+                        if(speed>=localizationFilteringSpeed_)
+                        {
+                            // Only correct the translation to not lose rotation aligned with gravity
+                            // TODO: check if yaw can also be corrected
+                            localizationCorrection_ = localizationCorrection_ * (previousAnchorPose_ * rawPose.inverse()).translation();
+                            pose = localizationCorrection_ * rawPose;
+                            LOGE("Upstream localization has been suppressed "
+                                 "because of high speed detected (%f m/s) causing a jump! You can change "
+                                 "localization filtering speed in Settings->Mapping if you are "
+                                 "indeed moving as fast.",
+                                 speed);
+                            trackingIsGood = false;
+                        }
+                        else {
+                            pose = localizationCorrection_ * rawPose;
+                        }
+                    }
+
+                    previousAnchorPose_ = rawPose;
+                    previousAnchorStamp_ = stamp;
+                    viewMatrix = (localizationCorrection_ * viewMatrix.inverse()).inverse();
+                    
+                    // Convert in our coordinate frame
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 
 					rtabmap::Transform poseWithOriginOffset = pose;
@@ -3946,7 +4008,9 @@ void RTABMapApp::postOdometryEvent(
                     texCoords[5] = t5;
                     texCoords[6] = t6;
                     texCoords[7] = t7;
-					camera_->update(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0);
+                    if(!trackingIsGood)
+                  	  UERROR("not good tracking!");
+					camera_->update(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0, trackingIsGood);
 				}
 			}
 		}

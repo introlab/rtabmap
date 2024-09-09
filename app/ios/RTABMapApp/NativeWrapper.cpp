@@ -307,7 +307,8 @@ void postOdometryEventNative(const void *object,
         const void * points, int pointsLen, int pointsChannels,
         float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw,
         float p00, float p11, float p02, float p12, float p22, float p32, float p23,
-        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7)
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7,
+        bool trackingIsGood)
 {
     if(object)
     {
@@ -322,7 +323,8 @@ void postOdometryEventNative(const void *object,
                 (const float *)points, pointsLen, pointsChannels,
                 rtabmap::Transform(vx, vy, vz, vqx, vqy, vqz, vqw),
                 p00, p11, p02, p12, p22, p32, p23,
-                t0, t1, t2, t3, t4, t5, t6, t7);
+                t0, t1, t2, t3, t4, t5, t6, t7,
+                trackingIsGood);
     }
     else
     {
@@ -454,6 +456,13 @@ void setLocalizationModeNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
+void setDataRecorderModeNative(const void *object, bool enabled)
+{
+    if(object)
+        native(object)->setDataRecorderMode(enabled);
+    else
+        UERROR("object is null!");
+}
 void setTrajectoryModeNative(const void *object, bool enabled)
 {
     if(object)
@@ -507,6 +516,13 @@ void setAppendModeNative(const void *object, bool enabled)
 {
     if(object)
         native(object)->setAppendMode(enabled);
+    else
+        UERROR("object is null!");
+}
+void setLocalizationFilteringSpeedNative(const void * object, float value)
+{
+    if(object)
+        native(object)->setLocalizationFilteringSpeed(value);
     else
         UERROR("object is null!");
 }

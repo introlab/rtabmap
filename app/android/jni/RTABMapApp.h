@@ -138,6 +138,7 @@ class RTABMapApp : public UEventsHandler {
   void setSmoothing(bool enabled);
   void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
+  void setLocalizationFilteringSpeed(float value);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
   void setMinCloudDepth(float value);
@@ -193,9 +194,10 @@ class RTABMapApp : public UEventsHandler {
         const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
         const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
         const float * points, int pointsLen, int pointsChannels,
-		const rtabmap::Transform & viewMatrix, //view matrix
+		rtabmap::Transform viewMatrix, //view matrix
         float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
-        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7, // tex coord
+        bool trackingIsGood);
 
  protected:
   virtual bool handleEvent(UEvent * event);
@@ -259,6 +261,10 @@ class RTABMapApp : public UEventsHandler {
   double lastPostRenderEventTime_;
   double lastPoseEventTime_;
   std::map<std::string, float> bufferedStatsData_;
+  float localizationFilteringSpeed_;
+  rtabmap::Transform localizationCorrection_;
+  rtabmap::Transform previousAnchorPose_;
+  double previousAnchorStamp_;
 
   bool visualizingMesh_;
   bool exportedMeshUpdated_;

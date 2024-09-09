@@ -313,6 +313,14 @@ class RTABMap {
                 if(frame.lightEstimate != nil) {
                     addEnvSensor(type: 4, value: Float(frame.lightEstimate!.ambientIntensity))
                 }
+                
+                var goodTracking = true
+                switch frame.camera.trackingState {
+                case .normal:
+                    goodTracking = true
+                default:
+                    goodTracking = false
+                }
                                 
                 postOdometryEventNative(native_rtabmap,
                                         pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w,
@@ -341,7 +349,8 @@ class RTABMap {
                                         bufferPoints.baseAddress, Int32(frame.rawFeaturePoints!.points.count), 4,
                                         v[3,0], v[3,1], v[3,2], quatv.x, quatv.y, quatv.z, quatv.w,
                                         p[0,0], p[1,1], p[2,0], p[2,1], p[2,2], p[2,3], p[3,2],
-                                        texCoord[0],texCoord[1],texCoord[2],texCoord[3],texCoord[4],texCoord[5],texCoord[6],texCoord[7])
+                                        texCoord[0],texCoord[1],texCoord[2],texCoord[3],texCoord[4],texCoord[5],texCoord[6],texCoord[7],
+                                        goodTracking)
                 if depthMap != nil {
                     CVPixelBufferUnlockBaseAddress(depthMap!, CVPixelBufferLockFlags.readOnly)
                 }
@@ -390,8 +399,8 @@ class RTABMap {
     func setLocalizationMode(enabled: Bool) {
         setLocalizationModeNative(native_rtabmap, enabled)
     }
-    func setTrajectoryMode(enabled: Bool) {
-        setTrajectoryModeNative(native_rtabmap, enabled)
+    func setDataRecorderMode(enabled: Bool) {
+        setDataRecorderModeNative(native_rtabmap, enabled)
     }
     func setGraphOptimization(enabled: Bool) {
         setGraphOptimizationNative(native_rtabmap, enabled)
@@ -413,6 +422,9 @@ class RTABMap {
     }
     func setAppendMode(enabled: Bool) {
         setAppendModeNative(native_rtabmap, enabled)
+    }
+    func setLocalizationFilteringSpeed(value: Float) {
+        setLocalizationFilteringSpeedNative(native_rtabmap, value)
     }
     func setMaxCloudDepth(value: Float) {
         setMaxCloudDepthNative(native_rtabmap, value)

@@ -73,6 +73,42 @@
 		<dict>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Filter ARKit's localizations to avoid jumps in odometry when creating a map with RTAB-Map, which would cause large drift errors that are difficult to correct. Set a speed threshold to detect those events.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>ARKit Localization Filtering Speed</string>
+			<key>Key</key>
+			<string>LocalizationFilteringSpeed</string>
+			<key>DefaultValue</key>
+			<string>2</string>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>5 m/s</string>
+				<string>4 m/s</string>
+				<string>3 m/s</string>
+				<string>2 m/s</string>
+				<string>1 m/s</string>
+				<string>0.5 m/s</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>5</string>
+				<string>4</string>
+				<string>3</string>
+				<string>2</string>
+				<string>1</string>
+				<string>0.5</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
 			<key>Title</key>
 			<string>Core</string>
 			<key>FooterText</key>
