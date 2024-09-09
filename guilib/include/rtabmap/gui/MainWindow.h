@@ -194,6 +194,7 @@ protected Q_SLOTS:
 	void selectDepthAIOAKDPro();
 	void selectXvisioSeerSense();
 	void selectVLP16();
+	void selectOuster();
 	void dumpTheMemory();
 	void dumpThePrediction();
 	void sendGoal();

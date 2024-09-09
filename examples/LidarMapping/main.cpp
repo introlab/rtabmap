@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Should be first on windows to avoid "WinSock.h has already been included" error
 #include "rtabmap/core/lidar/LidarVLP16.h"
+#include "rtabmap/core/lidar/LidarOuster.h"
 
 #include <rtabmap/core/Odometry.h>
 #include "rtabmap/core/Rtabmap.h"
@@ -35,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsManager.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UFile.h"
 #include <QApplication>
 #include <stdio.h>
 #include <pcl/io/pcd_io.h>
@@ -47,11 +49,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-lidar_mapping IP PORT\n"
-			"rtabmap-lidar_mapping PCAP_FILEPATH\n"
+			"rtabmap-lidar_mapping [OPTIONS] DRIVER ...\n"
+			"rtabmap-lidar_mapping [OPTIONS] 0 IP PORT (with VLP16 LiDAR)\n"
+			"rtabmap-lidar_mapping [OPTIONS] 1 IP      (with Ouster LiDAR)\n"
+			"rtabmap-lidar_mapping [OPTIONS] DRIVER PCAP_FILEPATH [JSON_FILEPATH]\n"
 			"\n"
-			"Example:"
-			"  rtabmap-lidar_mapping 192.168.1.201 2368\n\n");
+			"DRIVER: 0=VLP16, 1=Ouster\n"
+			"JSON_FILEPATH: should be set if DRIVER=1\n"
+			"Options:\n"
+			"  --resolution #          Resolution of the map (default 0.05 m), indoor: 0.05-0.3, outdoor: 0.3-0.5\n"
+			"\n"
+			"Examples:\n"
+			"  rtabmap-lidar_mapping 0 192.168.1.201 2368\n"
+			"  rtabmap-lidar_mapping 0 scan.pcap\n"
+			"  rtabmap-lidar_mapping 1 scan.pcap config.json\n\n");
 	exit(1);
 }
 
@@ -59,42 +70,109 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kWarning);
+	ULogger::setLevel(ULogger::kInfo);
 
-	std::string filepath;
+	std::string pcapFile;
+	std::string jsonFile;
 	std::string ip;
 	int port = 2368;
-	if(argc < 2)
+	int driver = 0;
+	float resolution = 0.05;
+	if(argc < 3)
 	{
 		showUsage();
 	}
-	else if(argc == 2)
-	{
-		filepath = argv[1];
-	}
 	else
 	{
-		ip = argv[1];
-		port = uStr2Int(argv[2]);
+		int i=1;
+		while(i<argc-3)
+		{
+			if(strcmp("--resolution", argv[i]) == 0)
+			{
+				++i;
+				resolution = uStr2Float(argv[i]);
+				++i;
+			}
+			else
+			{
+				break;
+			}
+		}
+		driver = uStr2Int(argv[i++]);
+		if(driver <0 || driver>1)
+		{
+			printf("Not supported driver %d!\n", driver);
+			showUsage();
+		}
+		std::string ext = UFile::getExtension(uToLowerCase(argv[i]));
+		if(ext == "pcap" || ext == "osf")
+		{
+			pcapFile = argv[i++];
+			if(driver == 1 && ext == "pcap")
+			{
+				if(i<argc) {
+					jsonFile=argv[i];
+				}
+				else {
+					printf("Missing JSON file\n");
+					showUsage();
+				}
+			}
+		}
+		else if(i<argc-1) {
+			ip = argv[i++];
+			if(i<argc) {
+				port = uStr2Int(argv[i]);
+			}
+			else {
+				printf("Missing port for driver 0\n");
+				showUsage();
+			}
+		}
+		else {
+			printf("Only %d argument(s) provided \n", argc-1);
+			showUsage();
+		}
 	}
+	printf("Using driver=%s\n", driver==0?"VLP16":"Ouster");
 
 	// Here is the pipeline that we will use:
 	// LidarVLP16 -> "SensorEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
 
 	// Create the Lidar sensor, it will send a SensorEvent
-	LidarVLP16 * lidar;
+	Lidar * lidar = 0;
 	if(!ip.empty())
 	{
-		printf("Using ip=%s port=%d\n", ip.c_str(), port);
-		lidar = new LidarVLP16(boost::asio::ip::address_v4::from_string(ip), port);
+		if(driver == 0)
+		{
+			printf("Using ip=%s port=%d\n", ip.c_str(), port);
+			lidar = new LidarVLP16(boost::asio::ip::address_v4::from_string(ip), port);
+			((LidarVLP16*)lidar)->setOrganized(true); //faster deskewing
+		}
+		else if(driver == 1)
+		{
+			printf("Using ip=%s\n", ip.c_str());
+			lidar = new LidarOuster(ip, 0, 0);
+		}
 	}
 	else
 	{
-		filepath = uReplaceChar(filepath, '~', UDirectory::homeDir());
-		printf("Using file=%s\n", filepath.c_str());
-		lidar = new LidarVLP16(filepath);
+		pcapFile = uReplaceChar(pcapFile, '~', UDirectory::homeDir());
+		printf("Using file=%s\n", pcapFile.c_str());
+		if(driver == 0)
+		{
+			lidar = new LidarVLP16(pcapFile);
+			((LidarVLP16*)lidar)->setOrganized(true); //faster deskewing
+			lidar->setFrameRate(10); // default
+		}
+		else if(driver == 1)
+		{
+			jsonFile = uReplaceChar(jsonFile, '~', UDirectory::homeDir());
+			printf("Using config=%s\n", jsonFile.c_str());
+			lidar = new LidarOuster(pcapFile, jsonFile);
+			// frame rate is set based on the lidar mode
+		}
 	}
-	lidar->setOrganized(true); //faster deskewing
 
 	if(!lidar->init())
 	{
@@ -111,8 +189,6 @@ int main(int argc, char * argv[])
 	MapBuilder mapBuilder(&lidarThread);
 
 	ParametersMap params;
-
-	float resolution = 0.05;
 
 	// ICP parameters
 	params.insert(ParametersPair(Parameters::kRegStrategy(), "1"));
@@ -211,16 +287,15 @@ int main(int argc, char * argv[])
 	}
 	if(cloud->size())
 	{
-		printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)cloud->size());
-		cloud = util3d::voxelize(cloud, 0.01f);
+		printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", resolution, (int)cloud->size());
+		cloud = util3d::voxelize(cloud, resolution);
 
-		printf("Saving rtabmap_cloud.pcd... done! (%d points)\n", (int)cloud->size());
-		pcl::io::savePCDFile("rtabmap_cloud.pcd", *cloud);
-		//pcl::io::savePLYFile("rtabmap_cloud.ply", *cloud); // to save in PLY format
+		pcl::io::savePLYFile("rtabmap_cloud.ply", *cloud); // to save in PLY format
+		printf("Saving rtabmap_cloud.ply... done! (%d points)\n", (int)cloud->size());
 	}
 	else
 	{
-		printf("Saving rtabmap_cloud.pcd... failed! The cloud is empty.\n");
+		printf("Saving point cloud failed! The cloud is empty.\n");
 	}
 
 	// Save trajectory

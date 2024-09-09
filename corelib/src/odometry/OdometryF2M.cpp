@@ -1148,6 +1148,7 @@ Transform OdometryF2M::computeTransform(
 		}
 		else
 		{
+			UDEBUG("Initialize first key frame");
 			// Just generate keypoints for the new signature
 			// For scan, we want to use reading filters, so set dummy's scan and set back to reference afterwards
 			Signature dummy;

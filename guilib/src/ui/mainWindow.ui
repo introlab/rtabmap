@@ -356,7 +356,32 @@
       <property name="title">
        <string>LiDAR</string>
       </property>
-      <addaction name="actionVelodyne_VLP_16"/>
+      <property name="icon">
+       <iconset resource="../GuiLib.qrc">
+        <normaloff>:/images/vlp16.png</normaloff>:/images/vlp16.png</iconset>
+      </property>
+      <widget class="QMenu" name="menuVelodyne">
+       <property name="title">
+        <string>Velodyne</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/vlp16.png</normaloff>:/images/vlp16.png</iconset>
+       </property>
+       <addaction name="actionVelodyne_VLP_16"/>
+      </widget>
+      <widget class="QMenu" name="menuOuster">
+       <property name="title">
+        <string>Ouster</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/ouster.png</normaloff>:/images/ouster.png</iconset>
+       </property>
+       <addaction name="actionOuster_SDK"/>
+      </widget>
+      <addaction name="menuVelodyne"/>
+      <addaction name="menuOuster"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1747,6 +1772,14 @@
    </property>
    <property name="text">
     <string>Xvisio</string>
+   </property>
+  </action>
+  <action name="actionOuster_SDK">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Ouster SDK</string>
    </property>
   </action>
  </widget>

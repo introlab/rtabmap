@@ -60,10 +60,10 @@ public:
 	 */
 	USemaphore( int initValue = 0 )
 	{
-#ifdef _WIN32
-		S = CreateSemaphore(0,initValue,SEM_VALUE_MAX,0);
-#else
 		_available = initValue;
+#ifdef _WIN32
+		S = CreateSemaphoreW(0,initValue,SEM_VALUE_MAX,0);
+#else
 		pthread_mutex_init(&_waitMutex, NULL);
 		pthread_cond_init(&_cond, NULL);
 #endif
@@ -88,12 +88,15 @@ public:
 	 * @return true on success, false on error/timeout
 	 */
 #ifdef _WIN32
-	bool acquire(int n = 1, int ms = 0) const
+	bool acquire(int n = 1, int ms = 0)
 	{
 		int rt = 0;
 		while(n-- > 0 && rt==0)
 		{
 			rt = WaitForSingleObject((HANDLE)S, ms<=0?INFINITE:ms);
+			if (rt == 0) {
+				_available -= 1;
+			}
 		}
 		return rt == 0;
 	}
@@ -136,12 +139,17 @@ public:
 	 * @return false if the semaphore can't be taken without waiting (value <= 0), true otherwise
 	 */
 #ifdef _WIN32
-	int acquireTry() const
+	bool acquireTry()
 	{
-		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?0:EAGAIN);
+		if(WaitForSingleObject((HANDLE)S, INFINITE) == WAIT_OBJECT_0)
+		{
+			_available -= 1;
+			return true;
+		}
+		return false;
 	}
 #else
-	int acquireTry(int n)
+	bool acquireTry(int n)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		if(n > _available)
@@ -160,9 +168,11 @@ public:
 	 * signaling waiting threads (which called acquire()).
 	 */
 #ifdef _WIN32
-	int release(int n = 1) const
+	void release(int n = 1)
 	{
-		return (ReleaseSemaphore((HANDLE)S,n,0)?0:ERANGE);
+		if (ReleaseSemaphore((HANDLE)S, n, 0)) {
+			_available += n;
+		}
 	}
 #else
 	void release(int n = 1)
@@ -181,7 +191,7 @@ public:
 #ifdef _WIN32
 	int value() const
 	{
-		LONG V = -1; ReleaseSemaphore((HANDLE)S,0,&V); return V;
+		return _available;
 	}
 #else
 	int value()
@@ -204,20 +214,21 @@ public:
 	{
 		CloseHandle(S);
 		S = CreateSemaphore(0,init,SEM_VALUE_MAX,0);
+		_available = init;
 	}
 #endif
 
 private:
 	void operator=(const USemaphore &){}
 #ifdef _WIN32
-	USemaphore(const USemaphore &S){}
+	USemaphore(const USemaphore &S) :S(0), _available(0) {}
 	HANDLE S;
 #else
 	USemaphore(const USemaphore &):_available(0){}
 	pthread_mutex_t _waitMutex;
 	pthread_cond_t _cond;
-	int _available;
 #endif
+	int _available;
 };
 
 #endif // USEMAPHORE_H

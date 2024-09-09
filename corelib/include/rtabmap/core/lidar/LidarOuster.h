@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2022, Mathieu Labbe
+Copyright (c) 2010-2024, Mathieu Labbe
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -23,74 +23,50 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
-#define CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_
-
-// Should be first on windows to avoid "WinSock.h has already been included" error
-#include <pcl/io/vlp_grabber.h>
+#ifndef CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDAROUSTER_H_
+#define CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDAROUSTER_H_
 
 #include <rtabmap/core/Lidar.h>
-#include <rtabmap/utilite/USemaphore.h>
 
 namespace rtabmap {
 
-struct PointXYZIT {
-	float x;
-	float y;
-	float z;
-	float i;
-	float t;
-};
+class IMUFilter;
+class OusterCaptureThread;
 
-class RTABMAP_CORE_EXPORT LidarVLP16 :public Lidar, public pcl::VLPGrabber {
+class RTABMAP_CORE_EXPORT LidarOuster :public Lidar {
 public:
 	static bool available();
 public:
-	LidarVLP16(
-			const std::string& pcapFile,
-			bool organized = false,
-			bool stampLast = true,
-			float frameRate = 0.0f,
-			Transform localTransform = Transform::getIdentity());
-	LidarVLP16(
-			const boost::asio::ip::address& ipAddress,
-			const std::uint16_t port = 2368,
-			bool organized = false,
-			bool useHostTime = true,
-			bool stampLast = true,
-			float frameRate = 0.0f,
-			Transform localTransform = Transform::getIdentity());
-	virtual ~LidarVLP16();
+	LidarOuster(
+		const std::string& ipOrHostnameOrPcapOrOsf,
+		const std::string& dataDestinationOrJson = "",
+		int lidarMode = 0,
+		int timestampMode = 0,
+		bool useReflectivityForIntensityChannel = true,
+		bool publishIMU = false,
+		float frameRate = 0.0f,
+		Transform localTransform = Transform::getIdentity());
+	virtual ~LidarOuster();
 
 	SensorData takeScan(SensorCaptureInfo * info = 0) {return takeData(info);}
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") override;
-	virtual std::string getSerial() const override {return getName();}
-
-	void setOrganized(bool enable);
-
-private:
-	void buildTimings(bool dualMode);
-    virtual void toPointClouds (HDLDataPacket *dataPacket) override;
+	virtual std::string getSerial() const override;
 
 protected:
     virtual SensorData captureData(SensorCaptureInfo * info = 0) override;
 
 private:
-    // timing offset lookup table
-    std::vector< std::vector<float> > timingOffsets_;
-    bool timingOffsetsDualMode_;
-    double startSweepTime_;
-    double startSweepTimeHost_;
-    bool organized_;
-    bool useHostTime_;
-    bool stampLast_;
-    SensorData lastScan_;
-    std::vector<std::vector<PointXYZIT> > accumulatedScans_;
-    USemaphore scanReady_;
-    UMutex lastScanMutex_;
+	OusterCaptureThread * ousterCaptureThread_;
+	bool imuPublished_;
+	bool useReflectivityForIntensityChannel_;
+	std::string ipOrHostnameOrPcapOrOsf_;
+	std::string dataDestinationOrJson_;
+	int lidarMode_;
+	int timestampMode_;
+
 };
 
 } /* namespace rtabmap */
 
-#endif /* CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDARVLP16_H_ */
+#endif /* CORELIB_INCLUDE_RTABMAP_CORE_LIDAR_LIDAROUSTER_H_ */

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-3879</y>
             <width>713</width>
-            <height>4653</height>
+            <height>4737</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -369,10 +369,16 @@
                           </item>
                           <item>
                            <layout class="QGridLayout" name="gridLayout_135" columnstretch="0,1">
-                            <item row="0" column="0">
-                             <widget class="QPushButton" name="pushButton_presets_camera_tof_icp">
+                            <item row="1" column="1">
+                             <widget class="QLabel" name="label_753">
                               <property name="text">
-                               <string>TOF Camera ICP</string>
+                               <string>e.g., Velodyne, RoboSense and Ouster LiDARs.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                               </property>
                              </widget>
                             </item>
@@ -395,12 +401,46 @@
                             <item row="1" column="0">
                              <widget class="QPushButton" name="pushButton_presets_lidar_3d_icp">
                               <property name="text">
-                               <string>LiDAR 3D ICP</string>
+                               <string>LiDAR 3D ICP Legacy (5 cm voxel)</string>
                               </property>
                              </widget>
                             </item>
-                            <item row="1" column="1">
-                             <widget class="QLabel" name="label_753">
+                            <item row="2" column="0">
+                             <widget class="QPushButton" name="pushButton_presets_lidar_3d_icp_indoor">
+                              <property name="text">
+                               <string>LiDAR 3D ICP Indoor (10 cm voxel)</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="0">
+                             <widget class="QPushButton" name="pushButton_presets_camera_tof_icp">
+                              <property name="text">
+                               <string>TOF Camera ICP</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="0">
+                             <widget class="QPushButton" name="pushButton_presets_lidar_3d_icp_outdoor">
+                              <property name="text">
+                               <string>LiDAR 3D ICP Oudoor (50 cm voxel)</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="1">
+                             <widget class="QLabel" name="label_763">
+                              <property name="text">
+                               <string>e.g., Velodyne, RoboSense and Ouster LiDARs.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="1">
+                             <widget class="QLabel" name="label_764">
                               <property name="text">
                                <string>e.g., Velodyne, RoboSense and Ouster LiDARs.</string>
                               </property>
@@ -8465,6 +8505,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <string>VLP-16</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>Ouster SDK</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="0" column="1">
@@ -8761,7 +8806,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_lidar_src">
                          <property name="currentIndex">
-                          <number>1</number>
+                          <number>2</number>
                          </property>
                          <widget class="QWidget" name="page_98">
                           <layout class="QVBoxLayout" name="verticalLayout_177">
@@ -9030,6 +9075,243 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </size>
                              </property>
                             </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="page_100">
+                          <layout class="QVBoxLayout" name="verticalLayout_181">
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_ouster">
+                             <property name="title">
+                              <string>Ouster SDK</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_136" columnstretch="0,0,1">
+                              <item row="4" column="0">
+                               <widget class="QToolButton" name="toolButton_ouster_pcap_path">
+                                <property name="text">
+                                 <string>...</string>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QCheckBox" name="checkBox_ouster_reflectivity">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="2">
+                               <widget class="QLabel" name="label_760">
+                                <property name="text">
+                                 <string>Path to a *.JSON config file corresponding to PCAP recording.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="2">
+                               <widget class="QLabel" name="label_758">
+                                <property name="text">
+                                 <string>IP Address or Hostname.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="2">
+                               <widget class="QLabel" name="label_7482">
+                                <property name="toolTip">
+                                 <string>This can speedup deskewing.</string>
+                                </property>
+                                <property name="text">
+                                 <string>Lidar mode.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLineEdit" name="lineEdit_ouster_ip_hostname"/>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QComboBox" name="comboBox_ouster_timestamp">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TIME_FROM_INTERNAL_OSC: Use the internal clock.&lt;/p&gt;&lt;p&gt;TIME_FROM_SYNC_PULSE_IN: A free running counter synced to the SYNC_PULSE_IN input counts seconds (# of pulses) and nanoseconds since sensor turn on.&lt;/p&gt;&lt;p&gt;TIME_FROM_PTP_1588: Synchronize with an external PTP master.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
+                                <item>
+                                 <property name="text">
+                                  <string>Default</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>From Internal OSC</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>From Sync Pulse In</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>From PTP 1588</string>
+                                 </property>
+                                </item>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <spacer name="verticalSpacer_32">
+                                <property name="orientation">
+                                 <enum>Qt::Vertical</enum>
+                                </property>
+                                <property name="sizeHint" stdset="0">
+                                 <size>
+                                  <width>20</width>
+                                  <height>40</height>
+                                 </size>
+                                </property>
+                               </spacer>
+                              </item>
+                              <item row="4" column="2">
+                               <widget class="QLabel" name="label_759">
+                                <property name="text">
+                                 <string>Path to a *.PCAP or *.OSF file. IP is ignored if PCAP/OSF file is used. A JSON file should be provided if PCAP is used, see below.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="2">
+                               <widget class="QLabel" name="label_755">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If the lidar is not connected to a GPS, the lidar's clock may be not in sync with the host computer's clock. By enabling this, as soon as a packet is received, it will be stamped with host time &amp;quot;now&amp;quot;. Note that it affects only the final scan timsestamp, not the individual relative timestamp for each point. It is recommended to enable this if you combine it with other sensors above and it is not connected to a GPS.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
+                                <property name="text">
+                                 <string>Timestamp mode.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QComboBox" name="comboBox_ouster_lidar_mode">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;MODE_512x10: 10 scans of 512 columns per second&lt;/p&gt;&lt;p&gt;MODE_512x20: 20 scans of 512 columns per second&lt;/p&gt;&lt;p&gt;MODE_1024x10: 10 scans of 1024 columns per second&lt;/p&gt;&lt;p&gt;MODE_1024x20: 20 scans of 1024 columns per second&lt;/p&gt;&lt;p&gt;MODE_2048x10: 10 scans of 2048 columns per second&lt;/p&gt;&lt;p&gt;MODE_4096x5: 5 scans of 4096 columns per second. Only available on select sensors&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
+                                <item>
+                                 <property name="text">
+                                  <string>Default</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>512x10</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>512x20</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>1024x10</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>1024x20</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>2048x10</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>4096x5</string>
+                                 </property>
+                                </item>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLineEdit" name="lineEdit_ouster_json_path">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="2">
+                               <widget class="QLabel" name="label_761">
+                                <property name="text">
+                                 <string>Use Reflectivity instead of Signal for intensity channel.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLineEdit" name="lineEdit_ouster_pcap_path">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QToolButton" name="toolButton_ouster_json_path">
+                                <property name="text">
+                                 <string>...</string>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QCheckBox" name="checkBox_ouster_imu">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="2">
+                               <widget class="QLabel" name="label_762">
+                                <property name="text">
+                                 <string>Publish IMU.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
                            </item>
                           </layout>
                          </widget>

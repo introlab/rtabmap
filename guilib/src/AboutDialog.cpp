@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraStereo.h"
+#include "rtabmap/core/lidar/LidarOuster.h"
 #include "rtabmap/core/Optimizer.h"
 #include "ui_aboutDialog.h"
 #include <opencv2/core/version.hpp>
@@ -158,6 +159,8 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_depthai->setText(CameraDepthAI::available() ? "Yes" : "No");
 	_ui->label_depthai_license->setEnabled(CameraDepthAI::available());
 	_ui->label_xvsdk->setText(CameraSeerSense::available() ? "Yes" : "No");
+	_ui->label_ouster->setText(LidarOuster::available() ? "Yes" : "No");
+	_ui->label_ouster_license->setEnabled(LidarOuster::available());
 
 	_ui->label_toro->setText(Optimizer::isAvailable(Optimizer::kTypeTORO)?"Yes":"No");
 	_ui->label_toro_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeTORO)?true:false);

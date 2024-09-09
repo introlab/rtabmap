@@ -27,10 +27,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <pcl/pcl_config.h>
-#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 // Should be first on windows to avoid "WinSock.h has already been included" error
 #include "rtabmap/core/lidar/LidarVLP16.h"
-#endif
+#include "rtabmap/core/lidar/LidarOuster.h"
 
 #include "rtabmap/gui/PreferencesDialog.h"
 #include "rtabmap/gui/DatabaseViewer.h"
@@ -93,6 +92,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Presets
 #include "camera_tof_icp_ini.h"
 #include "lidar3d_icp_ini.h"
+#include "lidar3d_icp_indoor_ini.h"
+#include "lidar3d_icp_outdoor_ini.h"
 
 #include <opencv2/opencv_modules.hpp>
 #include <rtabmap/core/SensorCaptureThread.h>
@@ -430,6 +431,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
+	 //LiDARs
+	if (!LidarVLP16::available())
+	{
+		_ui->comboBox_lidar_src->setItemData(kSrcLidarVLP16 - kSrcLidar, 0, Qt::UserRole - 1);
+	}
+	if (!LidarOuster::available())
+	{
+		_ui->comboBox_lidar_src->setItemData(kSrcLidarOuster - kSrcLidar, 0, Qt::UserRole - 1);
+	}
+
 #if PCL_VERSION_COMPARE(<, 1, 7, 2)
 	_ui->checkBox_showFrustums->setEnabled(false);
 	_ui->checkBox_showFrustums->setChecked(false);
@@ -480,6 +491,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->pushButton_resetConfig, SIGNAL(clicked()), this, SLOT(resetConfig()));
 	connect(_ui->pushButton_presets_camera_tof_icp, SIGNAL(clicked()), this, SLOT(loadPreset()));
 	connect(_ui->pushButton_presets_lidar_3d_icp, SIGNAL(clicked()), this, SLOT(loadPreset()));
+	connect(_ui->pushButton_presets_lidar_3d_icp_indoor, SIGNAL(clicked()), this, SLOT(loadPreset()));
+	connect(_ui->pushButton_presets_lidar_3d_icp_outdoor, SIGNAL(clicked()), this, SLOT(loadPreset()));
 	connect(_ui->radioButton_basic, SIGNAL(toggled(bool)), this, SLOT(setupTreeView()));
 	connect(_ui->pushButton_testOdometry, SIGNAL(clicked()), this, SLOT(testOdometry()));
 	connect(_ui->pushButton_test_camera, SIGNAL(clicked()), this, SLOT(testCamera()));
@@ -917,6 +930,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_vlp16_organized, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_vlp16_hostTime, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_vlp16_stamp_last, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_ouster_ip_hostname, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_ouster_lidar_mode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_ouster_timestamp, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_ouster_pcap_path, SIGNAL(clicked()), this, SLOT(selectOusterPcapPath()));
+	connect(_ui->toolButton_ouster_json_path, SIGNAL(clicked()), this, SLOT(selectOusterJsonPath()));
+	connect(_ui->lineEdit_ouster_pcap_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_ouster_json_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
 	//Rtabmap basic
 	connect(_ui->general_doubleSpinBox_timeThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr_2, SLOT(setValue(double)));
@@ -2286,6 +2306,13 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_vlp16_organized->setChecked(false);
 		_ui->checkBox_vlp16_hostTime->setChecked(true);
 		_ui->checkBox_vlp16_stamp_last->setChecked(true);
+		_ui->lineEdit_ouster_ip_hostname->clear();
+		_ui->comboBox_ouster_lidar_mode->setCurrentIndex(0);
+		_ui->comboBox_ouster_timestamp->setCurrentIndex(0);
+		_ui->lineEdit_ouster_pcap_path->clear();
+		_ui->lineEdit_ouster_json_path->clear();
+		_ui->checkBox_ouster_reflectivity->setChecked(true);
+		_ui->checkBox_ouster_imu->setChecked(false);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
 		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);
@@ -2850,6 +2877,16 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkBox_vlp16_stamp_last->setChecked(settings.value("stampLast", _ui->checkBox_vlp16_stamp_last->isChecked()).toBool());
 	settings.endGroup(); // VLP16
 
+	settings.beginGroup("Ouster");
+	_ui->lineEdit_ouster_ip_hostname->setText(settings.value("ip",_ui->lineEdit_ouster_ip_hostname->text()).toString());
+	_ui->comboBox_ouster_lidar_mode->setCurrentIndex(settings.value("lidarMode", _ui->comboBox_ouster_lidar_mode->currentIndex()).toInt());
+	_ui->comboBox_ouster_timestamp->setCurrentIndex(settings.value("timestamp", _ui->comboBox_ouster_timestamp->currentIndex()).toInt());
+	_ui->lineEdit_ouster_pcap_path->setText(settings.value("pcapPath",_ui->lineEdit_ouster_pcap_path->text()).toString());
+	_ui->lineEdit_ouster_json_path->setText(settings.value("jsonPath",_ui->lineEdit_ouster_json_path->text()).toString());
+	_ui->checkBox_ouster_reflectivity->setChecked(settings.value("reflectivity",_ui->checkBox_ouster_reflectivity->isChecked()).toBool());
+	_ui->checkBox_ouster_imu->setChecked(settings.value("imu",_ui->checkBox_ouster_imu->isChecked()).toBool());
+	settings.endGroup(); // Ouster
+	
 	settings.endGroup(); // Lidar
 
 	_calibrationDialog->loadSettings(settings, "CalibrationDialog");
@@ -3003,6 +3040,14 @@ void PreferencesDialog::loadPreset()
 	else if(sender() == _ui->pushButton_presets_lidar_3d_icp)
 	{
 		loadPreset(LIDAR3D_ICP_INI);
+	}
+	else if(sender() == _ui->pushButton_presets_lidar_3d_icp_indoor)
+	{
+		loadPreset(LIDAR3D_ICP_INDOOR_INI);
+	}
+	else if(sender() == _ui->pushButton_presets_lidar_3d_icp_outdoor)
+	{
+		loadPreset(LIDAR3D_ICP_OUTDOOR_INI);
 	}
 	else
 	{
@@ -3447,6 +3492,16 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("hostTime", _ui->checkBox_vlp16_hostTime->isChecked());
 	settings.setValue("stampLast", _ui->checkBox_vlp16_stamp_last->isChecked());
 	settings.endGroup(); // VLP16
+
+	settings.beginGroup("Ouster");
+	settings.setValue("ip",_ui->lineEdit_ouster_ip_hostname->text());
+	settings.setValue("lidarMode", _ui->comboBox_ouster_lidar_mode->currentIndex());
+	settings.setValue("timestamp", _ui->comboBox_ouster_timestamp->currentIndex());
+	settings.setValue("pcapPath",_ui->lineEdit_ouster_pcap_path->text());
+	settings.setValue("jsonPath",_ui->lineEdit_ouster_json_path->text());
+	settings.setValue("reflectivity",_ui->checkBox_ouster_reflectivity->isChecked());
+	settings.setValue("imu",_ui->checkBox_ouster_imu->isChecked());
+	settings.endGroup(); // Ouster
 
 	settings.endGroup(); // Lidar
 
@@ -4263,7 +4318,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 	}
 	else if(src >= kSrcLidar)
 	{
-		_ui->comboBox_lidar_src->setCurrentIndex(kSrcLidarVLP16 - kSrcLidar + 1);
+		_ui->comboBox_lidar_src->setCurrentIndex(src - kSrcLidar + 1);
 	}
 
 	if(previousCameraSrc == kSrcUndef && src < kSrcDatabase &&
@@ -4277,7 +4332,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 	}
 	else if(previousLidarSrc== kSrcUndef && src >= kSrcLidar &&
 			QMessageBox::question(this, tr("LiDAR Source..."),
-			tr("Do you want to use \"LiDAR 3D ICP\" preset?"),
+			tr("Do you want to use \"LiDAR 3D ICP\" preset? You can open Preferences->General Settings to select indoor or outdoor presets afterwards."),
 			QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) == QMessageBox::Yes)
 	{
 		loadPreset(LIDAR3D_ICP_INI);
@@ -4745,6 +4800,38 @@ void PreferencesDialog::selectVlp16PcapPath()
 	if (!path.isEmpty())
 	{
 		_ui->lineEdit_vlp16_pcap_path->setText(path);
+	}
+}
+
+void PreferencesDialog::selectOusterPcapPath()
+{
+	QString dir = _ui->lineEdit_ouster_pcap_path->text();
+	if (dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ouster recording (*.pcap *.osf)"));
+	if (!path.isEmpty())
+	{
+		_ui->lineEdit_ouster_pcap_path->setText(path);
+		if(QFileInfo(path).suffix() == "pcap")
+		{
+			selectOusterJsonPath();
+		}
+	}
+}
+
+void PreferencesDialog::selectOusterJsonPath()
+{
+	QString dir = _ui->lineEdit_ouster_json_path->text();
+	if (dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ouster recording config (*.json)"));
+	if (!path.isEmpty())
+	{
+		_ui->lineEdit_ouster_json_path->setText(path);
 	}
 }
 
@@ -5698,6 +5785,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	}
 	_ui->stackedWidget_lidar_src->setVisible(_ui->comboBox_lidar_src->currentIndex() > 0);
 	_ui->groupBox_vlp16->setVisible(_ui->comboBox_lidar_src->currentIndex()-1 == kSrcLidarVLP16-kSrcLidar);
+	_ui->groupBox_ouster->setVisible(_ui->comboBox_lidar_src->currentIndex()-1 == kSrcLidarOuster-kSrcLidar);
 	_ui->frame_lidar_sensor->setVisible(_ui->comboBox_lidar_src->currentIndex() > 0 || _ui->checkBox_source_scanFromDepth->isChecked()); // Not Lidar None or database input
 	_ui->pushButton_test_lidar->setEnabled(_ui->comboBox_lidar_src->currentIndex() > 0);
 
@@ -6987,9 +7075,8 @@ Lidar * PreferencesDialog::createLidar()
 {
 	Lidar * lidar = 0;
 	Src driver = getLidarSourceDriver();
-	if(driver == kSrcLidarVLP16)
+	if(driver >= kSrcLidarVLP16 && driver <= kSrcLidarOuster)
 	{
-#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 		Transform localTransform = Transform::fromString(_ui->lineEdit_lidar_local_transform->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
 		if(localTransform.isNull())
 		{
@@ -6997,33 +7084,73 @@ Lidar * PreferencesDialog::createLidar()
 					_ui->lineEdit_lidar_local_transform->text().toStdString().c_str());
 			localTransform = Transform::getIdentity();
 		}
-		if(!_ui->lineEdit_vlp16_pcap_path->text().isEmpty())
+		if(driver == kSrcLidarVLP16)
 		{
-			// PCAP mode
-			lidar = new LidarVLP16(
-					_ui->lineEdit_vlp16_pcap_path->text().toStdString(),
-					_ui->checkBox_vlp16_organized->isChecked(),
-					_ui->checkBox_vlp16_stamp_last->isChecked(),
-					this->getGeneralInputRate(),
-					localTransform);
+			if(!_ui->lineEdit_vlp16_pcap_path->text().isEmpty())
+			{
+				// PCAP mode
+				lidar = new LidarVLP16(
+						_ui->lineEdit_vlp16_pcap_path->text().toStdString(),
+						_ui->checkBox_vlp16_organized->isChecked(),
+						_ui->checkBox_vlp16_stamp_last->isChecked(),
+						this->getGeneralInputRate(),
+						localTransform);
+			}
+			else
+			{
+				// Connect to sensor
+
+				lidar = new LidarVLP16(
+						boost::asio::ip::address_v4::from_string(uFormat("%ld.%ld.%ld.%ld",
+								(size_t)_ui->spinBox_vlp16_ip1->value(),
+								(size_t)_ui->spinBox_vlp16_ip2->value(),
+								(size_t)_ui->spinBox_vlp16_ip3->value(),
+								(size_t)_ui->spinBox_vlp16_ip4->value())),
+						_ui->spinBox_vlp16_port->value(),
+						_ui->checkBox_vlp16_organized->isChecked(),
+						_ui->checkBox_vlp16_hostTime->isChecked(),
+						_ui->checkBox_vlp16_stamp_last->isChecked(),
+						this->getGeneralInputRate(),
+						localTransform);
+
+			}
 		}
-		else
+		else // Ouster
 		{
-			// Connect to sensor
+			if(!_ui->lineEdit_ouster_pcap_path->text().isEmpty())
+			{
+				// PCAP/OSF mode
+				lidar = new LidarOuster(
+						_ui->lineEdit_ouster_pcap_path->text().toStdString(),
+						_ui->lineEdit_ouster_json_path->text().toStdString(),
+						0, // lidar mode ignored
+						0, // timestamp mode ignored
+						_ui->checkBox_ouster_reflectivity->isChecked(),
+						_ui->checkBox_ouster_imu->isChecked(),
+						this->getGeneralInputRate(),
+						localTransform);
+			}
+			else if(!_ui->lineEdit_ouster_ip_hostname->text().isEmpty())
+			{
+				// Connect to sensor
 
-			lidar = new LidarVLP16(
-					boost::asio::ip::address_v4::from_string(uFormat("%ld.%ld.%ld.%ld",
-							(size_t)_ui->spinBox_vlp16_ip1->value(),
-							(size_t)_ui->spinBox_vlp16_ip2->value(),
-							(size_t)_ui->spinBox_vlp16_ip3->value(),
-							(size_t)_ui->spinBox_vlp16_ip4->value())),
-					_ui->spinBox_vlp16_port->value(),
-					_ui->checkBox_vlp16_organized->isChecked(),
-					_ui->checkBox_vlp16_hostTime->isChecked(),
-					_ui->checkBox_vlp16_stamp_last->isChecked(),
-					this->getGeneralInputRate(),
-					localTransform);
-
+				lidar = new LidarOuster(
+						_ui->lineEdit_ouster_ip_hostname->text().toStdString(),
+						"", // data destination ignored
+						_ui->comboBox_ouster_lidar_mode->currentIndex(),
+						_ui->comboBox_ouster_timestamp->currentIndex(),
+						_ui->checkBox_ouster_reflectivity->isChecked(),
+						_ui->checkBox_ouster_imu->isChecked(),
+						this->getGeneralInputRate(),
+						localTransform);
+			}
+			else
+			{
+				QMessageBox::warning(this,
+					   tr("RTAB-Map"),
+					   tr("Ouster: An IP/hostname or PCAP path should be set..."));
+				return lidar; // 0
+			}
 		}
 		if(!lidar->init())
 		{
@@ -7034,12 +7161,6 @@ Lidar * PreferencesDialog::createLidar()
 			delete lidar;
 			lidar = 0;
 		}
-#else
-		UWARN("Lidar cannot be used with rtabmap built with PCL < 1.8... ");
-		QMessageBox::warning(this,
-				   tr("RTAB-Map"),
-				   tr("Lidar initialization failed..."));
-#endif
 	}
 	return lidar;
 }
@@ -7182,8 +7303,9 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
-	Camera * camera = this->createCamera();
-	if(!camera)
+	Camera * camera = this->getSourceDriver()!=-1?this->createCamera():0;
+	Lidar * lidar = this->getLidarSourceDriver()!=-1?this->createLidar():0;
+	if(!camera && !lidar)
 	{
 		return;
 	}
@@ -7241,18 +7363,30 @@ void PreferencesDialog::testOdometry()
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
 	odomViewer->registerToEventsManager();
 
-	SensorCaptureThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
-	cameraThread.setMirroringEnabled(isSourceMirroring());
-	cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
-	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
-	cameraThread.setHistogramMethod(_ui->comboBox_source_histogramMethod->currentIndex());
+	SensorCaptureThread  * cameraThread;
+	if(lidar && camera)
+	{
+		cameraThread = new SensorCaptureThread(lidar, camera, this->getAllParameters()); // take ownership of lidar and camera
+	}
+	else if(camera)
+	{
+		cameraThread = new SensorCaptureThread(camera, this->getAllParameters()); // take ownership of camera
+	}
+	else // lidar 
+	{
+		cameraThread = new SensorCaptureThread(lidar, this->getAllParameters()); // take ownership of lidar
+	}
+	cameraThread->setMirroringEnabled(isSourceMirroring());
+	cameraThread->setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
+	cameraThread->setImageDecimation(_ui->spinBox_source_imageDecimation->value());
+	cameraThread->setHistogramMethod(_ui->comboBox_source_histogramMethod->currentIndex());
 	if(_ui->checkbox_source_feature_detection->isChecked())
 	{
-		cameraThread.enableFeatureDetection(this->getAllParameters());
+		cameraThread->enableFeatureDetection(this->getAllParameters());
 	}
-	cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
-	cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
-	cameraThread.setScanParameters(
+	cameraThread->setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
+	cameraThread->setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
+	cameraThread->setScanParameters(
 			_ui->checkBox_source_scanFromDepth->isChecked(),
 			_ui->spinBox_source_scanDownsampleStep->value(),
 			_ui->doubleSpinBox_source_scanRangeMin->value(),
@@ -7264,23 +7398,23 @@ void PreferencesDialog::testOdometry()
 			_ui->checkBox_source_scanDeskewing->isChecked());
 	if(_ui->comboBox_imuFilter_strategy->currentIndex()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		cameraThread.enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters(), _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
+		cameraThread->enableIMUFiltering(_ui->comboBox_imuFilter_strategy->currentIndex()-1, this->getAllParameters(), _ui->checkBox_imuFilter_baseFrameConversion->isChecked());
 	}
 	if(isDepthFilteringAvailable())
 	{
 		if(_ui->groupBox_bilateral->isChecked())
 		{
-			cameraThread.enableBilateralFiltering(
+			cameraThread->enableBilateralFiltering(
 					_ui->doubleSpinBox_bilateral_sigmaS->value(),
 					_ui->doubleSpinBox_bilateral_sigmaR->value());
 		}
 		if(!_ui->lineEdit_source_distortionModel->text().isEmpty())
 		{
-			cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+			cameraThread->setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
 		}
 	}
 
-	UEventsManager::createPipe(&cameraThread, &odomThread, "SensorEvent");
+	UEventsManager::createPipe(cameraThread, &odomThread, "SensorEvent");
 	if(imuThread)
 	{
 		UEventsManager::createPipe(imuThread, &odomThread, "IMUEvent");
@@ -7289,7 +7423,7 @@ void PreferencesDialog::testOdometry()
 	UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
 
 	odomThread.start();
-	cameraThread.start();
+	cameraThread->start();
 
 	if(imuThread)
 	{
@@ -7304,8 +7438,9 @@ void PreferencesDialog::testOdometry()
 		imuThread->join(true);
 		delete imuThread;
 	}
-	cameraThread.join(true);
+	cameraThread->join(true);
 	odomThread.join(true);
+	delete cameraThread;
 }
 
 void PreferencesDialog::testCamera()

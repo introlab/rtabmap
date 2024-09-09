@@ -190,9 +190,21 @@ protected Q_SLOTS:
 			{
 				// update camera position
 				cloudViewer_->updateCameraTargetPosition(odometryCorrection_*odom.pose());
+
+				if( odom.data().imu().orientation().val[0]!=0 ||
+					odom.data().imu().orientation().val[1]!=0 ||
+					odom.data().imu().orientation().val[2]!=0 ||
+					odom.data().imu().orientation().val[3]!=0)
+				{
+					Eigen::Vector3f gravity(0,0,-1);
+					Transform orientation(0,0,0, odom.data().imu().orientation()[0], odom.data().imu().orientation()[1], odom.data().imu().orientation()[2], odom.data().imu().orientation()[3]);
+					gravity = (orientation* odom.data().imu().localTransform().inverse()*(odometryCorrection_*odom.pose()).rotation().inverse()).toEigen3f()*gravity;
+					cloudViewer_->addOrUpdateLine("odom_imu_orientation", odometryCorrection_*odom.pose(), (odometryCorrection_*odom.pose()).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*odom.pose().rotation().inverse(), Qt::yellow, true, true);
+				}
 			}
 		}
 		cloudViewer_->update();
+		cloudViewer_->refreshView();
 
 		lastOdometryProcessed_ = true;
 	}
@@ -295,6 +307,7 @@ protected Q_SLOTS:
 		odometryCorrection_ = stats.mapCorrection();
 
 		cloudViewer_->update();
+		cloudViewer_->refreshView();
 
 		processingStatistics_ = false;
 	}

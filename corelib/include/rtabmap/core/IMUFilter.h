@@ -41,7 +41,6 @@ public:
 		kMadgwick=0,
 		kComplementaryFilter=1};
 public:
-	static IMUFilter * create(const ParametersMap & parameters = ParametersMap());
 	static IMUFilter * create(IMUFilter::Type type, const ParametersMap & parameters = ParametersMap());
 
 public:
