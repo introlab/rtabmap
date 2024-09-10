@@ -172,7 +172,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED SDK support...");
 			exit(-1);
 		}
-		camera = new CameraStereoZed(0, 2, 1, 1, 100, false, 0, opticalRotation);
+		camera = new CameraStereoZed(0, -1, 1, 1, 100, false, 0, opticalRotation);
 	}
 	else if (driver == 7)
 	{

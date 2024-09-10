@@ -423,7 +423,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	}
 	else if(CameraStereoZed::sdkVersion() < 4)
 	{
-		_ui->comboBox_stereoZed_resolution->setItemData(2, 0, Qt::UserRole - 1);
+		_ui->comboBox_stereoZed_resolution->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->comboBox_stereoZed_resolution->setItemData(4, 0, Qt::UserRole - 1);
 		_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1);
 		_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1);
@@ -2229,7 +2229,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereo_right_device->setValue(-1);
 		_ui->spinBox_stereousbcam_streamWidth->setValue(0);
 		_ui->spinBox_stereousbcam_streamHeight->setValue(0);
-		_ui->comboBox_stereoZed_resolution->setCurrentIndex(CameraStereoZed::sdkVersion()<4?3:6);
+		_ui->comboBox_stereoZed_resolution->setCurrentIndex(0);
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
 		_ui->checkbox_stereoZed_selfCalibration->setChecked(true);
 		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(0);
@@ -6793,7 +6793,7 @@ Camera * PreferencesDialog::createCamera(
 		{
 			camera = new CameraStereoZed(
 				device.isEmpty()?0:atoi(device.toStdString().c_str()),
-				_ui->comboBox_stereoZed_resolution->currentIndex(),
+				_ui->comboBox_stereoZed_resolution->currentIndex()-1,
 				// depth should be enabled for zed vo to work
 				_ui->comboBox_stereoZed_quality->currentIndex()==0&&odomOnly?1:_ui->comboBox_stereoZed_quality->currentIndex(),
 				_ui->comboBox_stereoZed_sensingMode->currentIndex(),

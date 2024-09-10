@@ -5536,6 +5536,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       <widget class="QComboBox" name="comboBox_stereoZed_resolution">
                                        <item>
                                         <property name="text">
+                                         <string>AUTO</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>HD4K</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>HD2K</string>
                                         </property>
                                        </item>
@@ -5562,11 +5572,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        <item>
                                         <property name="text">
                                          <string>VGA</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>AUTO</string>
                                         </property>
                                        </item>
                                       </widget>
