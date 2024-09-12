@@ -1240,12 +1240,6 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	{
 #ifdef RTABMAP_CUDASIFT
 		UDEBUG("Init SiftData");
-		if(cudaSiftData_ && cudaSiftData_->maxPts != this->getMaxFeatures()) {
-			// Max features changed, reset buffer
-			FreeSiftData(*cudaSiftData_);
-			delete cudaSiftData_;
-			cudaSiftData_ = 0;
-		}
 		if(cudaSiftData_ == 0) {
 			cudaSiftData_ = new SiftData();
 			InitSiftData(*cudaSiftData_, 8192, true, true);
@@ -1301,9 +1295,9 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		if(numOctaves < 1) {
 			numOctaves = 1;
 		}
-		else if (numOctaves>8)
+		else if (numOctaves>7)
 		{
-			numOctaves = 8; // hard-coded limit in CudaSift
+			numOctaves = 7; // hard-coded limit in CudaSift
 		}
 		float initBlur = sigma_; /* Amount of initial Gaussian blurring in standard deviations */
 		float thresh = guaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
