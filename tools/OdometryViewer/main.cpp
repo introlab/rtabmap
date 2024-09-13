@@ -330,7 +330,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with ZED sdk support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZed(0,3,1,0,100,false,rate);
+		camera = new rtabmap::CameraStereoZed(0,-1,1,0,100,false,rate);
 	}
 	else if (driver == 9)
 	{

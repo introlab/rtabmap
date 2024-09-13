@@ -49,6 +49,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/xfeatures2d.hpp> // For GMS matcher
 #endif
 
+#ifdef HAVE_OPENCV_CUDAOPTFLOW
+#include <opencv2/cudaoptflow.hpp>
+#include <opencv2/cudaimgproc.hpp>
+#endif
+
 #include <rtflann/flann.hpp>
 
 
@@ -79,6 +84,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
 		_flowEps(Parameters::defaultVisCorFlowEps()),
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
+		_flowGpu(Parameters::defaultVisCorFlowGpu()),
 		_nndr(Parameters::defaultVisCorNNDR()),
 		_nnType(Parameters::defaultVisCorNNType()),
 		_gmsWithRotation(Parameters::defaultGMSWithRotation()),
@@ -139,6 +145,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), _flowEps);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
+	Parameters::parse(parameters, Parameters::kVisCorFlowGpu(), _flowGpu);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
 	Parameters::parse(parameters, Parameters::kVisCorNNType(), _nnType);
 	Parameters::parse(parameters, Parameters::kGMSWithRotation(), _gmsWithRotation);
@@ -159,6 +166,14 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	}
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
 	UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
+
+#ifndef HAVE_OPENCV_CUDAOPTFLOW
+	if(_flowGpu)
+	{
+		UERROR("%s is enabled but RTAB-Map is not built with OpenCV CUDA, disabling it.", Parameters::kVisCorFlowGpu().c_str());
+		_flowGpu = false;
+	}
+#endif
 
 	if(_nnType == 6)
 	{
@@ -467,18 +482,59 @@ Transform RegistrationVis::computeTransformationImpl(
 		if(_correspondencesApproach == 1) //Optical Flow
 		{
 			UDEBUG("");
-			// convert to grayscale
-			if(imageFrom.channels() > 1)
+#ifdef HAVE_OPENCV_CUDAOPTFLOW
+			cv::cuda::GpuMat d_imageFrom;
+			cv::cuda::GpuMat d_imageTo;
+			if (_flowGpu)
 			{
-				cv::Mat tmp;
-				cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
-				imageFrom = tmp;
+				UDEBUG("GPU optical flow: preparing GPU image data...");
+				d_imageFrom = fromSignature.sensorData().imageRawGpu();
+				if(d_imageFrom.empty() && !imageFrom.empty()) {
+					d_imageFrom = cv::cuda::GpuMat(imageFrom);
+				}
+				// convert to grayscale
+				if(d_imageFrom.channels() > 1) {
+					cv::cuda::GpuMat tmp;
+					cv::cuda::cvtColor(d_imageFrom, tmp, cv::COLOR_BGR2GRAY);
+					d_imageFrom = tmp;
+				}
+				if(fromSignature.sensorData().imageRawGpu().empty())
+				{
+					fromSignature.sensorData().setImageRawGpu(d_imageFrom); // buffer it
+				}
+				
+				d_imageTo = toSignature.sensorData().imageRawGpu();
+				if(d_imageTo.empty() && !imageTo.empty()) {
+					d_imageTo = cv::cuda::GpuMat(imageTo);
+				}
+				// convert to grayscale
+				if(d_imageTo.channels() > 1) {
+					cv::cuda::GpuMat tmp;
+					cv::cuda::cvtColor(d_imageTo, tmp, cv::COLOR_BGR2GRAY);
+					d_imageTo = tmp;
+				}
+				if(toSignature.sensorData().imageRawGpu().empty())
+				{
+					toSignature.sensorData().setImageRawGpu(d_imageTo); // buffer it
+				}
+				UDEBUG("GPU optical flow: preparing GPU image data... done!");
 			}
-			if(imageTo.channels() > 1)
+			else
+#endif
 			{
-				cv::Mat tmp;
-				cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
-				imageTo = tmp;
+				// convert to grayscale
+				if(imageFrom.channels() > 1)
+				{
+					cv::Mat tmp;
+					cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
+					imageFrom = tmp;
+				}
+				if(imageTo.channels() > 1)
+				{
+					cv::Mat tmp;
+					cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
+					imageTo = tmp;
+				}
 			}
 
 			std::vector<cv::Point3f> kptsFrom3D;
@@ -568,9 +624,38 @@ Transform RegistrationVis::computeTransformationImpl(
 				// Find features in the new left image
 				UDEBUG("guessSet = %d", guessSet?1:0);
 				std::vector<unsigned char> status;
-				std::vector<float> err;
-				UDEBUG("cv::calcOpticalFlowPyrLK() begin");
-				cv::calcOpticalFlowPyrLK(
+#ifdef HAVE_OPENCV_CUDAOPTFLOW
+				if (_flowGpu)
+				{
+					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer host to device begin");
+					cv::cuda::GpuMat d_cornersFrom(cornersFrom);
+					cv::cuda::GpuMat d_cornersTo(cornersTo);
+					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer host to device end");
+					cv::cuda::GpuMat d_status;
+					cv::Ptr<cv::cuda::SparsePyrLKOpticalFlow> d_pyrLK_sparse = cv::cuda::SparsePyrLKOpticalFlow::create(
+						cv::Size(_flowWinSize, _flowWinSize), guessSet ? 0 : _flowMaxLevel, _flowIterations, guessSet);
+
+					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow calc begin");
+					d_pyrLK_sparse->calc(d_imageFrom, d_imageTo, d_cornersFrom, d_cornersTo, d_status);
+					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow calc end");
+
+					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer device to host begin");
+					// Transfer back data to CPU
+					cornersTo = std::vector<cv::Point2f>(d_cornersTo.cols);
+					cv::Mat matCornersTo(1, d_cornersTo.cols, CV_32FC2, (void*)&cornersTo[0]);
+					d_cornersTo.download(matCornersTo);
+
+					status = std::vector<unsigned char>(d_status.cols);
+					cv::Mat matStatus(1, d_status.cols, CV_8UC1, (void*)&status[0]);
+					d_status.download(matStatus);
+					UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer device to host end");
+				}
+				else
+#endif
+				{
+					std::vector<float> err;
+					UDEBUG("cv::calcOpticalFlowPyrLK() begin");
+					cv::calcOpticalFlowPyrLK(
 						imageFrom,
 						imageTo,
 						cornersFrom,
@@ -578,10 +663,11 @@ Transform RegistrationVis::computeTransformationImpl(
 						status,
 						err,
 						cv::Size(_flowWinSize, _flowWinSize),
-						guessSet?0:_flowMaxLevel,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, _flowIterations, _flowEps),
-						cv::OPTFLOW_LK_GET_MIN_EIGENVALS | (guessSet?cv::OPTFLOW_USE_INITIAL_FLOW:0), 1e-4);
-				UDEBUG("cv::calcOpticalFlowPyrLK() end");
+						guessSet ? 0 : _flowMaxLevel,
+						cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, _flowIterations, _flowEps),
+						cv::OPTFLOW_LK_GET_MIN_EIGENVALS | (guessSet ? cv::OPTFLOW_USE_INITIAL_FLOW : 0), 1e-4);
+					UDEBUG("cv::calcOpticalFlowPyrLK() end");
+				}
 
 				UASSERT(kptsFrom.size() == kptsFrom3D.size());
 				std::vector<cv::KeyPoint> kptsTo(kptsFrom.size());

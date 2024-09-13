@@ -286,15 +286,29 @@ CameraStereoZed::CameraStereoZed(
 	UDEBUG("");
 #ifdef RTABMAP_ZED
 #if ZED_SDK_MAJOR_VERSION < 4
-	if(resolution_ == 3)
+	if(resolution_ == 1 || resolution_ == 2) // HD2K, HD1080
 	{
-		resolution_ = 2;
+		resolution_ -= 1; // HD2K=0, HD1080=1
 	}
-	else if(resolution_ == 5)
+	if(resolution_ == 3) // HD1200
 	{
-		resolution_ = 3;
+		resolution_ = 1; // HD1080=1
+	}
+	if(resolution_ == 4 || resolution_ == -1)
+	{
+		resolution_ = 2; // HD720=2
+	}
+	else if(resolution_ == 5 || resolution_ == 6) // SVGA, VGA
+	{
+		resolution_ = 3; // VGA=3
+	}
+#else // ZED=4
+	if(resolution_ == -1)
+	{
+		resolution_ = int(sl::RESOLUTION::AUTO); // AUTO
 	}
 #endif
+
 #if ZED_SDK_MAJOR_VERSION < 3
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
 	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
@@ -336,7 +350,13 @@ CameraStereoZed::CameraStereoZed(
 	src_(CameraVideo::kVideoFile),
 	usbDevice_(0),
 	svoFilePath_(filePath),
-	resolution_(2),
+#if ZED_SDK_MAJOR_VERSION < 3
+	resolution_(sl::RESOLUTION_HD720),
+#elif ZED_SDK_MAJOR_VERSION < 4
+	resolution_(sl::RESOLUTION::HD720),
+#else
+	resolution_(int(sl::RESOLUTION::AUTO)),
+#endif
 	quality_(quality),
 	selfCalibration_(selfCalibration),
 	sensingMode_(sensingMode),

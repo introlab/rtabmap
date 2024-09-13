@@ -314,6 +314,13 @@ public:
 
 	bool isPointVisibleFromCameras(const cv::Point3f & pt) const; // assuming point is in robot frame
 
+#ifdef HAVE_OPENCV_CUDEV
+	const cv::cuda::GpuMat & imageRawGpu() const {return _imageRawGpu;}
+	void setImageRawGpu(const cv::cuda::GpuMat & image) {_imageRawGpu = image;}
+	const cv::cuda::GpuMat & depthOrRightRawGpu() const {return _depthOrRightRawGpu;}
+	void setDepthOrRightRawGpu(const cv::cuda::GpuMat & image) {_depthOrRightRawGpu = image;}
+#endif
+
 private:
 	int _id;
 	double _stamp;
@@ -365,6 +372,14 @@ private:
 	GPS gps_;
 
 	IMU imu_;
+
+#ifdef HAVE_OPENCV_CUDEV
+	// Temporary buffers used for some optimizations,
+	// particulary to avoid host<->device copies if same 
+	// data are re-used
+	cv::cuda::GpuMat _imageRawGpu;
+	cv::cuda::GpuMat _depthOrRightRawGpu;
+#endif
 };
 
 }
