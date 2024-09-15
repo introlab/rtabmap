@@ -236,12 +236,6 @@ SensorData CameraAREngine::updateDataOnRender(Transform & pose)
 							   /*near=*/0.1f, /*far=*/100.f,
 							   glm::value_ptr(projectionMatrix_));
 
-	// adjust origin
-	if(!getOriginOffset().isNull())
-	{
-		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-	}
-
 	HwArTrackingState camera_tracking_state;
 	HwArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
@@ -334,11 +328,6 @@ SensorData CameraAREngine::updateDataOnRender(Transform & pose)
 					{
 						pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 						this->poseReceived(pose, stamp);
-						// adjust origin
-						if(!getOriginOffset().isNull())
-						{
-							pose = getOriginOffset() * pose;
-						}
 					}
 				}
 			}

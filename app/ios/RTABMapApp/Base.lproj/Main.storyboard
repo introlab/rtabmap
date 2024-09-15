@@ -155,8 +155,8 @@
                                     <action selector="rotateGridAction:" destination="zah-iI-EPt" eventType="valueChanged" id="eiC-QR-TYH"/>
                                 </connections>
                             </slider>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Toast Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="JMv-UE-cvK" userLabel="ToastLabel">
-                                <rect key="frame" x="153" y="668.33333333333337" width="87.333333333333314" height="20.333333333333371"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Toast Label" textAlignment="center" lineBreakMode="wordWrap" numberOfLines="4" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="JMv-UE-cvK" userLabel="ToastLabel">
+                                <rect key="frame" x="51" y="668.33333333333337" width="291" height="20.333333333333371"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.3002232142857143" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" staticText="YES" notEnabled="YES"/>
@@ -170,6 +170,7 @@
                         <constraints>
                             <constraint firstItem="KlF-4H-k6I" firstAttribute="leading" secondItem="qAR-pI-uT2" secondAttribute="leading" constant="16" id="14l-HO-Yqo"/>
                             <constraint firstItem="kPv-DO-hpd" firstAttribute="centerY" secondItem="sqF-4e-2HU" secondAttribute="centerY" id="4S8-5c-tBm"/>
+                            <constraint firstItem="JMv-UE-cvK" firstAttribute="leading" secondItem="sqF-4e-2HU" secondAttribute="leadingMargin" constant="35" id="Awg-pU-JkT"/>
                             <constraint firstItem="KlF-4H-k6I" firstAttribute="top" secondItem="qAR-pI-uT2" secondAttribute="top" constant="20" id="CS3-Rk-Wxs"/>
                             <constraint firstItem="012-W3-dOS" firstAttribute="centerX" secondItem="sqF-4e-2HU" secondAttribute="centerX" id="IsC-yB-kNs"/>
                             <constraint firstItem="qAR-pI-uT2" firstAttribute="trailing" secondItem="773-n4-lob" secondAttribute="trailing" constant="20" id="N8s-Yg-VsL"/>
@@ -178,6 +179,7 @@
                             <constraint firstItem="Jj4-ow-MwD" firstAttribute="centerX" secondItem="sqF-4e-2HU" secondAttribute="centerX" id="OLx-LR-8xj"/>
                             <constraint firstItem="012-W3-dOS" firstAttribute="top" secondItem="Z1x-Af-hdf" secondAttribute="bottom" constant="15" id="RpS-k0-btM"/>
                             <constraint firstItem="ozY-dg-YOd" firstAttribute="top" secondItem="qAR-pI-uT2" secondAttribute="top" constant="20" id="TFT-we-noh"/>
+                            <constraint firstAttribute="trailingMargin" secondItem="JMv-UE-cvK" secondAttribute="trailing" constant="35" id="Ya5-GD-1rM"/>
                             <constraint firstItem="30J-Tx-NRW" firstAttribute="leading" secondItem="sqF-4e-2HU" secondAttribute="leading" id="ZBG-GX-P1X"/>
                             <constraint firstItem="3Sc-lx-YKH" firstAttribute="top" secondItem="ozY-dg-YOd" secondAttribute="bottom" constant="16" id="abR-Tj-Nua"/>
                             <constraint firstItem="qAR-pI-uT2" firstAttribute="bottom" secondItem="012-W3-dOS" secondAttribute="bottom" constant="24" id="dcl-mV-bH1"/>
@@ -260,12 +262,12 @@
         <image name="eye" catalog="system" width="128" height="79"/>
         <image name="folder" catalog="system" width="128" height="96"/>
         <image name="plus.app" catalog="system" width="128" height="114"/>
-        <image name="record.circle" catalog="system" width="32" height="32"/>
+        <image name="record.circle" catalog="system" width="128" height="123"/>
         <image name="square.and.arrow.up" catalog="system" width="108" height="128"/>
-        <image name="stop.circle" catalog="system" width="32" height="32"/>
+        <image name="stop.circle" catalog="system" width="128" height="123"/>
         <image name="xmark.square" catalog="system" width="128" height="114"/>
         <systemColor name="systemRedColor">
-            <color red="1" green="0.23137254901960785" blue="0.18823529411764706" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="1" green="0.23137254900000001" blue="0.18823529410000001" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

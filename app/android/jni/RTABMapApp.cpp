@@ -239,6 +239,7 @@ RTABMapApp::RTABMapApp() :
 		renderingTextureDecimation_(4),
 		backgroundColor_(0.2f),
         depthConfidence_(2),
+        upstreamRelocalizationMaxAcc_(0.0f),
 		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
 		openingDatabase_(false),
@@ -255,9 +256,6 @@ RTABMapApp::RTABMapApp() :
 		renderingTime_(0.0f),
 		lastPostRenderEventTime_(0.0),
 		lastPoseEventTime_(0.0),
-		localizationFilteringSpeed_(0.0f),
-		localizationCorrection_(rtabmap::Transform::getIdentity()),
-		previousAnchorStamp_(0),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		optMesh_(new pcl::TextureMesh),
@@ -318,12 +316,14 @@ void RTABMapApp::setupSwiftCallbacks(void * classPtr,
                                                               int,
                                                               float, float, float, float,
                                                               int, int,
-                                                              float, float, float, float, float, float))
+                                                              float, float, float, float, float, float),
+                                     void(*cameraInfoEventCallback)(void *, int, const char*, const char*))
 {
     swiftClassPtr_ = classPtr;
     progressionStatus_.setSwiftCallback(classPtr, progressCallback);
     swiftInitCallback = initCallback;
     swiftStatsUpdatedCallback = statsUpdatedCallback;
+    swiftCameraInfoEventCallback = cameraInfoEventCallback;
 }
 #endif
 
@@ -757,8 +757,19 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	{
 		boost::mutex::scoped_lock  lock(cameraMutex_);
 		if(camera_)
-		{
-			camera_->resetOrigin();
+        {
+            camera_->resetOrigin();
+            if(dataRecorderMode_)
+            {
+                // Don't update faster than we record, so that we see is what is recorded
+                camera_->setFrameRate(rtabmapThread_->getDetectorRate());
+                rtabmapThread_->setDetectorRate(0);
+            }
+            else
+            {
+                // set default 10
+                camera_->setFrameRate(10);
+            }
 		}
 	}
 
@@ -935,7 +946,7 @@ bool RTABMapApp::startCamera()
 	}
 	else if(cameraDriver_ == 3)
 	{
-		camera_ = new rtabmap::CameraMobile(smoothing_);
+		camera_ = new rtabmap::CameraMobile(smoothing_, upstreamRelocalizationMaxAcc_);
 	}
 
 	if(camera_ == 0)
@@ -992,9 +1003,6 @@ void RTABMapApp::stopCamera()
 			sensorCaptureThread_ = 0;
 			camera_ = 0;
 		}
-        previousAnchorPose_.setNull();
-        previousAnchorStamp_ = 0.0;
-        localizationCorrection_.setIdentity();
 	}
     {
         boost::mutex::scoped_lock  lock(renderingMutex_);
@@ -2441,9 +2449,9 @@ void RTABMapApp::setAppendMode(bool enabled)
 	}
 }
 
-void RTABMapApp::setLocalizationFilteringSpeed(float value)
+void RTABMapApp::setUpstreamRelocalizationAccThr(float value)
 {
-    localizationFilteringSpeed_ = value;
+    upstreamRelocalizationMaxAcc_ = value;
 }
 
 void RTABMapApp::setDataRecorderMode(bool enabled)
@@ -3744,24 +3752,6 @@ int RTABMapApp::postProcessing(int approach)
 	return returnedValue;
 }
 
-void RTABMapApp::postCameraPoseEvent(
-		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
-{
-	boost::mutex::scoped_lock  lock(cameraMutex_);
-	if(cameraDriver_ == 3 && camera_)
-	{
-		if(qx==0 && qy==0 && qz==0 && qw==0)
-		{
-			// Lost! clear buffer
-			camera_->resetOrigin(); // we are lost, create new session on next valid frame
-			return;
-		}
-		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
-		pose = rtabmap::rtabmap_world_T_opengl_world * localizationCorrection_ * pose * rtabmap::opengl_world_T_rtabmap_world;
-		camera_->poseReceived(pose, stamp);
-	}
-}
-
 void RTABMapApp::postOdometryEvent(
 		rtabmap::Transform pose,
 		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
@@ -3776,13 +3766,18 @@ void RTABMapApp::postOdometryEvent(
         const float * points, int pointsLen, int pointsChannels,
         rtabmap::Transform viewMatrix,
         float p00, float p11, float p02, float p12, float p22, float p32, float p23,
-        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7,
-        bool trackingIsGood)
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7)
 {
 #if defined(RTABMAP_ARCORE) || defined(__APPLE__)
 	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
 	{
+        if(pose.isNull())
+        {
+            // We are lost, trigger a new map on next update
+            camera_->resetOrigin();
+            return;
+        }
 		if(rgb_fx > 0.0f && rgb_fy > 0.0f && rgb_cx > 0.0f && rgb_cy > 0.0f && stamp > 0.0f && yPlane && vPlane && yPlaneLen == rgbWidth*rgbHeight)
 		{
 #ifndef DISABLE_LOG
@@ -3869,42 +3864,8 @@ void RTABMapApp::postOdometryEvent(
 
 				if(!outputRGB.empty())
 				{
-                    rtabmap::Transform rawPose = pose;
-                    // Remove upstream localization corrections by integrating pose from previous frame anchor
-                    if(localizationFilteringSpeed_>0.0f && !previousAnchorPose_.isNull())
-                    {
-                        rtabmap::Transform t = (previousAnchorPose_.inverse() * rawPose).translation();
-                        double speed = t.getNorm()/(stamp-previousAnchorStamp_);
-                        if(speed>=localizationFilteringSpeed_)
-                        {
-                            // Only correct the translation to not lose rotation aligned with gravity
-                            // TODO: check if yaw can also be corrected
-                            localizationCorrection_ = localizationCorrection_ * (previousAnchorPose_ * rawPose.inverse()).translation();
-                            pose = localizationCorrection_ * rawPose;
-                            LOGE("Upstream localization has been suppressed "
-                                 "because of high speed detected (%f m/s) causing a jump! You can change "
-                                 "localization filtering speed in Settings->Mapping if you are "
-                                 "indeed moving as fast.",
-                                 speed);
-                            trackingIsGood = false;
-                        }
-                        else {
-                            pose = localizationCorrection_ * rawPose;
-                        }
-                    }
-
-                    previousAnchorPose_ = rawPose;
-                    previousAnchorStamp_ = stamp;
-                    viewMatrix = (localizationCorrection_ * viewMatrix.inverse()).inverse();
-                    
                     // Convert in our coordinate frame
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
-
-					rtabmap::Transform poseWithOriginOffset = pose;
-					if(!camera_->getOriginOffset().isNull())
-					{
-						poseWithOriginOffset = camera_->getOriginOffset() * pose;
-					}
 
 					// Registration depth to rgb
 					if(!outputDepth.empty() && !depthFrame.isNull() && depth_fx!=0 && (rgbFrame != depthFrame || depthStamp!=stamp))
@@ -3914,19 +3875,21 @@ void RTABMapApp::postOdometryEvent(
 						if(depthStamp != stamp)
 						{
 							// Interpolate pose
+							rtabmap::Transform poseRgb;
 							rtabmap::Transform poseDepth;
 							cv::Mat cov;
-							if(!camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
+							if(!camera_->getPose(camera_->getStampEpochOffset()+stamp, poseRgb, cov, 0.0) ||
+							   !camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
 							{
-								UERROR("Could not find pose at depth stamp %f (epoch=%f rgb=%f)!", depthStamp, camera_->getStampEpochOffset()+depthStamp, stamp);
+								UERROR("Could not find pose at rgb stamp %f and/or depth stamp %f (epoch rgb=%f depth=%f)!", stamp, depthStamp, camera_->getStampEpochOffset()+stamp, camera_->getStampEpochOffset()+depthStamp);
 							}
 							else
 							{
 #ifndef DISABLE_LOG
-								UDEBUG("poseRGB  =%s (stamp=%f)", poseWithOriginOffset.prettyPrint().c_str(), stamp);
+								UDEBUG("poseRGB  =%s (stamp=%f)", poseRgb.prettyPrint().c_str(), stamp);
 								UDEBUG("poseDepth=%s (stamp=%f)", poseDepth.prettyPrint().c_str(), depthStamp);
 #endif
-								motion = poseWithOriginOffset.inverse()*poseDepth;
+								motion = poseRgb.inverse()*poseDepth;
 								// transform in camera frame
 #ifndef DISABLE_LOG
 								UDEBUG("motion=%s", motion.prettyPrint().c_str());
@@ -3984,7 +3947,7 @@ void RTABMapApp::postOdometryEvent(
                     if(!outputDepth.empty())
                     {
                         rtabmap::CameraModel depthModel = model.scaled(float(outputDepth.cols) / float(model.imageWidth()));
-                        depthModel.setLocalTransform(poseWithOriginOffset*model.localTransform());
+                        depthModel.setLocalTransform(pose*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);
                     }
                     
@@ -4008,9 +3971,7 @@ void RTABMapApp::postOdometryEvent(
                     texCoords[5] = t5;
                     texCoords[6] = t6;
                     texCoords[7] = t7;
-                    if(!trackingIsGood)
-                  	  UERROR("not good tracking!");
-					camera_->update(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0, trackingIsGood);
+					camera_->update(data, pose, viewMatrixMat, projectionMatrix, main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson?texCoords:0);
 				}
 			}
 		}
@@ -4095,6 +4056,15 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			}
 			jvm->DetachCurrentThread();
 		}
+#else
+        if(swiftClassPtr_)
+        {
+            std::function<void()> actualCallback = [&](){
+                swiftCameraInfoEventCallback(swiftClassPtr_, tangoEvent->type(), tangoEvent->key().c_str(), tangoEvent->value().c_str());
+            };
+            actualCallback();
+            success = true;
+        }
 #endif
 		if(!success)
 		{

@@ -429,6 +429,16 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
+    func cameraInfoEventReceived(_ rtabmap: RTABMap, type: Int, key: String, value: String) {
+        if(self.debugShown && key == "UpstreamRelocationFiltered")
+        {
+            DispatchQueue.main.async {
+                self.dismiss(animated: true)
+                self.showToast(message: "ARKit re-localization filtered because an acceleration of \(value) has been detected, which is over current threshold set in the settings.", seconds: 3)
+            }
+        }
+    }
+    
     func getMemoryUsage() -> UInt64 {
         var taskInfo = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
@@ -583,6 +593,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         mState = state;
 
         var actionNewScanEnabled: Bool
+        var actionNewDataRecording: Bool
         var actionSaveEnabled: Bool
         var actionResumeEnabled: Bool
         var actionExportEnabled: Bool
@@ -603,7 +614,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3
             orthoGridSlider.isHidden = cameraMode != 3
-            actionNewScanEnabled = true
+            actionNewScanEnabled = !mDataRecording
+            actionNewDataRecording = mDataRecording
             actionSaveEnabled = false
             actionResumeEnabled = false
             actionExportEnabled = false
@@ -622,7 +634,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
-            actionNewScanEnabled = true
+            actionNewScanEnabled = !mDataRecording
+            actionNewDataRecording = mDataRecording
             actionSaveEnabled = false
             actionResumeEnabled = false
             actionExportEnabled = false
@@ -644,6 +657,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             orthoDistanceSlider.isHidden = cameraMode != 3 || mState != .STATE_VISUALIZING_WHILE_LOADING
             orthoGridSlider.isHidden = cameraMode != 3 || mState != .STATE_VISUALIZING_WHILE_LOADING
             actionNewScanEnabled = false
+            actionNewDataRecording = false
             actionSaveEnabled = false
             actionResumeEnabled = false
             actionExportEnabled = false
@@ -663,6 +677,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
             actionNewScanEnabled = true
+            actionNewDataRecording = true
             actionSaveEnabled = mMapNodes>0
             actionResumeEnabled = mMapNodes>0
             actionExportEnabled = mMapNodes>0
@@ -682,6 +697,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
             actionNewScanEnabled = true
+            actionNewDataRecording = true
             actionSaveEnabled = mState != .STATE_WELCOME && mMapNodes>0
             actionResumeEnabled = mState != .STATE_WELCOME && mMapNodes>0
             actionExportEnabled = mState != .STATE_WELCOME && mMapNodes>0
@@ -768,7 +784,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         fileMenuChildren.append(UIAction(title: "New Mapping Session", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.newScan()
         }))
-        fileMenuChildren.append(UIAction(title: "New Data Recording", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
+        fileMenuChildren.append(UIAction(title: "New Data Recording", image: UIImage(systemName: "plus.app"), attributes: actionNewDataRecording ? [] : .disabled, state: .off, handler: { _ in
             self.newScan(dataRecordingMode: true)
         }))
         if(actionOptimizeEnabled) {
@@ -1005,16 +1021,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             status = "Camera Is Occluded Or Lighting Is Too Dark"
         }
 
-        if accept
+        if let rotation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
         {
-            if let rotation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
-            {
-                rtabmap?.postOdometryEvent(frame: frame, orientation: rotation, viewport: self.view.frame.size)
-            }
-        }
-        else
-        {
-            rtabmap?.notifyLost();
+            rtabmap?.postOdometryEvent(frame: frame, orientation: rotation, viewport: self.view.frame.size)
         }
         
         if !status.isEmpty {
@@ -1326,7 +1335,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap!.setFullResolution(enabled: defaults.bool(forKey: "HDMode"));
         rtabmap!.setSmoothing(enabled: defaults.bool(forKey: "Smoothing"));
         rtabmap!.setAppendMode(enabled: defaults.bool(forKey: "AppendMode"));
-        rtabmap!.setLocalizationFilteringSpeed(value: defaults.float(forKey: "LocalizationFilteringSpeed"));
+        rtabmap!.setUpstreamRelocalizationAccThr(value: defaults.float(forKey: "UpstreamRelocalizationFilteringAccThr"));
         
         mTimeThr = (defaults.string(forKey: "TimeLimit")! as NSString).integerValue
         mMaxFeatures = (defaults.string(forKey: "MaxFeaturesExtractedLoopClosure")! as NSString).integerValue
@@ -1615,6 +1624,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
         //Step : 3
         var placeholder = Date().getFormattedDate(format: "yyMMdd-HHmmss")
+        if(mDataRecording) {
+            placeholder += "-recording"
+        }
         if self.openedDatabasePath != nil && !self.openedDatabasePath!.path.isEmpty
         {
             var components = self.openedDatabasePath!.lastPathComponent.components(separatedBy: ".")

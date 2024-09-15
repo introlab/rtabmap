@@ -385,12 +385,6 @@ SensorData CameraARCore::updateDataOnRender(Transform & pose)
 							   /*near=*/0.1f, /*far=*/100.f,
 							   glm::value_ptr(projectionMatrix_));
 
-	// adjust origin
-	if(!getOriginOffset().isNull())
-	{
-		viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-	}
-
 	ArTrackingState camera_tracking_state;
 	ArCamera_getTrackingState(arSession_, ar_camera, &camera_tracking_state);
 
@@ -402,11 +396,12 @@ SensorData CameraARCore::updateDataOnRender(Transform & pose)
 		ArCamera_getPose(arSession_, ar_camera, arPose_);
 		ArPose_getPoseRaw(arSession_, arPose_, pose_raw);
 		Transform poseArCore = Transform(pose_raw[4], pose_raw[5], pose_raw[6], pose_raw[0], pose_raw[1], pose_raw[2], pose_raw[3]);
-		poseArCore = rtabmap::rtabmap_world_T_opengl_world * poseArCore * rtabmap::opengl_world_T_rtabmap_world;
+		pose = rtabmap::rtabmap_world_T_opengl_world * poseArCore * rtabmap::opengl_world_T_rtabmap_world;
 
-		if(poseArCore.isNull())
+		if(pose.isNull())
 		{
 			LOGE("CameraARCore: Pose is null");
+			return data;
 		}
 
 		// Get calibration parameters
@@ -530,7 +525,7 @@ SensorData CameraARCore::updateDataOnRender(Transform & pose)
 #endif
 							if(pointCloudData && points>0)
 							{
-								scan = scanFromPointCloudData(pointCloudData, points, poseArCore, model, rgb, &kpts, &kpts3);
+								scan = scanFromPointCloudData(pointCloudData, points, pose, model, rgb, &kpts, &kpts3);
 							}
 						}
 						else
@@ -541,15 +536,9 @@ SensorData CameraARCore::updateDataOnRender(Transform & pose)
 						data = SensorData(scan, rgb, depthFromMotion_?getOcclusionImage():cv::Mat(), model, 0, stamp);
 						data.setFeatures(kpts,  kpts3, cv::Mat());
 
-						if(!poseArCore.isNull())
+						if(!pose.isNull())
 						{
-							pose = poseArCore;
 							this->poseReceived(pose, stamp);
-							// adjust origin
-							if(!getOriginOffset().isNull())
-							{
-								pose = getOriginOffset() * pose;
-							}
 						}
 					}
 				}

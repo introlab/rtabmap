@@ -88,7 +88,7 @@ public:
             int kptsSize = 3);
 
 public:
-	CameraMobile(bool smoothing = false);
+	CameraMobile(bool smoothing = false, float upstreamRelocalizationAccThr = 0.0f);
 	virtual ~CameraMobile();
 
 	// abstract functions
@@ -96,16 +96,17 @@ public:
 	virtual void close(); // inherited classes should call its parent at the end of their close().
 	virtual std::string getSerial() const {return "CameraMobile";}
 
-	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord, bool trackingIsGood);
+	// original pose of device in rtabmap frame (without origin offset), stamp of the device (may be not epoch), viewMatrix in opengl frame (without origin offset)
+	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
 	void updateOnRender();
 
-	const Transform & getOriginOffset() const {return originOffset_;} // in rtabmap frame
 	void resetOrigin();
 	virtual bool isCalibrated() const;
 
 	virtual bool odomProvided() const { return true; }
 	virtual bool getPose(double epochStamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.06); // Return pose of device in rtabmap frame (with origin offset), stamp should be epoch time
-	void poseReceived(const Transform & pose, double deviceStamp); // original pose of device in rtabmap frame (without origin offset), stamp of the device (may be not epoch)
+	// original pose of device in rtabmap frame (without origin offset), stamp of the device (may be not epoch)
+	void poseReceived(const Transform & pose, double deviceStamp);
 	double getStampEpochOffset() const {return stampEpochOffset_;}
 
 	const CameraModel & getCameraModel() const {return model_;}
@@ -150,6 +151,11 @@ private:
 	EnvSensors lastEnvSensors_;
 	Transform originOffset_;
 	bool originUpdate_;
+	float upstreamRelocalizationAccThr_;
+	rtabmap::Transform previousAnchorPose_;
+	std::vector<float> previousAnchorLinearVelocity_;
+	double previousAnchorStamp_;
+    std::map<double, std::pair<rtabmap::Transform, rtabmap::Transform> > relocalizationDebugBuffer_;
 
 	USemaphore dataReady_;
 	UMutex dataMutex_;

@@ -29,7 +29,8 @@ void setupCallbacksNative(const void *object, void * classPtr,
                                                    int,
                                                    float, float, float, float,
                                                    int, int,
-                                                   float, float, float, float, float, float));
+                                                   float, float, float, float, float, float),
+                          void(*cameraInfoEventCallback)(void *, int, const char*, const char*));
 void destroyNativeApplication(const void *object);
 void setScreenRotationNative(const void *object, int displayRotation);
 int openDatabaseNative(const void *object, const char * databasePath, bool databaseInMemory, bool optimize, bool clearDatabase);
@@ -66,8 +67,6 @@ int renderNative(const void *object);
 bool startCameraNative(const void *object);
 void stopCameraNative(const void *object);
 void setCameraNative(const void *object, int type);
-void postCameraPoseEventNative(const void *object,
-                         float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
 void postOdometryEventNative(const void *object,
                        float x, float y, float z, float qx, float qy, float qz, float qw,
                        float fx, float fy, float cx, float cy,
@@ -78,8 +77,7 @@ void postOdometryEventNative(const void *object,
                        const void * points, int pointsLen, int pointsChannels,
                        float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw,
                        float p00, float p11, float p02, float p12, float p22, float p32, float p23,
-                       float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7,
-                       bool trackingIsGood);
+                       float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7);
 
 void setOnlineBlendingNative(const void *object, bool enabled);
 void setMapCloudShownNative(const void *object, bool shown);
@@ -102,7 +100,7 @@ void setGridVisibleNative(const void *object, bool visible);
 void setFullResolutionNative(const void *object, bool enabled);
 void setSmoothingNative(const void *object, bool enabled);
 void setAppendModeNative(const void *object, bool enabled);
-void setLocalizationFilteringSpeedNative(const void *object, float value);
+void setUpstreamRelocalizationAccThrNative(const void *object, float value);
 void setMaxCloudDepthNative(const void *object, float value);
 void setMinCloudDepthNative(const void *object, float value);
 void setCloudDensityLevelNative(const void *object, int value);

@@ -33,11 +33,12 @@ void setupCallbacksNative(const void *object, void * classPtr,
                                                    int,
                                                    float, float, float, float,
                                                    int, int,
-                                                   float, float, float, float, float, float))
+                                                   float, float, float, float, float, float),
+                          void(*cameraInfoEventCallback)(void *, int, const char*, const char*))
 {
     if(object)
     {
-        native(object)->setupSwiftCallbacks(classPtr, progressCallback, initCallback, statsUpdatedCallback);
+        native(object)->setupSwiftCallbacks(classPtr, progressCallback, initCallback, statsUpdatedCallback, cameraInfoEventCallback);
     }
     else
     {
@@ -283,20 +284,6 @@ void setCameraNative(const void *object, int type) {
     }
 }
 
-void postCameraPoseEventNative(const void *object,
-        float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
-{
-    if(object)
-    {
-        native(object)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw,stamp);
-    }
-    else
-    {
-        UERROR("object is null!");
-        return;
-    }
-}
-
 void postOdometryEventNative(const void *object,
         float x, float y, float z, float qx, float qy, float qz, float qw,
         float fx, float fy, float cx, float cy,
@@ -307,13 +294,12 @@ void postOdometryEventNative(const void *object,
         const void * points, int pointsLen, int pointsChannels,
         float vx, float vy, float vz, float vqx, float vqy, float vqz, float vqw,
         float p00, float p11, float p02, float p12, float p22, float p32, float p23,
-        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7,
-        bool trackingIsGood)
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7)
 {
     if(object)
     {
         native(object)->postOdometryEvent(
-                rtabmap::Transform(x,y,z,qx,qy,qz,qw),
+                (qx==0.0f && qy==0.0f && qz==0.0f && qw==0.0f)?rtabmap::Transform():rtabmap::Transform(x,y,z,qx,qy,qz,qw),
                 fx,fy,cx,cy, 0,0,0,0,
                 rtabmap::Transform(), rtabmap::Transform(),
                 stamp, 0,
@@ -323,8 +309,7 @@ void postOdometryEventNative(const void *object,
                 (const float *)points, pointsLen, pointsChannels,
                 rtabmap::Transform(vx, vy, vz, vqx, vqy, vqz, vqw),
                 p00, p11, p02, p12, p22, p32, p23,
-                t0, t1, t2, t3, t4, t5, t6, t7,
-                trackingIsGood);
+                t0, t1, t2, t3, t4, t5, t6, t7);
     }
     else
     {
@@ -519,10 +504,10 @@ void setAppendModeNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
-void setLocalizationFilteringSpeedNative(const void * object, float value)
+void setUpstreamRelocalizationAccThrNative(const void * object, float value)
 {
     if(object)
-        native(object)->setLocalizationFilteringSpeed(value);
+        native(object)->setUpstreamRelocalizationAccThr(value);
     else
         UERROR("object is null!");
 }

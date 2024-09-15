@@ -70,7 +70,8 @@ class RTABMapApp : public UEventsHandler {
                                                     int,
                                                     float, float, float, float,
                                                     int, int,
-                                                    float, float, float, float, float, float));
+                                                    float, float, float, float, float, float),
+                           void(*cameraInfoCallback)(void *, int, const char*, const char*));
     
 #endif
   ~RTABMapApp();
@@ -138,7 +139,7 @@ class RTABMapApp : public UEventsHandler {
   void setSmoothing(bool enabled);
   void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
-  void setLocalizationFilteringSpeed(float value);
+  void setUpstreamRelocalizationAccThr(float value);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
   void setMinCloudDepth(float value);
@@ -179,9 +180,6 @@ class RTABMapApp : public UEventsHandler {
   bool writeExportedMesh(const std::string & directory, const std::string & name);
   int postProcessing(int approach);
 
-  void postCameraPoseEvent(
-  		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
-
   void postOdometryEvent(
 		rtabmap::Transform pose,
 		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
@@ -196,8 +194,7 @@ class RTABMapApp : public UEventsHandler {
         const float * points, int pointsLen, int pointsChannels,
 		rtabmap::Transform viewMatrix, //view matrix
         float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
-        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7, // tex coord
-        bool trackingIsGood);
+        float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
 
  protected:
   virtual bool handleEvent(UEvent * event);
@@ -241,6 +238,7 @@ class RTABMapApp : public UEventsHandler {
   int renderingTextureDecimation_;
   float backgroundColor_;
   int depthConfidence_;
+  float upstreamRelocalizationMaxAcc_;
 
   rtabmap::ParametersMap mappingParameters_;
 
@@ -261,10 +259,6 @@ class RTABMapApp : public UEventsHandler {
   double lastPostRenderEventTime_;
   double lastPoseEventTime_;
   std::map<std::string, float> bufferedStatsData_;
-  float localizationFilteringSpeed_;
-  rtabmap::Transform localizationCorrection_;
-  rtabmap::Transform previousAnchorPose_;
-  double previousAnchorStamp_;
 
   bool visualizingMesh_;
   bool exportedMeshUpdated_;
@@ -315,6 +309,7 @@ class RTABMapApp : public UEventsHandler {
                              float, float, float, float,
                              int, int,
                              float, float, float, float, float, float);
+    void(*swiftCameraInfoEventCallback)(void *, int, const char *, const char *);
     
 #endif
 };
