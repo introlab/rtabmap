@@ -2057,9 +2057,13 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		 * "Unknown"
 		 */
 		String str = null;
-		if(key.equals("UpstreamRelocationFiltered") && mItemDebugVisibility != null && mItemDebugVisibility.isChecked())
-			str = String.format("%s re-localization filtered because an acceleration of %s has been detected, which is over current threshold set in the settings.",
-				mCameraDriver == 2?"AREngine":"ARCore", value);
+		if(key.equals("UpstreamRelocationFiltered"))
+		{
+			if(mItemDebugVisibility != null && mItemDebugVisibility.isChecked()) {
+				str = String.format("%s re-localization filtered because an acceleration of %s has been detected, which is over current threshold set in the settings.",
+					mCameraDriver == 2?"AREngine":"ARCore", value);
+			}
+		}
 		else if(key.equals("TangoServiceException"))
 			str = String.format("Tango service exception: %s", value);
 		else if(key.equals("FisheyeOverExposed"))
