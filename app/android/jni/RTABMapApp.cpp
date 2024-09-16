@@ -1322,7 +1322,7 @@ int RTABMapApp::Render()
 					camera_->updateOnRender();
 				}
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Camera updateOnRender %fs", time.ticks());
+				LOGD("Camera updateOnRender %fs", time.ticks());
 #endif
 				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0)
 				{
@@ -1361,7 +1361,7 @@ int RTABMapApp::Render()
 					}
 				}
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Update background and occlusion mesh %fs", time.ticks());
+				LOGD("Update background and occlusion mesh %fs", time.ticks());
 #endif
 			}
 		}
@@ -3867,6 +3867,9 @@ void RTABMapApp::postOdometryEvent(
                     // Convert in our coordinate frame
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 
+					// We should update the pose before querying poses for depth below (if not same stamp than rgb)
+					camera_->poseReceived(pose, stamp);
+
 					// Registration depth to rgb
 					if(!outputDepth.empty() && !depthFrame.isNull() && depth_fx!=0 && (rgbFrame != depthFrame || depthStamp!=stamp))
 					{
@@ -3884,7 +3887,7 @@ void RTABMapApp::postOdometryEvent(
 							}
 							else if(!camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
 							{
-								UERROR("Could not find pose at depth stamp %f (epoch %f)!", depthStamp, camera_->getStampEpochOffset()+depthStamp);
+								UERROR("Could not find pose at depth stamp %f (epoch %f) last rgb is %f!", depthStamp, camera_->getStampEpochOffset()+depthStamp, stamp);
 							}
 							else
 							{

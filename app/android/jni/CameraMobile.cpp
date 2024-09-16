@@ -177,23 +177,7 @@ void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 	// Pose reveived is the pose of the device in rtabmap coordinate
 	if(!pose.isNull())
 	{
-        UScopeMutex lock(dataMutex_);
-        
 		Transform p = pose;
-		if(originUpdate_)
-		{
-            firstFrame_ = true;
-            lastKnownGPS_ = GPS();
-            lastEnvSensors_.clear();
-            dataPose_ = Transform();
-            data_ = SensorData();
-            dataGoodTracking_ = true;
-            previousAnchorPose_.setNull();
-            previousAnchorLinearVelocity_.clear();
-            previousAnchorStamp_ = 0.0;
-			originOffset_ = p.translation().inverse();
-			originUpdate_ = false;
-		}
 		
 		if(stampEpochOffset_ == 0.0)
 		{
@@ -309,12 +293,24 @@ void CameraMobile::addEnvSensor(int type, float value)
 void CameraMobile::update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord)
 {
 	UScopeMutex lock(dataMutex_);
-    
+
     LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 
 	bool notify = !data_.isValid();
 
-    poseReceived(pose, data.stamp());
+	if(originUpdate_)
+	{
+		firstFrame_ = true;
+		lastKnownGPS_ = GPS();
+		lastEnvSensors_.clear();
+		dataGoodTracking_ = true;
+		previousAnchorPose_.setNull();
+		previousAnchorLinearVelocity_.clear();
+		previousAnchorStamp_ = 0.0;
+		originOffset_ = pose.translation().inverse();
+		originUpdate_ = false;
+		poseReceived(pose, data.stamp());
+	}
     
 	data_ = data;
     dataPose_ = pose;

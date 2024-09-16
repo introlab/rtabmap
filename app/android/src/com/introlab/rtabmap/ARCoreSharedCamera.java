@@ -114,6 +114,8 @@ public class ARCoreSharedCamera {
 
 	ByteBuffer mPreviousDepth = null;
 	double mPreviousDepthStamp = 0.0;
+	ByteBuffer mPreviousDepth2 = null;
+	double mPreviousDepthStamp2 = 0.0;
 	
 	public boolean isDepthSupported() {return mTOFAvailable;}
 
@@ -767,9 +769,14 @@ public class ARCoreSharedCamera {
 						mPreviousDepth = depth;
 						mPreviousDepthStamp = depthStamp;
 					}
+					if(mPreviousDepth2 == null)
+					{
+						mPreviousDepth2 = depth;
+						mPreviousDepthStamp2 = depthStamp;
+					}
 					
-					if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("Depth %dx%d len=%dbytes format=%d stamp=%f",
-							mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, depth.limit(), ImageFormat.DEPTH16, depthStamp));
+					if(!RTABMapActivity.DISABLE_LOG) Log.d(TAG, String.format("Depth %dx%d len=%dbytes format=%d stamp=%f previous=%f rgb=%f",
+							mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, depth.limit(), ImageFormat.DEPTH16, depthStamp, mPreviousDepthStamp, stamp));
 
 					RTABMapLib.postOdometryEventDepth(
 							RTABMapActivity.nativeApplication,
@@ -779,17 +786,24 @@ public class ARCoreSharedCamera {
 							rgbExtrinsics.tx(), rgbExtrinsics.ty(), rgbExtrinsics.tz(), rgbExtrinsics.qx(), rgbExtrinsics.qy(), rgbExtrinsics.qz(), rgbExtrinsics.qw(),
 							depthExtrinsics.tx(), depthExtrinsics.ty(), depthExtrinsics.tz(), depthExtrinsics.qx(), depthExtrinsics.qy(), depthExtrinsics.qz(), depthExtrinsics.qw(),
 							stamp,
-							depthStamp>stamp?mPreviousDepthStamp:depthStamp,
+							depthStamp<=stamp?depthStamp:mPreviousDepthStamp<=stamp?mPreviousDepthStamp:mPreviousDepthStamp2,
 							y, u, v, y.limit(), image.getWidth(), image.getHeight(), image.getFormat(), 
-							depthStamp>stamp?mPreviousDepth:depth, depthStamp>stamp?mPreviousDepth.limit():depth.limit(), mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16,
+							depthStamp<=stamp?depth:mPreviousDepthStamp<=stamp?mPreviousDepth:mPreviousDepth2,
+							depthStamp<=stamp?depth.limit():mPreviousDepthStamp<=stamp?mPreviousDepth.limit():mPreviousDepth2.limit(),
+							mTOFImageReader.WIDTH, mTOFImageReader.HEIGHT, ImageFormat.DEPTH16,
 							points, points.limit()/4,
 							viewMatrix[12], viewMatrix[13], viewMatrix[14], quat[1], quat[2], quat[3], quat[0],
 							p[0], p[5], p[8], p[9], p[10], p[11], p[14],
                             texCoord[0],texCoord[1],texCoord[2],texCoord[3],texCoord[4],texCoord[5],texCoord[6],texCoord[7]);
 					
-					
-					mPreviousDepthStamp = depthStamp;
-					mPreviousDepth = depth;
+					// triple buffer in case delay of rgb frame is > 60 ms
+					if(depthStamp != mPreviousDepthStamp)
+					{
+						mPreviousDepthStamp2 = mPreviousDepthStamp;
+						mPreviousDepth2 = mPreviousDepth;
+						mPreviousDepthStamp = depthStamp;
+						mPreviousDepth = depth;
+					}
 				}
 				else
 				{
