@@ -37,8 +37,8 @@ namespace rtabmap {
 //////////////////////////////
 // CameraARCore
 //////////////////////////////
-CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthFromMotion, bool smoothing):
-	CameraMobile(smoothing),
+CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthFromMotion, bool smoothing, float upstreamRelocalizationAccThr):
+	CameraMobile(smoothing, upstreamRelocalizationAccThr),
 	env_(env),
 	context_(context),
 	activity_(activity),
@@ -124,6 +124,8 @@ std::string CameraARCore::getSerial() const
 bool CameraARCore::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	close();
+
+	CameraMobile::init(calibrationFolder, cameraName);
 
 	UScopeMutex lock(arSessionMutex_);
 
@@ -270,54 +272,6 @@ void CameraARCore::close()
 	arPose_ = nullptr;
 
 	CameraMobile::close();
-}
-
-LaserScan CameraARCore::scanFromPointCloudData(
-		const float * pointCloudData,
-		int points,
-		const Transform & pose,
-		const CameraModel & model,
-		const cv::Mat & rgb,
-		std::vector<cv::KeyPoint> * kpts,
-		std::vector<cv::Point3f> * kpts3D)
-{
-	if(pointCloudData && points>0)
-	{
-		cv::Mat scanData(1, points, CV_32FC4);
-		float * ptr = scanData.ptr<float>();
-		for(unsigned int i=0;i<points; ++i)
-		{
-			cv::Point3f pt(pointCloudData[i*4], pointCloudData[i*4 + 1], pointCloudData[i*4 + 2]);
-			pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
-			ptr[i*4] = pt.x;
-			ptr[i*4 + 1] = pt.y;
-			ptr[i*4 + 2] = pt.z;
-
-			//get color from rgb image
-			cv::Point3f org= pt;
-			pt = util3d::transformPoint(pt, opticalRotationInv);
-			int u,v;
-			model.reproject(pt.x, pt.y, pt.z, u, v);
-			unsigned char r=255,g=255,b=255;
-			if(model.inFrame(u, v))
-			{
-				b=rgb.at<cv::Vec3b>(v,u).val[0];
-				g=rgb.at<cv::Vec3b>(v,u).val[1];
-				r=rgb.at<cv::Vec3b>(v,u).val[2];
-				if(kpts)
-					kpts->push_back(cv::KeyPoint(u,v,3));
-				if(kpts3D)
-					kpts3D->push_back(org);
-			}
-			*(int*)&ptr[i*4 + 3] = int(b) | (int(g) << 8) | (int(r) << 16);
-
-			//confidence
-			//*(int*)&ptr[i*4 + 3] = (int(pointCloudData[i*4 + 3] * 255.0f) << 8) | (int(255) << 16);
-
-		}
-		return LaserScan::backwardCompatibility(scanData, 0, 10, rtabmap::Transform::getIdentity());
-	}
-	return LaserScan();
 }
 
 void CameraARCore::setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height)
@@ -525,7 +479,11 @@ SensorData CameraARCore::updateDataOnRender(Transform & pose)
 #endif
 							if(pointCloudData && points>0)
 							{
-								scan = scanFromPointCloudData(pointCloudData, points, pose, model, rgb, &kpts, &kpts3);
+								cv::Mat pointCloudDataMat(1, points, CV_32FC4, (void *)pointCloudData);
+								scan = scanFromPointCloudData(pointCloudDataMat, pose, model, rgb, &kpts, &kpts3);
+#ifndef DISABLE_LOG
+								LOGI("valid scan points = %d", scan.size());
+#endif
 							}
 						}
 						else

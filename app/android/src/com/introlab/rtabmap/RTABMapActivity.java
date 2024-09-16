@@ -323,6 +323,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		// touch point.
 		Display display = getWindowManager().getDefaultDisplay();
 		display.getSize(mScreenSize);
+		Log.i(TAG, String.format("Screen resolution: %dx%d", mScreenSize.x, mScreenSize.y));
 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -1142,6 +1143,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			RTABMapLib.setDepthFromMotion(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_depth_from_motion), Boolean.parseBoolean(getString(R.string.pref_default_depth_from_motion))));
 			RTABMapLib.setCameraColor(nativeApplication, !sharedPref.getBoolean(getString(R.string.pref_key_fisheye), Boolean.parseBoolean(getString(R.string.pref_default_fisheye))));
 			RTABMapLib.setAppendMode(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_append), Boolean.parseBoolean(getString(R.string.pref_default_append))));
+			RTABMapLib.setUpstreamRelocalizationAccThr(nativeApplication, Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_arcore_relocalization_acc_thr), getString(R.string.pref_default_arcore_relocalization_acc_thr))));
 			RTABMapLib.setMappingParameter(nativeApplication, "Rtabmap/DetectionRate", mUpdateRate);
 			RTABMapLib.setMappingParameter(nativeApplication, "Rtabmap/TimeThr", mTimeThr);
 			RTABMapLib.setMappingParameter(nativeApplication, "Rtabmap/MemoryThr", memThr);
@@ -1383,9 +1385,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							if(cameraStartSucess && mCameraDriver == 3)
 							{
 								synchronized (this) {
-									SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-									String arCoreLocalizationFiltering = sharedPref.getString(getString(R.string.pref_key_arcore_localization_filtering_speed), getString(R.string.pref_default_arcore_localization_filtering_speed));
-									mArCoreCamera = new ARCoreSharedCamera(getActivity(), Float.parseFloat(arCoreLocalizationFiltering));
+									mArCoreCamera = new ARCoreSharedCamera(getActivity());
 									mArCoreCamera.setToast(mToast);
 									mProgressDialog.setTitle("");
 									mProgressDialog.setMessage(message);
@@ -2057,7 +2057,10 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		 * "Unknown"
 		 */
 		String str = null;
-		if(key.equals("TangoServiceException"))
+		if(key.equals("UpstreamRelocationFiltered") && mItemDebugVisibility != null && mItemDebugVisibility.isChecked())
+			str = String.format("%s re-localization filtered because an acceleration of %s has been detected, which is over current threshold set in the settings.",
+				mCameraDriver == 2?"AREngine":"ARCore", value);
+		else if(key.equals("TangoServiceException"))
 			str = String.format("Tango service exception: %s", value);
 		else if(key.equals("FisheyeOverExposed"))
 			;//str = String.format("The fisheye image is over exposed with average pixel value %s px.", value);
@@ -3024,7 +3027,6 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 		}
 		else
 		{
-		
 			RTABMapLib.openDatabase(nativeApplication, tmpDatabase, databaseInMemory, false, true);
 	
 			if(!(mState == State.STATE_CAMERA || mState ==State.STATE_MAPPING))

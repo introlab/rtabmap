@@ -46,7 +46,7 @@ namespace rtabmap {
 
 class CameraAREngine : public CameraMobile {
 public:
-	CameraAREngine(void* env, void* context, void* activity, bool smoothing = false);
+	CameraAREngine(void* env, void* context, void* activity, bool smoothing = false, float upstreamRelocalizationAccThr = 0.0f);
 	virtual ~CameraAREngine();
 
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height);

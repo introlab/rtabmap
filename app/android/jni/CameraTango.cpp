@@ -194,6 +194,8 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 {
 	close();
 
+	CameraMobile::init(calibrationFolder, cameraName);
+
 	TangoSupport_initialize(TangoService_getPoseAtTime, TangoService_getCameraIntrinsics);
 
 	// Connect to Tango

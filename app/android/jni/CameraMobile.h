@@ -79,7 +79,6 @@ public:
 public:
     static LaserScan scanFromPointCloudData(
             const cv::Mat & pointCloudData,
-            int points,
             const Transform & pose,
             const CameraModel & model,
             const cv::Mat & rgb,

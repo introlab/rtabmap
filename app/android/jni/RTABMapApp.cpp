@@ -75,7 +75,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #define LOW_RES_PIX 2
-//#define DEBUG_RENDERING_PERFORMANCE
+#define DEBUG_RENDERING_PERFORMANCE
 
 const int g_optMeshId = -100;
 
@@ -931,7 +931,7 @@ bool RTABMapApp::startCamera()
 	else if(cameraDriver_ == 1)
 	{
 #ifdef RTABMAP_ARCORE
-		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, smoothing_);
+		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, smoothing_, upstreamRelocalizationMaxAcc_);
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
@@ -939,7 +939,7 @@ bool RTABMapApp::startCamera()
 	else if(cameraDriver_ == 2)
 	{
 #ifdef RTABMAP_ARENGINE
-		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_);
+		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_, upstreamRelocalizationMaxAcc_);
 #else
 		UERROR("RTAB-Map is not built with AREngine support!");
 #endif
@@ -3878,10 +3878,13 @@ void RTABMapApp::postOdometryEvent(
 							rtabmap::Transform poseRgb;
 							rtabmap::Transform poseDepth;
 							cv::Mat cov;
-							if(!camera_->getPose(camera_->getStampEpochOffset()+stamp, poseRgb, cov, 0.0) ||
-							   !camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
+							if(!camera_->getPose(camera_->getStampEpochOffset()+stamp, poseRgb, cov, 0.0))
 							{
-								UERROR("Could not find pose at rgb stamp %f and/or depth stamp %f (epoch rgb=%f depth=%f)!", stamp, depthStamp, camera_->getStampEpochOffset()+stamp, camera_->getStampEpochOffset()+depthStamp);
+								UERROR("Could not find pose at rgb stamp %f (epoch %f)!", stamp, camera_->getStampEpochOffset()+stamp);
+							}
+							else if(!camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
+							{
+								UERROR("Could not find pose at depth stamp %f (epoch %f)!", depthStamp, camera_->getStampEpochOffset()+depthStamp);
 							}
 							else
 							{
@@ -3935,12 +3938,12 @@ void RTABMapApp::postOdometryEvent(
 						if(outputDepth.empty())
 						{
                             int kptsSize = fullResolution_ ? 12 : 6;
-							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pointsLen, pose, model, outputRGB, &kpts, &kpts3, kptsSize);
+							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pose, model, outputRGB, &kpts, &kpts3, kptsSize);
 						}
 						else
 						{
 							// We will recompute features if depth is available
-							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pointsLen, pose, model, outputRGB);
+							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pose, model, outputRGB);
 						}
 					}
                     

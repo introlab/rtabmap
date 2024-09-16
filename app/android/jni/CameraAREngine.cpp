@@ -40,8 +40,8 @@ namespace rtabmap {
 //////////////////////////////
 // CameraAREngine
 //////////////////////////////
-CameraAREngine::CameraAREngine(void* env, void* context, void* activity, bool smoothing):
-	CameraMobile(smoothing),
+CameraAREngine::CameraAREngine(void* env, void* context, void* activity, bool smoothing, float upstreamRelocalizationAccThr):
+	CameraMobile(smoothing, upstreamRelocalizationAccThr),
 	env_(env),
 	context_(context),
 	activity_(activity),
@@ -65,6 +65,8 @@ std::string CameraAREngine::getSerial() const
 bool CameraAREngine::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	close();
+
+	CameraMobile::init(calibrationFolder, cameraName);
 
 	UScopeMutex lock(arSessionMutex_);
 

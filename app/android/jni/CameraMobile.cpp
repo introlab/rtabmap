@@ -76,11 +76,17 @@ CameraMobile::~CameraMobile() {
 bool CameraMobile::init(const std::string &, const std::string &)
 {
 	deviceTColorCamera_ = opticalRotation;
+	// clear semaphore
+	if(dataReady_.value() > 0) {
+		dataReady_.acquire(dataReady_.value());
+	}
 	return true;
 }
 
 void CameraMobile::close()
 {
+	UScopeMutex lock(dataMutex_);
+
 	firstFrame_ = true;
 	lastKnownGPS_ = GPS();
 	lastEnvSensors_.clear();
@@ -372,7 +378,6 @@ void CameraMobile::updateOnRender()
 	bool notify = !data_.isValid();
 
 	data_ = updateDataOnRender(dataPose_);
-
 	if(data_.isValid())
 	{
 		postUpdate();
@@ -571,7 +576,6 @@ SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 
 LaserScan CameraMobile::scanFromPointCloudData(
         const cv::Mat & pointCloudData,
-        int points,
         const Transform & pose,
         const CameraModel & model,
         const cv::Mat & rgb,
@@ -588,7 +592,7 @@ LaserScan CameraMobile::scanFromPointCloudData(
         UASSERT(pointCloudData.depth() == CV_32F && ic >= 3);
         
         int oi = 0;
-        for(unsigned int i=0;i<points; ++i)
+        for(unsigned int i=0;i<pointCloudData.cols; ++i)
         {
             cv::Point3f pt(inPtr[i*ic], inPtr[i*ic + 1], inPtr[i*ic + 2]);
             pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
