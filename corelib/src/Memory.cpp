@@ -3186,6 +3186,15 @@ Transform Memory::computeTransform(
 			transform = transform.inverse();
 		}
 	}
+	else
+	{
+		std::string msg = uFormat("Missing visual features or missing raw data to compute them. Transform cannot be estimated.");
+		if(info)
+		{
+			info->rejectedMsg = msg;
+		}
+		UWARN(msg.c_str());
+	}
 	return transform;
 }
 

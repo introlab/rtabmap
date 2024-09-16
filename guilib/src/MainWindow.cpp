@@ -2328,7 +2328,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
 						{
 							sceneRect.setWidth(sceneRect.width()+signature.sensorData().cameraModels()[i].imageWidth());
-							sceneRect.setHeight(sceneRect.height()+signature.sensorData().cameraModels()[i].imageHeight());
+							sceneRect.setHeight(std::max((int)sceneRect.height(), signature.sensorData().cameraModels()[i].imageHeight()));
 						}
 					}
 					else if(signature.sensorData().stereoCameraModels().size())
@@ -2336,7 +2336,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
 						{
 							sceneRect.setWidth(sceneRect.width()+signature.sensorData().stereoCameraModels()[i].left().imageWidth());
-							sceneRect.setHeight(sceneRect.height()+signature.sensorData().stereoCameraModels()[i].left().imageHeight());
+							sceneRect.setHeight(std::max((int)sceneRect.height(), signature.sensorData().stereoCameraModels()[i].left().imageHeight()));
 						}
 					}
 					if(sceneRect.isValid())

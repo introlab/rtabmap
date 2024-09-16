@@ -4762,6 +4762,25 @@ void DatabaseViewer::update(int value,
 				{
 					ULOGGER_DEBUG("Image depth is empty");
 				}
+				if(!rect.isValid())
+				{
+					if(data.cameraModels().size())
+					{
+						for(unsigned int i=0; i<data.cameraModels().size(); ++i)
+						{
+							rect.setWidth(rect.width()+data.cameraModels()[i].imageWidth());
+							rect.setHeight(std::max((int)rect.height(), data.cameraModels()[i].imageHeight()));
+						}
+					}
+					else if(data.stereoCameraModels().size())
+					{
+						for(unsigned int i=0; i<data.cameraModels().size(); ++i)
+						{
+							rect.setWidth(rect.width()+data.stereoCameraModels()[i].left().imageWidth());
+							rect.setHeight(std::max((int)rect.height(), data.stereoCameraModels()[i].left().imageHeight()));
+						}
+					}
+				}
 				if(rect.isValid())
 				{
 					view->setSceneRect(rect);
