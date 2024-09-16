@@ -284,6 +284,8 @@ private:
 GraphViewer::GraphViewer(QWidget * parent) :
 		QGraphicsView(parent),
 		_nodeColor(Qt::blue),
+		_nodeColorA(Qt::yellow),
+		_nodeColorB(Qt::magenta),
 		_nodeOdomCacheColor(Qt::darkGreen),
 		_currentGoalColor(Qt::darkMagenta),
 		_neighborColor(Qt::blue),
@@ -321,6 +323,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_viewPlane(XY),
 		_ensureFrameVisible(true)
 {
+	_currentNodeA = nullptr;
+	_currentNodeB = nullptr;
+	
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
 	_workingDirectory = QDir::homePath();
@@ -1459,6 +1464,38 @@ void GraphViewer::setNodeColor(const QColor & color)
 		iter.value()->setColor(_nodeColor);
 	}
 }
+void GraphViewer::setNodeColorA(const QColor & color)
+{
+	_nodeColorA = color;
+	QPen border = QPen(_nodeColorA);
+	if(_currentNodeA != nullptr)
+	{
+		if(_currentNodeA->id() != 0)
+		{	
+			if(_nodeItems.contains(_currentNodeA->id()))
+			{
+				border.setWidth(_linkWidth*100.0f);
+				_currentNodeA->setPen(border);
+			}
+		}
+	}	
+}
+void GraphViewer::setNodeColorB(const QColor & color)
+{
+	_nodeColorB = color;
+	QPen border = QPen(_nodeColorB);
+	if(_currentNodeB != nullptr)
+	{
+		if(_currentNodeB->id() != 0)
+		{	
+			if(_nodeItems.contains(_currentNodeB->id()))
+			{
+				border.setWidth(_linkWidth*100.0f);
+				_currentNodeB->setPen(border);
+			}
+		}
+	}	
+}
 void GraphViewer::setNodeOdomCacheColor(const QColor & color)
 {
 	_nodeOdomCacheColor = color;
@@ -1468,6 +1505,47 @@ void GraphViewer::setNodeOdomCacheColor(const QColor & color)
 		{
 			iter.value()->setColor(_nodeOdomCacheColor);
 		}
+	}
+}
+void GraphViewer::setNodeA(int value){
+	
+	QPen border = QPen(_nodeColorA);
+	QMap<int, NodeItem*>::iterator iter = _nodeItems.find(value);
+	if(iter != _nodeItems.end()){
+		if(_currentNodeA != nullptr){
+			if(_currentNodeA->id() != 0)
+			{	
+				if(_nodeItems.contains(_currentNodeA->id()))
+				{
+					border.setWidth(0);
+					_currentNodeA->setPen(border);
+				}
+			}
+		}
+		_currentNodeA = iter.value();
+		border.setWidth(_linkWidth*100.0f);
+		_currentNodeA->setPen(QPen(border));
+	}
+}
+void GraphViewer::setNodeB(int value){
+	
+	QPen border = QPen(_nodeColorB);
+	QMap<int, NodeItem*>::iterator iter = _nodeItems.find(value);
+
+	if(iter != _nodeItems.end()){
+		if(_currentNodeB != nullptr){
+			if(_currentNodeB->id() != 0)
+			{	
+				if(_nodeItems.contains(_currentNodeB->id()))
+				{
+					border.setWidth(0);
+					_currentNodeB->setPen(border);
+				}
+			}
+		}
+		_currentNodeB = iter.value();
+		border.setWidth(_linkWidth*100.0f);
+		_currentNodeB->setPen(QPen(border));
 	}
 }
 void GraphViewer::setCurrentGoalColor(const QColor & color)

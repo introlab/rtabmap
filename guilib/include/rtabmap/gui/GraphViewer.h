@@ -129,7 +129,11 @@ public:
 	void setNodeVisible(bool visible);
 	void setNodeRadius(float radius);
 	void setLinkWidth(float width);
+	void setNodeA(const int value);
+	void setNodeB(const int value);
 	void setNodeColor(const QColor & color);
+	void setNodeColorA(const QColor & color);
+	void setNodeColorB(const QColor & color);
 	void setNodeOdomCacheColor(const QColor & color);
 	void setCurrentGoalColor(const QColor & color);
 	void setNeighborColor(const QColor & color);
@@ -181,6 +185,8 @@ protected:
 private:
 	QString _workingDirectory;
 	QColor _nodeColor;
+	QColor _nodeColorA;
+	QColor _nodeColorB;
 	QColor _nodeOdomCacheColor;
 	QColor _currentGoalColor;
 	QColor _neighborColor;
@@ -206,6 +212,8 @@ private:
 	QGraphicsItem * _localPathRoot;
 	QGraphicsItem * _gtGraphRoot;
 	QGraphicsItem * _gpsGraphRoot;
+	NodeItem* _currentNodeA;
+	NodeItem* _currentNodeB;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
 	QMap<int, NodeItem*> _gtNodeItems;
