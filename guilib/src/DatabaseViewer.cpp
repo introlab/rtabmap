@@ -4357,7 +4357,14 @@ void DatabaseViewer::updateCovariances(const QList<Link> & links)
 {
 	if(links.size())
 	{
-		EditConstraintDialog dialog(Transform::getIdentity(), links.first().infMatrix().inv());
+		cv::Mat infMatrix =  links.first().infMatrix();
+		std::multimap<int, Link>::iterator findIter = rtabmap::graph::findLink(linksRefined_, links.first().from() ,links.first().to(), false, links.first().type());
+		if(findIter != linksRefined_.end())
+		{
+			infMatrix = findIter->second.infMatrix();
+		}
+		
+		EditConstraintDialog dialog(Transform::getIdentity(), infMatrix.inv());
 		dialog.setPoseGroupVisible(false);
 		if(dialog.exec() != QDialog::Accepted)
 		{
@@ -4371,7 +4378,7 @@ void DatabaseViewer::updateCovariances(const QList<Link> & links)
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
 
-		cv::Mat infMatrix = dialog.getCovariance().inv();
+		infMatrix = dialog.getCovariance().inv();
 
 		for(int i=0; i<links.size(); ++i)
 		{
@@ -6057,6 +6064,11 @@ void DatabaseViewer::editConstraint()
 		else if(ui_->label_type->text().toInt() == Link::kLandmark)
 		{
 			link = loopLinks_.at(ui_->horizontalSlider_loops->value());
+			std::multimap<int, Link>::iterator findIter = rtabmap::graph::findLink(linksRefined_, link.from() ,link.to(), false, link.type());
+			if(findIter != linksRefined_.end())
+			{
+				link = findIter->second;
+			}
 		}
 		else
 		{
