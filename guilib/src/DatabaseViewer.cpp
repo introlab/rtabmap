@@ -4357,13 +4357,12 @@ void DatabaseViewer::updateCovariances(const QList<Link> & links)
 {
 	if(links.size())
 	{
-		bool ok = false;
-		double stddev = QInputDialog::getDouble(this, tr("Linear error"), tr("Std deviation (m) 0=inf"), 0.01, 0.0, 9, 4, &ok);
-		if(!ok) return;
-		double linearVar = stddev*stddev;
-		stddev = QInputDialog::getDouble(this, tr("Angular error"), tr("Std deviation (deg) 0=inf"), 1, 0.0, 90, 2, &ok)*M_PI/180.0;
-		if(!ok) return;
-		double angularVar = stddev*stddev;
+		EditConstraintDialog dialog(Transform::getIdentity(), links.first().infMatrix().inv());
+		dialog.setPoseGroupVisible(false);
+		if(dialog.exec() != QDialog::Accepted)
+		{
+			return;
+		}
 
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -4372,23 +4371,7 @@ void DatabaseViewer::updateCovariances(const QList<Link> & links)
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
 
-		cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
-		if(linearVar == 0.0)
-		{
-			infMatrix(cv::Range(0,3), cv::Range(0,3)) /= 9999.9;
-		}
-		else
-		{
-			infMatrix(cv::Range(0,3), cv::Range(0,3)) /= linearVar;
-		}
-		if(angularVar == 0.0)
-		{
-			infMatrix(cv::Range(3,6), cv::Range(3,6)) /= 9999.9;
-		}
-		else
-		{
-			infMatrix(cv::Range(3,6), cv::Range(3,6)) /= angularVar;
-		}
+		cv::Mat infMatrix = dialog.getCovariance().inv();
 
 		for(int i=0; i<links.size(); ++i)
 		{
@@ -6083,28 +6066,10 @@ void DatabaseViewer::editConstraint()
 		if(link.isValid())
 		{
 			cv::Mat covBefore = link.infMatrix().inv();
-			EditConstraintDialog dialog(link.transform(),
-					covBefore.at<double>(0,0)<9999.0?std::sqrt(covBefore.at<double>(0,0)):0.0,
-					covBefore.at<double>(5,5)<9999.0?std::sqrt(covBefore.at<double>(5,5)):0.0);
+			EditConstraintDialog dialog(link.transform(), covBefore);
 			if(dialog.exec() == QDialog::Accepted)
 			{
-				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
-				if(dialog.getLinearVariance()>0)
-				{
-					covariance(cv::Range(0,3), cv::Range(0,3)) *= dialog.getLinearVariance();
-				}
-				else
-				{
-					covariance(cv::Range(0,3), cv::Range(0,3)) *= 9999.9;
-				}
-				if(dialog.getAngularVariance()>0)
-				{
-					covariance(cv::Range(3,6), cv::Range(3,6)) *= dialog.getAngularVariance();
-				}
-				else
-				{
-					covariance(cv::Range(3,6), cv::Range(3,6)) *= 9999.9;
-				}
+				cv::Mat covariance = dialog.getCovariance();
 				Link newLink(link.from(), link.to(), link.type(), dialog.getTransform(), covariance.inv());
 				std::multimap<int, Link>::iterator iter = linksRefined_.find(link.from());
 				while(iter != linksRefined_.end() && iter->first == link.from())
@@ -6133,28 +6098,10 @@ void DatabaseViewer::editConstraint()
 		else
 		{
 			EditConstraintDialog dialog(
-				link.transform(),
-				priorId>0?0.001:1,
-				priorId>0?0.001:1);
+				link.transform(), cv::Mat::eye(6,6,CV_64FC1) * (priorId>0?0.00001:1));
 			if(dialog.exec() == QDialog::Accepted)
 			{
-				cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1);
-				if(dialog.getLinearVariance()>0)
-				{
-					covariance(cv::Range(0,3), cv::Range(0,3)) *= dialog.getLinearVariance();
-				}
-				else
-				{
-					covariance(cv::Range(0,3), cv::Range(0,3)) *= 9999.9;
-				}
-				if(dialog.getAngularVariance()>0)
-				{
-					covariance(cv::Range(3,6), cv::Range(3,6)) *= dialog.getAngularVariance();
-				}
-				else
-				{
-					covariance(cv::Range(3,6), cv::Range(3,6)) *= 9999.9;
-				}
+				cv::Mat covariance = dialog.getCovariance();
 				int from = priorId>0?priorId:ids_.at(ui_->horizontalSlider_A->value());
 				int to = priorId>0?priorId:ids_.at(ui_->horizontalSlider_B->value());
 				Link newLink(
