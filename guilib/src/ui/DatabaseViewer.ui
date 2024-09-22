@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>417</width>
+           <width>419</width>
            <height>389</height>
           </rect>
          </property>
@@ -392,7 +392,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>416</width>
+           <width>418</width>
            <height>389</height>
           </rect>
          </property>
@@ -745,9 +745,9 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <widget class="QLabel" name="label_indexA">
-            <property name="text">
-             <string>indexA</string>
+           <widget class="QSpinBox" name="spinBox_indexA">
+            <property name="frame">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -772,9 +772,6 @@
            <enum>QSlider::TicksAbove</enum>
           </property>
          </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="spinBox_A"/>
         </item>
        </layout>
       </item>
@@ -813,9 +810,9 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="QLabel" name="label_indexB">
-            <property name="text">
-             <string>indexB</string>
+           <widget class="QSpinBox" name="spinBox_indexB">
+            <property name="frame">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -840,9 +837,6 @@
            <enum>QSlider::TicksAbove</enum>
           </property>
          </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="spinBox_B"/>
         </item>
        </layout>
       </item>
@@ -1647,7 +1641,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>318</width>
+          <width>314</width>
           <height>188</height>
          </rect>
         </property>
@@ -1803,8 +1797,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>518</width>
-          <height>1007</height>
+          <width>276</width>
+          <height>1201</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2464,8 +2458,8 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-42</y>
-          <width>298</width>
+          <y>0</y>
+          <width>294</width>
           <height>272</height>
          </rect>
         </property>
@@ -2639,8 +2633,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>432</width>
-          <height>196</height>
+          <width>181</width>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">

@@ -33,11 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QGraphicsView>
 #include <QtCore/QMap>
 #include <QtCore/QSettings>
-#include <QtWidgets/QSlider>
-#include <QtWidgets/QSpinBox>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/GPS.h>
-#include "rtabmap/gui/DatabaseViewer.h"
 #include <opencv2/opencv.hpp>
 #include <map>
 #include <set>
@@ -128,16 +125,12 @@ public:
 	bool isEnsureFrameVisible() const;
 
 	// setters
-	void setDatabase(DatabaseViewer* db_);
-	void setSlider_A(QSlider *slider_A);
-	void setSlider_B(QSlider *slider_B);
 	void setWorkingDirectory(const QString & path);
 	void setNodeVisible(bool visible);
 	void setNodeRadius(float radius);
 	void setLinkWidth(float width);
 	void setNodeColor(const QColor & color);
 	void setNodeOdomCacheColor(const QColor & color);
-	void highlightCurrentNode(int value);
 	void setCurrentGoalColor(const QColor & color);
 	void setNeighborColor(const QColor & color);
 	void setGlobalLoopClosureColor(const QColor & color);
@@ -182,7 +175,7 @@ public Q_SLOTS:
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
 	virtual void mouseMoveEvent(QMouseEvent * event);
-	virtual void mouseDoubleClickEvent(QMouseEvent * event);
+	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
@@ -242,7 +235,6 @@ private:
 	bool _mouseTracking;
 	ViewPlane _viewPlane;
 	bool _ensureFrameVisible;
-	NodeItem* previousNode;
 };
 
 } /* namespace rtabmap */

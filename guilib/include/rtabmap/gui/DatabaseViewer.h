@@ -52,6 +52,7 @@ class QGraphicsView;
 class QLabel;
 class QToolButton;
 class QDialog;
+class QSpinBox;
 
 namespace rtabmap
 {
@@ -75,7 +76,6 @@ public:
 	bool openDatabase(const QString & path, const ParametersMap & overridenParameters = ParametersMap());
 	bool isSavedMaximized() const {return savedMaximized_;}
 	void showCloseButton(bool visible = true);
-	int idToIndex(int id);
 
 protected:
 	virtual void showEvent(QShowEvent* anEvent);
@@ -134,8 +134,6 @@ private Q_SLOTS:
 	void graphLinkSelected(int, int);
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
-	void spinBoxAValueChanged(int);
-	void spinBoxBValueChanged(int);	
 	void sliderAMoved(int);
 	void sliderBMoved(int);
 	void update3dView();
@@ -164,7 +162,7 @@ private:
 
 	void updateIds();
 	void update(int value,
-				QLabel * labelIndex,
+				QSpinBox * spinBoxIndex,
 				QLabel * labelParents,
 				QLabel * labelChildren,
 				QLabel * weight,
