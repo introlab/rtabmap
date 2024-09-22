@@ -52,6 +52,7 @@ class QGraphicsView;
 class QLabel;
 class QToolButton;
 class QDialog;
+class QSpinBox;
 
 namespace rtabmap
 {
@@ -161,7 +162,7 @@ private:
 
 	void updateIds();
 	void update(int value,
-				QLabel * labelIndex,
+				QSpinBox * spinBoxIndex,
 				QLabel * labelParents,
 				QLabel * labelChildren,
 				QLabel * weight,

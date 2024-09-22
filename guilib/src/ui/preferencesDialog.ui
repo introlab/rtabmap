@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>24</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -5536,6 +5536,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       <widget class="QComboBox" name="comboBox_stereoZed_resolution">
                                        <item>
                                         <property name="text">
+                                         <string>AUTO</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>HD4K</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>HD2K</string>
                                         </property>
                                        </item>
@@ -5562,11 +5572,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        <item>
                                         <property name="text">
                                          <string>VGA</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>AUTO</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -15707,7 +15712,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>5</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -16107,27 +16112,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="title">
                               <string>[Visual] Correspondences computation: Optical Flow</string>
                              </property>
-                             <layout class="QGridLayout" name="gridLayout_52" columnstretch="0,0">
-                              <item row="0" column="0">
-                               <widget class="QSpinBox" name="odom_flow_winSize_2">
-                                <property name="minimum">
-                                 <number>1</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>999999</number>
-                                </property>
-                                <property name="singleStep">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>21</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="1">
-                               <widget class="QLabel" name="label_295">
+                             <layout class="QGridLayout" name="gridLayout_52" columnstretch="0,1">
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_201">
                                 <property name="text">
-                                 <string>Iterations.</string>
+                                 <string>Window size.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -16150,34 +16139,40 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="0" column="1">
-                               <widget class="QLabel" name="label_201">
-                                <property name="text">
-                                 <string>Window size.</string>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="odom_flow_iterations">
+                                <property name="minimum">
+                                 <number>1</number>
                                 </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
+                                <property name="maximum">
+                                 <number>999999</number>
                                 </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>30</number>
                                 </property>
                                </widget>
                               </item>
-                              <item row="2" column="1">
-                               <widget class="QLabel" name="label_296">
-                                <property name="text">
-                                 <string>Epsilon.</string>
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="odom_flow_winSize">
+                                <property name="minimum">
+                                 <number>1</number>
                                 </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
+                                <property name="maximum">
+                                 <number>999999</number>
                                 </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>21</number>
                                 </property>
                                </widget>
                               </item>
                               <item row="2" column="0">
-                               <widget class="QDoubleSpinBox" name="odom_flow_eps_2">
+                               <widget class="QDoubleSpinBox" name="odom_flow_eps">
                                 <property name="decimals">
                                  <number>3</number>
                                 </property>
@@ -16195,8 +16190,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_295">
+                                <property name="text">
+                                 <string>Iterations.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
                               <item row="3" column="0">
-                               <widget class="QSpinBox" name="odom_flow_maxLevel_2">
+                               <widget class="QSpinBox" name="odom_flow_maxLevel">
                                 <property name="minimum">
                                  <number>0</number>
                                 </property>
@@ -16211,19 +16219,36 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="1" column="0">
-                               <widget class="QSpinBox" name="odom_flow_iterations_2">
-                                <property name="minimum">
-                                 <number>1</number>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_296">
+                                <property name="text">
+                                 <string>Epsilon.</string>
                                 </property>
-                                <property name="maximum">
-                                 <number>999999</number>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
                                 </property>
-                                <property name="singleStep">
-                                 <number>1</number>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                 </property>
-                                <property name="value">
-                                 <number>30</number>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_odom_flow_gpu">
+                                <property name="text">
+                                 <string>Use GPU. OpenCV built with CUDA required.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="odom_flow_gpu">
+                                <property name="text">
+                                 <string/>
                                 </property>
                                </widget>
                               </item>
@@ -24313,94 +24338,16 @@ Lower the ratio -&gt; higher the precision.</string>
                        <string/>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_33" columnstretch="0,1">
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_284">
+                       <item row="6" column="1">
+                        <widget class="QLabel" name="label_286">
                          <property name="text">
-                          <string>Window height.</string>
+                          <string>Maximum disparity.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_285">
-                         <property name="text">
-                          <string>Minimum disparity.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QSpinBox" name="stereo_winWidth">
-                         <property name="minimum">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>21</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_205">
-                         <property name="text">
-                          <string>Window width.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_206">
-                         <property name="text">
-                          <string>Maximum iterations.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="8" column="0">
-                        <widget class="QCheckBox" name="stereo_ssd">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QSpinBox" name="stereo_winHeight">
-                         <property name="minimum">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="singleStep">
-                          <number>1</number>
-                         </property>
-                         <property name="value">
-                          <number>21</number>
                          </property>
                         </widget>
                        </item>
@@ -24420,29 +24367,10 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="0">
-                        <widget class="QDoubleSpinBox" name="stereo_flow_eps">
-                         <property name="decimals">
-                          <number>4</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000100000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.010000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="9" column="1">
-                        <widget class="QLabel" name="label_207">
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_214">
                          <property name="text">
-                          <string>[OpticalFlow = true] Epsilon stop criterion.</string>
+                          <string>Use optical flow to find stereo correspondences, otherwise a simple block matching approach is used.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -24465,19 +24393,49 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
-                        <widget class="QSpinBox" name="stereo_maxLevel">
-                         <property name="minimum">
-                          <number>0</number>
+                       <item row="9" column="1">
+                        <widget class="QLabel" name="label_207">
+                         <property name="text">
+                          <string>[OpticalFlow = true] Epsilon stop criterion.</string>
                          </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QDoubleSpinBox" name="stereo_maxDisparity">
                          <property name="maximum">
-                          <number>999999</number>
+                          <double>9999.000000000000000</double>
                          </property>
-                         <property name="singleStep">
-                          <number>1</number>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_206">
+                         <property name="text">
+                          <string>Maximum iterations.</string>
                          </property>
-                         <property name="value">
-                          <number>3</number>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_205">
+                         <property name="text">
+                          <string>Window width.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
@@ -24494,36 +24452,16 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
-                        <widget class="QLabel" name="label_214">
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_285">
                          <property name="text">
-                          <string>Use optical flow to find stereo correspondences, otherwise a simple block matching approach is used.</string>
+                          <string>Minimum disparity.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="1">
-                        <widget class="QLabel" name="label_286">
-                         <property name="text">
-                          <string>Maximum disparity.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="0">
-                        <widget class="QCheckBox" name="stereo_opticalFlow">
-                         <property name="text">
-                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -24534,10 +24472,117 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
-                        <widget class="QDoubleSpinBox" name="stereo_maxDisparity">
+                       <item row="9" column="0">
+                        <widget class="QDoubleSpinBox" name="stereo_flow_eps">
+                         <property name="decimals">
+                          <number>4</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000100000000000</double>
+                         </property>
                          <property name="maximum">
-                          <double>9999.000000000000000</double>
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.010000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="0">
+                        <widget class="QCheckBox" name="stereo_ssd">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="0">
+                        <widget class="QCheckBox" name="stereo_opticalFlow">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QSpinBox" name="stereo_winWidth">
+                         <property name="minimum">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>1</number>
+                         </property>
+                         <property name="value">
+                          <number>21</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="stereo_maxLevel">
+                         <property name="minimum">
+                          <number>0</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>1</number>
+                         </property>
+                         <property name="value">
+                          <number>3</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_284">
+                         <property name="text">
+                          <string>Window height.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QSpinBox" name="stereo_winHeight">
+                         <property name="minimum">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="singleStep">
+                          <number>1</number>
+                         </property>
+                         <property name="value">
+                          <number>21</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="1">
+                        <widget class="QLabel" name="label_stereo_flow_gpu">
+                         <property name="text">
+                          <string>[OpticalFlow = true] Do optical flow on GPU. RTAB-Map should be built with OpenCV CUDA.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="0">
+                        <widget class="QCheckBox" name="stereo_flow_gpu">
+                         <property name="text">
+                          <string/>
                          </property>
                         </widget>
                        </item>
@@ -25515,13 +25560,46 @@ Lower the ratio -&gt; higher the precision.</string>
                     <string>SIFT</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_19" columnstretch="0,1">
+                    <item row="4" column="0">
+                     <widget class="QCheckBox" name="sift_checkBox_preciseUpscale">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_30">
+                      <property name="text">
+                       <string>Edge threshold. The threshold used to filter out edge-like features. Note that the its meaning is different from the contrastThreshold, i.e. the larger the edgeThreshold, the less features are filtered out (more features are retained).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="0" column="0">
-                     <widget class="QSpinBox" name="sift_spinBox_nFeatures"/>
+                     <widget class="QSpinBox" name="sift_spinBox_nOctaveLayers"/>
                     </item>
                     <item row="4" column="1">
-                     <widget class="QLabel" name="label_129">
+                     <widget class="QLabel" name="sift_label_preciseUpscale">
                       <property name="text">
-                       <string>Sigma.</string>
+                       <string>Whether to enable precise upscaling in the scale pyramid.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_130">
+                      <property name="text">
+                       <string>The number of layers in each octave. 3 is the value used in D. Lowe paper. The number of octaves is computed automatically from the image resolution. Not used by CudaSift, the number of octaves is still computed automatically.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -25529,6 +25607,23 @@ Lower the ratio -&gt; higher the precision.</string>
                      </widget>
                     </item>
                     <item row="2" column="0">
+                     <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_edgeThr">
+                      <property name="singleStep">
+                       <double>0.100000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>10.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="0">
+                     <widget class="QCheckBox" name="sift_checkBox_rootsift">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
                      <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_contrastThr">
                       <property name="decimals">
                        <number>6</number>
@@ -25547,37 +25642,7 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
-                     <widget class="QLabel" name="label_5">
-                      <property name="text">
-                       <string>Contrast threshold.</string>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="1">
-                     <widget class="QLabel" name="label_30">
-                      <property name="text">
-                       <string>Edge threshold.</string>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="3" column="0">
-                     <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_edgeThr">
-                      <property name="singleStep">
-                       <double>0.100000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>10.000000000000000</double>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="0">
                      <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_sigma">
                       <property name="singleStep">
                        <double>0.100000000000000</double>
@@ -25587,31 +25652,53 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="0">
-                     <widget class="QSpinBox" name="sift_spinBox_nOctaveLayers"/>
-                    </item>
-                    <item row="1" column="1">
-                     <widget class="QLabel" name="label_130">
+                    <item row="6" column="1">
+                     <widget class="QLabel" name="sift_label_gpu">
                       <property name="text">
-                       <string>nOctaveLayers.</string>
+                       <string>CudaSift: Use GPU version of SIFT. This option is enabled only RTAB-Map is built with CudaSift dependency and GPUs are detected.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
-                    <item row="0" column="1">
-                     <widget class="QLabel" name="label_131">
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_5">
                       <property name="text">
-                       <string>nFeatures.</string>
+                       <string>Contrast threshold. The contrast threshold used to filter out weak features in semi-uniform (low-contrast) regions. The larger the threshold, the less features are produced by the detector. Not used by CudaSift.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="7" column="0">
+                     <widget class="QDoubleSpinBox" name="sift_doubleSpinBox_gaussianDiffThreshold">
+                      <property name="decimals">
+                       <number>2</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.010000000000000</double>
+                      </property>
+                      <property name="maximum">
+                       <double>100.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.100000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>4.500000000000000</double>
                       </property>
                      </widget>
                     </item>
                     <item row="5" column="1">
-                     <widget class="QLabel" name="label_591">
+                     <widget class="QLabel" name="sift_label_rootsift">
                       <property name="text">
                        <string>RootSIFT.</string>
                       </property>
@@ -25620,8 +25707,51 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0">
-                     <widget class="QCheckBox" name="sift_checkBox_rootsift">
+                    <item row="7" column="1">
+                     <widget class="QLabel" name="sift_label_gaussianThreshold">
+                      <property name="text">
+                       <string>CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="0">
+                     <widget class="QCheckBox" name="sift_checkBox_gpu">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QLabel" name="label_129">
+                      <property name="text">
+                       <string>Sigma. The sigma of the Gaussian applied to the input image at the octave #0. If your image is captured with a weak camera with soft lenses, you might want to reduce the number.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="8" column="1">
+                     <widget class="QLabel" name="sift_label_upscale">
+                      <property name="text">
+                       <string>CudaSift: Whether to enable upscaling.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="8" column="0">
+                     <widget class="QCheckBox" name="sift_checkBox_upscale">
                       <property name="text">
                        <string/>
                       </property>
@@ -26272,22 +26402,16 @@ Lower the ratio -&gt; higher the precision.</string>
                     <string>GFTT</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_21" columnstretch="0,1">
-                    <item row="0" column="0">
-                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_qualityLevel">
-                      <property name="decimals">
-                       <number>4</number>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_175">
+                      <property name="text">
+                       <string>Quality level. Parameter characterizing the minimal accepted quality of image corners. The parameter value is multiplied by the best corner quality measure, which is the minimal eigenvalue (see cornerMinEigenVal() ) or the Harris function response. The corners with the quality measure less than the product are rejected. For example, if the best corner has the quality measure = 1500, and the qualityLevel=0.01 , then all the corners with the quality measure less than 15 are rejected.</string>
                       </property>
-                      <property name="minimum">
-                       <double>0.000100000000000</double>
+                      <property name="wordWrap">
+                       <bool>true</bool>
                       </property>
-                      <property name="maximum">
-                       <double>1.000000000000000</double>
-                      </property>
-                      <property name="singleStep">
-                       <double>0.010000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>0.010000000000000</double>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -26311,21 +26435,14 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="1">
-                     <widget class="QLabel" name="label_172">
-                      <property name="text">
-                       <string>Use Harris detector.</string>
+                    <item row="0" column="0">
+                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_qualityLevel">
+                      <property name="decimals">
+                       <number>4</number>
                       </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
+                      <property name="minimum">
+                       <double>0.000100000000000</double>
                       </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="0">
-                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_k">
                       <property name="maximum">
                        <double>1.000000000000000</double>
                       </property>
@@ -26333,7 +26450,7 @@ Lower the ratio -&gt; higher the precision.</string>
                        <double>0.010000000000000</double>
                       </property>
                       <property name="value">
-                       <double>0.040000000000000</double>
+                       <double>0.010000000000000</double>
                       </property>
                      </widget>
                     </item>
@@ -26357,10 +26474,23 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="0" column="1">
-                     <widget class="QLabel" name="label_175">
+                    <item row="4" column="0">
+                     <widget class="QDoubleSpinBox" name="doubleSpinBox_GFTT_k">
+                      <property name="maximum">
+                       <double>1.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.010000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>0.040000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_177">
                       <property name="text">
-                       <string>Quality level. Parameter characterizing the minimal accepted quality of image corners. The parameter value is multiplied by the best corner quality measure, which is the minimal eigenvalue (see cornerMinEigenVal() ) or the Harris function response. The corners with the quality measure less than the product are rejected. For example, if the best corner has the quality measure = 1500, and the qualityLevel=0.01 , then all the corners with the quality measure less than 15 are rejected.</string>
+                       <string>Block size. Size of an average block for computing a derivative covariation matrix over each pixel neighborhood.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -26383,16 +26513,39 @@ Lower the ratio -&gt; higher the precision.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
-                     <widget class="QLabel" name="label_177">
+                    <item row="3" column="1">
+                     <widget class="QLabel" name="label_172">
                       <property name="text">
-                       <string>Block size. Size of an average block for computing a derivative covariation matrix over each pixel neighborhood.</string>
+                       <string>Use Harris detector.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
+                     <widget class="QLabel" name="label_GFTT_gpu">
+                      <property name="text">
+                       <string>GPU-GFTT: Use GPU version of GFTT. This option is available only if OpenCV&gt;=3 is built with CUDA and GPUs are detected.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="0">
+                     <widget class="QCheckBox" name="checkBox_GFTT_gpu">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
                       </property>
                      </widget>
                     </item>

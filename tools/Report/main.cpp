@@ -88,6 +88,7 @@ void showUsage()
 			"    --loc_delay #      Delay to split sessions for localization statistics (default 60 seconds).\n"
 			"    --ignore_inter_nodes  Ignore intermediate poses and statistics.\n"
 			"    --udebug           Show debug log.\n"
+			"    --\"parameter name\" \"value\"  Overwrite a specific RTAB-Map's parameter.\n"
 			"    --help,-h          Show usage\n\n");
 	exit(1);
 }
@@ -159,6 +160,7 @@ int main(int argc, char * argv[])
 #ifdef WITH_QT
 	std::map<std::string, UPlot*> figures;
 #endif
+	ParametersMap overriddenParams = Parameters::parseArguments(argc, argv, true);
 	for(int i=1; i<argc; ++i)
 	{
 		if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "--h") == 0)
@@ -324,10 +326,23 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(uStrContains(argv[i], "--"))
+		{
+			// Assuming it is a parameter, should be already handled.
+			++i;
+		}
 		else if(i<argc-1)
 		{
-
 			statsToShow.push_back(argv[i]);
+		}
+	}
+
+	if(!overriddenParams.empty())
+	{
+		printf("Parameters overridden:\n");
+		for(auto iter=overriddenParams.begin(); iter!=overriddenParams.end(); ++iter)
+		{
+			printf("   %s = %s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
 
@@ -498,6 +513,7 @@ int main(int argc, char * argv[])
 						ULogger::setLevel(ULogger::kError); // to suppress parameter warnings
 					}
 					params = driver->getLastParameters();
+					uInsert(params, overriddenParams);
 					ULogger::setLevel(logLevel);
 					std::set<int> ids;
 					driver->getAllNodeIds(ids, false, false, ignoreInterNodes);
@@ -626,6 +642,9 @@ int main(int argc, char * argv[])
 					std::map<std::string, std::vector<float> > localizationSessionStats;
 					double previousStamp = 0.0;
 					std::map<int, int> allWeights;
+					Transform previousPose;
+					int previousMapId = 0;
+					float totalOdomDistance = 0.0f;
 					for(std::set<int>::iterator iter=allIds.begin(); iter!=allIds.end(); ++iter)
 					{
 						Transform p, gt;
@@ -637,8 +656,18 @@ int main(int argc, char * argv[])
 						EnvSensors sensors;
 						if(driver->getNodeInfo(*iter, p, m, w, l, s, gt, v, gps, sensors))
 						{
+							if(previousMapId == m)
+							{
+								if(!p.isNull() && !previousPose.isNull())
+								{
+									totalOdomDistance += p.getDistance(previousPose);
+								}
+							}
+							previousPose = p;
+							previousMapId = m;
+
 							allWeights.insert(std::make_pair(*iter, w));
-							if((!ignoreInterNodes || w!=-1))
+							if((!ignoreInterNodes || w!=-1) && w!=-9)
 							{
 								odomPoses.insert(std::make_pair(*iter, p));
 								odomStamps.insert(std::make_pair(*iter, s));
@@ -804,6 +833,7 @@ int main(int argc, char * argv[])
 						allLinks=allBiLinks;
 					}
 					std::multimap<int, Link> loopClosureLinks;
+					int landmarks = 0;
 					for(std::multimap<int, Link>::iterator jter=allLinks.begin(); jter!=allLinks.end(); ++jter)
 					{
 						if(jter->second.from() == jter->second.to() || graph::findLink(links, jter->second.from(), jter->second.to(), true) == links.end())
@@ -839,9 +869,15 @@ int main(int argc, char * argv[])
 						}
 						if( jter->second.type() != Link::kNeighbor &&
 							jter->second.type() != Link::kNeighborMerged &&
+							jter->second.type() != Link::kGravity &&
+							jter->second.type() != Link::kLandmark &&
 							graph::findLink(loopClosureLinks, jter->second.from(), jter->second.to()) == loopClosureLinks.end())
 						{
 							loopClosureLinks.insert(*jter);
+						}
+						else if(jter->second.type() == Link::kLandmark)
+						{
+							landmarks++;
 						}
 					}
 
@@ -1173,10 +1209,11 @@ int main(int argc, char * argv[])
 							}
 						}
 					}
-					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%s, odom=%.3fm) ang=%.1fdeg%s%s, %s: avg=%dms (max=%dms) loops=%d%s, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
+					printf("   %s (%d, %.1f m%s): RMSE= %.3f m (max=%s, odom=%.3f m) ang=%.1f deg%s%s, %s: avg=%d ms (max=%d ms) loops=%d%s%s%s%s%s%s\n",
 							fileName.c_str(),
 							(int)ids.size(),
-							bestScale,
+							totalOdomDistance,
+							bestScale != 1.0f?uFormat(", s=%.3f", bestScale).c_str():"",
 							bestRMSE,
 							maxRMSE!=-1?uFormat("%.3fm", maxRMSE).c_str():"NA",
 							bestVoRMSE,
@@ -1186,11 +1223,12 @@ int main(int argc, char * argv[])
 							!localizationMultiStats.empty()?"loc":"slam",
 							(int)uMean(slamTime), (int)uMax(slamTime),
 							(int)loopClosureLinks.size(),
+							landmarks==0?"":uFormat(", landmarks = %d", landmarks).c_str(),
 							!outputLoopAccuracy?"":uFormat(" (t_err=%.3fm r_err=%.2f deg)", loop_t_err, loop_r_err).c_str(),
-							(int)uMean(odomTime), (int)uMax(odomTime),
-							(int)uMean(cameraTime),
-							maxOdomRAM!=-1.0f?uFormat("RAM odom=%dMB ", (int)maxOdomRAM).c_str():"",
-							(int)maxMapRAM);
+							odomTime.empty()?"":uFormat(", odom: avg=%dms (max=%dms)", (int)uMean(odomTime), (int)uMax(odomTime)).c_str(),
+							cameraTime.empty()?"":uFormat(", camera: avg=%dms", (int)uMean(cameraTime)).c_str(),
+							maxOdomRAM!=-1.0f?uFormat(", RAM odom=%dMB ", (int)maxOdomRAM).c_str():"",
+							maxMapRAM!=-1.0f?uFormat(", map=%dMB",(int)maxMapRAM).c_str():"");
 
 					if(outputLatex)
 					{

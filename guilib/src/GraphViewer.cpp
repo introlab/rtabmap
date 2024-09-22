@@ -1809,7 +1809,7 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	QGraphicsView::mouseMoveEvent(event);
 }
 
-void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
+void GraphViewer::mousePressEvent(QMouseEvent * event)
 {
 	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
 	if(item)
@@ -1826,12 +1826,12 @@ void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
 		}
 		else
 		{
-			QGraphicsView::mouseDoubleClickEvent(event);
+			QGraphicsView::mousePressEvent(event);
 		}
 	}
 	else
 	{
-		QGraphicsView::mouseDoubleClickEvent(event);
+		QGraphicsView::mousePressEvent(event);
 	}
 }
 
