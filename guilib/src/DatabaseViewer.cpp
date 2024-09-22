@@ -351,6 +351,11 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_B, SIGNAL(valueChanged(int)), this, SLOT(sliderBValueChanged(int)));
 	connect(ui_->horizontalSlider_A, SIGNAL(sliderMoved(int)), this, SLOT(sliderAMoved(int)));
 	connect(ui_->horizontalSlider_B, SIGNAL(sliderMoved(int)), this, SLOT(sliderBMoved(int)));
+	ui_->spinBox_indexA->setEnabled(false);
+	ui_->spinBox_indexB->setEnabled(false);
+	connect(ui_->spinBox_indexA, SIGNAL(valueChanged(int)), this, SLOT(sliderAValueChanged(int)));
+	connect(ui_->spinBox_indexB, SIGNAL(valueChanged(int)), this, SLOT(sliderBValueChanged(int)));
+
 	connect(ui_->toolButton_edit_priorA, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->toolButton_edit_priorB, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->toolButton_remove_priorA, SIGNAL(clicked(bool)), this, SLOT(rejectConstraint()));
@@ -1155,6 +1160,11 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_idB->setText("NaN");
 		sliderAValueChanged(0);
 		sliderBValueChanged(0);
+
+		ui_->spinBox_indexA->setEnabled(false);
+		ui_->spinBox_indexA->setMaximum(0);
+		ui_->spinBox_indexB->setEnabled(false);
+		ui_->spinBox_indexB->setMaximum(0);
 
 		constraintsViewer_->clear();
 		constraintsViewer_->refreshView();
@@ -2120,6 +2130,13 @@ void DatabaseViewer::updateIds()
 
 	if(ids_.size())
 	{
+		ui_->spinBox_indexA->setMinimum(0);
+		ui_->spinBox_indexB->setMinimum(0);
+		ui_->spinBox_indexA->setMaximum(ids_.size()-1);
+		ui_->spinBox_indexB->setMaximum(ids_.size()-1);
+		ui_->spinBox_indexA->setEnabled(true);
+		ui_->spinBox_indexB->setEnabled(true);
+
 		ui_->horizontalSlider_A->setMinimum(0);
 		ui_->horizontalSlider_B->setMinimum(0);
 		ui_->horizontalSlider_A->setMaximum(ids_.size()-1);
@@ -2135,6 +2152,10 @@ void DatabaseViewer::updateIds()
 	{
 		ui_->horizontalSlider_A->setEnabled(false);
 		ui_->horizontalSlider_B->setEnabled(false);
+
+		ui_->spinBox_indexA->setEnabled(false);
+		ui_->spinBox_indexB->setEnabled(false);
+
 		ui_->label_idA->setText("NaN");
 		ui_->label_idB->setText("NaN");
 	}
@@ -4583,7 +4604,7 @@ void DatabaseViewer::graphLinkSelected(int from, int to)
 void DatabaseViewer::sliderAValueChanged(int value)
 {
 	this->update(value,
-			ui_->label_indexA,
+			ui_->spinBox_indexA,
 			ui_->label_parentsA,
 			ui_->label_childrenA,
 			ui_->label_weightA,
@@ -4610,7 +4631,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 void DatabaseViewer::sliderBValueChanged(int value)
 {
 	this->update(value,
-			ui_->label_indexB,
+			ui_->spinBox_indexB,
 			ui_->label_parentsB,
 			ui_->label_childrenB,
 			ui_->label_weightB,
@@ -4635,7 +4656,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 }
 
 void DatabaseViewer::update(int value,
-						QLabel * labelIndex,
+						QSpinBox * spinBoxIndex,
 						QLabel * labelParents,
 						QLabel * labelChildren,
 						QLabel * weight,
@@ -4661,7 +4682,9 @@ void DatabaseViewer::update(int value,
 	lastSliderIndexBrowsed_ = value;
 
 	UTimer timer;
-	labelIndex->setText(QString::number(value));
+	spinBoxIndex->blockSignals(true);
+	spinBoxIndex->setValue(value);
+	spinBoxIndex->blockSignals(false);
 	labelParents->clear();
 	labelChildren->clear();
 	weight->clear();
@@ -5982,7 +6005,9 @@ void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 
 void DatabaseViewer::sliderAMoved(int value)
 {
-	ui_->label_indexA->setText(QString::number(value));
+	ui_->spinBox_indexA->blockSignals(true);
+	ui_->spinBox_indexA->setValue(value);
+	ui_->spinBox_indexA->blockSignals(false);
 	if(value>=0 && value < ids_.size())
 	{
 		ui_->label_idA->setText(QString::number(ids_.at(value)));
@@ -5995,7 +6020,9 @@ void DatabaseViewer::sliderAMoved(int value)
 
 void DatabaseViewer::sliderBMoved(int value)
 {
-	ui_->label_indexB->setText(QString::number(value));
+	ui_->spinBox_indexB->blockSignals(true);
+	ui_->spinBox_indexB->setValue(value);
+	ui_->spinBox_indexB->blockSignals(false);
 	if(value>=0 && value < ids_.size())
 	{
 		ui_->label_idB->setText(QString::number(ids_.at(value)));
@@ -6308,7 +6335,7 @@ void DatabaseViewer::updateConstraintView(
 		ui_->horizontalSlider_B->blockSignals(false);
 		if(link.from()>0)
 			this->update(idToIndex_.value(link.from()),
-						ui_->label_indexA,
+						ui_->spinBox_indexA,
 						ui_->label_parentsA,
 						ui_->label_childrenA,
 						ui_->label_weightA,
@@ -6333,7 +6360,7 @@ void DatabaseViewer::updateConstraintView(
 		if(link.to()>0)
 		{
 			this->update(idToIndex_.value(link.to()),
-						ui_->label_indexB,
+						ui_->spinBox_indexB,
 						ui_->label_parentsB,
 						ui_->label_childrenB,
 						ui_->label_weightB,
