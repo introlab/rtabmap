@@ -773,6 +773,9 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QSpinBox" name="spinBox_A"/>
+        </item>
        </layout>
       </item>
       <item row="1" column="1">
@@ -837,6 +840,9 @@
            <enum>QSlider::TicksAbove</enum>
           </property>
          </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spinBox_B"/>
         </item>
        </layout>
       </item>

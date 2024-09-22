@@ -351,6 +351,12 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_B, SIGNAL(valueChanged(int)), this, SLOT(sliderBValueChanged(int)));
 	connect(ui_->horizontalSlider_A, SIGNAL(sliderMoved(int)), this, SLOT(sliderAMoved(int)));
 	connect(ui_->horizontalSlider_B, SIGNAL(sliderMoved(int)), this, SLOT(sliderBMoved(int)));
+
+	ui_->spinBox_A->setEnabled(false);
+	ui_->spinBox_B->setEnabled(false);
+	connect(ui_->spinBox_A, SIGNAL(valueChanged(int)), this, SLOT(spinBoxAValueChanged(int)));
+	connect(ui_->spinBox_B, SIGNAL(valueChanged(int)), this, SLOT(spinBoxBValueChanged(int)));
+
 	connect(ui_->toolButton_edit_priorA, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->toolButton_edit_priorB, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->toolButton_remove_priorA, SIGNAL(clicked(bool)), this, SLOT(rejectConstraint()));
@@ -848,6 +854,9 @@ bool DatabaseViewer::openDatabase(const QString & path, const ParametersMap & ov
 				}
 				databaseFileName_ = UFile::getName(path.toStdString());
 				ui_->graphViewer->setWorkingDirectory(pathDatabase_);
+				ui_->graphViewer->setDatabase(this);
+				ui_->graphViewer->setSlider_A(ui_->horizontalSlider_A);
+				ui_->graphViewer->setSlider_B(ui_->horizontalSlider_B);
 
 				// look if there are saved parameters
 				ParametersMap parameters = dbDriver_->getLastParameters();
@@ -1151,10 +1160,18 @@ bool DatabaseViewer::closeDatabase()
 		ui_->horizontalSlider_A->setMaximum(0);
 		ui_->horizontalSlider_B->setEnabled(false);
 		ui_->horizontalSlider_B->setMaximum(0);
-		ui_->label_idA->setText("NaN");
-		ui_->label_idB->setText("NaN");
 		sliderAValueChanged(0);
 		sliderBValueChanged(0);
+
+		ui_->spinBox_A->setEnabled(false);
+		ui_->spinBox_A->setMaximum(0);
+		ui_->spinBox_B->setEnabled(false);
+		ui_->spinBox_B->setMaximum(0);
+		spinBoxAValueChanged(0);
+		spinBoxBValueChanged(0);		
+
+		ui_->label_idA->setText("NaN");
+		ui_->label_idB->setText("NaN");
 
 		constraintsViewer_->clear();
 		constraintsViewer_->refreshView();
@@ -2130,11 +2147,24 @@ void DatabaseViewer::updateIds()
 		ui_->horizontalSlider_B->setSliderPosition(0);
 		sliderAValueChanged(0);
 		sliderBValueChanged(0);
+
+		ui_->spinBox_A->setMinimum(0);
+		ui_->spinBox_B->setMinimum(0);
+		ui_->spinBox_A->setMaximum(ids_.size()-1);
+		ui_->spinBox_B->setMaximum(ids_.size()-1);
+		ui_->spinBox_A->setEnabled(true);
+		ui_->spinBox_B->setEnabled(true);
+		spinBoxAValueChanged(0);
+		spinBoxBValueChanged(0);
 	}
 	else
 	{
 		ui_->horizontalSlider_A->setEnabled(false);
 		ui_->horizontalSlider_B->setEnabled(false);
+
+		ui_->spinBox_A->setEnabled(false);
+		ui_->spinBox_B->setEnabled(false);
+
 		ui_->label_idA->setText("NaN");
 		ui_->label_idB->setText("NaN");
 	}
@@ -4592,6 +4622,10 @@ void DatabaseViewer::graphLinkSelected(int from, int to)
 
 void DatabaseViewer::sliderAValueChanged(int value)
 {
+	ui_->spinBox_A->blockSignals(true);
+	ui_->spinBox_A->setValue(value);
+	ui_->spinBox_A->blockSignals(false);
+	
 	this->update(value,
 			ui_->label_indexA,
 			ui_->label_parentsA,
@@ -4619,6 +4653,10 @@ void DatabaseViewer::sliderAValueChanged(int value)
 
 void DatabaseViewer::sliderBValueChanged(int value)
 {
+	ui_->spinBox_B->blockSignals(true);
+	ui_->spinBox_B->setValue(value);
+	ui_->spinBox_B->blockSignals(false);
+
 	this->update(value,
 			ui_->label_indexB,
 			ui_->label_parentsB,
@@ -4642,6 +4680,71 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_gtB,
 			ui_->label_sensorsB,
 			true);
+}
+
+void DatabaseViewer::spinBoxAValueChanged(int value)
+{
+	ui_->horizontalSlider_A->blockSignals(true);
+	ui_->horizontalSlider_A->blockSignals(false);
+
+	this->update(value,
+			ui_->label_indexA,
+			ui_->label_parentsA,
+			ui_->label_childrenA,
+			ui_->label_weightA,
+			ui_->label_labelA,
+			ui_->label_stampA,
+			ui_->graphicsView_A,
+			ui_->label_idA,
+			ui_->label_mapA,
+			ui_->label_poseA,
+			ui_->label_optposeA,
+			ui_->label_velA,
+			ui_->label_calibA,
+			ui_->label_scanA,
+			ui_->label_gravityA,
+			ui_->label_priorA,
+			ui_->toolButton_edit_priorA,
+			ui_->toolButton_remove_priorA,
+			ui_->label_gpsA,
+			ui_->label_gtA,
+			ui_->label_sensorsA,
+			true);
+}
+
+void DatabaseViewer::spinBoxBValueChanged(int value)
+{
+	ui_->horizontalSlider_B->blockSignals(true);
+	ui_->horizontalSlider_B->setValue(value);
+	ui_->horizontalSlider_B->blockSignals(false);
+	
+	this->update(value,
+			ui_->label_indexB,
+			ui_->label_parentsB,
+			ui_->label_childrenB,
+			ui_->label_weightB,
+			ui_->label_labelB,
+			ui_->label_stampB,
+			ui_->graphicsView_B,
+			ui_->label_idB,
+			ui_->label_mapB,
+			ui_->label_poseB,
+			ui_->label_optposeB,
+			ui_->label_velB,
+			ui_->label_calibB,
+			ui_->label_scanB,
+			ui_->label_gravityB,
+			ui_->label_priorB,
+			ui_->toolButton_edit_priorB,
+			ui_->toolButton_remove_priorB,
+			ui_->label_gpsB,
+			ui_->label_gtB,
+			ui_->label_sensorsB,
+			true);
+}
+
+int DatabaseViewer::idToIndex(int id){
+	return idToIndex_.value(id);
 }
 
 void DatabaseViewer::update(int value,
@@ -6347,6 +6450,16 @@ void DatabaseViewer::updateConstraintView(
 			ui_->horizontalSlider_B->setValue(idToIndex_.value(link.to()));
 		ui_->horizontalSlider_A->blockSignals(false);
 		ui_->horizontalSlider_B->blockSignals(false);
+		
+		ui_->spinBox_A->blockSignals(true);
+		ui_->spinBox_B->blockSignals(true);
+		if(link.from()>0)
+			ui_->spinBox_A->setValue(idToIndex_.value(link.from()));
+		if(link.to() > 0)
+			ui_->spinBox_B->setValue(idToIndex_.value(link.to()));
+		ui_->spinBox_A->blockSignals(false);
+		ui_->spinBox_B->blockSignals(false);
+
 		if(link.from()>0)
 			this->update(idToIndex_.value(link.from()),
 						ui_->label_indexA,

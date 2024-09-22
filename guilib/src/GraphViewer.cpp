@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/gui/GraphViewer.h"
-
+#include "ui_DatabaseViewer.h"
 #include <QGraphicsView>
 #include <QVBoxLayout>
 #include <QGraphicsScene>
@@ -70,6 +70,16 @@ namespace rtabmap {
 class NodeItem: public QGraphicsEllipseItem
 {
 public:
+	//static database object used to provide more access from NodeItem
+	static rtabmap::DatabaseViewer* db_object;
+	static QSlider* slider_A;
+	static QSlider* slider_B;	
+	static bool show_border;
+
+	QPen noBorder;
+	QPen border;
+	bool node_selected = false;
+	
 	// in meter
 	NodeItem(int id, int mapId, const Transform & pose, float radius, int weight, GraphViewer::ViewPlane plane, float linkWidth) :
 		QGraphicsEllipseItem(QRectF(-radius*100.0f,-radius*100.0f,radius*100.0f*2.0f,radius*100.0f*2.0f)),
@@ -85,6 +95,7 @@ public:
 		float r,p,yaw;
 		pose.getEulerAngles(r, p, yaw);
 		radius*=100.0f;
+		_radius = radius;
 		_line = new QGraphicsLineItem(0,0,-radius*sin(yaw),-radius*cos(yaw), this);
 		QPen pen = _line->pen();
 		pen.setWidth(linkWidth*100.0f);
@@ -101,6 +112,12 @@ public:
 		b.setColor(color);
 		this->setBrush(b);
 
+		noBorder = QPen(color);
+		border = QPen(Qt::red);
+		border.setWidth((int)_radius/2 + 1);
+		noBorder.setWidth(0);
+		this->setPen(QPen(noBorder));
+
 		QPen pen = _line->pen();
 		pen.setColor(QColor(255-color.red(), 255-color.green(), 255-color.blue()));
 		_line->setPen(pen);
@@ -113,6 +130,14 @@ public:
 		radius*=100.0f;
 		this->setRect(-radius, -radius, radius*2.0f, radius*2.0f);
 		_line->setLine(0,0,-radius*sin(yaw),-radius*cos(yaw));
+		
+		border.setWidth((int)radius/2 + 1);
+		noBorder.setWidth(0);
+
+		if(node_selected && NodeItem::show_border)
+			this->setPen(QPen(border));
+		else
+			this->setPen(QPen(noBorder));
 	}
 
 	int id() const {return _id;};
@@ -162,13 +187,36 @@ protected:
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
 
+	virtual void mousePressEvent ( QGraphicsSceneMouseEvent * event )
+	{
+		if(_swapAtoB)
+		{
+			slider_A->setValue(id());
+			_swapAtoB = false;
+		}
+		else 
+		{
+			slider_B->setValue(id());
+			_swapAtoB = true;
+		}
+		QGraphicsEllipseItem::mousePressEvent(event);
+	}
+
 private:
 	int _id;
 	int _mapId;
 	int _weight;
+	float _radius;
 	Transform _pose;
+	bool _swapAtoB;
 	QGraphicsLineItem * _line;
 };
+
+//Define static variables
+DatabaseViewer* NodeItem::db_object = nullptr;
+QSlider* NodeItem::slider_A = nullptr;
+QSlider* NodeItem::slider_B = nullptr;
+bool NodeItem::show_border = true;
 
 class NodeGPSItem: public NodeItem
 {
@@ -196,6 +244,11 @@ private:
 class LinkItem: public QGraphicsLineItem
 {
 public:
+
+	static DatabaseViewer* db_object;
+	static QSlider* slider_A;
+	static QSlider* slider_B;
+
 	// in meter
 	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, const Link & link, bool interSessionClosure, GraphViewer::ViewPlane plane) :
 		_from(from),
@@ -272,6 +325,12 @@ protected:
 		QGraphicsLineItem::hoverEnterEvent(event);
 	}
 
+	virtual void mousePressEvent ( QGraphicsSceneMouseEvent * event )
+	{
+		slider_A->setValue(db_object->idToIndex(_from));
+		slider_B->setValue(db_object->idToIndex(_to));
+	}
+
 private:
 	int _from;
 	int _to;
@@ -280,6 +339,11 @@ private:
 	Link _link;
 	bool _interSession;
 };
+
+
+QSlider* LinkItem::slider_A = nullptr;
+QSlider* LinkItem::slider_B = nullptr;
+DatabaseViewer* LinkItem::db_object = nullptr;
 
 GraphViewer::GraphViewer(QWidget * parent) :
 		QGraphicsView(parent),
@@ -466,6 +530,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	this->restoreDefaults();
 
 	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
+
+	previousNode = nullptr;
 }
 
 GraphViewer::~GraphViewer()
@@ -1400,6 +1466,21 @@ bool GraphViewer::isEnsureFrameVisible() const
 	return _ensureFrameVisible;
 }
 
+void GraphViewer::setDatabase(DatabaseViewer* db_){
+	NodeItem::db_object = db_;
+	LinkItem::db_object = db_;
+}
+
+void GraphViewer::setSlider_A(QSlider *slider_A){
+	NodeItem::slider_A = slider_A;
+	LinkItem::slider_A = slider_A;
+}
+
+void GraphViewer::setSlider_B(QSlider *slider_B){
+	NodeItem::slider_B = slider_B;
+	LinkItem::slider_B = slider_B;
+}
+
 void GraphViewer::setWorkingDirectory(const QString & path)
 {
 	_workingDirectory = path;
@@ -1459,6 +1540,7 @@ void GraphViewer::setNodeColor(const QColor & color)
 		iter.value()->setColor(_nodeColor);
 	}
 }
+
 void GraphViewer::setNodeOdomCacheColor(const QColor & color)
 {
 	_nodeOdomCacheColor = color;
@@ -1470,6 +1552,27 @@ void GraphViewer::setNodeOdomCacheColor(const QColor & color)
 		}
 	}
 }
+
+void GraphViewer::highlightCurrentNode(int value){
+	
+	QMap<int, NodeItem*>::iterator iter = _nodeItems.find(value);
+	if(iter != _nodeItems.end()){
+		NodeItem* node = iter.value();
+		if(previousNode != nullptr){
+			previousNode->node_selected = false;
+			if(NodeItem::show_border){
+				previousNode->setPen(QPen(previousNode->noBorder));
+			}
+
+		}
+		previousNode = node;
+		node->node_selected = true;
+		if(NodeItem::show_border){
+			node->setPen(QPen(node->border));
+		}
+	}
+}
+
 void GraphViewer::setCurrentGoalColor(const QColor & color)
 {
 	_currentGoalColor = color;
@@ -1908,6 +2011,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 
 	menu.addSeparator();
 	QAction * aSetNodeSize = menu.addAction(tr("Set node radius..."));
+	QAction * aToggleNodeBorder = menu.addAction(tr("Toggle node border..."));
 	QAction * aSetLinkSize = menu.addAction(tr("Set link width..."));
 	QAction * aChangeMaxLinkLength = menu.addAction(tr("Set maximum link length..."));
 	menu.addSeparator();
@@ -2385,6 +2489,16 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		if(ok)
 		{
 			setNodeRadius(value);
+		}
+	}
+	else if(r == aToggleNodeBorder){
+		
+		if(NodeItem::show_border){
+			NodeItem::show_border = false;
+			previousNode->setPen(QPen(previousNode->noBorder));
+		} else {
+			NodeItem::show_border = true;
+			previousNode->setPen(QPen(previousNode->border));
 		}
 	}
 	else if(r == aSetLinkSize)
