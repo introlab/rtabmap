@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/sam/BearingFactor.h>
 #include <gtsam/sam/BearingRangeFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -551,7 +552,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 							}
 						}
-						else
+						else if(1 / static_cast<double>(iter->second.infMatrix().at<double>(1,1)) < 9999)
 						{
 							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
 							if(!isCovarianceIgnored())
@@ -564,6 +565,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point2 landmark(t.x(), t.y());
 							gtsam::Pose2 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+						}
+						else
+						{
+							Eigen::Matrix<double, 1, 1> information = Eigen::Matrix<double, 1, 1>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,1), cv::Range(0,1)).clone();;
+								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+							}
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+
+							gtsam::Point2 landmark(t.x(), t.y());
+							gtsam::Pose2 p;
+							graph.add(gtsam::BearingFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), model));
 							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 					}
@@ -599,19 +615,36 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 							}
 						}
-						else
+						else if(1 / static_cast<double>(iter->second.infMatrix().at<double>(2,2)) < 9999)
 						{
 							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
 							{
-								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();;
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();
 								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
 							}
+
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
 
 							gtsam::Point3 landmark(t.x(), t.y(), t.z());
 							gtsam::Pose3 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+						}
+						else
+						{
+							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,2), cv::Range(0,2)).clone();
+								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+							}
+
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+
+							gtsam::Point3 landmark(t.x(), t.y(), t.z());
+							gtsam::Pose3 p;
+							graph.add(gtsam::BearingFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), model));
 							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 					}

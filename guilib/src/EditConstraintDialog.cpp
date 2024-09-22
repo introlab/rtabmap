@@ -28,13 +28,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/EditConstraintDialog.h"
 #include "ui_editConstraintDialog.h"
 
+#include <rtabmap/utilite/ULogger.h>
+#include <iostream>
+
 #ifndef M_PI
 #define M_PI       3.14159265358979323846
 #endif
 
 namespace rtabmap {
 
-EditConstraintDialog::EditConstraintDialog(const Transform & constraint, double linearSigma, double angularSigma, QWidget * parent) :
+EditConstraintDialog::EditConstraintDialog(const Transform & constraint, const cv::Mat & covariance, QWidget * parent) :
 	QDialog(parent)
 {
 	_ui = new Ui_EditConstraintDialog();
@@ -49,9 +52,15 @@ EditConstraintDialog::EditConstraintDialog(const Transform & constraint, double 
 	_ui->pitch->setValue(pitch);
 	_ui->yaw->setValue(yaw);
 
+	UASSERT(covariance.empty() || (covariance.cols == 6 && covariance.rows == 6 && covariance.type() == CV_64FC1));
+
 	_ui->checkBox_radians->setChecked(true);
-	_ui->linear_sigma->setValue(linearSigma);
-	_ui->angular_sigma->setValue(angularSigma);
+	_ui->linear_sigma_x->setValue(covariance.empty() || covariance.at<double>(0,0)>=9999 || covariance.at<double>(0,0)<=0?0:sqrt(covariance.at<double>(0,0)));
+	_ui->linear_sigma_y->setValue(covariance.empty() || covariance.at<double>(1,1)>=9999 || covariance.at<double>(1,1)<=0?0:sqrt(covariance.at<double>(1,1)));
+	_ui->linear_sigma_z->setValue(covariance.empty() || covariance.at<double>(2,2)>=9999 || covariance.at<double>(2,2)<=0?0:sqrt(covariance.at<double>(2,2)));
+	_ui->angular_sigma_roll->setValue(covariance.empty() || covariance.at<double>(3,3)>=9999 || covariance.at<double>(3,3)<=0?0:sqrt(covariance.at<double>(3,3)));
+	_ui->angular_sigma_pitch->setValue(covariance.empty() || covariance.at<double>(4,4)>=9999 || covariance.at<double>(4,4)<=0?0:sqrt(covariance.at<double>(4,4)));
+	_ui->angular_sigma_yaw->setValue(covariance.empty() || covariance.at<double>(5,5)>=9999 || covariance.at<double>(5,5)<=0?0:sqrt(covariance.at<double>(5,5)));
 
 	connect(_ui->checkBox_radians, SIGNAL(stateChanged(int)), this, SLOT(switchUnits()));
 }
@@ -59,6 +68,15 @@ EditConstraintDialog::EditConstraintDialog(const Transform & constraint, double 
 EditConstraintDialog::~EditConstraintDialog()
 {
 	delete _ui;
+}
+
+void EditConstraintDialog::setPoseGroupVisible(bool visible)
+{
+	_ui->groupBox_pose->setVisible(visible);
+}
+void EditConstraintDialog::setCovarianceGroupVisible(bool visible)
+{
+	_ui->groupBox_covariance->setVisible(visible);
 }
 
 void EditConstraintDialog::switchUnits()
@@ -72,13 +90,15 @@ void EditConstraintDialog::switchUnits()
 	boxes.push_back(_ui->roll);
 	boxes.push_back(_ui->pitch);
 	boxes.push_back(_ui->yaw);
-	boxes.push_back(_ui->angular_sigma);
+	boxes.push_back(_ui->angular_sigma_roll);
+	boxes.push_back(_ui->angular_sigma_pitch);
+	boxes.push_back(_ui->angular_sigma_yaw);
 	for(int i=0; i<boxes.size(); ++i)
 	{
 		double value = boxes[i]->value()*conversion;
 		if(_ui->checkBox_radians->isChecked())
 		{
-			if(boxes[i]!=_ui->angular_sigma)
+			if(boxes[i]!=_ui->angular_sigma_roll && boxes[i]!=_ui->angular_sigma_pitch && boxes[i]!=_ui->angular_sigma_yaw)
 			{
 				boxes[i]->setMinimum(-M_PI);
 			}
@@ -88,7 +108,7 @@ void EditConstraintDialog::switchUnits()
 		}
 		else
 		{
-			if(boxes[i]!=_ui->angular_sigma)
+			if(boxes[i]!=_ui->angular_sigma_roll && boxes[i]!=_ui->angular_sigma_pitch && boxes[i]!=_ui->angular_sigma_yaw)
 			{
 				boxes[i]->setMinimum(-180);
 			}
@@ -110,19 +130,24 @@ Transform EditConstraintDialog::getTransform() const
 	return Transform(_ui->x->value(), _ui->y->value(), _ui->z->value(), _ui->roll->value()*conversion, _ui->pitch->value()*conversion, _ui->yaw->value()*conversion);
 }
 
-double EditConstraintDialog::getLinearVariance() const
+cv::Mat EditConstraintDialog::getCovariance() const
 {
-	return _ui->linear_sigma->value()*_ui->linear_sigma->value();
-}
-double EditConstraintDialog::getAngularVariance() const
-{
+	cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
+	covariance.at<double>(0,0) = _ui->linear_sigma_x->value()==0?9999:_ui->linear_sigma_x->value()*_ui->linear_sigma_x->value();
+	covariance.at<double>(1,1) = _ui->linear_sigma_y->value()==0?9999:_ui->linear_sigma_y->value()*_ui->linear_sigma_y->value();
+	covariance.at<double>(2,2) = _ui->linear_sigma_z->value()==0?9999:_ui->linear_sigma_z->value()*_ui->linear_sigma_z->value();
 	double conversion = 1.0f;
 	if(!_ui->checkBox_radians->isChecked())
 	{
 		conversion = M_PI/180.0;
 	}
-	double value = _ui->angular_sigma->value()*conversion;
-	return value*value;
+	double sigma = _ui->angular_sigma_roll->value()*conversion;
+	covariance.at<double>(3,3) = sigma==0?9999:sigma*sigma;
+	sigma = _ui->angular_sigma_pitch->value()*conversion;
+	covariance.at<double>(4,4) = sigma==0?9999:sigma*sigma;
+	sigma = _ui->angular_sigma_yaw->value()*conversion;
+	covariance.at<double>(5,5) = sigma==0?9999:sigma*sigma;
+	return covariance;
 }
 
 }
