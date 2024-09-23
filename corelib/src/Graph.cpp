@@ -104,7 +104,20 @@ bool exportPoses(
 #endif
 		if(fout)
 		{
-			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			std::list<std::pair<int, Transform> > posesList;
+			for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(0); iter!=poses.end(); ++iter)
+			{
+				posesList.push_back(*iter);
+			}
+			if(format == 11)
+			{	
+				// Put landmarks at the end
+				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0; ++iter)
+				{
+					posesList.push_back(*iter);
+				}
+			}
+			for(std::list<std::pair<int, Transform> >::const_iterator iter=posesList.begin(); iter!=posesList.end(); ++iter)
 			{
 				if(format == 1 || format == 10 || format == 11) // rgbd-slam format
 				{
@@ -125,7 +138,7 @@ bool exportPoses(
 					// Format: stamp x y z qx qy qz qw
 					Eigen::Quaternionf q = pose.getQuaternionf();
 
-					if(iter == poses.begin())
+					if(iter == posesList.begin())
 					{
 						// header
 						if(format == 11)

@@ -60,8 +60,9 @@ void showUsage()
 			"    --loop             Compute relative motion error of loop closures.\n"
 			"    --scale            Find the best scale for the map against the ground truth\n"
 			"                         and compute error based on the scaled path.\n"
-			"    --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
-			"                         and valid ground truth indices to [path]_indices.txt \n"
+			"    --poses            Export odometry to [path]_odom.txt, optimized graph to [path]_slam.txt \n"
+			"                         and ground truth to [path]_gt.txt in TUM RGB-D format.\n"
+			"    --poses_raw        Same as --poses, but poses are not aligned to gt."
 			"    --gt FILE.txt      Use this file as ground truth (TUM RGB-D format). It will\n"
 			"                         override the ground truth set in database if there is one.\n"
 			"                         If extension is *.db, the optimized poses of that database will\n"
@@ -144,6 +145,7 @@ int main(int argc, char * argv[])
 	bool outputRelativeError = false;
 	bool outputReport = false;
 	bool outputLoopAccuracy = false;
+	bool outputPosesAlignedToGt = true;
 	bool incrementalOptimization = false;
 	bool showAvailableStats = false;
 	bool invertFigures = false;
@@ -190,6 +192,11 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "--poses") == 0)
 		{
 			outputPoses = true;
+		}
+		else if(strcmp(argv[i], "--poses_raw") == 0)
+		{
+			outputPoses = true;
+			outputPosesAlignedToGt = false;
 		}
 		else if(strcmp(argv[i], "--loop") == 0)
 		{
@@ -886,6 +893,7 @@ int main(int argc, char * argv[])
 					float bestRMSEAng = -1;
 					float bestVoRMSE = -1;
 					Transform bestGtToMap = Transform::getIdentity();
+					Transform bestGtToOdom = Transform::getIdentity();
 					float kitti_t_err = 0.0f;
 					float kitti_r_err = 0.0f;
 					float relative_t_err = 0.0f;
@@ -944,9 +952,19 @@ int main(int argc, char * argv[])
 						{
 							//remove landmarks
 							std::map<int, Transform>::iterator iter=poses.begin();
+							std::map<int, Transform> optimizedLandmarks;
 							while(iter!=poses.end() && iter->first < 0)
 							{
+								optimizedLandmarks.insert(*iter);
 								poses.erase(iter++);
+							}
+							if(outputKittiError) {
+								// remove landmarks
+								std::map<int, Transform>::iterator iter=posesOut.begin();
+								while(iter!=posesOut.end() && iter->first < 0)
+								{
+									posesOut.erase(iter++);
+								}
 							}
 
 							std::map<int, Transform> groundTruth;
@@ -993,7 +1011,7 @@ int main(int argc, char * argv[])
 								float rotational_min = 0.0f;
 								float rotational_max = 0.0f;
 
-								graph::calcRMSE(
+								Transform gtToOdom = graph::calcRMSE(
 										groundTruth,
 										scaledOdomPoses,
 										translational_rmse,
@@ -1035,6 +1053,7 @@ int main(int argc, char * argv[])
 								bestRMSEAng = rotational_rmse;
 								bestScale = scale;
 								bestGtToMap = gtToMap;
+								bestGtToOdom = gtToOdom;
 								if(!outputScaled)
 								{
 									// just did iteration without any scale, then exit
@@ -1042,12 +1061,32 @@ int main(int argc, char * argv[])
 								}
 							}
 
+							// Scale/align slam poses
 							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 							{
 								iter->second.x()*=bestScale;
 								iter->second.y()*=bestScale;
 								iter->second.z()*=bestScale;
-								iter->second = bestGtToMap * iter->second;
+								if(outputPosesAlignedToGt)
+									iter->second = bestGtToMap * iter->second;
+							}
+							for(std::map<int, Transform>::iterator iter=optimizedLandmarks.begin(); iter!=optimizedLandmarks.end(); ++iter)
+							{
+								iter->second.x()*=bestScale;
+								iter->second.y()*=bestScale;
+								iter->second.z()*=bestScale;
+								if(outputPosesAlignedToGt)
+									iter->second = bestGtToMap * iter->second;
+							}
+
+							// Scale/align odom poses
+							for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
+							{
+								iter->second.x()*=bestScale;
+								iter->second.y()*=bestScale;
+								iter->second.z()*=bestScale;
+								if(outputPosesAlignedToGt)
+									iter->second = bestGtToOdom * iter->second;
 							}
 
 							if(outputRelativeError)
@@ -1100,13 +1139,25 @@ int main(int argc, char * argv[])
 								std::map<int, double> stamps;
 								if(!outputKittiError)
 								{
+									// re-add landmarks
+									uInsert(poses, optimizedLandmarks);
+								}
+								if(!outputKittiError)
+								{
 									for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 									{
-										UASSERT(odomStamps.find(iter->first) != odomStamps.end());
-										stamps.insert(*odomStamps.find(iter->first));
+										if(iter->first < 0)
+										{
+											stamps.insert(std::make_pair(iter->first, 0));
+										}
+										else
+										{
+											UASSERT(odomStamps.find(iter->first) != odomStamps.end());
+											stamps.insert(*odomStamps.find(iter->first));
+										}
 									}
 								}
-								if(!graph::exportPoses(path, outputKittiError?2:10, poses, dummyLinks, stamps))
+								if(!graph::exportPoses(path, outputKittiError?2:11, poses, dummyLinks, stamps))
 								{
 									printf("Could not export the poses to \"%s\"!?!\n", path.c_str());
 								}
@@ -1116,13 +1167,20 @@ int main(int argc, char * argv[])
 								stamps.clear();
 								if(!outputKittiError)
 								{
-									for(std::map<int, Transform>::iterator iter=odomPoses.begin(); iter!=odomPoses.end(); ++iter)
+									for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
 									{
-										UASSERT(odomStamps.find(iter->first) != odomStamps.end());
-										stamps.insert(*odomStamps.find(iter->first));
+										if(iter->first < 0)
+										{
+											stamps.insert(std::make_pair(iter->first, 0));
+										}
+										else
+										{
+											UASSERT(odomStamps.find(iter->first) != odomStamps.end());
+											stamps.insert(*odomStamps.find(iter->first));
+										}
 									}
 								}
-								if(!graph::exportPoses(path, outputKittiError?2:10, odomPoses, dummyLinks, stamps))
+								if(!graph::exportPoses(path, outputKittiError?2:11, posesOut, dummyLinks, stamps))
 								{
 									printf("Could not export the odometry to \"%s\"!?!\n", path.c_str());
 								}
@@ -1140,7 +1198,7 @@ int main(int argc, char * argv[])
 											stamps.insert(*odomStamps.find(iter->first));
 										}
 									}
-									if(!graph::exportPoses(path, outputKittiError?2:10, groundTruth, dummyLinks, stamps))
+									if(!graph::exportPoses(path, outputKittiError?2:11, groundTruth, dummyLinks, stamps))
 									{
 										printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
 									}
