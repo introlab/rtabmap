@@ -79,6 +79,7 @@ public:
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
 	void setLocalRadius(float radius);
+	void highlightNode(int nodeId, int highlightIndex);
 	void clearGraph();
 	void clearMap();
 	void clearPosterior();
@@ -132,8 +133,6 @@ public:
 	void setNodeA(const int value);
 	void setNodeB(const int value);
 	void setNodeColor(const QColor & color);
-	void setNodeColorA(const QColor & color);
-	void setNodeColorB(const QColor & color);
 	void setNodeOdomCacheColor(const QColor & color);
 	void setCurrentGoalColor(const QColor & color);
 	void setNeighborColor(const QColor & color);
@@ -148,6 +147,7 @@ public:
 	void setGlobalPathColor(const QColor & color);
 	void setGTColor(const QColor & color);
 	void setGPSColor(const QColor & color);
+	void setHighlightColor(const QColor & color, int index);
 	void setIntraSessionLoopColor(const QColor & color);
 	void setInterSessionLoopColor(const QColor & color);
 	void setIntraInterSessionColorsEnabled(bool enabled);
@@ -185,8 +185,6 @@ protected:
 private:
 	QString _workingDirectory;
 	QColor _nodeColor;
-	QColor _nodeColorA;
-	QColor _nodeColorB;
 	QColor _nodeOdomCacheColor;
 	QColor _currentGoalColor;
 	QColor _neighborColor;
@@ -212,8 +210,6 @@ private:
 	QGraphicsItem * _localPathRoot;
 	QGraphicsItem * _gtGraphRoot;
 	QGraphicsItem * _gpsGraphRoot;
-	NodeItem* _currentNodeA;
-	NodeItem* _currentNodeB;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
 	QMap<int, NodeItem*> _gtNodeItems;
@@ -222,6 +218,7 @@ private:
 	QMultiMap<int, LinkItem*> _gpsLinkItems;
 	QMultiMap<int, LinkItem*> _localPathLinkItems;
 	QMultiMap<int, LinkItem*> _globalPathLinkItems;
+	QVector<QPair<QColor, NodeItem*> > _highlightedNodes;
 	bool _nodeVisible;
 	float _nodeRadius;
 	float _linkWidth;

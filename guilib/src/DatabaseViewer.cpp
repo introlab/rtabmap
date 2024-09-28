@@ -587,6 +587,7 @@ void DatabaseViewer::readSettings()
 
 	// GraphViewer settings
 	ui_->graphViewer->loadSettings(settings, "GraphView");
+	ui_->graphViewer->setReferentialVisible(false);
 
 	settings.beginGroup("optimization");
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
@@ -4613,8 +4614,6 @@ void DatabaseViewer::graphLinkSelected(int from, int to)
 
 void DatabaseViewer::sliderAValueChanged(int value)
 {
-	ui_->graphViewer->setNodeA(ids_.at(value));
-
 	this->update(value,
 			ui_->spinBox_indexA,
 			ui_->label_parentsA,
@@ -4642,8 +4641,6 @@ void DatabaseViewer::sliderAValueChanged(int value)
 
 void DatabaseViewer::sliderBValueChanged(int value)
 {
-	ui_->graphViewer->setNodeB(ids_.at(value));
-	
 	this->update(value,
 			ui_->spinBox_indexB,
 			ui_->label_parentsB,
@@ -4725,6 +4722,10 @@ void DatabaseViewer::update(int value,
 		labelId->setText(QString::number(id));
 		if(id>0)
 		{
+			if(ui_->dockWidget_graphView->isVisible()) {
+				ui_->graphViewer->highlightNode(id, spinBoxIndex==ui_->spinBox_indexB?1:0);
+			}
+
 			//image
 			QImage img;
 			cv::Mat imgDepth;
