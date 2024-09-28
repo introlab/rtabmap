@@ -130,8 +130,6 @@ public:
 	void setNodeVisible(bool visible);
 	void setNodeRadius(float radius);
 	void setLinkWidth(float width);
-	void setNodeA(const int value);
-	void setNodeB(const int value);
 	void setNodeColor(const QColor & color);
 	void setNodeOdomCacheColor(const QColor & color);
 	void setCurrentGoalColor(const QColor & color);
