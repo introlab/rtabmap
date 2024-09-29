@@ -1230,7 +1230,7 @@ void GraphViewer::highlightNode(int nodeId, int highlightIndex)
 	for(int i=0; i<_highlightedNodes.size(); ++i)
 	{
 		if(_highlightedNodes[i].second &&
-		   (_highlightedNodes[i].first == nodeId || i == highlightIndex))
+		   (_highlightedNodes[i].second->id() == nodeId || i == highlightIndex))
 		{
 			// reset to normal color
 			_highlightedNodes[i].second->setColor(_nodeColor);
