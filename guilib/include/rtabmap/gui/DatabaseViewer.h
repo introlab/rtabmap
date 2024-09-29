@@ -198,6 +198,7 @@ private:
 			int to);
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
+	void updateNeighborsSlider(int from = 0, int to = 0);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
 	void updateCovariances(const QList<Link> & links);
 	void refineLinks(const QList<Link> & links);
