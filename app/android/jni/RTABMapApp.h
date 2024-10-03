@@ -152,6 +152,7 @@ class RTABMapApp : public UEventsHandler {
   void setRenderingTextureDecimation(int value);
   void setBackgroundColor(float gray);
   void setDepthConfidence(int value);
+  void setExportPointCloudFormat(const std::string & format);
   int setMappingParameter(const std::string & key, const std::string & value);
   void setGPS(const rtabmap::GPS & gps);
   void addEnvSensor(int type, float value);
@@ -239,6 +240,7 @@ class RTABMapApp : public UEventsHandler {
   float backgroundColor_;
   int depthConfidence_;
   float upstreamRelocalizationMaxAcc_;
+  std::string exportPointCloudFormat_;
 
   rtabmap::ParametersMap mappingParameters_;
 

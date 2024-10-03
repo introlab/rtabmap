@@ -73,6 +73,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/poisson.h>
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
+#ifdef RTABMAP_PDAL
+#include <rtabmap/core/PDALWriter.h>
+#elif defined(RTABMAP_LIBLAS)
+#include <rtabmap/core/LASWriter.h>
+#endif
 
 #define LOW_RES_PIX 2
 #define DEBUG_RENDERING_PERFORMANCE
@@ -240,6 +245,7 @@ RTABMapApp::RTABMapApp() :
 		backgroundColor_(0.2f),
         depthConfidence_(2),
         upstreamRelocalizationMaxAcc_(0.0f),
+		exportPointCloudFormat_("ply"),
 		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
 		openingDatabase_(false),
@@ -2529,6 +2535,22 @@ void RTABMapApp::setDepthConfidence(int value)
     }
 }
 
+void RTABMapApp::setExportPointCloudFormat(const std::string & format)
+{
+#if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
+    if(format == "las") {
+        exportPointCloudFormat_ = format;
+    }
+    else
+#endif
+    if(format != "ply") {
+        UERROR("Not supported point cloud format %s", format.c_str());
+    }
+    else {
+        exportPointCloudFormat_ = format;
+    }
+}
+
 int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)
 {
 	std::string compatibleKey = key;
@@ -3583,18 +3605,43 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 
 	if(polygonMesh->cloud.data.size())
 	{
-		// Point cloud PLY
-		std::string filePath = directory + UDirectory::separator() + name + ".ply";
-		LOGI("Saving ply (%d vertices, %d polygons) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, (int)polygonMesh->polygons.size(), filePath.c_str());
-		success = pcl::io::savePLYFileBinary(filePath, *polygonMesh) == 0;
-		if(success)
-		{
-			LOGI("Saved ply to %s!", filePath.c_str());
-		}
-		else
-		{
-			UERROR("Failed saving ply to %s!", filePath.c_str());
-		}
+#if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
+        if(polygonMesh->polygons.empty() && exportPointCloudFormat_ == "las") {
+            // Point cloud LAS
+            std::string filePath = directory + UDirectory::separator() + name + ".las";
+            LOGI("Saving las (%d vertices) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, filePath.c_str());
+            pcl::PointCloud<pcl::PointXYZRGB> output;
+            pcl::fromPCLPointCloud2(polygonMesh->cloud, output);
+#ifdef RTABMAP_PDAL
+            success = rtabmap::savePDALFile(filePath, output) == 0;
+#else
+            success = rtabmap::saveLASFile(filePath, output) == 0;
+#endif
+            if(success)
+            {
+                LOGI("Saved las to %s!", filePath.c_str());
+            }
+            else
+            {
+                UERROR("Failed saving las to %s!", filePath.c_str());
+            }
+        }
+        else
+#endif
+        {
+            // Point cloud PLY
+            std::string filePath = directory + UDirectory::separator() + name + ".ply";
+            LOGI("Saving ply (%d vertices, %d polygons) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, (int)polygonMesh->polygons.size(), 	filePath.c_str());
+            success = pcl::io::savePLYFileBinary(filePath, *polygonMesh) == 0;
+            if(success)
+            {
+                LOGI("Saved ply to %s!", filePath.c_str());
+            }
+            else
+            {
+                UERROR("Failed saving ply to %s!", filePath.c_str());
+            }
+        }
 	}
 	else if(textureMesh->cloud.data.size())
 	{

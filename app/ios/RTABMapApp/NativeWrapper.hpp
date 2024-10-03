@@ -112,6 +112,7 @@ void setMaxGainRadiusNative(const void *object, float value);
 void setRenderingTextureDecimationNative(const void *object, int value);
 void setBackgroundColorNative(const void *object, float gray);
 void setDepthConfidenceNative(const void *object, int value);
+void setExportPointCloudFormatNative(const void *object, const char * format);
 int setMappingParameterNative(const void *object, const char * key, const char * value);
 
 typedef struct ImageNative

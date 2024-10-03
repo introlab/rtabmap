@@ -588,6 +588,15 @@ void setDepthConfidenceNative(const void *object, int value)
     else
         UERROR("object is null!");
 }
+
+void setExportPointCloudFormatNative(const void *object, const char * format)
+{
+    if(object)
+        native(object)->setExportPointCloudFormat(format);
+    else
+        UERROR("object is null!");
+}
+
 int setMappingParameterNative(const void *object, const char * key, const char * value)
 {
     if(object)

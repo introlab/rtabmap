@@ -346,6 +346,32 @@
 				<integer>0</integer>
 			</array>
 		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>The format of exported point cloud data.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Export Point Cloud Format</string>
+			<key>Key</key>
+			<string>ExportPointCloudFormat</string>
+			<key>DefaultValue</key>
+			<string>ply</string>
+			<key>Titles</key>
+			<array>
+				<string>PLY</string>
+				<string>LAS</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>ply</string>
+				<string>las</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

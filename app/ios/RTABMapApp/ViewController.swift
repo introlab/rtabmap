@@ -1336,6 +1336,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap!.setSmoothing(enabled: defaults.bool(forKey: "Smoothing"));
         rtabmap!.setAppendMode(enabled: defaults.bool(forKey: "AppendMode"));
         rtabmap!.setUpstreamRelocalizationAccThr(value: defaults.float(forKey: "UpstreamRelocalizationFilteringAccThr"));
+        rtabmap!.setExportPointCloudFormat(format: defaults.string(forKey: "ExportPointCloudFormat")!);
         
         mTimeThr = (defaults.string(forKey: "TimeLimit")! as NSString).integerValue
         mMaxFeatures = (defaults.string(forKey: "MaxFeaturesExtractedLoopClosure")! as NSString).integerValue
@@ -1393,8 +1394,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         let bgColor = defaults.float(forKey: "BackgroundColor");
         rtabmap!.setBackgroundColor(gray: bgColor);
         
+        let format = defaults.string(forKey: "ExportPointCloudFormat")!;
         DispatchQueue.main.async {
             self.statusLabel.textColor = bgColor>=0.6 ? UIColor(white: 0.0, alpha: 1) : UIColor(white: 1.0, alpha: 1)
+            self.exportOBJPLYButton.setTitle("Export OBJ-\(format == "las" ? "LAS" : "PLY")", for: .normal)
         }
     
         rtabmap!.setClusterRatio(value: defaults.float(forKey: "NoiseFilteringRatio"));

@@ -466,6 +466,11 @@ class RTABMap {
     func setDepthConfidence(value: Int) {
         setDepthConfidenceNative(native_rtabmap, Int32(value))
     }
+    func setExportPointCloudFormat(format: String) {
+        format.utf8CString.withUnsafeBufferPointer { bufferFormat in
+            return setExportPointCloudFormatNative(native_rtabmap, bufferFormat.baseAddress)
+        }
+    }
     func setMappingParameter(key: String, value: String) {
         key.utf8CString.withUnsafeBufferPointer { bufferKey in
             value.utf8CString.withUnsafeBufferPointer { bufferValue in
