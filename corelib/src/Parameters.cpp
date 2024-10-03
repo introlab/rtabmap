@@ -686,6 +686,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With libLAS:";
+#ifdef RTABMAP_LIBLAS
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With CudaSift:";
 #ifdef RTABMAP_CUDASIFT
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;

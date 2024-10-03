@@ -79,6 +79,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_PDAL
 #include <rtabmap/core/PDALWriter.h>
+#elif defined(RTABMAP_LIBLAS)
+#include <rtabmap/core/LASWriter.h>
 #endif
 
 namespace rtabmap {
@@ -211,7 +213,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_camProjKeepPointsNotSeenByCameras, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_camProjRecolorPoints, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_camProjExportCamera, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
-#ifndef RTABMAP_PDAL
+#if !defined(RTABMAP_PDAL) && !defined(RTABMAP_LIBLAS)
 	_ui->comboBox_camProjExportCamera->setEnabled(false);
 	_ui->label_camProjExportCamera->setEnabled(false);
 	_ui->label_camProjExportCamera->setText(_ui->label_camProjExportCamera->text() + " (PDAL dependency required)");
@@ -4046,6 +4048,8 @@ void ExportCloudsDialog::saveClouds(
 			extensions += QString(" *.") + iter->c_str();
 		}
 		extensions += ")";
+#elif defined(RTABMAP_LIBLAS)
+		QString extensions = tr("Point cloud data (*.ply *.pcd *.las *.laz)");
 #else
 		QString extensions = tr("Point cloud data (*.ply *.pcd)");
 #endif
@@ -4160,7 +4164,7 @@ void ExportCloudsDialog::saveClouds(
 						success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
 					}
 				}
-#ifdef RTABMAP_PDAL
+#if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
 				else if(!QFileInfo(path).suffix().isEmpty())
 				{
 					std::vector<int> cameraIds(pointToPixels.size(), 0);
@@ -4173,19 +4177,37 @@ void ExportCloudsDialog::saveClouds(
 					}
 					if(cloudIWithNormals.get())
 					{
+#ifdef RTABMAP_PDAL
 						success = savePDALFile(path.toStdString(), *cloudIWithNormals, cameraIds, binaryMode) == 0;
+#else
+						UERROR("Normals cannot be save with current libLAS implementation, disable normals estimation.");
+						success = false;
+#endif
 					}
 					else if(cloudIWithoutNormals.get())
 					{
+#ifdef RTABMAP_PDAL
 						success = savePDALFile(path.toStdString(), *cloudIWithoutNormals, cameraIds, binaryMode) == 0;
+#else
+						success = saveLASFile(path.toStdString(), *cloudIWithoutNormals, cameraIds) == 0;
+#endif
 					}
 					else if(cloudRGBWithoutNormals.get())
 					{
+#ifdef RTABMAP_PDAL
 						success = savePDALFile(path.toStdString(), *cloudRGBWithoutNormals, cameraIds, binaryMode) == 0;
+#else
+						success = saveLASFile(path.toStdString(), *cloudRGBWithoutNormals, cameraIds) == 0;
+#endif
 					}
 					else
 					{
+#ifdef RTABMAP_PDAL
 						success = savePDALFile(path.toStdString(), *clouds.begin()->second, cameraIds, binaryMode) == 0;
+#else
+						UERROR("Normals cannot be save with current libLAS implementation, disable normals estimation.");
+						success = false;
+#endif
 					}
 				}
 #endif
@@ -4230,6 +4252,8 @@ void ExportCloudsDialog::saveClouds(
 			items.push_back(iter->c_str());
 		}
 		extensions += ")...";
+#elif defined(RTABMAP_LIBLAS)
+		QString extensions = tr("Save clouds to (*.ply *.pcd *.las *.laz)...");
 #else
 		QString extensions = tr("Save clouds to (*.ply *.pcd)...");
 #endif
@@ -4343,24 +4367,42 @@ void ExportCloudsDialog::saveClouds(
 									success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
 								}
 							}
-#ifdef RTABMAP_PDAL
+#if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
 							else if(!suffix.isEmpty())
 							{
 								if(cloudIWithNormals.get())
 								{
+#ifdef RTABMAP_PDAL
 									success = savePDALFile(pathFile.toStdString(), *cloudIWithNormals) == 0;
+#else
+									UERROR("Normals cannot be save with current libLAS implementation, disable normals estimation.");
+									success = false;
+#endif
 								}
 								else if(cloudIWithoutNormals.get())
 								{
+#ifdef RTABMAP_PDAL
 									success = savePDALFile(pathFile.toStdString(), *cloudIWithoutNormals) == 0;
+#else
+									success = saveLASFile(pathFile.toStdString(), *cloudIWithoutNormals) == 0;
+#endif
 								}
 								else if(cloudRGBWithoutNormals.get())
 								{
+#ifdef RTABMAP_PDAL
 									success = savePDALFile(pathFile.toStdString(), *cloudRGBWithoutNormals) == 0;
+#else
+									success = saveLASFile(pathFile.toStdString(), *cloudRGBWithoutNormals) == 0;
+#endif
 								}
 								else
 								{
+#ifdef RTABMAP_PDAL
 									success = savePDALFile(pathFile.toStdString(), *transformedCloud) == 0;
+#else
+									UERROR("Normals cannot be save with current libLAS implementation, disable normals estimation.");
+									success = false;
+#endif
 								}
 							}
 #endif
