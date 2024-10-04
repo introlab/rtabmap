@@ -46,6 +46,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/GlobalMap.h>
 
+#include <exiv2/exiv2.hpp>
+
 class Ui_DatabaseViewer;
 class QGraphicsScene;
 class QGraphicsView;
@@ -109,6 +111,7 @@ private Q_SLOTS:
 	void updateOptimizedMesh();
 	void exportDatabase();
 	void extractImages();
+	std::string selectGraph();
 	void exportPosesRaw();
 	void exportPosesRGBDSLAMMotionCapture();
 	void exportPosesRGBDSLAM();
@@ -206,6 +209,45 @@ private:
 	bool addConstraint(int from, int to, bool silent, bool silentlyUseOptimizedGraphAsGuess = false);
 	void exportPoses(int format);
 	void exportGPS(int format);
+
+	std::map<int, GPS> graphToGPS(std::string graphSource);
+	void writeExiv2Data(Exiv2::ExifData &exifData, std::string keyStr, std::string str);
+
+	std::string toExifTimeStamp(std::string& t) 
+	{
+  		char result[200];
+  		const char* arg = t.c_str();
+		int HH = 0;
+		int mm = 0;
+		int SS1 = 0;
+		if (strstr(arg, ":") || strstr(arg, "-")) {
+			int YY = 0, MM = 0, DD = 0;
+			char a = 0, b = 0, c = 0, d = 0, e = 0;
+			sscanf(arg, "%d%c%d%c%d%c%d%c%d%c%d", &YY, &a, &MM, &b, &DD, &c, &HH, &d, &mm, &e, &SS1);
+		}
+		snprintf(result, sizeof(result), "%d/1 %d/1 %d/1", HH, mm, SS1);
+		return result;
+	}
+	
+	std::string toExifString(double d) 
+	{
+ 		char result[200];
+  		d *= 100;
+  		snprintf(result, sizeof(result), "%d/100", abs(static_cast<int>(d)));
+  		return result;
+	}
+	
+	std::string toExifLatLonString(double l) 
+	{
+		if(l < 0) l = -l;
+		int degrees = floor(l);
+		double minTmp = (l - degrees) * 60;
+		int min = floor(minTmp);
+		int secM = floor((minTmp - min) * 60 * 1000);
+		std::stringstream ss;
+		ss << degrees << "/1 " << min << "/1 " << secM << "/1000";
+		return ss.str();
+	}
 
 private:
 	Ui_DatabaseViewer * ui_;
