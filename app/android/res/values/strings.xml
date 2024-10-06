@@ -100,7 +100,7 @@
     <string name="pref_key_min_inliers">pref_key_min_inliers</string>
     <string name="pref_default_min_inliers">25</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>
-    <string name="pref_default_opt_error">1</string>
+    <string name="pref_default_opt_error">2</string>
     <string name="pref_key_features_voc">pref_key_features_voc</string>
     <string name="pref_default_features_voc">200</string>
     <string name="pref_key_features">pref_key_features</string>

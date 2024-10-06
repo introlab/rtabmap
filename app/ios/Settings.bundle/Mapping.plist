@@ -410,7 +410,7 @@
 			<key>Key</key>
 			<string>MaxOptimizationError</string>
 			<key>DefaultValue</key>
-			<integer>1</integer>
+			<integer>2</integer>
 			<key>Titles</key>
 			<array>
 				<string>4x</string>
