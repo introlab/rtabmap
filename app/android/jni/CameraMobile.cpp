@@ -183,9 +183,21 @@ void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 		{
 			stampEpochOffset_ = UTimer::now() - deviceStamp;
 		}
+
+		if(originUpdate_)
+		{
+			firstFrame_ = true;
+			lastKnownGPS_ = GPS();
+			lastEnvSensors_.clear();
+			dataGoodTracking_ = true;
+			previousAnchorPose_.setNull();
+			previousAnchorLinearVelocity_.clear();
+			previousAnchorStamp_ = 0.0;
+			originOffset_ = pose.translation().inverse();
+			originUpdate_ = false;
+		}
         
 		double epochStamp = stampEpochOffset_ + deviceStamp;
-
 		if(!originOffset_.isNull())
 		{
 			// Filter re-localizations from poses received
@@ -297,20 +309,6 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
     LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 
 	bool notify = !data_.isValid();
-
-	if(originUpdate_)
-	{
-		firstFrame_ = true;
-		lastKnownGPS_ = GPS();
-		lastEnvSensors_.clear();
-		dataGoodTracking_ = true;
-		previousAnchorPose_.setNull();
-		previousAnchorLinearVelocity_.clear();
-		previousAnchorStamp_ = 0.0;
-		originOffset_ = pose.translation().inverse();
-		originUpdate_ = false;
-		poseReceived(pose, data.stamp());
-	}
     
 	data_ = data;
     dataPose_ = pose;
