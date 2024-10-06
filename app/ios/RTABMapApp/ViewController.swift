@@ -779,13 +779,17 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.optimization(approach: -1)
             }),
             optimizeAdvancedMenu])
+
+        // Advanced menu
+        let advancedMenu = UIMenu(title: "Advanced...", children: [
+            UIAction(title: "New Data Recording", image: UIImage(systemName: "plus.app"), attributes: actionNewDataRecording ? [] : .disabled, state: .off, handler: { _ in
+            	self.newScan(dataRecordingMode: true)
+        	})
+        ])
                 
         var fileMenuChildren: [UIMenuElement] = []
         fileMenuChildren.append(UIAction(title: "New Mapping Session", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.newScan()
-        }))
-        fileMenuChildren.append(UIAction(title: "New Data Recording", image: UIImage(systemName: "plus.app"), attributes: actionNewDataRecording ? [] : .disabled, state: .off, handler: { _ in
-            self.newScan(dataRecordingMode: true)
         }))
         if(actionOptimizeEnabled) {
             fileMenuChildren.append(optimizeMenu)
@@ -807,6 +811,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         fileMenuChildren.append(UIAction(title: "Append Scan", image: UIImage(systemName: "play.fill"), attributes: actionResumeEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.resumeScan()
         }))
+        fileMenuChildren.append(advancedMenu)
         
         // File menu
         let fileMenu = UIMenu(title: "File", options: .displayInline, children: fileMenuChildren)
