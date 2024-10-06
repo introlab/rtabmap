@@ -60,7 +60,7 @@
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
-				<real>0.0</real>
+				<real>0</real>
 				<real>5</real>
 				<real>4.5</real>
 				<real>4</real>
@@ -74,7 +74,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<real>0.0</real>
+			<real>0</real>
 			<key>Key</key>
 			<string>MinDepth</string>
 			<key>Title</key>
@@ -95,8 +95,8 @@
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
-				<real>0.0</real>
-				<real>0.29999999999999999</real>
+				<real>0</real>
+				<real>0.3</real>
 				<real>0.5</real>
 				<real>0.75</real>
 				<real>1</real>
@@ -130,7 +130,7 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Increase minimum polygon angle to force scanning perpendicular to surfaces. Set a decimation factor to reduce the number of polygons. The higher the factor, the less polygons will remain. Note that the decimation factor is done after decreasing point cloud density. Decimation factor and texture resolution don't affect post-processing.</string>
+			<string>Increase minimum polygon angle to force scanning perpendicular to surfaces. Set a decimation factor to reduce the number of polygons. The higher the factor, the less polygons will remain. Note that the decimation factor is done after decreasing point cloud density. Decimation factor and texture resolution don&apos;t affect post-processing.</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -196,7 +196,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<real>0.0</real>
+			<real>0</real>
 			<key>Key</key>
 			<string>MeshDecimationFactor</string>
 			<key>Title</key>
@@ -220,18 +220,18 @@
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
-				<real>0.98999999999999999</real>
-				<real>0.94999999999999996</real>
-				<real>0.90000000000000002</real>
-				<real>0.80000000000000004</real>
-				<real>0.69999999999999996</real>
-				<real>0.59999999999999998</real>
+				<real>0.99</real>
+				<real>0.95</real>
+				<real>0.9</real>
+				<real>0.8</real>
+				<real>0.7</real>
+				<real>0.6</real>
 				<real>0.5</real>
-				<real>0.40000000000000002</real>
-				<real>0.29999999999999999</real>
-				<real>0.20000000000000001</real>
-				<real>0.10000000000000001</real>
-				<real>0.0</real>
+				<real>0.4</real>
+				<real>0.3</real>
+				<real>0.2</real>
+				<real>0.1</real>
+				<real>0</real>
 			</array>
 		</dict>
 		<dict>
@@ -266,7 +266,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<real>0.20000000000000001</real>
+			<real>0.2</real>
 			<key>Key</key>
 			<string>BackgroundColor</string>
 			<key>Title</key>
@@ -288,16 +288,16 @@
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
-				<real>0.90000000000000002</real>
-				<real>0.80000000000000004</real>
-				<real>0.69999999999999996</real>
-				<real>0.59999999999999998</real>
+				<real>0.9</real>
+				<real>0.8</real>
+				<real>0.7</real>
+				<real>0.6</real>
 				<real>0.5</real>
-				<real>0.40000000000000002</real>
-				<real>0.29999999999999999</real>
-				<real>0.20000000000000001</real>
-				<real>0.10000000000000001</real>
-				<real>0.0</real>
+				<real>0.4</real>
+				<real>0.3</real>
+				<real>0.2</real>
+				<real>0.1</real>
+				<real>0</real>
 			</array>
 		</dict>
 		<dict>
@@ -402,19 +402,19 @@
 			<string>PSMultiValueSpecifier</string>
 			<key>Values</key>
 			<array>
-				<real>0.29999999999999999</real>
-				<real>0.20000000000000001</real>
-				<real>0.10000000000000001</real>
-				<real>0.050000000000000003</real>
-				<real>0.025000000000000001</real>
+				<real>0.3</real>
+				<real>0.2</real>
+				<real>0.1</real>
+				<real>0.05</real>
+				<real>0.025</real>
 				<real>0.02</real>
-				<real>0.014999999999999999</real>
+				<real>0.015</real>
 				<real>0.01</real>
 			</array>
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<real>0.050000000000000003</real>
+			<real>0.05</real>
 			<key>Key</key>
 			<string>NoiseFilteringRatio</string>
 			<key>Title</key>
@@ -439,22 +439,22 @@
 			<key>Values</key>
 			<array>
 				<real>1</real>
-				<real>0.90000000000000002</real>
-				<real>0.80000000000000004</real>
-				<real>0.69999999999999996</real>
-				<real>0.59999999999999998</real>
+				<real>0.9</real>
+				<real>0.8</real>
+				<real>0.7</real>
+				<real>0.6</real>
 				<real>0.5</real>
-				<real>0.40000000000000002</real>
-				<real>0.29999999999999999</real>
-				<real>0.20000000000000001</real>
-				<real>0.10000000000000001</real>
-				<real>0.050000000000000003</real>
+				<real>0.4</real>
+				<real>0.3</real>
+				<real>0.2</real>
+				<real>0.1</real>
+				<real>0.05</real>
 				<real>0.01</real>
 			</array>
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
+			<string>Copyright (c) 2010-2024, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
 			<key>Title</key>
 			<string>About</string>
 			<key>Type</key>
@@ -462,7 +462,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>0.21.0</string>
+			<string>0.21.7</string>
 			<key>Key</key>
 			<string>Version</string>
 			<key>Title</key>
