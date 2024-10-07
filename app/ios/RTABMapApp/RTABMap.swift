@@ -85,6 +85,25 @@ class RTABMap {
 
                     observer.statsUpdated(mySelf, nodes: Int(nodes), words: Int(words), points: Int(points), polygons: Int(polygons), updateTime: updateTime, loopClosureId: Int(loopClosureId), highestHypId: Int(highestHypId), databaseMemoryUsed: Int(databaseMemoryUsed), inliers: Int(inliers), matches: Int(matches), featuresExtracted: Int(featuresExtracted), hypothesis: hypothesis, nodesDrawn: Int(nodesDrawn), fps: fps, rejected: Int(rejected), rehearsalValue: rehearsalValue, optimizationMaxError: optimizationMaxError, optimizationMaxErrorRatio: optimizationMaxErrorRatio, distanceTravelled: distanceTravelled, fastMovement: Int(fastMovement), landmarkDetected: Int(landmarkDetected), x: x, y: y, z: z, roll: roll, pitch: pitch, yaw: yaw)
                 }
+             },
+             //cameraInfoEventCallback
+             {(observer, type, key, value) -> Void in
+                         // Extract pointer to `self` from void pointer:
+                let mySelf = Unmanaged<RTABMap>.fromOpaque(observer!).takeUnretainedValue()
+                         // Call instance method:
+                         //mySelf.TestMethod();
+                for (id, observation) in mySelf.observations {
+                    // If the observer is no longer in memory, we
+                    // can clean up the observation for its ID
+                    guard let observer = observation.observer else {
+                        mySelf.observations.removeValue(forKey: id)
+                        continue
+                    }
+					
+                    let strKey = String(cString: key!)
+                    let strValue = String(cString: value!)
+                    observer.cameraInfoEventReceived(mySelf, type: Int(type), key: strKey, value: strValue)
+                }
              })
     }
     
@@ -215,21 +234,7 @@ class RTABMap {
     func setCamera(type: Int) {
         setCameraNative(native_rtabmap, Int32(type))
     }
-    
-    func postCameraPoseEvent(pose: simd_float4x4, stamp: TimeInterval) {
-        let rotation = GLKMatrix3(
-            m: (pose[0,0], pose[0,1], pose[0,2],
-            pose[1,0], pose[1,1], pose[1,2],
-            pose[2,0], pose[2,1], pose[2,2]))
-        let quat = GLKQuaternionMakeWithMatrix3(rotation)
-        postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w, stamp)
-    }
-    
-    func notifyLost() {
-        // a null transform will make rtabmap creating a new session
-        postCameraPoseEventNative(native_rtabmap, 0,0,0,0,0,0,0,0)
-    }
-    
+
     func postOdometryEvent(frame: ARFrame, orientation: UIInterfaceOrientation, viewport: CGSize) {
         let pose = frame.camera.transform   // ViewMatrix
         let rotation = GLKMatrix3(
@@ -239,12 +244,10 @@ class RTABMap {
         
         let quat = GLKQuaternionMakeWithMatrix3(rotation)
                 
-        postCameraPoseEventNative(native_rtabmap, pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w, frame.timestamp)
-                
         let confMap = frame.sceneDepth?.confidenceMap
         let depthMap = frame.sceneDepth?.depthMap
         let points = frame.rawFeaturePoints?.points
-                
+
         if points != nil && (depthMap != nil || points!.count>0)
         {
             let v = frame.camera.viewMatrix(for: orientation)
@@ -313,9 +316,22 @@ class RTABMap {
                 if(frame.lightEstimate != nil) {
                     addEnvSensor(type: 4, value: Float(frame.lightEstimate!.ambientIntensity))
                 }
-                                
+                
+                var lost = false
+                switch frame.camera.trackingState {
+                case .normal:
+                    lost = false
+                case .limited(.excessiveMotion):
+                    lost = false
+                case .limited(.insufficientFeatures):
+                    lost = false
+                default:
+                    lost = true
+                }
+                // Notify lost with pose=null
+
                 postOdometryEventNative(native_rtabmap,
-                                        pose[3,0], pose[3,1], pose[3,2], quat.x, quat.y, quat.z, quat.w,
+                                        !lost ? pose[3,0]:0, !lost ? pose[3,1]:0, !lost ? pose[3,2]:0, !lost ? quat.x:0, !lost ? quat.y:0, !lost ? quat.z:0, !lost ? quat.w:0,
                                         frame.camera.intrinsics[0,0], // fx
                                         frame.camera.intrinsics[1,1], // fy
                                         frame.camera.intrinsics[2,0], // cx
@@ -390,8 +406,8 @@ class RTABMap {
     func setLocalizationMode(enabled: Bool) {
         setLocalizationModeNative(native_rtabmap, enabled)
     }
-    func setTrajectoryMode(enabled: Bool) {
-        setTrajectoryModeNative(native_rtabmap, enabled)
+    func setDataRecorderMode(enabled: Bool) {
+        setDataRecorderModeNative(native_rtabmap, enabled)
     }
     func setGraphOptimization(enabled: Bool) {
         setGraphOptimizationNative(native_rtabmap, enabled)
@@ -413,6 +429,9 @@ class RTABMap {
     }
     func setAppendMode(enabled: Bool) {
         setAppendModeNative(native_rtabmap, enabled)
+    }
+    func setUpstreamRelocalizationAccThr(value: Float) {
+        setUpstreamRelocalizationAccThrNative(native_rtabmap, value)
     }
     func setMaxCloudDepth(value: Float) {
         setMaxCloudDepthNative(native_rtabmap, value)
@@ -446,6 +465,11 @@ class RTABMap {
     }
     func setDepthConfidence(value: Int) {
         setDepthConfidenceNative(native_rtabmap, Int32(value))
+    }
+    func setExportPointCloudFormat(format: String) {
+        format.utf8CString.withUnsafeBufferPointer { bufferFormat in
+            return setExportPointCloudFormatNative(native_rtabmap, bufferFormat.baseAddress)
+        }
     }
     func setMappingParameter(key: String, value: String) {
         key.utf8CString.withUnsafeBufferPointer { bufferKey in
@@ -523,6 +547,7 @@ protocol RTABMapObserver: class {
                       roll: Float,
                       pitch: Float,
                       yaw: Float)
+    func cameraInfoEventReceived(_ rtabmap: RTABMap, type: Int, key: String, value: String)
 }
 
 extension String {

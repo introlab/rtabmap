@@ -551,6 +551,20 @@ Java_com_introlab_rtabmap_RTABMapLib_setAppendMode(
 	}
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setUpstreamRelocalizationAccThr(
+		JNIEnv*, jclass, jlong native_application, float value)
+{
+	if(native_application)
+	{
+		return native(native_application)->setUpstreamRelocalizationAccThr(value);
+	}
+	else
+	{
+		UERROR("native_application is null!");
+	}
+}
+
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setDataRecorderMode(
 		JNIEnv*, jclass, jlong native_application, bool enabled)
 {
@@ -863,22 +877,6 @@ Java_com_introlab_rtabmap_RTABMapLib_postProcessing(
 	{
 		UERROR("native_application is null!");
 		return -1;
-	}
-}
-
-JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_postCameraPoseEvent(
-		JNIEnv* env, jclass, jlong native_application,
-		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
-{
-	if(native_application)
-	{
-		native(native_application)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw, stamp);
-	}
-	else
-	{
-		UERROR("native_application is null!");
-		return;
 	}
 }
 

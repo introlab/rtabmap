@@ -73,9 +73,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/poisson.h>
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
+#ifdef RTABMAP_PDAL
+#include <rtabmap/core/PDALWriter.h>
+#elif defined(RTABMAP_LIBLAS)
+#include <rtabmap/core/LASWriter.h>
+#endif
 
 #define LOW_RES_PIX 2
-//#define DEBUG_RENDERING_PERFORMANCE
+#define DEBUG_RENDERING_PERFORMANCE
 
 const int g_optMeshId = -100;
 
@@ -134,7 +139,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("800")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishLikelihood(), std::string("false")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishPdf(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapStartNewMapOnLoopClosure(), uBool2Str(!localizationMode_ && appendMode_)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapStartNewMapOnLoopClosure(), uBool2Str(!localizationMode_ && appendMode_ && !dataRecorderMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAggressiveLoopThr(), "0.0"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), uBool2Str(!trajectoryMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "10"));
@@ -188,10 +193,18 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(*rtabmap::Parameters::getDefaultParameters().find(rtabmap::Parameters::kMemMapLabelsAdded()));
 	if(dataRecorderMode_)
 	{
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("-1")));
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), std::string("1.0"))); // deactivate rehearsal
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemMapLabelsAdded(), "false")); // don't create map labels
-		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("true")));
+        // Example taken from https://github.com/introlab/rtabmap_ros/blob/master/rtabmap_launch/launch/data_recorder.launch
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // deactivate rehearsal
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "-1"));           // deactivate keypoints extraction
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), "0"));      // deactivate global retrieval
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDMaxLocalRetrieved(), "0"));    // deactivate local retrieval
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemMapLabelsAdded(), "false"));    // don't create map labels
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMemoryThr(), "2"));         // keep the WM empty
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "1"));               // STM=1 -->
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), "false"));
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), "0"));
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAngularUpdate(), "0"));
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("true")));
 	}
 
 	return parameters;
@@ -231,6 +244,8 @@ RTABMapApp::RTABMapApp() :
 		renderingTextureDecimation_(4),
 		backgroundColor_(0.2f),
         depthConfidence_(2),
+        upstreamRelocalizationMaxAcc_(0.0f),
+		exportPointCloudFormat_("ply"),
 		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
 		openingDatabase_(false),
@@ -307,12 +322,14 @@ void RTABMapApp::setupSwiftCallbacks(void * classPtr,
                                                               int,
                                                               float, float, float, float,
                                                               int, int,
-                                                              float, float, float, float, float, float))
+                                                              float, float, float, float, float, float),
+                                     void(*cameraInfoEventCallback)(void *, int, const char*, const char*))
 {
     swiftClassPtr_ = classPtr;
     progressionStatus_.setSwiftCallback(classPtr, progressCallback);
     swiftInitCallback = initCallback;
     swiftStatsUpdatedCallback = statsUpdatedCallback;
+    swiftCameraInfoEventCallback = cameraInfoEventCallback;
 }
 #endif
 
@@ -386,6 +403,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
     lastPostRenderEventTime_ = 0.0;
     lastPoseEventTime_ = 0.0;
     bufferedStatsData_.clear();
+    graphOptimization_ = true;
 
 	this->registerToEventsManager();
 
@@ -475,7 +493,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	rtabmap_ = new rtabmap::Rtabmap();
 	rtabmap::ParametersMap parameters = getRtabmapParameters();
 
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), uBool2Str(databaseInMemory)));
+    parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), uBool2Str(databaseInMemory && !dataRecorderMode_)));
 	LOGI("Initializing database...");
 	rtabmap_->init(parameters, databasePath);
 	rtabmapThread_ = new rtabmap::RtabmapThread(rtabmap_);
@@ -745,8 +763,19 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	{
 		boost::mutex::scoped_lock  lock(cameraMutex_);
 		if(camera_)
-		{
-			camera_->resetOrigin();
+        {
+            camera_->resetOrigin();
+            if(dataRecorderMode_)
+            {
+                // Don't update faster than we record, so that we see is what is recorded
+                camera_->setFrameRate(rtabmapThread_->getDetectorRate());
+                rtabmapThread_->setDetectorRate(0);
+            }
+            else
+            {
+                // set default 10
+                camera_->setFrameRate(10);
+            }
 		}
 	}
 
@@ -908,7 +937,7 @@ bool RTABMapApp::startCamera()
 	else if(cameraDriver_ == 1)
 	{
 #ifdef RTABMAP_ARCORE
-		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, smoothing_);
+		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, smoothing_, upstreamRelocalizationMaxAcc_);
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
@@ -916,14 +945,14 @@ bool RTABMapApp::startCamera()
 	else if(cameraDriver_ == 2)
 	{
 #ifdef RTABMAP_ARENGINE
-		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_);
+		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_, upstreamRelocalizationMaxAcc_);
 #else
 		UERROR("RTAB-Map is not built with AREngine support!");
 #endif
 	}
 	else if(cameraDriver_ == 3)
 	{
-		camera_ = new rtabmap::CameraMobile(smoothing_);
+		camera_ = new rtabmap::CameraMobile(smoothing_, upstreamRelocalizationMaxAcc_);
 	}
 
 	if(camera_ == 0)
@@ -931,6 +960,13 @@ bool RTABMapApp::startCamera()
 		UERROR("Unknown or not supported camera driver! %d", cameraDriver_);
 		return false;
 	}
+    
+    if(rtabmapThread_ && dataRecorderMode_)
+    {
+        // Don't update faster than we record, so that we see is what is recorded
+        camera_->setFrameRate(rtabmapThread_->getDetectorRate());
+        rtabmapThread_->setDetectorRate(0);
+    }
 
 	if(camera_->init())
 	{
@@ -967,6 +1003,7 @@ void RTABMapApp::stopCamera()
 		boost::mutex::scoped_lock  lock(cameraMutex_);
 		if(sensorCaptureThread_!=0)
 		{
+            camera_->close();
 			sensorCaptureThread_->join(true);
 			delete sensorCaptureThread_; // camera_ is closed and deleted inside
 			sensorCaptureThread_ = 0;
@@ -1291,7 +1328,7 @@ int RTABMapApp::Render()
 					camera_->updateOnRender();
 				}
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Camera updateOnRender %fs", time.ticks());
+				LOGD("Camera updateOnRender %fs", time.ticks());
 #endif
 				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0)
 				{
@@ -1308,7 +1345,7 @@ int RTABMapApp::Render()
 						arViewMatrix = glm::inverse(rtabmap::glmFromTransform(mapCorrection)*glm::inverse(arViewMatrix));
 					}
 				}
-				if(!visualizingMesh_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
+				if(!visualizingMesh_ && !dataRecorderMode_ && main_scene_.GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
 				{
 					rtabmap::CameraModel occlusionModel;
 					cv::Mat occlusionImage = ((rtabmap::CameraMobile*)camera_)->getOcclusionImage(&occlusionModel);
@@ -1330,7 +1367,7 @@ int RTABMapApp::Render()
 					}
 				}
 #ifdef DEBUG_RENDERING_PERFORMANCE
-				LOGW("Update background and occlusion mesh %fs", time.ticks());
+				LOGD("Update background and occlusion mesh %fs", time.ticks());
 #endif
 			}
 		}
@@ -1746,7 +1783,7 @@ int RTABMapApp::Render()
 				// Transform pose in OpenGL world
 				for(std::map<int, rtabmap::Transform>::iterator iter=posesWithMarkers.begin(); iter!=posesWithMarkers.end(); ++iter)
 				{
-					if(!graphOptimization_)
+					if(!graphOptimization_ && !dataRecorderMode_)
 					{
 						std::map<int, rtabmap::Transform>::iterator jter = rawPoses_.find(iter->first);
 						if(jter != rawPoses_.end())
@@ -2014,7 +2051,8 @@ int RTABMapApp::Render()
 					}
 				}
 			}
-			else
+			
+            if(dataRecorderMode_ || !rtabmapEvents.size())
 			{
 				main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && sensorCaptureThread_!=0);
 
@@ -2417,6 +2455,11 @@ void RTABMapApp::setAppendMode(bool enabled)
 	}
 }
 
+void RTABMapApp::setUpstreamRelocalizationAccThr(float value)
+{
+    upstreamRelocalizationMaxAcc_ = value;
+}
+
 void RTABMapApp::setDataRecorderMode(bool enabled)
 {
 	if(dataRecorderMode_ != enabled)
@@ -2489,6 +2532,22 @@ void RTABMapApp::setDepthConfidence(int value)
     if(depthConfidence_>2)
     {
         depthConfidence_ = 2;
+    }
+}
+
+void RTABMapApp::setExportPointCloudFormat(const std::string & format)
+{
+#if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
+    if(format == "las") {
+        exportPointCloudFormat_ = format;
+    }
+    else
+#endif
+    if(format != "ply") {
+        UERROR("Not supported point cloud format %s", format.c_str());
+    }
+    else {
+        exportPointCloudFormat_ = format;
     }
 }
 
@@ -2599,11 +2658,14 @@ void RTABMapApp::save(const std::string & databasePath)
     std::multimap<int, rtabmap::Link> links = rtabmap_->getLocalConstraints();
 	rtabmap_->close(true, databasePath);
 	rtabmap_->init(getRtabmapParameters(), dataRecorderMode_?"":databasePath);
-	rtabmap_->setOptimizedPoses(poses, links);
 	if(dataRecorderMode_)
 	{
 		clearSceneOnNextRender_ = true;
 	}
+    else
+    {
+        rtabmap_->setOptimizedPoses(poses, links);
+    }
 }
 
 bool RTABMapApp::recover(const std::string & from, const std::string & to)
@@ -3543,18 +3605,43 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 
 	if(polygonMesh->cloud.data.size())
 	{
-		// Point cloud PLY
-		std::string filePath = directory + UDirectory::separator() + name + ".ply";
-		LOGI("Saving ply (%d vertices, %d polygons) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, (int)polygonMesh->polygons.size(), filePath.c_str());
-		success = pcl::io::savePLYFileBinary(filePath, *polygonMesh) == 0;
-		if(success)
-		{
-			LOGI("Saved ply to %s!", filePath.c_str());
-		}
-		else
-		{
-			UERROR("Failed saving ply to %s!", filePath.c_str());
-		}
+#if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
+        if(polygonMesh->polygons.empty() && exportPointCloudFormat_ == "las") {
+            // Point cloud LAS
+            std::string filePath = directory + UDirectory::separator() + name + ".las";
+            LOGI("Saving las (%d vertices) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, filePath.c_str());
+            pcl::PointCloud<pcl::PointXYZRGB> output;
+            pcl::fromPCLPointCloud2(polygonMesh->cloud, output);
+#ifdef RTABMAP_PDAL
+            success = rtabmap::savePDALFile(filePath, output) == 0;
+#else
+            success = rtabmap::saveLASFile(filePath, output) == 0;
+#endif
+            if(success)
+            {
+                LOGI("Saved las to %s!", filePath.c_str());
+            }
+            else
+            {
+                UERROR("Failed saving las to %s!", filePath.c_str());
+            }
+        }
+        else
+#endif
+        {
+            // Point cloud PLY
+            std::string filePath = directory + UDirectory::separator() + name + ".ply";
+            LOGI("Saving ply (%d vertices, %d polygons) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, (int)polygonMesh->polygons.size(), 	filePath.c_str());
+            success = pcl::io::savePLYFileBinary(filePath, *polygonMesh) == 0;
+            if(success)
+            {
+                LOGI("Saved ply to %s!", filePath.c_str());
+            }
+            else
+            {
+                UERROR("Failed saving ply to %s!", filePath.c_str());
+            }
+        }
 	}
 	else if(textureMesh->cloud.data.size())
 	{
@@ -3712,24 +3799,6 @@ int RTABMapApp::postProcessing(int approach)
 	return returnedValue;
 }
 
-void RTABMapApp::postCameraPoseEvent(
-		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
-{
-	boost::mutex::scoped_lock  lock(cameraMutex_);
-	if(cameraDriver_ == 3 && camera_)
-	{
-		if(qx==0 && qy==0 && qz==0 && qw==0)
-		{
-			// Lost! clear buffer
-			camera_->resetOrigin(); // we are lost, create new session on next valid frame
-			return;
-		}
-		rtabmap::Transform pose(x,y,z,qx,qy,qz,qw);
-		pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
-		camera_->poseReceived(pose, stamp);
-	}
-}
-
 void RTABMapApp::postOdometryEvent(
 		rtabmap::Transform pose,
 		float rgb_fx, float rgb_fy, float rgb_cx, float rgb_cy,
@@ -3742,7 +3811,7 @@ void RTABMapApp::postOdometryEvent(
         const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
         const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
         const float * points, int pointsLen, int pointsChannels,
-        const rtabmap::Transform & viewMatrix,
+        rtabmap::Transform viewMatrix,
         float p00, float p11, float p02, float p12, float p22, float p32, float p23,
         float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7)
 {
@@ -3750,6 +3819,12 @@ void RTABMapApp::postOdometryEvent(
 	boost::mutex::scoped_lock  lock(cameraMutex_);
 	if(cameraDriver_ == 3 && camera_)
 	{
+        if(pose.isNull())
+        {
+            // We are lost, trigger a new map on next update
+            camera_->resetOrigin();
+            return;
+        }
 		if(rgb_fx > 0.0f && rgb_fy > 0.0f && rgb_cx > 0.0f && rgb_cy > 0.0f && stamp > 0.0f && yPlane && vPlane && yPlaneLen == rgbWidth*rgbHeight)
 		{
 #ifndef DISABLE_LOG
@@ -3760,7 +3835,7 @@ void RTABMapApp::postOdometryEvent(
 			   (depth==0 || depthFormat == AIMAGE_FORMAT_DEPTH16))
 #else //__APPLE__
             if(rgbFormat == 875704422 &&
-               (depth==0 || depthFormat == 1717855600))
+               (depth==0 || depthFormat == 1717855600))
 #endif
 			{
 				cv::Mat outputRGB;
@@ -3836,13 +3911,11 @@ void RTABMapApp::postOdometryEvent(
 
 				if(!outputRGB.empty())
 				{
+                    // Convert in our coordinate frame
 					pose = rtabmap::rtabmap_world_T_opengl_world * pose * rtabmap::opengl_world_T_rtabmap_world;
 
-					rtabmap::Transform poseWithOriginOffset = pose;
-					if(!camera_->getOriginOffset().isNull())
-					{
-						poseWithOriginOffset = camera_->getOriginOffset() * pose;
-					}
+					// We should update the pose before querying poses for depth below (if not same stamp than rgb)
+					camera_->poseReceived(pose, stamp);
 
 					// Registration depth to rgb
 					if(!outputDepth.empty() && !depthFrame.isNull() && depth_fx!=0 && (rgbFrame != depthFrame || depthStamp!=stamp))
@@ -3852,19 +3925,24 @@ void RTABMapApp::postOdometryEvent(
 						if(depthStamp != stamp)
 						{
 							// Interpolate pose
+							rtabmap::Transform poseRgb;
 							rtabmap::Transform poseDepth;
 							cv::Mat cov;
-							if(!camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
+							if(!camera_->getPose(camera_->getStampEpochOffset()+stamp, poseRgb, cov, 0.0))
 							{
-								UERROR("Could not find pose at depth stamp %f (epoch=%f rgb=%f)!", depthStamp, camera_->getStampEpochOffset()+depthStamp, stamp);
+								UERROR("Could not find pose at rgb stamp %f (epoch %f)!", stamp, camera_->getStampEpochOffset()+stamp);
+							}
+							else if(!camera_->getPose(camera_->getStampEpochOffset()+depthStamp, poseDepth, cov, 0.0))
+							{
+								UERROR("Could not find pose at depth stamp %f (epoch %f) last rgb is %f!", depthStamp, camera_->getStampEpochOffset()+depthStamp, stamp);
 							}
 							else
 							{
 #ifndef DISABLE_LOG
-								UDEBUG("poseRGB  =%s (stamp=%f)", poseWithOriginOffset.prettyPrint().c_str(), stamp);
+								UDEBUG("poseRGB  =%s (stamp=%f)", poseRgb.prettyPrint().c_str(), stamp);
 								UDEBUG("poseDepth=%s (stamp=%f)", poseDepth.prettyPrint().c_str(), depthStamp);
 #endif
-								motion = poseWithOriginOffset.inverse()*poseDepth;
+								motion = poseRgb.inverse()*poseDepth;
 								// transform in camera frame
 #ifndef DISABLE_LOG
 								UDEBUG("motion=%s", motion.prettyPrint().c_str());
@@ -3910,19 +3988,19 @@ void RTABMapApp::postOdometryEvent(
 						if(outputDepth.empty())
 						{
                             int kptsSize = fullResolution_ ? 12 : 6;
-							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pointsLen, pose, model, outputRGB, &kpts, &kpts3, kptsSize);
+							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pose, model, outputRGB, &kpts, &kpts3, kptsSize);
 						}
 						else
 						{
 							// We will recompute features if depth is available
-							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pointsLen, pose, model, outputRGB);
+							scan = rtabmap::CameraMobile::scanFromPointCloudData(pointsMat, pose, model, outputRGB);
 						}
 					}
                     
                     if(!outputDepth.empty())
                     {
                         rtabmap::CameraModel depthModel = model.scaled(float(outputDepth.cols) / float(model.imageWidth()));
-                        depthModel.setLocalTransform(poseWithOriginOffset*model.localTransform());
+                        depthModel.setLocalTransform(pose*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);
                     }
                     
@@ -4031,6 +4109,15 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			}
 			jvm->DetachCurrentThread();
 		}
+#else
+        if(swiftClassPtr_)
+        {
+            std::function<void()> actualCallback = [&](){
+                swiftCameraInfoEventCallback(swiftClassPtr_, tangoEvent->type(), tangoEvent->key().c_str(), tangoEvent->value().c_str());
+            };
+            actualCallback();
+            success = true;
+        }
 #endif
 		if(!success)
 		{

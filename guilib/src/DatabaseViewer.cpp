@@ -7620,6 +7620,7 @@ void DatabaseViewer::updateGraphView()
 
 		// remove intermediate nodes?
 		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
+		   ui_->checkBox_ignoreIntermediateNodes->isEnabled() &&
 		   ui_->checkBox_ignoreIntermediateNodes->isChecked())
 		{
 			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)

@@ -256,6 +256,8 @@ int main(int argc, char * argv[])
 		{
 #ifdef RTABMAP_PDAL
 			las = true;
+#elif defined(RTABMAP_LIBLAS)
+			printf("\"--las\" option cannot be used with libLAS because the cloud has normals, build RTAB-Map with PDAL support to export in las with normals. Will export in PLY...\n");
 #else
 			printf("\"--las\" option cannot be used because RTAB-Map is not built with PDAL support. Will export in PLY...\n");
 #endif

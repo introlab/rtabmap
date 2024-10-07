@@ -18,6 +18,7 @@ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -52,7 +53,7 @@ const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
 	    0.0f,  0.0f, -1.0f, 0.0f,
 		1.0f,  0.0f,  0.0f, 0.0f);
 
-CameraMobile::CameraMobile(bool smoothing) :
+CameraMobile::CameraMobile(bool smoothing, float upstreamRelocalizationAccThr) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		textureId_(0),
@@ -60,7 +61,10 @@ CameraMobile::CameraMobile(bool smoothing) :
 		stampEpochOffset_(0.0),
 		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
-		originUpdate_(false)
+		originUpdate_(true),
+		upstreamRelocalizationAccThr_(upstreamRelocalizationAccThr),
+		previousAnchorStamp_(0.0),
+		dataGoodTracking_(true)
 {
 }
 
@@ -72,37 +76,44 @@ CameraMobile::~CameraMobile() {
 bool CameraMobile::init(const std::string &, const std::string &)
 {
 	deviceTColorCamera_ = opticalRotation;
+	// clear semaphore
+	if(dataReady_.value() > 0) {
+		dataReady_.acquire(dataReady_.value());
+	}
 	return true;
 }
 
 void CameraMobile::close()
 {
+	UScopeMutex lock(dataMutex_);
+
 	firstFrame_ = true;
 	lastKnownGPS_ = GPS();
 	lastEnvSensors_.clear();
 	originOffset_ = Transform();
-	originUpdate_ = false;
+	originUpdate_ = true;
 	dataPose_ = Transform();
 	data_ = SensorData();
+    dataGoodTracking_ = true;
+    previousAnchorPose_.setNull();
+    previousAnchorLinearVelocity_.clear();
+    previousAnchorStamp_ = 0.0;
 
     if(textureId_ != 0)
     {
         glDeleteTextures(1, &textureId_);
         textureId_ = 0;
     }
+    // in case someone is waiting on captureImage()
+    dataReady_.release();
 }
 
 void CameraMobile::resetOrigin()
 {
-	firstFrame_ = true;
-	lastKnownGPS_ = GPS();
-	lastEnvSensors_.clear();
-	dataPose_ = Transform();
-	data_ = SensorData();
 	originUpdate_ = true;
 }
 
-bool CameraMobile::getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
+bool CameraMobile::getPose(double epochStamp, Transform & pose, cv::Mat & covariance, double maxWaitTime)
 {
 	pose.setNull();
 
@@ -113,27 +124,27 @@ bool CameraMobile::getPose(double stamp, Transform & pose, cv::Mat & covariance,
 	{
 		poseMutex_.lock();
 		int waitTry = 0;
-		while(maxWaitTimeMs>0 && poseBuffer_.rbegin()->first < stamp && waitTry < maxWaitTimeMs)
+		while(maxWaitTimeMs>0 && poseBuffer_.rbegin()->first < epochStamp && waitTry < maxWaitTimeMs)
 		{
 			poseMutex_.unlock();
 			++waitTry;
 			uSleep(1);
 			poseMutex_.lock();
 		}
-		if(poseBuffer_.rbegin()->first < stamp)
+		if(poseBuffer_.rbegin()->first < epochStamp)
 		{
 			if(maxWaitTimeMs > 0)
 			{
-				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (latest is %f)...", stamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
+				UWARN("Could not find poses to interpolate at time %f after waiting %d ms (latest is %f)...", epochStamp, maxWaitTimeMs, poseBuffer_.rbegin()->first);
 			}
 			else
 			{
-				UWARN("Could not find poses to interpolate at time %f (latest is %f)...", stamp, poseBuffer_.rbegin()->first);
+				UWARN("Could not find poses to interpolate at time %f (latest is %f)...", epochStamp, poseBuffer_.rbegin()->first);
 			}
 		}
 		else
 		{
-			std::map<double, Transform>::const_iterator iterB = poseBuffer_.lower_bound(stamp);
+			std::map<double, Transform>::const_iterator iterB = poseBuffer_.lower_bound(epochStamp);
 			std::map<double, Transform>::const_iterator iterA = iterB;
 			if(iterA != poseBuffer_.begin())
 			{
@@ -143,17 +154,17 @@ bool CameraMobile::getPose(double stamp, Transform & pose, cv::Mat & covariance,
 			{
 				iterB = --iterB;
 			}
-			if(iterA == iterB && stamp == iterA->first)
+			if(iterA == iterB && epochStamp == iterA->first)
 			{
 				pose = iterA->second;
 			}
-			else if(stamp >= iterA->first && stamp <= iterB->first)
+			else if(epochStamp >= iterA->first && epochStamp <= iterB->first)
 			{
-				pose = iterA->second.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
+				pose = iterA->second.interpolate((epochStamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
 			}
 			else // stamp < iterA->first
 			{
-				UWARN("Could not find pose data to interpolate at time %f (earliest is %f). Are sensors synchronized?", stamp, iterA->first);
+				UWARN("Could not find pose data to interpolate at time %f (earliest is %f). Are sensors synchronized?", epochStamp, iterA->first);
 			}
 		}
 		poseMutex_.unlock();
@@ -163,25 +174,103 @@ bool CameraMobile::getPose(double stamp, Transform & pose, cv::Mat & covariance,
 
 void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 {
+	// Pose reveived is the pose of the device in rtabmap coordinate
 	if(!pose.isNull())
 	{
 		Transform p = pose;
-		if(originUpdate_)
-		{
-			originOffset_ = p.translation().inverse();
-			originUpdate_ = false;
-		}
 		
 		if(stampEpochOffset_ == 0.0)
 		{
 			stampEpochOffset_ = UTimer::now() - deviceStamp;
 		}
+
+		if(originUpdate_)
+		{
+			firstFrame_ = true;
+			lastKnownGPS_ = GPS();
+			lastEnvSensors_.clear();
+			dataGoodTracking_ = true;
+			previousAnchorPose_.setNull();
+			previousAnchorLinearVelocity_.clear();
+			previousAnchorStamp_ = 0.0;
+			originOffset_ = pose.translation().inverse();
+			originUpdate_ = false;
+		}
         
 		double epochStamp = stampEpochOffset_ + deviceStamp;
-
 		if(!originOffset_.isNull())
 		{
-			p = originOffset_*p;
+			// Filter re-localizations from poses received
+			rtabmap::Transform rawPose = originOffset_ * pose.translation(); // remove rotation to keep position in fixed frame
+			// Remove upstream localization corrections by integrating pose from previous frame anchor
+            bool showLog = false;
+            if(upstreamRelocalizationAccThr_>0.0f && !previousAnchorPose_.isNull())
+			{
+				float dt = epochStamp - previousAnchorStamp_;
+                std::vector<float> currentLinearVelocity(3);
+                float dx = rawPose.x()-previousAnchorPose_.x();
+                float dy = rawPose.y()-previousAnchorPose_.y();
+                float dz = rawPose.z()-previousAnchorPose_.z();
+                currentLinearVelocity[0] = dx / dt;
+                currentLinearVelocity[1] = dy / dt;
+                currentLinearVelocity[2] = dz / dt;
+				if(!previousAnchorLinearVelocity_.empty() && uNorm(dx, dy, dz)>0.02)
+				{
+                    float ax = (currentLinearVelocity[0] - previousAnchorLinearVelocity_[0]) / dt;
+                    float ay = (currentLinearVelocity[1] - previousAnchorLinearVelocity_[1]) / dt;
+                    float az = (currentLinearVelocity[2] - previousAnchorLinearVelocity_[2]) / dt;
+					float acceleration = sqrt(ax*ax + ay*ay + az*az);
+					if(acceleration>=upstreamRelocalizationAccThr_)
+					{
+						// Only correct the translation to not lose rotation aligned
+						// with gravity.
+                        
+                        // Use constant motion model to update current pose.
+						rtabmap::Transform offset(previousAnchorLinearVelocity_[0] * dt,
+                                                  previousAnchorLinearVelocity_[1] * dt,
+                                                  previousAnchorLinearVelocity_[2] * dt,
+                                                  0, 0, 0, 1);
+						rtabmap::Transform newRawPose = offset * previousAnchorPose_;
+						currentLinearVelocity = previousAnchorLinearVelocity_;
+						originOffset_.x() += newRawPose.x() - rawPose.x();
+                        originOffset_.y() += newRawPose.y() - rawPose.y();
+                        originOffset_.z() += newRawPose.z() - rawPose.z();
+                        UERROR("Upstream re-localization has been suppressed because of "
+						     "high acceleration detected (%f m/s^2) causing a jump!",
+								acceleration);
+						dataGoodTracking_ = false;
+                        post(new CameraInfoEvent(0, "UpstreamRelocationFiltered", uFormat("%.1f m/s^2", acceleration).c_str()));
+                        showLog = true;
+					}
+				}
+				previousAnchorLinearVelocity_ = currentLinearVelocity;
+			}
+
+            p = originOffset_*pose;
+            previousAnchorPose_ = p;
+            previousAnchorStamp_ = epochStamp;
+            
+            if(upstreamRelocalizationAccThr_>0.0f) {
+                relocalizationDebugBuffer_.insert(std::make_pair(epochStamp, std::make_pair(pose, p)));
+                if(relocalizationDebugBuffer_.size() > 60)
+                {
+                    relocalizationDebugBuffer_.erase(relocalizationDebugBuffer_.begin());
+                }
+                if(showLog) {
+                    std::stringstream stream;
+                    for(auto iter=relocalizationDebugBuffer_.begin(); iter!=relocalizationDebugBuffer_.end(); ++iter)
+                    {
+                        stream << iter->first - relocalizationDebugBuffer_.begin()->first
+                        << " " << iter->second.first.x()
+                        << " " << iter->second.first.y()
+                        << " " << iter->second.first.z()
+                        << " " << iter->second.second.x()
+                        << " " << iter->second.second.y()
+                        << " " << iter->second.second.z() << std::endl;
+                    }
+                    UERROR("timestamp original_xyz corrected_xyz:\n%s", stream.str().c_str());
+                }
+            }
 		}
 
 		{
@@ -217,22 +306,16 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
 {
 	UScopeMutex lock(dataMutex_);
 
-	bool notify = !data_.isValid();
+    LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
 
-	LOGD("CameraMobile::update pose=%s stamp=%f", pose.prettyPrint().c_str(), data.stamp());
+	bool notify = !data_.isValid();
+    
 	data_ = data;
     dataPose_ = pose;
 
     viewMatrix_ = viewMatrix;
     projectionMatrix_ = projectionMatrix;
-    
-    // adjust origin
-    if(!originOffset_.isNull())
-    {
-        dataPose_ = originOffset_ * dataPose_;
-        viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-    }
-    
+        
     if(textureId_ == 0)
     {
     	glGenTextures(1, &textureId_);
@@ -272,12 +355,15 @@ void CameraMobile::update(const SensorData & data, const Transform & pose, const
         }
     }
 
-	postUpdate();
-	
-	if(notify)
-	{
-		dataReady_.release();
-	}
+    if(data_.isValid())
+    {
+        postUpdate();
+
+        if(notify)
+        {
+            dataReady_.release();
+        }
+    }
 }
 
 void CameraMobile::updateOnRender()
@@ -286,7 +372,6 @@ void CameraMobile::updateOnRender()
 	bool notify = !data_.isValid();
 
 	data_ = updateDataOnRender(dataPose_);
-
 	if(data_.isValid())
 	{
 		postUpdate();
@@ -309,6 +394,14 @@ void CameraMobile::postUpdate()
 {
 	if(data_.isValid())
 	{
+		// adjust origin
+		if(!originOffset_.isNull())
+		{
+			dataPose_ = originOffset_ * dataPose_;
+			viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+			occlusionModel_.setLocalTransform(originOffset_ * occlusionModel_.localTransform());
+		}
+
 		if(lastKnownGPS_.stamp() > 0.0 && data_.stamp()-lastKnownGPS_.stamp()<1.0)
 		{
 			data_.setGPS(lastKnownGPS_);
@@ -424,11 +517,20 @@ void CameraMobile::postUpdate()
 SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 {
 	SensorData data;
-	if(dataReady_.acquire(1, 5000))
+    bool firstFrame = true;
+    bool dataGoodTracking = true;
+    rtabmap::Transform dataPose;
+	if(dataReady_.acquire(1, 15000))
 	{
 		UScopeMutex lock(dataMutex_);
 		data = data_;
+        dataPose = dataPose_;
+        firstFrame = firstFrame_;
+        dataGoodTracking = dataGoodTracking_;
+        firstFrame_ = false;
+        dataGoodTracking_ = true;
 		data_ = SensorData();
+        dataPose_.setNull();
 	}
 	if(data.isValid())
 	{
@@ -438,18 +540,26 @@ SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 		if(info)
 		{
 			// linear cov = 0.0001
-			info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame_?9999.0:0.0001);
-			if(!firstFrame_)
+			info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.00001);
+			if(!firstFrame)
 			{
 				// angular cov = 0.000001
-				info->odomCovariance.at<double>(3,3) *= 0.01;
-				info->odomCovariance.at<double>(4,4) *= 0.01;
-				info->odomCovariance.at<double>(5,5) *= 0.01;
+                // roll/pitch should be fairly accurate with VIO input
+				info->odomCovariance.at<double>(3,3) *= 0.01; // roll
+				info->odomCovariance.at<double>(4,4) *= 0.01; // pitch
+                if(!dataGoodTracking)
+                {
+                    UERROR("not good tracking!");
+                    // add slightly more error on translation
+                    // 0.001
+                    info->odomCovariance.at<double>(0,0) *= 10; // x
+                    info->odomCovariance.at<double>(1,1) *= 10; // y
+                    info->odomCovariance.at<double>(2,2) *= 10; // z
+                    info->odomCovariance.at<double>(5,5) *= 10; // yaw
+                }
 			}
-			info->odomPose = dataPose_;
+			info->odomPose = dataPose;
 		}
-
-		firstFrame_ = false;
 	}
 	else
 	{
@@ -460,7 +570,6 @@ SensorData CameraMobile::captureImage(SensorCaptureInfo * info)
 
 LaserScan CameraMobile::scanFromPointCloudData(
         const cv::Mat & pointCloudData,
-        int points,
         const Transform & pose,
         const CameraModel & model,
         const cv::Mat & rgb,
@@ -477,7 +586,7 @@ LaserScan CameraMobile::scanFromPointCloudData(
         UASSERT(pointCloudData.depth() == CV_32F && ic >= 3);
         
         int oi = 0;
-        for(unsigned int i=0;i<points; ++i)
+        for(unsigned int i=0;i<pointCloudData.cols; ++i)
         {
             cv::Point3f pt(inPtr[i*ic], inPtr[i*ic + 1], inPtr[i*ic + 2]);
             pt = util3d::transformPoint(pt, pose.inverse()*rtabmap_world_T_opengl_world);
