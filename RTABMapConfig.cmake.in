@@ -54,10 +54,6 @@ IF(@CONF_WITH_OCTOMAP@)
   find_dependency(octomap)
 ENDIF()
 
-IF(@CONF_WITH_GRIDMAP@)
-  find_dependency(grid_map_core)
-ENDIF()
-
 IF(@CONF_WITH_PYTHON@)
   find_dependency(Python3 COMPONENTS Interpreter Development NumPy)
 ENDIF()

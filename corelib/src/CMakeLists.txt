@@ -644,17 +644,17 @@ ENDIF(octomap_FOUND)
 
 IF(grid_map_core_FOUND)
     IF(TARGET grid_map_core)
-        SET(PUBLIC_LIBRARIES
-            ${PUBLIC_LIBRARIES}
+        SET(LIBRARIES
+            ${LIBRARIES}
             grid_map_core
         )
     ELSE()
-        SET(PUBLIC_INCLUDE_DIRS
-            ${PUBLIC_INCLUDE_DIRS}
+        SET(INCLUDE_DIRS
+            ${INCLUDE_DIRS}
             ${grid_map_core_INCLUDE_DIRS}
         )
-        SET(PUBLIC_LIBRARIES
-            ${PUBLIC_LIBRARIES}
+        SET(LIBRARIES
+            ${LIBRARIES}
             ${grid_map_core_LIBRARIES}
         )
     ENDIF()
