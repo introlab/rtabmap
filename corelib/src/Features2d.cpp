@@ -301,8 +301,24 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		if(ssc)
 		{
 			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+
+			// Sorting keypoints by deacreasing order of strength
+			std::vector<float> responseVector;
+			for (unsigned int i = 0; i < keypoints.size(); i++)
+			{
+				responseVector.push_back(keypoints[i].response);
+			}
+			std::vector<int> indx(responseVector.size());
+			std::iota(std::begin(indx), std::end(indx), 0);
+
+#if CV_MAJOR_VERSION >= 4
+			cv::sortIdx(responseVector, indx, cv::SORT_DESCENDING);
+#else
+			cv::sortIdx(responseVector, indx, CV_SORT_DESCENDING);
+#endif
+
 			static constexpr float tolerance = 0.1;
-			auto ResultVec = util2d::SSC(keypoints, maxKeypoints, tolerance, imageSize.width, imageSize.height);
+			auto ResultVec = util2d::SSC(keypoints, maxKeypoints, tolerance, imageSize.width, imageSize.height, indx);
 			removed = keypoints.size()-ResultVec.size();
 			// retrieve final keypoints
 			kptsTmp.resize(ResultVec.size());
@@ -401,8 +417,24 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 		if(ssc)
 		{
 			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+
+			// Sorting keypoints by deacreasing order of strength
+			std::vector<float> responseVector;
+			for (unsigned int i = 0; i < keypoints.size(); i++)
+			{
+				responseVector.push_back(keypoints[i].response);
+			}
+			std::vector<int> indx(responseVector.size());
+			std::iota(std::begin(indx), std::end(indx), 0);
+
+#if CV_MAJOR_VERSION >= 4
+			cv::sortIdx(responseVector, indx, cv::SORT_DESCENDING);
+#else
+			cv::sortIdx(responseVector, indx, CV_SORT_DESCENDING);
+#endif
+
 			static constexpr float tolerance = 0.1;
-			auto ResultVec = util2d::SSC(keypoints, maxKeypoints, tolerance, imageSize.width, imageSize.height);
+			auto ResultVec = util2d::SSC(keypoints, maxKeypoints, tolerance, imageSize.width, imageSize.height, indx);
 			removed = keypoints.size()-ResultVec.size();
 			for(unsigned int k=0; k<ResultVec.size(); ++k)
 			{
