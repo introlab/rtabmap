@@ -2243,27 +2243,20 @@ std::vector<int> SSC(
 		double c = (double)width / 2.0; // initializing Grid
 		int numCellCols = floor(cols / c);
 		int numCellRows = floor(rows / c);
-		std::vector<std::vector<bool>> coveredVec(numCellRows+1, std::vector<bool>(numCellCols+1, false));
+		cv::Mat coveredMask = cv::Mat::zeros(numCellRows + 1, numCellCols + 1, CV_8UC1);
 
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
 			int row = floor(keypoints[useIndx?indx[i]:i].pt.y / c); // get position of the cell current point is located at
 			int col = floor(keypoints[useIndx?indx[i]:i].pt.x / c);
-			if(coveredVec[row][col] == false) // if the cell is not covered
+			if(!coveredMask.at<uchar>(row, col)) // if the cell is not covered
 			{
 				result.push_back(useIndx?indx[i]:i);
 				int rowMin = ((row - floor(width / c)) >= 0) ? (row - floor(width / c)) : 0; // get range which current radius is covering
 				int rowMax = ((row + floor(width / c)) <= numCellRows) ? (row + floor(width / c)) : numCellRows;
 				int colMin = ((col - floor(width / c)) >= 0) ? (col - floor(width / c)) : 0;
 				int colMax = ((col + floor(width / c)) <= numCellCols) ? (col + floor(width / c)) : numCellCols;
-				for(int rowToCov=rowMin; rowToCov<=rowMax; ++rowToCov)
-				{
-					for(int colToCov=colMin; colToCov<=colMax; ++colToCov)
-					{
-						if(!coveredVec[rowToCov][colToCov])
-							coveredVec[rowToCov][colToCov] = true; // cover cells within the square bounding box with width
-					}
-				}
+				coveredMask(cv::Range(rowMin, rowMax + 1), cv::Range(colMin, colMax + 1)) = 255; // cover cells within the square bounding box with width
 			}
 		}
 
