@@ -353,8 +353,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_B, SIGNAL(sliderMoved(int)), this, SLOT(sliderBMoved(int)));
 	ui_->spinBox_indexA->setEnabled(false);
 	ui_->spinBox_indexB->setEnabled(false);
-	connect(ui_->spinBox_indexA, SIGNAL(valueChanged(int)), this, SLOT(sliderAValueChanged(int)));
-	connect(ui_->spinBox_indexB, SIGNAL(valueChanged(int)), this, SLOT(sliderBValueChanged(int)));
+	connect(ui_->spinBox_indexA, SIGNAL(valueChanged(int)), ui_->horizontalSlider_A, SLOT(setValue(int)));
+	connect(ui_->spinBox_indexB, SIGNAL(valueChanged(int)), ui_->horizontalSlider_B, SLOT(setValue(int)));
 
 	connect(ui_->toolButton_edit_priorA, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->toolButton_edit_priorB, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
