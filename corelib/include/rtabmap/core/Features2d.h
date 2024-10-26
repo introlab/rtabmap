@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
+#include <numeric>
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/SensorData.h"
 
