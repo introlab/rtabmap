@@ -142,6 +142,30 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _width);
 				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
 			}
+
+			// Set FPS
+			if (this->getFrameRate() > 0 && _capture.set(CV_CAP_PROP_FPS, this->getFrameRate()))
+			{
+				this->setFrameRate(0);
+			}
+
+			// Set FOURCC
+			if (!_fourcc.empty())
+			{
+				if(_fourcc.size() == 4)
+				{
+					std::string fourccUpperCase = uToUpperCase(_fourcc);
+					int fourcc = cv::VideoWriter::fourcc(fourccUpperCase.at(0), fourccUpperCase.at(1), fourccUpperCase.at(2), fourccUpperCase.at(3));
+					if(!_capture.set(CV_CAP_PROP_FOURCC, fourcc))
+					{
+						UWARN("Camera doesn't support provided FOURCC \"%s\"", fourccUpperCase.c_str());
+					}
+				}
+				else
+				{
+					UERROR("FOURCC parameter should be 4 characters, current value is \"%s\"", _fourcc.c_str());
+				}
+			}
 		}
 		if(_rectifyImages && !_model.isValidForRectification())
 		{

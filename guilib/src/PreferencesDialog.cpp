@@ -2732,6 +2732,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_stereo_right_device->setValue(settings.value("device2", _ui->spinBox_stereo_right_device->value()).toInt());
 	_ui->spinBox_stereousbcam_streamWidth->setValue(settings.value("width", _ui->spinBox_stereousbcam_streamWidth->value()).toInt());
 	_ui->spinBox_stereousbcam_streamHeight->setValue(settings.value("height", _ui->spinBox_stereousbcam_streamHeight->value()).toInt());
+	_ui->lineEdit_stereousbcam_fourcc->setText(settings.value("fourcc", _ui->lineEdit_stereousbcam_fourcc->text()).toString());
 	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("StereoZed");
@@ -2809,6 +2810,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("UsbCam");
 	_ui->spinBox_usbcam_streamWidth->setValue(settings.value("width", _ui->spinBox_usbcam_streamWidth->value()).toInt());
 	_ui->spinBox_usbcam_streamHeight->setValue(settings.value("height", _ui->spinBox_usbcam_streamHeight->value()).toInt());
+	_ui->lineEdit_usbcam_fourcc->setText(settings.value("fourcc", _ui->lineEdit_usbcam_fourcc->text()).toString());
 	settings.endGroup(); // UsbCam
 
 	settings.beginGroup("Video");
@@ -3332,6 +3334,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("device2",		_ui->spinBox_stereo_right_device->value());
 	settings.setValue("width",		    _ui->spinBox_stereousbcam_streamWidth->value());
 	settings.setValue("height",		    _ui->spinBox_stereousbcam_streamHeight->value());
+	settings.setValue("fourcc",         _ui->lineEdit_stereousbcam_fourcc->text());
 	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("StereoZed");
@@ -3407,6 +3410,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("UsbCam");
 	settings.setValue("width",          _ui->spinBox_usbcam_streamWidth->value());
 	settings.setValue("height",         _ui->spinBox_usbcam_streamHeight->value());
+	settings.setValue("fourcc",         _ui->lineEdit_usbcam_fourcc->text());
 	settings.endGroup(); // UsbCam
 
 	settings.beginGroup("Video");
@@ -6738,6 +6742,10 @@ Camera * PreferencesDialog::createCamera(
 				this->getSourceLocalTransform());
 		}
 		((CameraStereoVideo*)camera)->setResolution(_ui->spinBox_stereousbcam_streamWidth->value(), _ui->spinBox_stereousbcam_streamHeight->value());
+		if(!_ui->lineEdit_stereousbcam_fourcc->text().isEmpty())
+		{
+			((CameraStereoVideo*)camera)->setFOURCC(_ui->lineEdit_stereousbcam_fourcc->text().toStdString());
+		}
 	}
 	else if(driver == kSrcStereoVideo)
 	{
@@ -6866,6 +6874,10 @@ Camera * PreferencesDialog::createCamera(
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraVideo*)camera)->setResolution(_ui->spinBox_usbcam_streamWidth->value(), _ui->spinBox_usbcam_streamHeight->value());
+		if(!_ui->lineEdit_usbcam_fourcc->text().isEmpty())
+		{
+			((CameraVideo*)camera)->setFOURCC(_ui->lineEdit_usbcam_fourcc->text().toStdString());
+		}
 	}
 	else if(driver == kSrcVideo)
 	{
