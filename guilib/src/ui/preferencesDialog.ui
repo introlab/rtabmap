@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-269</y>
             <width>713</width>
             <height>4653</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>24</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3424,7 +3424,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_src">
                          <property name="currentIndex">
-                          <number>0</number>
+                          <number>2</number>
                          </property>
                          <widget class="QWidget" name="page_41">
                           <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -5112,7 +5112,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <item>
                                <widget class="QStackedWidget" name="stackedWidget_stereo">
                                 <property name="currentIndex">
-                                 <number>4</number>
+                                 <number>5</number>
                                 </property>
                                 <widget class="QWidget" name="page_49">
                                  <layout class="QVBoxLayout" name="verticalLayout_91"/>
@@ -5595,29 +5595,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <string>Usb Camera</string>
                                     </property>
                                     <layout class="QGridLayout" name="gridLayout_99" columnstretch="0,1">
-                                     <item row="0" column="1">
-                                      <widget class="QLabel" name="label_470">
-                                       <property name="text">
-                                        <string>Optional right device ID. It should be -1 if the stereo camera streams side-by-side images.</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="3" column="0">
-                                      <widget class="QSpinBox" name="spinBox_stereousbcam_streamHeight">
-                                       <property name="minimum">
-                                        <number>0</number>
-                                       </property>
-                                       <property name="maximum">
-                                        <number>10000</number>
-                                       </property>
-                                      </widget>
-                                     </item>
                                      <item row="1" column="1">
                                       <widget class="QLabel" name="label_620">
                                        <property name="text">
@@ -5628,6 +5605,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                        <property name="textInteractionFlags">
                                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="5" column="0">
+                                      <spacer name="verticalSpacer_51">
+                                       <property name="orientation">
+                                        <enum>Qt::Vertical</enum>
+                                       </property>
+                                       <property name="sizeHint" stdset="0">
+                                        <size>
+                                         <width>20</width>
+                                         <height>0</height>
+                                        </size>
+                                       </property>
+                                      </spacer>
+                                     </item>
+                                     <item row="3" column="0">
+                                      <widget class="QSpinBox" name="spinBox_stereousbcam_streamHeight">
+                                       <property name="minimum">
+                                        <number>0</number>
+                                       </property>
+                                       <property name="maximum">
+                                        <number>10000</number>
                                        </property>
                                       </widget>
                                      </item>
@@ -5644,13 +5644,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="0" column="0">
-                                      <widget class="QSpinBox" name="spinBox_stereo_right_device">
-                                       <property name="minimum">
-                                        <number>-1</number>
-                                       </property>
-                                      </widget>
-                                     </item>
                                      <item row="1" column="0">
                                       <widget class="QSpinBox" name="spinBox_stereousbcam_streamWidth">
                                        <property name="minimum">
@@ -5661,18 +5654,45 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
+                                     <item row="0" column="0">
+                                      <widget class="QSpinBox" name="spinBox_stereo_right_device">
+                                       <property name="minimum">
+                                        <number>-1</number>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="0" column="1">
+                                      <widget class="QLabel" name="label_470">
+                                       <property name="text">
+                                        <string>Optional right device ID. It should be -1 if the stereo camera streams side-by-side images.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="4" column="1">
+                                      <widget class="QLabel" name="label_755">
+                                       <property name="text">
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;FOURCC (&lt;a href=&quot;https://fourcc.org/codecs.php&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://fourcc.org/codecs.php&lt;/span&gt;&lt;/a&gt;).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
                                      <item row="4" column="0">
-                                      <spacer name="verticalSpacer_51">
-                                       <property name="orientation">
-                                        <enum>Qt::Vertical</enum>
+                                      <widget class="QLineEdit" name="lineEdit_stereousbcam_fourcc">
+                                       <property name="toolTip">
+                                        <string>Should be 4 characters</string>
                                        </property>
-                                       <property name="sizeHint" stdset="0">
-                                        <size>
-                                         <width>20</width>
-                                         <height>0</height>
-                                        </size>
-                                       </property>
-                                      </spacer>
+                                      </widget>
                                      </item>
                                     </layout>
                                    </widget>
@@ -6527,6 +6547,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <string>USB Camera</string>
                                     </property>
                                     <layout class="QGridLayout" name="gridLayout_112" columnstretch="0,1">
+                                     <item row="0" column="0">
+                                      <widget class="QSpinBox" name="spinBox_usbcam_streamWidth">
+                                       <property name="minimum">
+                                        <number>0</number>
+                                       </property>
+                                       <property name="maximum">
+                                        <number>10000</number>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="0" column="1">
+                                      <widget class="QLabel" name="label_552">
+                                       <property name="text">
+                                        <string>Stream width (0 for default resolution).</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
                                      <item row="1" column="0">
                                       <widget class="QSpinBox" name="spinBox_usbcam_streamHeight">
                                        <property name="minimum">
@@ -6550,26 +6593,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="0" column="1">
-                                      <widget class="QLabel" name="label_552">
+                                     <item row="2" column="0">
+                                      <widget class="QLineEdit" name="lineEdit_usbcam_fourcc">
+                                       <property name="toolTip">
+                                        <string>Should be 4 characters</string>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="2" column="1">
+                                      <widget class="QLabel" name="label_758">
                                        <property name="text">
-                                        <string>Stream width (0 for default resolution).</string>
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;FOURCC (&lt;a href=&quot;https://fourcc.org/codecs.php&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://fourcc.org/codecs.php&lt;/span&gt;&lt;/a&gt;).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
                                        </property>
                                        <property name="textInteractionFlags">
                                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="0" column="0">
-                                      <widget class="QSpinBox" name="spinBox_usbcam_streamWidth">
-                                       <property name="minimum">
-                                        <number>0</number>
-                                       </property>
-                                       <property name="maximum">
-                                        <number>10000</number>
                                        </property>
                                       </widget>
                                      </item>
