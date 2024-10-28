@@ -141,19 +141,37 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 						_width, _height,
 						_model.imageWidth(), _model.imageHeight());
 				}
-				
-				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _model.imageWidth());
-				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
-			}
-			else if(_width > 0 && _height > 0)
-			{
-				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _width);
-				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+
+				bool resolutionSet = false;
+				resolutionSet = _capture.set(CV_CAP_PROP_FRAME_WIDTH, _model.imageWidth());
+				resolutionSet = resolutionSet && _capture.set(CV_CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
 
 				// Check if the resolution was set successfully
 				int actualWidth = int(_capture.get(CV_CAP_PROP_FRAME_WIDTH));
 				int actualHeight = int(_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
-				if(actualWidth != _width || actualHeight != _height)
+				if(!resolutionSet ||
+				   actualWidth != _model.imageWidth() ||
+				   actualHeight != _model.imageHeight())
+				{
+					UERROR("Calibration resolution (%dx%d) cannot be set to camera driver, "
+					      "actual resolution is %dx%d. You would have to re-calibrate with one "
+						  "supported format by your camera. "
+						  "Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						  "formats by your camera.",
+						  _model.imageWidth(), _model.imageHeight(),
+						  actualWidth, actualHeight);
+				}
+			}
+			else if(_width > 0 && _height > 0)
+			{
+				int resolutionSet = false;
+				resolutionSet = _capture.set(CV_CAP_PROP_FRAME_WIDTH, _width);
+				resolutionSet = resolutionSet && _capture.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+
+				// Check if the resolution was set successfully
+				int actualWidth = int(_capture.get(CV_CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
+				if(!resolutionSet || actualWidth != _width || actualHeight != _height)
 				{
 					UWARN("Desired resolution (%dx%d) cannot be set to camera driver, "
 					      "actual resolution is %dx%d. "

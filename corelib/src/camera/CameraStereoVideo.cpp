@@ -209,12 +209,29 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 
 			if(capture_.isOpened())
 			{
-				capture_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2));
-				capture_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.left().imageHeight());
+				bool resolutionSet = false;
+				resolutionSet = capture_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2));
+				resolutionSet = resolutionSet && capture_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.left().imageHeight());
 				if(capture2_.isOpened())
 				{
-					capture2_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.right().imageWidth());
-					capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.right().imageHeight());
+					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.right().imageWidth());
+					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.right().imageHeight());
+				}
+
+				// Check if the resolution was set successfully
+				int actualWidth = int(capture_.get(CV_CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(capture_.get(CV_CAP_PROP_FRAME_HEIGHT));
+				if(!resolutionSet ||
+				   actualWidth != stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2) ||
+				   actualHeight != stereoModel_.left().imageHeight())
+				{
+					UERROR("Calibration resolution (%dx%d) cannot be set to camera driver, "
+					      "actual resolution is %dx%d. You would have to re-calibrate with one "
+						  "supported format by your camera. "
+						  "Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						  "formats by your camera. For side-by-side format, you should set listed width/2.",
+						  stereoModel_.left().imageWidth(), stereoModel_.left().imageHeight(),
+						  actualWidth/(capture2_.isOpened()?1:2), actualHeight);
 				}
 			}
 		}
