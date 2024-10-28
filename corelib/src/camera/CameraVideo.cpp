@@ -134,6 +134,14 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 		{
 			if(_model.isValidForProjection())
 			{
+				if(_width > 0 && _height > 0 && (_width!=_model.imageWidth() || _height != _model.imageHeight()))
+				{
+					UWARN("Desired resolution of %dx%d is set but calibration has "
+						"been loaded with resolution %dx%d, using calibration resolution.",
+						_width, _height,
+						_model.imageWidth(), _model.imageHeight());
+				}
+				
 				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _model.imageWidth());
 				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
 			}
@@ -141,12 +149,42 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 			{
 				_capture.set(CV_CAP_PROP_FRAME_WIDTH, _width);
 				_capture.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+
+				// Check if the resolution was set successfully
+				int actualWidth = int(_capture.get(CV_CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
+				if(actualWidth != _width || actualHeight != _height)
+				{
+					UWARN("Desired resolution (%dx%d) cannot be set to camera driver, "
+					      "actual resolution is %dx%d. "
+						  "Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						  "formats by your camera.",
+						  _width, _height, actualWidth, actualHeight);
+				}
 			}
 
 			// Set FPS
 			if (this->getFrameRate() > 0 && _capture.set(CV_CAP_PROP_FPS, this->getFrameRate()))
 			{
-				this->setFrameRate(0);
+				// Check if the FPS was set successfully
+				double actualFPS = _capture.get(cv::CAP_PROP_FPS);
+				
+				if(fabs(actualFPS - this->getFrameRate()) < 0.01)
+				{
+					this->setFrameRate(0);
+				}
+				else
+				{
+					UWARN("Desired FPS (%f Hz) cannot be set to camera driver, "
+						"actual FPS is %f Hz. We will throttle to lowest FPS. "
+						"Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						"formats by your camera.",
+						this->getFrameRate(), actualFPS);
+					if(this->getFrameRate() > actualFPS)
+					{
+						this->setFrameRate(0);
+					}
+				}
 			}
 
 			// Set FOURCC
@@ -156,9 +194,17 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 				{
 					std::string fourccUpperCase = uToUpperCase(_fourcc);
 					int fourcc = cv::VideoWriter::fourcc(fourccUpperCase.at(0), fourccUpperCase.at(1), fourccUpperCase.at(2), fourccUpperCase.at(3));
-					if(!_capture.set(CV_CAP_PROP_FOURCC, fourcc))
+					
+					bool fourccSupported = _capture.set(CV_CAP_PROP_FOURCC, fourcc);
+
+					// Check if the FOURCC was set successfully
+					int actualFourcc = int(_capture.get(CV_CAP_PROP_FOURCC));
+
+					if(!fourccSupported || actualFourcc != fourcc)
 					{
-						UWARN("Camera doesn't support provided FOURCC \"%s\"", fourccUpperCase.c_str());
+						UWARN("Camera doesn't support provided FOURCC \"%s\". "
+							"Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+							"formats by your camera.", fourccUpperCase.c_str());
 					}
 				}
 				else

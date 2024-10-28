@@ -199,6 +199,14 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 	{
 		if(stereoModel_.isValidForProjection())
 		{
+			if(_width > 0 && _height > 0 && (_width!=stereoModel_.left().imageWidth() || _height != stereoModel_.left().imageHeight()))
+			{
+				UWARN("Desired resolution of %dx%d is set but calibration has "
+				      "been loaded with resolution %dx%d, using calibration resolution.",
+					  _width, _height,
+					  stereoModel_.left().imageWidth(), stereoModel_.left().imageHeight());
+			}
+
 			if(capture_.isOpened())
 			{
 				capture_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2));
@@ -214,12 +222,28 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 		{
 			if(capture_.isOpened())
 			{
-				capture_.set(CV_CAP_PROP_FRAME_WIDTH, _width*(capture2_.isOpened()?1:2));
-				capture_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+				bool resolutionSet = false;
+				resolutionSet = capture_.set(CV_CAP_PROP_FRAME_WIDTH, _width*(capture2_.isOpened()?1:2));
+				resolutionSet = resolutionSet && capture_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
 				if(capture2_.isOpened())
 				{
-					capture2_.set(CV_CAP_PROP_FRAME_WIDTH, _width);
-					capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_WIDTH, _width);
+					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+				}
+
+				// Check if the resolution was set successfully
+				int actualWidth = int(capture_.get(CV_CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(capture_.get(CV_CAP_PROP_FRAME_HEIGHT));
+				if(!resolutionSet ||
+				   actualWidth != _width*(capture2_.isOpened()?1:2) ||
+				   actualHeight != _height)
+				{
+					UWARN("Desired resolution (%dx%d) cannot be set to camera driver, "
+					      "actual resolution is %dx%d. "
+						  "Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						  "formats by your camera. For side-by-side format, you should set listed width/2.",
+						  _width, _height,
+						  actualWidth/(capture2_.isOpened()?1:2), actualHeight);
 				}
 			}
 		}
@@ -235,7 +259,25 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 			}
 			if(fpsSupported)
 			{
-				this->setFrameRate(0);
+				// Check if the FPS was set successfully
+				double actualFPS = capture_.get(cv::CAP_PROP_FPS);
+				
+				if(fabs(actualFPS - this->getFrameRate()) < 0.01)
+				{
+					this->setFrameRate(0);
+				}
+				else
+				{
+					UWARN("Desired FPS (%f Hz) cannot be set to camera driver, "
+					      "actual FPS is %f Hz. We will throttle to lowest FPS. "
+						  "Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						  "formats by your camera.",
+						  this->getFrameRate(), actualFPS);
+					if(this->getFrameRate() > actualFPS)
+					{
+						this->setFrameRate(0);
+					}
+				}
 			}
 		}
 
@@ -252,9 +294,15 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 				{
 					fourccSupported = fourccSupported && capture2_.set(CV_CAP_PROP_FOURCC, fourcc);
 				}
-				if(!fourccSupported)
+
+				// Check if the FOURCC was set successfully
+				int actualFourcc = int(capture_.get(CV_CAP_PROP_FOURCC));
+
+				if(!fourccSupported || actualFourcc != fourcc)
 				{
-					UWARN("Camera doesn't support provided FOURCC \"%s\"", fourccUpperCase.c_str());
+					UWARN("Camera doesn't support provided FOURCC \"%s\". "
+						  "Do \"v4l2-ctl --list-formats-ext\" to list all supported "
+						  "formats by your camera.", fourccUpperCase.c_str());
 				}
 			}
 			else
