@@ -512,6 +512,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->general_checkBox_missing_cache_republished, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->general_checkBox_cloudsKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_verticalLayoutUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->checkBox_conciseLayoutUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageRejectedShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageHighestHypShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_beep, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -1997,6 +1998,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_cacheStatistics->setChecked(true);
 		_ui->checkBox_notifyWhenNewGlobalPathIsReceived->setChecked(false);
 		_ui->checkBox_verticalLayoutUsed->setChecked(true);
+		_ui->checkBox_conciseLayoutUsed->setChecked(false);
 		_ui->checkBox_imageRejectedShown->setChecked(true);
 		_ui->checkBox_imageHighestHypShown->setChecked(false);
 		_ui->spinBox_odomQualityWarnThr->setValue(50);
@@ -2508,6 +2510,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_logger_printTime->setChecked(settings.value("loggerPrintTime", _ui->checkBox_logger_printTime->isChecked()).toBool());
 	_ui->checkBox_logger_printThreadId->setChecked(settings.value("loggerPrintThreadId", _ui->checkBox_logger_printThreadId->isChecked()).toBool());
 	_ui->checkBox_verticalLayoutUsed->setChecked(settings.value("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked()).toBool());
+	_ui->checkBox_conciseLayoutUsed->setChecked(settings.value("conciseLayoutUsed", _ui->checkBox_conciseLayoutUsed->isChecked()).toBool());
 	_ui->checkBox_imageRejectedShown->setChecked(settings.value("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked()).toBool());
 	_ui->checkBox_imageHighestHypShown->setChecked(settings.value("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked()).toBool());
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
@@ -3113,6 +3116,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("loggerPrintTime",      _ui->checkBox_logger_printTime->isChecked());
 	settings.setValue("loggerPrintThreadId",  _ui->checkBox_logger_printThreadId->isChecked());
 	settings.setValue("verticalLayoutUsed",   _ui->checkBox_verticalLayoutUsed->isChecked());
+	settings.setValue("conciseLayoutUsed",     _ui->checkBox_conciseLayoutUsed->isChecked());
 	settings.setValue("imageRejectedShown",   _ui->checkBox_imageRejectedShown->isChecked());
 	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
 	settings.setValue("beep",                 _ui->checkBox_beep->isChecked());
@@ -5798,6 +5802,10 @@ std::vector<std::string> PreferencesDialog::getGeneralLoggerThreads() const
 bool PreferencesDialog::isVerticalLayoutUsed() const
 {
 	return _ui->checkBox_verticalLayoutUsed->isChecked();
+}
+bool PreferencesDialog::isConciseLayoutUsed() const
+{
+	return _ui->checkBox_conciseLayoutUsed->isChecked();
 }
 bool PreferencesDialog::imageRejectedShown() const
 {

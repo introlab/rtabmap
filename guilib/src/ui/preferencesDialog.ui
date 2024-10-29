@@ -495,6 +495,29 @@
                          </property>
                         </widget>
                        </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_701">
+                         <property name="text">
+                          <string>Concise layout.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>false</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>                       
+                       <item row="3" column="0">
+                        <widget class="QCheckBox" name="checkBox_conciseLayoutUsed">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
                      </widget>
                     </item>
