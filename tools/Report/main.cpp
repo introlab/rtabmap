@@ -674,27 +674,30 @@ int main(int argc, char * argv[])
 							previousMapId = m;
 
 							allWeights.insert(std::make_pair(*iter, w));
-							if((!ignoreInterNodes || w!=-1) && w!=-9)
+							if(!ignoreInterNodes || w!=-1)
 							{
-								odomPoses.insert(std::make_pair(*iter, p));
-								odomStamps.insert(std::make_pair(*iter, s));
-								if(!externalGtPoses.empty())
+								if(w!=-9)
 								{
-									std::map<double, rtabmap::Transform>::iterator nextIter = externalGtPoses.upper_bound(s);
-									if(nextIter!=externalGtPoses.end())
+									odomPoses.insert(std::make_pair(*iter, p));
+									odomStamps.insert(std::make_pair(*iter, s));
+									if(!externalGtPoses.empty())
 									{
-										std::map<double, rtabmap::Transform>::iterator previousIter = nextIter;
-										--previousIter;
-										if(s == previousIter->first || (nextIter->first-s <= gtMaxInterval && s-previousIter->first <= gtMaxInterval))
+										std::map<double, rtabmap::Transform>::iterator nextIter = externalGtPoses.upper_bound(s);
+										if(nextIter!=externalGtPoses.end())
 										{
-											UASSERT(s-previousIter->first >= 0);
-											gtPoses.insert(std::make_pair(*iter, previousIter->second.interpolate((s-previousIter->first)/(nextIter->first-previousIter->first),nextIter->second)));
+											std::map<double, rtabmap::Transform>::iterator previousIter = nextIter;
+											--previousIter;
+											if(s == previousIter->first || (nextIter->first-s <= gtMaxInterval && s-previousIter->first <= gtMaxInterval))
+											{
+												UASSERT(s-previousIter->first >= 0);
+												gtPoses.insert(std::make_pair(*iter, previousIter->second.interpolate((s-previousIter->first)/(nextIter->first-previousIter->first),nextIter->second)));
+											}
 										}
 									}
-								}
-								else if(!gt.isNull())
-								{
-									gtPoses.insert(std::make_pair(*iter, gt));
+									else if(!gt.isNull())
+									{
+										gtPoses.insert(std::make_pair(*iter, gt));
+									}
 								}
 
 								if(!localizationMultiStats.empty() && mappingSessionIds.find(m) != mappingSessionIds.end())

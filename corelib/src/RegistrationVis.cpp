@@ -597,8 +597,9 @@ Transform RegistrationVis::computeTransformationImpl(
 							// Start from camera having the reference corner first (in case there is overlap between the cameras)
 							int startIndex = cornersFrom[i].x/subImageWidth;
 							UASSERT(startIndex < nCameras);
-							for(int c=startIndex; (c+1)%nCameras != 0; ++c)
+							for(int ci=0; ci < nCameras; ++ci)
 							{
+								int c = (ci+startIndex) % nCameras;
 								const CameraModel & model = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[c]:toSignature.sensorData().stereoCameraModels()[c].left();
 								cv::Point3f ptsInCamFrame = util3d::transformPoint(kptsFrom3D[i], inverseTransforms[c]);
 								if(ptsInCamFrame.z > 0)
