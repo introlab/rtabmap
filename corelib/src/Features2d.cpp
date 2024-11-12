@@ -1271,10 +1271,17 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	if(gpu_)
 	{
 #ifdef RTABMAP_CUDASIFT
-		UDEBUG("Init SiftData");
-		if(cudaSiftData_ == 0) {
-			cudaSiftData_ = new SiftData();
-			InitSiftData(*cudaSiftData_, 8192, true, true);
+		// Check if there is a cuda device
+		if(InitCuda(0, ULogger::level() == ULogger::kDebug)) {
+			UDEBUG("Init SiftData");
+			if(cudaSiftData_ == 0) {
+				cudaSiftData_ = new SiftData();
+				InitSiftData(*cudaSiftData_, 8192, true, true);
+			}
+		}
+		else{
+			UWARN("No cuda device(s) detected, CudaSift is not available! Using SIFT CPU version instead.");
+			gpu_ = false;
 		}
 #else
 		UWARN("RTAB-Map is not built with CudaSift so %s cannot be used!", Parameters::kSIFTGpu().c_str());
