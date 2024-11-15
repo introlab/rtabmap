@@ -66,7 +66,7 @@ void OccupancyGrid::setMap(const cv::Mat & map, float xMin, float yMin, float ce
 		{
 			for(int j=0; j<map_.cols; ++j)
 			{
-				const char value = map_.at<char>(i,j);
+				const char value = map_.at<signed char>(i,j);
 				float * info = mapInfo_.ptr<float>(i,j);
 				if(value == 0)
 				{
@@ -116,15 +116,15 @@ cv::Mat OccupancyGrid::getMap(float & xMin, float & yMin) const
 				const float * info = mapInfo_.ptr<float>(i, j);
 				if(info[3] == 0.0f)
 				{
-					map.at<char>(i, j) = -1; // unknown
+					map.at<signed char>(i, j) = -1; // unknown
 				}
 				else if(info[3] >= occThr)
 				{
-					map.at<char>(i, j) = 100; // unknown
+					map.at<signed char>(i, j) = 100; // unknown
 				}
 				else
 				{
-					map.at<char>(i, j) = 0; // empty
+					map.at<signed char>(i, j) = 0; // empty
 				}
 			}
 		}
@@ -155,11 +155,11 @@ cv::Mat OccupancyGrid::getProbMap(float & xMin, float & yMin) const
 				const float * info = mapInfo_.ptr<float>(i, j);
 				if(info[3] == 0.0f)
 				{
-					map.at<char>(i, j) = -1; // unknown
+					map.at<signed char>(i, j) = -1; // unknown
 				}
 				else
 				{
-					map.at<char>(i, j) = char(probability(info[3])*100.0f); // empty
+					map.at<signed char>(i, j) = char(probability(info[3])*100.0f); // empty
 				}
 			}
 		}
@@ -447,7 +447,7 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 							UASSERT_MSG(pt.y >=0 && pt.y < map.rows && pt.x >= 0 && pt.x < map.cols,
 									uFormat("%d: pt=(%d,%d) map=%dx%d rawPt=(%f,%f) xMin=%f yMin=%f channels=%dvs%d",
 											kter->first, pt.x, pt.y, map.cols, map.rows, ptf[0], ptf[1], xMin, yMin, iter->second.channels(), mapInfo.channels()-1).c_str());
-							char & value = map.at<char>(pt.y, pt.x);
+							signed char & value = map.at<signed char>(pt.y, pt.x);
 							if(value != -2)
 							{
 								float * info = mapInfo.ptr<float>(pt.y, pt.x);
@@ -523,7 +523,7 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 							for(int j=ptBegin.y; j<ptEnd.y; ++j)
 							{
 								UASSERT(j < map.rows && i < map.cols);
-								char & value = map.at<char>(j, i);
+								signed char & value = map.at<signed char>(j, i);
 								float * info = mapInfo.ptr<float>(j, i);
 								int nodeId = (int)info[0];
 								if(value != -1)
@@ -573,7 +573,7 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 							UASSERT_MSG(pt.y>=0 && pt.y < map.rows && pt.x>=0 && pt.x < map.cols,
 										uFormat("%d: pt=(%d,%d) map=%dx%d rawPt=(%f,%f) xMin=%f yMin=%f channels=%dvs%d",
 												kter->first, pt.x, pt.y, map.cols, map.rows, ptf[0], ptf[1], xMin, yMin, jter->second.channels(), mapInfo.channels()-1).c_str());
-							char & value = map.at<char>(pt.y, pt.x);
+							signed char & value = map.at<signed char>(pt.y, pt.x);
 							if(value != -2)
 							{
 								float * info = mapInfo.ptr<float>(pt.y, pt.x);
@@ -638,7 +638,7 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 				{
 					for(int j=1; j<map.cols-1; ++j)
 					{
-						char & value = map.at<char>(i, j);
+						signed char & value = map.at<signed char>(i, j);
 						if(value == -2)
 						{
 							value = 0;

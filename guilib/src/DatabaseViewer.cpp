@@ -7165,14 +7165,14 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						for(int y=0; y<map.rows; ++y)
 						{
 							// check for first
-							if(!firstSet && map.at<char>(y, x) != -1)
+							if(!firstSet && map.at<signed char>(y, x) != -1)
 							{
 								xFirst = x;
 								firstSet = true;
 							}
 							// check for last
 							int opp = map.cols-(x+1);
-							if(!lastSet && map.at<char>(y, opp) != -1)
+							if(!lastSet && map.at<signed char>(y, opp) != -1)
 							{
 								xLast = opp;
 								lastSet = true;
@@ -7186,14 +7186,14 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						for(int x=0; x<map.cols; ++x)
 						{
 							// check for first
-							if(!firstSet && map.at<char>(y, x) != -1)
+							if(!firstSet && map.at<signed char>(y, x) != -1)
 							{
 								yFirst = y;
 								firstSet = true;
 							}
 							// check for last
 							int opp = map.rows-(y+1);
-							if(!lastSet && map.at<char>(map.rows-(y+1), x) != -1)
+							if(!lastSet && map.at<signed char>(map.rows-(y+1), x) != -1)
 							{
 								yLast = opp;
 								lastSet = true;

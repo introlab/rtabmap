@@ -219,7 +219,7 @@ private:
 	bool hasColor_;
 	float rangeMax_;
 	bool rayTracing_;
-    unsigned int emptyFloodFillDepth_;
+  unsigned int emptyFloodFillDepth_;
 };
 
 } /* namespace rtabmap */

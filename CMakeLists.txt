@@ -61,7 +61,7 @@ IF(WIN32 AND NOT MINGW)
     ADD_DEFINITIONS("-DNOMINMAX")
     ADD_DEFINITIONS("-wd4100 -wd4127 -wd4150 -wd4191 -wd4242 -wd4244 -wd4251 -wd4305 -wd4365 -wd4512 -wd4514 -wd4548 -wd4571 -wd4619 -wd4625 -wd4626 -wd4628 -wd4668 -wd4710 -wd4711 -wd4738 -wd4820 -wd4946 -wd4986")
 ELSE ()
-    ADD_DEFINITIONS( "-Wall" )
+    ADD_DEFINITIONS( "-Wall -Wtype-limits" )
     ADD_DEFINITIONS("-Wno-unknown-pragmas")
 ENDIF()
 
