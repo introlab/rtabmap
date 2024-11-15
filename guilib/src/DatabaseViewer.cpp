@@ -4440,15 +4440,18 @@ void DatabaseViewer::refineLinks()
 	std::multimap<int, Link> allLinks = updateLinksWithModifications(links_);
 	for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
 	{
-		int minId = iter->second.from()>iter->second.to()?iter->second.to():iter->second.from();
-		int maxId = iter->second.from()<iter->second.to()?iter->second.to():iter->second.from();
-		if(minNodeId == 0 || minNodeId > minId)
+		if(iter->second.type() < Link::kPosePrior)
 		{
-			minNodeId = minId;
-		}
-		if(maxNodeId == 0 || maxNodeId < maxId)
-		{
-			maxNodeId = maxId;
+			int minId = iter->second.from()>iter->second.to()?iter->second.to():iter->second.from();
+			int maxId = iter->second.from()<iter->second.to()?iter->second.to():iter->second.from();
+			if(minNodeId == 0 || minNodeId > minId)
+			{
+				minNodeId = minId;
+			}
+			if(maxNodeId == 0 || maxNodeId < maxId)
+			{
+				maxNodeId = maxId;
+			}
 		}
 	}
 	if(minNodeId > 0)
@@ -4472,7 +4475,8 @@ void DatabaseViewer::refineLinks()
 			linkRefiningDialog_->getIntraInterSessions(intra, inter);
 			for(std::multimap<int, Link>::iterator iter=allLinks.begin(); iter!=allLinks.end(); ++iter)
 			{
-				if(type==Link::kEnd || type == iter->second.type())
+				if(iter->second.type() < Link::kPosePrior && 
+				   (type==Link::kEnd || type == iter->second.type()))
 				{
 					int from = iter->second.from();
 					int to = iter->second.to();
@@ -4501,6 +4505,10 @@ void DatabaseViewer::refineLinks()
 				refineLinks(links);
 			}
 		}
+	}
+	else
+	{
+		UWARN("No links can be refined!");
 	}
 }
 void DatabaseViewer::refineLinks(const QList<Link> & links)
