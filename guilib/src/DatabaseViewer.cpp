@@ -443,6 +443,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
+	connect(ui_->actionConcise_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGPS, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_alignScansCloudsWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -543,6 +544,27 @@ void DatabaseViewer::showCloseButton(bool visible)
 
 void DatabaseViewer::configModified()
 {
+	if(ui_->actionConcise_Layout->isChecked())
+	{
+		ui_->graphicsView_B->setVisible(false);
+		ui_->scrollArea->setVisible(false);
+		ui_->scrollArea_2->setVisible(false);
+		ui_->spinBox_indexB->setVisible(false);
+		ui_->widget_imageControls_B->setVisible(false);
+		ui_->widget_graphControl->setVisible(false);
+		ui_->graphicsView_A->clearLines();
+		ui_->graphicsView_B->clearLines();
+	}
+	else
+	{
+		ui_->graphicsView_B->setVisible(true);
+		ui_->scrollArea->setVisible(true);
+		ui_->scrollArea_2->setVisible(true);
+		ui_->spinBox_indexB->setVisible(true);	
+		ui_->widget_imageControls_B->setVisible(true);
+		ui_->widget_graphControl->setVisible(true);
+	}
+	
 	this->setWindowModified(true);
 }
 
@@ -582,6 +604,7 @@ void DatabaseViewer::readSettings()
 
 	ui_->comboBox_logger_level->setCurrentIndex(settings.value("loggerLevel", ui_->comboBox_logger_level->currentIndex()).toInt());
 	ui_->actionVertical_Layout->setChecked(settings.value("verticalLayout", ui_->actionVertical_Layout->isChecked()).toBool());
+	ui_->actionConcise_Layout->setChecked(settings.value("conciseLayout", ui_->actionConcise_Layout->isChecked()).toBool());
 	ui_->checkBox_ignoreIntermediateNodes->setChecked(settings.value("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked()).toBool());
 	ui_->checkBox_timeStats->setChecked(settings.value("timeStats", ui_->checkBox_timeStats->isChecked()).toBool());
 
@@ -672,6 +695,7 @@ void DatabaseViewer::writeSettings()
 
 	settings.setValue("loggerLevel", ui_->comboBox_logger_level->currentIndex());
 	settings.setValue("verticalLayout", ui_->actionVertical_Layout->isChecked());
+	settings.setValue("conciseLayout", ui_->actionConcise_Layout->isChecked());
 	settings.setValue("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked());
 	settings.setValue("timeStats", ui_->checkBox_timeStats->isChecked());
 
@@ -4573,11 +4597,11 @@ void DatabaseViewer::graphNodeSelected(int id)
 	if(id>0 && idToIndex_.contains(id))
 	{
 		static bool updateA = true;
-		if(updateA)
+		if(updateA || ui_->actionConcise_Layout->isChecked())
 			ui_->horizontalSlider_A->setValue(idToIndex_.value(id));
 		else
 			ui_->horizontalSlider_B->setValue(idToIndex_.value(id));
-		updateA = !updateA;
+		updateA = !updateA || ui_->actionConcise_Layout->isChecked();
 	}
 }
 
@@ -5915,6 +5939,10 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 
 void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 {
+	if(ui_->actionConcise_Layout->isChecked()) {
+		return;
+	}
+
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
 	if(from && to)
