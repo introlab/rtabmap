@@ -158,7 +158,6 @@ public:
 	bool getGeneralLoggerPrintThreadId() const;
 	std::vector<std::string> getGeneralLoggerThreads() const;
 	bool isVerticalLayoutUsed() const;
-	bool isConciseLayoutUsed() const;
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;
 	bool beepOnPause() const;

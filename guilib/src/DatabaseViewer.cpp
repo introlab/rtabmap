@@ -552,6 +552,8 @@ void DatabaseViewer::configModified()
 		ui_->spinBox_indexB->setVisible(false);
 		ui_->widget_imageControls_B->setVisible(false);
 		ui_->widget_graphControl->setVisible(false);
+		ui_->graphicsView_A->clearLines();
+		ui_->graphicsView_B->clearLines();
 	}
 	else
 	{
@@ -4595,11 +4597,11 @@ void DatabaseViewer::graphNodeSelected(int id)
 	if(id>0 && idToIndex_.contains(id))
 	{
 		static bool updateA = true;
-		if(updateA)
+		if(updateA || ui_->actionConcise_Layout->isChecked())
 			ui_->horizontalSlider_A->setValue(idToIndex_.value(id));
 		else
 			ui_->horizontalSlider_B->setValue(idToIndex_.value(id));
-		updateA = !updateA;
+		updateA = !updateA || ui_->actionConcise_Layout->isChecked();
 	}
 }
 
@@ -5937,6 +5939,10 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 
 void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 {
+	if(ui_->actionConcise_Layout->isChecked()) {
+		return;
+	}
+
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
 	if(from && to)
