@@ -178,6 +178,7 @@ public:
 	void getWeight(int signatureId, int & weight) const;
 	void getLastNodeIds(std::set<int> & ids) const;
 	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false, bool ignoreIntermediateNodes = false) const;
+	void getAllOdomPoses(std::map<int, Transform> & poses, bool ignoreChildren = false, bool ignoreIntermediateNodes = false) const;
 	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	void getLastNodeId(int & id) const;
 	void getLastMapId(int & mapId) const;
@@ -286,6 +287,7 @@ protected:
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const = 0;
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const = 0;
+	virtual void getAllOdomPosesQuery(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const = 0;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const = 0;
 	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const = 0;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const = 0;

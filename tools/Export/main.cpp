@@ -74,6 +74,7 @@ void showUsage()
 			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
 			"    --cam_projection_decimation  Decimate images before projecting the points.\n"
 			"    --cam_projection_mask \"\"  File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.\n"
+			"    --opt                 Use optimized poses already computed in the database instead of re-computing them.\n"
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
@@ -126,6 +127,9 @@ void showUsage()
 			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
 			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
 			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
+			"    --split_x #           Export the map in # parts along x-axis. Can be combined with split_y and split_z.\n"
+			"    --split_y #           Export the map in # parts along y-axis. Can be combined with split_x and split_z.\n"
+			"    --split_z #           Export the map in # parts along z-axis. Can be combined with split_x and split_y.\n"
 			"    --filter_ceiling #    Filter points over a custom height (default 0 m, 0=disabled).\n"
 			"    --filter_floor #      Filter points below a custom height (default 0 m, 0=disabled).\n"
 
@@ -971,18 +975,33 @@ int main(int argc, char * argv[])
 
 	UTimer timer;
 
-	printf("Loading database \"%s\"...\n", dbPath.c_str());
+	printf("Opening database \"%s\"...\n", dbPath.c_str());
 	// Get the global optimized map
-	Rtabmap rtabmap;
 	uInsert(parameters, params);
-	rtabmap.init(parameters, dbPath);
-	printf("Loading database \"%s\"... done (%fs).\n", dbPath.c_str(), timer.ticks());
+	std::shared_ptr<DBDriver> dbDriver(DBDriver::create(parameters));
+	if(!dbDriver->openConnection(dbPath))
+	{
+		printf("Failed to open database \"%s\"!\n", dbPath.c_str());
+		return -1;
+	}
+	printf("Opening database \"%s\"... done (%fs).\n", dbPath.c_str(), timer.ticks());
 
-	std::map<int, Signature> nodes;
-	std::map<int, Transform> optimizedPoses;
+	std::map<int, Transform> odomPoses;
 	std::multimap<int, Link> links;
 	printf("Optimizing the map...\n");
-	rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
+	dbDriver->getAllOdomPoses(odomPoses, true);
+	dbDriver->getAllLinks(links, true, true);
+	if(odomPoses.empty())
+	{
+		printf("The are no odometry poses!? Aborting...\n");
+		return -1;
+	}
+	std::shared_ptr<Optimizer> optimizer(Optimizer::create(parameters));
+	std::map<int, Transform> posesOut;
+	std::multimap<int, Link> linksOut;
+	UASSERT(odomPoses.lower_bound(1) != odomPoses.end());
+	optimizer->getConnectedGraph(odomPoses.lower_bound(1)->first, odomPoses, links, posesOut, linksOut);
+	std::map<int, Transform> optimizedPoses = optimizer->optimize(odomPoses.lower_bound(1)->first, posesOut, linksOut);
 	printf("Optimizing the map... done (%fs, poses=%d).\n", timer.ticks(), (int)optimizedPoses.size());
 
 	if(optimizedPoses.empty())
@@ -995,9 +1014,10 @@ int main(int argc, char * argv[])
 	{
 		cv::Vec3f minP,maxP;
 		graph::computeMinMax(optimizedPoses, minP, maxP);
-		printf("Filtering poses (range: x=%f<->%f, y=%f<->%f, z=%f<->%f, map size=%f x %f x %f)...\n",
+		printf("Filtering poses (range: x=%.1f<->%.1f, y=%.1f<->%.1f, z=%.1f<->%.1f, map size=%.1f x %.1f x %.1f, map min/max: [%.1f, %.1f, %.1f] [%.1f, %.1f, %.1f])...\n",
 				min[0],max[0],min[1],max[1],min[2],max[2],
-				maxP[0]-minP[0],maxP[1]-minP[1],maxP[2]-minP[2]);
+				maxP[0]-minP[0],maxP[1]-minP[1],maxP[2]-minP[2],
+				minP[0],minP[1],minP[2],maxP[0],maxP[1],maxP[2]);
 		std::map<int, Transform> posesFiltered;
 		for(std::map<int, Transform>::const_iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 		{
@@ -1020,10 +1040,11 @@ int main(int argc, char * argv[])
 			}
 		}
 		graph::computeMinMax(posesFiltered, minP, maxP);
-		printf("Filtering poses... done! %d/%d remaining (new map size=%f x %f x %f).\n", (int)posesFiltered.size(), (int)optimizedPoses.size(), maxP[0]-minP[0],maxP[1]-minP[1],maxP[2]-minP[2]);
+		printf("Filtering poses... done! %d/%d remaining.\n", (int)posesFiltered.size(), (int)optimizedPoses.size());
 		optimizedPoses = posesFiltered;
 		if(optimizedPoses.empty())
 		{
+			printf("All poses filtered! Exiting.\n");
 			return -1;
 		}
 	}
@@ -1038,7 +1059,21 @@ int main(int argc, char * argv[])
 	if(ba)
 	{
 		printf("Global bundle adjustment...\n");
+		// TODO: these conversions could be simplified
+		UASSERT(optimizedPoses.lower_bound(1) != optimizedPoses.end());
 		OptimizerG2O g2o(parameters);
+		std::list<int> ids;
+		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
+		{
+			ids.push_back(iter->first);
+		}
+		std::list<Signature *> signatures;
+		dbDriver->loadSignatures(ids, signatures);
+		std::map<int, Signature> nodes;
+		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		{
+			nodes.insert(std::make_pair((*iter)->id(), *(*iter)));
+		}
 		optimizedPoses = ((Optimizer*)&g2o)->optimizeBA(optimizedPoses.lower_bound(1)->first, optimizedPoses, links, nodes, true);
 		printf("Global bundle adjustment... done (%fs).\n", timer.ticks());
 	}
@@ -1058,24 +1093,36 @@ int main(int argc, char * argv[])
 	std::map<int, Transform> rawViewpoints;
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(1); iter!=optimizedPoses.end(); ++iter)
 	{
-		Signature node = nodes.find(iter->first)->second;
+		Transform p, gt;
+		int m;
+		std::string l;
+		GPS g;
+		std::vector<float> v;
+		EnvSensors s;
+		int weight = -1;
+		double stamp = 0.0;
+		dbDriver->getNodeInfo(iter->first, p, m, weight, l, stamp, gt, v, g, s);
+
+		SensorData data;
+		dbDriver->getNodeData(iter->first, data, !cloudFromScan || texture || exportImages, cloudFromScan || exportPosesScan, false, false);
 
 		// uncompress data
-		std::vector<CameraModel> models = node.sensorData().cameraModels();
-		std::vector<StereoCameraModel> stereoModels = node.sensorData().stereoCameraModels();
+		std::vector<CameraModel> models;
+		std::vector<StereoCameraModel> stereoModels;
+		dbDriver->getCalibration(iter->first, models, stereoModels);
 		cv::Mat rgb;
 		cv::Mat depth;
 
 		pcl::IndicesPtr indices(new std::vector<int>);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		pcl::PointCloud<pcl::PointXYZI>::Ptr cloudI;
-		if(node.getWeight() != -1)
+		if(weight != -1)
 		{
 			if(cloudFromScan)
 			{
 				cv::Mat tmpDepth;
 				LaserScan scan;
-				node.sensorData().uncompressData(exportImages?&rgb:0, (texture||exportImages)&&!node.sensorData().depthOrRightCompressed().empty()?&tmpDepth:0, &scan);
+				data.uncompressData(exportImages?&rgb:0, (texture||exportImages)&&!data.depthOrRightCompressed().empty()?&tmpDepth:0, &scan);
 				if(scan.empty())
 				{
 					printf("Node %d doesn't have scan data, empty cloud is created.\n", iter->first);
@@ -1103,14 +1150,14 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				node.sensorData().uncompressData(&rgb, &depth);
+				data.uncompressData(&rgb, &depth);
 				if(depth.empty())
 				{
 					printf("Node %d doesn't have depth or stereo data, empty cloud is "
 							"created (if you want to create point cloud from scan, use --scan option).\n", iter->first);
 				}
 				cloud = util3d::cloudRGBFromSensorData(
-						node.sensorData(),
+						data,
 						decimation,      // image decimation before creating the clouds
 						maxRange,        // maximum depth of the cloud
 						minRange,
@@ -1129,7 +1176,7 @@ int main(int argc, char * argv[])
 			if(!UDirectory::exists(dir)) {
 				UDirectory::makeDir(dir);
 			}
-			std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+".jpg";
+			std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f", stamp))+".jpg";
 			cv::imwrite(outputPath, rgb);
 			++imagesExported;
 			if(!depth.empty())
@@ -1154,7 +1201,7 @@ int main(int argc, char * argv[])
 					UDirectory::makeDir(dir);
 				}
 
-				outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()))+ext;
+				outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f", stamp))+ext;
 				cv::imwrite(outputPath, depthExported);
 			}
 
@@ -1162,7 +1209,7 @@ int main(int argc, char * argv[])
 			for(size_t i=0; i<models.size(); ++i)
 			{
 				CameraModel model = models[i];
-				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()));
+				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f", stamp));
 				if(models.size() > 1) {
 					modelName += "_" + uNumber2Str((int)i);
 				}
@@ -1176,7 +1223,7 @@ int main(int argc, char * argv[])
 			for(size_t i=0; i<stereoModels.size(); ++i)
 			{
 				StereoCameraModel model = stereoModels[i];
-				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f",node.getStamp()));
+				std::string modelName = (exportImagesId?uNumber2Str(iter->first):uFormat("%f", stamp));
 				if(stereoModels.size() > 1) {
 					modelName += "_" + uNumber2Str((int)i);
 				}
@@ -1215,17 +1262,17 @@ int main(int argc, char * argv[])
 
 		if(cloudFromScan)
 		{
-			Transform lidarViewpoint = iter->second * node.sensorData().laserScanRaw().localTransform();
+			Transform lidarViewpoint = iter->second * data.laserScanRaw().localTransform();
 			rawViewpoints.insert(std::make_pair(iter->first, lidarViewpoint));
 		}
-		else if(!node.sensorData().cameraModels().empty() && !node.sensorData().cameraModels()[0].localTransform().isNull())
+		else if(!models.empty() && !models[0].localTransform().isNull())
 		{
-			Transform cameraViewpoint = iter->second * node.sensorData().cameraModels()[0].localTransform(); // take the first camera
+			Transform cameraViewpoint = iter->second * models[0].localTransform(); // take the first camera
 			rawViewpoints.insert(std::make_pair(iter->first, cameraViewpoint));
 		}
-		else if(!node.sensorData().stereoCameraModels().empty() && !node.sensorData().stereoCameraModels()[0].localTransform().isNull())
+		else if(!stereoModels.empty() && !stereoModels[0].localTransform().isNull())
 		{
-			Transform cameraViewpoint = iter->second * node.sensorData().stereoCameraModels()[0].localTransform();
+			Transform cameraViewpoint = iter->second * stereoModels[0].localTransform();
 			rawViewpoints.insert(std::make_pair(iter->first, cameraViewpoint));
 		}
 		else
@@ -1260,22 +1307,22 @@ int main(int argc, char * argv[])
 
 		if(models.empty())
 		{
-			for(size_t i=0; i<node.sensorData().stereoCameraModels().size(); ++i)
+			for(size_t i=0; i<stereoModels.size(); ++i)
 			{
-				models.push_back(node.sensorData().stereoCameraModels()[i].left());
+				models.push_back(stereoModels[i].left());
 			}
 		}
 
 		robotPoses.insert(std::make_pair(iter->first, iter->second));
-		cameraStamps.insert(std::make_pair(iter->first, node.getStamp()));
-		if(models.empty() && node.getWeight() == -1 && !cameraModels.empty())
+		cameraStamps.insert(std::make_pair(iter->first, stamp));
+		if(models.empty() && weight == -1 && !cameraModels.empty())
 		{
 			// For intermediate nodes, use latest models
 			models = cameraModels.rbegin()->second;
 		}
 		if(!models.empty())
 		{
-			if(!node.sensorData().imageCompressed().empty())
+			if(!data.imageCompressed().empty())
 			{
 				cameraModels.insert(std::make_pair(iter->first, models));
 			}
@@ -1296,9 +1343,9 @@ int main(int argc, char * argv[])
 		{
 			cameraDepths.insert(std::make_pair(iter->first, depth));
 		}
-		if(exportPosesScan && !node.sensorData().laserScanCompressed().empty())
+		if(exportPosesScan && !data.laserScanCompressed().empty())
 		{
-			scanPoses.insert(std::make_pair(iter->first, iter->second*node.sensorData().laserScanCompressed().localTransform()));
+			scanPoses.insert(std::make_pair(iter->first, iter->second*data.laserScanCompressed().localTransform()));
 		}
 	}
 	printf("Create and assemble the clouds... done (%fs, %d points).\n", timer.ticks(), !assembledCloud->empty()?(int)assembledCloud->size():(int)assembledCloudI->size());
@@ -1379,72 +1426,72 @@ int main(int argc, char * argv[])
 		}
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
-		if(!assembledCloud->empty())
-			pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud); // used to adjust normal orientation
-		else if(!assembledCloudI->empty())
-			pcl::copyPointCloud(*assembledCloudI, *rawAssembledCloud); // used to adjust normal orientation
-
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithoutNormals = rawAssembledCloud;
-
 		if(voxelSize>0.0f)
 		{
 			printf("Voxel grid filtering of the assembled cloud... (voxel=%f, %d points)\n", voxelSize, !assembledCloud->empty()?(int)assembledCloud->size():(int)assembledCloudI->size());
-			if(!assembledCloud->empty())
-			{
+			if(!assembledCloud->empty()) {
+				pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud); // used to adjust normal orientation
 				assembledCloud = util3d::voxelize(assembledCloud, voxelSize);
-				cloudWithoutNormals.reset(new pcl::PointCloud<pcl::PointXYZ>);
-				pcl::copyPointCloud(*assembledCloud, *cloudWithoutNormals);
 			}
-			else if(!assembledCloudI->empty())
-			{
+			else if(!assembledCloudI->empty()) {
+				pcl::copyPointCloud(*assembledCloudI, *rawAssembledCloud); // used to adjust normal orientation
 				assembledCloudI = util3d::voxelize(assembledCloudI, voxelSize);
-				cloudWithoutNormals.reset(new pcl::PointCloud<pcl::PointXYZ>);
-				pcl::copyPointCloud(*assembledCloudI, *cloudWithoutNormals);
 			}
 			printf("Voxel grid filtering of the assembled cloud.... done! (%fs, %d points)\n", timer.ticks(), !assembledCloud->empty()?(int)assembledCloud->size():(int)assembledCloudI->size());
 		}
 
-		printf("Computing normals of the assembled cloud... (k=20, %d points)\n", !assembledCloud->empty()?(int)assembledCloud->size():(int)assembledCloudI->size());
-		pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, 20, 0);
-
+		printf("Computing normals of the assembled cloud... (k=20, %d points)\n", (int)assembledCloud->size());
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudToExport(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIToExport(new pcl::PointCloud<pcl::PointXYZINormal>);
-		if(!assembledCloud->empty())
-		{
+		if(!assembledCloud->empty()) {
+			pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(assembledCloud, 20, 0);
 			UASSERT(assembledCloud->size() == normals->size());
 			pcl::concatenateFields(*assembledCloud, *normals, *cloudToExport);
-			printf("Computing normals of the assembled cloud... done! (%fs, %d points)\n", timer.ticks(), (int)assembledCloud->size());
-			assembledCloud->clear();
+		}
+		else if(!assembledCloudI->empty()) {
+			pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(assembledCloudI, 20, 0);
+			UASSERT(assembledCloudI->size() == normals->size());
+			pcl::concatenateFields(*assembledCloudI, *normals, *cloudIToExport);
+		}
+		printf("Computing normals of the assembled cloud... done! (%fs, %d points)\n", timer.ticks(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+		assembledCloud->clear();
+		assembledCloudI->clear();
 
-			// adjust with point of views
-			printf("Adjust normals to viewpoints of the assembled cloud... (%d points)\n", (int)cloudToExport->size());
+		// adjust with point of views
+		printf("Adjust normals to viewpoints of the assembled cloud... (%d points)\n", !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
+		if(!rawAssembledCloud->empty()) {
+			if(!cloudToExport->empty()) {
+				util3d::adjustNormalsToViewPoints(
+											rawViewpoints,
+											rawAssembledCloud,
+											rawViewpointIndices,
+											cloudToExport,
+											groundNormalsUp);
+			}
+			else if(!cloudIToExport->empty()) {
+				util3d::adjustNormalsToViewPoints(
+											rawViewpoints,
+											rawAssembledCloud,
+											rawViewpointIndices,
+											cloudIToExport,
+											groundNormalsUp);
+			}
+		}
+		else if(!cloudToExport->empty()) {
 			util3d::adjustNormalsToViewPoints(
 										rawViewpoints,
-										rawAssembledCloud,
 										rawViewpointIndices,
 										cloudToExport,
 										groundNormalsUp);
-			printf("Adjust normals to viewpoints of the assembled cloud... (%fs, %d points)\n", timer.ticks(), (int)cloudToExport->size());
 		}
-		else if(!assembledCloudI->empty())
-		{
-			UASSERT(assembledCloudI->size() == normals->size());
-			pcl::concatenateFields(*assembledCloudI, *normals, *cloudIToExport);
-			printf("Computing normals of the assembled cloud... done! (%fs, %d points)\n", timer.ticks(), (int)assembledCloudI->size());
-			assembledCloudI->clear();
-
-			// adjust with point of views
-			printf("Adjust normals to viewpoints of the assembled cloud... (%d points)\n", (int)cloudIToExport->size());
+		else if(!cloudIToExport->empty()) {
 			util3d::adjustNormalsToViewPoints(
 										rawViewpoints,
-										rawAssembledCloud,
 										rawViewpointIndices,
 										cloudIToExport,
 										groundNormalsUp);
-			printf("Adjust normals to viewpoints of the assembled cloud... (%fs, %d points)\n", timer.ticks(), (int)cloudIToExport->size());
 		}
-		cloudWithoutNormals->clear();
-		rawAssembledCloud->clear();
+		printf("Adjust normals to viewpoints of the assembled cloud... (%fs, %d points)\n", timer.ticks(), !cloudToExport->empty()?(int)cloudToExport->size():(int)cloudIToExport->size());
 
 		if(randomSamples>0)
 		{
@@ -1579,9 +1626,11 @@ int main(int argc, char * argv[])
 			{
 				int nodeID = iter->first;
 				cv::Mat image;
-				if(uContains(nodes,nodeID) && !nodes.at(nodeID).sensorData().imageCompressed().empty())
+				SensorData data;
+				dbDriver->getNodeData(nodeID, data, true, false, false, false);
+				if(data.imageCompressed().empty())
 				{
-					nodes.at(nodeID).sensorData().uncompressDataConst(&image, 0);
+					data.uncompressDataConst(&image, 0);
 				}
 				if(!image.empty())
 				{
@@ -1855,9 +1904,10 @@ int main(int argc, char * argv[])
 						printf("Filtering %ld images from texturing...\n", robotPoses.size());
 						for(std::map<int, rtabmap::Transform>::iterator iter=robotPoses.begin(); iter!=robotPoses.end(); ++iter)
 						{
-							UASSERT(nodes.find(iter->first) != nodes.end());
+							SensorData data;
+							dbDriver->getNodeData(iter->first, data, true, false, false, false);
 							cv::Mat img;
-							nodes.find(iter->first)->second.sensorData().uncompressDataConst(&img, 0);
+							data.uncompressDataConst(&img, 0);
 							if(!img.empty())
 							{
 								cv::Mat imgLaplacian;
@@ -1925,8 +1975,8 @@ int main(int argc, char * argv[])
 								*textureMesh,
 								std::map<int, cv::Mat>(),
 								std::map<int, std::vector<rtabmap::CameraModel> >(),
-								rtabmap.getMemory(),
 								0,
+								dbDriver.get(),
 								textureSize,
 								multiband?1:textureCount, // to get contrast values based on all images in multiband mode
 								vertexToPixels,
@@ -2010,8 +2060,8 @@ int main(int argc, char * argv[])
 									vertexToPixels,
 									std::map<int, cv::Mat >(),
 									std::map<int, std::vector<CameraModel> >(),
-									rtabmap.getMemory(),
 									0,
+									dbDriver.get(),
 									textureSize,
 									multibandDownScale,
 									multibandNbContrib,
