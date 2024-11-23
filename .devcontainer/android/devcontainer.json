@@ -4,5 +4,6 @@
         "vscode": {
           "extensions": ["ms-vscode.cpptools-themes", "ms-vscode.cmake-tools", "vscjava.vscode-java-pack"]
         }
-      }
+      },
+    "runArgs": ["--privileged", "--network=host"]
 }
