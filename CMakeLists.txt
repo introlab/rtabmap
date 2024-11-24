@@ -797,9 +797,21 @@ ENDIF(WITH_VINS)
 
 IF(WITH_OPENVINS)
     FIND_PACKAGE(ov_msckf QUIET)
-    IF(ov_msckf_FOUND)
-       MESSAGE(STATUS "Found ov_msckf: ${ov_msckf_INCLUDE_DIRS}")
-    ENDIF(ov_msckf_FOUND)
+    # On ROS2, the indirect includes and libraries
+    # are not forwarded by ov_msckf target, append them manually
+    FIND_PACKAGE(ov_core QUIET)
+    FIND_PACKAGE(ov_init QUIET)
+    IF(ov_msckf_FOUND AND ov_core_FOUND AND ov_init_FOUND)
+      SET(ov_msckf_INCLUDE_DIRS
+         ${ov_msckf_INCLUDE_DIRS}
+         ${ov_core_INCLUDE_DIRS}
+         ${ov_init_INCLUDE_DIRS})
+      SET(ov_msckf_LIBRARIES
+         ${ov_msckf_LIBRARIES}
+         ${ov_core_LIBRARIES}
+         ${ov_init_LIBRARIES})
+      MESSAGE(STATUS "Found OpenVINS: ${ov_msckf_INCLUDE_DIRS}")
+    ENDIF()
 ENDIF(WITH_OPENVINS)
 
 IF(WITH_FASTCV)
