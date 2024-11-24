@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 
-#include <pcl/io/io.h>
+#include <pcl/common/io.h>
 
 namespace rtabmap
 {
