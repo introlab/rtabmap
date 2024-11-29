@@ -395,6 +395,154 @@ LaserScan rangeFiltering(
 	return scan;
 }
 
+template<typename PointT>
+pcl::IndicesPtr rangeFilteringImpl(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	UASSERT(rangeMin >=0.0f && rangeMax>=0.0f);
+	int size = indices->empty()?cloud->size():indices->size();
+	pcl::IndicesPtr output(new std::vector<int>());
+	output->reserve(size);
+	if(!cloud->empty())
+	{
+		if(rangeMin > 0.0f || rangeMax > 0.0f)
+		{
+			float rangeMinSqrd = rangeMin * rangeMin;
+			float rangeMaxSqrd = rangeMax * rangeMax;
+			for(int i=0; i<size; ++i)
+			{
+				int index = indices->empty()?i:indices->at(i);
+				const PointT & pt = cloud->at(index);
+				float r = pt.x*pt.x + pt.y*pt.y + pt.z*pt.z;
+
+				if(rangeMin > 0.0f && r < rangeMinSqrd)
+				{
+					continue;
+				}
+				if(rangeMax > 0.0f && r > rangeMaxSqrd)
+				{
+					continue;
+				}
+
+				output->push_back(index);
+			}
+		}
+		else
+		{
+			*output = *indices;
+		}
+	}
+
+	return output;
+}
+
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointXYZ>(cloud, indices, rangeMin, rangeMax);
+}
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointXYZRGB>(cloud, indices, rangeMin, rangeMax);
+}
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointNormal>(cloud, indices, rangeMin, rangeMax);
+}
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, rangeMin, rangeMax);
+}
+
+template<typename PointT>
+void rangeSplitFilteringImpl(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	int size = indices->empty()?cloud->size():indices->size();
+	closeIndices.reset(new std::vector<int>());
+	farIndices.reset(new std::vector<int>());
+	closeIndices->reserve(size);
+	farIndices->reserve(size);
+	if(!cloud->empty())
+	{
+		float rangeSqrd = range * range;
+		for(int i=0; i<size; ++i)
+		{
+			int index = indices->empty()?i:indices->at(i);
+			const PointT & pt = cloud->at(index);
+			float r = pt.x*pt.x + pt.y*pt.y + pt.z*pt.z;
+
+			if(r < rangeSqrd)
+			{
+				closeIndices->push_back(index);
+			}
+			else
+			{
+				farIndices->push_back(index);
+			}
+		}
+	}
+}
+
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointXYZ>(cloud, indices, range, closeIndices, farIndices);
+}
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointXYZRGB>(cloud, indices, range, closeIndices, farIndices);
+}
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointNormal>(cloud, indices, range, closeIndices, farIndices);
+}
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, range, closeIndices, farIndices);
+}
+
 LaserScan downsample(
 		const LaserScan & scan,
 		int step)
