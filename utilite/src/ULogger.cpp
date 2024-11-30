@@ -25,7 +25,6 @@
 #include <fstream>
 #include <string>
 #include <string.h>
-#include <iostream>
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -94,7 +93,7 @@ private:
     }
     virtual void _writeStr(const char* msg)
 	{
-		std::cerr << msg;
+		printf("%s", msg);
 	}
 };
 
