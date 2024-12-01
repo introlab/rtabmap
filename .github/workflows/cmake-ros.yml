@@ -4,9 +4,6 @@ on:
   push:
     branches: 
       - master
-      - noetic-devel
-      - humble-devel
-      - jazzy-devel
   pull_request:
     branches: 
       - '**'
@@ -35,7 +32,6 @@ jobs:
         - ros_distribution: 'jazzy'
           os: ubuntu-24.04
 
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/${{ matrix.ros_distribution }}-devel'
     steps:   
     - uses: ros-tooling/setup-ros@v0.7
       with:
