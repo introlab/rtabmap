@@ -103,12 +103,12 @@
                 android:summary="@string/pref_summary_depth_from_motion"
                 android:defaultValue="@string/pref_default_depth_from_motion"/>
              <ListPreference
-		        android:key="@string/pref_key_arcore_localization_filtering_speed"
-		        android:title="@string/pref_title_arcore_localization_filtering_speed"
-		        android:summary="@string/pref_summary_arcore_localization_filtering_speed"
-		        android:entries="@array/pref_arcore_localization_filtering_speed_keys"
-		   	    android:entryValues="@array/pref_arcore_localization_filtering_speed_values"
-		   		android:defaultValue="@string/pref_default_arcore_localization_filtering_speed"/>
+		        android:key="@string/pref_key_arcore_relocalization_acc_thr"
+		        android:title="@string/pref_title_arcore_relocalization_acc_thr"
+		        android:summary="@string/pref_summary_arcore_relocalization_acc_thr"
+		        android:entries="@array/pref_arcore_relocalization_acc_thr_keys"
+		   	    android:entryValues="@array/pref_arcore_relocalization_acc_thr_values"
+		   		android:defaultValue="@string/pref_default_arcore_relocalization_acc_thr"/>
 		    <com.introlab.rtabmap.CustomSwitchPreference
 		        android:key="@string/pref_key_smoothing"
 		        android:title="@string/pref_title_smoothing"

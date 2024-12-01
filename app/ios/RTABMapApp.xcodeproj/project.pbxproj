@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -20,6 +20,7 @@
 		4EE016C3259BE464008CCE65 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4EE016BF259BE464008CCE65 /* Main.storyboard */; };
 		4EE016C4259BE464008CCE65 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4EE016C1259BE464008CCE65 /* LaunchScreen.storyboard */; };
 		4EE016C7259BE46F008CCE65 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4EE016C6259BE46F008CCE65 /* Assets.xcassets */; };
+		4EFAA9432CAE4E960055DA51 /* liblas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFAA9422CAE4E960055DA51 /* liblas.a */; };
 		4EFD0B36259D4DE900575D88 /* libboost_filesystem.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFD0B2B259D4DE900575D88 /* libboost_filesystem.a */; };
 		4EFD0B37259D4DE900575D88 /* libboost_program_options.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFD0B2C259D4DE900575D88 /* libboost_program_options.a */; };
 		4EFD0B38259D4DE900575D88 /* libboost_regex.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFD0B2D259D4DE900575D88 /* libboost_regex.a */; };
@@ -170,6 +171,7 @@
 		4EE016C2259BE464008CCE65 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = RTABMapApp/Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		4EE016C6259BE46F008CCE65 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = RTABMapApp/Assets.xcassets; sourceTree = "<group>"; };
 		4EE016E1259BE96A008CCE65 /* RTABMapApp-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "RTABMapApp-Bridging-Header.h"; path = "RTABMapApp/RTABMapApp-Bridging-Header.h"; sourceTree = "<group>"; };
+		4EFAA9422CAE4E960055DA51 /* liblas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblas.a; path = RTABMapApp/Libraries/lib/liblas.a; sourceTree = "<group>"; };
 		4EFD0B2B259D4DE900575D88 /* libboost_filesystem.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_filesystem.a; path = RTABMapApp/Libraries/lib/libboost_filesystem.a; sourceTree = "<group>"; };
 		4EFD0B2C259D4DE900575D88 /* libboost_program_options.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_program_options.a; path = RTABMapApp/Libraries/lib/libboost_program_options.a; sourceTree = "<group>"; };
 		4EFD0B2D259D4DE900575D88 /* libboost_regex.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_regex.a; path = RTABMapApp/Libraries/lib/libboost_regex.a; sourceTree = "<group>"; };
@@ -343,6 +345,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4EFAA9432CAE4E960055DA51 /* liblas.a in Frameworks */,
 				4EFD0F50259D67D900575D88 /* liblibwebp.a in Frameworks */,
 				4EFD0F51259D67D900575D88 /* liblibpng.a in Frameworks */,
 				4EFD0F52259D67D900575D88 /* liblibjpeg-turbo.a in Frameworks */,
@@ -493,6 +496,7 @@
 		4EFD0B2A259D4DE900575D88 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				4EFAA9422CAE4E960055DA51 /* liblas.a */,
 				4EFD0F4D259D67D900575D88 /* liblibjpeg-turbo.a */,
 				4EFD0F4C259D67D900575D88 /* liblibpng.a */,
 				4EFD0F4F259D67D900575D88 /* liblibprotobuf.a */,
@@ -787,7 +791,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nversion=\"$MARKETING_VERSION\"\n/usr/libexec/PlistBuddy -c \"Set PreferenceSpecifiers:22:DefaultValue $version\" \"${SRCROOT}/Settings.bundle/Root.plist\"\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nversion=\"$MARKETING_VERSION\"\n/usr/libexec/PlistBuddy -c \"Set PreferenceSpecifiers:21:DefaultValue $version\" \"${SRCROOT}/Settings.bundle/Root.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -957,6 +961,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = "";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -967,6 +972,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -1007,7 +1013,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 				);
-				MARKETING_VERSION = 0.21.0;
+				MARKETING_VERSION = 0.21.8;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1064,7 +1070,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 				);
-				MARKETING_VERSION = 0.21.0;
+				MARKETING_VERSION = 0.21.8;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;

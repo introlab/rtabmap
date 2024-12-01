@@ -4753,7 +4753,7 @@ void Rtabmap::setMemoryThreshold(int maxMemoryAllowed)
 {
 	//must be positive, 0 mean inf memory allowed (no memory limit)
 	_maxMemoryAllowed = maxMemoryAllowed;
-	if(_maxMemoryAllowed < 0)
+	if(maxMemoryAllowed < 0)
 	{
 		ULOGGER_WARN("maxMemoryAllowed < 0, then setting it to 0 (inf).");
 		_maxMemoryAllowed = 0;

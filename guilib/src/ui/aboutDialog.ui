@@ -162,9 +162,9 @@ p, li { white-space: pre-wrap; }
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>0</y>
+             <y>-43</y>
              <width>596</width>
-             <height>1096</height>
+             <height>1165</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -185,18 +185,21 @@ p, li { white-space: pre-wrap; }
             </property>
             <item>
              <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,1">
-              <item row="20" column="0">
-               <widget class="QLabel" name="label_68">
+              <item row="30" column="1">
+               <widget class="QLabel" name="label_cvsba">
                 <property name="text">
-                 <string>With K4A :</string>
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="3" column="2">
-               <widget class="QLabel" name="label_vtk_license">
+              <item row="32" column="2">
+               <widget class="QLabel" name="label_mrpt_license">
                 <property name="text">
                  <string>BSD</string>
                 </property>
@@ -205,23 +208,20 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_32">
+              <item row="44" column="2">
+               <widget class="QLabel" name="label_orbslam_license">
                 <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Third Party Libraries&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="textFormat">
-                 <enum>Qt::RichText</enum>
+                 <string>GPLv3</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="39" column="0">
-               <widget class="QLabel" name="label_26">
+              <item row="23" column="2">
+               <widget class="QLabel" name="label_g2o_license_3">
                 <property name="text">
-                 <string>With Viso2 :</string>
+                 <string>MIT</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -229,17 +229,27 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="35" column="0">
-               <widget class="QLabel" name="label_24">
+               <widget class="QLabel" name="label_49">
                 <property name="text">
-                 <string>With CPU-TSDF :</string>
+                 <string>With Open3D :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="25" column="2">
-               <widget class="QLabel" name="label_g2o_license">
+              <item row="5" column="2">
+               <widget class="QLabel" name="label_orboctree_license">
+                <property name="text">
+                 <string>GPLv3</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLabel" name="label_pcl_license">
                 <property name="text">
                  <string>BSD</string>
                 </property>
@@ -248,7 +258,70 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="13" column="2">
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_11">
+                <property name="text">
+                 <string>PCL version :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QLabel" name="label_43">
+                <property name="text">
+                 <string>With Python3 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLabel" name="label_39">
+                <property name="text">
+                 <string>With FastCV :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="40" column="2">
+               <widget class="QLabel" name="label_aliceVision_license">
+                <property name="text">
+                 <string>MPL2</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="24" column="1">
+               <widget class="QLabel" name="label_mynteye">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="21" column="2">
+               <widget class="QLabel" name="label_zedOC_license">
+                <property name="text">
+                 <string>MIT</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="2">
                <widget class="QLabel" name="label_realsense_license">
                 <property name="text">
                  <string>Apache-2</string>
@@ -258,26 +331,30 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="20" column="1">
-               <widget class="QLabel" name="label_k4a">
+              <item row="29" column="2">
+               <widget class="QLabel" name="label_gtsam_license">
                 <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                 <string>BSD</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="27" column="1">
-               <widget class="QLabel" name="label_cvsba">
+              <item row="6" column="0">
+               <widget class="QLabel" name="label_42">
                 <property name="text">
-                 <string/>
+                 <string>With SuperPoint Torch :</string>
                 </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="2">
+               <widget class="QLabel" name="label_freenect_license">
+                <property name="text">
+                 <string>Apache v2 and/or GPLv2</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -297,10 +374,56 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="41" column="2">
-               <widget class="QLabel" name="label_orbslam_license">
+              <item row="17" column="1">
+               <widget class="QLabel" name="label_realsense2">
                 <property name="text">
-                 <string>GPLv3</string>
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="19" column="0">
+               <widget class="QLabel" name="label_17">
+                <property name="text">
+                 <string>With stereo FlyCapture2 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QLabel" name="label_pymatcher">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="20" column="0">
+               <widget class="QLabel" name="label_21">
+                <property name="text">
+                 <string>With Zed SDK :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="2">
+               <widget class="QLabel" name="label_openni_license">
+                <property name="text">
+                 <string>Apache v2</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -308,7 +431,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="32" column="1">
-               <widget class="QLabel" name="label_open3d">
+               <widget class="QLabel" name="label_mrpt">
                 <property name="text">
                  <string/>
                 </property>
@@ -320,119 +443,37 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="15" column="0">
-               <widget class="QLabel" name="label_16">
+              <item row="16" column="0">
+               <widget class="QLabel" name="label_22">
                 <property name="text">
-                 <string>With stereo dc1394 :</string>
+                 <string>With RealSense :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="23" column="1">
-               <widget class="QLabel" name="label_xvsdk">
+              <item row="39" column="0">
+               <widget class="QLabel" name="label_30">
                 <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                 <string>With OpenChisel :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="18" column="0">
-               <widget class="QLabel" name="label_44">
+              <item row="27" column="0">
+               <widget class="QLabel" name="label_77">
                 <property name="text">
-                 <string>With Zed Open Capture :</string>
+                 <string>With TORO :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="44" column="1">
-               <widget class="QLabel" name="label_msckf">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLabel" name="label_qt_version">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="46" column="0">
-               <widget class="QLabel" name="label_47">
-                <property name="text">
-                 <string>With OpenVINS :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="39" column="2">
-               <widget class="QLabel" name="label_viso2_license">
-                <property name="text">
-                 <string>GPLv3</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="32" column="0">
-               <widget class="QLabel" name="label_49">
-                <property name="text">
-                 <string>With Open3D :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="40" column="1">
-               <widget class="QLabel" name="label_dvo">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <widget class="QLabel" name="label_opencv_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="30" column="1">
+              <item row="33" column="1">
                <widget class="QLabel" name="label_libpointmatcher">
                 <property name="text">
                  <string/>
@@ -445,57 +486,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="14" column="0">
-               <widget class="QLabel" name="label_33">
-                <property name="text">
-                 <string>With RealSense2 :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="26" column="2">
-               <widget class="QLabel" name="label_gtsam_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="25" column="0">
-               <widget class="QLabel" name="label_14">
-                <property name="text">
-                 <string>With g2o :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="0">
-               <widget class="QLabel" name="label_13">
-                <property name="text">
-                 <string>With OpenNI2 :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="28" column="2">
-               <widget class="QLabel" name="label_ceres_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="41" column="1">
+              <item row="44" column="1">
                <widget class="QLabel" name="label_orbslam">
                 <property name="text">
                  <string/>
@@ -508,17 +499,27 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="34" column="2">
-               <widget class="QLabel" name="label_gridmap_license">
+              <item row="7" column="2">
+               <widget class="QLabel" name="label_pymatcher_license">
                 <property name="text">
-                 <string>BSD</string>
+                 <string>PSF</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="37" column="0">
+              <item row="25" column="0">
+               <widget class="QLabel" name="label_70">
+                <property name="text">
+                 <string>With DepthAI :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="40" column="0">
                <widget class="QLabel" name="label_41">
                 <property name="text">
                  <string>With AliceVision :</string>
@@ -528,7 +529,43 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="39" column="1">
+              <item row="19" column="1">
+               <widget class="QLabel" name="label_flycapture2">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="23" column="1">
+               <widget class="QLabel" name="label_k4a">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="43" column="0">
+               <widget class="QLabel" name="label_27">
+                <property name="text">
+                 <string>With DVO :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="42" column="1">
                <widget class="QLabel" name="label_viso2">
                 <property name="text">
                  <string/>
@@ -541,8 +578,61 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
+              <item row="25" column="1">
+               <widget class="QLabel" name="label_depthai">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="18" column="2">
+               <widget class="QLabel" name="label_dc1394_license">
+                <property name="text">
+                 <string>LGPL</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="33" column="0">
+               <widget class="QLabel" name="label_29">
+                <property name="text">
+                 <string>With libpointmatcher :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="47" column="0">
+               <widget class="QLabel" name="label_34">
+                <property name="text">
+                 <string>With MSCKF :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="38" column="0">
+               <widget class="QLabel" name="label_24">
+                <property name="text">
+                 <string>With CPU-TSDF :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
               <item row="18" column="1">
-               <widget class="QLabel" name="label_zedOC">
+               <widget class="QLabel" name="label_dc1394">
                 <property name="text">
                  <string/>
                 </property>
@@ -554,50 +644,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="13" column="1">
-               <widget class="QLabel" name="label_realsense">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="2">
-               <widget class="QLabel" name="label_qt_license">
-                <property name="text">
-                 <string>Open Source or Commercial</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="37" column="2">
-               <widget class="QLabel" name="label_aliceVision_license">
-                <property name="text">
-                 <string>MPL2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="29" column="0">
-               <widget class="QLabel" name="label_48">
-                <property name="text">
-                 <string>With MRPT :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="21" column="0">
+              <item row="24" column="0">
                <widget class="QLabel" name="label_69">
                 <property name="text">
                  <string>With MYNTEYE S :</string>
@@ -607,30 +654,63 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="40" column="0">
-               <widget class="QLabel" name="label_27">
+              <item row="38" column="1">
+               <widget class="QLabel" name="label_cputsdf">
                 <property name="text">
-                 <string>With DVO :</string>
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="36" column="0">
-               <widget class="QLabel" name="label_30">
+              <item row="25" column="2">
+               <widget class="QLabel" name="label_depthai_license">
                 <property name="text">
-                 <string>With OpenChisel :</string>
+                 <string>MIT</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="45" column="0">
-               <widget class="QLabel" name="label_46">
+              <item row="35" column="2">
+               <widget class="QLabel" name="label_open3d_license">
                 <property name="text">
-                 <string>With VINS-Fusion :</string>
+                 <string>MIT</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="28" column="0">
+               <widget class="QLabel" name="label_14">
+                <property name="text">
+                 <string>With g2o :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="2">
+               <widget class="QLabel" name="label_pdal_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="37" column="2">
+               <widget class="QLabel" name="label_gridmap_license">
+                <property name="text">
+                 <string>BSD</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -650,28 +730,8 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="40" column="2">
-               <widget class="QLabel" name="label_dvo_license">
-                <property name="text">
-                 <string>GPLv3</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="46" column="2">
-               <widget class="QLabel" name="label_openvins_license">
-                <property name="text">
-                 <string>GPLv3</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="35" column="1">
-               <widget class="QLabel" name="label_cputsdf">
+              <item row="36" column="1">
+               <widget class="QLabel" name="label_octomap">
                 <property name="text">
                  <string/>
                 </property>
@@ -683,20 +743,76 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="27" column="0">
-               <widget class="QLabel" name="label_18">
+              <item row="34" column="2">
+               <widget class="QLabel" name="label_cccorelib_license">
                 <property name="text">
-                 <string>With cvsba :</string>
+                 <string>GPLv2</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="31" column="2">
-               <widget class="QLabel" name="label_cccorelib_license">
+              <item row="14" column="0">
+               <widget class="QLabel" name="label_13">
                 <property name="text">
-                 <string>GPLv2</string>
+                 <string>With OpenNI2 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="17" column="2">
+               <widget class="QLabel" name="label_realsense2_license">
+                <property name="text">
+                 <string>Apache-2</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="label_79">
+                <property name="text">
+                 <string>Qt version :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="47" column="1">
+               <widget class="QLabel" name="label_msckf">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="18" column="0">
+               <widget class="QLabel" name="label_16">
+                <property name="text">
+                 <string>With stereo dc1394 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QLabel" name="label_fastcv">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -716,225 +832,8 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="9" column="0">
-               <widget class="QLabel" name="label_12">
-                <property name="text">
-                 <string>With Freenect :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="15" column="1">
-               <widget class="QLabel" name="label_dc1394">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0">
-               <widget class="QLabel" name="label_39">
-                <property name="text">
-                 <string>With FastCV :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="2">
-               <widget class="QLabel" name="label_freenect2_license">
-                <property name="text">
-                 <string>Apache v2 and/or GPLv2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="16" column="0">
-               <widget class="QLabel" name="label_17">
-                <property name="text">
-                 <string>With stereo FlyCapture2 :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="22" column="2">
-               <widget class="QLabel" name="label_depthai_license">
-                <property name="text">
-                 <string>MIT</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="1">
-               <widget class="QLabel" name="label_freenect">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="34" column="1">
-               <widget class="QLabel" name="label_gridmap">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="24" column="2">
-               <widget class="QLabel" name="label_toro_license">
-                <property name="text">
-                 <string>Creative Commons [Attribution-NonCommercial-ShareAlike]</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QLabel" name="label_37">
-                <property name="text">
-                 <string>With ORB Octree :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_7">
-                <property name="text">
-                 <string>OpenCV version :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="25" column="1">
-               <widget class="QLabel" name="label_g2o">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="22" column="1">
-               <widget class="QLabel" name="label_depthai">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="22" column="0">
-               <widget class="QLabel" name="label_70">
-                <property name="text">
-                 <string>With DepthAI :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="27" column="2">
-               <widget class="QLabel" name="label_cvsba_license">
-                <property name="text">
-                 <string>GPLv2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="label_pcl_version">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="29" column="1">
-               <widget class="QLabel" name="label_mrpt">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="36" column="1">
-               <widget class="QLabel" name="label_openchisel">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="14" column="1">
-               <widget class="QLabel" name="label_realsense2">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="43" column="2">
-               <widget class="QLabel" name="label_loam_license">
+              <item row="31" column="2">
+               <widget class="QLabel" name="label_ceres_license">
                 <property name="text">
                  <string>BSD</string>
                 </property>
@@ -943,8 +842,28 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="38" column="1">
-               <widget class="QLabel" name="label_fovis">
+              <item row="44" column="0">
+               <widget class="QLabel" name="label_orbslam_title">
+                <property name="text">
+                 <string>With ORB SLAM 2 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="31" column="0">
+               <widget class="QLabel" name="label_40">
+                <property name="text">
+                 <string>With Ceres :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="40" column="1">
+               <widget class="QLabel" name="label_aliceVision">
                 <property name="text">
                  <string/>
                 </property>
@@ -966,13 +885,455 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="43" column="1">
+              <item row="45" column="0">
+               <widget class="QLabel" name="label_35">
+                <property name="text">
+                 <string>With OKVIS :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="26" column="0">
+               <widget class="QLabel" name="label_71">
+                <property name="text">
+                 <string>With XVisio SDK :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_23">
+                <property name="text">
+                 <string>VTK version :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="27" column="2">
+               <widget class="QLabel" name="label_toro_license">
+                <property name="text">
+                 <string>Creative Commons [Attribution-NonCommercial-ShareAlike]</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="23" column="0">
+               <widget class="QLabel" name="label_68">
+                <property name="text">
+                 <string>With K4A :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLabel" name="label_vtk_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QLabel" name="label_opencv_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="29" column="1">
+               <widget class="QLabel" name="label_gtsam">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="21" column="1">
+               <widget class="QLabel" name="label_zedOC">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="36" column="2">
+               <widget class="QLabel" name="label_octomap_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="48" column="1">
+               <widget class="QLabel" name="label_vins_fusion">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="37" column="0">
+               <widget class="QLabel" name="label_28">
+                <property name="text">
+                 <string>With GridMap :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1">
+               <widget class="QLabel" name="label_freenect">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="42" column="2">
+               <widget class="QLabel" name="label_viso2_license">
+                <property name="text">
+                 <string>GPLv3</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="42" column="0">
+               <widget class="QLabel" name="label_26">
+                <property name="text">
+                 <string>With Viso2 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="37" column="1">
+               <widget class="QLabel" name="label_gridmap">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="46" column="1">
                <widget class="QLabel" name="label_loam">
                 <property name="text">
                  <string/>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="28" column="1">
+               <widget class="QLabel" name="label_g2o">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="29" column="0">
+               <widget class="QLabel" name="label_19">
+                <property name="text">
+                 <string>With GTSAM :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="1">
+               <widget class="QLabel" name="label_openni">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="1">
+               <widget class="QLabel" name="label_cudasift">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="35" column="1">
+               <widget class="QLabel" name="label_open3d">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="2">
+               <widget class="QLabel" name="label_cudasift_license">
+                <property name="text">
+                 <string>MIT</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="34" column="0">
+               <widget class="QLabel" name="label_45">
+                <property name="text">
+                 <string>With CCCoreLib :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="2">
+               <widget class="QLabel" name="label_freenect2_license">
+                <property name="text">
+                 <string>Apache v2 and/or GPLv2</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="1">
+               <widget class="QLabel" name="label_realsense">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="43" column="1">
+               <widget class="QLabel" name="label_dvo">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="41" column="0">
+               <widget class="QLabel" name="label_25">
+                <property name="text">
+                 <string>With FOVIS :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="38" column="2">
+               <widget class="QLabel" name="label_cputsdf_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="28" column="2">
+               <widget class="QLabel" name="label_g2o_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0">
+               <widget class="QLabel" name="label_52">
+                <property name="text">
+                 <string>With PDAL :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="21" column="0">
+               <widget class="QLabel" name="label_44">
+                <property name="text">
+                 <string>With Zed Open Capture :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="label_37">
+                <property name="text">
+                 <string>With ORB Octree :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="41" column="1">
+               <widget class="QLabel" name="label_fovis">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_32">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Third Party Libraries&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="textFormat">
+                 <enum>Qt::RichText</enum>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="1">
+               <widget class="QLabel" name="label_freenect2">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="46" column="2">
+               <widget class="QLabel" name="label_loam_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="43" column="2">
+               <widget class="QLabel" name="label_dvo_license">
+                <property name="text">
+                 <string>GPLv3</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="0">
+               <widget class="QLabel" name="label_51">
+                <property name="text">
+                 <string>With CudaSift :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="41" column="2">
+               <widget class="QLabel" name="label_fovis_license">
+                <property name="text">
+                 <string>GPLv2</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="45" column="2">
+               <widget class="QLabel" name="label_okvis_license">
+                <property name="text">
+                 <string>BSD</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -989,8 +1350,8 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="33" column="1">
-               <widget class="QLabel" name="label_octomap">
+              <item row="9" column="1">
+               <widget class="QLabel" name="label_pdal">
                 <property name="text">
                  <string/>
                 </property>
@@ -1002,10 +1363,158 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="19" column="0">
-               <widget class="QLabel" name="label_38">
+              <item row="26" column="1">
+               <widget class="QLabel" name="label_xvsdk">
                 <property name="text">
-                 <string>With K4W2 :</string>
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="label_pcl_version">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="31" column="1">
+               <widget class="QLabel" name="label_ceres">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="33" column="2">
+               <widget class="QLabel" name="label_libpointmatcher_license">
+                <property name="text">
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="30" column="0">
+               <widget class="QLabel" name="label_18">
+                <property name="text">
+                 <string>With cvsba :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QLabel" name="label_qt_license">
+                <property name="text">
+                 <string>Open Source or Commercial</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="14" column="2">
+               <widget class="QLabel" name="label_openni2_license">
+                <property name="text">
+                 <string>Apache v2</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="0">
+               <widget class="QLabel" name="label_12">
+                <property name="text">
+                 <string>With Freenect :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="49" column="0">
+               <widget class="QLabel" name="label_47">
+                <property name="text">
+                 <string>With OpenVINS :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="0">
+               <widget class="QLabel" name="label_50">
+                <property name="text">
+                 <string>With OpenNI :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="39" column="1">
+               <widget class="QLabel" name="label_openchisel">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="22" column="1">
+               <widget class="QLabel" name="label_k4w2">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="36" column="0">
+               <widget class="QLabel" name="label_20">
+                <property name="text">
+                 <string>With Octomap :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="49" column="1">
+               <widget class="QLabel" name="label_openvins">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1025,47 +1534,7 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="32" column="2">
-               <widget class="QLabel" name="label_open3d_license">
-                <property name="text">
-                 <string>MIT</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="30" column="0">
-               <widget class="QLabel" name="label_29">
-                <property name="text">
-                 <string>With libpointmatcher :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="41" column="0">
-               <widget class="QLabel" name="label_orbslam_title">
-                <property name="text">
-                 <string>With ORB SLAM 2 :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="35" column="2">
-               <widget class="QLabel" name="label_cputsdf_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="17" column="1">
+              <item row="20" column="1">
                <widget class="QLabel" name="label_zed">
                 <property name="text">
                  <string/>
@@ -1078,373 +1547,10 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
-               <widget class="QLabel" name="label_pymatcher">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="1">
-               <widget class="QLabel" name="label_openni2">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="1">
-               <widget class="QLabel" name="label_freenect2">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="44" column="2">
-               <widget class="QLabel" name="label_msckf_license">
-                <property name="text">
-                 <string>Penn Software License</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="31" column="1">
-               <widget class="QLabel" name="label_cccorelib">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="38" column="2">
-               <widget class="QLabel" name="label_fovis_license">
+              <item row="30" column="2">
+               <widget class="QLabel" name="label_cvsba_license">
                 <property name="text">
                  <string>GPLv2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="38" column="0">
-               <widget class="QLabel" name="label_25">
-                <property name="text">
-                 <string>With FOVIS :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="18" column="2">
-               <widget class="QLabel" name="label_zedOC_license">
-                <property name="text">
-                 <string>MIT</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="21" column="1">
-               <widget class="QLabel" name="label_mynteye">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="43" column="0">
-               <widget class="QLabel" name="label_36">
-                <property name="text">
-                 <string>With loam_velodyne :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="30" column="2">
-               <widget class="QLabel" name="label_libpointmatcher_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="26" column="1">
-               <widget class="QLabel" name="label_gtsam">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="24" column="1">
-               <widget class="QLabel" name="label_toro">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="45" column="2">
-               <widget class="QLabel" name="label_vins_fusion_license">
-                <property name="text">
-                 <string>GPLv3</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_11">
-                <property name="text">
-                 <string>PCL version :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="2">
-               <widget class="QLabel" name="label_openni2_license">
-                <property name="text">
-                 <string>Apache v2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="19" column="1">
-               <widget class="QLabel" name="label_k4w2">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="0">
-               <widget class="QLabel" name="label_15">
-                <property name="text">
-                 <string>With Freenect2 :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0">
-               <widget class="QLabel" name="label_43">
-                <property name="text">
-                 <string>With Python3 :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="14" column="2">
-               <widget class="QLabel" name="label_realsense2_license">
-                <property name="text">
-                 <string>Apache-2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="42" column="2">
-               <widget class="QLabel" name="label_okvis_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="2">
-               <widget class="QLabel" name="label_orboctree_license">
-                <property name="text">
-                 <string>GPLv3</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="33" column="2">
-               <widget class="QLabel" name="label_octomap_license">
-                <property name="text">
-                 <string>BSD</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="0">
-               <widget class="QLabel" name="label_22">
-                <property name="text">
-                 <string>With RealSense :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="label_79">
-                <property name="text">
-                 <string>Qt version :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="2">
-               <widget class="QLabel" name="label_freenect_license">
-                <property name="text">
-                 <string>Apache v2 and/or GPLv2</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="28" column="0">
-               <widget class="QLabel" name="label_40">
-                <property name="text">
-                 <string>With Ceres :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="42" column="1">
-               <widget class="QLabel" name="label_okvis">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="20" column="2">
-               <widget class="QLabel" name="label_g2o_license_3">
-                <property name="text">
-                 <string>MIT</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="45" column="1">
-               <widget class="QLabel" name="label_vins_fusion">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="28" column="1">
-               <widget class="QLabel" name="label_ceres">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="42" column="0">
-               <widget class="QLabel" name="label_35">
-                <property name="text">
-                 <string>With OKVIS :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="33" column="0">
-               <widget class="QLabel" name="label_20">
-                <property name="text">
-                 <string>With Octomap :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="2">
-               <widget class="QLabel" name="label_pcl_license">
-                <property name="text">
-                 <string>BSD</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1461,20 +1567,89 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="7" column="2">
-               <widget class="QLabel" name="label_pymatcher_license">
+              <item row="34" column="1">
+               <widget class="QLabel" name="label_cccorelib">
                 <property name="text">
-                 <string>PSF</string>
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="34" column="0">
-               <widget class="QLabel" name="label_28">
+              <item row="15" column="0">
+               <widget class="QLabel" name="label_15">
                 <property name="text">
-                 <string>With GridMap :</string>
+                 <string>With Freenect2 :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="14" column="1">
+               <widget class="QLabel" name="label_openni2">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="48" column="0">
+               <widget class="QLabel" name="label_46">
+                <property name="text">
+                 <string>With VINS-Fusion :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="32" column="0">
+               <widget class="QLabel" name="label_48">
+                <property name="text">
+                 <string>With MRPT :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="49" column="2">
+               <widget class="QLabel" name="label_openvins_license">
+                <property name="text">
+                 <string>GPLv3</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="46" column="0">
+               <widget class="QLabel" name="label_36">
+                <property name="text">
+                 <string>With loam_velodyne :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QLabel" name="label_qt_version">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1482,50 +1657,37 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="17" column="0">
-               <widget class="QLabel" name="label_21">
+               <widget class="QLabel" name="label_33">
                 <property name="text">
-                 <string>With Zed SDK :</string>
+                 <string>With RealSense2 :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="24" column="0">
-               <widget class="QLabel" name="label_77">
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_7">
                 <property name="text">
-                 <string>With TORO :</string>
+                 <string>OpenCV version :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="16" column="1">
-               <widget class="QLabel" name="label_flycapture2">
+              <item row="22" column="0">
+               <widget class="QLabel" name="label_38">
                 <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                 <string>With K4W2 :</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="31" column="0">
-               <widget class="QLabel" name="label_45">
-                <property name="text">
-                 <string>With CCCoreLib :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="37" column="1">
-               <widget class="QLabel" name="label_aliceVision">
+              <item row="27" column="1">
+               <widget class="QLabel" name="label_toro">
                 <property name="text">
                  <string/>
                 </property>
@@ -1537,114 +1699,28 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="label_23">
+              <item row="47" column="2">
+               <widget class="QLabel" name="label_msckf_license">
                 <property name="text">
-                 <string>VTK version :</string>
+                 <string>Penn Software License</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="29" column="2">
-               <widget class="QLabel" name="label_mrpt_license">
+              <item row="48" column="2">
+               <widget class="QLabel" name="label_vins_fusion_license">
                 <property name="text">
-                 <string>BSD</string>
+                 <string>GPLv3</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="23" column="0">
-               <widget class="QLabel" name="label_71">
-                <property name="text">
-                 <string>With XVisio SDK :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="15" column="2">
-               <widget class="QLabel" name="label_dc1394_license">
-                <property name="text">
-                 <string>LGPL</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="44" column="0">
-               <widget class="QLabel" name="label_34">
-                <property name="text">
-                 <string>With MSCKF :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="1">
-               <widget class="QLabel" name="label_fastcv">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="26" column="0">
-               <widget class="QLabel" name="label_19">
-                <property name="text">
-                 <string>With GTSAM :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="46" column="1">
-               <widget class="QLabel" name="label_openvins">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0">
-               <widget class="QLabel" name="label_42">
-                <property name="text">
-                 <string>With SuperPoint Torch :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="0">
-               <widget class="QLabel" name="label_50">
-                <property name="text">
-                 <string>With OpenNI :</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="1">
-               <widget class="QLabel" name="label_openni">
+              <item row="45" column="1">
+               <widget class="QLabel" name="label_okvis">
                 <property name="text">
                  <string/>
                 </property>
@@ -1657,9 +1733,32 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="10" column="2">
-               <widget class="QLabel" name="label_openni_license">
+               <widget class="QLabel" name="label_liblas_license">
                 <property name="text">
-                 <string>Apache v2</string>
+                 <string>BSD</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QLabel" name="label_53">
+                <property name="text">
+                 <string>With libLAS :</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <widget class="QLabel" name="label_liblas">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>

@@ -39,7 +39,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UEventsHandler.h>
 
-#if defined(HAVE_OPENCV_ARUCO) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+#if defined(HAVE_OPENCV_OBJDETECT) && (CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7))
+#include <opencv2/objdetect/charuco_detector.hpp>
+#define HAVE_CHARUCO
+#elif defined(HAVE_OPENCV_ARUCO)
 #include <opencv2/aruco/charuco.hpp>
 #define HAVE_CHARUCO
 #endif
@@ -141,6 +144,10 @@ private:
 	cv::Ptr<cv::aruco::Dictionary> markerDictionary_;
 	cv::Ptr<cv::aruco::DetectorParameters> arucoDetectorParams_;
     cv::Ptr<cv::aruco::CharucoBoard> charucoBoard_;
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+	cv::Ptr<cv::aruco::ArucoDetector> arucoDetector_;
+	cv::Ptr<cv::aruco::CharucoDetector> charucoDetector_;
+#endif
 #endif
 
 

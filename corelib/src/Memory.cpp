@@ -3186,6 +3186,15 @@ Transform Memory::computeTransform(
 			transform = transform.inverse();
 		}
 	}
+	else
+	{
+		std::string msg = uFormat("Missing visual features or missing raw data to compute them. Transform cannot be estimated.");
+		if(info)
+		{
+			info->rejectedMsg = msg;
+		}
+		UWARN(msg.c_str());
+	}
 	return transform;
 }
 
@@ -4546,7 +4555,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	bool isIntermediateNode = data.id() < 0 || (data.imageRaw().empty() && data.keypoints().empty() && data.laserScanRaw().empty());
+	bool isIntermediateNode = data.id() < 0;
 	int id = data.id();
 	if(_generateIds)
 	{
@@ -4717,13 +4726,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		cv::Mat rotatedDepthImages;
 		std::vector<CameraModel> rotatedCameraModels;
 		bool allOutputSizesAreOkay = true;
+		bool atLeastOneCameraRotated = false;
 		for(size_t i=0; i<data.cameraModels().size(); ++i)
 		{
 			UDEBUG("Rotating camera %ld", i);
 			cv::Mat rgb = cv::Mat(data.imageRaw(), cv::Rect(subInputImageWidth*i, 0, subInputImageWidth, data.imageRaw().rows));
 			cv::Mat depth = !data.depthRaw().empty()?cv::Mat(data.depthRaw(), cv::Rect(subInputDepthWidth*i, 0, subInputDepthWidth, data.depthRaw().rows)):cv::Mat();
 			CameraModel model = data.cameraModels()[i];
-			util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
+			atLeastOneCameraRotated |= util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
 			if(rotatedColorImages.empty())
 			{
 				rotatedColorImages = cv::Mat(cv::Size(rgb.cols * data.cameraModels().size(), rgb.rows), rgb.type());
@@ -4757,7 +4767,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			rotatedCameraModels.push_back(model);
 		}
-		if(allOutputSizesAreOkay)
+		if(allOutputSizesAreOkay && atLeastOneCameraRotated)
 		{
 			data.setRGBDImage(rotatedColorImages, rotatedDepthImages, rotatedCameraModels);
 
@@ -5492,7 +5502,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 
 	Landmarks landmarks = data.landmarks();
-	if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
+	if(!landmarks.empty() && isIntermediateNode)
+	{
+		UDEBUG("Landmarks provided (size=%ld) are ignored because this signature is set as intermediate.", landmarks.size());
+		landmarks.clear();
+	}
+	else if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
 	{
 		UDEBUG("Detecting markers...");
 		if(landmarks.empty())
@@ -5982,16 +5997,23 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
 
-	std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
-	if(_globalDescriptorExtractor)
+	if(!isIntermediateNode)
 	{
-		GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
-		if(!gdescriptor.data().empty())
+		std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
+		if(_globalDescriptorExtractor)
 		{
-			globalDescriptors.push_back(gdescriptor);
+			GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
+			if(!gdescriptor.data().empty())
+			{
+				globalDescriptors.push_back(gdescriptor);
+			}
 		}
+		s->sensorData().setGlobalDescriptors(globalDescriptors);
 	}
-	s->sensorData().setGlobalDescriptors(globalDescriptors);
+	else if(!data.globalDescriptors().empty())
+	{
+		UDEBUG("Global descriptors provided (size=%ld) are ignored because this signature is set as intermediate.", data.globalDescriptors().size());
+	}
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);

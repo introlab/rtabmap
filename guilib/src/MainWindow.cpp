@@ -302,7 +302,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->posteriorPlot->showLegend(false);
 	_ui->posteriorPlot->setFixedYAxis(0,1);
 	UPlotCurveThreshold * tc;
-	tc = _ui->posteriorPlot->addThreshold("Loop closure thr", float(_preferencesDialog->getLoopThr()));
+	tc = _ui->posteriorPlot->addThreshold("1 - Loop Thr", 1.0 - _preferencesDialog->getLoopThr());
 	connect(this, SIGNAL(loopClosureThrChanged(qreal)), tc, SLOT(setThreshold(qreal)));
 
 	_likelihoodCurve = new PdfPlotCurve("Likelihood", &_cachedSignatures, this);
@@ -2328,7 +2328,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
 						{
 							sceneRect.setWidth(sceneRect.width()+signature.sensorData().cameraModels()[i].imageWidth());
-							sceneRect.setHeight(sceneRect.height()+signature.sensorData().cameraModels()[i].imageHeight());
+							sceneRect.setHeight(std::max((int)sceneRect.height(), signature.sensorData().cameraModels()[i].imageHeight()));
 						}
 					}
 					else if(signature.sensorData().stereoCameraModels().size())
@@ -2336,7 +2336,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
 						{
 							sceneRect.setWidth(sceneRect.width()+signature.sensorData().stereoCameraModels()[i].left().imageWidth());
-							sceneRect.setHeight(sceneRect.height()+signature.sensorData().stereoCameraModels()[i].left().imageHeight());
+							sceneRect.setHeight(std::max((int)sceneRect.height(), signature.sensorData().stereoCameraModels()[i].left().imageHeight()));
 						}
 					}
 					if(sceneRect.isValid())
@@ -2412,7 +2412,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			ULOGGER_DEBUG("");
 			//Adjust thresholds
-			Q_EMIT(loopClosureThrChanged(_preferencesDialog->getLoopThr()));
+			Q_EMIT(loopClosureThrChanged(1.0 - _preferencesDialog->getLoopThr()));
 		}
 		if(!stat.likelihood().empty() && _ui->dockWidget_likelihood->isVisible())
 		{
@@ -4976,7 +4976,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
 	_ui->actionSLAM_mode->setChecked(_preferencesDialog->isSLAMMode());
 
-	Q_EMIT(loopClosureThrChanged(_preferencesDialog->getLoopThr()));
+	Q_EMIT(loopClosureThrChanged(1.0 - _preferencesDialog->getLoopThr()));
 }
 
 void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords)

@@ -41,6 +41,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mTimeThr: Int = 0
     private var mMaxFeatures: Int = 0
     private var mLoopThr = 0.11
+    private var mDataRecording = false
     
     private var mReviewRequested = false
     
@@ -63,7 +64,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         case .STATE_CAMERA:
             return "Camera Preview"
         case .STATE_MAPPING:
-            return "Mapping"
+            return mDataRecording ? "Data Recording" : "Mapping"
         case .STATE_PROCESSING:
             return "Processing"
         case .STATE_VISUALIZING:
@@ -428,6 +429,16 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
+    func cameraInfoEventReceived(_ rtabmap: RTABMap, type: Int, key: String, value: String) {
+        if(self.debugShown && key == "UpstreamRelocationFiltered")
+        {
+            DispatchQueue.main.async {
+                self.dismiss(animated: true)
+                self.showToast(message: "ARKit re-localization filtered because an acceleration of \(value) has been detected, which is over current threshold set in the settings.", seconds: 3)
+            }
+        }
+    }
+    
     func getMemoryUsage() -> UInt64 {
         var taskInfo = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
@@ -460,7 +471,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         if(mMapNodes > 0 && self.openedDatabasePath == nil)
         {
             let msg = "RTAB-Map has been pushed to background while mapping. Do you want to save the map now?"
-            let alert = UIAlertController(title: "Mapping Stopped!", message: msg, preferredStyle: .alert)
+            let alert = UIAlertController(title: mDataRecording ? "Data Recording Stopped" : "Mapping Stopped!", message: msg, preferredStyle: .alert)
             let alertActionNo = UIAlertAction(title: "Ignore", style: .cancel) {
                 (UIAlertAction) -> Void in
             }
@@ -582,6 +593,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         mState = state;
 
         var actionNewScanEnabled: Bool
+        var actionNewDataRecording: Bool
         var actionSaveEnabled: Bool
         var actionResumeEnabled: Bool
         var actionExportEnabled: Bool
@@ -602,7 +614,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3
             orthoGridSlider.isHidden = cameraMode != 3
-            actionNewScanEnabled = true
+            actionNewScanEnabled = !mDataRecording
+            actionNewDataRecording = mDataRecording
             actionSaveEnabled = false
             actionResumeEnabled = false
             actionExportEnabled = false
@@ -621,7 +634,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
-            actionNewScanEnabled = true
+            actionNewScanEnabled = !mDataRecording
+            actionNewDataRecording = mDataRecording
             actionSaveEnabled = false
             actionResumeEnabled = false
             actionExportEnabled = false
@@ -643,6 +657,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             orthoDistanceSlider.isHidden = cameraMode != 3 || mState != .STATE_VISUALIZING_WHILE_LOADING
             orthoGridSlider.isHidden = cameraMode != 3 || mState != .STATE_VISUALIZING_WHILE_LOADING
             actionNewScanEnabled = false
+            actionNewDataRecording = false
             actionSaveEnabled = false
             actionResumeEnabled = false
             actionExportEnabled = false
@@ -662,6 +677,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
             actionNewScanEnabled = true
+            actionNewDataRecording = true
             actionSaveEnabled = mMapNodes>0
             actionResumeEnabled = mMapNodes>0
             actionExportEnabled = mMapNodes>0
@@ -681,6 +697,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
             actionNewScanEnabled = true
+            actionNewDataRecording = true
             actionSaveEnabled = mState != .STATE_WELCOME && mMapNodes>0
             actionResumeEnabled = mState != .STATE_WELCOME && mMapNodes>0
             actionExportEnabled = mState != .STATE_WELCOME && mMapNodes>0
@@ -762,9 +779,16 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.optimization(approach: -1)
             }),
             optimizeAdvancedMenu])
+
+        // Advanced menu
+        let advancedMenu = UIMenu(title: "Advanced...", children: [
+            UIAction(title: "New Data Recording", image: UIImage(systemName: "plus.app"), attributes: actionNewDataRecording ? [] : .disabled, state: .off, handler: { _ in
+            	self.newScan(dataRecordingMode: true)
+        	})
+        ])
                 
         var fileMenuChildren: [UIMenuElement] = []
-        fileMenuChildren.append(UIAction(title: "New Scan", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
+        fileMenuChildren.append(UIAction(title: "New Mapping Session", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.newScan()
         }))
         if(actionOptimizeEnabled) {
@@ -787,6 +811,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         fileMenuChildren.append(UIAction(title: "Append Scan", image: UIImage(systemName: "play.fill"), attributes: actionResumeEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.resumeScan()
         }))
+        fileMenuChildren.append(advancedMenu)
         
         // File menu
         let fileMenu = UIMenu(title: "File", options: .displayInline, children: fileMenuChildren)
@@ -1001,16 +1026,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             status = "Camera Is Occluded Or Lighting Is Too Dark"
         }
 
-        if accept
+        if let rotation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
         {
-            if let rotation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
-            {
-                rtabmap?.postOdometryEvent(frame: frame, orientation: rotation, viewport: self.view.frame.size)
-            }
-        }
-        else
-        {
-            rtabmap?.notifyLost();
+            rtabmap?.postOdometryEvent(frame: frame, orientation: rotation, viewport: self.view.frame.size)
         }
         
         if !status.isEmpty {
@@ -1292,7 +1310,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     }
     
     @IBAction func singleTapped(_ gestureRecognizer: UITapGestureRecognizer) {
-        if gestureRecognizer.state == UIGestureRecognizer.State.recognized
+        if gestureRecognizer.state == .recognized
         {
             resetNoTouchTimer(!mHudVisible)
             
@@ -1322,6 +1340,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap!.setFullResolution(enabled: defaults.bool(forKey: "HDMode"));
         rtabmap!.setSmoothing(enabled: defaults.bool(forKey: "Smoothing"));
         rtabmap!.setAppendMode(enabled: defaults.bool(forKey: "AppendMode"));
+        rtabmap!.setUpstreamRelocalizationAccThr(value: defaults.float(forKey: "UpstreamRelocalizationFilteringAccThr"));
+        rtabmap!.setExportPointCloudFormat(format: defaults.string(forKey: "ExportPointCloudFormat")!);
         
         mTimeThr = (defaults.string(forKey: "TimeLimit")! as NSString).integerValue
         mMaxFeatures = (defaults.string(forKey: "MaxFeaturesExtractedLoopClosure")! as NSString).integerValue
@@ -1379,8 +1399,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         let bgColor = defaults.float(forKey: "BackgroundColor");
         rtabmap!.setBackgroundColor(gray: bgColor);
         
+        let format = defaults.string(forKey: "ExportPointCloudFormat")!;
         DispatchQueue.main.async {
             self.statusLabel.textColor = bgColor>=0.6 ? UIColor(white: 0.0, alpha: 1) : UIColor(white: 1.0, alpha: 1)
+            self.exportOBJPLYButton.setTitle("Export OBJ-\(format == "las" ? "LAS" : "PLY")", for: .normal)
         }
     
         rtabmap!.setClusterRatio(value: defaults.float(forKey: "NoiseFilteringRatio"));
@@ -1409,22 +1431,24 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             rtabmap!.postExportation(visualize: false)
         }
         
-        let alertController = UIAlertController(title: "Append Mode", message: "The camera preview will not be aligned to map on start, move to a previously scanned area, then push Record. When a loop closure is detected, new scans will be appended to map.", preferredStyle: .alert)
-
-        let okAction = UIAlertAction(title: "OK", style: .default) { (action) in
+        if(!mDataRecording) {
+            let alertController = UIAlertController(title: "Append Mode", message: "The camera preview will not be aligned to map on start, move to a previously scanned area, then push Record. When a loop closure is detected, new scans will be appended to map.", preferredStyle: .alert)
+            
+            let okAction = UIAlertAction(title: "OK", style: .default) { (action) in
+            }
+            alertController.addAction(okAction)
+            
+            present(alertController, animated: true)
         }
-        alertController.addAction(okAction)
-        
-        present(alertController, animated: true)
         
         setGLCamera(type: 0);
         startCamera();
     }
     
-    func newScan()
+    func newScan(dataRecordingMode: Bool = false)
     {
         print("databases.size() = \(databases.size())")
-        if(databases.count >= 5 && !mReviewRequested && self.depthSupported)
+        if(databases.count >= 10 && !mReviewRequested && self.depthSupported)
         {
             SKStoreReviewController.requestReviewInCurrentScene()
             mReviewRequested = true
@@ -1438,7 +1462,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         mMapNodes = 0;
         self.openedDatabasePath = nil
         let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
-        let inMemory = UserDefaults.standard.bool(forKey: "DatabaseInMemory")
         if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING) &&
            FileManager.default.fileExists(atPath: tmpDatabase.path) &&
            tmpDatabase.fileSize > 1024*1024) // > 1MB
@@ -1454,7 +1477,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     catch {
                         print("Could not clear tmp database: \(error)")
                     }
-                    self.newScan()
+                    self.newScan(dataRecordingMode: dataRecordingMode)
                 }
                 alert.addAction(alertActionNo)
                 let alertActionCancel = UIAlertAction(title: "Cancel", style: .cancel) {
@@ -1545,10 +1568,25 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
         else
         {
+            let inMemory = UserDefaults.standard.bool(forKey: "DatabaseInMemory") && !dataRecordingMode
+            mDataRecording = dataRecordingMode
+            self.rtabmap!.setDataRecorderMode(enabled: dataRecordingMode)
+            self.optimizedGraphShown = true // Always reset to true when opening a database
             self.rtabmap!.openDatabase(databasePath: tmpDatabase.path, databaseInMemory: inMemory, optimize: false, clearDatabase: true)
-
+            
             if(!(self.mState == State.STATE_CAMERA || self.mState == State.STATE_MAPPING))
             {
+                if(mDataRecording) {
+                    let alertController = UIAlertController(title: "Data Recording Mode", message: "This mode should be only used if you want to record raw ARKit data as long as possible without any feedback: loop closure detection and map rendering are disabled. The database size in Debug display shows how much data has been recorded so far.", preferredStyle: .alert)
+                    
+                    let okAction = UIAlertAction(title: "OK", style: .default) { (action) in
+                    }
+                    alertController.addAction(okAction)
+                    
+                    present(alertController, animated: true)
+                    self.debugShown = true
+                }
+                
                 self.setGLCamera(type: 0);
                 self.startCamera();
             }
@@ -1575,6 +1613,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     alert.addAction(yes)
                     let no = UIAlertAction(title: "No", style: .cancel) {
                         (UIAlertAction) -> Void in
+                        if(self.mDataRecording) {
+                            self.save() // We cannot skip saving after data recording
+                        }
                     }
                     alert.addAction(no)
                     
@@ -1583,10 +1624,17 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     self.saveDatabase(fileName: fileName);
                 }
             }
+            else
+            {
+                self.save()
+            }
         }
 
         //Step : 3
         var placeholder = Date().getFormattedDate(format: "yyMMdd-HHmmss")
+        if(mDataRecording) {
+            placeholder += "-recording"
+        }
         if self.openedDatabasePath != nil && !self.openedDatabasePath!.path.isEmpty
         {
             var components = self.openedDatabasePath!.lastPathComponent.components(separatedBy: ".")
@@ -1604,7 +1652,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         //Step : 4
         alert.addAction(save)
         //Cancel action
-        alert.addAction(UIAlertAction(title: "Cancel", style: .default) { (alertAction) in })
+        if(!mDataRecording) {
+            alert.addAction(UIAlertAction(title: "Cancel", style: .default) { (alertAction) in })
+        }
 
         self.present(alert, animated: true) {
             alert.textFields?.first?.selectAll(nil)
@@ -1649,7 +1699,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 print("Could not clear tmp database: \(error)")
             }
             self.updateDatabases()
-            self.updateState(state: previousState)
+            self.updateState(state: self.mDataRecording ? .STATE_WELCOME : previousState)
         })
     }
     
@@ -1854,6 +1904,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         locationManager?.stopUpdatingLocation()
         rtabmap?.setPausedMapping(paused: true)
         rtabmap?.stopCamera()
+        if(mDataRecording) {
+            // this will show the trajectory before saving
+            self.rtabmap!.setGraphOptimization(enabled: false)
+        }
         setGLCamera(type: 2)
         if(mState == .STATE_VISUALIZING_CAMERA)
         {
@@ -1863,34 +1917,42 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         if !ignoreSaving
         {
-            dismiss(animated: true, completion: {
-                var msg = "Do you want to do standard graph optimization and make a nice assembled mesh now? This can be also done later using \"Optimize\" and \"Assemble\" menus."
-                let depthUsed = self.depthSupported && UserDefaults.standard.bool(forKey: "LidarMode")
-                if !depthUsed
-                {
-                    msg = "Do you want to do standard graph optimization now? This can be also done later using \"Optimize\" menu."
-                }
-                let alert = UIAlertController(title: "Mapping Stopped! Optimize Now?", message: msg, preferredStyle: .alert)
-                if depthUsed {
-                    let alertActionOnlyGraph = UIAlertAction(title: "Only Optimize", style: .default)
+            if(mDataRecording)
+            {
+                // Go directly to save
+                self.save()
+            }
+            else
+            {
+                dismiss(animated: true, completion: {
+                    var msg = "Do you want to do standard graph optimization and make a nice assembled mesh now? This can be also done later using \"Optimize\" and \"Assemble\" menus."
+                    let depthUsed = self.depthSupported && UserDefaults.standard.bool(forKey: "LidarMode")
+                    if !depthUsed
                     {
-                        (UIAlertAction) -> Void in
-                        self.optimization(withStandardMeshExport: false, approach: -1)
+                        msg = "Do you want to do standard graph optimization now? This can be also done later using \"Optimize\" menu."
                     }
-                    alert.addAction(alertActionOnlyGraph)
-                }
-                let alertActionNo = UIAlertAction(title: "Save First", style: .cancel) {
-                    (UIAlertAction) -> Void in
-                    self.save()
-                }
-                alert.addAction(alertActionNo)
-                let alertActionYes = UIAlertAction(title: "Yes", style: .default) {
-                    (UIAlertAction) -> Void in
-                    self.optimization(withStandardMeshExport: depthUsed, approach: -1)
-                }
-                alert.addAction(alertActionYes)
-                self.present(alert, animated: true, completion: nil)
-            })
+                    let alert = UIAlertController(title: "Mapping Stopped! Optimize Now?", message: msg, preferredStyle: .alert)
+                    if depthUsed {
+                        let alertActionOnlyGraph = UIAlertAction(title: "Only Optimize", style: .default)
+                        {
+                            (UIAlertAction) -> Void in
+                            self.optimization(withStandardMeshExport: false, approach: -1)
+                        }
+                        alert.addAction(alertActionOnlyGraph)
+                    }
+                    let alertActionNo = UIAlertAction(title: "Save First", style: .cancel) {
+                        (UIAlertAction) -> Void in
+                        self.save()
+                    }
+                    alert.addAction(alertActionNo)
+                    let alertActionYes = UIAlertAction(title: "Yes", style: .default) {
+                        (UIAlertAction) -> Void in
+                        self.optimization(withStandardMeshExport: depthUsed, approach: -1)
+                    }
+                    alert.addAction(alertActionYes)
+                    self.present(alert, animated: true, completion: nil)
+                })
+            }
         }
         else if(mMapNodes == 0)
         {
@@ -1937,6 +1999,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         updateState(state: .STATE_PROCESSING);
         var status = 0
         DispatchQueue.background(background: {
+            self.optimizedGraphShown = true // Always reset to true when opening a database
             status = self.rtabmap!.openDatabase(databasePath: self.openedDatabasePath!.path, databaseInMemory: true, optimize: false, clearDatabase: false)
         }, completion:{
             // main thread

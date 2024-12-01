@@ -91,6 +91,7 @@ private:
 	int _flowIterations;
 	float _flowEps;
 	int _flowMaxLevel;
+	bool _flowGpu;
 	float _nndr;
 	int _nnType;
 	bool _gmsWithRotation;

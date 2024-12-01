@@ -2203,8 +2203,10 @@ void NMS(
 }
 
 std::vector<int> SSC(
-	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows)
+	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows, const std::vector<int> & indx)
 {
+	bool useIndx = keypoints.size() == indx.size();
+
 	// several temp expression variables to simplify solution equation
 	int exp1 = rows + cols + 2*maxKeypoints;
 	long long exp2 = ((long long)4*cols + (long long)4*maxKeypoints + (long long)4*rows*maxKeypoints + (long long)rows*rows + (long long)cols*cols - (long long)2*rows*cols + (long long)4*rows*cols*maxKeypoints);
@@ -2241,27 +2243,20 @@ std::vector<int> SSC(
 		double c = (double)width / 2.0; // initializing Grid
 		int numCellCols = floor(cols / c);
 		int numCellRows = floor(rows / c);
-		std::vector<std::vector<bool>> coveredVec(numCellRows+1, std::vector<bool>(numCellCols+1, false));
+		cv::Mat coveredMask = cv::Mat::zeros(numCellRows + 1, numCellCols + 1, CV_8UC1);
 
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
-			int row = floor(keypoints[i].pt.y / c); // get position of the cell current point is located at
-			int col = floor(keypoints[i].pt.x / c);
-			if(coveredVec[row][col] == false) // if the cell is not covered
+			int row = floor(keypoints[useIndx?indx[i]:i].pt.y / c); // get position of the cell current point is located at
+			int col = floor(keypoints[useIndx?indx[i]:i].pt.x / c);
+			if(!coveredMask.at<uchar>(row, col)) // if the cell is not covered
 			{
-				result.push_back(i);
+				result.push_back(useIndx?indx[i]:i);
 				int rowMin = ((row - floor(width / c)) >= 0) ? (row - floor(width / c)) : 0; // get range which current radius is covering
 				int rowMax = ((row + floor(width / c)) <= numCellRows) ? (row + floor(width / c)) : numCellRows;
 				int colMin = ((col - floor(width / c)) >= 0) ? (col - floor(width / c)) : 0;
 				int colMax = ((col + floor(width / c)) <= numCellCols) ? (col + floor(width / c)) : numCellCols;
-				for(int rowToCov=rowMin; rowToCov<=rowMax; ++rowToCov)
-				{
-					for(int colToCov=colMin; colToCov<=colMax; ++colToCov)
-					{
-						if(!coveredVec[rowToCov][colToCov])
-							coveredVec[rowToCov][colToCov] = true; // cover cells within the square bounding box with width
-					}
-				}
+				coveredMask(cv::Range(rowMin, rowMax + 1), cv::Range(colMin, colMax + 1)) = 255; // cover cells within the square bounding box with width
 			}
 		}
 
@@ -2279,7 +2274,7 @@ std::vector<int> SSC(
 	return ResultVec;
 }
 
-void rotateImagesUpsideUpIfNecessary(
+bool rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,
 	cv::Mat & rgb,
 	cv::Mat & depth)
@@ -2293,7 +2288,7 @@ void rotateImagesUpsideUpIfNecessary(
 	{
 		// Return original because of ambiguity for what would be considered up...
 		UDEBUG("Ignoring image rotation as pitch(%f)>Pi/4", pitch);
-		return;
+		return false;
 	}
 	if(roll<0)
 	{
@@ -2368,7 +2363,9 @@ void rotateImagesUpsideUpIfNecessary(
 	else
 	{
 		UDEBUG("ROTATION_0 (roll=%f)", roll);
+		return false;
 	}
+	return true;
 }
 
 }

@@ -50,17 +50,7 @@ namespace rtabmap {
 
 class CameraARCore : public CameraMobile {
 public:
-	static LaserScan scanFromPointCloudData(
-			const float * pointCloudData,
-			int points,
-			const Transform & pose,
-			const CameraModel & model,
-			const cv::Mat & rgb,
-			std::vector<cv::KeyPoint> * kpts = 0,
-			std::vector<cv::Point3f> * kpts3D = 0);
-
-public:
-	CameraARCore(void* env, void* context, void* activity, bool depthFromMotion = false, bool smoothing = false);
+	CameraARCore(void* env, void* context, void* activity, bool depthFromMotion = false, bool smoothing = false, float upstreamRelocalizationAccThr = 0.0f);
 	virtual ~CameraARCore();
 
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height);

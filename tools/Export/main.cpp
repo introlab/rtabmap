@@ -256,6 +256,8 @@ int main(int argc, char * argv[])
 		{
 #ifdef RTABMAP_PDAL
 			las = true;
+#elif defined(RTABMAP_LIBLAS)
+			printf("\"--las\" option cannot be used with libLAS because the cloud has normals, build RTAB-Map with PDAL support to export in las with normals. Will export in PLY...\n");
 #else
 			printf("\"--las\" option cannot be used because RTAB-Map is not built with PDAL support. Will export in PLY...\n");
 #endif
@@ -1951,6 +1953,53 @@ int main(int argc, char * argv[])
 						}
 						else
 						{
+							// Save multiband first
+							if(multiband)
+							{
+								timer.restart();
+								std::string outputPath=outputDirectory+"/"+baseName+"_mesh_multiband.obj";
+								printf("MultiBand texturing (size=%d, downscale=%d, unwrap method=%s, fill holes=%s, padding=%d, best score thr=%f, angle thr=%f, force visible=%s)... \"%s\"\n",
+										textureSize,
+										multibandDownScale,
+										multibandUnwrap==1?"ABF":multibandUnwrap==2?"LSCM":"Basic",
+										multibandFillHoles?"true":"false",
+										multibandPadding,
+										multibandBestScoreThr,
+										multibandAngleHardthr,
+										multibandForceVisible?"false":"true",
+										outputPath.c_str());
+								if(util3d::multiBandTexturing(outputPath,
+										textureMesh->cloud,
+										textureMesh->tex_polygons[0],
+										robotPosesFiltered,
+										vertexToPixels,
+										std::map<int, cv::Mat >(),
+										std::map<int, std::vector<CameraModel> >(),
+										rtabmap.getMemory(),
+										0,
+										textureSize,
+										multibandDownScale,
+										multibandNbContrib,
+										"jpg",
+										gains,
+										blendingGains,
+										contrastValues,
+										doGainCompensationRGB,
+										multibandUnwrap,
+										multibandFillHoles,
+										multibandPadding,
+										multibandBestScoreThr,
+										multibandAngleHardthr,
+										multibandForceVisible))
+								{
+									printf("MultiBand texturing...done (%fs).\n", timer.ticks());
+								}
+								else
+								{
+									printf("MultiBand texturing...failed! (%fs)\n", timer.ticks());
+								}
+							}
+
 							// TextureMesh OBJ
 							bool success = false;
 							UASSERT(!textures.empty());
@@ -1971,9 +2020,23 @@ int main(int argc, char * argv[])
 							}
 							if(success)
 							{
-
 								std::string outputPath=outputDirectory+"/"+baseName+"_mesh.obj";
 								printf("Saving obj (%d vertices) to %s.\n", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, outputPath.c_str());
+#if PCL_VERSION_COMPARE(>=, 1, 13, 0)
+								textureMesh->tex_coord_indices = std::vector<std::vector<pcl::Vertices>>();
+								auto nr_meshes = static_cast<unsigned>(textureMesh->tex_polygons.size());
+								unsigned f_idx = 0;
+								for (unsigned m = 0; m < nr_meshes; m++) {
+									std::vector<pcl::Vertices> ci = textureMesh->tex_polygons[m];
+									for(std::size_t i = 0; i < ci.size(); i++) {
+										for (std::size_t j = 0; j < ci[i].vertices.size(); j++) {
+											ci[i].vertices[j] = ci[i].vertices.size() * (i + f_idx) + j;
+										}
+									}
+									textureMesh->tex_coord_indices.push_back(ci);
+									f_idx += static_cast<unsigned>(textureMesh->tex_polygons[m].size());
+								}
+#endif								
 								success = pcl::io::saveOBJFile(outputPath, *textureMesh) == 0;
 
 								if(success)
@@ -1984,52 +2047,6 @@ int main(int argc, char * argv[])
 								{
 									UERROR("Failed saving obj to %s!", outputPath.c_str());
 								}
-							}
-						}
-
-						if(multiband)
-						{
-							timer.restart();
-							std::string outputPath=outputDirectory+"/"+baseName+"_mesh_multiband.obj";
-							printf("MultiBand texturing (size=%d, downscale=%d, unwrap method=%s, fill holes=%s, padding=%d, best score thr=%f, angle thr=%f, force visible=%s)... \"%s\"\n",
-									textureSize,
-									multibandDownScale,
-									multibandUnwrap==1?"ABF":multibandUnwrap==2?"LSCM":"Basic",
-									multibandFillHoles?"true":"false",
-									multibandPadding,
-									multibandBestScoreThr,
-									multibandAngleHardthr,
-									multibandForceVisible?"false":"true",
-									outputPath.c_str());
-							if(util3d::multiBandTexturing(outputPath,
-									textureMesh->cloud,
-									textureMesh->tex_polygons[0],
-									robotPosesFiltered,
-									vertexToPixels,
-									std::map<int, cv::Mat >(),
-									std::map<int, std::vector<CameraModel> >(),
-									rtabmap.getMemory(),
-									0,
-									textureSize,
-									multibandDownScale,
-									multibandNbContrib,
-									"jpg",
-									gains,
-									blendingGains,
-									contrastValues,
-									doGainCompensationRGB,
-									multibandUnwrap,
-									multibandFillHoles,
-									multibandPadding,
-									multibandBestScoreThr,
-									multibandAngleHardthr,
-									multibandForceVisible))
-							{
-								printf("MultiBand texturing...done (%fs).\n", timer.ticks());
-							}
-							else
-							{
-								printf("MultiBand texturing...failed! (%fs)\n", timer.ticks());
 							}
 						}
 					}

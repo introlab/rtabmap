@@ -165,7 +165,7 @@ void RTABMAP_CORE_EXPORT NMS(
 		int border, int dist_thresh, int img_width, int img_height);
 
 std::vector<int> RTABMAP_CORE_EXPORT SSC(
-	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows);
+	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows, const std::vector<int> & indx = {});
 
 /**
  * @brief Rotate images and camera model so that the top of the image is up.
@@ -180,8 +180,9 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @param model a valid camera model
  * @param rgb a rgb/grayscale image (set cv::Mat() if not used)
  * @param depth a depth image (set cv::Mat() if not used)
+ * @return true if the model/images have been rotated, false otherwise
  */
-void RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
+bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,
 	cv::Mat & rgb,
 	cv::Mat & depth);

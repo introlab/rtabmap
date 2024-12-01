@@ -52,6 +52,7 @@ class QGraphicsView;
 class QLabel;
 class QToolButton;
 class QDialog;
+class QSpinBox;
 
 namespace rtabmap
 {
@@ -161,7 +162,7 @@ private:
 
 	void updateIds();
 	void update(int value,
-				QLabel * labelIndex,
+				QSpinBox * spinBoxIndex,
 				QLabel * labelParents,
 				QLabel * labelChildren,
 				QLabel * weight,
@@ -197,6 +198,7 @@ private:
 			int to);
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
+	void updateNeighborsSlider(int from = 0, int to = 0);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
 	void updateCovariances(const QList<Link> & links);
 	void refineLinks(const QList<Link> & links);

@@ -219,7 +219,7 @@ private:
         sl::ERROR_CODE res = zed_->getSensorsData(sensordata, sl::TIME_REFERENCE::CURRENT);
         if(res == sl::ERROR_CODE::SUCCESS && sensordata.imu.is_available)
         {
-        	camera_->postInterIMUPublic(zedIMUtoIMU(sensordata, imuLocalTransform_), double(sensordata.imu.timestamp)/10e9);
+        	camera_->postInterIMUPublic(zedIMUtoIMU(sensordata, imuLocalTransform_), double(sensordata.imu.timestamp.getNanoseconds())/10e8);
         }
 #endif
 	}
@@ -286,15 +286,29 @@ CameraStereoZed::CameraStereoZed(
 	UDEBUG("");
 #ifdef RTABMAP_ZED
 #if ZED_SDK_MAJOR_VERSION < 4
-	if(resolution_ == 3)
+	if(resolution_ == 1 || resolution_ == 2) // HD2K, HD1080
 	{
-		resolution_ = 2;
+		resolution_ -= 1; // HD2K=0, HD1080=1
 	}
-	else if(resolution_ == 5)
+	if(resolution_ == 3) // HD1200
 	{
-		resolution_ = 3;
+		resolution_ = 1; // HD1080=1
+	}
+	if(resolution_ == 4 || resolution_ == -1)
+	{
+		resolution_ = 2; // HD720=2
+	}
+	else if(resolution_ == 5 || resolution_ == 6) // SVGA, VGA
+	{
+		resolution_ = 3; // VGA=3
+	}
+#else // ZED=4
+	if(resolution_ == -1)
+	{
+		resolution_ = int(sl::RESOLUTION::AUTO); // AUTO
 	}
 #endif
+
 #if ZED_SDK_MAJOR_VERSION < 3
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
 	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
@@ -336,7 +350,13 @@ CameraStereoZed::CameraStereoZed(
 	src_(CameraVideo::kVideoFile),
 	usbDevice_(0),
 	svoFilePath_(filePath),
-	resolution_(2),
+#if ZED_SDK_MAJOR_VERSION < 3
+	resolution_(sl::RESOLUTION_HD720),
+#elif ZED_SDK_MAJOR_VERSION < 4
+	resolution_(sl::RESOLUTION::HD720),
+#else
+	resolution_(int(sl::RESOLUTION::AUTO)),
+#endif
 	quality_(quality),
 	selfCalibration_(selfCalibration),
 	sensingMode_(sensingMode),
@@ -715,7 +735,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 			{
 				 sl::SensorsData imudatatmp;
 				res = zed_->getSensorsData(imudatatmp, sl::TIME_REFERENCE::IMAGE);
-				imuReceived = res == sl::ERROR_CODE::SUCCESS && imudatatmp.imu.is_available && imudatatmp.imu.timestamp.data_ns != 0;
+				imuReceived = res == sl::ERROR_CODE::SUCCESS && imudatatmp.imu.is_available && imudatatmp.imu.timestamp.getNanoseconds() != 0;
 			}
 		}
 		while(src_ == CameraVideo::kUsbDevice && (res!=sl::ERROR_CODE::SUCCESS || !imuReceived) && timer.elapsed() < 2.0);
@@ -749,7 +769,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #if ZED_SDK_MAJOR_VERSION < 3
 				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), UTimer::now());
 #else
-				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), double(timestamp)/10e9);
+				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), double(timestamp.getNanoseconds())/10e8);
 #endif
 			}
 			else
@@ -766,7 +786,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #if ZED_SDK_MAJOR_VERSION < 3
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
 #else
-				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), double(timestamp)/10e9);
+				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), double(timestamp.getNanoseconds())/10e8);
 #endif
 			}
 

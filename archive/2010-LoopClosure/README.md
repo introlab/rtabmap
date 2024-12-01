@@ -1,5 +1,5 @@
 
- To reproduce results (based on parameters of this [paper](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/b/bc/TRO2013.pdf)):
+ To reproduce results (based on parameters of this [paper](https://www.arxiv.org/abs/2407.15304)):
  
  ```
  rtabmap-console \

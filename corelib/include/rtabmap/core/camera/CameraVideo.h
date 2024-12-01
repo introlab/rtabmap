@@ -62,6 +62,7 @@ public:
 	 * has been loaded, thus resolution from calibration is used.
 	 * */
 	void setResolution(int width, int height) {_width=width, _height=height;}
+	void setFOURCC(const std::string & fourcc) { _fourcc = fourcc; }
 
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -79,6 +80,7 @@ private:
 	std::string _guid;
 	int _width;
 	int _height;
+	std::string _fourcc;
 
 	CameraModel _model;
 };

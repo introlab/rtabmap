@@ -83,8 +83,8 @@
     <string name="pref_default_camera_driver">-1</string>
     <string name="pref_key_depth_from_motion">pref_key_depth_from_motion</string>
     <string name="pref_default_depth_from_motion">false</string>
-    <string name="pref_key_arcore_localization_filtering_speed">pref_key_arcore_localization_filtering_speed</string>
-    <string name="pref_default_arcore_localization_filtering_speed">0</string>
+    <string name="pref_key_arcore_relocalization_acc_thr">pref_key_arcore_relocalization_acc_thr</string>
+    <string name="pref_default_arcore_relocalization_acc_thr">58.8399</string>
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
     <string name="pref_key_max_speed">pref_key_max_speed</string>
@@ -100,7 +100,7 @@
     <string name="pref_key_min_inliers">pref_key_min_inliers</string>
     <string name="pref_default_min_inliers">25</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>
-    <string name="pref_default_opt_error">1</string>
+    <string name="pref_default_opt_error">2</string>
     <string name="pref_key_features_voc">pref_key_features_voc</string>
     <string name="pref_default_features_voc">200</string>
     <string name="pref_key_features">pref_key_features</string>
@@ -329,8 +329,8 @@
     <string name="pref_summary_camera_driver">AR sdk used for capturing 6DoF poses and images. A TOF camera is required to record a 3D model.</string>
     <string name="pref_title_depth_from_motion">Depth From Motion</string>
     <string name="pref_summary_depth_from_motion">Use ARCore\'s depth API to compute depth image from motion. If the phone has a TOF camera and is supported by ARCore, results should be better. Currently supported only with ARCore NDK driver.</string>
-    <string name="pref_title_arcore_localization_filtering_speed">ARCore Localization Filtering Speed</string>
-    <string name="pref_summary_arcore_localization_filtering_speed">Filter ARCore\'s localizations to avoid jumps in odometry when creating a map with RTAB-Map, which would cause large drift errors that are difficult to correct. Set a speed threshold to detect those events.</string>
+    <string name="pref_title_arcore_relocalization_acc_thr">ARCore Re-Localization Acceleration Threshold</string>
+    <string name="pref_summary_arcore_relocalization_acc_thr">Filter ARCore\'s re-localizations to avoid jumps in odometry when creating a map with RTAB-Map, which would cause large drift errors that are difficult to correct. Set an acceleration threshold to detect those events.</string>
     <string name="pref_title_append">Append Mode</string>
     <string name="pref_summary_append">When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
     <string name="pref_title_resolution">HD Mode</string>
@@ -412,23 +412,29 @@
         <item>"1"</item>
         <item>"0.5"</item>
     </string-array>
-    <string-array name="pref_arcore_localization_filtering_speed_keys">
+    <string-array name="pref_arcore_relocalization_acc_thr_keys">
         <item>"Disabled"</item>
-        <item>"5 m/s"</item>
-        <item>"4 m/s"</item>
-        <item>"3 m/s"</item>
-        <item>"2 m/s"</item>
-        <item>"1 m/s"</item>
-        <item>"0.5 m/s"</item>
+        <item>"10 g"</item>
+        <item>"9 g"</item>
+        <item>"8 g"</item>
+        <item>"7 g"</item>
+        <item>"6 g"</item>
+        <item>"5 g"</item>
+        <item>"4 g"</item>
+        <item>"3 g"</item>
+        <item>"2 g"</item>
     </string-array>
-    <string-array name="pref_arcore_localization_filtering_speed_values">
+    <string-array name="pref_arcore_relocalization_acc_thr_values">
         <item>"0"</item>
-        <item>"5"</item>
-        <item>"4"</item>
-        <item>"3"</item>
-        <item>"2"</item>
-        <item>"1"</item>
-        <item>"0.5"</item>
+        <item>"98.0665"</item>
+        <item>"88.25985"</item>
+        <item>"78.4532"</item>
+        <item>"68.64655"</item>
+        <item>"58.8399"</item>
+        <item>"49.03325"</item>
+        <item>"39.2266"</item>
+        <item>"29.41995"</item>
+        <item>"19.6133"</item>
     </string-array>
     <string-array name="pref_max_speed_keys">
         <item>"No Limit"</item>

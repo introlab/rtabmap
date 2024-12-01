@@ -26,14 +26,14 @@ RUN apt-get update && \
 
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && \
     apt upgrade -y && \
-    apt-get install -y ros-humble-rtabmap-ros && \
+    apt-get install -y libfreenect-dev ros-humble-rtabmap-ros && \
     apt-get remove -y ros-humble-rtabmap* && \
     apt-get clean && rm -rf /var/lib/apt/lists/; fi
 
 # current issue that ros-humble-rtabmap-ros is not available on arm64
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then apt-get update && \
     apt upgrade -y && \
-    apt-get install -y ros-humble-rtabmap-launch && \
+    apt-get install -y libfreenect-dev ros-humble-rtabmap-launch && \
     apt-get remove -y ros-humble-rtabmap* && \
     apt-get clean && rm -rf /var/lib/apt/lists/; fi
 

@@ -359,7 +359,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 						cv::Point2i pt((ptf[0]-xMin)/cellSize, (ptf[1]-yMin)/cellSize);
 						UASSERT_MSG(pt.y>0 && pt.y<map.rows && pt.x>0 && pt.x<map.cols,
 								uFormat("id=%d, map min=(%f, %f) max=(%f,%f) map=%dx%d pt=(%d,%d)", kter->first, xMin, yMin, xMax, yMax, map.cols, map.rows, pt.x, pt.y).c_str());
-						char & value = map.at<char>(pt.y, pt.x);
+						signed char & value = map.at<signed char>(pt.y, pt.x);
 						if(value != -2)
 						{
 							value = 0; // free space
@@ -385,7 +385,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 					{
 						for(int j=ptBegin.y; j<ptEnd.y; ++j)
 						{
-							map.at<char>(j, i) = -2; // free space (footprint)
+							map.at<signed char>(j, i) = -2; // free space (footprint)
 						}
 					}
 				}
@@ -398,7 +398,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 						cv::Point2i pt((ptf[0]-xMin)/cellSize, (ptf[1]-yMin)/cellSize);
 						UASSERT_MSG(pt.y>0 && pt.y<map.rows && pt.x>0 && pt.x<map.cols,
 								uFormat("id=%d: map min=(%f, %f) max=(%f,%f) map=%dx%d pt=(%d,%d)", kter->first, xMin, yMin, xMax, yMax, map.cols, map.rows, pt.x, pt.y).c_str());
-						char & value = map.at<char>(pt.y, pt.x);
+						signed char & value = map.at<signed char>(pt.y, pt.x);
 						if(value != -2)
 						{
 							value = 100; // obstacles
@@ -416,44 +416,44 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			{
 				for(int j=0; j<map.cols; ++j)
 				{
-					if(map.at<char>(i, j) == -2)
+					if(map.at<signed char>(i, j) == -2)
 					{
-						updatedMap.at<char>(i, j) = 0;
+						updatedMap.at<signed char>(i, j) = 0;
 					}
 
 					if(i >=2 && i<map.rows-2 && j>=2 && j<map.cols-2)
 					{
-						if(map.at<char>(i, j) == -1 &&
-							map.at<char>(i+1, j) != -1 &&
-							map.at<char>(i-1, j) != -1 &&
-							map.at<char>(i, j+1) != -1 &&
-							map.at<char>(i, j-1) != -1)
+						if(map.at<signed char>(i, j) == -1 &&
+							map.at<signed char>(i+1, j) != -1 &&
+							map.at<signed char>(i-1, j) != -1 &&
+							map.at<signed char>(i, j+1) != -1 &&
+							map.at<signed char>(i, j-1) != -1)
 						{
-							updatedMap.at<char>(i, j) = 0;
+							updatedMap.at<signed char>(i, j) = 0;
 						}
-						else if(map.at<char>(i, j) == 100)
+						else if(map.at<signed char>(i, j) == 100)
 						{
 							// obstacle/empty/unknown -> remove empty
 							// unknown/empty/obstacle -> remove empty
-							if((map.at<char>(i-1, j) == 0 || map.at<char>(i-1, j) == -2) &&
-								map.at<char>(i-2, j) == -1)
+							if((map.at<signed char>(i-1, j) == 0 || map.at<signed char>(i-1, j) == -2) &&
+								map.at<signed char>(i-2, j) == -1)
 							{
-								updatedMap.at<char>(i-1, j) = -1;
+								updatedMap.at<signed char>(i-1, j) = -1;
 							}
-							else if((map.at<char>(i+1, j) == 0 || map.at<char>(i+1, j) == -2) &&
-									map.at<char>(i+2, j) == -1)
+							else if((map.at<signed char>(i+1, j) == 0 || map.at<signed char>(i+1, j) == -2) &&
+									map.at<signed char>(i+2, j) == -1)
 							{
-								updatedMap.at<char>(i+1, j) = -1;
+								updatedMap.at<signed char>(i+1, j) = -1;
 							}
-							if((map.at<char>(i, j-1) == 0 || map.at<char>(i, j-1) == -2) &&
-								map.at<char>(i, j-2) == -1)
+							if((map.at<signed char>(i, j-1) == 0 || map.at<signed char>(i, j-1) == -2) &&
+								map.at<signed char>(i, j-2) == -1)
 							{
-								updatedMap.at<char>(i, j-1) = -1;
+								updatedMap.at<signed char>(i, j-1) = -1;
 							}
-							else if((map.at<char>(i, j+1) == 0 || map.at<char>(i, j+1) == -2) &&
-									map.at<char>(i, j+2) == -1)
+							else if((map.at<signed char>(i, j+1) == 0 || map.at<signed char>(i, j+1) == -2) &&
+									map.at<signed char>(i, j+2) == -1)
 							{
-								updatedMap.at<char>(i, j+1) = -1;
+								updatedMap.at<signed char>(i, j+1) = -1;
 							}
 
 							if(erode)
@@ -461,18 +461,18 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 								obstacleIndices.push_back(std::make_pair(i, j));
 							}
 						}
-						else if(map.at<char>(i, j) == 0)
+						else if(map.at<signed char>(i, j) == 0)
 						{
 							// obstacle/empty/obstacle -> remove empty
-							if(map.at<char>(i-1, j) == 100 &&
-								map.at<char>(i+1, j) == 100)
+							if(map.at<signed char>(i-1, j) == 100 &&
+								map.at<signed char>(i+1, j) == 100)
 							{
-								updatedMap.at<char>(i, j) = -1;
+								updatedMap.at<signed char>(i, j) = -1;
 							}
-							else if(map.at<char>(i, j-1) == 100 &&
-								map.at<char>(i, j+1) == 100)
+							else if(map.at<signed char>(i, j-1) == 100 &&
+								map.at<signed char>(i, j+1) == 100)
 							{
-								updatedMap.at<char>(i, j) = -1;
+								updatedMap.at<signed char>(i, j) = -1;
 							}
 						}
 					}
@@ -490,16 +490,16 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 				{
 					int i = iter->first;
 					int j = iter->second;
-					int touchEmpty = (map.at<char>(i+1, j) == 0?1:0) +
-						(map.at<char>(i-1, j) == 0?1:0) +
-						(map.at<char>(i, j+1) == 0?1:0) +
-						(map.at<char>(i, j-1) == 0?1:0);
-					if(touchEmpty>=3 && map.at<char>(i+1, j) != -1 &&
-						map.at<char>(i-1, j) != -1 &&
-						map.at<char>(i, j+1) != -1 &&
-						map.at<char>(i, j-1) != -1)
+					int touchEmpty = (map.at<signed char>(i+1, j) == 0?1:0) +
+						(map.at<signed char>(i-1, j) == 0?1:0) +
+						(map.at<signed char>(i, j+1) == 0?1:0) +
+						(map.at<signed char>(i, j-1) == 0?1:0);
+					if(touchEmpty>=3 && map.at<signed char>(i+1, j) != -1 &&
+						map.at<signed char>(i-1, j) != -1 &&
+						map.at<signed char>(i, j+1) != -1 &&
+						map.at<signed char>(i, j-1) != -1)
 					{
-						erodedMap.at<char>(i, j) = 0; // empty
+						erodedMap.at<signed char>(i, j) = 0; // empty
 					}
 				}
 				map = erodedMap;
@@ -642,10 +642,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 		// Added margin to make sure that all points are inside the map (when rounded to integer)
 		float margin = cellSize*10.0f;
-		xMin = (unknownSpaceFilled && scanMaxRange > 0 && -scanMaxRange < min.x?-scanMaxRange:min.x) - margin;
-		yMin = (unknownSpaceFilled && scanMaxRange > 0 && -scanMaxRange < min.y?-scanMaxRange:min.y) - margin;
-		float xMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.x?scanMaxRange:max.x) + margin;
-		float yMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.y?scanMaxRange:max.y) + margin;
+		xMin = (scanMaxRange > 0 ? -scanMaxRange : min.x) - margin;
+		yMin = (scanMaxRange > 0 ? -scanMaxRange : min.y) - margin;
+		float xMax = (scanMaxRange > 0 ? scanMaxRange : max.x) + margin;
+		float yMax = (scanMaxRange > 0 ? scanMaxRange : max.y) + margin;
 
 		UDEBUG("map min=(%fm, %fm) max=(%fm,%fm) (margin=%fm, cellSize=%fm, scan range=%f, min=[%fm,%fm] max=[%fm,%fm])",
 				xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
@@ -677,7 +677,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 					cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
 					if(end!=start)
 					{
-						map.at<char>(end.y, end.x) = 100; // obstacle
+						map.at<signed char>(end.y, end.x) = 100; // obstacle
 					}
 				}
 			}
@@ -703,7 +703,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				cv::Point2i end((pt[0]-xMin)/cellSize, (pt[1]-yMin)/cellSize);
 				if(end!=start)
 				{
-					if(localScans.size() > 1 || map.at<char>(end.y, end.x) != 0)
+					if(localScans.size() > 1 || map.at<signed char>(end.y, end.x) != 0)
 					{
 						rayTrace(start, end, map, true); // trace free space
 					}
@@ -730,12 +730,12 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				cv::Point2i end((pt[0]-xMin)/cellSize, (pt[1]-yMin)/cellSize);
 				if(end!=start)
 				{
-					if(localScans.size() > 1 || map.at<char>(end.y, end.x) != 0)
+					if(localScans.size() > 1 || map.at<signed char>(end.y, end.x) != 0)
 					{
 						rayTrace(start, end, map, true); // trace free space
-						if(map.at<char>(end.y, end.x) == -1)
+						if(map.at<signed char>(end.y, end.x) == -1)
 						{
-							map.at<char>(end.y, end.x) = 0; // empty
+							map.at<signed char>(end.y, end.x) = 0; // empty
 						}
 					}
 				}
@@ -879,14 +879,14 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 
 		for(int y = lowerbound; y<=(int)upperbound; ++y)
 		{
-			char * v;
+			signed char * v;
 			if(swapped)
 			{
-				v = &grid.at<char>(x, y);
+				v = &grid.at<signed char>(x, y);
 			}
 			else
 			{
-				v = &grid.at<char>(y, x);
+				v = &grid.at<signed char>(y, x);
 			}
 			if(*v == 100 && stopOnObstacle)
 			{
@@ -909,7 +909,7 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat)
 	{
 		for (int j = 0; j < map8S.cols; ++j)
 		{
-			char v = pgmFormat?map8S.at<char>((map8S.rows-1)-i, j):map8S.at<char>(i, j);
+			signed char v = pgmFormat?map8S.at<signed char>((map8S.rows-1)-i, j):map8S.at<signed char>(i, j);
 			unsigned char gray;
 			if(v == 0)
 			{
@@ -950,7 +950,7 @@ cv::Mat convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat)
 	{
 		for (int j = 0; j < map8U.cols; ++j)
 		{
-			unsigned char v = pgmFormat?map8U.at<char>((map8U.rows-1)-i, j):map8U.at<char>(i, j);
+			unsigned char v = pgmFormat?map8U.at<signed char>((map8U.rows-1)-i, j):map8U.at<signed char>(i, j);
 			char occupancy;
 			if(pgmFormat)
 			{
@@ -987,7 +987,7 @@ cv::Mat convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat)
 				}
 			}
 
-			map8S.at<char>(i, j) = occupancy;
+			map8S.at<signed char>(i, j) = occupancy;
 		}
 	}
 	return map8S;
@@ -1001,20 +1001,20 @@ cv::Mat erodeMap(const cv::Mat & map)
 	{
 		for(int j=0; j<map.cols; ++j)
 		{
-			if(map.at<char>(i, j) == 100)
+			if(map.at<signed char>(i, j) == 100)
 			{
 				// remove obstacles which touch at least 3 empty cells but not unknown cells
-				int touchEmpty = (map.at<char>(i+1, j) == 0?1:0) +
-					(map.at<char>(i-1, j) == 0?1:0) +
-					(map.at<char>(i, j+1) == 0?1:0) +
-					(map.at<char>(i, j-1) == 0?1:0);
+				int touchEmpty = (map.at<signed char>(i+1, j) == 0?1:0) +
+					(map.at<signed char>(i-1, j) == 0?1:0) +
+					(map.at<signed char>(i, j+1) == 0?1:0) +
+					(map.at<signed char>(i, j-1) == 0?1:0);
 
-				if(touchEmpty>=3 && map.at<char>(i+1, j) != -1 &&
-					map.at<char>(i-1, j) != -1 &&
-					map.at<char>(i, j+1) != -1 &&
-					map.at<char>(i, j-1) != -1)
+				if(touchEmpty>=3 && map.at<signed char>(i+1, j) != -1 &&
+					map.at<signed char>(i-1, j) != -1 &&
+					map.at<signed char>(i, j+1) != -1 &&
+					map.at<signed char>(i, j-1) != -1)
 				{
-					erodedMap.at<char>(i, j) = 0; // empty
+					erodedMap.at<signed char>(i, j) = 0; // empty
 				}
 			}
 		}

@@ -27,6 +27,8 @@ RUN apt-get update && \
       libtbb-dev \
       libproj-dev \
       libpcl-dev \
+      liboctomap-dev \
+      libfreenect-dev \
       ros-jazzy-ros-base \
       ros-dev-tools \
       ros-jazzy-cv-bridge \
@@ -43,7 +45,6 @@ RUN apt-get update && \
       ros-jazzy-octomap-msgs \
       ros-jazzy-libg2o \
       ros-jazzy-libpointmatcher \
-      ros-jazzy-octomap \
       ros-jazzy-qt-gui-cpp \
       ros-jazzy-diagnostic-updater && \
     apt-get clean && rm -rf /var/lib/apt/lists/

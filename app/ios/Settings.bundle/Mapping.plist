@@ -58,6 +58,34 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
+			<string>Choosing between high and low depth confidence depends on the application. If precise geometry is critical, prioritize high depth confidence even if it means fewer points. If you need a dense point cloud for analysis, even in areas with weak LiDAR signal, a lower depth confidence might be suitable at the cost of highly interpolated points (that could give a wavy look of some surfaces). Important: the points with too low confidence are not saved in the db file, so we cannot recover or filter these points in post-processing.</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>2</integer>
+			<key>Key</key>
+			<string>DepthConfidence</string>
+			<key>Title</key>
+			<string>Depth Confidence</string>
+			<key>Titles</key>
+			<array>
+				<string>High</string>
+				<string>Medium</string>
+				<string>Low</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>2</integer>
+				<integer>1</integer>
+				<integer>0</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
 			<string>Smooth the point clouds.</string>
 		</dict>
 		<dict>
@@ -69,6 +97,48 @@
 			<string>Smoothing</string>
 			<key>DefaultValue</key>
 			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Filter ARKit&apos;s re-localization events to avoid jumps in odometry when creating a map with RTAB-Map, which would cause large drift errors that are difficult to correct. Set an acceleration threshold to detect those events.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>ARKit Re-Localization Acceleration Threshold</string>
+			<key>Key</key>
+			<string>UpstreamRelocalizationFilteringAccThr</string>
+			<key>DefaultValue</key>
+			<string>58.8399</string>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>10 g</string>
+				<string>9 g</string>
+				<string>8 g</string>
+				<string>7 g</string>
+				<string>6 g</string>
+				<string>5 g</string>
+				<string>4 g</string>
+				<string>3 g</string>
+				<string>2 g</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>98.0665</string>
+				<string>88.25985</string>
+				<string>78.4532</string>
+				<string>68.64655</string>
+				<string>58.8399</string>
+				<string>49.03325</string>
+				<string>39.2266</string>
+				<string>29.41995</string>
+				<string>19.6133</string>
+			</array>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -368,7 +438,7 @@
 			<key>Key</key>
 			<string>MaxOptimizationError</string>
 			<key>DefaultValue</key>
-			<integer>1</integer>
+			<integer>2</integer>
 			<key>Titles</key>
 			<array>
 				<string>4x</string>
@@ -600,13 +670,13 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>ArUco markers can be detected for localization and graph optimization.</string>
+			<string>ArUco or AprilTag markers can be detected for localization and graph optimization. Marker number should be &gt;0.</string>
 		</dict>
 		<dict>
 			<key>Type</key>
 			<string>PSMultiValueSpecifier</string>
 			<key>Title</key>
-			<string>ArUco Marker Detection</string>
+			<string>ArUco/AprilTag Marker Detection</string>
 			<key>Key</key>
 			<string>ArUcoMarkerDetection</string>
 			<key>DefaultValue</key>
@@ -772,7 +842,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
+			<string>The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened. Important: if enabled, the database cannot be recovered in case of the App crashes for some reason (e.g., low battery).</string>
 		</dict>
 		<dict>
 			<key>Type</key>

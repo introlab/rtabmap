@@ -79,6 +79,7 @@ public:
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
 	void setLocalRadius(float radius);
+	void highlightNode(int nodeId, int highlightIndex);
 	void clearGraph();
 	void clearMap();
 	void clearPosterior();
@@ -144,6 +145,7 @@ public:
 	void setGlobalPathColor(const QColor & color);
 	void setGTColor(const QColor & color);
 	void setGPSColor(const QColor & color);
+	void setHighlightColor(const QColor & color, int index);
 	void setIntraSessionLoopColor(const QColor & color);
 	void setInterSessionLoopColor(const QColor & color);
 	void setIntraInterSessionColorsEnabled(bool enabled);
@@ -175,7 +177,7 @@ public Q_SLOTS:
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
 	virtual void mouseMoveEvent(QMouseEvent * event);
-	virtual void mouseDoubleClickEvent(QMouseEvent * event);
+	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
@@ -214,6 +216,7 @@ private:
 	QMultiMap<int, LinkItem*> _gpsLinkItems;
 	QMultiMap<int, LinkItem*> _localPathLinkItems;
 	QMultiMap<int, LinkItem*> _globalPathLinkItems;
+	QVector<QPair<QColor, NodeItem*> > _highlightedNodes;
 	bool _nodeVisible;
 	float _nodeRadius;
 	float _linkWidth;

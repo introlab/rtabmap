@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>417</width>
+           <width>419</width>
            <height>389</height>
           </rect>
          </property>
@@ -392,7 +392,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>416</width>
+           <width>418</width>
            <height>389</height>
           </rect>
          </property>
@@ -745,9 +745,9 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <widget class="QLabel" name="label_indexA">
-            <property name="text">
-             <string>indexA</string>
+           <widget class="QSpinBox" name="spinBox_indexA">
+            <property name="frame">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -776,69 +776,71 @@
        </layout>
       </item>
       <item row="1" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <property name="leftMargin">
-         <number>12</number>
-        </property>
-        <property name="topMargin">
-         <number>12</number>
-        </property>
-        <property name="rightMargin">
-         <number>12</number>
-        </property>
-        <property name="bottomMargin">
-         <number>12</number>
-        </property>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Index :</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Id :</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
-          <item>
-           <widget class="QLabel" name="label_indexB">
-            <property name="text">
-             <string>indexB</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_idB">
-            <property name="text">
-             <string>idB</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QSlider" name="horizontalSlider_B">
-          <property name="focusPolicy">
-           <enum>Qt::ClickFocus</enum>
+       <widget class="QWidget" name="widget_imageControls_B">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <property name="leftMargin">
+          <number>12</number>
           </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+          <property name="topMargin">
+          <number>12</number>
           </property>
-          <property name="tickPosition">
-           <enum>QSlider::TicksAbove</enum>
+          <property name="rightMargin">
+          <number>12</number>
           </property>
-         </widget>
-        </item>
-       </layout>
+          <property name="bottomMargin">
+          <number>12</number>
+          </property>
+          <item>
+          <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+            <widget class="QLabel" name="label_5">
+              <property name="text">
+              <string>Index :</string>
+              </property>
+            </widget>
+            </item>
+            <item>
+            <widget class="QLabel" name="label_4">
+              <property name="text">
+              <string>Id :</string>
+              </property>
+            </widget>
+            </item>
+          </layout>
+          </item>
+          <item>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+            <widget class="QSpinBox" name="spinBox_indexB">
+              <property name="frame">
+              <bool>false</bool>
+              </property>
+            </widget>
+            </item>
+            <item>
+            <widget class="QLabel" name="label_idB">
+              <property name="text">
+              <string>idB</string>
+              </property>
+            </widget>
+            </item>
+          </layout>
+          </item>
+          <item>
+          <widget class="QSlider" name="horizontalSlider_B">
+            <property name="focusPolicy">
+            <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="tickPosition">
+            <enum>QSlider::TicksAbove</enum>
+            </property>
+          </widget>
+          </item>
+        </layout>
+       </widget>       
       </item>
      </layout>
     </item>
@@ -936,6 +938,7 @@
      <string>View</string>
     </property>
     <addaction name="actionVertical_Layout"/>
+    <addaction name="actionConcise_Layout"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -1243,322 +1246,328 @@
    <attribute name="dockWidgetArea">
     <number>1</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_2">
+   <widget class="QWidget" name="dockWidget_graphContents">
     <layout class="QVBoxLayout" name="verticalLayout_9">
      <item>
       <widget class="rtabmap::GraphViewer" name="graphViewer"/>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_15">
-       <item>
-        <widget class="QLabel" name="label_rotation">
-         <property name="text">
-          <string>0.0 deg</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSlider" name="horizontalSlider_rotation">
-         <property name="focusPolicy">
-          <enum>Qt::ClickFocus</enum>
-         </property>
-         <property name="minimum">
-          <number>-1799</number>
-         </property>
-         <property name="maximum">
-          <number>1800</number>
-         </property>
-         <property name="sliderPosition">
-          <number>0</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksAbove</enum>
-         </property>
-         <property name="tickInterval">
-          <number>100</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton_applyRotation">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The rotation will be applied temporary to optimized global graph. To save it to database, do File-&amp;gt;&amp;quot;Regenerate optimized 2D map...&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Apply Rotation</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_4">
-       <item>
-        <widget class="QLabel" name="label_iterations">
-         <property name="text">
-          <string>#</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSlider" name="horizontalSlider_iterations">
-         <property name="focusPolicy">
-          <enum>Qt::ClickFocus</enum>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksAbove</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="comboBox_optimizationFlavor">
-         <property name="sizeAdjustPolicy">
-          <enum>QComboBox::AdjustToContents</enum>
-         </property>
-         <item>
-          <property name="text">
-           <string>Global Iterative</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Global Full</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Local Optimized</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
-       <item row="2" column="1">
-        <widget class="QLabel" name="label_alignPosesWithGroundTruth">
-         <property name="text">
-          <string>Align poses with ground truth</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QCheckBox" name="checkBox_ignoreIntermediateNodes">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,0,1">
-         <item>
-          <widget class="QLabel" name="label_optimizeFrom">
-           <property name="text">
-            <string>Root</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="checkBox_spanAllMaps">
-           <property name="text">
-            <string>Span to all maps</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="checkBox_wmState">
-           <property name="text">
-            <string>WM</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="7" column="1">
-        <widget class="QLabel" name="label_45">
-         <property name="text">
-          <string>Time grid (s)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="8" column="1">
-        <widget class="QLabel" name="label_rmse_title">
-         <property name="text">
-          <string>RMSE (m)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QCheckBox" name="checkBox_alignScansCloudsWithGroundTruth">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="0">
-        <widget class="QLabel" name="label_poses">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_timeOptimization">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="label_alignScansCloudsWithGroundTruth">
-         <property name="text">
-          <string>Align scans/clouds with ground truth</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="8" column="0">
-        <widget class="QLabel" name="label_rmse">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="0">
-        <widget class="QLabel" name="label_timeGrid">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="10" column="1">
-        <widget class="QLabel" name="label_41">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N: Neighbor&lt;/p&gt;&lt;p&gt;NM: Neighbor Merged&lt;/p&gt;&lt;p&gt;G: Global&lt;/p&gt;&lt;p&gt;LS: Local by Space (Proximity)&lt;/p&gt;&lt;p&gt;LT: Local by Time (Proximity)&lt;/p&gt;&lt;p&gt;U: User&lt;/p&gt;&lt;p&gt;P: Prior&lt;/p&gt;&lt;p&gt;LM: Landmark&lt;/p&gt;&lt;p&gt;GR: Gravity&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Links (N, NM, G, LS, LT, U, P, LM, GR)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QLabel" name="label_10">
-         <property name="text">
-          <string>Path length (m)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="1">
-        <widget class="QLabel" name="label_52">
-         <property name="text">
-          <string>Poses</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_pathLength">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QSpinBox" name="spinBox_optimizationsFrom"/>
-       </item>
-       <item row="10" column="0">
-        <widget class="QLabel" name="label_loopClosures">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLabel" name="label_ignoreINtermediateNdoes">
-         <property name="text">
-          <string>Ignore intermediate nodes</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QLabel" name="label_39">
-         <property name="text">
-          <string>Time optimization (s)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QCheckBox" name="checkBox_alignPosesWithGroundTruth">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="label_alignPosesWithGPS">
-         <property name="text">
-          <string>Align poses with GPS</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QCheckBox" name="checkBox_alignPosesWithGPS">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <widget class="QWidget" name="widget_graphControl">
+       <layout class="QVBoxLayout" name="verticalLayout_91">
+        <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_15">
+          <item>
+            <widget class="QLabel" name="label_rotation">
+            <property name="text">
+              <string>0.0 deg</string>
+            </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QSlider" name="horizontalSlider_rotation">
+            <property name="focusPolicy">
+              <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="minimum">
+              <number>-1799</number>
+            </property>
+            <property name="maximum">
+              <number>1800</number>
+            </property>
+            <property name="sliderPosition">
+              <number>0</number>
+            </property>
+            <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="tickPosition">
+              <enum>QSlider::TicksAbove</enum>
+            </property>
+            <property name="tickInterval">
+              <number>100</number>
+            </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QPushButton" name="pushButton_applyRotation">
+            <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The rotation will be applied temporary to optimized global graph. To save it to database, do File-&amp;gt;&amp;quot;Regenerate optimized 2D map...&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+              <string>Apply Rotation</string>
+            </property>
+            </widget>
+          </item>
+          </layout>
+        </item>
+        <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+            <widget class="QLabel" name="label_iterations">
+            <property name="text">
+              <string>#</string>
+            </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QSlider" name="horizontalSlider_iterations">
+            <property name="focusPolicy">
+              <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="tickPosition">
+              <enum>QSlider::TicksAbove</enum>
+            </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QComboBox" name="comboBox_optimizationFlavor">
+            <property name="sizeAdjustPolicy">
+              <enum>QComboBox::AdjustToContents</enum>
+            </property>
+            <item>
+              <property name="text">
+              <string>Global Iterative</string>
+              </property>
+            </item>
+            <item>
+              <property name="text">
+              <string>Global Full</string>
+              </property>
+            </item>
+            <item>
+              <property name="text">
+              <string>Local Optimized</string>
+              </property>
+            </item>
+            </widget>
+          </item>
+          </layout>
+        </item>
+        <item>
+          <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
+          <item row="2" column="1">
+            <widget class="QLabel" name="label_alignPosesWithGroundTruth">
+            <property name="text">
+              <string>Align poses with ground truth</string>
+            </property>
+            <property name="wordWrap">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="4" column="0">
+            <widget class="QCheckBox" name="checkBox_ignoreIntermediateNodes">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="checked">
+              <bool>false</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,0,1">
+            <item>
+              <widget class="QLabel" name="label_optimizeFrom">
+              <property name="text">
+                <string>Root</string>
+              </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QCheckBox" name="checkBox_spanAllMaps">
+              <property name="text">
+                <string>Span to all maps</string>
+              </property>
+              <property name="checked">
+                <bool>true</bool>
+              </property>
+              </widget>
+            </item>
+            <item>
+              <widget class="QCheckBox" name="checkBox_wmState">
+              <property name="text">
+                <string>WM</string>
+              </property>
+              </widget>
+            </item>
+            </layout>
+          </item>
+          <item row="7" column="1">
+            <widget class="QLabel" name="label_45">
+            <property name="text">
+              <string>Time grid (s)</string>
+            </property>
+            </widget>
+          </item>
+          <item row="8" column="1">
+            <widget class="QLabel" name="label_rmse_title">
+            <property name="text">
+              <string>RMSE (m)</string>
+            </property>
+            </widget>
+          </item>
+          <item row="3" column="0">
+            <widget class="QCheckBox" name="checkBox_alignScansCloudsWithGroundTruth">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="checked">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="9" column="0">
+            <widget class="QLabel" name="label_poses">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+            </widget>
+          </item>
+          <item row="6" column="0">
+            <widget class="QLabel" name="label_timeOptimization">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+            </widget>
+          </item>
+          <item row="3" column="1">
+            <widget class="QLabel" name="label_alignScansCloudsWithGroundTruth">
+            <property name="text">
+              <string>Align scans/clouds with ground truth</string>
+            </property>
+            <property name="wordWrap">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="8" column="0">
+            <widget class="QLabel" name="label_rmse">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+            </widget>
+          </item>
+          <item row="7" column="0">
+            <widget class="QLabel" name="label_timeGrid">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+            </widget>
+          </item>
+          <item row="10" column="1">
+            <widget class="QLabel" name="label_41">
+            <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N: Neighbor&lt;/p&gt;&lt;p&gt;NM: Neighbor Merged&lt;/p&gt;&lt;p&gt;G: Global&lt;/p&gt;&lt;p&gt;LS: Local by Space (Proximity)&lt;/p&gt;&lt;p&gt;LT: Local by Time (Proximity)&lt;/p&gt;&lt;p&gt;U: User&lt;/p&gt;&lt;p&gt;P: Prior&lt;/p&gt;&lt;p&gt;LM: Landmark&lt;/p&gt;&lt;p&gt;GR: Gravity&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+              <string>Links (N, NM, G, LS, LT, U, P, LM, GR)</string>
+            </property>
+            </widget>
+          </item>
+          <item row="5" column="1">
+            <widget class="QLabel" name="label_10">
+            <property name="text">
+              <string>Path length (m)</string>
+            </property>
+            </widget>
+          </item>
+          <item row="9" column="1">
+            <widget class="QLabel" name="label_52">
+            <property name="text">
+              <string>Poses</string>
+            </property>
+            </widget>
+          </item>
+          <item row="5" column="0">
+            <widget class="QLabel" name="label_pathLength">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+            </widget>
+          </item>
+          <item row="0" column="0">
+            <widget class="QSpinBox" name="spinBox_optimizationsFrom"/>
+          </item>
+          <item row="10" column="0">
+            <widget class="QLabel" name="label_loopClosures">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="textInteractionFlags">
+              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+            </widget>
+          </item>
+          <item row="4" column="1">
+            <widget class="QLabel" name="label_ignoreINtermediateNdoes">
+            <property name="text">
+              <string>Ignore intermediate nodes</string>
+            </property>
+            <property name="wordWrap">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="6" column="1">
+            <widget class="QLabel" name="label_39">
+            <property name="text">
+              <string>Time optimization (s)</string>
+            </property>
+            </widget>
+          </item>
+          <item row="2" column="0">
+            <widget class="QCheckBox" name="checkBox_alignPosesWithGroundTruth">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="checked">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="1" column="1">
+            <widget class="QLabel" name="label_alignPosesWithGPS">
+            <property name="text">
+              <string>Align poses with GPS</string>
+            </property>
+            <property name="wordWrap">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          <item row="1" column="0">
+            <widget class="QCheckBox" name="checkBox_alignPosesWithGPS">
+            <property name="text">
+              <string/>
+            </property>
+            <property name="checked">
+              <bool>true</bool>
+            </property>
+            </widget>
+          </item>
+          </layout>
+        </item>
+       </layout>
+      </widget>       
      </item>
     </layout>
    </widget>
@@ -1641,7 +1650,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>318</width>
+          <width>314</width>
           <height>188</height>
          </rect>
         </property>
@@ -1797,8 +1806,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>518</width>
-          <height>1007</height>
+          <width>276</width>
+          <height>1201</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2458,8 +2467,8 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-42</y>
-          <width>298</width>
+          <y>0</y>
+          <width>294</width>
           <height>272</height>
          </rect>
         </property>
@@ -2633,8 +2642,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>432</width>
-          <height>196</height>
+          <width>181</width>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">
@@ -3270,6 +3279,17 @@
    </property>
    <property name="text">
     <string>Vertical Layout</string>
+   </property>
+  </action>
+  <action name="actionConcise_Layout">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Concise Layout</string>
    </property>
   </action>
   <action name="actionRestore_default_GUI_settings">

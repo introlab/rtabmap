@@ -39,18 +39,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <grid_map_core/iterators/GridMapIterator.hpp>
 #include <pcl/io/pcd_io.h>
 
+#include <grid_map_core/GridMap.hpp>
+
 namespace rtabmap {
 
 GridMap::GridMap(const LocalGridCache * cache, const ParametersMap & parameters) :
 	GlobalMap(cache, parameters),
+	gridMap_(new grid_map::GridMap()),
 	minMapSize_(Parameters::defaultGridGlobalMinSize())
 {
 	Parameters::parse(parameters, Parameters::kGridGlobalMinSize(), minMapSize_);
 }
 
+GridMap::~GridMap()
+{
+	delete gridMap_;
+}
+
 void GridMap::clear()
 {
-	gridMap_ = grid_map::GridMap();
+	delete gridMap_;
+	gridMap_ = new grid_map::GridMap();
 	GlobalMap::clear();
 }
 
@@ -66,15 +75,15 @@ cv::Mat GridMap::createColorMap(float & xMin, float & yMin, float & cellSize) co
 
 cv::Mat GridMap::toImage(const std::string & layer, float & xMin, float & yMin, float & cellSize) const
 {
-	if( gridMap_.hasBasicLayers())
+	if( gridMap_->hasBasicLayers())
 	{
-		const grid_map::Matrix& data = gridMap_[layer];
+		const grid_map::Matrix& data = (*gridMap_)[layer];
 
 		cv::Mat image;
 		if(layer.compare("elevation") == 0)
 		{
-			image = cv::Mat::zeros(gridMap_.getSize()(1), gridMap_.getSize()(0), CV_32FC1);
-			for(grid_map::GridMapIterator iterator(gridMap_); !iterator.isPastEnd(); ++iterator) {
+			image = cv::Mat::zeros(gridMap_->getSize()(1), gridMap_->getSize()(0), CV_32FC1);
+			for(grid_map::GridMapIterator iterator(*gridMap_); !iterator.isPastEnd(); ++iterator) {
 				const grid_map::Index index(*iterator);
 				const float& value = data(index(0), index(1));
 				const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
@@ -86,8 +95,8 @@ cv::Mat GridMap::toImage(const std::string & layer, float & xMin, float & yMin, 
 		}
 		else if(layer.compare("colors") == 0)
 		{
-			image = cv::Mat::zeros(gridMap_.getSize()(1), gridMap_.getSize()(0), CV_8UC3);
-			for(grid_map::GridMapIterator iterator(gridMap_); !iterator.isPastEnd(); ++iterator) {
+			image = cv::Mat::zeros(gridMap_->getSize()(1), gridMap_->getSize()(0), CV_8UC3);
+			for(grid_map::GridMapIterator iterator(*gridMap_); !iterator.isPastEnd(); ++iterator) {
 				const grid_map::Index index(*iterator);
 				const float& value = data(index(0), index(1));
 				const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
@@ -106,9 +115,9 @@ cv::Mat GridMap::toImage(const std::string & layer, float & xMin, float & yMin, 
 			UFATAL("Unknown layer \"%s\"", layer.c_str());
 		}
 
-		xMin = gridMap_.getPosition().x() - gridMap_.getLength().x()/2.0f;
-		yMin = gridMap_.getPosition().y() - gridMap_.getLength().y()/2.0f;
-		cellSize = gridMap_.getResolution();
+		xMin = gridMap_->getPosition().x() - gridMap_->getLength().x()/2.0f;
+		yMin = gridMap_->getPosition().y() - gridMap_->getLength().y()/2.0f;
+		cellSize = gridMap_->getResolution();
 
 		return image;
 
@@ -119,21 +128,21 @@ cv::Mat GridMap::toImage(const std::string & layer, float & xMin, float & yMin, 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr GridMap::createTerrainCloud() const
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-	if( gridMap_.hasBasicLayers())
+	if( gridMap_->hasBasicLayers())
 	{
-		const grid_map::Matrix& dataElevation = gridMap_["elevation"];
-		const grid_map::Matrix& dataColors = gridMap_["colors"];
+		const grid_map::Matrix& dataElevation = (*gridMap_)["elevation"];
+		const grid_map::Matrix& dataColors = (*gridMap_)["colors"];
 
-		cloud->width = gridMap_.getSize()(0);
-		cloud->height = gridMap_.getSize()(1);
+		cloud->width = gridMap_->getSize()(0);
+		cloud->height = gridMap_->getSize()(1);
 		cloud->resize(cloud->width * cloud->height);
 		cloud->is_dense = false;
 
-		float xMin = gridMap_.getPosition().x() - gridMap_.getLength().x()/2.0f;
-		float yMin = gridMap_.getPosition().y() - gridMap_.getLength().y()/2.0f;
-		float cellSize = gridMap_.getResolution();
+		float xMin = gridMap_->getPosition().x() - gridMap_->getLength().x()/2.0f;
+		float yMin = gridMap_->getPosition().y() - gridMap_->getLength().y()/2.0f;
+		float cellSize = gridMap_->getResolution();
 
-		for(grid_map::GridMapIterator iterator(gridMap_); !iterator.isPastEnd(); ++iterator)
+		for(grid_map::GridMapIterator iterator(*gridMap_); !iterator.isPastEnd(); ++iterator)
 		{
 			const grid_map::Index index(*iterator);
 			const float& value = dataElevation(index(0), index(1));
@@ -189,13 +198,13 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 	bool undefinedSize = minMapSize_ == 0.0f;
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
-	if(gridMap_.hasBasicLayers())
+	if(gridMap_->hasBasicLayers())
 	{
 		// update
 		minX=minValues_[0]+margin+cellSize_/2.0f;
 		minY=minValues_[1]+margin+cellSize_/2.0f;
-		maxX=minValues_[0]+float(gridMap_.getSize()[0])*cellSize_ - margin;
-		maxY=minValues_[1]+float(gridMap_.getSize()[1])*cellSize_ - margin;
+		maxX=minValues_[0]+float(gridMap_->getSize()[0])*cellSize_ - margin;
+		maxY=minValues_[1]+float(gridMap_->getSize()[1])*cellSize_ - margin;
 		undefinedSize = false;
 	}
 
@@ -353,26 +362,26 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 		{
 			UDEBUG("map min=(%f, %f) odlMin(%f,%f) max=(%f,%f)", xMin, yMin, minValues_[0], minValues_[1], xMax, yMax);
 			cv::Size newMapSize((xMax - xMin) / cellSize_+0.5f, (yMax - yMin) / cellSize_+0.5f);
-			if(!gridMap_.hasBasicLayers())
+			if(!gridMap_->hasBasicLayers())
 			{
 				UDEBUG("Map empty!");
 				grid_map::Length length = grid_map::Length(xMax - xMin, yMax - yMin);
 				grid_map::Position position = grid_map::Position((xMax+xMin)/2.0f, (yMax+yMin)/2.0f);
 
 				UDEBUG("length: %f, %f position: %f, %f", length[0], length[1], position[0], position[1]);
-				gridMap_.setGeometry(length, cellSize_, position);
-				UDEBUG("size: %d, %d", gridMap_.getSize()[0], gridMap_.getSize()[1]);
+				gridMap_->setGeometry(length, cellSize_, position);
+				UDEBUG("size: %d, %d", gridMap_->getSize()[0], gridMap_->getSize()[1]);
 				// Add elevation layer
-				gridMap_.add("elevation");
-				gridMap_.add("node_ids");
-				gridMap_.add("colors");
-				gridMap_.setBasicLayers({"elevation"});
+				gridMap_->add("elevation");
+				gridMap_->add("node_ids");
+				gridMap_->add("colors");
+				gridMap_->setBasicLayers({"elevation"});
 			}
 			else
 			{
 				if(xMin == minValues_[0] && yMin == minValues_[1] &&
-						newMapSize.width == gridMap_.getSize()[0] &&
-						newMapSize.height == gridMap_.getSize()[1])
+						newMapSize.width == gridMap_->getSize()[0] &&
+						newMapSize.height == gridMap_->getSize()[1])
 				{
 					// same map size and origin, don't do anything
 					UDEBUG("Map same size!");
@@ -381,8 +390,8 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				{
 					UASSERT_MSG(xMin <= minValues_[0]+cellSize_/2, uFormat("xMin=%f, xMin_=%f, cellSize_=%f", xMin, minValues_[0], cellSize_).c_str());
 					UASSERT_MSG(yMin <= minValues_[1]+cellSize_/2, uFormat("yMin=%f, yMin_=%f, cellSize_=%f", yMin, minValues_[1], cellSize_).c_str());
-					UASSERT_MSG(xMax >= minValues_[0]+float(gridMap_.getSize()[0])*cellSize_ - cellSize_/2, uFormat("xMin=%f, xMin_=%f, cols=%d cellSize_=%f", xMin, minValues_[0], gridMap_.getSize()[0], cellSize_).c_str());
-					UASSERT_MSG(yMax >= minValues_[1]+float(gridMap_.getSize()[1])*cellSize_ - cellSize_/2, uFormat("yMin=%f, yMin_=%f, cols=%d cellSize_=%f", yMin, minValues_[1], gridMap_.getSize()[1], cellSize_).c_str());
+					UASSERT_MSG(xMax >= minValues_[0]+float(gridMap_->getSize()[0])*cellSize_ - cellSize_/2, uFormat("xMin=%f, xMin_=%f, cols=%d cellSize_=%f", xMin, minValues_[0], gridMap_->getSize()[0], cellSize_).c_str());
+					UASSERT_MSG(yMax >= minValues_[1]+float(gridMap_->getSize()[1])*cellSize_ - cellSize_/2, uFormat("yMin=%f, yMin_=%f, cols=%d cellSize_=%f", yMin, minValues_[1], gridMap_->getSize()[1], cellSize_).c_str());
 
 					UDEBUG("Copy map");
 					// copy the old map in the new map
@@ -402,9 +411,9 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 					UDEBUG("deltaX=%d, deltaY=%d", deltaX, deltaY);
 					newMapSize.width = (xMax - xMin) / cellSize_+0.5f;
 					newMapSize.height = (yMax - yMin) / cellSize_+0.5f;
-					UDEBUG("%d/%d -> %d/%d", gridMap_.getSize()[0], gridMap_.getSize()[1], newMapSize.width, newMapSize.height);
-					UASSERT(newMapSize.width >= gridMap_.getSize()[0] && newMapSize.height >= gridMap_.getSize()[1]);
-					UASSERT(newMapSize.width >= gridMap_.getSize()[0]+deltaX && newMapSize.height >= gridMap_.getSize()[1]+deltaY);
+					UDEBUG("%d/%d -> %d/%d", gridMap_->getSize()[0], gridMap_->getSize()[1], newMapSize.width, newMapSize.height);
+					UASSERT(newMapSize.width >= gridMap_->getSize()[0] && newMapSize.height >= gridMap_->getSize()[1]);
+					UASSERT(newMapSize.width >= gridMap_->getSize()[0]+deltaX && newMapSize.height >= gridMap_->getSize()[1]+deltaY);
 					UASSERT(deltaX>=0 && deltaY>=0);
 
 					grid_map::Length length = grid_map::Length(xMax - xMin, yMax - yMin);
@@ -413,28 +422,28 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 					grid_map::GridMap tmpExtendedMap;
 					tmpExtendedMap.setGeometry(length, cellSize_, position);
 
-					UDEBUG("%d/%d -> %d/%d", gridMap_.getSize()[0], gridMap_.getSize()[1], tmpExtendedMap.getSize()[0], tmpExtendedMap.getSize()[1]);
+					UDEBUG("%d/%d -> %d/%d", gridMap_->getSize()[0], gridMap_->getSize()[1], tmpExtendedMap.getSize()[0], tmpExtendedMap.getSize()[1]);
 
 					UDEBUG("extendToInclude (%f,%f,%f,%f) -> (%f,%f,%f,%f)",
-							gridMap_.getLength()[0], gridMap_.getLength()[1],
-							gridMap_.getPosition()[0], gridMap_.getPosition()[1],
+							gridMap_->getLength()[0], gridMap_->getLength()[1],
+							gridMap_->getPosition()[0], gridMap_->getPosition()[1],
 							tmpExtendedMap.getLength()[0], tmpExtendedMap.getLength()[1],
 							tmpExtendedMap.getPosition()[0], tmpExtendedMap.getPosition()[1]);
-					if(!gridMap_.extendToInclude(tmpExtendedMap))
+					if(!gridMap_->extendToInclude(tmpExtendedMap))
 					{
 						UERROR("Failed to update size of the grid map");
 					}
-					UDEBUG("Updated side: %d %d", gridMap_.getSize()[0], gridMap_.getSize()[1]);
+					UDEBUG("Updated side: %d %d", gridMap_->getSize()[0], gridMap_->getSize()[1]);
 				}
 			}
-			UDEBUG("map %d %d", gridMap_.getSize()[0], gridMap_.getSize()[1]);
+			UDEBUG("map %d %d", gridMap_->getSize()[0], gridMap_->getSize()[1]);
 			if(newPoses.size())
 			{
 				UDEBUG("first pose= %d last pose=%d", newPoses.begin()->first, newPoses.rbegin()->first);
 			}
-			grid_map::Matrix& gridMapData = gridMap_["elevation"];
-			grid_map::Matrix& gridMapNodeIds = gridMap_["node_ids"];
-			grid_map::Matrix& gridMapColors = gridMap_["colors"];
+			grid_map::Matrix& gridMapData = (*gridMap_)["elevation"];
+			grid_map::Matrix& gridMapNodeIds = (*gridMap_)["node_ids"];
+			grid_map::Matrix& gridMapColors = (*gridMap_)["colors"];
 			for(std::list<std::pair<int, Transform> >::const_iterator kter = newPoses.begin(); kter!=newPoses.end(); ++kter)
 			{
 				std::map<int, cv::Mat>::iterator iter = occupiedLocalMaps.find(kter->first);
@@ -447,10 +456,10 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 						float * ptf = iter->second.ptr<float>(0,i);
 						grid_map::Position position(ptf[0], ptf[1]);
 						grid_map::Index index;
-						if(gridMap_.getIndex(position, index))
+						if(gridMap_->getIndex(position, index))
 						{
 							// If no elevation has been set, use current elevation.
-							if (!gridMap_.isValid(index))
+							if (!gridMap_->isValid(index))
 							{
 								gridMapData(index(0), index(1)) = ptf[2];
 								gridMapNodeIds(index(0), index(1)) = kter->first;
