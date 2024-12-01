@@ -3,9 +3,6 @@ name: CMake-ROS
 on:
   push:
     branches: 
-      - master
-      - noetic-devel
-      - humble-devel
       - jazzy-devel
   pull_request:
     branches: 
@@ -26,16 +23,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ noetic, humble, jazzy]
+        ros_distribution: [jazzy]
         include:
-        - ros_distribution: 'noetic'
-          os: ubuntu-20.04
-        - ros_distribution: 'humble'
-          os: ubuntu-22.04
         - ros_distribution: 'jazzy'
           os: ubuntu-24.04
 
-    if: contains(github.ref, 'master') || contains(github.ref, ${{ matrix.ros_distribution }})
     steps:   
     - uses: ros-tooling/setup-ros@v0.7
       with:
