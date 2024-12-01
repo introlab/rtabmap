@@ -72,6 +72,10 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### December 2024
+ROS2 packages overhaul (see [ros2 branch](https://github.com/introlab/rtabmap_ros/tree/ros2?tab=readme-ov-file#usage)): we added new ROS2 [demos](https://github.com/introlab/rtabmap_ros/tree/ros2/rtabmap_demos#rtabmap_demos) and [examples](https://github.com/introlab/rtabmap_ros/tree/ros2/rtabmap_examples/launch). We also fixed `message_filters` related synchronization [issues](https://github.com/introlab/rtabmap_ros/pull/1206) causing significant lags when using ROS2 nodes (in comparison to ROS1). Binaries `ros-$ROS_DISTRO-rtabmap-ros` will be released under version `0.21.9`.
+[![Peek 2024-11-30 20-35](https://github.com/user-attachments/assets/f64a44bf-148b-4658-9b25-b46bd0411a69)](https://github.com/introlab/rtabmap_ros/tree/ros2/rtabmap_demos#rtabmap_demos)
+
 ### November 2023
 We had new papers published this year on a very fun project about underground mines scanning. Here is a video of the SLAM part of the project realized with RTAB-Map (it is an early field test we did before going in the mines):
 [![Watch the video](https://img.youtube.com/vi/ytsfhMdv9W0/sddefault.jpg)](https://youtu.be/ytsfhMdv9W0)
