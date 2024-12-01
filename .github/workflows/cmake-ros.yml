@@ -35,7 +35,7 @@ jobs:
         - ros_distribution: 'jazzy'
           os: ubuntu-24.04
 
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/${{ matrix.ros_distribution }}-devel'
+    if: contains(github.ref, 'master') || contains(github.ref, ${{ matrix.ros_distribution }})
     steps:   
     - uses: ros-tooling/setup-ros@v0.7
       with:
