@@ -23,7 +23,7 @@
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
   <depend>liboctomap-dev</depend>
-<!--  <depend>grid_map_core</depend> // Uncomment when available on jazzy -->
+  <depend>grid_map_core</depend>
   <depend>qt_gui_cpp</depend> <!-- libqt4-dev or libqt5-dev -->
   <depend>zlib</depend>
 
