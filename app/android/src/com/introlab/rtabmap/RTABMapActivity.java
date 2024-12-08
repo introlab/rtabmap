@@ -1775,19 +1775,19 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			long currentTime = System.currentTimeMillis()/1000;
 			if(loopClosureId > 0)
 			{
-				if (mToast != null  && mToast.getView().isShown()) mToast.cancel();
+				if (mToast != null) mToast.cancel();
 				mToast.setText(String.format("Loop closure detected! (%d/%d inliers)", inliers, matches));
 				mToast.show();
 			}
 			else if(landmarkDetected != 0)
 			{
-				if (mToast != null  && mToast.getView().isShown()) mToast.cancel();
+				if (mToast != null) mToast.cancel();
 				mToast.setText(String.format("Marker %d detected!", landmarkDetected));
 				mToast.show();
 			}
 			else if(rejected > 0)
 			{
-				if (mToast != null  && mToast.getView().isShown()) mToast.cancel();
+				if (mToast != null) mToast.cancel();
 				if(inliers >= Integer.parseInt(mMinInliers))
 				{
 					if(optimizationMaxError > 0.0f)
@@ -1809,7 +1809,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			{
 				if(currentTime - mLastFastMovementNotificationStamp > 3)
 				{
-					if (mToast != null  && mToast.getView().isShown()) mToast.cancel();
+					if (mToast != null) mToast.cancel();
 					mToast.setText("Move slower... blurry images are not added to map (\"Settings->Mapping...->Maximum Motion Speed\" is enabled).");
 					mToast.show();
 				}

@@ -643,10 +643,10 @@ IF(octomap_FOUND)
 ENDIF(octomap_FOUND)
 
 IF(grid_map_core_FOUND)
-    IF(TARGET grid_map_core)
+    IF(TARGET grid_map_core::grid_map_core)
         SET(LIBRARIES
             ${LIBRARIES}
-            grid_map_core
+            grid_map_core::grid_map_core
         )
     ELSE()
         SET(INCLUDE_DIRS

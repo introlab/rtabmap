@@ -66,15 +66,24 @@ void showUsage()
 			"    --texture_count #     Maximum textures generated (default 1). Ignored by --multiband option (adjust --multiband_contrib instead).\n"
 			"    --texture_range #     Maximum camera range for texturing a polygon (default 0 meters: no limit).\n"
 			"    --texture_angle #     Maximum camera angle for texturing a polygon (default 0 deg: no limit).\n"
-			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used, default=0).\n"
-			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10%% of the image bottom not used).\n"
+			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face\n"
+			"                                (-1=disabled, 0=edge length is used, default=0).\n"
+			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format\n"
+			"                                         is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10%%\n"
+			"                                         of the image bottom not used).\n"
 			"    --texture_d2c         Distance to camera policy.\n"
-			"    --texture_blur #      Motion blur threshold (default 0: disabled). Below this threshold, the image is considered blurred. 0 means disabled. 50 can be good default.\n"
+			"    --texture_blur #      Motion blur threshold (default 0: disabled). Below this threshold, the image is\n"
+			"                              considered blurred. 0 means disabled. 50 can be good default.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
 			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
 			"    --cam_projection_decimation  Decimate images before projecting the points.\n"
-			"    --cam_projection_mask \"\"  File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.\n"
-			"    --opt                 Use optimized poses already computed in the database instead of re-computing them.\n"
+			"    --cam_projection_mask \"\"  File path for a mask. Format should be 8-bits grayscale. The mask should\n"
+			"                                    cover all cameras in case multi-camera is used and have the same resolution.\n"
+			"    --opt #               Optimization approach:\n"
+			"                              0=Full Global Optimization (default)\n"
+			"                              1=Iterative Global Optimization\n"
+			"                              2=Use optimized poses already computed in the database instead\n"
+			"                                of re-computing them (fallback to default if optimized poses don't exist).\n"
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
@@ -93,13 +102,18 @@ void showUsage()
 			"    --gain_gray           Do gain estimation compensation on gray channel only (default RGB channels).\n"
 			"    --no_blending         Disable blending when texturing.\n"
 			"    --no_clean            Disable cleaning colorless polygons.\n"
-			"    --min_cluster   #     When meshing, filter clusters of polygons with size less than this threshold (default 200, -1 means keep only biggest contiguous surface).\n"
+			"    --min_cluster   #     When meshing, filter clusters of polygons with size less than this\n"
+			"                              threshold (default 200, -1 means keep only biggest contiguous surface).\n"
 			"    --low_gain      #     Low brightness gain 0-100 (default 0).\n"
 			"    --high_gain     #     High brightness gain 0-100 (default 10).\n"
 			"    --multiband               Enable multiband texturing (AliceVision dependency required).\n"
 			"    --multiband_downscale #   Downscaling reduce the texture quality but speed up the computation time (default 2).\n"
-			"    --multiband_contrib \"# # # # \"  Number of contributions per frequency band for the multi-band blending, should be 4 values! (default \"1 5 10 0\").\n"
-			"    --multiband_unwrap #      Method to unwrap input mesh: 0=basic (default, >600k faces, fast), 1=ABF (<=300k faces, generate 1 atlas), 2=LSCM (<=600k faces, optimize space).\n"
+			"    --multiband_contrib \"# # # # \"  Number of contributions per frequency band for the\n"
+			"                                          multi-band blending, should be 4 values! (default \"1 5 10 0\").\n"
+			"    --multiband_unwrap #      Method to unwrap input mesh:\n"
+			"                                  0=basic (default, >600k faces, fast)\n"
+			"                                  1=ABF (<=300k faces, generate 1 atlas)\n"
+			"                                  2=LSCM (<=600k faces, optimize space).\n"
 			"    --multiband_fillholes     Fill Texture holes with plausible values.\n"
 			"    --multiband_padding #     Texture edge padding size in pixel (0-100) (default 5).\n"
 			"    --multiband_scorethr #    0 to disable filtering based on threshold to relative best score (0.0-1.0). (default 0.1).\n"
@@ -2003,6 +2017,53 @@ int main(int argc, char * argv[])
 						}
 						else
 						{
+							// Save multiband first
+							if(multiband)
+							{
+								timer.restart();
+								std::string outputPath=outputDirectory+"/"+baseName+"_mesh_multiband.obj";
+								printf("MultiBand texturing (size=%d, downscale=%d, unwrap method=%s, fill holes=%s, padding=%d, best score thr=%f, angle thr=%f, force visible=%s)... \"%s\"\n",
+										textureSize,
+										multibandDownScale,
+										multibandUnwrap==1?"ABF":multibandUnwrap==2?"LSCM":"Basic",
+										multibandFillHoles?"true":"false",
+										multibandPadding,
+										multibandBestScoreThr,
+										multibandAngleHardthr,
+										multibandForceVisible?"false":"true",
+										outputPath.c_str());
+								if(util3d::multiBandTexturing(outputPath,
+										textureMesh->cloud,
+										textureMesh->tex_polygons[0],
+										robotPosesFiltered,
+										vertexToPixels,
+										std::map<int, cv::Mat >(),
+										std::map<int, std::vector<CameraModel> >(),
+										0,
+										dbDriver.get(),
+										textureSize,
+										multibandDownScale,
+										multibandNbContrib,
+										"jpg",
+										gains,
+										blendingGains,
+										contrastValues,
+										doGainCompensationRGB,
+										multibandUnwrap,
+										multibandFillHoles,
+										multibandPadding,
+										multibandBestScoreThr,
+										multibandAngleHardthr,
+										multibandForceVisible))
+								{
+									printf("MultiBand texturing...done (%fs).\n", timer.ticks());
+								}
+								else
+								{
+									printf("MultiBand texturing...failed! (%fs)\n", timer.ticks());
+								}
+							}
+
 							// TextureMesh OBJ
 							bool success = false;
 							UASSERT(!textures.empty());
@@ -2023,9 +2084,23 @@ int main(int argc, char * argv[])
 							}
 							if(success)
 							{
-
 								std::string outputPath=outputDirectory+"/"+baseName+"_mesh.obj";
 								printf("Saving obj (%d vertices) to %s.\n", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, outputPath.c_str());
+#if PCL_VERSION_COMPARE(>=, 1, 13, 0)
+								textureMesh->tex_coord_indices = std::vector<std::vector<pcl::Vertices>>();
+								auto nr_meshes = static_cast<unsigned>(textureMesh->tex_polygons.size());
+								unsigned f_idx = 0;
+								for (unsigned m = 0; m < nr_meshes; m++) {
+									std::vector<pcl::Vertices> ci = textureMesh->tex_polygons[m];
+									for(std::size_t i = 0; i < ci.size(); i++) {
+										for (std::size_t j = 0; j < ci[i].vertices.size(); j++) {
+											ci[i].vertices[j] = ci[i].vertices.size() * (i + f_idx) + j;
+										}
+									}
+									textureMesh->tex_coord_indices.push_back(ci);
+									f_idx += static_cast<unsigned>(textureMesh->tex_polygons[m].size());
+								}
+#endif								
 								success = pcl::io::saveOBJFile(outputPath, *textureMesh) == 0;
 
 								if(success)
@@ -2036,52 +2111,6 @@ int main(int argc, char * argv[])
 								{
 									UERROR("Failed saving obj to %s!", outputPath.c_str());
 								}
-							}
-						}
-
-						if(multiband)
-						{
-							timer.restart();
-							std::string outputPath=outputDirectory+"/"+baseName+"_mesh_multiband.obj";
-							printf("MultiBand texturing (size=%d, downscale=%d, unwrap method=%s, fill holes=%s, padding=%d, best score thr=%f, angle thr=%f, force visible=%s)... \"%s\"\n",
-									textureSize,
-									multibandDownScale,
-									multibandUnwrap==1?"ABF":multibandUnwrap==2?"LSCM":"Basic",
-									multibandFillHoles?"true":"false",
-									multibandPadding,
-									multibandBestScoreThr,
-									multibandAngleHardthr,
-									multibandForceVisible?"false":"true",
-									outputPath.c_str());
-							if(util3d::multiBandTexturing(outputPath,
-									textureMesh->cloud,
-									textureMesh->tex_polygons[0],
-									robotPosesFiltered,
-									vertexToPixels,
-									std::map<int, cv::Mat >(),
-									std::map<int, std::vector<CameraModel> >(),
-									0,
-									dbDriver.get(),
-									textureSize,
-									multibandDownScale,
-									multibandNbContrib,
-									"jpg",
-									gains,
-									blendingGains,
-									contrastValues,
-									doGainCompensationRGB,
-									multibandUnwrap,
-									multibandFillHoles,
-									multibandPadding,
-									multibandBestScoreThr,
-									multibandAngleHardthr,
-									multibandForceVisible))
-							{
-								printf("MultiBand texturing...done (%fs).\n", timer.ticks());
-							}
-							else
-							{
-								printf("MultiBand texturing...failed! (%fs)\n", timer.ticks());
 							}
 						}
 					}

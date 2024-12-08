@@ -175,15 +175,51 @@ typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
 					noiseFilteringMinNeighbors_);
 			if(groundIndices->size())
 			{
+				pcl::IndicesPtr farIndices;
+				if(rangeMax_!=0)
+				{
+					// Don't filter points farther than maximum range, in case we want to ray trace empty space
+					pcl::IndicesPtr closeIndices;
+					rtabmap::util3d::rangeSplitFiltering(cloud, groundIndices, rangeMax_, closeIndices, farIndices);
+					groundIndices = closeIndices;
+				}
 				groundIndices = rtabmap::util3d::radiusFiltering(cloud, groundIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+				if(farIndices.get())
+				{
+					groundIndices = rtabmap::util3d::concatenate(groundIndices, farIndices);
+				}
 			}
 			if(obstaclesIndices->size())
 			{
+				pcl::IndicesPtr farIndices;
+				if(rangeMax_!=0)
+				{
+					// Don't filter points farther than maximum range, in case we want to ray trace empty space
+					pcl::IndicesPtr closeIndices;
+					rtabmap::util3d::rangeSplitFiltering(cloud, obstaclesIndices, rangeMax_, closeIndices, farIndices);
+					obstaclesIndices = closeIndices;
+				}
 				obstaclesIndices = rtabmap::util3d::radiusFiltering(cloud, obstaclesIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+				if(farIndices.get())
+				{
+					obstaclesIndices = rtabmap::util3d::concatenate(obstaclesIndices, farIndices);
+				}
 			}
 			if(flatObstacles && (*flatObstacles)->size())
 			{
+				pcl::IndicesPtr farIndices;
+				if(rangeMax_!=0)
+				{
+					// Don't filter points farther than maximum range, in case we want to ray trace empty space
+					pcl::IndicesPtr closeIndices;
+					rtabmap::util3d::rangeSplitFiltering(cloud, *flatObstacles, rangeMax_, closeIndices, farIndices);
+					*flatObstacles = closeIndices;
+				}
 				*flatObstacles = rtabmap::util3d::radiusFiltering(cloud, *flatObstacles, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+				if(farIndices.get())
+				{
+					*flatObstacles = rtabmap::util3d::concatenate(*flatObstacles, farIndices);
+				}
 			}
 			UDEBUG("Radius filtering end (%ld ground %ld obstacles)",
 					groundIndices->size(),
