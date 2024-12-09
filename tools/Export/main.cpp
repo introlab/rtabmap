@@ -156,6 +156,8 @@ void showUsage()
 			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
 			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
 			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
+			"    --density_radius #    Filter poses in a fixed radius (m) to keep only one to export cloud.\n"
+			"    --density_angle #     Filter poses up to angle (deg) in the --density_radius.\n"
 			"    --filter_ceiling #    Filter points over a custom height (default 0 m, 0=disabled).\n"
 			"    --filter_floor #      Filter points below a custom height (default 0 m, 0=disabled).\n"
 
@@ -244,6 +246,8 @@ int main(int argc, char * argv[])
 	std::string outputName;
 	std::string outputDir;
 	cv::Vec3f min, max;
+	float densityRadius = 0.0f;
+	float densityAngle = 0.0f;
 	float filter_ceiling = 0.0f;
 	float filter_floor = 0.0f;
 	for(int i=1; i<argc; ++i)
@@ -923,6 +927,32 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--density_radius") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				densityRadius = uStr2Float(argv[i]);
+				UASSERT(densityRadius>=0.0f);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--density_angle") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				densityAngle = uStr2Float(argv[i]);
+				UASSERT(densityAngle>=0.0f);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
 		else if(std::strcmp(argv[i], "--filter_ceiling") == 0)
 		{
 			++i;
@@ -1261,6 +1291,18 @@ int main(int argc, char * argv[])
 	int imagesExported = 0;
 	std::vector<int> rawViewpointIndices;
 	std::map<int, Transform> rawViewpoints;
+	std::map<int, Transform> densityPoses;
+	if(densityRadius && (exportCloud || exportMesh))
+	{
+		densityPoses = graph::radiusPosesFiltering(optimizedPoses, densityRadius, densityAngle*CV_PI/180.0f);
+		printf("Keeping %d/%d poses after density filtering (--density_radius = %f --density_angle = %f).\n",
+			(int)densityPoses.size(),
+			(int)optimizedPoses.size(),
+			densityRadius,
+			densityAngle);
+	}
+	int processedNodes = 0;
+	int lastPercent = 0;
 	for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 	{
 		if(iter->first<0)
@@ -1305,6 +1347,7 @@ int main(int argc, char * argv[])
 
 		if(exportCloud || exportMesh || exportImages)
 		{
+			bool densityFiltered = !densityPoses.empty() && densityPoses.find(iter->first) == densityPoses.end();
 			cv::Mat rgb;
 			cv::Mat depth;
 			pcl::IndicesPtr indices(new std::vector<int>);
@@ -1312,7 +1355,7 @@ int main(int argc, char * argv[])
 			pcl::PointCloud<pcl::PointXYZI>::Ptr cloudI;
 			if(weight != -1)
 			{
-				if(cloudFromScan && (exportCloud || exportMesh))
+				if(!densityFiltered && cloudFromScan && (exportCloud || exportMesh))
 				{
 					LaserScan scan;
 					data.uncompressData(exportImages?&rgb:0, (texture||exportImages)&&!data.depthOrRightCompressed().empty()?&depth:0, &scan);
@@ -1344,7 +1387,7 @@ int main(int argc, char * argv[])
 				else
 				{
 					data.uncompressData(&rgb, &depth);
-					if(exportCloud || exportMesh)
+					if(!densityFiltered && (exportCloud || exportMesh))
 					{
 						if(depth.empty())
 						{
@@ -1547,6 +1590,20 @@ int main(int argc, char * argv[])
 		{
 			scanPoses.insert(std::make_pair(iter->first, iter->second*data.laserScanCompressed().localTransform()));
 		}
+
+		if(optimizedPoses.size() >= 500)
+		{
+			++processedNodes;
+			int percent = processedNodes*100/(int)optimizedPoses.size();
+			if(percent != lastPercent)
+			{
+				printf("Processed %d/%d (%d%%) nodes...\n",
+					processedNodes,
+					(int)optimizedPoses.size(),
+					percent);
+				lastPercent = percent;
+			}
+		}
 	}
 	if(exportCloud || exportMesh)
 	{
@@ -1573,12 +1630,12 @@ int main(int argc, char * argv[])
 		//optimized poses have changed, reset 2d map
 		driver->save2DMap(cv::Mat(), 0, 0, 0);
 		driver->saveOptimizedPoses(robotPoses, lastlocalizationPose);
-		cv::Vec3f min, max;
-		graph::computeMinMax(robotPoses, min, max);
+		cv::Vec3f vmin, vmax;
+		graph::computeMinMax(robotPoses, vmin, vmax);
 		printf("Saved %d poses to database! (min=[%f,%f,%f] max=[%f,%f,%f])\n",
 			(int)robotPoses.size(),
-			min[0], min[1], min[2],
-			max[0], max[1], max[2]);
+			vmin[0], vmin[1], vmin[2],
+			vmax[0], vmax[1], vmax[2]);
 	}
 	else
 	{
@@ -1600,13 +1657,13 @@ int main(int argc, char * argv[])
 			{
 				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, robotPoses, links, cameraStamps);
 			}
-			cv::Vec3f min, max;
-			graph::computeMinMax(robotPoses, min, max);
+			cv::Vec3f vmin, vmax;
+			graph::computeMinMax(robotPoses, vmin, vmax);
 			printf("%d poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
 				(int)robotPoses.size(),
 				outputPath.c_str(),
-				min[0], min[1], min[2],
-				max[0], max[1], max[2]);
+				vmin[0], vmin[1], vmin[2],
+				vmax[0], vmax[1], vmax[2]);
 		}
 		if(exportPosesCamera)
 		{
@@ -1618,13 +1675,13 @@ int main(int argc, char * argv[])
 				else
 					outputPath = outputDirectory+"/"+baseName+"_camera_poses_"+uNumber2Str((int)i)+"." + posesExt;
 				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, cameraPoses[i], std::multimap<int, Link>(), cameraStamps);
-				cv::Vec3f min, max;
-				graph::computeMinMax(cameraPoses[i], min, max);
+				cv::Vec3f vmin, vmax;
+				graph::computeMinMax(cameraPoses[i], vmin, vmax);
 				printf("%d camera poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
 					(int)cameraPoses[i].size(),
 					outputPath.c_str(),
-					min[0], min[1], min[2],
-					max[0], max[1], max[2]);
+					vmin[0], vmin[1], vmin[2],
+					vmax[0], vmax[1], vmax[2]);
 			}
 		}
 		if(exportPosesScan)
