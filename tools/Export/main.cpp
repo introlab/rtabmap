@@ -156,9 +156,6 @@ void showUsage()
 			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
 			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
 			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
-			"    --split_x #           Export the map in # parts along x-axis. Can be combined with split_y and split_z.\n"
-			"    --split_y #           Export the map in # parts along y-axis. Can be combined with split_x and split_z.\n"
-			"    --split_z #           Export the map in # parts along z-axis. Can be combined with split_x and split_y.\n"
 			"    --filter_ceiling #    Filter points over a custom height (default 0 m, 0=disabled).\n"
 			"    --filter_floor #      Filter points below a custom height (default 0 m, 0=disabled).\n"
 
