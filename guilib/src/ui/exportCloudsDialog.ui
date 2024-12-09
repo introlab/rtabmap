@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1328</y>
+        <y>-2995</y>
         <width>885</width>
-        <height>6169</height>
+        <height>6152</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2353,7 +2353,7 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                <string> m</string>
               </property>
               <property name="decimals">
-               <number>2</number>
+               <number>3</number>
               </property>
               <property name="minimum">
                <double>-1.000000000000000</double>
