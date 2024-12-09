@@ -156,7 +156,7 @@ void showUsage()
 			"    --ymax #              Maximum range on Y axis to keep nodes to export.\n"
 			"    --zmin #              Minimum range on Z axis to keep nodes to export.\n"
 			"    --zmax #              Maximum range on Z axis to keep nodes to export.\n"
-			"    --density_radius #    Filter poses in a fixed radius (m) to keep only one to export cloud.\n"
+			"    --density_radius #    Filter poses in a fixed radius (m) to keep only one to be exported in the assembled cloud.\n"
 			"    --density_angle #     Filter poses up to angle (deg) in the --density_radius.\n"
 			"    --filter_ceiling #    Filter points over a custom height (default 0 m, 0=disabled).\n"
 			"    --filter_floor #      Filter points below a custom height (default 0 m, 0=disabled).\n"
