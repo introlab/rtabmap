@@ -1315,6 +1315,11 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat imgRoi(image, roi);
+	cv::Mat maskRoi;
+	if(!mask.empty())
+	{
+		maskRoi = cv::Mat(mask, roi);
+	}
 #ifdef RTABMAP_CUDASIFT
 	if(gpu_)
 	{
@@ -1383,6 +1388,12 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 					//std::cout << cv::Mat(1, 128*4, CV_8UC1, desc) << std::endl;
 					continue;
 				}
+				// Ignore keypoints not in the mask
+				if(!maskRoi.empty() && maskRoi.at<unsigned char>(cudaSiftData_->h_data[i].ypos, cudaSiftData_->h_data[i].xpos) == 0)
+				{
+					continue;
+				}
+
 				//Keep track of the data, to be easier to manage the data in the next step
 				hessianMap.insert(std::pair<float, int>(cudaSiftData_->h_data[i].sharpness, i));
 			}
@@ -1412,12 +1423,6 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 	else
 #endif
 	{
-		cv::Mat maskRoi;
-		if(!mask.empty())
-		{
-			maskRoi = cv::Mat(mask, roi);
-		}
-
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifdef RTABMAP_NONFREE
 		sift_->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints

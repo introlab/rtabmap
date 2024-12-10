@@ -314,6 +314,7 @@ private:
 	bool _badSignaturesIgnored;
 	bool _mapLabelsAdded;
 	bool _depthAsMask;
+	float _maskFloorThreshold;
 	bool _stereoFromMotion;
 	unsigned int _imagePreDecimation;
 	unsigned int _imagePostDecimation;

@@ -91,6 +91,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_depthAsMask(Parameters::defaultMemDepthAsMask()),
+	_maskFloorThreshold(Parameters::defaultMemDepthMaskFloorThr()),
 	_stereoFromMotion(Parameters::defaultMemStereoFromMotion()),
     _imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
@@ -576,6 +577,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(params, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(params, Parameters::kMemDepthAsMask(), _depthAsMask);
+	Parameters::parse(params, Parameters::kMemDepthMaskFloorThr(), _maskFloorThreshold);
 	Parameters::parse(params, Parameters::kMemStereoFromMotion(), _stereoFromMotion);
 	Parameters::parse(params, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
 	Parameters::parse(params, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
@@ -4884,7 +4886,26 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					imageMono.cols % decimatedData.depthRaw().cols == 0 &&
 					imageMono.rows/decimatedData.depthRaw().rows == imageMono.cols/decimatedData.depthRaw().cols)
 				{
-					depthMask = util2d::interpolate(decimatedData.depthRaw(), imageMono.rows/decimatedData.depthRaw().rows, 0.1f);
+					depthMask = decimatedData.depthRaw();
+
+					if(_maskFloorThreshold != 0.0f)
+					{
+						UASSERT(!decimatedData.cameraModels().empty());
+						UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
+						if(_maskFloorThreshold<0.0f)
+						{
+							cv::Mat depthBelow;
+							util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
+							depthMask = depthBelow;
+						}
+						else
+						{
+							depthMask = util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold);
+						}
+						UDEBUG("Masking floor done.");
+					}
+
+					depthMask = util2d::interpolate(depthMask, imageMono.rows/depthMask.rows, 0.1f);
 				}
 				else
 				{
