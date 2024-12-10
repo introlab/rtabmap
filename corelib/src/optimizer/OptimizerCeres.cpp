@@ -37,12 +37,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_CERES
 #include <ceres/ceres.h>
+
 #if CERES_VERSION_MAJOR >= 3 || \
     (CERES_VERSION_MAJOR == 2 && CERES_VERSION_MINOR >= 1)
 #include <ceres/manifold.h>
 #else
 #include <ceres/local_parameterization.h>
 #endif
+
 #include "ceres/pose_graph_2d/types.h"
 #include "ceres/pose_graph_2d/pose_graph_2d_error_term.h"
 #include "ceres/pose_graph_2d/angle_manifold.h"
@@ -60,18 +62,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 namespace {
 
+#ifdef RTABMAP_CERES
 #if CERES_VERSION_MAJOR >= 3 || \
     (CERES_VERSION_MAJOR == 2 && CERES_VERSION_MINOR >= 1)
-inline void SetCeresProblemManifold(ceres::Problem* problem, double* params,
+inline void SetCeresProblemManifold(ceres::Problem& problem, double* params,
                                     ceres::Manifold* manifold) {
-  problem->SetManifold(params, manifold);
+  problem.SetManifold(params, manifold);
 #else
 inline void SetCeresProblemManifold(
-    ceres::Problem* problem, double* params,
+    ceres::Problem& problem, double* params,
     ceres::LocalParameterization* parameterization) {
-  problem->SetParameterization(params, parameterization);
+  problem.SetParameterization(params, parameterization);
 #endif
 }
+#endif
 
 }  // namespace
 
