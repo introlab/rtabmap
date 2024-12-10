@@ -94,6 +94,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_guessMatchToProjection(Parameters::defaultVisCorGuessMatchToProjection()),
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment()),
 		_depthAsMask(Parameters::defaultVisDepthAsMask()),
+		_maskFloorThreshold(Parameters::defaultVisDepthMaskFloorThr()),
 		_minInliersDistributionThr(Parameters::defaultVisMinInliersDistribution()),
 		_maxInliersMeanDistance(Parameters::defaultVisMeanInliersDistance()),
 		_detectorFrom(0),
@@ -155,6 +156,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorGuessMatchToProjection(), _guessMatchToProjection);
 	Parameters::parse(parameters, Parameters::kVisBundleAdjustment(), _bundleAdjustment);
 	Parameters::parse(parameters, Parameters::kVisDepthAsMask(), _depthAsMask);
+	Parameters::parse(parameters, Parameters::kVisDepthMaskFloorThr(), _maskFloorThreshold);
 	Parameters::parse(parameters, Parameters::kVisMinInliersDistribution(), _minInliersDistributionThr);
 	Parameters::parse(parameters, Parameters::kVisMeanInliersDistance(), _maxInliersMeanDistance);
 	uInsert(_bundleParameters, parameters);
@@ -423,13 +425,32 @@ Transform RegistrationVis::computeTransformationImpl(
 						   imageFrom.cols % fromSignature.sensorData().depthRaw().cols == 0 &&
 						   imageFrom.rows/fromSignature.sensorData().depthRaw().rows == fromSignature.sensorData().imageRaw().cols/fromSignature.sensorData().depthRaw().cols)
 						{
-							depthMask = util2d::interpolate(fromSignature.sensorData().depthRaw(), fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows, 0.1f);
+							depthMask = fromSignature.sensorData().depthRaw();
+
+							if(_maskFloorThreshold != 0.0f)
+							{
+								UASSERT(!fromSignature.sensorData().cameraModels().empty());
+								UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
+								if(_maskFloorThreshold<0.0f)
+								{
+									cv::Mat depthBelow;
+									util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
+									depthMask = depthBelow;
+								}
+								else
+								{
+									depthMask = util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold);
+								}
+								UDEBUG("Masking floor done.");
+							}
+
+							depthMask = util2d::interpolate(depthMask, imageFrom.rows/depthMask.rows, 0.1f);
 						}
 						else
 						{
 							UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection.",
 									Parameters::kVisDepthAsMask().c_str(),
-									fromSignature.sensorData().imageRaw().rows, fromSignature.sensorData().imageRaw().cols,
+									imageFrom.rows, imageFrom.cols,
 									fromSignature.sensorData().depthRaw().rows, fromSignature.sensorData().depthRaw().cols);
 						}
 					}
@@ -770,13 +791,32 @@ Transform RegistrationVis::computeTransformationImpl(
 						   imageTo.cols % toSignature.sensorData().depthRaw().cols == 0 &&
 						   imageTo.rows/toSignature.sensorData().depthRaw().rows == imageTo.cols/toSignature.sensorData().depthRaw().cols)
 						{
-							depthMask = util2d::interpolate(toSignature.sensorData().depthRaw(), imageTo.rows/toSignature.sensorData().depthRaw().rows, 0.1f);
+							depthMask = toSignature.sensorData().depthRaw();
+
+							if(_maskFloorThreshold != 0.0f)
+							{
+								UASSERT(!toSignature.sensorData().cameraModels().empty());
+								UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
+								if(_maskFloorThreshold<0.0f)
+								{
+									cv::Mat depthBelow;
+									util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
+									depthMask = depthBelow;
+								}
+								else
+								{
+									depthMask = util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold);
+								}
+								UDEBUG("Masking floor done.");
+							}
+
+							depthMask = util2d::interpolate(depthMask, imageTo.rows/depthMask.rows, 0.1f);
 						}
 						else
 						{
 							UWARN("%s is true, but RGB size (%dx%d) modulo depth size (%dx%d) is not 0. Ignoring depth mask for feature detection.",
 									Parameters::kVisDepthAsMask().c_str(),
-									toSignature.sensorData().imageRaw().rows, toSignature.sensorData().imageRaw().cols,
+									imageTo.rows, imageTo.cols,
 									toSignature.sensorData().depthRaw().rows, toSignature.sensorData().depthRaw().cols);
 						}
 					}
