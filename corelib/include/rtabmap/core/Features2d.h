@@ -246,7 +246,6 @@ private:
 	bool SSC_;
 	float _maxDepth; // 0=inf
 	float _minDepth;
-	float _floorFilterHeight; // 0=disabled
 	std::vector<float> _roiRatios; // size 4
 	int _subPixWinSize;
 	int _subPixIterations;
