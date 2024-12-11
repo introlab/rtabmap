@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
+#include <rtabmap/core/rvl_codec.h>
 #include <rtabmap/utilite/UThread.h>
 #include <opencv2/opencv.hpp>
 

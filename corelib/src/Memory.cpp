@@ -80,6 +80,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
 	_rgbCompressionFormat(Parameters::defaultMemImageCompressionFormat()),
+	_depthCompressionFormat(Parameters::defaultMemDepthCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
@@ -568,6 +569,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
 	Parameters::parse(params, Parameters::kMemIntermediateNodeDataKept(), _saveIntermediateNodeData);
 	Parameters::parse(params, Parameters::kMemImageCompressionFormat(), _rgbCompressionFormat);
+	Parameters::parse(params, Parameters::kMemDepthCompressionFormat(), _depthCompressionFormat);
 	Parameters::parse(params, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(params, Parameters::kMemGenerateIds(), _generateIds);
 	Parameters::parse(params, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
@@ -827,6 +829,16 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			_useOdometryFeatures = false;
 			uInsert(parameters_, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
 		}
+	}
+
+	if(!_saveDepth16Format && _depthCompressionFormat == ".rvl")
+	{
+		UWARN("%s is disabled, but %s=.rvl only supports 16 bits depth format. Enabling %s...",
+				Parameters::kMemSaveDepth16Format().c_str(),
+				Parameters::kMemDepthCompressionFormat().c_str(),
+				Parameters::kMemSaveDepth16Format().c_str());
+		_saveDepth16Format = true;
+		uInsert(parameters_, ParametersPair(Parameters::kMemSaveDepth16Format(), "true"));
 	}
 }
 
@@ -5810,7 +5822,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 		if(_saveDepth16Format && !depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
-			UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion (or set parameter \"Mem/SaveDepth16Format\"=false to use 32bits format).");
+			static bool warned = false;
+			if(!warned)
+			{
+				UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion (or set parameter \"Mem/SaveDepth16Format\"=false to use 32bits format).");
+				warned = true;
+			}
 			depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 		}
 
@@ -5821,7 +5838,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(_compressionParallelized)
 		{
 			rtabmap::CompressionThread ctImage(image, _rgbCompressionFormat);
-			rtabmap::CompressionThread ctDepth(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?std::string(".png"):_rgbCompressionFormat);
+			rtabmap::CompressionThread ctDepth(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
 			rtabmap::CompressionThread ctLaserScan(laserScan.data());
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
 			if(!image.empty())
@@ -5853,7 +5870,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		else
 		{
 			compressedImage = compressImage2(image, _rgbCompressionFormat);
-			compressedDepth = compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?std::string(".png"):_rgbCompressionFormat);
+			compressedDepth = compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
 			compressedScan = compressData2(laserScan.data());
 			compressedUserData = compressData2(data.userDataRaw());
 		}
