@@ -3530,7 +3530,7 @@ LaserScan adjustNormalsToViewPoint(
 
 					float result = v.dot(n);
 					if(result < 0
-					 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+					 || (groundNormalsUp>0.0f && ptr[nz] < -groundNormalsUp && ptr[2] < viewpoint[2])) // some far velodyne rays on road can have normals toward ground
 					{
 						//reverse normal
 						ptr[nx] *= -1.0f;
