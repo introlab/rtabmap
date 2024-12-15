@@ -4870,9 +4870,7 @@ void DatabaseViewer::update(int value,
 				dbDriver_->loadLinks(id, gravityLink, Link::kGravity);
 				if(!gravityLink.empty())
 				{
-					float roll,pitch,yaw;
-					gravityLink.begin()->second.transform().getEulerAngles(roll, pitch, yaw);
-					Eigen::Vector3d v = Transform(0,0,0,roll,pitch,0).toEigen3d() * -Eigen::Vector3d::UnitZ();
+					Eigen::Vector3f v = gravityLink.begin()->second.transform().inverse().toEigen3f() * -Eigen::Vector3f::UnitZ();
 					labelGravity->setText(QString("x=%1 y=%2 z=%3").arg(v[0]).arg(v[1]).arg(v[2]));
 					labelGravity->setToolTip(QString("roll=%1 pitch=%2 yaw=%3").arg(roll).arg(pitch).arg(yaw));
 				}
@@ -5098,13 +5096,8 @@ void DatabaseViewer::update(int value,
 					if(!gravityLink.empty() && ui_->checkBox_gravity_3dview->isChecked())
 					{
 						Transform gravityT = gravityLink.begin()->second.transform();
-						Eigen::Vector3f gravity(0,0,-1);
-						if(pose.isIdentity())
-						{
-							gravityT = gravityT.inverse();
-						}
-						gravity = (gravityT.rotation()*(pose).rotation().inverse()).toEigen3f()*gravity;
-						cloudViewer_->addOrUpdateLine("gravity", pose, (pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, false);
+						Eigen::Vector3f gravity =  gravityT.inverse().toEigen3f()*-Eigen::Vector3f::UnitZ();
+						cloudViewer_->addOrUpdateLine("gravity", pose, pose*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0), Qt::yellow, true, false);
 					}
 
 					//add scan
