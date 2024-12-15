@@ -94,8 +94,8 @@ void showUsage()
 			"    --cam_projection_mask \"\"  File path for a mask. Format should be 8-bits grayscale. The mask should\n"
 			"                                    cover all cameras in case multi-camera is used and have the same resolution.\n"
 			"    --opt #               Optimization approach:\n"
-			"                              0=Iterative Global Optimization (default)\n"
-			"                              1=Full Global Optimization\n"
+			"                              0=Full Global Optimization (default)\n"
+			"                              1=Iterative Global Optimization\n"
 			"                              2=Use optimized poses already computed in the database instead\n"
 			"                                of re-computing them (fallback to default if optimized poses don't exist).\n"
 			"                              3=No optimization, use odometry poses directly.\n"
@@ -1020,16 +1020,16 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	if(!(exportCloud || exportMesh || exportImages || exportPoses || exportPosesScan || exportPosesCamera))
+	if(!(exportCloud || exportMesh || exportImages || exportPoses || exportPosesScan || exportPosesCamera || texture))
 	{
-		printf("At least one of the required options should be set!\n");
-		showUsage();
+		printf("Launching the tool without any required option(s) is deprecated. We will add --cloud to keep compatibilty with old behavior.\n");
+		exportCloud = true;
 	}
 
 	if(texture && !exportMesh)
 	{
-		printf("To use --texture option, --mesh should be also enabled. Ignoring --texture.\n");
-		texture = false;
+		printf("To use --texture option, --mesh should be also enabled. Enabling --mesh.\n");
+		exportMesh = true;
 	}
 
 	ParametersMap params = Parameters::parseArguments(argc, argv, false);
@@ -1184,7 +1184,7 @@ int main(int argc, char * argv[])
 
 
 			optimizer->getConnectedGraph(odomPoses.lower_bound(1)->first, odomPoses, links, posesOut, linksOut);
-			if(optimizationApproach == 0)
+			if(optimizationApproach == 1)
 			{
 				std::list<std::map<int, Transform> > intermediateGraphes;
 				optimizedPoses = optimizer->optimize(odomPoses.lower_bound(1)->first, posesOut, linksOut, &intermediateGraphes);
@@ -2389,6 +2389,18 @@ int main(int argc, char * argv[])
 								UASSERT(!textures.empty());
 								for(size_t i=0; i<textureMesh->tex_materials.size(); ++i)
 								{
+									// Texture file name format is texture[#], replace "texture" by base filename
+									std::list<std::string> values = uSplitNumChar(textureMesh->tex_materials[i].tex_file);
+									textureMesh->tex_materials[i].tex_file.clear();
+									for(const auto & v: values)
+									{
+										if(v.compare("texture") == 0){
+											textureMesh->tex_materials[i].tex_file.append(baseName+"_mesh");
+										}
+										else {
+											textureMesh->tex_materials[i].tex_file.append(v);
+										}
+									}
 									textureMesh->tex_materials[i].tex_file += ".jpg";
 									printf("Saving texture to %s.\n", textureMesh->tex_materials[i].tex_file.c_str());
 									UASSERT(textures.cols % textures.rows == 0);
