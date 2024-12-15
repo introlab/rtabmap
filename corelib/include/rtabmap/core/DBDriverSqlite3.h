@@ -103,7 +103,8 @@ protected:
 
 	virtual void updateDepthImageQuery(
 			int nodeId,
-			const cv::Mat & image) const;
+			const cv::Mat & image,
+			const std::string & format) const;
 
 	void updateLaserScanQuery(
 			int nodeId,
@@ -173,7 +174,7 @@ private:
 	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & imageBytes) const;
 	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepCalibrationUpdate(sqlite3_stmt * ppStmt, int nodeId, const std::vector<CameraModel> & models, const std::vector<StereoCameraModel> & stereoModels) const;
-	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & imageCompressed) const;
+	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image, const std::string & format) const;
 	void stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const LaserScan & image) const;
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;

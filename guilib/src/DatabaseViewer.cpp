@@ -2423,7 +2423,8 @@ void DatabaseViewer::editDepthImage()
 				UASSERT(data.depthRaw().type() == depth.type());
 				UASSERT(data.depthRaw().cols == depth.cols);
 				UASSERT(data.depthRaw().rows == depth.rows);
-				dbDriver_->updateDepthImage(id, depth);
+				std::string depthFormat = compressedDepthFormat(data.depthOrRightCompressed());
+				dbDriver_->updateDepthImage(id, depth, depthFormat);
 				this->update3dView();
 			}
 		}

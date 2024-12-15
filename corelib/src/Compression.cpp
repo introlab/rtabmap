@@ -106,7 +106,7 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
 		{
 			//save in 8bits-4channel
 			cv::Mat bgra(image.size(), CV_8UC4, image.data);
-			cv::imencode(format, bgra, bytes);
+			cv::imencode(".png", bgra, bytes);
 		}
 		else if(format == ".rvl")
 		{
@@ -146,10 +146,7 @@ cv::Mat uncompressImage(const cv::Mat & bytes)
 	cv::Mat image;
 	if(!bytes.empty())
 	{
-		size_t maxlen = std::min(bytes.rows * bytes.cols * bytes.elemSize(), size_t(8));
-		std::vector<unsigned char> signature(maxlen);
-		memcpy(&signature[0], bytes.data, maxlen);
-		if (std::string(signature.begin(), signature.end()) == "DEPTHRVL")
+		if (compressedDepthFormat(bytes) == ".rvl")
 		{
 			uint32_t cols, rows;
         	memcpy(&cols, &bytes.data[8], 4);
@@ -183,10 +180,7 @@ cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
 	cv::Mat image;
 	if(bytes.size())
 	{
-		size_t maxlen = std::min(bytes.size(), size_t(8));
-		std::vector<unsigned char> signature(maxlen);
-		memcpy(&signature[0], &bytes, maxlen);
-		if (std::string(signature.begin(), signature.end()) == "DEPTHRVL")
+		if (compressedDepthFormat(bytes) == ".rvl")
 		{
 			uint32_t cols, rows;
         	memcpy(&cols, &bytes[8], 4);
@@ -333,6 +327,35 @@ std::string uncompressString(const cv::Mat & bytes)
 		return (const char*)strMat.data;
 	}
 	return "";
+}
+
+std::string compressedDepthFormat(const cv::Mat & bytes)
+{
+	return compressedDepthFormat(bytes.data, bytes.rows * bytes.cols * bytes.elemSize());
+}
+std::string compressedDepthFormat(const std::vector<unsigned char> & bytes)
+{
+	return compressedDepthFormat(bytes.data(), bytes.size());
+}
+std::string compressedDepthFormat(const unsigned char * bytes, unsigned long size)
+{
+	std::string format;
+	if(bytes && size)
+	{
+		size_t maxlen = std::min(size, size_t(8));
+		std::vector<unsigned char> signature(maxlen);
+		memcpy(&signature[0], bytes, maxlen);
+		if (std::string(signature.begin(), signature.end()) == "DEPTHRVL")
+		{
+			format = ".rvl";
+		}
+		else
+		{
+			// Assuming png by default
+			format = ".png";
+		}
+	}
+	return format;
 }
 
 } /* namespace rtabmap */

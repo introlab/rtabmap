@@ -830,16 +830,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			uInsert(parameters_, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
 		}
 	}
-
-	if(!_saveDepth16Format && _depthCompressionFormat == ".rvl")
-	{
-		UWARN("%s is disabled, but %s=.rvl only supports 16 bits depth format. Enabling %s...",
-				Parameters::kMemSaveDepth16Format().c_str(),
-				Parameters::kMemDepthCompressionFormat().c_str(),
-				Parameters::kMemSaveDepth16Format().c_str());
-		_saveDepth16Format = true;
-		uInsert(parameters_, ParametersPair(Parameters::kMemSaveDepth16Format(), "true"));
-	}
 }
 
 void Memory::preUpdate()
@@ -5820,15 +5810,40 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
 
-		if(_saveDepth16Format && !depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
+		if(!depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
-			static bool warned = false;
-			if(!warned)
+			if(_saveDepth16Format)
 			{
-				UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion (or set parameter \"Mem/SaveDepth16Format\"=false to use 32bits format).");
-				warned = true;
+				static bool warned = false;
+				if(!warned)
+				{
+					UWARN("Converting depth data to 16 bits format because depth type detected is 32FC1, "
+					      "feed 16UC1 depth format directly to avoid this conversion (or set parameter %s=false "
+						  "to save 32bits format). This warning is only printed once.",
+						Parameters::kMemSaveDepth16Format().c_str());
+					warned = true;
+				}
+				depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 			}
-			depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
+			else if(_depthCompressionFormat == ".rvl")
+			{
+				static bool warned = false;
+				if(!warned)
+				{
+					UWARN("%s is set to false to use 32bits format but this is not "
+					 	  "compatible with the depth format chosen (%s=\"%s\"), depth "
+						  "images will be compressed in \".png\" format instead. Explicitly "
+						  "set %s to true to keep using \"%s\" format and images will be "
+						  "converted to 16bits for convenience. This "
+						  "warning is only printed once.",
+						Parameters::kMemSaveDepth16Format().c_str(),
+						Parameters::kMemDepthCompressionFormat().c_str(),
+						_depthCompressionFormat.c_str(),
+						Parameters::kMemSaveDepth16Format().c_str(),
+						_depthCompressionFormat.c_str());
+					warned = true;
+				}
+			}
 		}
 
 		cv::Mat compressedImage;

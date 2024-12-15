@@ -100,7 +100,7 @@ public:
 		int nodeId,
 		const std::vector<CameraModel> & models,
 		const std::vector<StereoCameraModel> & stereoModels);
-	void updateDepthImage(int nodeId, const cv::Mat & image);
+	void updateDepthImage(int nodeId, const cv::Mat & image, const std::string & format);
 	void updateLaserScan(int nodeId, const LaserScan & scan);
 
 public:
@@ -243,7 +243,8 @@ protected:
 
 	virtual void updateDepthImageQuery(
 			int nodeId,
-			const cv::Mat & image) const = 0;
+			const cv::Mat & image,
+			const std::string & format) const = 0;
 
 	virtual void updateLaserScanQuery(
 			int nodeId,
