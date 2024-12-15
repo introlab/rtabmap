@@ -3625,6 +3625,67 @@ void adjustNormalsToViewPoint(
 	adjustNormalsToViewPointImpl<pcl::PointXYZINormal>(cloud, viewpoint, groundNormalsUp);
 }
 
+template<typename PointT>
+void adjustNormalsToViewPointsImpl(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		typename pcl::PointCloud<PointT>::Ptr & cloud,
+		float groundNormalsUp)
+{
+	if(poses.size() && cloud->size() == cameraIndices.size() && cloud->size())
+	{
+		#pragma omp parallel for
+		for(int i=0; i<(int)cloud->size(); ++i)
+		{
+			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
+			if(pcl::isFinite(normal))
+			{
+				const Transform & p = poses.at(cameraIndices[i]);
+				pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
+				Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
+
+				Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+				float result = v.dot(n);
+				if(result < 0 ||
+					(groundNormalsUp>0.0f && normal.z < -groundNormalsUp && cloud->points[i].z < viewpoint.z)) // some far velodyne rays on road can have normals toward ground)
+				{
+					//reverse normal
+					cloud->points[i].normal_x *= -1.0f;
+					cloud->points[i].normal_y *= -1.0f;
+					cloud->points[i].normal_z *= -1.0f;
+				}
+			}
+		}
+	}
+}
+
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float groundNormalsUp)
+{
+	adjustNormalsToViewPointsImpl<pcl::PointNormal>(poses, cameraIndices, cloud, groundNormalsUp);
+}
+
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float groundNormalsUp)
+{
+	adjustNormalsToViewPointsImpl<pcl::PointXYZRGBNormal>(poses, cameraIndices, cloud, groundNormalsUp);
+}
+
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		float groundNormalsUp)
+{
+	adjustNormalsToViewPointsImpl<pcl::PointXYZINormal>(poses, cameraIndices, cloud, groundNormalsUp);
+}
 
 template<typename PointT>
 void adjustNormalsToViewPointsImpl(
