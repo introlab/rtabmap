@@ -303,6 +303,7 @@ private:
 	bool _notLinkedNodesKeptInDb;
 	bool _saveIntermediateNodeData;
 	std::string _rgbCompressionFormat;
+	std::string _depthCompressionFormat;
 	bool _incrementalMemory;
 	bool _localizationDataSaved;
 	bool _reduceGraph;

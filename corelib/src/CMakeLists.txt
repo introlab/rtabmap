@@ -64,6 +64,8 @@ SET(SRC_FILES
     util3d_correspondences.cpp
     util3d_motion_estimation.cpp
     
+	rvl_codec.cpp
+	
     SensorData.cpp
     Graph.cpp
     Compression.cpp
