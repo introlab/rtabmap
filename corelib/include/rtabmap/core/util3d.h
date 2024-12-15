@@ -365,6 +365,22 @@ void RTABMAP_CORE_EXPORT fillProjectedCloudHoles(
 		bool fillToBorder);
 
 /**
+ * @brief Remove values below a floor threshold in a depth image.
+ * 
+ * @param depth the depth image to filter (can be a multi-camera depth image).
+ * @param cameraModels corresponding camera model(s) to depth image, with valid 
+ *                     local transform between base frame to camera frame.
+ * @param threshold height from base frame at which pixels below it are set to 0.
+ * @param depthBelow depth image of the pixels below the floor theshold.
+ * @return cv::Mat depth image of the pixels above the floor theshold.
+ */
+cv::Mat RTABMAP_CORE_EXPORT filterFloor(
+	const cv::Mat & depth,
+	const std::vector<CameraModel> & cameraModels,
+	float threshold,
+	cv::Mat * depthBelow = 0);
+
+/**
  * For each point, return pixel of the best camera (NodeID->CameraIndex)
  * looking at it based on the policy and parameters
  */
