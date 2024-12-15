@@ -1107,7 +1107,7 @@ int main(int argc, char * argv[])
 		}
 		if(optimizationApproach <= 1)
 		{
-			std::string optimizationApproachStr = optimizationApproach==0?"Iterative global optimization":"Full global optimization";
+			std::string optimizationApproachStr = optimizationApproach==1?"Iterative global optimization":"Full global optimization";
 			printf("Optimizing the map (%s)...\n", optimizationApproachStr.c_str());
 			if(odomPoses.empty())
 			{
@@ -1193,7 +1193,7 @@ int main(int argc, char * argv[])
 			{
 				optimizedPoses = optimizer->optimize(odomPoses.lower_bound(1)->first, posesOut, linksOut);
 			}
-			printf("Optimizing the map (%s)... done (%fs, poses=%d).\n", optimizationApproachStr.c_str(), timer.ticks(), (int)optimizedPoses.size());
+			printf("Optimizing the map (%s)... done (%fs, poses=%d, links=%d).\n", optimizationApproachStr.c_str(), timer.ticks(), (int)optimizedPoses.size(), (int)linksOut.size());
 		}
 
 		if(optimizedPoses.empty())
