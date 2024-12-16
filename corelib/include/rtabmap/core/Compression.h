@@ -87,9 +87,9 @@ cv::Mat RTABMAP_CORE_EXPORT uncompressData(const unsigned char * bytes, size_t s
 cv::Mat RTABMAP_CORE_EXPORT compressString(const std::string & str);
 std::string RTABMAP_CORE_EXPORT uncompressString(const cv::Mat & bytes);
 
-std::string compressedDepthFormat(const cv::Mat & bytes);
-std::string compressedDepthFormat(const std::vector<unsigned char> & bytes);
-std::string compressedDepthFormat(const unsigned char * bytes, size_t size);
+std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const cv::Mat & bytes);
+std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const std::vector<unsigned char> & bytes);
+std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const unsigned char * bytes, size_t size);
 
 } /* namespace rtabmap */
 #endif /* COMPRESSION_H_ */
