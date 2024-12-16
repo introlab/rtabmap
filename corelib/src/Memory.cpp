@@ -5831,16 +5831,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				if(!warned)
 				{
 					UWARN("%s is set to false to use 32bits format but this is not "
-					 	  "compatible with the depth format chosen (%s=\"%s\"), depth "
+					 	  "compatible with the compressed depth format chosen (%s=\"%s\"), depth "
 						  "images will be compressed in \".png\" format instead. Explicitly "
 						  "set %s to true to keep using \"%s\" format and images will be "
-						  "converted to 16bits for convenience. This "
-						  "warning is only printed once.",
+						  "converted to 16bits for convenience (warning: that would "
+						  "remove all depth values over 65 meters). Explicitly set %s=\".png\" "
+						  "to suppress this warning. This warning is only printed once.",
 						Parameters::kMemSaveDepth16Format().c_str(),
 						Parameters::kMemDepthCompressionFormat().c_str(),
 						_depthCompressionFormat.c_str(),
 						Parameters::kMemSaveDepth16Format().c_str(),
-						_depthCompressionFormat.c_str());
+						_depthCompressionFormat.c_str(),
+						Parameters::kMemDepthCompressionFormat().c_str());
 					warned = true;
 				}
 			}

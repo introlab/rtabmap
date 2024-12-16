@@ -10315,7 +10315,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="8" column="1">
                        <widget class="QLabel" name="label_retrieved_4">
                         <property name="text">
-                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                         <string>Initialize the Working Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
