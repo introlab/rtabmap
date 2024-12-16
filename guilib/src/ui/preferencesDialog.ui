@@ -10315,7 +10315,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="8" column="1">
                        <widget class="QLabel" name="label_retrieved_4">
                         <property name="text">
-                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                         <string>Initialize the Working Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -11589,7 +11589,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="0">
+                    <item row="7" column="0">
                      <widget class="QComboBox" name="comboBox_dbJournalMode">
                       <item>
                        <property name="text">
@@ -11631,7 +11631,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="1">
+                    <item row="9" column="1">
                      <widget class="QLabel" name="label_120">
                       <property name="text">
                        <string>Sqlite3 temp store,
@@ -11645,7 +11645,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="0">
+                    <item row="9" column="0">
                      <widget class="QComboBox" name="comboBox_dbTempStore">
                       <item>
                        <property name="text">
@@ -11674,7 +11674,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0">
+                    <item row="6" column="0">
                      <widget class="QSpinBox" name="spinBox_dbCacheSize">
                       <property name="minimum">
                        <number>10</number>
@@ -11690,7 +11690,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="1">
+                    <item row="6" column="1">
                      <widget class="QLabel" name="label_75">
                       <property name="text">
                        <string>Sqlite3 cache size,
@@ -11704,7 +11704,7 @@ see Sqlite3 doc 'PRAGMA cache_size'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="7" column="1">
                      <widget class="QLabel" name="label_77">
                       <property name="text">
                        <string>Sqlite3 journal mode,
@@ -11718,7 +11718,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="1">
+                    <item row="8" column="1">
                      <widget class="QLabel" name="label_89">
                       <property name="text">
                        <string>Sqlite3 synchronous,
@@ -11732,7 +11732,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="0">
+                    <item row="8" column="0">
                      <widget class="QComboBox" name="comboBox_dbSynchronous">
                       <property name="currentIndex">
                        <number>2</number>
@@ -11784,6 +11784,22 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                      <widget class="QLineEdit" name="lineEdit_rgbCompressionFormat"/>
                     </item>
                     <item row="4" column="1">
+                     <widget class="QLabel" name="label_760">
+                      <property name="text">
+                       <string>Depth image compression format (should be &quot;.png&quot; or &quot;.rvl&quot;).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QLineEdit" name="lineEdit_depthCompressionFormat"/>
+                    </item>
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_610">
                       <property name="text">
                        <string>Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., &quot;0.19&quot; vs &quot;0.20&quot; or &quot;1.0&quot; vs &quot;2.0&quot;). Patch version is ignored (e.g., &quot;0.20.1&quot; and &quot;0.20.3&quot; will generate a &quot;0.20&quot; database).</string>
@@ -11796,7 +11812,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="0">
+                    <item row="5" column="0">
                      <widget class="QLineEdit" name="lineEdit_targetDatabaseVersion">
                       <property name="placeholderText">
                        <string>major.minor</string>

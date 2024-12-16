@@ -512,12 +512,13 @@ void DBDriver::updateCalibration(int nodeId, const std::vector<CameraModel> & mo
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image)
+void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image, const std::string & format)
 {
 	_dbSafeAccessMutex.lock();
 	this->updateDepthImageQuery(
 			nodeId,
-			image);
+			image,
+			format);
 	_dbSafeAccessMutex.unlock();
 }
 

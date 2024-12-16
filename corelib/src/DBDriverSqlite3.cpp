@@ -4719,7 +4719,8 @@ void DBDriverSqlite3::updateCalibrationQuery(
 
 void DBDriverSqlite3::updateDepthImageQuery(
 		int nodeId,
-		const cv::Mat & image) const
+		const cv::Mat & image,
+		const std::string & format) const
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -4738,7 +4739,8 @@ void DBDriverSqlite3::updateDepthImageQuery(
 		// Save depth
 		stepDepthUpdate(ppStmt,
 				nodeId,
-				image);
+				image,
+				format);
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -6009,7 +6011,7 @@ std::string DBDriverSqlite3::queryStepDepthUpdate() const
 		return "UPDATE Data SET depth=? WHERE id=?;";
 	}
 }
-void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image) const
+void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image, const std::string & format) const
 {
 	if(!ppStmt)
 	{
@@ -6023,7 +6025,7 @@ void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const c
 	if(!image.empty() && (image.type()!=CV_8UC1 || image.rows > 1))
 	{
 		// compress
-		imageCompressed = compressImage2(image, ".png");
+		imageCompressed = compressImage2(image, format);
 	}
 	else
 	{

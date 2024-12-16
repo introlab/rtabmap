@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
+#include <rtabmap/core/rvl_codec.h>
 #include <rtabmap/utilite/UThread.h>
 #include <opencv2/opencv.hpp>
 
@@ -85,6 +86,10 @@ cv::Mat RTABMAP_CORE_EXPORT uncompressData(const unsigned char * bytes, unsigned
 
 cv::Mat RTABMAP_CORE_EXPORT compressString(const std::string & str);
 std::string RTABMAP_CORE_EXPORT uncompressString(const cv::Mat & bytes);
+
+std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const cv::Mat & bytes);
+std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const std::vector<unsigned char> & bytes);
+std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const unsigned char * bytes, size_t size);
 
 } /* namespace rtabmap */
 #endif /* COMPRESSION_H_ */
