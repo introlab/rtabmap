@@ -337,7 +337,7 @@ std::string compressedDepthFormat(const std::vector<unsigned char> & bytes)
 {
 	return compressedDepthFormat(bytes.data(), bytes.size());
 }
-std::string compressedDepthFormat(const unsigned char * bytes, unsigned long size)
+std::string compressedDepthFormat(const unsigned char * bytes, size_t size)
 {
 	std::string format;
 	if(bytes && size)
