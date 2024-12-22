@@ -66,6 +66,9 @@ void showUsage()
 			"                   --poses\n"
 			"                   --poses_camera\n"
 			"                   --poses_scan\n"
+			"                   --poses_gps\n"
+			"                   --poses_gt\n"
+			"                   --gps\n"
 			"                   --images\n"
 			"                   --images_id\n"
 			"Options:\n"
@@ -102,6 +105,8 @@ void showUsage()
 			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
+			"    --poses_gt            Export ground truth poses of the robot frame (e.g., base_link).\n"
+			"    --poses_gps           Export GPS poses of the GPS frame in local coordinates.\n"
 			"    --poses_format #      Format used for exported poses (default is 11):\n"
 			"                              0=Raw 3x4 transformation matrix (r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz)\n"
 			"                              1=RGBD-SLAM (in motion capture coordinate frame)\n"
@@ -110,6 +115,9 @@ void showUsage()
 			"                              4=g2o\n"
 			"                              10=RGBD-SLAM in ROS coordinate frame (stamp x y z qx qy qz qw)\n"
 			"                              11=RGBD-SLAM in ROS coordinate frame + ID (stamp x y z qx qy qz qw id)\n"
+			"    --gps #               Export GPS values of the GPS frame in world coordinates. Formats:\n"
+			"                              0=Raw (stamp longitude latitude altitude error bearing)\n"
+			"                              1=KML (Google Earth)\n"
 			"    --images              Export images with stamp as file name.\n"
 			"    --images_id           Export images with node id as file name.\n"
 			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
@@ -239,7 +247,10 @@ int main(int argc, char * argv[])
 	bool exportPoses = false;
 	bool exportPosesCamera = false;
 	bool exportPosesScan = false;
+	bool exportPosesGt = false;
+	bool exportPosesGps = false;
 	int exportPosesFormat = 11;
+	int exportGps = -1;
 	bool exportImages = false;
 	bool exportImagesId = false;
 	int optimizationApproach = 0;
@@ -482,12 +493,37 @@ int main(int argc, char * argv[])
 		{
 			exportPosesScan = true;
 		}
+		else if(std::strcmp(argv[i], "--poses_gt") == 0)
+		{
+			exportPosesGt = true;
+		}
+		else if(std::strcmp(argv[i], "--poses_gps") == 0)
+		{
+			exportPosesGps = true;
+		}
 		else if(std::strcmp(argv[i], "--poses_format") == 0)
 		{
 			++i;
 			if(i<argc-1)
 			{
 				exportPosesFormat = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--gps") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				exportGps = uStr2Int(argv[i]);
+				if(exportGps<0 || exportGps>1)
+				{
+					printf("Wrong GPS format (%d), should be 0 or 1\n", exportGps);
+					showUsage();
+				}
 			}
 			else
 			{
@@ -1020,7 +1056,16 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	if(!(exportCloud || exportMesh || exportImages || exportPoses || exportPosesScan || exportPosesCamera || texture))
+	if(!(exportCloud ||
+		 exportMesh ||
+		 exportImages ||
+		 exportPoses ||
+		 exportPosesScan ||
+		 exportPosesCamera ||
+		 exportPosesGt ||
+		 exportPosesGps ||
+		 exportGps>=0 ||
+		 texture))
 	{
 		printf("Launching the tool without any required option(s) is deprecated. We will add --cloud to keep compatibilty with old behavior.\n");
 		exportCloud = true;
@@ -1285,6 +1330,11 @@ int main(int argc, char * argv[])
 	std::map<int, rtabmap::Transform> robotPoses;
 	std::vector<std::map<int, rtabmap::Transform> > cameraPoses;
 	std::map<int, rtabmap::Transform> scanPoses;
+	std::map<int, rtabmap::Transform> gtPoses;
+	std::map<int, rtabmap::Transform> gpsPoses;
+	std::map<int, double> gpsStamps;
+	GPS gpsOrigin;
+	std::map<int, rtabmap::GPS> gpsValues;
 	std::map<int, double> cameraStamps;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
@@ -1316,12 +1366,12 @@ int main(int argc, char * argv[])
 		Transform p, gt;
 		int m;
 		std::string l;
-		GPS g;
+		GPS gps;
 		std::vector<float> v;
 		EnvSensors s;
 		int weight = -1;
 		double stamp = 0.0;
-		dbDriver->getNodeInfo(iter->first, p, m, weight, l, stamp, gt, v, g, s);
+		dbDriver->getNodeInfo(iter->first, p, m, weight, l, stamp, gt, v, gps, s);
 
 		SensorData data;
 		bool loadImages = ((exportCloud || exportMesh) && (!cloudFromScan || texture || camProjection)) || exportImages;
@@ -1591,6 +1641,38 @@ int main(int argc, char * argv[])
 			scanPoses.insert(std::make_pair(iter->first, iter->second*data.laserScanCompressed().localTransform()));
 		}
 
+		if(exportPosesGps || exportGps>=0)
+		{
+			if(gps.stamp() > 0.0)
+			{
+				if(exportPosesGps)
+				{
+					cv::Point3f p(0.0f,0.0f,0.0f);
+					if(!gpsPoses.empty())
+					{
+						GeodeticCoords coords = gps.toGeodeticCoords();
+						p = coords.toENU_WGS84(gpsOrigin.toGeodeticCoords());
+					}
+					else
+					{
+						gpsOrigin = gps;
+					}
+					Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*M_PI/180.0));
+					gpsPoses.insert(std::make_pair(iter->first, pose));
+				}
+				if(exportGps>=0)
+				{
+					gpsValues.insert(std::make_pair(iter->first, gps));
+				}
+				gpsStamps.insert(std::make_pair(iter->first, gps.stamp()));
+			}
+		}
+
+		if(exportPosesGt && !gt.isNull())
+		{
+			gtPoses.insert(std::make_pair(iter->first, gt));
+		}
+
 		if(optimizedPoses.size() >= 500)
 		{
 			++processedNodes;
@@ -1695,6 +1777,30 @@ int main(int argc, char * argv[])
 					outputPath.c_str(),
 					min[0], min[1], min[2],
 					max[0], max[1], max[2]);
+		}
+		if(exportPosesGps)
+		{
+			std::string outputPath=outputDirectory+"/"+baseName+"_gps_poses." + posesExt;
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gpsPoses, std::multimap<int, Link>(), gpsStamps);
+			printf("%d GPS poses exported to \"%s\".\n",
+					(int)gpsPoses.size(),
+					outputPath.c_str());
+		}
+		if(exportPosesGt)
+		{
+			std::string outputPath=outputDirectory+"/"+baseName+"_gt_poses." + posesExt;
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gtPoses, std::multimap<int, Link>(), cameraStamps);
+			printf("%d scan poses exported to \"%s\".\n",
+					(int)gtPoses.size(),
+					outputPath.c_str());
+		}
+		if(exportGps>=0)
+		{
+			std::string outputPath=outputDirectory+"/"+baseName+"_gps." + (exportGps==0?"txt":"kml");
+			rtabmap::graph::exportGPS(outputPath, gpsValues);
+			printf("%d GPS values exported to \"%s\".\n",
+					(int)gpsValues.size(),
+					outputPath.c_str());
 		}
 	}
 
