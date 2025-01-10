@@ -209,7 +209,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			UDEBUG("hasGPSPrior=%s", hasGPSPrior?"true":"false");
 			if(isSlam2d())
 			{
-				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:std::numeric_limits<double>::min()));
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:1e-9));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
 				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
 			}
@@ -217,7 +217,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(
 						(gtsam::Vector(6) <<
-								(hasGravityConstraints?2:1e-2), (hasGravityConstraints?2:1e-2), (hasGPSPrior?1e-2:std::numeric_limits<double>::min()), // roll, pitch, fixed yaw if there are no priors
+								(hasGravityConstraints?2:1e-2), (hasGravityConstraints?2:1e-2), (hasGPSPrior?1e-2:1e-9), // roll, pitch, fixed yaw if there are no priors
 								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
@@ -924,22 +924,38 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			// early stop condition
 			UDEBUG("iteration %d error =%f", i+1, error);
 			double errorDelta = lastError - error;
-			if((isam2_ || i>0) && errorDelta < this->epsilon())
+			if(fabs(error) > 1000000000000.0)
 			{
-				if(errorDelta < 0)
+				UERROR("Error computed (%e) is very huge! There could be an issue with too small "
+				       "variance set in some factors (set log level to debug to print the values). Aborting!", error);
+				if(ULogger::level() >= ULogger::kDebug)
 				{
-					UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+					if(optimizer)
+						graph.printErrors(optimizer->values());
+					else if(isam2_)
+						graph.printErrors(isam2_->calculateEstimate());
 				}
-				else
+				return optimizedPoses;
+			}
+			else
+			{
+				if((isam2_ || i>0) && errorDelta < this->epsilon())
 				{
-					UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+					if(errorDelta < 0)
+					{
+						UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+					}
+					else
+					{
+						UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+						break;
+					}
+				}
+				else if(i==0 && error < this->epsilon())
+				{
+					UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
 					break;
 				}
-			}
-			else if(i==0 && error < this->epsilon())
-			{
-				UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
-				break;
 			}
 			lastError = error;
 		}

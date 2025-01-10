@@ -694,7 +694,7 @@ typename pcl::PointCloud<PointT>::Ptr voxelizeImpl(
 
 		if ((dx*dy*dz) > static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()))
 		{
-			UWARN("Leaf size is too small for the input dataset. Integer indices would overflow. "
+			UDEBUG("Leaf size is too small for the input dataset. Integer indices would overflow. "
 				  "We will split space to be able to voxelize (lvl=%d cloud=%d min=[%f %f %f] max=[%f %f %f] voxel=%f).",
 				  level,
 				  (int)(indices->empty()?cloud->size():indices->size()),
