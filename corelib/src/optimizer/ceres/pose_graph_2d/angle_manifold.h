@@ -31,8 +31,13 @@
 #ifndef CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_MANIFOLD_H_
 #define CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_MANIFOLD_H_
 
-#include "ceres/autodiff_manifold.h"
-#include "ceres/manifold.h"
+#if CERES_VERSION_MAJOR >= 3 || \
+    (CERES_VERSION_MAJOR == 2 && CERES_VERSION_MINOR >= 1)
+#include <ceres/autodiff_manifold.h>
+#include <ceres/manifold.h>
+#else
+#include <ceres/local_parameterization.h>
+#endif
 #include "normalize_angle.h"
 
 namespace ceres {
