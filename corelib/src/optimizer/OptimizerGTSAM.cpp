@@ -924,11 +924,16 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			// early stop condition
 			UDEBUG("iteration %d error =%f", i+1, error);
 			double errorDelta = lastError - error;
-			if(fabs(error) > 1000000000000.0)
+			if(this->epsilon() > 0.0 && fabs(error) > 1000000000000.0)
 			{
 				UERROR("Error computed (%e) is very huge! There could be an issue with too small "
-				       "variance set in some factors (set log level to debug to print the values). Aborting!", error);
-				if(ULogger::level() >= ULogger::kDebug)
+				       "variance set in some factors (set log level to debug to print the values). Aborting! "
+					   "Set %s to 0 to ignore that check and keep iterating up to %s (%d).",
+					   error,
+					   Parameters::kOptimizerEpsilon().c_str(),
+					   Parameters::kOptimizerIterations().c_str(),
+					   this->iterations());
+				if(ULogger::level() == ULogger::kDebug)
 				{
 					if(optimizer)
 						graph.printErrors(optimizer->values());
@@ -951,10 +956,17 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						break;
 					}
 				}
-				else if(i==0 && error < this->epsilon())
-				{
-					UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
-					break;
+				else if(i==0)
+				{ 
+					if(error < 0)
+					{
+						UDEBUG("Negative error?! Ignore and continue optimizing... (%f)", error);
+					}
+					else if(error < this->epsilon())
+					{
+						UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
+						break;
+					}
 				}
 			}
 			lastError = error;
