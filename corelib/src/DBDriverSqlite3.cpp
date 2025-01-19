@@ -2427,9 +2427,13 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			  << "FROM Node ";
 		if(ignoreChildren)
 		{
-			query << "INNER JOIN Link ";
-			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
-			query << "WHERE from_id != to_id "; // ignore self referring links
+			// use to_id to ignore all children (which don't have link pointing on them)
+			// ignore self referring links
+			// keep nodes without link to other nodes (map has only a single node)
+			query << "WHERE ";
+			query << "(EXISTS (select 1 from Link where Node.id=to_id and from_id != to_id) OR ";
+			query << " NOT EXISTS (select 1 from Link where id=to_id and from_id != to_id)) ";
+			
 			query << "AND weight>-9 "; //ignore invalid nodes
 			if(ignoreIntermediateNodes)
 			{
