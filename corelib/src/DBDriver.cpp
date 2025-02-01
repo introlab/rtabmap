@@ -1179,7 +1179,7 @@ void DBDriver::addInfoAfterRun(
 					  << processMemUsed << ","
 					  << databaseMemUsed << ","
 					  << dictionarySize << ","
-					  "\"" << param.c_str() << "\");";
+					  "'" << param.c_str() << "');";
 			}
 			else
 			{
@@ -1189,7 +1189,7 @@ void DBDriver::addInfoAfterRun(
 					  << processMemUsed << ","
 					  << databaseMemUsed << ","
 					  << dictionarySize << ","
-					  "\"" << param.c_str() << "\");";
+					  "'" << param.c_str() << "');";
 			}
 		}
 		else
