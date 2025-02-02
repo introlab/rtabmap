@@ -2502,115 +2502,9 @@ void DatabaseViewer::exportPoses(int format)
 		return;
 	}
 
-	if(format == 5)
+	if(format == 5 && (gpsValues_.empty() || gpsPoses_.empty()))
 	{
-		if(gpsValues_.empty() || gpsPoses_.empty())
-		{
-			QMessageBox::warning(this, tr("Cannot export poses"), tr("No GPS in database?!"));
-		}
-		else
-		{
-			std::map<int, rtabmap::Transform> graph;
-			if(groundTruth)
-			{
-				graph = groundTruthPoses_;
-			}
-			else if(odometry)
-			{
-				graph = odomPoses_;
-			}
-			else
-			{
-				graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-			}
-
-
-			//align with ground truth for more meaningful results
-			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
-			cloud1.resize(graph.size());
-			cloud2.resize(graph.size());
-			int oi = 0;
-			int idFirst = 0;
-			for(std::map<int, Transform>::const_iterator iter=gpsPoses_.begin(); iter!=gpsPoses_.end(); ++iter)
-			{
-				std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
-				if(iter2!=graph.end())
-				{
-					if(oi==0)
-					{
-						idFirst = iter->first;
-					}
-					cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-					cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
-				}
-			}
-
-			Transform t = Transform::getIdentity();
-			if(oi>5)
-			{
-				cloud1.resize(oi);
-				cloud2.resize(oi);
-
-				t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
-			}
-			else if(idFirst)
-			{
-				t = gpsPoses_.at(idFirst) * graph.at(idFirst).inverse();
-			}
-
-			std::map<int, GPS> values;
-			GeodeticCoords origin = gpsValues_.begin()->second.toGeodeticCoords();
-			for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
-			{
-				iter->second = t * iter->second;
-
-				GeodeticCoords coord;
-				coord.fromENU_WGS84(cv::Point3d(iter->second.x(), iter->second.y(), iter->second.z()), origin);
-				double bearing = -(iter->second.theta()*180.0/M_PI-90.0);
-				if(bearing < 0)
-				{
-					bearing += 360;
-				}
-
-				Transform p, g;
-				int w;
-				std::string l;
-				double stamp=0.0;
-				int mapId;
-				std::vector<float> v;
-				GPS gps;
-				EnvSensors sensors;
-				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
-				values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
-			}
-
-			QString output = pathDatabase_ + QDir::separator() + "poses.kml";
-			QString path = QFileDialog::getSaveFileName(
-					this,
-					tr("Save File"),
-					output,
-					tr("Google Earth file (*.kml)"));
-
-			if(!path.isEmpty())
-			{
-				bool saved = graph::exportGPS(path.toStdString(), values, ui_->graphViewer->getNodeColor().rgba());
-
-				if(saved)
-				{
-					QMessageBox::information(this,
-							tr("Export poses..."),
-							tr("GPS coordinates saved to \"%1\".")
-							.arg(path));
-				}
-				else
-				{
-					QMessageBox::information(this,
-							tr("Export poses..."),
-							tr("Failed to save GPS coordinates to \"%1\"!")
-							.arg(path));
-				}
-			}
-		}
+		QMessageBox::warning(this, tr("Cannot export poses in KML format"), tr("No GPS in database?!"));
 		return;
 	}
 
@@ -2619,68 +2513,130 @@ void DatabaseViewer::exportPoses(int format)
 	{
 		optimizedPoses = groundTruthPoses_;
 	}
+	else if(odometry)
+	{
+		optimizedPoses = odomPoses_;
+	}
 	else
 	{
-		if(odometry)
+		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	}
+
+	bool alignToGPS = 
+			(ui_->checkBox_alignPosesWithGPS->isEnabled() && 
+		     ui_->checkBox_alignPosesWithGPS->isChecked()) ||
+		    format == 5;
+
+	if(alignToGPS ||
+	   (ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked()))
+	{
+		std::map<int, Transform> refPoses = groundTruthPoses_;
+		if(alignToGPS)
 		{
-			optimizedPoses = odomPoses_;
+			refPoses = gpsPoses_;
 		}
-		else
+
+		// Log ground truth statistics (in TUM's RGBD-SLAM format)
+		if(refPoses.size())
 		{
-			optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-		}
+			float translational_rmse = 0.0f;
+			float translational_mean = 0.0f;
+			float translational_median = 0.0f;
+			float translational_std = 0.0f;
+			float translational_min = 0.0f;
+			float translational_max = 0.0f;
+			float rotational_rmse = 0.0f;
+			float rotational_mean = 0.0f;
+			float rotational_median = 0.0f;
+			float rotational_std = 0.0f;
+			float rotational_min = 0.0f;
+			float rotational_max = 0.0f;
 
-		if((ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked()) ||
-		   (ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked()))
-		{
-			std::map<int, Transform> refPoses = groundTruthPoses_;
-			if(ui_->checkBox_alignPosesWithGPS->isEnabled() && 
-			   ui_->checkBox_alignPosesWithGPS->isChecked())
+			Transform gtToMap = graph::calcRMSE(
+					refPoses,
+					optimizedPoses,
+					translational_rmse,
+					translational_mean,
+					translational_median,
+					translational_std,
+					translational_min,
+					translational_max,
+					rotational_rmse,
+					rotational_mean,
+					rotational_median,
+					rotational_std,
+					rotational_min,
+					rotational_max,
+					alignToGPS);
+
+			if(!gtToMap.isIdentity())
 			{
-				refPoses = gpsPoses_;
-			}
-
-			// Log ground truth statistics (in TUM's RGBD-SLAM format)
-			if(refPoses.size())
-			{
-				float translational_rmse = 0.0f;
-				float translational_mean = 0.0f;
-				float translational_median = 0.0f;
-				float translational_std = 0.0f;
-				float translational_min = 0.0f;
-				float translational_max = 0.0f;
-				float rotational_rmse = 0.0f;
-				float rotational_mean = 0.0f;
-				float rotational_median = 0.0f;
-				float rotational_std = 0.0f;
-				float rotational_min = 0.0f;
-				float rotational_max = 0.0f;
-
-				Transform gtToMap = graph::calcRMSE(
-						refPoses,
-						optimizedPoses,
-						translational_rmse,
-						translational_mean,
-						translational_median,
-						translational_std,
-						translational_min,
-						translational_max,
-						rotational_rmse,
-						rotational_mean,
-						rotational_median,
-						rotational_std,
-						rotational_min,
-						rotational_max);
-
-				if(!gtToMap.isIdentity())
+				for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 				{
+					iter->second = gtToMap * iter->second;
+				}
+				if(alignToGPS && format != 5 && optimizedPoses.find(gpsValues_.begin()->first)!=optimizedPoses.end())
+				{
+					// This will make the exported first pose the GPS origin. Don't do it for KML format as is it done implicitly below.
+					int originId = gpsValues_.begin()->first;
+					Transform offset = optimizedPoses.at(originId).translation().inverse();
 					for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 					{
-						iter->second = gtToMap * iter->second;
+						iter->second = offset * iter->second;
 					}
 				}
 			}
 		}
+	}
+
+	if(format == 5)
+	{
+		std::map<int, GPS> values;
+		GeodeticCoords origin = gpsValues_.begin()->second.toGeodeticCoords();
+		for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+		{
+			GeodeticCoords coord;
+			coord.fromENU_WGS84(cv::Point3d(iter->second.x(), iter->second.y(), iter->second.z()), origin);
+
+			Transform p, g;
+			int w;
+			std::string l;
+			double stamp=0.0;
+			int mapId;
+			std::vector<float> v;
+			GPS gps;
+			EnvSensors sensors;
+			dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
+			values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
+		}
+
+		QString output = pathDatabase_ + QDir::separator() + "poses.kml";
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				output,
+				tr("Google Earth file (*.kml)"));
+
+		if(!path.isEmpty())
+		{
+			bool saved = graph::exportGPS(path.toStdString(), values, ui_->graphViewer->getNodeColor().rgba());
+
+			if(saved)
+			{
+				QMessageBox::information(this,
+						tr("Export poses..."),
+						tr("GPS coordinates saved to \"%1\".")
+						.arg(path));
+			}
+			else
+			{
+				QMessageBox::information(this,
+						tr("Export poses..."),
+						tr("Failed to save GPS coordinates to \"%1\"!")
+						.arg(path));
+			}
+		}
+		return;
 	}
 
 	if(optimizedPoses.size())
@@ -4174,6 +4130,72 @@ void DatabaseViewer::generate3DMap()
 	else
 	{
 		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+
+		bool alignToGPS = 
+			ui_->checkBox_alignPosesWithGPS->isEnabled() && 
+		    ui_->checkBox_alignPosesWithGPS->isChecked();
+
+		if(alignToGPS ||
+		   (ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked()))
+		{
+			std::map<int, Transform> refPoses = groundTruthPoses_;
+			if(alignToGPS)
+			{
+				refPoses = gpsPoses_;
+			}
+
+			// Log ground truth statistics (in TUM's RGBD-SLAM format)
+			if(refPoses.size())
+			{
+				float translational_rmse = 0.0f;
+				float translational_mean = 0.0f;
+				float translational_median = 0.0f;
+				float translational_std = 0.0f;
+				float translational_min = 0.0f;
+				float translational_max = 0.0f;
+				float rotational_rmse = 0.0f;
+				float rotational_mean = 0.0f;
+				float rotational_median = 0.0f;
+				float rotational_std = 0.0f;
+				float rotational_min = 0.0f;
+				float rotational_max = 0.0f;
+
+				Transform gtToMap = graph::calcRMSE(
+						refPoses,
+						optimizedPoses,
+						translational_rmse,
+						translational_mean,
+						translational_median,
+						translational_std,
+						translational_min,
+						translational_max,
+						rotational_rmse,
+						rotational_mean,
+						rotational_median,
+						rotational_std,
+						rotational_min,
+						rotational_max,
+						alignToGPS);
+
+				if(!gtToMap.isIdentity())
+				{
+					for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+					{
+						iter->second = gtToMap * iter->second;
+					}
+					if(alignToGPS && optimizedPoses.find(gpsValues_.begin()->first)!=optimizedPoses.end())
+					{
+						// This will make the exported first pose the GPS origin.
+						int originId = gpsValues_.begin()->first;
+						Transform offset = optimizedPoses.at(originId).translation().inverse();
+						for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+						{
+							iter->second = offset * iter->second;
+						}
+					}
+				}
+			}
+		}
 	}
 	if(ui_->groupBox_posefiltering->isChecked())
 	{
@@ -6954,7 +6976,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
 
 		std::map<int, Transform> refPoses = groundTruthPoses_;
-		if(ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked())
+		bool alignToGPS = ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked();
+		if(alignToGPS)
 		{
 			refPoses = gpsPoses_;
 		}
@@ -7000,7 +7023,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					rotational_median,
 					rotational_std,
 					rotational_min,
-					rotational_max);
+					rotational_max,
+					alignToGPS);
 
 			// ground truth live statistics
 			ui_->label_rmse->setNum(translational_rmse);
@@ -7018,7 +7042,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("rotational_min=%f", rotational_min);
 			UINFO("rotational_max=%f", rotational_max);
 
-			if(((ui_->checkBox_alignPosesWithGPS->isEnabled() && ui_->checkBox_alignPosesWithGPS->isChecked()) ||
+			if((alignToGPS ||
 				(ui_->checkBox_alignPosesWithGroundTruth->isEnabled() && ui_->checkBox_alignPosesWithGroundTruth->isChecked())) &&
 			   !gtToMap.isIdentity())
 			{
