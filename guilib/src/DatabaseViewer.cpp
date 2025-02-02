@@ -25,6 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <chrono>
+#include <iostream>
+#include <sstream>
+
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "ui_DatabaseViewer.h"
@@ -1559,6 +1563,15 @@ void DatabaseViewer::extractImages()
 		progressDialog->appendText(tr("Saving %1 images to %2...").arg(ids_.size()).arg(path));
 		progressDialog->show();
 
+		// Determine source of gps info for images
+		std::string gpsSource = "None";
+		std::map<int, GPS> gpsValues;
+		if(!gpsPoses_.empty())
+		{
+			gpsSource = DatabaseViewer::selectGraph();
+			gpsValues = graphToGPS(gpsSource);
+		}
+
 		int imagesExported = 0;
 		for(int i=0; i<ids_.size(); ++i)
 		{
@@ -1567,6 +1580,7 @@ void DatabaseViewer::extractImages()
 			SensorData data;
 			dbDriver_->getNodeData(ids_.at(i), data);
 			data.uncompressData();
+			Exiv2::ExifData exifData;
 
 			if(!directoriesCreated)
 			{
@@ -1592,7 +1606,7 @@ void DatabaseViewer::extractImages()
 				}
 			}
 
-			if(!data.imageRaw().empty() && useStamp)
+			if(!data.imageRaw().empty())
 			{
 				Transform p,gt;
 				int m,w;
@@ -1602,13 +1616,49 @@ void DatabaseViewer::extractImages()
 				GPS gps;
 				EnvSensors s;
 				dbDriver_->getNodeInfo(ids_.at(i), p, m, w, l, stamp, gt, v, gps, s);
-				if(stamp == 0.0)
+				if(useStamp && stamp == 0.0)
 				{
 					UWARN("Node %d has null timestamp! Using id instead!", ids_.at(i));
 				}
-				else
+				else if(useStamp)
 				{
 					id = QString::number(stamp, 'f');
+				}
+
+				//fill out image metadata
+				exifData["Exif.Image.ProcessingSoftware"] = "RTABMAP";
+				if(!(gpsSource == "None"))
+				{
+					gps = gpsValues[ids_.at(i)];
+
+					std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::duration<double>(gps.stamp()))));
+					std::tm timestamp = *std::localtime(&time);
+					char datebuf[20] = { 0 };
+					std::strftime(datebuf, sizeof(datebuf), "%Y:%m:%d:%H:%M:%S", &timestamp);
+					std::string dateString(datebuf);
+
+					double latitude = gps.latitude();
+					double longitude = gps.longitude();
+					double altitude = gps.altitude();
+					
+					writeExiv2Data(exifData, "EExif.GPSInfo.GPSMapDatum", "WGS-84");
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSDateStamp", dateString);
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSTimeStamp", toExifTimeStamp(dateString));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitude", toExifLatLonString(latitude));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitude", toExifLatLonString(longitude));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitude", toExifString(altitude));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLatitudeRef", (latitude<0 ? "S" : "N"));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSLongitudeRef", (longitude<0 ? "W" : "E"));
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSAltitudeRef", (altitude < 0.0 ? "1" : "0"));
+
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirectionRef", "T");
+					
+					float x,y,z,roll,pitch,yaw;
+					p.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+					float bearing = (yaw/3.1416*180.0) + 180.0;
+					if (bearing > 90) bearing -= 90.0;
+					else bearing += 270.0;
+					writeExiv2Data(exifData, "Exif.GPSInfo.GPSImgDirection", toExifString(bearing));
 				}
 			}
 
@@ -1616,11 +1666,21 @@ void DatabaseViewer::extractImages()
 			{
 				if(!data.rightRaw().empty())
 				{
-					if(!cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+					std::string filename_left = QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+					if(!cv::imwrite(filename_left, data.imageRaw()))
 						UWARN("Failed saving \"%s\"", QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-					if(!cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw()))
+					std::string filename_right = QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+					if(!cv::imwrite(filename_right, data.rightRaw()))
 						UWARN("Failed saving \"%s\"", QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 					UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
+
+					Exiv2::Image::AutoPtr exiv_left = Exiv2::ImageFactory::open(filename_left);
+        			exiv_left->setExifData(exifData);
+        			exiv_left->writeMetadata();
+
+					Exiv2::Image::AutoPtr exiv_right = Exiv2::ImageFactory::open(filename_right);
+        			exiv_right->setExifData(exifData);
+        			exiv_right->writeMetadata();
 
 					if(databaseFileName_.empty())
 					{
@@ -1667,18 +1727,28 @@ void DatabaseViewer::extractImages()
 				{
 					if(!data.depthRaw().empty())
 					{
-						if(!cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+						std::string filename = QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+						if(!cv::imwrite(filename, data.imageRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 						if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
 						UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
+
+						Exiv2::Image::AutoPtr exiv_image = Exiv2::ImageFactory::open(filename);
+        			    exiv_image->setExifData(exifData);
+        			    exiv_image->writeMetadata();
 					}
 					else
 					{
-						if(!cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
+						std::string filename = QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString();
+						if(!cv::imwrite(filename, data.imageRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 						else
 							UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
+
+						Exiv2::Image::AutoPtr exiv_image = Exiv2::ImageFactory::open(filename);
+        			    exiv_image->setExifData(exifData);
+        			    exiv_image->writeMetadata();
 					}
 
 					if(databaseFileName_.empty())
@@ -2464,43 +2534,141 @@ void DatabaseViewer::exportPosesKML()
 	exportPoses(5);
 }
 
-void DatabaseViewer::exportPoses(int format)
+std::string DatabaseViewer::selectGraph()
 {
-	QStringList types;
+  	QStringList types;
 	types.push_back("Map's graph (see Graph View)");
 	types.push_back("Odometry");
 	if(!groundTruthPoses_.empty())
 	{
 		types.push_back("Ground Truth");
 	}
+	if(!gpsPoses_.empty())
+	{
+		types.push_back("GPS");
+	}
 	bool ok;
 	QString type = QInputDialog::getItem(this, tr("Which poses?"), tr("Poses:"), types, 0, false, &ok);
 	if(!ok)
 	{
-		return;
+		return "Cancel";
 	}
-	bool odometry = type.compare("Odometry") == 0;
-	bool groundTruth = type.compare("Ground Truth") == 0;
-
-	if(groundTruth && groundTruthPoses_.empty())
+	
+	if(type == "Ground Truth" && groundTruthPoses_.empty())
 	{
 		QMessageBox::warning(this, tr("Cannot export poses"), tr("No ground truth poses in database?!"));
-		return;
+		return "None";
 	}
-	else if(!odometry && graphes_.empty())
+	else if(type == "Odometry" && odomPoses_.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export poses"), tr("No odometry poses in database?!"));
+		return "None";
+	}
+	else if(type == "GPS" && gpsPoses_.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export poses"), tr("No GPS in database?!"));
+		return "None";
+	}
+	else if(graphes_.empty())
 	{
 		this->updateGraphView();
 		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
 		{
 			QMessageBox::warning(this, tr("Cannot export poses"), tr("No graph in database?!"));
-			return;
+			return "None";
 		}
 	}
-	else if(odometry && odomPoses_.empty())
+	
+	return type.toStdString();
+}
+
+std::map<int, GPS> DatabaseViewer::graphToGPS(std::string graphSource)
+{
+	std::map<int, rtabmap::Transform> graph;
+	if(graphSource == "Ground Truth")
 	{
-		QMessageBox::warning(this, tr("Cannot export poses"), tr("No odometry poses in database?!"));
-		return;
+		graph = groundTruthPoses_;
 	}
+	else if(graphSource == "Odometry")
+	{
+		graph = odomPoses_;
+	}
+	else if(graphSource == "GPS")
+	{
+		graph = gpsPoses_;
+	}
+	else
+	{
+		graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	}
+
+	//align with ground truth for more meaningful results
+	pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+	cloud1.resize(graph.size());
+	cloud2.resize(graph.size());
+	int oi = 0;
+	int idFirst = 0;
+	for(std::map<int, Transform>::const_iterator iter=gpsPoses_.begin(); iter!=gpsPoses_.end(); ++iter)
+	{
+		std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
+		if(iter2!=graph.end())
+		{
+			if(oi==0)
+			{
+				idFirst = iter->first;
+			}
+			cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
+		}
+	}
+
+	Transform t = Transform::getIdentity();
+	if(oi>5)
+	{
+		cloud1.resize(oi);
+		cloud2.resize(oi);
+
+		t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+	}
+	else if(idFirst)
+	{
+		t = gpsPoses_.at(idFirst) * graph.at(idFirst).inverse();
+	}
+
+	std::map<int, GPS> values;
+	GeodeticCoords origin = gpsValues_.begin()->second.toGeodeticCoords();
+	for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+	{
+		iter->second = t * iter->second;
+
+		GeodeticCoords coord;
+		coord.fromENU_WGS84(cv::Point3d(iter->second.x(), iter->second.y(), iter->second.z()), origin);
+		double bearing = -(iter->second.theta()*180.0/M_PI-90.0);
+		if(bearing < 0)
+		{
+			bearing += 360;
+		}
+
+		Transform p, g;
+		int w;
+		std::string l;
+		double stamp=0.0;
+		int mapId;
+		std::vector<float> v;
+		GPS gps;
+		EnvSensors sensors;
+		dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
+		values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
+	}
+
+	return values;
+}
+
+void DatabaseViewer::exportPoses(int format)
+{
+	std::string graphSource = DatabaseViewer::selectGraph();
+	bool groundTruth = (graphSource == "Ground Truth");
+	bool odometry = (graphSource == "Odometry");
 
 	if(format == 5)
 	{
@@ -2510,79 +2678,7 @@ void DatabaseViewer::exportPoses(int format)
 		}
 		else
 		{
-			std::map<int, rtabmap::Transform> graph;
-			if(groundTruth)
-			{
-				graph = groundTruthPoses_;
-			}
-			else if(odometry)
-			{
-				graph = odomPoses_;
-			}
-			else
-			{
-				graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-			}
-
-
-			//align with ground truth for more meaningful results
-			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
-			cloud1.resize(graph.size());
-			cloud2.resize(graph.size());
-			int oi = 0;
-			int idFirst = 0;
-			for(std::map<int, Transform>::const_iterator iter=gpsPoses_.begin(); iter!=gpsPoses_.end(); ++iter)
-			{
-				std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
-				if(iter2!=graph.end())
-				{
-					if(oi==0)
-					{
-						idFirst = iter->first;
-					}
-					cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-					cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
-				}
-			}
-
-			Transform t = Transform::getIdentity();
-			if(oi>5)
-			{
-				cloud1.resize(oi);
-				cloud2.resize(oi);
-
-				t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
-			}
-			else if(idFirst)
-			{
-				t = gpsPoses_.at(idFirst) * graph.at(idFirst).inverse();
-			}
-
-			std::map<int, GPS> values;
-			GeodeticCoords origin = gpsValues_.begin()->second.toGeodeticCoords();
-			for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
-			{
-				iter->second = t * iter->second;
-
-				GeodeticCoords coord;
-				coord.fromENU_WGS84(cv::Point3d(iter->second.x(), iter->second.y(), iter->second.z()), origin);
-				double bearing = -(iter->second.theta()*180.0/M_PI-90.0);
-				if(bearing < 0)
-				{
-					bearing += 360;
-				}
-
-				Transform p, g;
-				int w;
-				std::string l;
-				double stamp=0.0;
-				int mapId;
-				std::vector<float> v;
-				GPS gps;
-				EnvSensors sensors;
-				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps, sensors);
-				values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
-			}
+			std::map<int, GPS> values = graphToGPS(graphSource);		
 
 			QString output = pathDatabase_ + QDir::separator() + "poses.kml";
 			QString path = QFileDialog::getSaveFileName(
@@ -9367,6 +9463,26 @@ void DatabaseViewer::notifyParametersChanged(const QStringList & parametersChang
 		this->updateGraphView();
 	}
 	this->configModified();
+}
+
+void DatabaseViewer::writeExiv2Data(Exiv2::ExifData &exifData, std::string keyStr, std::string str)
+{
+	try{
+        Exiv2::ExifKey key(keyStr);
+        Exiv2::ExifData::iterator pos = exifData.findKey(key);
+        if(pos != exifData.end()){
+            exifData[keyStr].setValue(str);
+        }
+        else
+        {
+            exifData[keyStr].setValue(str);
+        }
+    }
+    catch (Exiv2::Error& e) {
+        ;//std::cerr << "Caught Exiv2 exception '" << e.what() << "'\n";
+    }
+
+	
 }
 
 } // namespace rtabmap
