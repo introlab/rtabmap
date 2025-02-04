@@ -4892,10 +4892,13 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 				{
 					if(valueInt==2 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{
+					if(
 #ifndef RTABMAP_ORB_SLAM
-						if(Optimizer::isAvailable(Optimizer::kTypeG2O))
+						Optimizer::isAvailable(Optimizer::kTypeG2O)
+#else
+						true
 #endif
-						{
+						){
 							UWARN("Trying to set \"%s\" to GTSAM but RTAB-Map isn't built "
 								"with GTSAM. Falling back to g2o.",
 								combo->objectName().toStdString().c_str());
