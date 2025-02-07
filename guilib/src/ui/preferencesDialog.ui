@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-937</y>
             <width>713</width>
             <height>4653</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -15799,7 +15799,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -15824,32 +15824,32 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                            <item>
                             <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,1">
-                             <item row="1" column="0">
-                              <widget class="QSpinBox" name="spinBox_odom_f2m_maxNewFeatures">
-                               <property name="minimum">
-                                <number>0</number>
+                             <item row="6" column="1">
+                              <widget class="QLabel" name="label_524">
+                               <property name="text">
+                                <string>[Visual] If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.</string>
                                </property>
-                               <property name="maximum">
-                                <number>999999</number>
+                               <property name="wordWrap">
+                                <bool>true</bool>
                                </property>
-                               <property name="singleStep">
-                                <number>1</number>
-                               </property>
-                               <property name="value">
-                                <number>0</number>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                </property>
                               </widget>
                              </item>
-                             <item row="3" column="0">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRadius">
+                             <item row="5" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRange">
                                <property name="suffix">
                                 <string> m</string>
                                </property>
                                <property name="decimals">
-                                <number>3</number>
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <double>9999.000000000000000</double>
                                </property>
                                <property name="value">
-                                <double>0.025000000000000</double>
+                                <double>0.000000000000000</double>
                                </property>
                               </widget>
                              </item>
@@ -15863,6 +15863,22 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                                <property name="textInteractionFlags">
                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QSpinBox" name="odom_localHistory">
+                               <property name="minimum">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999999999</number>
+                               </property>
+                               <property name="singleStep">
+                                <number>1</number>
+                               </property>
+                               <property name="value">
+                                <number>0</number>
                                </property>
                               </widget>
                              </item>
@@ -15892,39 +15908,65 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="0" column="0">
-                              <widget class="QSpinBox" name="odom_localHistory">
-                               <property name="minimum">
-                                <number>0</number>
-                               </property>
-                               <property name="maximum">
-                                <number>999999999</number>
-                               </property>
-                               <property name="singleStep">
-                                <number>1</number>
-                               </property>
-                               <property name="value">
-                                <number>0</number>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="2" column="0">
-                              <widget class="QSpinBox" name="spinBox_odom_f2m_scanMaxSize">
-                               <property name="maximum">
-                                <number>999999999</number>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="1" column="1">
-                              <widget class="QLabel" name="label_194">
+                             <item row="10" column="1">
+                              <widget class="QLabel" name="label_761">
                                <property name="text">
-                                <string>[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.</string>
+                                <string>[Visual] To create a new keyframe with bundle adjustment, a minimum motion (in pixels) can be required. The motion is computed by the average distance between inliers of the previous keyframe and new frame.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
                                </property>
                                <property name="textInteractionFlags">
                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="8" column="1">
+                              <widget class="QLabel" name="label_358">
+                               <property name="text">
+                                <string>[Visual] Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="1">
+                              <widget class="QLabel" name="label_598">
+                               <property name="text">
+                                <string>[Visual] Gravity sigma used for bundle adjustment (&lt;0, use same value than Optimizer/GravitySigma parameter)</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="4" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanAngle">
+                               <property name="suffix">
+                                <string> deg</string>
+                               </property>
+                               <property name="decimals">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <double>180.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="8" column="0">
+                              <widget class="QSpinBox" name="odom_f2m_bundleMaxFrames">
+                               <property name="maximum">
+                                <number>999999</number>
                                </property>
                               </widget>
                              </item>
@@ -15941,23 +15983,77 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="8" column="0">
-                              <widget class="QSpinBox" name="odom_f2m_bundleMaxFrames">
+                             <item row="1" column="0">
+                              <widget class="QSpinBox" name="spinBox_odom_f2m_maxNewFeatures">
+                               <property name="minimum">
+                                <number>0</number>
+                               </property>
                                <property name="maximum">
                                 <number>999999</number>
                                </property>
+                               <property name="singleStep">
+                                <number>1</number>
+                               </property>
+                               <property name="value">
+                                <number>0</number>
+                               </property>
                               </widget>
                              </item>
-                             <item row="8" column="1">
-                              <widget class="QLabel" name="label_358">
-                               <property name="text">
-                                <string>[Visual] Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).</string>
+                             <item row="10" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_f2m_bundleMinMotion">
+                               <property name="suffix">
+                                <string> pixels</string>
                                </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
+                               <property name="decimals">
+                                <number>1</number>
                                </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               <property name="maximum">
+                                <double>99.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.500000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QSpinBox" name="spinBox_odom_f2m_scanMaxSize">
+                               <property name="maximum">
+                                <number>999999999</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_f2m_validDepthRatio">
+                               <property name="suffix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>2</number>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.050000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.750000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRadius">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="decimals">
+                                <number>3</number>
+                               </property>
+                               <property name="value">
+                                <double>0.025000000000000</double>
                                </property>
                               </widget>
                              </item>
@@ -15988,100 +16084,23 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </item>
                               </widget>
                              </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_194">
+                               <property name="text">
+                                <string>[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
                              <item row="4" column="1">
                               <widget class="QLabel" name="label_430">
                                <property name="text">
                                 <string>[Geometry] Max angle (degrees) used to filter points of a new added scan to local map (when Radius above is &gt;0). 0 means any angle.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="4" column="0">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanAngle">
-                               <property name="suffix">
-                                <string> deg</string>
-                               </property>
-                               <property name="decimals">
-                                <number>0</number>
-                               </property>
-                               <property name="maximum">
-                                <double>180.000000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.000000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="6" column="1">
-                              <widget class="QLabel" name="label_524">
-                               <property name="text">
-                                <string>[Visual] If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="6" column="0">
-                              <widget class="QDoubleSpinBox" name="odom_f2m_validDepthRatio">
-                               <property name="suffix">
-                                <string/>
-                               </property>
-                               <property name="decimals">
-                                <number>2</number>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.050000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.750000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="5" column="1">
-                              <widget class="QLabel" name="label_564">
-                               <property name="text">
-                                <string>[Geometry] Distance Range used to filter points of local map (when &gt; 0). 0 means local map is updated using time and not range.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="5" column="0">
-                              <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRange">
-                               <property name="suffix">
-                                <string> m</string>
-                               </property>
-                               <property name="decimals">
-                                <number>0</number>
-                               </property>
-                               <property name="maximum">
-                                <double>9999.000000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.000000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="9" column="1">
-                              <widget class="QLabel" name="label_598">
-                               <property name="text">
-                                <string>[Visual] Gravity sigma used for bundle adjustment (&lt;0, use same value than Optimizer/GravitySigma parameter)</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -16110,6 +16129,39 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                                <property name="value">
                                 <double>-1.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="1">
+                              <widget class="QLabel" name="label_564">
+                               <property name="text">
+                                <string>[Geometry] Distance Range used to filter points of local map (when &gt; 0). 0 means local map is updated using time and not range.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="11" column="1">
+                              <widget class="QLabel" name="label_762">
+                               <property name="text">
+                                <string>[Visual] Maximum keyframes per feature for bundle adjustment. 0 means not limit.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="11" column="0">
+                              <widget class="QSpinBox" name="odom_f2m_bundleMaxKeyFramesPerFeature">
+                               <property name="maximum">
+                                <number>999999</number>
                                </property>
                               </widget>
                              </item>

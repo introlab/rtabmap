@@ -69,6 +69,8 @@ private:
 	float scanMapMaxRange_;
 	int bundleAdjustment_;
 	int bundleMaxFrames_;
+	float bundleMinMotion_;
+	int bundleMaxKeyFramesPerFeature_;
 	float validDepthRatio_;
 	int pointToPlaneK_;
 	float pointToPlaneRadius_;

@@ -1410,6 +1410,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_f2m_validDepthRatio->setObjectName(Parameters::kOdomF2MValidDepthRatio().c_str());
 	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
+	_ui->odom_f2m_bundleMinMotion->setObjectName(Parameters::kOdomF2MBundleAdjustmentMinMotion().c_str());
+	_ui->odom_f2m_bundleMaxKeyFramesPerFeature->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxKeyFramesPerFeature().c_str());
 
 	//Odometry Frame To Frame
 	_ui->comboBox_odomf2f_corType->setObjectName(Parameters::kVisCorType().c_str());
