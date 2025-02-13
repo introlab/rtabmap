@@ -101,6 +101,7 @@ private:
 	bool _guessMatchToProjection;
 	int _bundleAdjustment;
 	bool _depthAsMask;
+	float _maskFloorThreshold;
 	float _minInliersDistributionThr;
 	float _maxInliersMeanDistance;
 

@@ -783,7 +783,8 @@ Transform calcRMSE (
 		float & rotational_median,
 		float & rotational_std,
 		float & rotational_min,
-		float & rotational_max)
+		float & rotational_max,
+		bool align2D)
 {
 
 	translational_rmse = 0.0f;
@@ -815,8 +816,8 @@ Transform calcRMSE (
 			{
 				idFirst = iter->first;
 			}
-			cloud1[oi] = pcl::PointXYZ(jter->second.x(), jter->second.y(), jter->second.z());
-			cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			cloud1[oi] = pcl::PointXYZ(jter->second.x(), jter->second.y(), align2D?0:jter->second.z());
+			cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), align2D?0:iter->second.z());
 		}
 	}
 

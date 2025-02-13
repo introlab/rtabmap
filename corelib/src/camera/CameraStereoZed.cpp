@@ -318,12 +318,13 @@ CameraStereoZed::CameraStereoZed(
     sl::RESOLUTION res = static_cast<sl::RESOLUTION>(resolution_);
     sl::DEPTH_MODE qual = static_cast<sl::DEPTH_MODE>(quality_);
 
-    UASSERT(res >= sl::RESOLUTION::HD2K && res < sl::RESOLUTION::LAST);
     UASSERT(qual >= sl::DEPTH_MODE::NONE && qual < sl::DEPTH_MODE::LAST);
 #if ZED_SDK_MAJOR_VERSION < 4
+	UASSERT(res >= sl::RESOLUTION::HD2K && res < sl::RESOLUTION::LAST);
     sl::SENSING_MODE sens = static_cast<sl::SENSING_MODE>(sensingMode_);
     UASSERT(sens >= sl::SENSING_MODE::STANDARD && sens < sl::SENSING_MODE::LAST);
 #else
+	UASSERT(res >= sl::RESOLUTION::HD4K && res < sl::RESOLUTION::LAST);
     UASSERT(sensingMode_ >= 0 && sensingMode_ < 2);
 #endif
     UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);

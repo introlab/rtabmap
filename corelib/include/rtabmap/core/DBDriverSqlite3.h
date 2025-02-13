@@ -103,7 +103,8 @@ protected:
 
 	virtual void updateDepthImageQuery(
 			int nodeId,
-			const cv::Mat & image) const;
+			const cv::Mat & image,
+			const std::string & format) const;
 
 	void updateLaserScanQuery(
 			int nodeId,
@@ -147,6 +148,7 @@ protected:
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const;
+	virtual void getAllOdomPosesQuery(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id, const std::string & fieldName="id") const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
@@ -172,7 +174,7 @@ private:
 	void stepImage(sqlite3_stmt * ppStmt, int id, const cv::Mat & imageBytes) const;
 	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepCalibrationUpdate(sqlite3_stmt * ppStmt, int nodeId, const std::vector<CameraModel> & models, const std::vector<StereoCameraModel> & stereoModels) const;
-	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & imageCompressed) const;
+	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image, const std::string & format) const;
 	void stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const LaserScan & image) const;
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;

@@ -405,7 +405,8 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout,
 	// set minimum for selected parameters
 	if(key.compare(Parameters::kGridMinGroundHeight().c_str()) == 0 ||
 		key.compare(Parameters::kGridMaxGroundHeight().c_str()) == 0 ||
-		key.compare(Parameters::kGridMaxObstacleHeight().c_str()) == 0)
+		key.compare(Parameters::kGridMaxObstacleHeight().c_str()) == 0 ||
+		key.compare(Parameters::kVisDepthMaskFloorThr().c_str()) == 0)
 	{
 		widget->setMinimum(-1000000.0);
 	}
