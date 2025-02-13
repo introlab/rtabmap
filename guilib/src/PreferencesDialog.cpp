@@ -995,6 +995,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_keepBinaryData->setObjectName(Parameters::kMemBinDataKept().c_str());
 	_ui->general_checkBox_saveIntermediateNodeData->setObjectName(Parameters::kMemIntermediateNodeDataKept().c_str());
 	_ui->lineEdit_rgbCompressionFormat->setObjectName(Parameters::kMemImageCompressionFormat().c_str());
+	_ui->lineEdit_depthCompressionFormat->setObjectName(Parameters::kMemDepthCompressionFormat().c_str());
 	_ui->general_checkBox_keepDescriptors->setObjectName(Parameters::kMemRawDescriptorsKept().c_str());
 	_ui->general_checkBox_saveDepth16bits->setObjectName(Parameters::kMemSaveDepth16Format().c_str());
 	_ui->general_checkBox_compressionParallelized->setObjectName(Parameters::kMemCompressionParallelized().c_str());
@@ -1057,6 +1058,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
 	_ui->surf_doubleSpinBox_minDepth->setObjectName(Parameters::kKpMinDepth().c_str());
 	_ui->checkBox_memDepthAsMask->setObjectName(Parameters::kMemDepthAsMask().c_str());
+	_ui->doubleSpinBox_memDepthMaskFloorThr->setObjectName(Parameters::kMemDepthMaskFloorThr().c_str());
 	_ui->checkBox_memStereoFromMotion->setObjectName(Parameters::kMemStereoFromMotion().c_str());
 	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpMaxFeatures().c_str());
 	_ui->checkBox_kp_ssc->setObjectName(Parameters::kKpSSC().c_str());
@@ -1289,6 +1291,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kVisMaxDepth().c_str());
 	_ui->loopClosure_bowMinDepth->setObjectName(Parameters::kVisMinDepth().c_str());
 	_ui->checkBox_visDepthAsMask->setObjectName(Parameters::kVisDepthAsMask().c_str());
+	_ui->doubleSpinBox_visDepthMaskFloorThr->setObjectName(Parameters::kVisDepthMaskFloorThr().c_str());
 	_ui->loopClosure_roi->setObjectName(Parameters::kVisRoiRatios().c_str());
 	_ui->subpix_winSize->setObjectName(Parameters::kVisSubPixWinSize().c_str());
 	_ui->subpix_iterations->setObjectName(Parameters::kVisSubPixIterations().c_str());
@@ -4869,22 +4872,46 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 				{
 					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{
-						UWARN("Trying to set \"%s\" to g2o but RTAB-Map isn't built "
-							  "with g2o. Keeping default combo value: %s.",
-							  combo->objectName().toStdString().c_str(),
-							  combo->currentText().toStdString().c_str());
-						ok = false;
+						if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) {
+							UWARN("Trying to set \"%s\" to g2o but RTAB-Map isn't built "
+								"with g2o. Falling back to GTSAM.",
+								combo->objectName().toStdString().c_str());
+							valueInt = 2;
+						}
+						else
+						{
+							UWARN("Trying to set \"%s\" to g2o but RTAB-Map isn't built "
+								"with g2o. Keeping default combo value: %s.",
+								combo->objectName().toStdString().c_str(),
+								combo->currentText().toStdString().c_str());
+							ok = false;
+						}
 					}
 				}
 				if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 				{
 					if(valueInt==2 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{
-						UWARN("Trying to set \"%s\" to GTSAM but RTAB-Map isn't built "
-							  "with GTSAM. Keeping default combo value: %s.",
-							  combo->objectName().toStdString().c_str(),
-							  combo->currentText().toStdString().c_str());
-						ok = false;
+					if(
+#ifndef RTABMAP_ORB_SLAM
+						Optimizer::isAvailable(Optimizer::kTypeG2O)
+#else
+						true
+#endif
+						){
+							UWARN("Trying to set \"%s\" to GTSAM but RTAB-Map isn't built "
+								"with GTSAM. Falling back to g2o.",
+								combo->objectName().toStdString().c_str());
+							valueInt = 1;
+						}
+						else
+						{
+							UWARN("Trying to set \"%s\" to GTSAM but RTAB-Map isn't built "
+								"with GTSAM. Keeping default combo value: %s.",
+								combo->objectName().toStdString().c_str(),
+								combo->currentText().toStdString().c_str());
+							ok = false;
+						}
 					}
 				}
 				if(ok)

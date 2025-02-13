@@ -2427,9 +2427,13 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			  << "FROM Node ";
 		if(ignoreChildren)
 		{
-			query << "INNER JOIN Link ";
-			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
-			query << "WHERE from_id != to_id "; // ignore self referring links
+			// use to_id to ignore all children (which don't have link pointing on them)
+			// ignore self referring links
+			// keep nodes without link to other nodes (map has only a single node)
+			query << "WHERE ";
+			query << "(EXISTS (select 1 from Link where Node.id=to_id and from_id != to_id) OR ";
+			query << " NOT EXISTS (select 1 from Link where id=to_id and from_id != to_id)) ";
+			
 			query << "AND weight>-9 "; //ignore invalid nodes
 			if(ignoreIntermediateNodes)
 			{
@@ -2480,6 +2484,75 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%f ids=%d", timer.ticks(), (int)ids.size());
+	}
+}
+
+void DBDriverSqlite3::getAllOdomPosesQuery(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const
+{
+	if(_ppDb)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT DISTINCT id, pose "
+			  << "FROM Node ";
+		if(ignoreChildren)
+		{
+			query << "INNER JOIN Link ";
+			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
+			query << "WHERE from_id != to_id "; // ignore self referring links
+			query << "AND weight>-9 "; //ignore invalid nodes
+			if(ignoreIntermediateNodes)
+			{
+				query << "AND weight!=-1 "; //ignore intermediate nodes
+			}
+		}
+		else if(ignoreIntermediateNodes)
+		{
+			query << "WHERE weight!=-1 "; //ignore intermediate nodes
+		}
+
+		query  << "ORDER BY id";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		const void * data = 0;
+		int dataSize = 0;
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		while(rc == SQLITE_ROW)
+		{
+			int id = sqlite3_column_int(ppStmt, 0); // Signature Id
+			data = sqlite3_column_blob(ppStmt, 1);  // Pose
+			dataSize = sqlite3_column_bytes(ppStmt, 1);
+
+			Transform pose;
+			if((unsigned int)dataSize == pose.size()*sizeof(float) && data)
+			{
+				memcpy(pose.data(), data, dataSize);
+				if(uStrNumCmp(_version, "0.15.2") < 0)
+				{
+					pose.normalizeRotation();
+				}
+			}
+			else if(dataSize)
+			{
+				UERROR("Error while loading pose for node %d! Setting to null...", id);
+			}
+			poses.insert(std::make_pair(id, pose));
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%f ids=%d", timer.ticks(), (int)poses.size());
 	}
 }
 
@@ -4650,7 +4723,8 @@ void DBDriverSqlite3::updateCalibrationQuery(
 
 void DBDriverSqlite3::updateDepthImageQuery(
 		int nodeId,
-		const cv::Mat & image) const
+		const cv::Mat & image,
+		const std::string & format) const
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -4669,7 +4743,8 @@ void DBDriverSqlite3::updateDepthImageQuery(
 		// Save depth
 		stepDepthUpdate(ppStmt,
 				nodeId,
-				image);
+				image,
+				format);
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -5940,7 +6015,7 @@ std::string DBDriverSqlite3::queryStepDepthUpdate() const
 		return "UPDATE Data SET depth=? WHERE id=?;";
 	}
 }
-void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image) const
+void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image, const std::string & format) const
 {
 	if(!ppStmt)
 	{
@@ -5954,7 +6029,7 @@ void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const c
 	if(!image.empty() && (image.type()!=CV_8UC1 || image.rows > 1))
 	{
 		// compress
-		imageCompressed = compressImage2(image, ".png");
+		imageCompressed = compressImage2(image, format);
 	}
 	else
 	{

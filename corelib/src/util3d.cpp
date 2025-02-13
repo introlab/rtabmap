@@ -3007,6 +3007,115 @@ void fillProjectedCloudHoles(cv::Mat & registeredDepth, bool verticalDirection, 
 	}
 }
 
+cv::Mat filterFloor(const cv::Mat & depth, const std::vector<CameraModel> & cameraModels, float threshold, cv::Mat * depthBelow)
+{
+	cv::Mat output = depth.clone();
+	if(depth.empty())
+	{
+		return output;
+	}
+	if(depthBelow)
+	{
+		*depthBelow = cv::Mat::zeros(output.size(), output.type());
+	}
+
+	UASSERT(!cameraModels.empty());
+	UASSERT(cameraModels[0].isValidForReprojection());
+	// Support camera model with different resolution than depth image
+	float rgbToDepthFactorX = float(cameraModels[0].imageWidth()) / float(output.cols/cameraModels.size());
+	float rgbToDepthFactorY = float(cameraModels[0].imageHeight()) / float(output.rows);
+	int depthWidth = output.cols/cameraModels.size();
+	UASSERT(depthWidth*(int)cameraModels.size() == output.cols);
+
+	// for each camera
+	for(size_t i=0; i<cameraModels.size(); ++i)
+	{
+		const CameraModel & cam = cameraModels[i];
+		UASSERT(cam.isValidForReprojection());
+		const Transform & localTransform = cam.localTransform();
+		UASSERT(!localTransform.isNull());
+		if(i>0)
+		{
+			// Make sure all models are the same resolution
+			UASSERT(cam.imageWidth() == cameraModels[i-1].imageWidth());
+			UASSERT(cam.imageHeight() == cameraModels[i-1].imageHeight());
+		}
+
+		float depthFx = cam.fx() / rgbToDepthFactorX;
+		float depthFy = cam.fy() / rgbToDepthFactorY;
+		float depthCx = cam.cx() / rgbToDepthFactorX;
+		float depthCy = cam.cy() / rgbToDepthFactorY;
+
+		cv::Mat subImage = output.colRange(cv::Range(i*depthWidth, (i+1)*depthWidth));
+		cv::Mat subImageBelow;
+		if(depthBelow)
+			subImageBelow = depthBelow->colRange(cv::Range(i*depthWidth, (i+1)*depthWidth));
+
+		for(int y=0; y<subImage.rows; ++y)
+		{
+			if(subImage.type() == CV_16UC1)
+			{
+				unsigned short * ptr = (unsigned short *)subImage.row(y).ptr();
+				unsigned short * ptrBelow = 0;
+				if(depthBelow)
+				{
+					ptrBelow = (unsigned short *)subImageBelow.row(y).ptr();
+				}
+				for(int x=0; x<subImage.cols; ++x)
+				{
+					if(ptr[x] > 0)
+					{
+						float d = float(ptr[x])/1000.0f;
+						cv::Point3f pt;
+						pt.x = (x - depthCx) * d / depthFx;
+						pt.y = (y - depthCy) * d / depthFy;
+						pt.z = d;
+						pt = util3d::transformPoint(pt, localTransform);
+						if(pt.z < threshold)
+						{
+							if(ptrBelow)
+							{
+								ptrBelow[x] = ptr[x];
+							}
+							ptr[x] = 0;
+						}
+					}
+				}
+			}
+			else // CV_32FC1
+			{
+				float * ptr = (float *)subImage.row(y).ptr();
+				float * ptrBelow = 0;
+				if(depthBelow)
+				{
+					ptrBelow = (float *)subImageBelow.row(y).ptr();
+				}
+				for(int x=0; x<subImage.cols; ++x)
+				{
+					if(ptr[x] > 0.0f)
+					{
+						float & d = ptr[x];
+						cv::Point3f pt;
+						pt.x = (x - depthCx) * d / depthFx;
+						pt.y = (y - depthCy) * d / depthFy;
+						pt.z = d;
+						pt = util3d::transformPoint(pt, localTransform);
+						if(pt.z < threshold)
+						{
+							if(ptrBelow)
+							{
+								ptrBelow[x] = ptr[x];
+							}
+							d = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+	return output;
+}
+
 class ProjectionInfo {
 public:
 	ProjectionInfo():

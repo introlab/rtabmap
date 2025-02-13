@@ -484,6 +484,22 @@ void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 
 void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
+
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,

@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-269</y>
+            <y>0</y>
             <width>713</width>
             <height>4653</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -10315,7 +10315,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="8" column="1">
                        <widget class="QLabel" name="label_retrieved_4">
                         <property name="text">
-                         <string>Initialize the Woking Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
+                         <string>Initialize the Working Memory with all nodes from Long-Term memory, instead of only nodes of the last session. This may be useful in localization mode, where less processing time is required than in SLAM mode, so more nodes can be kept in Working Memory.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -10666,16 +10666,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <layout class="QVBoxLayout" name="verticalLayout_60">
                        <item>
                         <layout class="QGridLayout" name="gridLayout_32" columnstretch="0,1">
-                         <item row="5" column="1">
-                          <widget class="QLabel" name="label_22">
-                           <property name="toolTip">
-                            <string>0 means that the response (hessian) threshold 
-used for the detector will not be adapted. 
-Otherwise, the threshold is modified to 
-generate the number of words requested.</string>
-                           </property>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_53">
                            <property name="text">
-                            <string>Maximum words per image (0=no maximum). Setting to -1 will disable features extraction, so disabling loop closure detection indirectly.</string>
+                            <string>Maximum words depth (0 means inf). Only used when a depth image is provided. Applied before &quot;Maximum words per image&quot;.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -10685,61 +10679,26 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="1">
-                          <widget class="QLabel" name="label_81">
-                           <property name="text">
-                            <string>Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).</string>
+                         <item row="12" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
+                           <property name="suffix">
+                            <string> %</string>
                            </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="11" column="1">
-                          <widget class="QLabel" name="label_99">
-                           <property name="text">
-                            <string>Top ROI ratio (0 = no change).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="7" column="0">
-                          <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ratioBadSign">
                            <property name="decimals">
-                            <number>2</number>
+                            <number>0</number>
                            </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="0">
+                          <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
                            <property name="minimum">
-                            <double>0.000000000000000</double>
+                            <number>-1</number>
                            </property>
                            <property name="maximum">
-                            <double>1.000000000000000</double>
-                           </property>
-                           <property name="singleStep">
-                            <double>0.050000000000000</double>
+                            <number>2000</number>
                            </property>
                            <property name="value">
-                            <double>0.250000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_57">
-                           <property name="text">
-                            <string>Minimum words depth. Only used when a depth image is provided. Applied before &quot;Maximum words per image&quot;.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            <number>500</number>
                            </property>
                           </widget>
                          </item>
@@ -10827,17 +10786,75 @@ generate the number of words requested.</string>
                            </item>
                           </widget>
                          </item>
+                         <item row="15" column="1">
+                          <widget class="QLabel" name="label_86">
+                           <property name="text">
+                            <string>Number of columns of the grid used to extract uniformly &quot;max words / grid cells&quot; features from each cell.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_57">
+                           <property name="text">
+                            <string>Minimum words depth. Only used when a depth image is provided. Applied before &quot;Maximum words per image&quot;.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="7" column="1">
+                          <widget class="QLabel" name="label_7551">
+                           <property name="text">
+                            <string>If true, SSC (Suppression via Square Covering) is applied to limit keypoints.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="8" column="0">
+                          <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ratioBadSign">
+                           <property name="decimals">
+                            <number>2</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.000000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.050000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.250000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="9" column="0">
                           <widget class="QLineEdit" name="lineEdit_kp_roi">
                            <property name="readOnly">
                             <bool>true</bool>
                            </property>
                           </widget>
                          </item>
-                         <item row="8" column="1">
-                          <widget class="QLabel" name="label_101">
+                         <item row="5" column="1">
+                          <widget class="QLabel" name="label_582">
                            <property name="text">
-                            <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
+                            <string>Triangulate features without depth using stereo from motion (odometry). It would be ignored if depth as mask is checked and the feature detector used supports masking.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -10847,39 +10864,13 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_53">
-                           <property name="text">
-                            <string>Maximum words depth (0 means inf). Only used when a depth image is provided. Applied before &quot;Maximum words per image&quot;.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="10" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
+                         <item row="13" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
                            <property name="suffix">
                             <string> %</string>
                            </property>
                            <property name="decimals">
                             <number>0</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_117">
-                           <property name="text">
-                            <string>Visual word type.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -10905,30 +10896,10 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="0">
-                          <widget class="QSpinBox" name="surf_spinBox_wordsPerImageTarget">
-                           <property name="minimum">
-                            <number>-1</number>
-                           </property>
-                           <property name="maximum">
-                            <number>2000</number>
-                           </property>
-                           <property name="value">
-                            <number>500</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="0">
-                          <widget class="QCheckBox" name="checkBox_kp_ssc">
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_262">
                            <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="1">
-                          <widget class="QLabel" name="label_7551">
-                           <property name="text">
-                            <string>If true, SSC (Suppression via Square Covering) is applied to limit keypoints.</string>
+                            <string>Use depth image as mask when extracting features.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -10938,30 +10909,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
-                           <property name="suffix">
-                            <string> %</string>
-                           </property>
-                           <property name="decimals">
-                            <number>0</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="9" column="1">
-                          <widget class="QLabel" name="label_97">
-                           <property name="text">
-                            <string>Left ROI ratio (0 = no change).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="10" column="1">
+                         <item row="11" column="1">
                           <widget class="QLabel" name="label_98">
                            <property name="text">
                             <string>Right ROI ratio (0 = no change).</string>
@@ -10974,36 +10922,141 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="11" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi2">
-                           <property name="suffix">
-                            <string> %</string>
-                           </property>
-                           <property name="decimals">
-                            <number>0</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="12" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi3">
-                           <property name="suffix">
-                            <string> %</string>
-                           </property>
-                           <property name="decimals">
-                            <number>0</number>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="12" column="1">
-                          <widget class="QLabel" name="label_100">
+                          <widget class="QLabel" name="label_99">
                            <property name="text">
-                            <string>Bottom ROI ratio (0 = no change).</string>
+                            <string>Top ROI ratio (0 = no change).</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
                            <property name="textInteractionFlags">
                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="1">
+                          <widget class="QLabel" name="label_22">
+                           <property name="toolTip">
+                            <string>0 means that the response (hessian) threshold 
+used for the detector will not be adapted. 
+Otherwise, the threshold is modified to 
+generate the number of words requested.</string>
+                           </property>
+                           <property name="text">
+                            <string>Maximum words per image (0=no maximum). Setting to -1 will disable features extraction, so disabling loop closure detection indirectly.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_117">
+                           <property name="text">
+                            <string>Visual word type.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="10" column="1">
+                          <widget class="QLabel" name="label_97">
+                           <property name="text">
+                            <string>Left ROI ratio (0 = no change).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="10" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi0">
+                           <property name="suffix">
+                            <string> %</string>
+                           </property>
+                           <property name="decimals">
+                            <number>0</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="14" column="0">
+                          <widget class="QSpinBox" name="spinBox_KPGridRows">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>99</number>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="5" column="0">
+                          <widget class="QCheckBox" name="checkBox_memStereoFromMotion">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="9" column="1">
+                          <widget class="QLabel" name="label_101">
+                           <property name="text">
+                            <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="11" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_kp_roi1">
+                           <property name="suffix">
+                            <string> %</string>
+                           </property>
+                           <property name="decimals">
+                            <number>0</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QCheckBox" name="checkBox_memDepthAsMask">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="8" column="1">
+                          <widget class="QLabel" name="label_81">
+                           <property name="text">
+                            <string>Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="7" column="0">
+                          <widget class="QCheckBox" name="checkBox_kp_ssc">
+                           <property name="text">
+                            <string/>
                            </property>
                           </widget>
                          </item>
@@ -11029,7 +11082,7 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="13" column="1">
+                         <item row="14" column="1">
                           <widget class="QLabel" name="label_50">
                            <property name="text">
                             <string>Number of rows of the grid used to extract uniformly &quot;max words / grid cells&quot; features from each cell.</string>
@@ -11042,20 +11095,20 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="13" column="0">
-                          <widget class="QSpinBox" name="spinBox_KPGridRows">
-                           <property name="minimum">
-                            <number>1</number>
+                         <item row="13" column="1">
+                          <widget class="QLabel" name="label_100">
+                           <property name="text">
+                            <string>Bottom ROI ratio (0 = no change).</string>
                            </property>
-                           <property name="maximum">
-                            <number>99</number>
+                           <property name="wordWrap">
+                            <bool>true</bool>
                            </property>
-                           <property name="value">
-                            <number>1</number>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
-                         <item row="14" column="0">
+                         <item row="15" column="0">
                           <widget class="QSpinBox" name="spinBox_KPGridCols">
                            <property name="minimum">
                             <number>1</number>
@@ -11068,43 +11121,10 @@ generate the number of words requested.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="14" column="1">
-                          <widget class="QLabel" name="label_86">
-                           <property name="text">
-                            <string>Number of columns of the grid used to extract uniformly &quot;max words / grid cells&quot; features from each cell.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="1">
-                          <widget class="QLabel" name="label_262">
-                           <property name="text">
-                            <string>Use depth image as mask when extracting features.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="0">
-                          <widget class="QCheckBox" name="checkBox_memDepthAsMask">
-                           <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="4" column="1">
-                          <widget class="QLabel" name="label_582">
+                          <widget class="QLabel" name="label_591">
                            <property name="text">
-                            <string>Triangulate features without depth using stereo from motion (odometry). It would be ignored if depth as mask is checked and the feature detector used supports masking.</string>
+                            <string>Filter floor from depth mask. 0 means disabled, negative means keeping pixels below the floor theshold instead.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -11115,9 +11135,24 @@ generate the number of words requested.</string>
                           </widget>
                          </item>
                          <item row="4" column="0">
-                          <widget class="QCheckBox" name="checkBox_memStereoFromMotion">
-                           <property name="text">
-                            <string/>
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_memDepthMaskFloorThr">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>2</number>
+                           </property>
+                           <property name="minimum">
+                            <double>-99.000000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>99.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.050000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -11554,7 +11589,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="0">
+                    <item row="7" column="0">
                      <widget class="QComboBox" name="comboBox_dbJournalMode">
                       <item>
                        <property name="text">
@@ -11596,7 +11631,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="1">
+                    <item row="9" column="1">
                      <widget class="QLabel" name="label_120">
                       <property name="text">
                        <string>Sqlite3 temp store,
@@ -11610,7 +11645,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="0">
+                    <item row="9" column="0">
                      <widget class="QComboBox" name="comboBox_dbTempStore">
                       <item>
                        <property name="text">
@@ -11639,7 +11674,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0">
+                    <item row="6" column="0">
                      <widget class="QSpinBox" name="spinBox_dbCacheSize">
                       <property name="minimum">
                        <number>10</number>
@@ -11655,7 +11690,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="1">
+                    <item row="6" column="1">
                      <widget class="QLabel" name="label_75">
                       <property name="text">
                        <string>Sqlite3 cache size,
@@ -11669,7 +11704,7 @@ see Sqlite3 doc 'PRAGMA cache_size'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="7" column="1">
                      <widget class="QLabel" name="label_77">
                       <property name="text">
                        <string>Sqlite3 journal mode,
@@ -11683,7 +11718,7 @@ see Sqlite3 doc 'PRAGMA journal_mode'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="1">
+                    <item row="8" column="1">
                      <widget class="QLabel" name="label_89">
                       <property name="text">
                        <string>Sqlite3 synchronous,
@@ -11697,7 +11732,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="0">
+                    <item row="8" column="0">
                      <widget class="QComboBox" name="comboBox_dbSynchronous">
                       <property name="currentIndex">
                        <number>2</number>
@@ -11749,6 +11784,22 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                      <widget class="QLineEdit" name="lineEdit_rgbCompressionFormat"/>
                     </item>
                     <item row="4" column="1">
+                     <widget class="QLabel" name="label_760">
+                      <property name="text">
+                       <string>Depth image compression format (should be &quot;.png&quot; or &quot;.rvl&quot;).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QLineEdit" name="lineEdit_depthCompressionFormat"/>
+                    </item>
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_610">
                       <property name="text">
                        <string>Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., &quot;0.19&quot; vs &quot;0.20&quot; or &quot;1.0&quot; vs &quot;2.0&quot;). Patch version is ignored (e.g., &quot;0.20.1&quot; and &quot;0.20.3&quot; will generate a &quot;0.20&quot; database).</string>
@@ -11761,7 +11812,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="0">
+                    <item row="5" column="0">
                      <widget class="QLineEdit" name="lineEdit_targetDatabaseVersion">
                       <property name="placeholderText">
                        <string>major.minor</string>
@@ -13887,11 +13938,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           </widget>
                          </item>
                          <item row="3" column="0">
-                          <widget class="QLineEdit" name="lineEdit_grid_roi">
-                           <property name="readOnly">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
+                          <widget class="QLineEdit" name="lineEdit_grid_roi"/>
                          </item>
                          <item row="3" column="1">
                           <widget class="QLabel" name="label_324">
@@ -22557,59 +22604,16 @@ Lower the ratio -&gt; higher the precision.</string>
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_25" columnstretch="0,1">
-                         <item row="4" column="1">
-                          <widget class="QLabel" name="label_237">
+                         <item row="6" column="1">
+                          <widget class="QLabel" name="label_450">
                            <property name="text">
-                            <string>Maximum feature depth.</string>
+                            <string>Use depth image as mask when extracting features.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
                            </property>
                            <property name="textInteractionFlags">
                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="7" column="1">
-                          <widget class="QLabel" name="label_261">
-                           <property name="text">
-                            <string>ROI ratios [left right top bottom] between 0 and 1.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="7" column="0">
-                          <widget class="QLineEdit" name="loopClosure_roi"/>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QSpinBox" name="reextract_maxFeatures">
-                           <property name="maximum">
-                            <number>999999</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_180">
-                           <property name="text">
-                            <string>Max features extracted from the images (0 means inf).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="0">
-                          <widget class="QCheckBox" name="checkBox_visSSC">
-                           <property name="text">
-                            <string/>
                            </property>
                           </widget>
                          </item>
@@ -22626,10 +22630,109 @@ Lower the ratio -&gt; higher the precision.</string>
                            </property>
                           </widget>
                          </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_237">
+                           <property name="text">
+                            <string>Maximum feature depth.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="10" column="0">
+                          <widget class="QSpinBox" name="reextract_gridcols">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>99</number>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="5" column="1">
                           <widget class="QLabel" name="label_275">
                            <property name="text">
                             <string>Minimum feature depth.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="9" column="1">
+                          <widget class="QLabel" name="label_438">
+                           <property name="text">
+                            <string>Number of rows of the grid used to extract uniformly &quot;max features / grid cells&quot; features from each cell.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="5" column="0">
+                          <widget class="QDoubleSpinBox" name="loopClosure_bowMinDepth">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="minimum">
+                            <double>0.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.100000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QCheckBox" name="checkBox_visSSC">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="0">
+                          <widget class="QCheckBox" name="checkBox_visDepthAsMask">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="10" column="1">
+                          <widget class="QLabel" name="label_439">
+                           <property name="text">
+                            <string>Number of columns of the grid used to extract uniformly &quot;max features / grid cells&quot; features from each cell.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="reextract_maxFeatures">
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_180">
+                           <property name="text">
+                            <string>Max features extracted from the images (0 means inf).</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -22729,6 +22832,16 @@ Lower the ratio -&gt; higher the precision.</string>
                            </item>
                           </widget>
                          </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_178">
+                           <property name="text">
+                            <string>Feature detector </string>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="4" column="0">
                           <widget class="QDoubleSpinBox" name="loopClosure_bowMaxDepth">
                            <property name="suffix">
@@ -22742,30 +22855,10 @@ Lower the ratio -&gt; higher the precision.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_178">
-                           <property name="text">
-                            <string>Feature detector </string>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="0">
-                          <widget class="QDoubleSpinBox" name="loopClosure_bowMinDepth">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="minimum">
-                            <double>0.000000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>0.100000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="8" column="0">
+                          <widget class="QLineEdit" name="loopClosure_roi"/>
+                         </item>
+                         <item row="9" column="0">
                           <widget class="QSpinBox" name="reextract_gridrows">
                            <property name="minimum">
                             <number>1</number>
@@ -22779,9 +22872,9 @@ Lower the ratio -&gt; higher the precision.</string>
                           </widget>
                          </item>
                          <item row="8" column="1">
-                          <widget class="QLabel" name="label_438">
+                          <widget class="QLabel" name="label_261">
                            <property name="text">
-                            <string>Number of rows of the grid used to extract uniformly &quot;max features / grid cells&quot; features from each cell.</string>
+                            <string>ROI ratios [left right top bottom] between 0 and 1.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -22791,10 +22884,10 @@ Lower the ratio -&gt; higher the precision.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="1">
-                          <widget class="QLabel" name="label_439">
+                         <item row="7" column="1">
+                          <widget class="QLabel" name="label_759">
                            <property name="text">
-                            <string>Number of columns of the grid used to extract uniformly &quot;max features / grid cells&quot; features from each cell.</string>
+                            <string>Filter floor from depth mask. 0 means disabled, negative means keeping pixels below the floor theshold instead.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -22804,36 +22897,19 @@ Lower the ratio -&gt; higher the precision.</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="9" column="0">
-                          <widget class="QSpinBox" name="reextract_gridcols">
+                         <item row="7" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_visDepthMaskFloorThr">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
                            <property name="minimum">
-                            <number>1</number>
+                            <double>-99.000000000000000</double>
                            </property>
-                           <property name="maximum">
-                            <number>99</number>
+                           <property name="singleStep">
+                            <double>0.050000000000000</double>
                            </property>
                            <property name="value">
-                            <number>1</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="1">
-                          <widget class="QLabel" name="label_450">
-                           <property name="text">
-                            <string>Use depth image as mask when extracting features.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="0">
-                          <widget class="QCheckBox" name="checkBox_visDepthAsMask">
-                           <property name="text">
-                            <string/>
+                            <double>0.000000000000000</double>
                            </property>
                           </widget>
                          </item>

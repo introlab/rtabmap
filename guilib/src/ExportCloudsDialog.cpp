@@ -816,7 +816,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
 	_ui->spinBox_meshMaxPolygons->setValue(0);
-	_ui->doubleSpinBox_transferColorRadius->setValue(0.025);
+	_ui->doubleSpinBox_transferColorRadius->setValue(0.05);
 	_ui->checkBox_cleanMesh->setChecked(true);
 	_ui->spinBox_mesh_minClusterSize->setValue(0);
 

@@ -694,7 +694,7 @@ typename pcl::PointCloud<PointT>::Ptr voxelizeImpl(
 
 		if ((dx*dy*dz) > static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()))
 		{
-			UWARN("Leaf size is too small for the input dataset. Integer indices would overflow. "
+			UDEBUG("Leaf size is too small for the input dataset. Integer indices would overflow. "
 				  "We will split space to be able to voxelize (lvl=%d cloud=%d min=[%f %f %f] max=[%f %f %f] voxel=%f).",
 				  level,
 				  (int)(indices->empty()?cloud->size():indices->size()),
@@ -2155,7 +2155,7 @@ pcl::IndicesPtr normalFilteringImpl(
 		for(unsigned int i=0; i<cloud_normals->size(); ++i)
 		{
 			Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
-			if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->size()!=0?indices->at(i):i).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+			if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->size()!=0?indices->at(i):i).z < viewpoint[2]) // some far velodyne rays on road can have normals toward ground
 			{
 				//reverse normal
 				v *= -1.0f;
@@ -2226,7 +2226,7 @@ pcl::IndicesPtr normalFilteringImpl(
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				Eigen::Vector4f v(cloud->at(indices->at(i)).normal_x, cloud->at(indices->at(i)).normal_y, cloud->at(indices->at(i)).normal_z, 0.0f);
-				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->at(i)).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->at(i)).z < viewpoint[2]) // some far velodyne rays on road can have normals toward ground
 				{
 					//reverse normal
 					v *= -1.0f;
@@ -2244,7 +2244,7 @@ pcl::IndicesPtr normalFilteringImpl(
 			for(unsigned int i=0; i<cloud->size(); ++i)
 			{
 				Eigen::Vector4f v(cloud->at(i).normal_x, cloud->at(i).normal_y, cloud->at(i).normal_z, 0.0f);
-				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(i).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(i).z < viewpoint[2]) // some far velodyne rays on road can have normals toward ground
 				{
 					//reverse normal
 					v *= -1.0f;
