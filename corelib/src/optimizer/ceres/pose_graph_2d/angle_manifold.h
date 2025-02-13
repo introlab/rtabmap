@@ -28,10 +28,16 @@
 //
 // Author: vitus@google.com (Michael Vitus)
 
-#ifndef CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_LOCAL_PARAMETERIZATION_H_
-#define CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_LOCAL_PARAMETERIZATION_H_
+#ifndef CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_MANIFOLD_H_
+#define CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_MANIFOLD_H_
 
-#include "ceres/local_parameterization.h"
+#if CERES_VERSION_MAJOR >= 3 || \
+    (CERES_VERSION_MAJOR == 2 && CERES_VERSION_MINOR >= 1)
+#include <ceres/autodiff_manifold.h>
+#include <ceres/manifold.h>
+#else
+#include <ceres/local_parameterization.h>
+#endif
 #include "normalize_angle.h"
 
 namespace ceres {
@@ -39,7 +45,39 @@ namespace examples {
 
 // Defines a local parameterization for updating the angle to be constrained in
 // [-pi to pi).
-class AngleLocalParameterization {
+
+#if CERES_VERSION_MAJOR >= 3 || \
+    (CERES_VERSION_MAJOR == 2 && CERES_VERSION_MINOR >= 1)
+
+// Defines a manifold for updating the angle to be constrained in [-pi to pi).
+class AngleManifold {
+ public:
+  template <typename T>
+  bool Plus(const T* x_radians,
+            const T* delta_radians,
+            T* x_plus_delta_radians) const {
+    *x_plus_delta_radians = NormalizeAngle(*x_radians + *delta_radians);
+    return true;
+  }
+
+  template <typename T>
+  bool Minus(const T* y_radians,
+             const T* x_radians,
+             T* y_minus_x_radians) const {
+    *y_minus_x_radians =
+        NormalizeAngle(*y_radians) - NormalizeAngle(*x_radians);
+
+    return true;
+  }
+
+  static ceres::Manifold* Create() {
+    return new ceres::AutoDiffManifold<AngleManifold, 1, 1>;
+  }
+};
+
+#else
+
+class AngleManfold {
  public:
 
   template <typename T>
@@ -52,12 +90,13 @@ class AngleLocalParameterization {
   }
 
   static ceres::LocalParameterization* Create() {
-    return (new ceres::AutoDiffLocalParameterization<AngleLocalParameterization,
-                                                     1, 1>);
+    return (new ceres::AutoDiffLocalParameterization<AngleManfold, 1, 1>);
   }
 };
+
+#endif
 
 }  // namespace examples
 }  // namespace ceres
 
-#endif  // CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_LOCAL_PARAMETERIZATION_H_
+#endif  // CERES_EXAMPLES_POSE_GRAPH_2D_ANGLE_MANIFOLD_H_

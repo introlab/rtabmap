@@ -3094,8 +3094,8 @@ void MainWindow::updateMapCloud(
 				{
 					Transform gravityT = linkIter->second.transform();
 					Eigen::Vector3f gravity(0,0,-_preferencesDialog->getIMUGravityLength(0));
-					gravity = (gravityT.rotation()*(iter->second).rotation().inverse()).toEigen3f()*gravity;
-					_cloudViewer->addOrUpdateLine(gravityName, iter->second, (iter->second).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*iter->second.rotation().inverse(), Qt::yellow, false, false);
+					gravity = gravityT.inverse().toEigen3f()*gravity;
+					_cloudViewer->addOrUpdateLine(gravityName, iter->second, iter->second*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0), Qt::yellow, false, false);
 				}
 			}
 			else if(viewerLines.find(gravityName)!=viewerLines.end())

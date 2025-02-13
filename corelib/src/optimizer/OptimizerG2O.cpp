@@ -1037,6 +1037,12 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int it = 0;
 		UTimer timer;
 		double lastError = 0.0;
+
+		if (!optimizer.solver()->init()) {
+			UERROR("g2o: Error while initializing solver");
+			return optimizedPoses;
+		}
+
 		if(intermediateGraphes || this->epsilon() > 0.0)
 		{
 			for(int i=0; i<iterations(); ++i)
@@ -1150,7 +1156,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					}
 				}
 
-				it += optimizer.optimize(1);
+				g2o::OptimizationAlgorithm::SolverResult result = optimizer.solver()->solve(i);
+				++it;
 
 				// early stop condition
 				optimizer.computeActiveErrors();
@@ -1160,6 +1167,12 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
 					UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					return optimizedPoses;
+				}
+
+				if(result == g2o::OptimizationAlgorithm::Fail)
+				{
+					UERROR("g2o: Solver failed, aborting optimization!");
 					return optimizedPoses;
 				}
 

@@ -209,6 +209,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, NotLinkedNodesKept,          bool, true,     "Keep not linked nodes in db (rehearsed nodes and deleted nodes).");
     RTABMAP_PARAM(Mem, IntermediateNodeDataKept,    bool, false,    "Keep intermediate node data in db.");
     RTABMAP_PARAM_STR(Mem, ImageCompressionFormat,   ".jpg",        "RGB image compression format. It should be \".jpg\" or \".png\".");
+    RTABMAP_PARAM_STR(Mem, DepthCompressionFormat,   ".rvl",        "Depth image compression format for 16UC1 depth type. It should be \".png\" or \".rvl\". If depth type is 32FC1, \".png\" is used.");
     RTABMAP_PARAM(Mem, STMSize,                   unsigned int, 10, "Short-term memory size.");
     RTABMAP_PARAM(Mem, IncrementalMemory,           bool, true,     "SLAM mode, otherwise it is Localization mode.");
     RTABMAP_PARAM(Mem, LocalizationDataSaved,       bool, false,     uFormat("Save localization data during localization session (when %s=false). When enabled, the database will then also grow in localization mode. This mode would be used only for debugging purpose.", kMemIncrementalMemory().c_str()).c_str());
@@ -221,6 +222,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, BadSignaturesIgnored,        bool, false,    "Bad signatures are ignored.");
     RTABMAP_PARAM(Mem, InitWMWithAllNodes,          bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
     RTABMAP_PARAM(Mem, DepthAsMask,                 bool, true,     "Use depth image as mask when extracting features for vocabulary.");
+    RTABMAP_PARAM(Mem, DepthMaskFloorThr,           float, 0.0,     uFormat("Filter floor from depth mask below specified threshold (m) before extracting features. 0 means disabled, negative means remove all objects above the floor threshold instead. Ignored if %s is false.", kMemDepthAsMask().c_str()));
     RTABMAP_PARAM(Mem, StereoFromMotion,            bool, false,    uFormat("Triangulate features without depth using stereo from motion (odometry). It would be ignored if %s is true and the feature detector used supports masking.", kMemDepthAsMask().c_str()));
     RTABMAP_PARAM(Mem, ImagePreDecimation,          unsigned int, 1, uFormat("Decimation of the RGB image before visual feature detection. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If %s is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.",kMemDepthAsMask().c_str()));
     RTABMAP_PARAM(Mem, ImagePostDecimation,         unsigned int, 1, uFormat("Decimation of the RGB image before saving it to database. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. Decimation is done from the original image. If set to same value than %s, data already decimated is saved (no need to re-decimate the image).", kMemImagePreDecimation().c_str()));
@@ -703,6 +705,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, MaxDepth,                  float, 0,     "Max depth of the features (0 means no limit).");
     RTABMAP_PARAM(Vis, MinDepth,                  float, 0,     "Min depth of the features (0 means no limit).");
     RTABMAP_PARAM(Vis, DepthAsMask,               bool,  true,  "Use depth image as mask when extracting features.");
+    RTABMAP_PARAM(Vis, DepthMaskFloorThr,         float, 0.0,    uFormat("Filter floor from depth mask below specified threshold (m) before extracting features. 0 means disabled, negative means remove all objects above the floor threshold instead. Ignored if %s is false.", kVisDepthAsMask().c_str()));
     RTABMAP_PARAM_STR(Vis, RoiRatios,        "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
     RTABMAP_PARAM(Vis, SubPixWinSize,             int,   3,     "See cv::cornerSubPix().");
     RTABMAP_PARAM(Vis, SubPixIterations,          int,   0,     "See cv::cornerSubPix(). 0 disables sub pixel refining.");

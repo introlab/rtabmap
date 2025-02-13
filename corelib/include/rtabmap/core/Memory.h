@@ -303,6 +303,7 @@ private:
 	bool _notLinkedNodesKeptInDb;
 	bool _saveIntermediateNodeData;
 	std::string _rgbCompressionFormat;
+	std::string _depthCompressionFormat;
 	bool _incrementalMemory;
 	bool _localizationDataSaved;
 	bool _reduceGraph;
@@ -314,6 +315,7 @@ private:
 	bool _badSignaturesIgnored;
 	bool _mapLabelsAdded;
 	bool _depthAsMask;
+	float _maskFloorThreshold;
 	bool _stereoFromMotion;
 	unsigned int _imagePreDecimation;
 	unsigned int _imagePostDecimation;

@@ -64,6 +64,8 @@ SET(SRC_FILES
     util3d_correspondences.cpp
     util3d_motion_estimation.cpp
     
+	rvl_codec.cpp
+	
     SensorData.cpp
     Graph.cpp
     Compression.cpp
@@ -643,10 +645,10 @@ IF(octomap_FOUND)
 ENDIF(octomap_FOUND)
 
 IF(grid_map_core_FOUND)
-    IF(TARGET grid_map_core)
+    IF(TARGET grid_map_core::grid_map_core)
         SET(LIBRARIES
             ${LIBRARIES}
-            grid_map_core
+            grid_map_core::grid_map_core
         )
     ELSE()
         SET(INCLUDE_DIRS
