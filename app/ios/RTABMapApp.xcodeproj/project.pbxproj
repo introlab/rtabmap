@@ -155,6 +155,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		44D4681D2D538A4100B094BA /* RTABMapApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = RTABMapApp.entitlements; path = RTABMapApp/RTABMapApp.entitlements; sourceTree = "<group>"; };
 		4E0D83822621F52C00C879AC /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		4E20B24D266AB94300316EE6 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RTABMapApp/Images.xcassets; sourceTree = SOURCE_ROOT; };
 		4E20B24F266AB95600316EE6 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RTABMapApp/Images.xcassets; sourceTree = "<group>"; };
@@ -475,6 +476,7 @@
 		4EE01634259BDCC7008CCE65 /* RTABMapApp */ = {
 			isa = PBXGroup;
 			children = (
+				44D4681D2D538A4100B094BA /* RTABMapApp.entitlements */,
 				4E20B24F266AB95600316EE6 /* Images.xcassets */,
 				4EFD0BB0259D503200575D88 /* NativeWrapper */,
 				4EFD0B62259D501E00575D88 /* tango-gl */,
@@ -986,6 +988,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
+				CODE_SIGN_ENTITLEMENTS = RTABMapApp/RTABMapApp.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1043,6 +1046,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
+				CODE_SIGN_ENTITLEMENTS = RTABMapApp/RTABMapApp.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
