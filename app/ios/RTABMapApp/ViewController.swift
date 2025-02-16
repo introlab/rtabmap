@@ -45,6 +45,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     
     private var mReviewRequested = false
     
+    private var mMaximumMemory: Int = 0
+    
     // UI states
     private enum State {
         case STATE_WELCOME,    // Camera/Motion off - showing only buttons open and start new scan
@@ -96,6 +98,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mHudVisible: Bool = true
     private var mLastTimeHudShown: DispatchTime = .now()
     private var mMenuOpened: Bool = false
+    private var lowMemoryWarningShown: Bool = false
+    static var previewImages: [String: UIImage] = [:]
     
     @IBOutlet weak var stopButton: UIButton!
     @IBOutlet weak var recordButton: UIButton!
@@ -175,12 +179,40 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
+    func addShadow(_ view: UIView, _ offset: Int = 4)
+    {
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowRadius = 3.0
+        view.layer.shadowOpacity = 1.0
+        view.layer.shadowOffset = CGSize(width: offset, height: offset)
+        view.layer.masksToBounds = false
+    }
+    
     override func viewDidLoad() {
+        
+        mMaximumMemory = getAvailableMemory()
+        
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
         self.toastLabel.isHidden = true
         session.delegate = self
+        
+        addShadow(stopButton)
+        addShadow(recordButton)
+        addShadow(menuButton)
+        addShadow(viewButton)
+        addShadow(newScanButtonLarge)
+        addShadow(libraryButton)
+        addShadow(closeVisualizationButton)
+        addShadow(stopCameraButton)
+        addShadow(exportOBJPLYButton)
+        
+        addShadow(statusLabel, 0)
+        addShadow(toastLabel, 0)
+        
+        addShadow(orthoDistanceSlider, 0)
+        addShadow(orthoGridSlider, 0)
         
         depthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
         
@@ -236,6 +268,20 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.updateState(state: self.mState)
         }
     }
+
+    func progressStatusUpdate() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if self.mState == .STATE_PROCESSING && self.statusShown
+            {
+                let availableMem = self.getAvailableMemory()
+                let usedMem = self.mMaximumMemory - availableMem;
+                self.statusLabel.text =
+                    "Status: \(self.getStateString(state: self.mState))\n" +
+                    "RAM Usage (MB): \(usedMem) / \(self.mMaximumMemory)"
+                self.progressStatusUpdate()
+            }
+        }
+    }
     
     func progressUpdated(_ rtabmap: RTABMap, count: Int, max: Int) {
         DispatchQueue.main.async {
@@ -280,10 +326,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.showToast(message: "Optimized mesh detected in the database, it is shown while the database is loading...", seconds: 3)
             }
 
-            let usedMem = self.getMemoryUsage()
+            let availableMem = self.getAvailableMemory()
+            let usedMem = self.mMaximumMemory - availableMem;
             self.statusLabel.text =
                 "Status: " + (status == 1 && msg.isEmpty ? self.mState == State.STATE_CAMERA ? "Camera Preview" : "Idle" : msg) + "\n" +
-                "Memory Usage: \(usedMem) MB"
+            	"RAM Usage (MB): \(usedMem) / \(self.mMaximumMemory)"
         }
     }
         
@@ -316,7 +363,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                            pitch: Float,
                            yaw: Float)
     {
-        let usedMem = self.getMemoryUsage()
+        let availableMem = self.getAvailableMemory()
+        let usedMem = self.mMaximumMemory - availableMem;
         
         if(loopClosureId > 0)
         {
@@ -339,7 +387,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.statusLabel.text =
                     self.statusLabel.text! +
                     "Status: \(self.getStateString(state: self.mState))\n" +
-                    "Memory Usage : \(usedMem) MB"
+                	"RAM Usage (MB): \(usedMem) / \(self.mMaximumMemory)"
             }
             if self.debugShown {
                 self.statusLabel.text =
@@ -426,6 +474,43 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     self.showToast(message: "Landmark \(landmarkDetected) detected!", seconds: 1);
                 }
             }
+            if(self.mState == .STATE_MAPPING)
+            {
+                if(availableMem < 400)
+                {
+                    let msg = "Scanning will be stopped because the free memory is too "
+                    + "low (\(availableMem) MB). You should be able to save the database but some post-processing and exporting options may fail. "
+                    + "\n\nNote that for large environments, you can save multiple databases and "
+                    + "merge them with RTAB-Map Desktop version."
+                    let alert = UIAlertController(title: "Memory is full!", message: msg, preferredStyle: .alert)
+                    let alertActionYes = UIAlertAction(title: "Ok", style: .default) {
+                        (UIAlertAction) -> Void in
+                        self.stopMapping(ignoreSaving: false, offerPostProcessing: false);
+                    }
+                    alert.addAction(alertActionYes)
+                    self.present(alert, animated: true, completion: nil)
+                }
+                else if(!self.lowMemoryWarningShown && usedMem*3 > availableMem && !self.mDataRecording)
+                {
+                    self.lowMemoryWarningShown = true
+                    let msg = "Available memory (\(availableMem) MB) should be at least 3 times the "
+                    + "memory used (\(usedMem) MB) so that some post-processing and exporting options "
+                    + "have enough memory to work correctly. If you just want to save the database "
+                    + "after scanning, you can continue until the next warning.\n\n"
+                    + "Note that showing only point clouds and/or decrease density reduce memory needed for rendering."
+                    let alert = UIAlertController(title: "Memory is full!", message: msg, preferredStyle: .alert)
+                    let alertActionYes = UIAlertAction(title: "Stop Now", style: .default) {
+                        (UIAlertAction) -> Void in
+                        self.stopMapping(ignoreSaving: false);
+                    }
+                    alert.addAction(alertActionYes)
+                    let alertActionNo = UIAlertAction(title: "Continue", style: .cancel) {
+                        (UIAlertAction) -> Void in
+                    }
+                    alert.addAction(alertActionNo)
+                    self.present(alert, animated: true, completion: nil)
+                }
+            }
         }
     }
     
@@ -439,23 +524,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
-    func getMemoryUsage() -> UInt64 {
-        var taskInfo = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
-            }
-        }
-
-        if kerr == KERN_SUCCESS {
-            return taskInfo.resident_size / (1024*1024)
-        }
-        else {
-            print("Error with task_info(): " +
-                (String(cString: mach_error_string(kerr), encoding: String.Encoding.ascii) ?? "unknown error"))
-            return 0
-        }
+    func getAvailableMemory() -> Int {
+        return os_proc_available_memory()/(1024*1024)
     }
     
     @objc func appMovedToBackground() {
@@ -1750,6 +1820,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.progressView!.tintColor = self.view.tintColor
             alertView.view.addSubview(self.progressView!)
             
+            self.progressStatusUpdate() // This will update memory usage during post processing
+            
             var success : Bool = false
             DispatchQueue.background(background: {
                 
@@ -1856,6 +1928,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.progressView!.tintColor = self.view.tintColor
             alertView.view.addSubview(self.progressView!)
             
+            self.progressStatusUpdate() // This will update memory usage during post processing
+            
             var loopDetected : Int = -1
             DispatchQueue.background(background: {
                 loopDetected = self.rtabmap!.postProcessing(approach: approach);
@@ -1898,7 +1972,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         })
     }
     
-    func stopMapping(ignoreSaving: Bool)
+    func stopMapping(ignoreSaving: Bool, offerPostProcessing: Bool = true)
     {
         session.pause()
         locationManager?.stopUpdatingLocation()
@@ -1917,7 +1991,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         if !ignoreSaving
         {
-            if(mDataRecording)
+            if(mDataRecording || !offerPostProcessing)
             {
                 // Go directly to save
                 self.save()
@@ -2313,6 +2387,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
     @IBAction func recordAction(_ sender: UIButton) {
         rtabmap?.setPausedMapping(paused: false);
+        lowMemoryWarningShown = false
         updateState(state: .STATE_MAPPING)
     }
     

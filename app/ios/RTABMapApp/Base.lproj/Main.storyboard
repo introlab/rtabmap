@@ -79,7 +79,6 @@
                             </stackView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="wordWrap" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="KlF-4H-k6I">
                                 <rect key="frame" x="16" y="79" width="31" height="14.333333333333329"/>
-                                <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.29820365646258501" colorSpace="custom" customColorSpace="sRGB"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
@@ -146,18 +145,8 @@
                                     <action selector="clipDistanceAction:" destination="zah-iI-EPt" eventType="valueChanged" id="iKj-nz-0KW"/>
                                 </connections>
                             </slider>
-                            <slider opaque="NO" contentMode="scaleToFill" placeholderIntrinsicWidth="114" placeholderIntrinsicHeight="30" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="90" minValue="0.0" maxValue="180" translatesAutoresizingMaskIntoConstraints="NO" id="Z1x-Af-hdf" userLabel="GridRotationSlider">
-                                <rect key="frame" x="135.66666666666666" y="727" width="121.99999999999997" height="31"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" constant="118" id="KDl-lP-Jj7"/>
-                                </constraints>
-                                <connections>
-                                    <action selector="rotateGridAction:" destination="zah-iI-EPt" eventType="valueChanged" id="eiC-QR-TYH"/>
-                                </connections>
-                            </slider>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Toast Label" textAlignment="center" lineBreakMode="wordWrap" numberOfLines="4" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="JMv-UE-cvK" userLabel="ToastLabel">
-                                <rect key="frame" x="51" y="668.33333333333337" width="291" height="20.333333333333371"/>
-                                <color key="backgroundColor" white="0.0" alpha="0.3002232142857143" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <rect key="frame" x="51" y="637.33333333333337" width="291" height="20.333333333333371"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" staticText="YES" notEnabled="YES"/>
                                 </accessibility>
@@ -165,6 +154,15 @@
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <slider opaque="NO" contentMode="scaleToFill" placeholderIntrinsicWidth="114" placeholderIntrinsicHeight="30" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="90" minValue="0.0" maxValue="180" translatesAutoresizingMaskIntoConstraints="NO" id="Z1x-Af-hdf" userLabel="GridRotationSlider">
+                                <rect key="frame" x="132" y="727" width="122" height="31"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="118" id="KDl-lP-Jj7"/>
+                                </constraints>
+                                <connections>
+                                    <action selector="rotateGridAction:" destination="zah-iI-EPt" eventType="valueChanged" id="eiC-QR-TYH"/>
+                                </connections>
+                            </slider>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="qAR-pI-uT2"/>
                         <constraints>
@@ -184,12 +182,12 @@
                             <constraint firstItem="3Sc-lx-YKH" firstAttribute="top" secondItem="ozY-dg-YOd" secondAttribute="bottom" constant="16" id="abR-Tj-Nua"/>
                             <constraint firstItem="qAR-pI-uT2" firstAttribute="bottom" secondItem="012-W3-dOS" secondAttribute="bottom" constant="24" id="dcl-mV-bH1"/>
                             <constraint firstItem="9oq-op-NGV" firstAttribute="centerX" secondItem="sqF-4e-2HU" secondAttribute="centerX" id="g5b-gW-Amg"/>
-                            <constraint firstItem="Z1x-Af-hdf" firstAttribute="centerX" secondItem="sqF-4e-2HU" secondAttribute="centerX" id="i2j-zQ-m1V"/>
-                            <constraint firstItem="Z1x-Af-hdf" firstAttribute="top" secondItem="JMv-UE-cvK" secondAttribute="bottom" constant="38.5" id="icg-DR-ZpX"/>
+                            <constraint firstItem="9oq-op-NGV" firstAttribute="top" secondItem="JMv-UE-cvK" secondAttribute="bottom" constant="113.33" id="icg-DR-ZpX"/>
                             <constraint firstItem="qAR-pI-uT2" firstAttribute="bottom" secondItem="9oq-op-NGV" secondAttribute="bottom" constant="25" id="lFI-66-D3N"/>
                             <constraint firstAttribute="trailing" secondItem="kPv-DO-hpd" secondAttribute="trailing" constant="10" id="lFv-p3-LIS"/>
                             <constraint firstItem="qAR-pI-uT2" firstAttribute="trailing" secondItem="ozY-dg-YOd" secondAttribute="trailing" constant="20" id="ov4-d2-OMy"/>
                             <constraint firstItem="012-W3-dOS" firstAttribute="top" secondItem="30J-Tx-NRW" secondAttribute="bottom" constant="60" id="tbj-nG-nfI"/>
+                            <constraint firstItem="Z1x-Af-hdf" firstAttribute="leading" secondItem="30J-Tx-NRW" secondAttribute="trailing" constant="16" id="uMj-kM-hlH"/>
                             <constraint firstItem="qAR-pI-uT2" firstAttribute="trailing" secondItem="3Sc-lx-YKH" secondAttribute="trailing" constant="10" id="v2K-Dp-Kyn"/>
                             <constraint firstItem="Jj4-ow-MwD" firstAttribute="centerY" secondItem="sqF-4e-2HU" secondAttribute="centerY" id="vmc-4u-BtF"/>
                         </constraints>
@@ -215,7 +213,7 @@
                 </glkViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="plN-WG-seA" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="-234.375" y="-586.25"/>
+            <point key="canvasLocation" x="-235.87786259541983" y="-586.61971830985919"/>
         </scene>
         <!--Unsupported View Controller-->
         <scene sceneID="sJB-xy-u63">
@@ -226,14 +224,14 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Unsupported Device" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" enabled="NO" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="kZt-ct-4KD">
-                                <rect key="frame" x="28" y="341.33333333333331" width="337.33333333333331" height="33.666666666666686"/>
+                                <rect key="frame" x="21" y="352.33333333333331" width="351.33333333333331" height="33.666666666666686"/>
                                 <fontDescription key="fontDescription" style="UICTFontTextStyleTitle1"/>
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" enabled="NO" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="4Js-Hw-3QU">
-                                <rect key="frame" x="28" y="383" width="337.33333333333331" height="86.333333333333314"/>
-                                <string key="text">This sample app requires a LiDAR-capable device, such as the second-generation iPad Pro 11-inch and fourth-generation iPad Pro 12.9-inch.</string>
+                                <rect key="frame" x="21" y="394" width="351.33333333333326" height="64.333333333333314"/>
+                                <string key="text">This app requires a LiDAR-capable device, such as the second-generation iPad Pro 11-inch and fourth-generation iPad Pro 12.9-inch.</string>
                                 <fontDescription key="fontDescription" style="UICTFontTextStyleBody"/>
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
@@ -262,9 +260,9 @@
         <image name="eye" catalog="system" width="128" height="79"/>
         <image name="folder" catalog="system" width="128" height="96"/>
         <image name="plus.app" catalog="system" width="128" height="114"/>
-        <image name="record.circle" catalog="system" width="128" height="123"/>
+        <image name="record.circle" catalog="system" width="32" height="32"/>
         <image name="square.and.arrow.up" catalog="system" width="108" height="128"/>
-        <image name="stop.circle" catalog="system" width="128" height="123"/>
+        <image name="stop.circle" catalog="system" width="32" height="32"/>
         <image name="xmark.square" catalog="system" width="128" height="114"/>
         <systemColor name="systemRedColor">
             <color red="1" green="0.23137254900000001" blue="0.18823529410000001" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
