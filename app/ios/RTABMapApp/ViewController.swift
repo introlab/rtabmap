@@ -1555,6 +1555,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap!.setMaxGainRadius(value: defaults.float(forKey: "ColorCorrectionRadius"));
         rtabmap!.setRenderingTextureDecimation(value: defaults.integer(forKey: "TextureResolution"));
         
+        rtabmap!.setMetricSystem(defaults.integer(forKey: "MeasuringUnits") == 0);
+        rtabmap!.setMeasuringTextSize(defaults.float(forKey: "MeasuringTextSize"));
+        
         if(locationManager != nil && !defaults.bool(forKey: "SaveGPS"))
         {
             locationManager?.stopUpdatingLocation()

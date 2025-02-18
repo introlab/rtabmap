@@ -203,6 +203,7 @@ void Scene::clear()
     clearLines();
     clearQuads();
     clearTexts();
+    clearCircles();
 	if(trace_)
 	{
 		trace_->ClearVertexArray();
@@ -243,6 +244,14 @@ void Scene::clearQuads()
         delete iter->second;
     }
     quads_.clear();
+}
+void Scene::clearCircles()
+{
+    for(std::map<int, tango_gl::Circle*>::iterator iter=circles_.begin(); iter!=circles_.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    circles_.clear();
 }
 
 //Should only be called in OpenGL thread!
@@ -706,6 +715,16 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
             }
         }
     }
+    if(circles_.size())
+    {
+        glEnable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        for(std::map<int, tango_gl::Circle*>::const_iterator iter=circles_.begin(); iter!=circles_.end(); ++iter)
+        {
+            const tango_gl::Circle * circle = iter->second;
+            circle->Render(projectionMatrix, viewMatrix);
+        }
+    }
     if(texts_.size())
     {
         glDisable(GL_CULL_FACE);
@@ -1080,6 +1099,44 @@ void Scene::removeQuad(int id)
 bool Scene::hasQuad(int id) const
 {
     return quads_.find(id) != quads_.end();
+}
+
+void Scene::addCircle(
+        int id,
+        float radius,
+        const rtabmap::Transform & pose,
+        const tango_gl::Color & color,
+        float alpha)
+{
+    //LOGI("add quad %d", id);
+    std::map<int, tango_gl::Circle*>::iterator iter=circles_.find(id);
+    if(iter != circles_.end())
+    {
+        delete iter->second;
+        circles_.erase(iter);
+    }
+
+    //create
+    tango_gl::Circle * circle = new tango_gl::Circle(radius, 12);
+    circle->SetTransformationMatrix(glmFromTransform(pose));
+    circle->SetColor(color);
+    circle->SetAlpha(alpha);
+    circles_.insert(std::make_pair(id, circle));
+}
+
+void Scene::removeCircle(int id)
+{
+    std::map<int, tango_gl::Circle*>::iterator iter=circles_.find(id);
+    if(iter != circles_.end())
+    {
+        delete iter->second;
+        circles_.erase(iter);
+    }
+}
+
+bool Scene::hasCircle(int id) const
+{
+    return circles_.find(id) != circles_.end();
 }
 
 void Scene::setCloudPose(int id, const rtabmap::Transform & pose)

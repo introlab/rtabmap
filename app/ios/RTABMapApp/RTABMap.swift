@@ -167,6 +167,9 @@ class RTABMap {
     func setMetricSystem(_ enabled: Bool) {
         setMetricSystemNative(native_rtabmap, enabled)
     }
+    func setMeasuringTextSize(_ size: Float32) {
+        setMeasuringTextSizeNative(native_rtabmap, size)
+    }
     func clearMeasures() {
         clearMeasuresNative(native_rtabmap)
     }

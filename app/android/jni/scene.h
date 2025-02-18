@@ -33,6 +33,7 @@
 #include <tango-gl/trace.h>
 #include <tango-gl/transform.h>
 #include <tango-gl/util.h>
+#include <tango-gl/circle.h>
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Link.h>
@@ -74,6 +75,7 @@ class Scene {
   void clearLines();
   void clearTexts();
   void clearQuads();
+  void clearCircles();
 
   // Render loop.
   // @param: cur_pose_transformation, latest pose's transformation.
@@ -162,6 +164,14 @@ class Scene {
         float alpha =1.0f);
   void removeQuad(int id);
   bool hasQuad(int id) const;
+  void addCircle(
+          int id,
+          float radius,
+          const rtabmap::Transform & pose,
+          const tango_gl::Color & color,
+          float alpha = 1.0f);
+  void removeCircle(int id);
+  bool hasCircle(int id) const;
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
@@ -229,6 +239,7 @@ class Scene {
   std::map<int, tango_gl::Line*> lines_;
   std::map<int, TextDrawable*> texts_;
   std::map<int, QuadColor*> quads_;
+  std::map<int, tango_gl::Circle*> circles_;
 
   rtabmap::Transform * currentPose_;
 

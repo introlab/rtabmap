@@ -270,6 +270,7 @@ RTABMapApp::RTABMapApp() :
         quadSample_(new pcl::PointCloud<pcl::PointXYZ>),
         quadSamplePolygons_(2),
         metricSystem_(true),
+        measuringTextSize_(0.05f),
 		snapAxisThr_(0.95),
         markerDetection_(false),
         measuringMode_(0),
@@ -1497,6 +1498,8 @@ int RTABMapApp::Render()
                 main_scene_.removeLine(55555);
                 main_scene_.removeQuad(55555);
                 main_scene_.removeQuad(55556);
+                main_scene_.removeCircle(55555);
+                main_scene_.removeCircle(55556);
                 main_scene_.removeText(55555);
                 main_scene_.removeCloudOrMesh(-99999);
                 measuringTmpPts_.clear();
@@ -1510,11 +1513,12 @@ int RTABMapApp::Render()
                 main_scene_.clearLines();
                 main_scene_.clearTexts();
                 main_scene_.clearQuads();
+                main_scene_.clearCircles();
                 int lineId = 0;
                 int textId = 0;
                 int quadId = 0;
+                int circleId = 0;
                 float sphereRadius = 0.02f;
-                float textSize=0.05f;
                 float quadSize=0.05f;
                 float quadAlpha = 0.3f;
 
@@ -1590,14 +1594,24 @@ int RTABMapApp::Render()
                             text = uFormat("%0.1f\"", inches);
                         }
                     }
-                    main_scene_.addText(++textId, text, rtabmap::Transform((pt1.x+pt2.x)/2.0f, (pt1.y+pt2.y)/2.0f, (pt1.z+pt2.z)/2.0f, 0, 0,0), textSize, quadColor);
+                    main_scene_.addText(++textId, text, rtabmap::Transform((pt1.x+pt2.x)/2.0f, (pt1.y+pt2.y)/2.0f, (pt1.z+pt2.z)/2.0f, 0, 0,0), measuringTextSize_, quadColor);
+                    
                     cv::Vec3f n1 = rtabmap::util3d::transformPoint(m.n1(), rtabmap::opengl_world_T_rtabmap_world);
                     cv::Vec3f n2 = rtabmap::util3d::transformPoint(m.n2(), rtabmap::opengl_world_T_rtabmap_world);
                     Eigen::Quaternionf q1, q2;
                     q1.setFromTwoVectors(Eigen::Vector3f(0,0,1), Eigen::Vector3f(n1[0],n1[1],n1[2]));
                     q2.setFromTwoVectors(Eigen::Vector3f(0,0,1), Eigen::Vector3f(n2[0],n2[1],n2[2]));
-                    main_scene_.addQuad(++quadId, quadSize, rtabmap::Transform(pt1.x, pt1.y, pt1.z, q1.x(), q1.y(), q1.z(), q1.w()), quadColor, quadAlpha);
-                    main_scene_.addQuad(++quadId, quadSize, rtabmap::Transform(pt2.x, pt2.y, pt2.z, q2.x(), q2.y(), q2.z(), q2.w()), quadColor, quadAlpha);
+                    
+                    if(sameNormal)
+                    {
+                        main_scene_.addQuad(++quadId, quadSize, rtabmap::Transform(pt1.x, pt1.y, pt1.z, q1.x(), q1.y(), q1.z(), q1.w()), quadColor, quadAlpha);
+                        main_scene_.addQuad(++quadId, quadSize, rtabmap::Transform(pt2.x, pt2.y, pt2.z, q2.x(), q2.y(), q2.z(), q2.w()), quadColor, quadAlpha);
+                    }
+                    else
+                    {
+                        main_scene_.addCircle(++circleId, quadSize/2, rtabmap::Transform(pt1.x, pt1.y, pt1.z, q1.x(), q1.y(), q1.z(), q1.w()), quadColor, quadAlpha);
+                        main_scene_.addCircle(++circleId, quadSize/2, rtabmap::Transform(pt2.x, pt2.y, pt2.z, q2.x(), q2.y(), q2.z(), q2.w()), quadColor, quadAlpha);
+                    }
                 }
             }
 
@@ -2425,22 +2439,25 @@ void RTABMapApp::updateMeasuringState()
     Eigen::Vector3f dir(v.x(), v.y(), v.z());
     v = rtabmapCam.rotation() * rtabmap::Transform(1,0,0,0,0,0);
     Eigen::Vector3f rtabmapDir(v.x(), v.y(), v.z());
-    float textSize=0.05f;
     tango_gl::Color color(1.0f, 0.0f, 1.0f);
     tango_gl::Color xColor(1.0f, 0.0f, 0.0f); // in rtabmap world
     tango_gl::Color yColor(0.0f, 1.0f, 0.0f); // in rtabmap world
     tango_gl::Color zColor(0.0f, 0.0f, 1.0f); // in rtabmap world
+    float circleRadius = 0.025;
     float quadSize=0.05f;
     float quadAlpha = 0.3f;
+    
+    main_scene_.removeQuad(55555);
+    main_scene_.removeQuad(55556);
+    main_scene_.removeCircle(55555);
+    main_scene_.removeCircle(55556);
+    main_scene_.removeLine(55555);
+    main_scene_.removeText(55555);
 
     if(removeMeasureClicked_)
     {
         if(!measuringTmpPts_.empty())
         {
-            main_scene_.removeLine(55555);
-            main_scene_.removeText(55555);
-            main_scene_.removeQuad(55555);
-            main_scene_.removeQuad(55556);
             measuringTmpPts_.clear();
             measuringTmpNormals_.clear();
         }
@@ -2595,10 +2612,6 @@ void RTABMapApp::updateMeasuringState()
                 {
                     measures_.push_back(measure);
 
-                    main_scene_.removeLine(55555);
-                    main_scene_.removeText(55555);
-                    main_scene_.removeQuad(55555);
-                    main_scene_.removeQuad(55556);
                     measuringTmpPts_.clear();
                     measuringTmpNormals_.clear();
 
@@ -2649,64 +2662,85 @@ void RTABMapApp::updateMeasuringState()
             float quadHeightBottom = quadWidthLeft;
             float quadHeightTop = quadWidthLeft;
             cv::Point3f pt2 = pt;
+            float lineLength = 0.0f;
             // project point on line
-            if(measuringMode_ == 0 && measuringTmpPts_.size() == 1)
+            if(measuringTmpPts_.size() == 1)
             {
                 cv::Point3f v = pt2-measuringTmpPts_.front();
-                float n = v.dot(measuringTmpNormals_.front());
-                pt2 = measuringTmpPts_.front() + (measuringTmpNormals_.front() * n);
-                v = rtabmap::util3d::transformPoint(v, rtabmap::rtabmap_world_T_opengl_world);
-                if(!(fabs(normal.z) > fabs(normal.x) && fabs(normal.z) > fabs(normal.y)))
+                if(measuringMode_ == 0)
                 {
-                    quadHeightTop = v.z>quadSize?v.z:quadSize;
-                    quadHeightBottom = -v.z>quadSize?-v.z:quadSize;
-                    if(fabs(normal.x) > fabs(normal.y))
+                    float n = v.dot(measuringTmpNormals_.front());
+                    lineLength = fabs(n);
+                    pt2 = measuringTmpPts_.front() + (measuringTmpNormals_.front() * n);
+                    v = rtabmap::util3d::transformPoint(v, rtabmap::rtabmap_world_T_opengl_world);
+                    if(!(fabs(normal.z) > fabs(normal.x) && fabs(normal.z) > fabs(normal.y)))
                     {
-                        cv::Point3f y = cv::Point3f(0,0,1).cross(normal);
-                        float n = v.dot(y);
-                        quadWidthRight = n>quadSize?n:quadSize;
-                        quadWidthLeft = n<-quadSize?fabs(n):quadSize;
-                        if(normal.x>0)
+                        quadHeightTop = v.z>quadSize?v.z:quadSize;
+                        quadHeightBottom = -v.z>quadSize?-v.z:quadSize;
+                        if(fabs(normal.x) > fabs(normal.y))
                         {
-                            quadWidthLeft = n>quadSize?n:quadSize;
+                            cv::Point3f y = cv::Point3f(0,0,1).cross(normal);
+                            float n = v.dot(y);
+                            quadWidthRight = n>quadSize?n:quadSize;
+                            quadWidthLeft = n<-quadSize?fabs(n):quadSize;
+                            if(normal.x>0)
+                            {
+                                quadWidthLeft = n>quadSize?n:quadSize;
+                                quadWidthRight = n<-quadSize?fabs(n):quadSize;
+                                float tmp  =quadHeightTop;
+                                quadHeightTop= quadHeightBottom;
+                                quadHeightBottom = tmp;
+                            }
+                        }
+                        else
+                        {
+                            cv::Point3f x = normal.cross(cv::Point3f(0,0,1));
+                            float n = v.dot(x);
                             quadWidthRight = n<-quadSize?fabs(n):quadSize;
-                            float tmp  =quadHeightTop;
-                            quadHeightTop= quadHeightBottom;
-                            quadHeightBottom = tmp;
+                            quadWidthLeft = n>quadSize?n:quadSize;
                         }
                     }
                     else
                     {
-                        cv::Point3f x = normal.cross(cv::Point3f(0,0,1));
-                        float n = v.dot(x);
-                        quadWidthRight = n<-quadSize?fabs(n):quadSize;
-                        quadWidthLeft = n>quadSize?n:quadSize;
+                        if(normal.z>0)
+                        {
+                            quadHeightBottom = v.x<-quadSize?fabs(v.x):quadSize;
+                            quadHeightTop = v.x>quadSize?v.x:quadSize;
+                            quadWidthRight = v.y<-quadSize?fabs(v.y):quadSize;
+                            quadWidthLeft = v.y>quadSize?v.y:quadSize;
+                        }
+                        else
+                        {
+                            quadHeightTop = v.x<-quadSize?fabs(v.x):quadSize;
+                            quadHeightBottom = v.x>quadSize?v.x:quadSize;
+                            quadWidthRight = v.y<-quadSize?fabs(v.y):quadSize;
+                            quadWidthLeft = v.y>quadSize?v.y:quadSize;
+                        }
                     }
                 }
                 else
                 {
-                    if(normal.z>0)
+                    lineLength = cv::norm(v);
+                }
+                
+                std::string text = uFormat("%0.2f m", lineLength);
+                if(!metricSystem_)
+                {
+                    static const double METERS_PER_FOOT = 0.3048;
+                    static double INCHES_PER_FOOT = 12.0;
+                    double lengthInFeet = lineLength / METERS_PER_FOOT;
+                    int feet = (int)lengthInFeet;
+                    float inches = (lengthInFeet - feet) * INCHES_PER_FOOT;
+                    if(feet > 0)
                     {
-                        quadHeightBottom = v.x<-quadSize?fabs(v.x):quadSize;
-                        quadHeightTop = v.x>quadSize?v.x:quadSize;
-                        quadWidthRight = v.y<-quadSize?fabs(v.y):quadSize;
-                        quadWidthLeft = v.y>quadSize?v.y:quadSize;
+                        text = uFormat("%d' %0.1f\"", feet, inches);
                     }
                     else
                     {
-                        quadHeightTop = v.x<-quadSize?fabs(v.x):quadSize;
-                        quadHeightBottom = v.x>quadSize?v.x:quadSize;
-                        quadWidthRight = v.y<-quadSize?fabs(v.y):quadSize;
-                        quadWidthLeft = v.y>quadSize?v.y:quadSize;
+                        text = uFormat("%0.1f\"", inches);
                     }
                 }
-
-                /*std::string text = uFormat("%0.1f %0.1f %0.1f [%0.2f %0.2f %0.2f %0.2f]", v.x, v.y, v.z,
-                        quadWidthLeft,
-                        quadWidthRight,
-                        quadHeightBottom,
-                        quadHeightTop);
-                main_scene_.addText(55555, text, rtabmap::Transform(pt.x, pt.y, pt.z, 0,0,0), textSize, color);*/
+                main_scene_.addText(55555, text, rtabmap::Transform(pt.x, pt.y, pt.z, 0,0,0), 0.05f, measuringMode_ == 0?quadColor:color);
             }
 
             Eigen::Quaternionf q;
@@ -2715,39 +2749,56 @@ void RTABMapApp::updateMeasuringState()
             if(measuringTmpPts_.size() == 1 && measuringMode_ != 1)
             {
                 const cv::Point3f & pt1 = measuringTmpPts_.at(0);
-                main_scene_.addLine(55555, pt1, pt2, quadColor);
+                main_scene_.addLine(55555, pt1, pt2, measuringMode_ == 0?quadColor:color);
 
-                main_scene_.addQuad(55555,
-                    quadSize,
-                    rtabmap::Transform(
-                            measuringTmpPts_.front().x,
-                            measuringTmpPts_.front().y,
-                            measuringTmpPts_.front().z,
-                            q.x(),q.y(), q.z(), q.w()), quadColor, quadAlpha);
-
-                main_scene_.addQuad(55556,
-                            quadWidthLeft,
-                            quadWidthRight,
-                            quadHeightBottom,
-                            quadHeightTop,
-                            rtabmap::Transform(pt2.x, pt2.y, pt2.z, q.x(),q.y(), q.z(), q.w()), quadColor, quadAlpha);
+                if(measuringMode_ == 2)
+                {
+                    // Use respective orientation for each circle
+                    Eigen::Quaternionf q1;
+                	cv::Vec3f normalGL1 = measuringTmpNormals_.front();
+                    q1.setFromTwoVectors(Eigen::Vector3f(0,0,1), Eigen::Vector3f(normalGL1[0],normalGL1[0],normalGL1[0]));
+                    main_scene_.addCircle(55555,
+                                        circleRadius,
+                                        rtabmap::Transform(
+                                                           measuringTmpPts_.front().x,
+                                                           measuringTmpPts_.front().y,
+                                                           measuringTmpPts_.front().z,
+                                                           q1.x(),q1.y(), q1.z(), q1.w()), color, quadAlpha);
+                    main_scene_.addCircle(55556,
+                                        circleRadius,
+                                        rtabmap::Transform(pt2.x, pt2.y, pt2.z, q.x(),q.y(), q.z(), q.w()), color, quadAlpha);
+                }
+                else
+                {
+                    // Use same orientation for both quads
+                    main_scene_.addQuad(55555,
+                                        quadSize,
+                                        rtabmap::Transform(
+                                                           measuringTmpPts_.front().x,
+                                                           measuringTmpPts_.front().y,
+                                                           measuringTmpPts_.front().z,
+                                                           q.x(),q.y(), q.z(), q.w()), quadColor, quadAlpha);
+                    main_scene_.addQuad(55556,
+                                quadWidthLeft,
+                                quadWidthRight,
+                                quadHeightBottom,
+                                quadHeightTop,
+                                rtabmap::Transform(pt2.x, pt2.y, pt2.z, q.x(),q.y(), q.z(), q.w()), quadColor, quadAlpha);
+                }
+            }
+            else if(measuringMode_ == 2)
+            {
+                main_scene_.addCircle(55555,
+                            circleRadius,
+                            rtabmap::Transform(pt2.x, pt2.y, pt2.z, q.x(),q.y(), q.z(), q.w()), color, quadAlpha);
             }
             else
             {
                 main_scene_.addQuad(55555,
-                            quadWidthLeft,
-                            quadWidthRight,
-                            quadHeightBottom,
-                            quadHeightTop,
+                            quadSize,
                             rtabmap::Transform(pt2.x, pt2.y, pt2.z, q.x(),q.y(), q.z(), q.w()), quadColor, quadAlpha);
             }
         }
-    }
-    else
-    {
-        main_scene_.removeText(55555);
-        main_scene_.removeQuad(55555);
-        main_scene_.removeQuad(55556);
     }
 
     Eigen::Vector3f target = origin+dir*(distance<100.0f?distance:0.5f);
@@ -4352,6 +4403,15 @@ void RTABMapApp::removeMeasure()
 void RTABMapApp::setMetricSystem(bool enabled)
 {
     metricSystem_ = enabled;
+    if(measures_.size())
+    {
+        measuresUpdated_ = true;
+    }
+}
+
+void RTABMapApp::setMeasuringTextSize(float size)
+{
+    measuringTextSize_ = size;
     if(measures_.size())
     {
         measuresUpdated_ = true;

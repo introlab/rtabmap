@@ -805,7 +805,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nversion=\"$MARKETING_VERSION\"\n/usr/libexec/PlistBuddy -c \"Set PreferenceSpecifiers:21:DefaultValue $version\" \"${SRCROOT}/Settings.bundle/Root.plist\"\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nversion=\"$MARKETING_VERSION\"\n/usr/libexec/PlistBuddy -c \"Set PreferenceSpecifiers:24:DefaultValue $version\" \"${SRCROOT}/Settings.bundle/Root.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

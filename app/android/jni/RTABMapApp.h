@@ -188,6 +188,7 @@ class RTABMapApp : public UEventsHandler {
   void teleportButtonClicked();
   void removeMeasure();
   void setMetricSystem(bool enabled);
+  void setMeasuringTextSize(float size);
 
   void postOdometryEvent(
 		rtabmap::Transform pose,
@@ -281,6 +282,7 @@ class RTABMapApp : public UEventsHandler {
   std::list<Measure> measures_; // In opengl frame
   bool measuresUpdated_;
   bool metricSystem_;
+  float measuringTextSize_;
   float snapAxisThr_;
   std::vector<cv::Vec3f> snapAxes_;
   bool markerDetection_;

@@ -658,6 +658,13 @@ void setMetricSystemNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
+void setMeasuringTextSizeNative(const void *object, float size)
+{
+    if(object)
+        return native(object)->setMeasuringTextSize(size);
+    else
+        UERROR("object is null!");
+}
 void clearMeasuresNative(const void *object)
 {
     if(object)
