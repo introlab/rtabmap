@@ -483,8 +483,14 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 	std::vector<glm::vec4> planes = computeFrustumPlanes(projectionMatrix*viewMatrix, true);
 	std::vector<PointCloudDrawable*> cloudsToDraw(pointClouds_.size());
 	int oi=0;
+    int positiveCloudIds = 0;
 	for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
 	{
+        if(iter->first > 0)
+        {
+            positiveCloudIds++;
+        }
+        
 		if(!mapRendering_ && iter->first > 0)
 		{
 			break;
@@ -526,7 +532,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
         (blending_ &&
          gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho &&
          mapRendering_ && meshRendering_ &&
-         (cloudsToDraw.size() > 1 || (renderBackgroundCamera && wireFrame_)));
+         (positiveCloudIds > 1 || (renderBackgroundCamera && wireFrame_)));
 
 	if(onlineBlending && fboId_)
 	{
