@@ -999,11 +999,6 @@ bool RTABMapApp::startCamera()
 		LOGI("Cloud density level %d", cloudDensityLevel_);
 
 		LOGI("Start camera thread");
-        if(visualizingMesh_)
-        {
-            // We are measuring!
-            main_scene_.setMapRendering(false);
-        }
 		cameraJustInitialized_ = true;
 		if(useExternalLidar_)
 		{
