@@ -108,8 +108,9 @@ void CameraMobile::close()
     dataReady_.release();
 }
 
-void CameraMobile::resetOrigin()
+void CameraMobile::resetOrigin(const rtabmap::Transform & offset)
 {
+    manualOriginOffset_ = offset;
 	originUpdate_ = true;
 }
 
@@ -193,7 +194,7 @@ void CameraMobile::poseReceived(const Transform & pose, double deviceStamp)
 			previousAnchorPose_.setNull();
 			previousAnchorLinearVelocity_.clear();
 			previousAnchorStamp_ = 0.0;
-			originOffset_ = pose.translation().inverse();
+            originOffset_ = manualOriginOffset_.isNull() ? pose.translation().inverse() : manualOriginOffset_;
 			originUpdate_ = false;
 		}
         

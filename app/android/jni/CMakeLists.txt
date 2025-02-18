@@ -114,7 +114,35 @@ add_definitions(${PCL_DEFINITIONS})
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-add_library(NativeRTABMap SHARED ${sources})        
+####################################
+# Generate resources files
+####################################
+SET(RESOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/text_atlas.png
+)
+
+foreach(arg ${RESOURCES})
+   get_filename_component(filename ${arg} NAME)
+   string(REPLACE "." "_" output ${filename})
+   set(RESOURCES_HEADERS "${RESOURCES_HEADERS}" "${CMAKE_CURRENT_BINARY_DIR}/${output}.h")
+endforeach(arg ${RESOURCES})
+
+find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool PATHS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+IF(NOT RTABMAP_RES_TOOL)
+  MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"rtabmap-res_tool\" application created by a non-Android build)." )
+ENDIF(NOT RTABMAP_RES_TOOL)
+
+ADD_CUSTOM_COMMAND(
+      OUTPUT ${RESOURCES_HEADERS}
+      COMMAND ${RTABMAP_RES_TOOL} -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+      COMMENT "[Creating resources]"
+      DEPENDS ${RESOURCES}
+)
+####################################
+# Generate resources files END
+####################################
+
+add_library(NativeRTABMap SHARED ${sources} ${RESOURCES_HEADERS})        
 target_link_libraries(NativeRTABMap ${LIBRARIES}
   android
   log

@@ -115,6 +115,13 @@ void setDepthConfidenceNative(const void *object, int value);
 void setExportPointCloudFormatNative(const void *object, const char * format);
 int setMappingParameterNative(const void *object, const char * key, const char * value);
 
+void removeMeasureNative(const void *object);
+void addMeasureNative(const void *object);
+void teleportNative(const void *object);
+void setMeasuringModeNative(const void *object, int mode);
+void setMetricSystemNative(const void *object, bool enabled);
+void clearMeasuresNative(const void *object);
+
 typedef struct ImageNative
 {
     const void * objectPtr;

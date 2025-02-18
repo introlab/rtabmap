@@ -622,3 +622,46 @@ void addEnvSensorNative(const void *object, int type, float value)
     else
         UERROR("object is null!");
 }
+
+void removeMeasureNative(const void *object)
+{
+    if(object)
+        return native(object)->removeMeasure();
+    else
+        UERROR("object is null!");
+}
+void addMeasureNative(const void *object)
+{
+    if(object)
+        return native(object)->addMeasureButtonClicked();
+    else
+        UERROR("object is null!");
+}
+void teleportNative(const void *object)
+{
+    if(object)
+        return native(object)->teleportButtonClicked();
+    else
+        UERROR("object is null!");
+}
+void setMeasuringModeNative(const void *object, int mode)
+{
+    if(object)
+        return native(object)->setMeasuringMode(mode);
+    else
+        UERROR("object is null!");
+}
+void setMetricSystemNative(const void *object, bool enabled)
+{
+    if(object)
+        return native(object)->setMetricSystem(enabled);
+    else
+        UERROR("object is null!");
+}
+void clearMeasuresNative(const void *object)
+{
+    if(object)
+        return native(object)->clearMeasures();
+    else
+        UERROR("object is null!");
+}
