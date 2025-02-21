@@ -55,11 +55,19 @@ class DatabaseView: UIView {
         super.init(frame: frame)
         self.databaseURL = databaseURL
         commonInit(databasePath: databaseURL.path)
-        DispatchQueue.global().async {
-            let downloadedImage = getPreviewImage(databasePath: databaseURL.path)
-          DispatchQueue.main.async {
-            self.coverImageView.image = downloadedImage
-          }
+        if let image = ViewController.previewImages[databaseURL.path]
+        {
+            self.coverImageView.image = image
+        }
+        else
+        {
+            DispatchQueue.global().async {
+                let downloadedImage = getPreviewImage(databasePath: databaseURL.path)
+                DispatchQueue.main.async {
+                    self.coverImageView.image = downloadedImage
+                    ViewController.previewImages[databaseURL.path] = downloadedImage
+                }
+            }
         }
     }
 

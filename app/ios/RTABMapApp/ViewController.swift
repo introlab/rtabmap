@@ -45,6 +45,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     
     private var mReviewRequested = false
     
+    private var mMaximumMemory: Int = 0
+    
     // UI states
     private enum State {
         case STATE_WELCOME,    // Camera/Motion off - showing only buttons open and start new scan
@@ -53,8 +55,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         STATE_IDLE,            // Camera/Motion off
         STATE_PROCESSING,      // Camera/Motion off - post processing
         STATE_VISUALIZING,     // Camera/Motion off - Showing optimized mesh
-        STATE_VISUALIZING_CAMERA,     // Camera/Motion on  - Showing optimized mesh
-        STATE_VISUALIZING_WHILE_LOADING // Camera/Motion off - Loading data while showing optimized mesh
+        STATE_VISUALIZING_CAMERA,     // Camera/Motion on  - Showing optimized mesh and localizing
+        STATE_VISUALIZING_WHILE_LOADING, // Camera/Motion off - Loading data while showing optimized mesh
+        STATE_VISUALIZING_AND_MEASURING    // Camera/Motion on  - Showing optimized mesh without localizing and measuring tools enabled
     }
     private var mState: State = State.STATE_WELCOME;
     private func getStateString(state: State) -> String {
@@ -73,6 +76,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             return "Visualizing with Camera"
         case .STATE_VISUALIZING_WHILE_LOADING:
             return "Visualizing while Loading"
+        case .STATE_VISUALIZING_AND_MEASURING:
+            return "Measuring"
         default: // IDLE
             return "Idle"
         }
@@ -96,6 +101,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mHudVisible: Bool = true
     private var mLastTimeHudShown: DispatchTime = .now()
     private var mMenuOpened: Bool = false
+    private var lowMemoryWarningShown: Bool = false
+    static var previewImages: [String: UIImage] = [:]
+    private var measuringMode: Int = 0
     
     @IBOutlet weak var stopButton: UIButton!
     @IBOutlet weak var recordButton: UIButton!
@@ -106,6 +114,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     @IBOutlet weak var statusLabel: UILabel!
     @IBOutlet weak var closeVisualizationButton: UIButton!
     @IBOutlet weak var stopCameraButton: UIButton!
+    @IBOutlet weak var stopMeasuringButton: UIButton!
+    @IBOutlet weak var teleportButton: UIButton!
+    @IBOutlet weak var addMeasureButton: UIButton!
+    @IBOutlet weak var removeMeasureButton: UIButton!
+    @IBOutlet weak var measuringModeButton: UIButton!
     @IBOutlet weak var exportOBJPLYButton: UIButton!
     @IBOutlet weak var orthoDistanceSlider: UISlider!{
         didSet{
@@ -175,12 +188,45 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
+    func addShadow(_ view: UIView, _ offset: Int = 4)
+    {
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowRadius = 3.0
+        view.layer.shadowOpacity = 1.0
+        view.layer.shadowOffset = CGSize(width: offset, height: offset)
+        view.layer.masksToBounds = false
+    }
+    
     override func viewDidLoad() {
+        
+        mMaximumMemory = getAvailableMemory()
+        
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
         self.toastLabel.isHidden = true
         session.delegate = self
+        
+        addShadow(stopButton)
+        addShadow(recordButton)
+        addShadow(menuButton)
+        addShadow(viewButton)
+        addShadow(newScanButtonLarge)
+        addShadow(libraryButton)
+        addShadow(closeVisualizationButton)
+        addShadow(stopCameraButton)
+        addShadow(stopMeasuringButton)
+        addShadow(teleportButton)
+        addShadow(addMeasureButton)
+        addShadow(removeMeasureButton)
+        addShadow(measuringModeButton)
+        addShadow(exportOBJPLYButton)
+        
+        addShadow(statusLabel, 0)
+        addShadow(toastLabel, 0)
+        
+        addShadow(orthoDistanceSlider, 0)
+        addShadow(orthoGridSlider, 0)
         
         depthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
         
@@ -236,6 +282,20 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.updateState(state: self.mState)
         }
     }
+
+    func progressStatusUpdate() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if self.mState == .STATE_PROCESSING && self.statusShown
+            {
+                let availableMem = self.getAvailableMemory()
+                let usedMem = self.mMaximumMemory - availableMem;
+                self.statusLabel.text =
+                    "Status: \(self.getStateString(state: self.mState))\n" +
+                    "RAM Usage (MB): \(usedMem) / \(self.mMaximumMemory)"
+                self.progressStatusUpdate()
+            }
+        }
+    }
     
     func progressUpdated(_ rtabmap: RTABMap, count: Int, max: Int) {
         DispatchQueue.main.async {
@@ -280,10 +340,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.showToast(message: "Optimized mesh detected in the database, it is shown while the database is loading...", seconds: 3)
             }
 
-            let usedMem = self.getMemoryUsage()
+            let availableMem = self.getAvailableMemory()
+            let usedMem = self.mMaximumMemory - availableMem;
             self.statusLabel.text =
                 "Status: " + (status == 1 && msg.isEmpty ? self.mState == State.STATE_CAMERA ? "Camera Preview" : "Idle" : msg) + "\n" +
-                "Memory Usage: \(usedMem) MB"
+            	"RAM Usage (MB): \(usedMem) / \(self.mMaximumMemory)"
         }
     }
         
@@ -316,7 +377,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                            pitch: Float,
                            yaw: Float)
     {
-        let usedMem = self.getMemoryUsage()
+        let availableMem = self.getAvailableMemory()
+        let usedMem = self.mMaximumMemory - availableMem;
         
         if(loopClosureId > 0)
         {
@@ -339,7 +401,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.statusLabel.text =
                     self.statusLabel.text! +
                     "Status: \(self.getStateString(state: self.mState))\n" +
-                    "Memory Usage : \(usedMem) MB"
+                	"RAM Usage (MB): \(usedMem) / \(self.mMaximumMemory)"
             }
             if self.debugShown {
                 self.statusLabel.text =
@@ -426,6 +488,43 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     self.showToast(message: "Landmark \(landmarkDetected) detected!", seconds: 1);
                 }
             }
+            if(self.mState == .STATE_MAPPING)
+            {
+                if(availableMem < 400)
+                {
+                    let msg = "Scanning will be stopped because the free memory is too "
+                    + "low (\(availableMem) MB). You should be able to save the database but some post-processing and exporting options may fail. "
+                    + "\n\nNote that for large environments, you can save multiple databases and "
+                    + "merge them with RTAB-Map Desktop version."
+                    let alert = UIAlertController(title: "Memory is full!", message: msg, preferredStyle: .alert)
+                    let alertActionYes = UIAlertAction(title: "Ok", style: .default) {
+                        (UIAlertAction) -> Void in
+                        self.stopMapping(ignoreSaving: false, offerPostProcessing: false);
+                    }
+                    alert.addAction(alertActionYes)
+                    self.present(alert, animated: true, completion: nil)
+                }
+                else if(!self.lowMemoryWarningShown && usedMem*3 > availableMem && !self.mDataRecording)
+                {
+                    self.lowMemoryWarningShown = true
+                    let msg = "Available memory (\(availableMem) MB) should be at least 3 times the "
+                    + "memory used (\(usedMem) MB) so that some post-processing and exporting options "
+                    + "have enough memory to work correctly. If you just want to save the database "
+                    + "after scanning, you can continue until the next warning.\n\n"
+                    + "Note that showing only point clouds and/or decrease density reduce memory needed for rendering."
+                    let alert = UIAlertController(title: "Memory is full!", message: msg, preferredStyle: .alert)
+                    let alertActionYes = UIAlertAction(title: "Stop Now", style: .default) {
+                        (UIAlertAction) -> Void in
+                        self.stopMapping(ignoreSaving: false);
+                    }
+                    alert.addAction(alertActionYes)
+                    let alertActionNo = UIAlertAction(title: "Continue", style: .cancel) {
+                        (UIAlertAction) -> Void in
+                    }
+                    alert.addAction(alertActionNo)
+                    self.present(alert, animated: true, completion: nil)
+                }
+            }
         }
     }
     
@@ -439,27 +538,12 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
     }
     
-    func getMemoryUsage() -> UInt64 {
-        var taskInfo = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
-            }
-        }
-
-        if kerr == KERN_SUCCESS {
-            return taskInfo.resident_size / (1024*1024)
-        }
-        else {
-            print("Error with task_info(): " +
-                (String(cString: mach_error_string(kerr), encoding: String.Encoding.ascii) ?? "unknown error"))
-            return 0
-        }
+    func getAvailableMemory() -> Int {
+        return os_proc_available_memory()/(1024*1024)
     }
     
     @objc func appMovedToBackground() {
-        if(mState == .STATE_VISUALIZING_CAMERA || mState == .STATE_MAPPING || mState == .STATE_CAMERA)
+        if(mState == .STATE_VISUALIZING_CAMERA || mState == .STATE_VISUALIZING_AND_MEASURING || mState == .STATE_MAPPING || mState == .STATE_CAMERA)
         {
             stopMapping(ignoreSaving: true)
         }
@@ -510,29 +594,33 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         switch AVCaptureDevice.authorizationStatus(for: .video) {
             case .authorized: // The user has previously granted access to the camera.
                 print("Start Camera")
-                rtabmap!.startCamera()
+            	rtabmap!.startCamera()
                 let configuration = ARWorldTrackingConfiguration()
                 var message = ""
-                if(!UserDefaults.standard.bool(forKey: "LidarMode"))
-                {
-                    message = "LiDAR is disabled (Settings->Mapping->LiDAR Mode = OFF), only tracked features will be mapped."
-                    self.setMeshRendering(viewMode: 0)
-                }
-                else if !depthSupported
-                {
-                    message = "The device does not have a LiDAR, only tracked features will be mapped. A LiDAR is required for accurate 3D reconstruction."
-                    self.setMeshRendering(viewMode: 0)
-                }
-                else
-                {
-                    configuration.frameSemantics = .sceneDepth
-                }
+            	if(mState != .STATE_VISUALIZING_AND_MEASURING)
+            	{
+                	if(!UserDefaults.standard.bool(forKey: "LidarMode"))
+                	{
+       		        	message = "LiDAR is disabled (Settings->Mapping->LiDAR Mode = OFF), only tracked features will be mapped."
+       		        	self.setMeshRendering(viewMode: 0)
+        	    	}
+                	else if !depthSupported
+                	{
+                    	message = "The device does not have a LiDAR, only tracked features will be mapped. A LiDAR is required for accurate 3D reconstruction."
+                    	self.setMeshRendering(viewMode: 0)
+                	}
+                	else
+                	{
+                    	configuration.frameSemantics = .sceneDepth
+                	}
+            	}
                 
                 session.run(configuration, options: [.resetSceneReconstruction, .resetTracking, .removeExistingAnchors])
                 
                 switch mState {
-                case .STATE_VISUALIZING:
-                    updateState(state: .STATE_VISUALIZING_CAMERA)
+                case .STATE_VISUALIZING_AND_MEASURING,
+                    .STATE_VISUALIZING_CAMERA:
+                    break // State should be already set
                 default:
                     locationManager?.startUpdatingLocation()
                     updateState(state: .STATE_CAMERA)
@@ -599,6 +687,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         var actionExportEnabled: Bool
         var actionOptimizeEnabled: Bool
         var actionSettingsEnabled: Bool
+        var actionMeasuringEnabled: Bool
         
         switch mState {
         case .STATE_CAMERA:
@@ -611,9 +700,14 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             stopButton.isHidden = true
             closeVisualizationButton.isHidden = true
             stopCameraButton.isHidden = false
+            stopMeasuringButton.isHidden = true
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3
             orthoGridSlider.isHidden = cameraMode != 3
+            teleportButton.isHidden = true
+            addMeasureButton.isHidden = true
+            removeMeasureButton.isHidden = true
+            measuringModeButton.isHidden = true
             actionNewScanEnabled = !mDataRecording
             actionNewDataRecording = mDataRecording
             actionSaveEnabled = false
@@ -621,6 +715,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             actionExportEnabled = false
             actionOptimizeEnabled = false
             actionSettingsEnabled = false
+            actionMeasuringEnabled = false
         case .STATE_MAPPING:
             libraryButton.isEnabled = false
             libraryButton.isHidden = !mHudVisible
@@ -631,9 +726,14 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             stopButton.isHidden = false
             closeVisualizationButton.isHidden = true
             stopCameraButton.isHidden = true
+            stopMeasuringButton.isHidden = true
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
+            teleportButton.isHidden = true
+            addMeasureButton.isHidden = true
+            removeMeasureButton.isHidden = true
+            measuringModeButton.isHidden = true
             actionNewScanEnabled = !mDataRecording
             actionNewDataRecording = mDataRecording
             actionSaveEnabled = false
@@ -641,9 +741,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             actionExportEnabled = false
             actionOptimizeEnabled = false
             actionSettingsEnabled = false
+            actionMeasuringEnabled = false
         case .STATE_PROCESSING,
              .STATE_VISUALIZING_WHILE_LOADING,
-             .STATE_VISUALIZING_CAMERA:
+             .STATE_VISUALIZING_CAMERA,
+             .STATE_VISUALIZING_AND_MEASURING:
             libraryButton.isEnabled = false
             libraryButton.isHidden = !mHudVisible
             menuButton.isHidden = !mHudVisible
@@ -653,9 +755,14 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             stopButton.isHidden = true
             closeVisualizationButton.isHidden = true
             stopCameraButton.isHidden = mState != .STATE_VISUALIZING_CAMERA
+            stopMeasuringButton.isHidden = mState != .STATE_VISUALIZING_AND_MEASURING
             exportOBJPLYButton.isHidden = true
-            orthoDistanceSlider.isHidden = cameraMode != 3 || mState != .STATE_VISUALIZING_WHILE_LOADING
-            orthoGridSlider.isHidden = cameraMode != 3 || mState != .STATE_VISUALIZING_WHILE_LOADING
+            orthoDistanceSlider.isHidden = cameraMode != 3 || mState == .STATE_PROCESSING
+            orthoGridSlider.isHidden = cameraMode != 3 || mState == .STATE_PROCESSING
+            teleportButton.isHidden = mState != .STATE_VISUALIZING_AND_MEASURING || cameraMode != 0
+            addMeasureButton.isHidden = mState != .STATE_VISUALIZING_AND_MEASURING || cameraMode == 3
+            removeMeasureButton.isHidden = mState != .STATE_VISUALIZING_AND_MEASURING || cameraMode == 3
+            measuringModeButton.isHidden = true
             actionNewScanEnabled = false
             actionNewDataRecording = false
             actionSaveEnabled = false
@@ -663,6 +770,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             actionExportEnabled = false
             actionOptimizeEnabled = false
             actionSettingsEnabled = false
+            actionMeasuringEnabled = mState == .STATE_VISUALIZING_AND_MEASURING
         case .STATE_VISUALIZING:
             libraryButton.isEnabled = !databases.isEmpty
             libraryButton.isHidden = !mHudVisible
@@ -673,9 +781,14 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             stopButton.isHidden = true
             closeVisualizationButton.isHidden = !mHudVisible
             stopCameraButton.isHidden = true
+            stopMeasuringButton.isHidden = true
             exportOBJPLYButton.isHidden = !mHudVisible
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
+            teleportButton.isHidden = true
+            addMeasureButton.isHidden = true
+            removeMeasureButton.isHidden = true
+            measuringModeButton.isHidden = !mHudVisible
             actionNewScanEnabled = true
             actionNewDataRecording = true
             actionSaveEnabled = mMapNodes>0
@@ -683,6 +796,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             actionExportEnabled = mMapNodes>0
             actionOptimizeEnabled = mMapNodes>0
             actionSettingsEnabled = true
+            actionMeasuringEnabled = true
         default: // IDLE // WELCOME
             libraryButton.isEnabled = !databases.isEmpty
             libraryButton.isHidden = mState != .STATE_WELCOME && !mHudVisible
@@ -693,9 +807,14 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             stopButton.isHidden = true
             closeVisualizationButton.isHidden = true
             stopCameraButton.isHidden = true
+            stopMeasuringButton.isHidden = true
             exportOBJPLYButton.isHidden = true
             orthoDistanceSlider.isHidden = cameraMode != 3 || !mHudVisible
             orthoGridSlider.isHidden = cameraMode != 3 || !mHudVisible
+            teleportButton.isHidden = true
+            addMeasureButton.isHidden = true
+            removeMeasureButton.isHidden = true
+            measuringModeButton.isHidden = true
             actionNewScanEnabled = true
             actionNewDataRecording = true
             actionSaveEnabled = mState != .STATE_WELCOME && mMapNodes>0
@@ -703,10 +822,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             actionExportEnabled = mState != .STATE_WELCOME && mMapNodes>0
             actionOptimizeEnabled = mState != .STATE_WELCOME && mMapNodes>0
             actionSettingsEnabled = true
+            actionMeasuringEnabled = false
         }
 
         let view = self.view as? GLKView
-        if(mState != .STATE_MAPPING && mState != .STATE_CAMERA && mState != .STATE_VISUALIZING_CAMERA)
+        if(mState != .STATE_MAPPING && mState != .STATE_CAMERA && mState != .STATE_VISUALIZING_CAMERA && mState != .STATE_VISUALIZING_AND_MEASURING)
         {
             self.isPaused = true
             view?.enableSetNeedsDisplay = true
@@ -786,6 +906,25 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             	self.newScan(dataRecordingMode: true)
         	})
         ])
+        
+        // Measuring menu
+        print("measuringMode = \(measuringMode)")
+        let measuringMenu = UIMenu(title: "Measuring...", image: UIImage(systemName: "ruler"), children: [
+            UIAction(title: "Plane to Plane Mode", image: measuringMode == 0 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), handler: { _ in
+                self.measuringMode = 0
+                self.rtabmap!.setMeasuringMode(self.measuringMode)
+                self.resetNoTouchTimer(true)
+            }),
+            UIAction(title: "Point to Point Mode", image: measuringMode == 2 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), handler: { _ in
+                self.measuringMode = 2
+                self.rtabmap!.setMeasuringMode(self.measuringMode)
+                self.resetNoTouchTimer(true)
+            }),
+            UIAction(title: "Clear All Measures", image: UIImage(systemName: "trash"), state: .off, handler: { _ in
+                self.clearMeasures();
+                self.resetNoTouchTimer(true)
+            })
+        ])
                 
         var fileMenuChildren: [UIMenuElement] = []
         fileMenuChildren.append(UIAction(title: "New Mapping Session", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
@@ -811,6 +950,13 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         fileMenuChildren.append(UIAction(title: "Append Scan", image: UIImage(systemName: "play.fill"), attributes: actionResumeEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.resumeScan()
         }))
+        if(actionMeasuringEnabled) {
+            fileMenuChildren.append(measuringMenu)
+        }
+        else {
+            fileMenuChildren.append(UIAction(title: "Measuring...", image: UIImage(systemName: "ruler"), attributes: .disabled, state: .off, handler: { _ in
+            }))
+        }
         fileMenuChildren.append(advancedMenu)
         
         // File menu
@@ -826,7 +972,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.debugShown = !self.debugShown
                 self.resetNoTouchTimer(true)
             }),
-            UIAction(title: "Odom Visible", image: odomShown ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: (self.mState == .STATE_MAPPING || self.mState == .STATE_CAMERA || self.mState == .STATE_VISUALIZING_CAMERA) ? [] : .disabled, handler: { _ in
+            UIAction(title: "Odom Visible", image: odomShown ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: (self.mState == .STATE_MAPPING || self.mState == .STATE_CAMERA || self.mState == .STATE_VISUALIZING_CAMERA || self.mState == .STATE_VISUALIZING_AND_MEASURING) ? [] : .disabled, handler: { _ in
                 self.odomShown = !self.odomShown
                 self.rtabmap!.setOdomCloudShown(shown: self.odomShown)
                 self.resetNoTouchTimer(true)
@@ -886,7 +1032,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 self.rtabmap!.setWireframe(enabled: self.wireframeShown)
                 self.resetNoTouchTimer(true)
             }),
-            UIAction(title: "Lighting", image: self.lightingShown ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: self.mState == .STATE_VISUALIZING || self.mState == .STATE_VISUALIZING_CAMERA || self.mState == .STATE_VISUALIZING_WHILE_LOADING ? [] : .disabled, handler: { _ in
+            UIAction(title: "Lighting", image: self.lightingShown ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: self.mState == .STATE_VISUALIZING || self.mState == .STATE_VISUALIZING_CAMERA || self.mState == .STATE_VISUALIZING_AND_MEASURING || self.mState == .STATE_VISUALIZING_WHILE_LOADING ? [] : .disabled, handler: { _ in
                 self.lightingShown = !self.lightingShown
                 self.rtabmap!.setLighting(enabled: self.lightingShown)
                 self.resetNoTouchTimer(true)
@@ -899,21 +1045,21 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         ])
         
         let cameraMenu = UIMenu(title: "View", options: .displayInline, children: [
-            UIAction(title: "First-P. View", image: cameraMode == 0 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: (self.mState == .STATE_CAMERA || self.mState == .STATE_VISUALIZING || self.mState == .STATE_MAPPING || self.mState == .STATE_VISUALIZING_CAMERA) ? [] : .disabled, handler: { _ in
+            UIAction(title: "First-P. View", image: cameraMode == 0 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: (self.mState == .STATE_CAMERA || self.mState == .STATE_VISUALIZING || self.mState == .STATE_MAPPING || self.mState == .STATE_VISUALIZING_CAMERA || self.mState == .STATE_VISUALIZING_AND_MEASURING) ? [] : .disabled, handler: { _ in
                 self.setGLCamera(type: 0)
                 if(self.mState == .STATE_VISUALIZING)
                 {
                     self.rtabmap?.setLocalizationMode(enabled: true)
                     self.rtabmap?.setPausedMapping(paused: false);
-                    self.startCamera()
                     self.updateState(state: .STATE_VISUALIZING_CAMERA)
+                    self.startCamera()
                 }
                 else
                 {
                     self.resetNoTouchTimer(true)
                 }
             }),
-            UIAction(title: "Third-P. View", image: cameraMode == 1 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), handler: { _ in
+            UIAction(title: "Third-P. View", image: cameraMode == 1 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: (self.mState != .STATE_VISUALIZING_AND_MEASURING) ? [] : .disabled, handler: { _ in
                 self.setGLCamera(type: 1)
                 self.resetNoTouchTimer(true)
             }),
@@ -927,7 +1073,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             })
         ])
         
-        let showCloudMeshActions = mState != .STATE_VISUALIZING && mState != .STATE_VISUALIZING_CAMERA && mState != .STATE_PROCESSING && mState != .STATE_VISUALIZING_WHILE_LOADING
+        let showCloudMeshActions = mState != .STATE_VISUALIZING && mState != .STATE_VISUALIZING_CAMERA && mState != .STATE_VISUALIZING_AND_MEASURING && mState != .STATE_PROCESSING && mState != .STATE_VISUALIZING_WHILE_LOADING
         let cloudMeshMenu = UIMenu(title: "CloudMesh", options: .displayInline, children: [
             UIAction(title: "Point Cloud", image: viewMode == 0 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: showCloudMeshActions ? [] : .disabled, handler: { _ in
                 self.setMeshRendering(viewMode: 0)
@@ -1409,6 +1555,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap!.setMaxGainRadius(value: defaults.float(forKey: "ColorCorrectionRadius"));
         rtabmap!.setRenderingTextureDecimation(value: defaults.integer(forKey: "TextureResolution"));
         
+        rtabmap!.setMetricSystem(defaults.integer(forKey: "MeasuringUnits") == 0);
+        rtabmap!.setMeasuringTextSize(defaults.float(forKey: "MeasuringTextSize"));
+        
         if(locationManager != nil && !defaults.bool(forKey: "SaveGPS"))
         {
             locationManager?.stopUpdatingLocation()
@@ -1750,6 +1899,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.progressView!.tintColor = self.view.tintColor
             alertView.view.addSubview(self.progressView!)
             
+            self.progressStatusUpdate() // This will update memory usage during post processing
+            
             var success : Bool = false
             DispatchQueue.background(background: {
                 
@@ -1856,6 +2007,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.progressView!.tintColor = self.view.tintColor
             alertView.view.addSubview(self.progressView!)
             
+            self.progressStatusUpdate() // This will update memory usage during post processing
+            
             var loopDetected : Int = -1
             DispatchQueue.background(background: {
                 loopDetected = self.rtabmap!.postProcessing(approach: approach);
@@ -1898,7 +2051,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         })
     }
     
-    func stopMapping(ignoreSaving: Bool)
+    func stopMapping(ignoreSaving: Bool, offerPostProcessing: Bool = true)
     {
         session.pause()
         locationManager?.stopUpdatingLocation()
@@ -1913,11 +2066,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         {
             self.rtabmap?.setLocalizationMode(enabled: false)
         }
-        updateState(state: mState == .STATE_VISUALIZING_CAMERA ? .STATE_VISUALIZING : .STATE_IDLE);
+        updateState(state: mState == .STATE_VISUALIZING_CAMERA || mState == .STATE_VISUALIZING_AND_MEASURING ? .STATE_VISUALIZING : .STATE_IDLE);
         
         if !ignoreSaving
         {
-            if(mDataRecording)
+            if(mDataRecording || !offerPostProcessing)
             {
                 // Go directly to save
                 self.save()
@@ -2313,6 +2466,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
     @IBAction func recordAction(_ sender: UIButton) {
         rtabmap?.setPausedMapping(paused: false);
+        lowMemoryWarningShown = false
         updateState(state: .STATE_MAPPING)
     }
     
@@ -2343,6 +2497,26 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     @IBAction func clipDistanceAction(_ sender: UISlider) {
         rtabmap!.setOrthoCropFactor(Float(120-sender.value)/20.0 - 3.0)
         self.view.setNeedsDisplay()
+    }
+    
+    @IBAction func removeMeasureAction(_ sender: UIButton) {
+        self.rtabmap!.removeMeasure()
+    }
+    @IBAction func addMeasureAction(_ sender: UIButton) {
+        self.rtabmap!.addMeasureButtonClicked()
+    }
+    @IBAction func teleportButtonAction(_ sender: UIButton) {
+        self.rtabmap!.teleportButtonClicked()
+    }
+    func clearMeasures()
+    {
+        self.rtabmap!.clearMeasures()
+        self.resetNoTouchTimer(true)
+    }
+    @IBAction func startMeasuring(_ sender: UIButton) {
+        self.setGLCamera(type: 0)
+        self.updateState(state: .STATE_VISUALIZING_AND_MEASURING)
+        self.startCamera()
     }
 }
 
