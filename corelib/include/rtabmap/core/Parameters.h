@@ -488,6 +488,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #endif
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 10, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustmentMinMotion, float, 0.0, "To create a new keyframe with bundle adjustment, a minimum motion (in pixels) can be required. The motion is computed by the average distance between inliers of the previous keyframe and new frame.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxKeyFramesPerFeature, int, 0, "Maximum keyframes per feature for bundle adjustment. 0 means not limit.");
 
     // Odometry Mono
     RTABMAP_PARAM(OdomMono, InitMinFlow,        float, 100,  "Minimum optical flow required for the initialization step.");
