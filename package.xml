@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>rtabmap</name>
-  <version>0.21.9</version>
+  <version>0.21.10</version>
   <description>RTAB-Map's standalone library. RTAB-Map is a RGB-D SLAM approach with real-time constraints.</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
   <author>Mathieu Labbe</author>
@@ -22,7 +22,7 @@
   <!-- <depend>libproj-dev</depend> needed due to error in vtk6 (kinetic)-->
   <depend>libsqlite3-dev</depend>
   <depend>liboctomap-dev</depend>
-  <depend>grid_map_core</depend>
+  <!-- <depend>grid_map_core</depend> --> <!-- till this PR is released https://github.com/ANYbotics/grid_map/pull/499 -->
   <depend>qt_gui_cpp</depend> <!-- libqt4-dev or libqt5-dev -->
   <depend>zlib</depend>
 
