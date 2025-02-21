@@ -50,6 +50,7 @@ public:
 		localBundleConstraints(0),
 		localBundleTime(0),
 		localBundleAvgInlierDistance(0.0f),
+		localBundleMaxKeyFramesForInlier(0),
 		keyFrameAdded(false),
 		timeDeskewing(0.0f),
 		timeEstimation(0.0f),
@@ -78,6 +79,7 @@ public:
 		output.localBundlePoses = localBundlePoses;
 		output.localBundleModels = localBundleModels;
 		output.localBundleAvgInlierDistance = localBundleAvgInlierDistance;
+		output.localBundleAvgInlierDistance = localBundleMaxKeyFramesForInlier;
 		output.keyFrameAdded = keyFrameAdded;
 		output.timeDeskewing = timeDeskewing;
 		output.timeEstimation = timeEstimation;
@@ -109,6 +111,7 @@ public:
 	std::map<int, Transform> localBundlePoses;
 	std::map<int, std::vector<CameraModel> > localBundleModels;
 	float localBundleAvgInlierDistance;
+	int localBundleMaxKeyFramesForInlier;
 	bool keyFrameAdded;
 	float timeDeskewing;
 	float timeEstimation;

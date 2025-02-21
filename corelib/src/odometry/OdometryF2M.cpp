@@ -543,6 +543,7 @@ Transform OdometryF2M::computeTransform(
 										// Estimate how much the new frame moved from previous frame in term of pixels
 										UASSERT(!bundlePoses_.empty());
 										int count = 0;
+										int maxKeyFrames = 0;
 										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 										{
 											std::map<int, std::map<int, FeatureBA> >::iterator wter = wordReferences.find(regInfo.inliersIDs[i]);
@@ -558,6 +559,13 @@ Transform OdometryF2M::computeTransform(
 													bundleAvgInlierDistance += sqrt(dx*dx + dy*dy);
 													++count;
 												}
+												if(info)
+												{
+													if(wter->second.size() > maxKeyFrames)
+													{
+														maxKeyFrames = wter->second.size();
+													}
+												}
 											}
 										}
 										if(count)
@@ -568,6 +576,7 @@ Transform OdometryF2M::computeTransform(
 										if(info)
 										{
 											info->localBundleAvgInlierDistance = bundleAvgInlierDistance;
+											info->localBundleMaxKeyFramesForInlier = maxKeyFrames;
 										}
 										
 									}
