@@ -391,6 +391,7 @@ Transform OdometryF2M::computeTransform(
 
 							UDEBUG("Fill matches (%d)", (int)regInfo.inliersIDs.size());
 							std::map<int, std::map<int, FeatureBA> > wordReferences;
+							size_t maxKeyFramesForInlier = 0;
 							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 							{
 								int wordId =regInfo.inliersIDs[i];
@@ -403,6 +404,10 @@ Transform OdometryF2M::computeTransform(
 								// all other references
 								std::map<int, std::map<int, FeatureBA> >::iterator refIter = bundleWordReferences_.find(wordId);
 								UASSERT_MSG(refIter != bundleWordReferences_.end(), uFormat("wordId=%d", wordId).c_str());
+								if(info && refIter->second.size() > maxKeyFramesForInlier)
+								{
+									maxKeyFramesForInlier = refIter->second.size();
+								}
 
 								std::map<int, FeatureBA> references;
 								int step = bundleMaxFrames_>0?(refIter->second.size() / bundleMaxFrames_):1;
@@ -477,6 +482,7 @@ Transform OdometryF2M::computeTransform(
 							{
 								info->localBundlePoses = bundlePoses;
 								info->localBundleModels = bundleModels;
+								info->localBundleMaxKeyFramesForInlier = maxKeyFramesForInlier;
 							}
 
 							UDEBUG("Local Bundle Adjustment Before: %s", transform.prettyPrint().c_str());
@@ -541,53 +547,37 @@ Transform OdometryF2M::computeTransform(
 											regInfo.covariance.at<double>(5,5) *= 0.1;
 
 										// Estimate how much the new frame moved from previous frame in term of pixels
-										UASSERT(!bundlePoses_.empty());
-										int count = 0;
-										size_t maxKeyFrames = 0;
-										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
+										if(bundleMinMotion_ > 0.0f)
 										{
-											std::map<int, std::map<int, FeatureBA> >::iterator wter = wordReferences.find(regInfo.inliersIDs[i]);
-											if(wter != wordReferences.end())
+											UASSERT(!bundlePoses_.empty());
+											int count = 0;
+											for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 											{
-												std::map<int, FeatureBA>::iterator fter = wter->second.find(bundlePoses_.rbegin()->first);
-												if(fter != wter->second.end())
+												std::map<int, std::map<int, FeatureBA> >::iterator wter = wordReferences.find(regInfo.inliersIDs[i]);
+												if(wter != wordReferences.end())
 												{
-													const FeatureBA & f1 = fter->second; // previous key-frame
-													const FeatureBA & f2 = wter->second.find(lastFrame_->id())->second; // current key-frame
-													float dx = f1.kpt.pt.x - f2.kpt.pt.x;
-													float dy = f1.kpt.pt.y - f2.kpt.pt.y;
-													bundleAvgInlierDistance += sqrt(dx*dx + dy*dy);
-													++count;
-												}
-												if(info && bundleMaxFrames_ == 0)
-												{
-													if(wter->second.size() > maxKeyFrames)
+													std::map<int, FeatureBA>::iterator fter = wter->second.find(bundlePoses_.rbegin()->first);
+													if(fter != wter->second.end())
 													{
-														maxKeyFrames = wter->second.size();
+														const FeatureBA & f1 = fter->second; // previous key-frame
+														const FeatureBA & f2 = wter->second.find(lastFrame_->id())->second; // current key-frame
+														float dx = f1.kpt.pt.x - f2.kpt.pt.x;
+														float dy = f1.kpt.pt.y - f2.kpt.pt.y;
+														bundleAvgInlierDistance += sqrt(dx*dx + dy*dy);
+														++count;
 													}
 												}
 											}
-											if(info && bundleMaxFrames_ > 0)
+											if(count)
 											{
-												// Use main data holder to get more accurate results if we filter frames
-												wter = bundleWordReferences_.find(regInfo.inliersIDs[i]);
-												if(wter != bundleWordReferences_.end() && wter->second.size() > maxKeyFrames)
-												{
-													maxKeyFrames = wter->second.size();
-												}
+												bundleAvgInlierDistance /= count;
+											}
+											UDEBUG("Average pixel distance between %d inliers: %f", count, bundleAvgInlierDistance);
+											if(info)
+											{
+												info->localBundleAvgInlierDistance = bundleAvgInlierDistance;
 											}
 										}
-										if(count)
-										{
-											bundleAvgInlierDistance /= count;
-										}
-										UDEBUG("Average pixel distance between %d inliers: %f", count, bundleAvgInlierDistance);
-										if(info)
-										{
-											info->localBundleAvgInlierDistance = bundleAvgInlierDistance;
-											info->localBundleMaxKeyFramesForInlier = maxKeyFrames;
-										}
-										
 									}
 									UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());
 								}
@@ -659,7 +649,7 @@ Transform OdometryF2M::computeTransform(
 						  visKeyFrameThr_ == 0 ||
 						  float(regInfo.inliers) <= (keyFrameThr_*float(lastFrame_->getWords().size())) ||
 						  regInfo.inliers <= visKeyFrameThr_) &&
-						  (bundleAdjustment_==0 || bundleAvgInlierDistance > bundleMinMotion_);
+						  (bundleAdjustment_==0 || bundleAvgInlierDistance >= bundleMinMotion_);
 
 				bool addGeometricKeyFrame = regPipeline_->isScanRequired() &&
 					(scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_);

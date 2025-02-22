@@ -79,7 +79,7 @@ public:
 		output.localBundlePoses = localBundlePoses;
 		output.localBundleModels = localBundleModels;
 		output.localBundleAvgInlierDistance = localBundleAvgInlierDistance;
-		output.localBundleAvgInlierDistance = localBundleMaxKeyFramesForInlier;
+		output.localBundleMaxKeyFramesForInlier = localBundleMaxKeyFramesForInlier;
 		output.keyFrameAdded = keyFrameAdded;
 		output.timeDeskewing = timeDeskewing;
 		output.timeEstimation = timeEstimation;
