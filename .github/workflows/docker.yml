@@ -172,21 +172,21 @@ jobs:
         uses: actions/checkout@v2
       - 
         name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: all
       -
         name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
       -
         name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -194,6 +194,7 @@ jobs:
           file: ./docker/${{ matrix.docker_path }}/Dockerfile
           build-args: |
             ${{ matrix.docker_args }}
+          ulimit: stack=33554432:33554432
           tags: ${{ matrix.docker_tags }}
           cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
           cache-to: type=inline
