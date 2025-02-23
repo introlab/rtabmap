@@ -2204,7 +2204,6 @@ cv::Mat mergeTextures(
 				}
 				if(colorOffset>0)
 				{
-					// Copy texture color to the vertex color
 					pcl::IndicesPtr notTexturedVertexIndices(new pcl::Indices());
 					UASSERT(mesh.tex_coordinates.size() == mesh.tex_polygons.size());
 					for(size_t t=0; t<mesh.tex_polygons.size(); ++t)
@@ -2236,7 +2235,7 @@ cv::Mat mergeTextures(
 					}
 					// Set up the full indices set
 					pcl::Indices full_indices (mesh.cloud.width * mesh.cloud.height);
-					for (pcl::index_t fii = 0; fii < static_cast<pcl::index_t> (full_indices.size ()); ++fii)  // fii = full indices iterator
+					for (size_t fii = 0; fii < full_indices.size(); ++fii)  // fii = full indices iterator
 						full_indices[fii] = fii;
 
 					// Set up the sorted input indices
