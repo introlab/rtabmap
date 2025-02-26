@@ -48,7 +48,7 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
 				   int startId,
-				   int cameraIndex,
+				   const std::vector<unsigned int> & cameraIndices,
 				   int stopId,
 				   bool intermediateNodesIgnored,
 				   bool landmarksIgnored,
@@ -63,7 +63,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_goalsIgnored(goalsIgnored),
 	_startId(startId),
 	_stopId(stopId),
-	_cameraIndex(cameraIndex),
+	_cameraIndices(cameraIndices),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
@@ -94,7 +94,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
 				   int startId,
-				   int cameraIndex,
+				   const std::vector<unsigned int> & cameraIndices,
 				   int stopId,
 				   bool intermediateNodesIgnored,
 				   bool landmarksIgnored,
@@ -109,7 +109,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_goalsIgnored(goalsIgnored),
 	_startId(startId),
 	_stopId(stopId),
-	_cameraIndex(cameraIndex),
+	_cameraIndices(cameraIndices),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
@@ -557,34 +557,77 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 			}
 
 			data.uncompressData();
-			if(data.cameraModels().size() > 1 &&
-				_cameraIndex >= 0)
+			std::map<int, int> cameraOldNewIndices;
+			std::vector<CameraModel> dbModels = data.cameraModels();
+			if(dbModels.empty() && !data.stereoCameraModels().empty())
 			{
-				if(_cameraIndex < (int)data.cameraModels().size())
+				for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
 				{
-					// select one camera
-					int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
-					cv::Mat image;
+					dbModels.push_back(data.stereoCameraModels()[i].left());
+				}
+			}
+			if(dbModels.size() > 1 &&
+				!_cameraIndices.empty())
+			{
+				cv::Mat combinedImages;
+				cv::Mat combinedDepthImages;
+				std::vector<CameraModel> combinedModels;
+				std::vector<StereoCameraModel> combinedStereoModels;
+				for(size_t i=0; i<_cameraIndices.size(); ++i)
+				{
+					UASSERT_MSG(_cameraIndices[i] < dbModels.size(), uFormat("DBReader: camera index %ld is not valid (should be between 0 and %ld)",
+						_cameraIndices[i], dbModels.size()-1).c_str());
+
+					int addedCameras = std::max(combinedModels.size(), combinedStereoModels.size());
+
+					int subImageWidth = data.imageRaw().cols/dbModels.size();
 					UASSERT(!data.imageRaw().empty() &&
-							data.imageRaw().cols % data.cameraModels().size() == 0 &&
-							_cameraIndex*subImageWidth < data.imageRaw().cols);
-					image= cv::Mat(data.imageRaw(),
-						   cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.imageRaw().rows)).clone();
+							data.imageRaw().cols % dbModels.size() == 0 &&
+							(int)_cameraIndices[i]*subImageWidth < data.imageRaw().cols);
+					if(combinedImages.empty())
+					{
+						// initialize with first camera
+						combinedImages = cv::Mat(data.imageRaw().rows, subImageWidth*(_cameraIndices.size()-i), data.imageRaw().type());
+					}
+
+					cv::Mat fromROI = cv::Mat(data.imageRaw(), cv::Rect(_cameraIndices[i]*subImageWidth, 0, subImageWidth, data.imageRaw().rows));
+					cv::Mat toROI = cv::Mat(combinedImages, cv::Rect(addedCameras*subImageWidth, 0, subImageWidth, combinedImages.rows));
+					fromROI.copyTo(toROI);
 
 					cv::Mat depth;
 					if(!data.depthOrRightRaw().empty())
 					{
-						UASSERT(data.depthOrRightRaw().cols % data.cameraModels().size() == 0 &&
-								subImageWidth == data.depthOrRightRaw().cols/(int)data.cameraModels().size() &&
-								_cameraIndex*subImageWidth < data.depthOrRightRaw().cols);
-						depth = cv::Mat(data.depthOrRightRaw(),
-							    cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows)).clone();
+						subImageWidth = data.depthOrRightRaw().cols/dbModels.size();
+						UASSERT(data.depthOrRightRaw().cols % dbModels.size() == 0 &&
+								subImageWidth == data.depthOrRightRaw().cols/(int)dbModels.size() &&
+								(int)_cameraIndices[i]*subImageWidth < data.depthOrRightRaw().cols);
+						if(combinedDepthImages.empty())
+						{
+							// initialize with first camera
+							combinedDepthImages = cv::Mat(data.depthOrRightRaw().rows, subImageWidth*(_cameraIndices.size()-i), data.depthOrRightRaw().type());
+						}
+						fromROI = cv::Mat(data.depthOrRightRaw(), cv::Rect(_cameraIndices[i]*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows));
+						toROI = cv::Mat(combinedDepthImages, cv::Rect(addedCameras*subImageWidth, 0, subImageWidth, combinedDepthImages.rows));
+						fromROI.copyTo(toROI);
 					}
-					data.setRGBDImage(image, depth, data.cameraModels().at(_cameraIndex));
+
+					if(!data.cameraModels().empty())
+					{
+						combinedModels.push_back(data.cameraModels()[_cameraIndices[i]]);
+					}
+					else
+					{
+						combinedStereoModels.push_back(data.stereoCameraModels()[_cameraIndices[i]]);
+					}
+					cameraOldNewIndices.insert(std::make_pair(_cameraIndices[i], i));
+				}
+				if(!combinedModels.empty())
+				{
+					data.setRGBDImage(combinedImages, combinedDepthImages, combinedModels);
 				}
 				else
 				{
-					UWARN("DBReader: Camera index %d doesn't exist! Camera models = %d.", _cameraIndex, (int)data.cameraModels().size());
+					data.setStereoImage(combinedImages, combinedDepthImages, combinedStereoModels);
 				}
 			}
 			data.setId(seq);
@@ -623,7 +666,40 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 			   (keypoints3D.empty() || keypoints.size() == keypoints3D.size()) &&
 			   (descriptors.empty() || (int)keypoints.size() == descriptors.rows))
 			{
-				data.setFeatures(keypoints, keypoints3D, descriptors);
+				if(!cameraOldNewIndices.empty())
+				{
+					cv::Mat newDescriptors;
+					std::vector<cv::KeyPoint> newKeypoints;
+					std::vector<cv::Point3f> newKeypoints3D;
+					UASSERT(!dbModels.empty() && dbModels[0].imageWidth()>0);
+					int subImageWidth = dbModels[0].imageWidth();
+					for(size_t i = 0; i<keypoints.size(); ++i)
+					{
+						int cameraIndex = int(keypoints.at(i).pt.x / subImageWidth);
+						UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)dbModels.size(),
+								uFormat("cameraIndex=%d, db models=%d, kpt.x=%f, image width=%d",
+										cameraIndex, (int)dbModels.size(), keypoints[i].pt.x, subImageWidth).c_str());
+						if(cameraOldNewIndices.find(cameraIndex) != cameraOldNewIndices.end())
+						{
+							int newCameraIndex = cameraOldNewIndices.at(cameraIndex);
+							newKeypoints.push_back(keypoints[i]);
+							newKeypoints.back().pt.x += (newCameraIndex-cameraIndex)*subImageWidth;
+							if(!keypoints3D.empty())
+							{
+								newKeypoints3D.push_back(keypoints3D.at(i));
+							}
+							if(!descriptors.empty())
+							{
+								newDescriptors.push_back(descriptors.row(i));
+							}
+						}
+					}
+					data.setFeatures(newKeypoints, newKeypoints3D, newDescriptors);
+				}
+				else
+				{
+					data.setFeatures(keypoints, keypoints3D, descriptors);
+				}
 			}
 			else if(!_featuresIgnored && !keypoints.empty() && (!keypoints3D.empty() || !descriptors.empty()))
 			{
