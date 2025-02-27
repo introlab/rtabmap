@@ -357,7 +357,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->initialConfig.setMedianFilter(dai::MedianFilter(medianFilter_));
 		auto config = stereo->initialConfig.get();
 		config.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
-		config.censusTransform.kernelMask = 0X2AA00AA805540155;
+		config.censusTransform.kernelMask = 0X5092A28C5152428;
+		config.costMatching.linearEquationParameters.alpha = 2;
+		config.costMatching.linearEquationParameters.beta = 4;
+		config.costAggregation.horizontalPenaltyCostP1 = 100;
+		config.costAggregation.horizontalPenaltyCostP2 = 500;
+		config.costAggregation.verticalPenaltyCostP1 = 100;
+		config.costAggregation.verticalPenaltyCostP2 = 500;
 		config.postProcessing.brightnessFilter.maxBrightness = 255;
 		stereo->initialConfig.set(config);
 
