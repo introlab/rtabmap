@@ -59,8 +59,10 @@ CameraDepthAI::CameraDepthAI(
 	lrcThreshold_(5),
 	resolution_(resolution),
 	extendedDisparity_(false),
-	subpixelFractionalBits_(0),
-	compandingWidth_(0),
+	enableCompanding_(false),
+	subpixelFractionalBits_(3),
+	disparityWidth_(1),
+	medianFilter_(5),
 	useSpecTranslation_(false),
 	alphaScaling_(0.0),
 	imuPublished_(true),
@@ -70,7 +72,7 @@ CameraDepthAI::CameraDepthAI(
 	detectFeatures_(0),
 	useHarrisDetector_(false),
 	minDistance_(7.0),
-	numTargetFeatures_(1000),
+	numTargetFeatures_(320),
 	threshold_(0.01),
 	nms_(true),
 	nmsRadius_(4)
@@ -110,22 +112,15 @@ void CameraDepthAI::setDepthProfile(int confThreshold, int lrcThreshold)
 #endif
 }
 
-void CameraDepthAI::setExtendedDisparity(bool extendedDisparity)
+void CameraDepthAI::setExtendedDisparity(bool extendedDisparity, bool enableCompanding)
 {
 #ifdef RTABMAP_DEPTHAI
 	extendedDisparity_ = extendedDisparity;
-	if(extendedDisparity_)
+	enableCompanding_ = enableCompanding;
+	if(extendedDisparity_ && enableCompanding_)
 	{
-		if(subpixelFractionalBits_>0)
-		{
-			UWARN("Extended disparity has been enabled while subpixel being also enabled, disabling subpixel...");
-			subpixelFractionalBits_ = 0;
-		}
-		if(compandingWidth_>0)
-		{
-			UWARN("Extended disparity has been enabled while companding being also enabled, disabling companding...");
-			compandingWidth_ = 0;
-		}
+		UWARN("Extended disparity has been enabled while companding being also enabled, disabling companding...");
+		enableCompanding_ = 0;
 	}
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
@@ -137,25 +132,22 @@ void CameraDepthAI::setSubpixelMode(bool enabled, int fractionalBits)
 #ifdef RTABMAP_DEPTHAI
 	UASSERT(fractionalBits>=3 && fractionalBits<=5);
 	subpixelFractionalBits_ = enabled?fractionalBits:0;
-	if(subpixelFractionalBits_ != 0 && extendedDisparity_)
-	{
-		UWARN("Subpixel has been enabled while extended disparity being also enabled, disabling extended disparity...");
-		extendedDisparity_ = false;
-	}
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
 #endif
 }
 
-void CameraDepthAI::setCompanding(bool enabled, int width)
+void CameraDepthAI::setDisparityWidthAndFilter(int disparityWidth, int medianFilter)
 {
 #ifdef RTABMAP_DEPTHAI
-	UASSERT(width == 64 || width == 96);
-	compandingWidth_ = enabled?width:0;
-	if(compandingWidth_ != 0 && extendedDisparity_)
+	UASSERT(disparityWidth == 64 || disparityWidth == 96);
+	disparityWidth_ = disparityWidth;
+	medianFilter_ = medianFilter;
+	int maxDisp = (extendedDisparity_?2:1) * std::pow(2,subpixelFractionalBits_) * (disparityWidth_-1);
+	if(medianFilter_ && maxDisp > 1024)
 	{
-		UWARN("Companding has been enabled while extended disparity being also enabled, disabling extended disparity...");
-		extendedDisparity_ = false;
+		UWARN("Maximum disparity value '%d' exceeds the maximum supported '1024' by median filter, disabling median filter...", maxDisp);
+		medianFilter_ = 0;
 	}
 #else
 	UERROR("CameraDepthAI: RTAB-Map is not built with depthai-core support!");
@@ -362,7 +354,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereo->initialConfig.setLeftRightCheck(lrcThreshold_>=0);
 		if(lrcThreshold_>=0)
 			stereo->initialConfig.setLeftRightCheckThreshold(lrcThreshold_);
-		stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
+		stereo->initialConfig.setMedianFilter(dai::MedianFilter(medianFilter_));
 		auto config = stereo->initialConfig.get();
 		config.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
 		config.censusTransform.kernelMask = 0X2AA00AA805540155;
@@ -427,13 +419,15 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	else
 	{
 		if(stereo.get()) {
-			stereo->setSubpixel(subpixelFractionalBits_>=3 && subpixelFractionalBits_<=5);
 			if(subpixelFractionalBits_>=3 && subpixelFractionalBits_<=5)
+			{
+				stereo->setSubpixel(true);
 				stereo->setSubpixelFractionalBits(subpixelFractionalBits_);
+			}
 			auto config = stereo->initialConfig.get();
-			config.costMatching.enableCompanding = compandingWidth_>0;
-			if(compandingWidth_>0)
-				config.costMatching.disparityWidth = compandingWidth_==64?dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64:dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_96;
+			if(disparityWidth_==64)
+				config.costMatching.disparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
+			config.costMatching.enableCompanding = enableCompanding_;
 			stereo->initialConfig.set(config);
 		}
 		if(outputMode_ < 2)

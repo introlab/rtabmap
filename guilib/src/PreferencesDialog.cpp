@@ -863,8 +863,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_depthai_conf_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_lrc_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_extended_disparity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthai_disparity_companding, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_subpixel_fractional_bits, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->comboBox_depthai_disparity_companding, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_disparity_width, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_median_filter, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_use_spec_translation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_alpha_scaling, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_imu_published, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2255,8 +2257,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_depthai_output_mode->setCurrentIndex(0);
 		_ui->spinBox_depthai_conf_threshold->setValue(200);
 		_ui->checkBox_depthai_extended_disparity->setChecked(false);
-		_ui->comboBox_depthai_subpixel_fractional_bits->setCurrentIndex(2);
-		_ui->comboBox_depthai_disparity_companding->setCurrentIndex(1);
+		_ui->checkBox_depthai_disparity_companding->setChecked(false);
+		_ui->comboBox_depthai_subpixel_fractional_bits->setCurrentIndex(1);
+		_ui->comboBox_depthai_disparity_width->setCurrentIndex(1);
+		_ui->comboBox_depthai_median_filter->setCurrentIndex(2);
 		_ui->spinBox_depthai_lrc_threshold->setValue(5);
 		_ui->checkBox_depthai_use_spec_translation->setChecked(false);
 		_ui->doubleSpinBox_depthai_alpha_scaling->setValue(-1);
@@ -2768,8 +2772,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_depthai_conf_threshold->setValue(settings.value("conf_threshold", _ui->spinBox_depthai_conf_threshold->value()).toInt());
 	_ui->spinBox_depthai_lrc_threshold->setValue(settings.value("lrc_threshold", _ui->spinBox_depthai_lrc_threshold->value()).toInt());
 	_ui->checkBox_depthai_extended_disparity->setChecked(settings.value("extended_disparity", _ui->checkBox_depthai_extended_disparity->isChecked()).toBool());
+	_ui->checkBox_depthai_disparity_companding->setChecked(settings.value("disparity_companding", _ui->checkBox_depthai_disparity_companding->isChecked()).toBool());
 	_ui->comboBox_depthai_subpixel_fractional_bits->setCurrentIndex(settings.value("subpixel_fractional_bits", _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()).toInt());
-	_ui->comboBox_depthai_disparity_companding->setCurrentIndex(settings.value("companding", _ui->comboBox_depthai_disparity_companding->currentIndex()).toInt());
+	_ui->comboBox_depthai_disparity_width->setCurrentIndex(settings.value("disparity_width", _ui->comboBox_depthai_disparity_width->currentIndex()).toInt());
+	_ui->comboBox_depthai_median_filter->setCurrentIndex(settings.value("median_filter", _ui->comboBox_depthai_median_filter->currentIndex()).toInt());
 	_ui->checkBox_depthai_use_spec_translation->setChecked(settings.value("use_spec_translation", _ui->checkBox_depthai_use_spec_translation->isChecked()).toBool());
 	_ui->doubleSpinBox_depthai_alpha_scaling->setValue(settings.value("alpha_scaling", _ui->doubleSpinBox_depthai_alpha_scaling->value()).toDouble());
 	_ui->checkBox_depthai_imu_published->setChecked(settings.value("imu_published", _ui->checkBox_depthai_imu_published->isChecked()).toBool());
@@ -3365,20 +3371,22 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("DepthAI");
-	settings.setValue("resolution",            _ui->comboBox_depthai_resolution->currentIndex());
-	settings.setValue("output_mode",           _ui->comboBox_depthai_output_mode->currentIndex());
-	settings.setValue("conf_threshold",        _ui->spinBox_depthai_conf_threshold->value());
-	settings.setValue("lrc_threshold",         _ui->spinBox_depthai_lrc_threshold->value());
-	settings.setValue("extended_disparity",    _ui->checkBox_depthai_extended_disparity->isChecked());
+	settings.setValue("resolution",               _ui->comboBox_depthai_resolution->currentIndex());
+	settings.setValue("output_mode",              _ui->comboBox_depthai_output_mode->currentIndex());
+	settings.setValue("conf_threshold",           _ui->spinBox_depthai_conf_threshold->value());
+	settings.setValue("lrc_threshold",            _ui->spinBox_depthai_lrc_threshold->value());
+	settings.setValue("extended_disparity",       _ui->checkBox_depthai_extended_disparity->isChecked());
+	settings.setValue("disparity_companding",	  _ui->checkBox_depthai_disparity_companding->isChecked());
 	settings.setValue("subpixel_fractional_bits", _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex());
-	settings.setValue("companding",            _ui->comboBox_depthai_disparity_companding->currentIndex());
-	settings.setValue("use_spec_translation",  _ui->checkBox_depthai_use_spec_translation->isChecked());
-	settings.setValue("alpha_scaling",         _ui->doubleSpinBox_depthai_alpha_scaling->value());
-	settings.setValue("imu_published",         _ui->checkBox_depthai_imu_published->isChecked());
-	settings.setValue("dot_intensity",         _ui->doubleSpinBox_depthai_dot_intensity->value());
-	settings.setValue("flood_intensity",       _ui->doubleSpinBox_depthai_flood_intensity->value());
-	settings.setValue("detect_features",       _ui->comboBox_depthai_detect_features->currentIndex());
-	settings.setValue("blob_path",             _ui->lineEdit_depthai_blob_path->text());
+	settings.setValue("disparity_width",          _ui->comboBox_depthai_disparity_width->currentIndex());
+	settings.setValue("median_filter",            _ui->comboBox_depthai_median_filter->currentIndex());
+	settings.setValue("use_spec_translation",	  _ui->checkBox_depthai_use_spec_translation->isChecked());
+	settings.setValue("alpha_scaling",            _ui->doubleSpinBox_depthai_alpha_scaling->value());
+	settings.setValue("imu_published",            _ui->checkBox_depthai_imu_published->isChecked());
+	settings.setValue("dot_intensity",            _ui->doubleSpinBox_depthai_dot_intensity->value());
+	settings.setValue("flood_intensity",          _ui->doubleSpinBox_depthai_flood_intensity->value());
+	settings.setValue("detect_features",          _ui->comboBox_depthai_detect_features->currentIndex());
+	settings.setValue("blob_path",                _ui->lineEdit_depthai_blob_path->text());
 	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
@@ -6868,9 +6876,9 @@ Camera * PreferencesDialog::createCamera(
 			this->getSourceLocalTransform());
 		((CameraDepthAI*)camera)->setOutputMode(_ui->comboBox_depthai_output_mode->currentIndex());
 		((CameraDepthAI*)camera)->setDepthProfile(_ui->spinBox_depthai_conf_threshold->value(), _ui->spinBox_depthai_lrc_threshold->value());
-		((CameraDepthAI*)camera)->setExtendedDisparity(_ui->checkBox_depthai_extended_disparity->isChecked());
+		((CameraDepthAI*)camera)->setExtendedDisparity(_ui->checkBox_depthai_extended_disparity->isChecked(), _ui->checkBox_depthai_disparity_companding->isChecked());
 		((CameraDepthAI*)camera)->setSubpixelMode(_ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()!=0, _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()==2?4:_ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()==3?5:3);
-		((CameraDepthAI*)camera)->setCompanding(_ui->comboBox_depthai_disparity_companding->currentIndex()!=0, _ui->comboBox_depthai_disparity_companding->currentIndex()==1?64:96);
+		((CameraDepthAI*)camera)->setDisparityWidthAndFilter(_ui->comboBox_depthai_disparity_width->currentIndex()==0?64:96, _ui->comboBox_depthai_median_filter->currentIndex()==2?5:_ui->comboBox_depthai_median_filter->currentIndex()==3?7:3);
 		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value(), !useRawImages);
 		((CameraDepthAI*)camera)->setIMU(_ui->checkBox_depthai_imu_published->isChecked(), _ui->checkbox_publishInterIMU->isChecked());
 		((CameraDepthAI*)camera)->setIrIntensity(_ui->doubleSpinBox_depthai_dot_intensity->value(), _ui->doubleSpinBox_depthai_flood_intensity->value());

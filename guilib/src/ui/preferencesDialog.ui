@@ -5975,31 +5975,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <string>DepthAI</string>
                                     </property>
                                     <layout class="QGridLayout" name="gridLayout_120" columnstretch="0,1">
-                                     <item row="7" column="0">
-                                      <widget class="QComboBox" name="comboBox_depthai_disparity_companding">
-                                       <property name="currentIndex">
-                                        <number>0</number>
-                                       </property>
-                                       <property name="sizeAdjustPolicy">
-                                        <enum>QComboBox::AdjustToContents</enum>
-                                       </property>
-                                       <item>
-                                        <property name="text">
-                                         <string>Disabled</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>64 pixels</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>96 pixels</string>
-                                        </property>
-                                       </item>
-                                      </widget>
-                                     </item>
                                      <item row="0" column="0">
                                       <widget class="QComboBox" name="comboBox_depthai_resolution">
                                        <property name="currentIndex">
@@ -6035,98 +6010,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                       </widget>
                                      </item>
-                                     <item row="9" column="0">
-                                      <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_alpha_scaling">
-                                       <property name="minimum">
-                                        <double>-1.000000000000000</double>
-                                       </property>
-                                       <property name="maximum">
-                                        <double>1.000000000000000</double>
-                                       </property>
-                                       <property name="singleStep">
-                                        <double>1.000000000000000</double>
-                                       </property>
-                                       <property name="value">
-                                        <double>0.000000000000000</double>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="11" column="1">
-                                      <widget class="QLabel" name="label_676">
-                                       <property name="toolTip">
-                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Intensity on range 0 to 1, that will determine brightness.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                       </property>
+                                     <item row="0" column="1">
+                                      <widget class="QLabel" name="label_626">
                                        <property name="text">
-                                        <string>IR laser dot projector intensity. 0 to turn off.</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="13" column="0">
-                                      <widget class="QComboBox" name="comboBox_depthai_detect_features">
-                                       <property name="currentIndex">
-                                        <number>0</number>
-                                       </property>
-                                       <property name="sizeAdjustPolicy">
-                                        <enum>QComboBox::AdjustToContents</enum>
-                                       </property>
-                                       <item>
-                                        <property name="text">
-                                         <string>None</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>GFTT</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>SuperPoint</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>HF-Net</string>
-                                        </property>
-                                       </item>
-                                      </widget>
-                                     </item>
-                                     <item row="8" column="1">
-                                      <widget class="QLabel" name="label_646">
-                                       <property name="text">
-                                        <string>Use the translation information from the board design data (not the calibration data).</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="1" column="1">
-                                      <widget class="QLabel" name="label_625">
-                                       <property name="text">
-                                        <string>Output mode.</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="13" column="1">
-                                      <widget class="QLabel" name="label_679">
-                                       <property name="text">
-                                        <string>On-device feature detector.</string>
+                                        <string>Resolution.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
@@ -6161,13 +6048,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                       </widget>
                                      </item>
-                                     <item row="4" column="1">
-                                      <widget class="QLabel" name="label_745">
-                                       <property name="toolTip">
-                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                       </property>
+                                     <item row="1" column="1">
+                                      <widget class="QLabel" name="label_625">
                                        <property name="text">
-                                        <string>Extended disparity. Suitable for short range objects. Currently incompatible with sub-pixel disparity.</string>
+                                        <string>Output mode.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
@@ -6190,26 +6074,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="3" column="0">
-                                      <widget class="QSpinBox" name="spinBox_depthai_lrc_threshold">
-                                       <property name="minimum">
-                                        <number>-1</number>
-                                       </property>
-                                       <property name="maximum">
-                                        <number>255</number>
-                                       </property>
-                                       <property name="value">
-                                        <number>5</number>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="8" column="0">
-                                      <widget class="QCheckBox" name="checkBox_depthai_use_spec_translation">
-                                       <property name="text">
-                                        <string/>
-                                       </property>
-                                      </widget>
-                                     </item>
                                      <item row="2" column="1">
                                       <widget class="QLabel" name="label_627">
                                        <property name="text">
@@ -6223,55 +6087,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="12" column="1">
-                                      <widget class="QLabel" name="label_677">
-                                       <property name="toolTip">
-                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Intensity on range 0 to 1, that will determine brightness.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                     <item row="3" column="0">
+                                      <widget class="QSpinBox" name="spinBox_depthai_lrc_threshold">
+                                       <property name="minimum">
+                                        <number>-1</number>
                                        </property>
-                                       <property name="text">
-                                        <string>IR flood light intensity. 0 to turn off.</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="14" column="1">
-                                      <widget class="QLabel" name="label_680">
-                                       <property name="text">
-                                        <string>Path to MyriadX blob file.</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="11" column="0">
-                                      <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_dot_intensity">
                                        <property name="maximum">
-                                        <double>1.000000000000000</double>
-                                       </property>
-                                       <property name="singleStep">
-                                        <double>0.050000000000000</double>
+                                        <number>255</number>
                                        </property>
                                        <property name="value">
-                                        <double>0.000000000000000</double>
+                                        <number>5</number>
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="6" column="1">
-                                      <widget class="QLabel" name="label_746">
+                                     <item row="3" column="1">
+                                      <widget class="QLabel" name="label_748">
                                        <property name="toolTip">
-                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Computes disparity with sub-pixel interpolation (3 fractional bits by default). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                        <string>Computes and combines disparities in both L-R and R-L directions, and combine them. </string>
                                        </property>
                                        <property name="text">
-                                        <string>Subpixel mode: number of fractional bits. Suitable for long range. Currently incompatible with extended disparity.</string>
+                                        <string>Disparity left-right check threshold. Set -1 to turn off.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
@@ -6281,10 +6116,43 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="0" column="1">
-                                      <widget class="QLabel" name="label_626">
+                                     <item row="4" column="0">
+                                      <widget class="QCheckBox" name="checkBox_depthai_extended_disparity">
                                        <property name="text">
-                                        <string>Resolution.</string>
+                                        <string/>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="4" column="1">
+                                      <widget class="QLabel" name="label_745">
+                                       <property name="toolTip">
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                       </property>
+                                       <property name="text">
+                                        <string>Extended disparity. Suitable for short range objects.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="5" column="0">
+                                      <widget class="QCheckBox" name="checkBox_depthai_disparity_companding">
+                                       <property name="text">
+                                        <string/>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="5" column="1">
+                                      <widget class="QLabel" name="label_763">
+                                       <property name="toolTip">
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; * Matching pixel by pixel for N disparities.&lt;/p&gt;&lt;p&gt; * Matching every 2nd pixel for M disparitites.&lt;/p&gt;&lt;p&gt; * Matching every 4th pixel for T disparities.&lt;/p&gt;&lt;p&gt; * In case of 96 disparities: N=48, M=32, T=16.&lt;/p&gt;&lt;p&gt; * This way the search range is extended to 176 disparities, by sparse matching.&lt;/p&gt;&lt;p&gt; * Note: when enabling this flag only depth map will be affected, disparity map is not.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                       </property>
+                                       <property name="text">
+                                        <string>Disparity companding using sparse matching.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
@@ -6297,7 +6165,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <item row="6" column="0">
                                       <widget class="QComboBox" name="comboBox_depthai_subpixel_fractional_bits">
                                        <property name="currentIndex">
-                                        <number>0</number>
+                                        <number>1</number>
                                        </property>
                                        <property name="sizeAdjustPolicy">
                                         <enum>QComboBox::AdjustToContents</enum>
@@ -6324,20 +6192,109 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                       </widget>
                                      </item>
-                                     <item row="4" column="0">
-                                      <widget class="QCheckBox" name="checkBox_depthai_extended_disparity">
+                                     <item row="6" column="1">
+                                      <widget class="QLabel" name="label_746">
+                                       <property name="toolTip">
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Computes disparity with sub-pixel interpolation (3 fractional bits by default). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                       </property>
+                                       <property name="text">
+                                        <string>Subpixel mode: number of fractional bits. Suitable for long range.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="7" column="0">
+                                      <widget class="QComboBox" name="comboBox_depthai_disparity_width">
+                                       <property name="currentIndex">
+                                        <number>1</number>
+                                       </property>
+                                       <property name="sizeAdjustPolicy">
+                                        <enum>QComboBox::AdjustToContents</enum>
+                                       </property>
+                                       <item>
+                                        <property name="text">
+                                         <string>64 pixels</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>96 pixels</string>
+                                        </property>
+                                       </item>
+                                      </widget>
+                                     </item>
+                                     <item row="7" column="1">
+                                      <widget class="QLabel" name="label_747">
+                                       <property name="text">
+                                        <string>Disparity search range: 64 or 96 pixels are supported by the HW.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="8" column="0">
+                                      <widget class="QComboBox" name="comboBox_depthai_median_filter">
+                                       <property name="currentIndex">
+                                        <number>2</number>
+                                       </property>
+                                       <property name="sizeAdjustPolicy">
+                                        <enum>QComboBox::AdjustToContents</enum>
+                                       </property>
+                                       <item>
+                                        <property name="text">
+                                         <string>MEDIAN_OFF</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>KERNEL 3x3</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>KERNEL 5x5</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>KERNEL 7x7</string>
+                                        </property>
+                                       </item>
+                                      </widget>
+                                     </item>
+                                     <item row="8" column="1">
+                                      <widget class="QLabel" name="label_764">
+                                       <property name="text">
+                                        <string>Set kernel size for disparity/depth median filtering, or disable.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="9" column="0">
+                                      <widget class="QCheckBox" name="checkBox_depthai_use_spec_translation">
                                        <property name="text">
                                         <string/>
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="3" column="1">
-                                      <widget class="QLabel" name="label_748">
-                                       <property name="toolTip">
-                                        <string>Computes and combines disparities in both L-R and R-L directions, and combine them. </string>
-                                       </property>
+                                     <item row="9" column="1">
+                                      <widget class="QLabel" name="label_646">
                                        <property name="text">
-                                        <string>Disparity left-right check threshold. Set -1 to turn off.</string>
+                                        <string>Use the translation information from the board design data (not the calibration data).</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
@@ -6348,26 +6305,22 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       </widget>
                                      </item>
                                      <item row="10" column="0">
-                                      <widget class="QCheckBox" name="checkBox_depthai_imu_published">
-                                       <property name="text">
-                                        <string/>
+                                      <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_alpha_scaling">
+                                       <property name="minimum">
+                                        <double>-1.000000000000000</double>
                                        </property>
-                                      </widget>
-                                     </item>
-                                     <item row="12" column="0">
-                                      <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_flood_intensity">
                                        <property name="maximum">
                                         <double>1.000000000000000</double>
                                        </property>
                                        <property name="singleStep">
-                                        <double>0.050000000000000</double>
+                                        <double>1.000000000000000</double>
                                        </property>
                                        <property name="value">
                                         <double>0.000000000000000</double>
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="9" column="1">
+                                     <item row="10" column="1">
                                       <widget class="QLabel" name="label_678">
                                        <property name="toolTip">
                                         <string>On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0, in these cases alpha &lt; 0.0 helps removing invalid areas.</string>
@@ -6383,13 +6336,75 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                       </widget>
                                      </item>
-                                     <item row="7" column="1">
-                                      <widget class="QLabel" name="label_747">
+                                     <item row="11" column="0">
+                                      <widget class="QCheckBox" name="checkBox_depthai_imu_published">
+                                       <property name="text">
+                                        <string/>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="11" column="1">
+                                      <widget class="QLabel" name="label_650">
+                                       <property name="text">
+                                        <string>IMU published</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="12" column="0">
+                                      <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_dot_intensity">
+                                       <property name="maximum">
+                                        <double>1.000000000000000</double>
+                                       </property>
+                                       <property name="singleStep">
+                                        <double>0.050000000000000</double>
+                                       </property>
+                                       <property name="value">
+                                        <double>0.000000000000000</double>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="12" column="1">
+                                      <widget class="QLabel" name="label_676">
                                        <property name="toolTip">
-                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; * Matching pixel by pixel for N disparities.&lt;/p&gt;&lt;p&gt; * Matching every 2nd pixel for M disparitites.&lt;/p&gt;&lt;p&gt; * Matching every 4th pixel for T disparities.&lt;/p&gt;&lt;p&gt; * In case of 96 disparities: N=48, M=32, T=16.&lt;/p&gt;&lt;p&gt; * This way the search range is extended to 176 disparities, by sparse matching.&lt;/p&gt;&lt;p&gt; * Note: when enabling this flag only depth map will be affected, disparity map is not.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Intensity on range 0 to 1, that will determine brightness.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                                        </property>
                                        <property name="text">
-                                        <string>Disparity companding using sparse matching. Currently incompatible with extended disparity.</string>
+                                        <string>IR laser dot projector intensity. 0 to turn off.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="13" column="0">
+                                      <widget class="QDoubleSpinBox" name="doubleSpinBox_depthai_flood_intensity">
+                                       <property name="maximum">
+                                        <double>1.000000000000000</double>
+                                       </property>
+                                       <property name="singleStep">
+                                        <double>0.050000000000000</double>
+                                       </property>
+                                       <property name="value">
+                                        <double>0.000000000000000</double>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="13" column="1">
+                                      <widget class="QLabel" name="label_677">
+                                       <property name="toolTip">
+                                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Intensity on range 0 to 1, that will determine brightness.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                       </property>
+                                       <property name="text">
+                                        <string>IR flood light intensity. 0 to turn off.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
@@ -6400,6 +6415,49 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       </widget>
                                      </item>
                                      <item row="14" column="0">
+                                      <widget class="QComboBox" name="comboBox_depthai_detect_features">
+                                       <property name="currentIndex">
+                                        <number>0</number>
+                                       </property>
+                                       <property name="sizeAdjustPolicy">
+                                        <enum>QComboBox::AdjustToContents</enum>
+                                       </property>
+                                       <item>
+                                        <property name="text">
+                                         <string>None</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>GFTT</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>SuperPoint</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>HF-Net</string>
+                                        </property>
+                                       </item>
+                                      </widget>
+                                     </item>
+                                     <item row="14" column="1">
+                                      <widget class="QLabel" name="label_679">
+                                       <property name="text">
+                                        <string>On-device feature detector.</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="15" column="0">
                                       <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0,1">
                                        <item>
                                         <widget class="QToolButton" name="toolButton_depthai_blob_path">
@@ -6423,10 +6481,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                       </layout>
                                      </item>
-                                     <item row="10" column="1">
-                                      <widget class="QLabel" name="label_650">
+                                     <item row="15" column="1">
+                                      <widget class="QLabel" name="label_680">
                                        <property name="text">
-                                        <string>IMU published</string>
+                                        <string>Path to MyriadX blob file.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
