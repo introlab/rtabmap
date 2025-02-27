@@ -661,25 +661,39 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 				 1,  0,  0,  0.013662,
 				 0,  0,  1,  0);
 		}
-		else if(eeprom.boardName == "DM9098")
+		else if(eeprom.boardName == "BC2087") // OAK-D LR
+		{
+			imuLocalTransform_ = Transform(
+				1,  0,  0,  0.021425,
+				0,  1,  0,  0.009925,
+				0,  0,  1,  0);
+		}
+		else if(eeprom.boardName == "DM2080") // OAK-D SR
+		{
+			imuLocalTransform_ = Transform(
+			   	-1,  0,  0,  0,
+				 0, -1,  0, -0.0024,
+				 0,  0,  1,  0);
+		}
+		else if(eeprom.boardName == "DM9098") // OAK-D S2, OAK-D W, OAK-D Pro, OAK-D Pro W
 		{
 			imuLocalTransform_ = Transform(
 				 0,  1,  0,  0.037945,
 				 1,  0,  0,  0.00079,
 				 0,  0, -1,  0);
 		}
-		else if(eeprom.boardName == "NG2094")
+		else if(eeprom.boardName == "NG2094") // OAK-D Pro W Dev
 		{
 			imuLocalTransform_ = Transform(
 				 0,  1,  0,  0.0374,
 				 1,  0,  0,  0.00176,
 				 0,  0, -1,  0);
 		}
-		else if(eeprom.boardName == "NG9097")
+		else if(eeprom.boardName == "NG9097") // OAK-D S2 PoE, OAK-D W PoE, OAK-D Pro PoE, OAK-D Pro W PoE
 		{
 			imuLocalTransform_ = Transform(
-				 0,  1,  0,  0.04,
-				 1,  0,  0,  0.020265,
+				 0, -1,  0,  0.04,
+				-1,  0,  0,  0.020265,
 				 0,  0, -1,  0);
 		}
 		else
