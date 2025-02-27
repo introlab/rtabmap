@@ -51,7 +51,7 @@ public:
 			 bool ignoreGoalDelay = false,
 			 bool goalsIgnored = false,
 			 int startId = 0,
-			 int cameraIndex = -1,
+			 const std::vector<unsigned int> & cameraIndices = std::vector<unsigned int>(),
 			 int stopId = 0,
 			 bool intermediateNodesIgnored = false,
 			 bool landmarksIgnored = false,
@@ -65,7 +65,7 @@ public:
 			 bool ignoreGoalDelay = false,
 			 bool goalsIgnored = false,
 			 int startId = 0,
-			 int cameraIndex = -1,
+			 const std::vector<unsigned int> & cameraIndices = std::vector<unsigned int>(),
 			 int stopId = 0,
 			 bool intermediateNodesIgnored = false,
 			 bool landmarksIgnored = false,
@@ -99,7 +99,7 @@ private:
 	bool _goalsIgnored;
 	int _startId;
 	int _stopId;
-	int _cameraIndex;
+	std::vector<unsigned int> _cameraIndices;
 	bool _intermediateNodesIgnored;
 	bool _landmarksIgnored;
 	bool _featuresIgnored;
