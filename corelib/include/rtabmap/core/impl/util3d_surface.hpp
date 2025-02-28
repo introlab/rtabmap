@@ -151,7 +151,10 @@ void denseMeshPostProcessing(
 				coloredPts.at(i) = false;
 			}
 		}
-		pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+		if(coloredOutput) {
+			pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+			hasColors = true;
+		}
 
 		// remove polygons with no color
 		if(cleanMesh)
@@ -177,7 +180,6 @@ void denseMeshPostProcessing(
 			filteredPolygons.resize(oi);
 			mesh->polygons = filteredPolygons;
 		}
-		hasColors = true;
 	}
 
 	if(minClusterSize)
@@ -238,11 +240,11 @@ void denseMeshPostProcessing(
 		if(progressState) progressState->callback(uFormat("Filtered %d polygons.", before-(int)mesh->polygons.size()));
 	}
 
-	// compute normals for the mesh if not already here, add also white color if colored output is required
-	if(!hasNormals || (!hasColors && coloredOutput))
+	// compute normals for the mesh if not already here
+	if(!hasNormals)
 	{
 		// use polygons
-		if(hasColors || coloredOutput)
+		if(hasColors)
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 			pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
@@ -269,18 +271,9 @@ void denseMeshPostProcessing(
 				// flat normal (per face)
 				for(unsigned int j=0; j<v.vertices.size(); ++j)
 				{
-					if(!hasNormals)
-					{
-						cloud->at(v.vertices[j]).normal_x = normal[0];
-						cloud->at(v.vertices[j]).normal_y = normal[1];
-						cloud->at(v.vertices[j]).normal_z = normal[2];
-					}
-					if(!hasColors)
-					{
-						cloud->at(v.vertices[j]).r = 255;
-						cloud->at(v.vertices[j]).g = 255;
-						cloud->at(v.vertices[j]).b = 255;
-					}
+					cloud->at(v.vertices[j]).normal_x = normal[0];
+					cloud->at(v.vertices[j]).normal_y = normal[1];
+					cloud->at(v.vertices[j]).normal_z = normal[2];
 				}
 			}
 			pcl::toPCLPointCloud2 (*cloud, mesh->cloud);

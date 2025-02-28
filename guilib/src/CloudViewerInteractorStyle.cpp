@@ -333,4 +333,9 @@ void CloudViewerInteractorStyle::OnLeftButtonDown()
 	PCLVisualizerInteractorStyle::OnLeftButtonDown();
 }
 
+void CloudViewerInteractorStyle::OnRightButtonDown()
+{
+	// ignore
+}
+
 } /* namespace rtabmap */

@@ -482,6 +482,14 @@
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -497,6 +505,14 @@
 			<key>Values</key>
 			<array>
 				<string>0</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -528,6 +544,14 @@
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -542,6 +566,14 @@
 			<key>Values</key>
 			<array>
 				<string>0</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>

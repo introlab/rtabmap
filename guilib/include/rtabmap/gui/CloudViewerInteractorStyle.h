@@ -32,6 +32,7 @@ public:
 protected:
 	virtual void OnMouseMove();
 	virtual void OnLeftButtonDown();
+	virtual void OnRightButtonDown();
 
 protected:
 	friend class CloudViewer;
