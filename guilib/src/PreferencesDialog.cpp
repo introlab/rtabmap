@@ -858,7 +858,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_stereoMyntEye_contrast, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoMyntEye_irControl, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
-	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_image_width, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_output_mode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_conf_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_lrc_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2253,7 +2253,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoMyntEye_brightness->setValue(120);
 		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
 		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
-		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
+		_ui->comboBox_depthai_image_width->setCurrentIndex(1);
 		_ui->comboBox_depthai_output_mode->setCurrentIndex(0);
 		_ui->spinBox_depthai_conf_threshold->setValue(200);
 		_ui->checkBox_depthai_extended_disparity->setChecked(false);
@@ -2767,7 +2767,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("DepthAI");
-	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
+	_ui->comboBox_depthai_image_width->setCurrentIndex(settings.value("image_width", _ui->comboBox_depthai_image_width->currentIndex()).toInt());
 	_ui->comboBox_depthai_output_mode->setCurrentIndex(settings.value("output_mode", _ui->comboBox_depthai_output_mode->currentIndex()).toInt());
 	_ui->spinBox_depthai_conf_threshold->setValue(settings.value("conf_threshold", _ui->spinBox_depthai_conf_threshold->value()).toInt());
 	_ui->spinBox_depthai_lrc_threshold->setValue(settings.value("lrc_threshold", _ui->spinBox_depthai_lrc_threshold->value()).toInt());
@@ -3371,7 +3371,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("DepthAI");
-	settings.setValue("resolution",               _ui->comboBox_depthai_resolution->currentIndex());
+	settings.setValue("image_width",              _ui->comboBox_depthai_image_width->currentIndex());
 	settings.setValue("output_mode",              _ui->comboBox_depthai_output_mode->currentIndex());
 	settings.setValue("conf_threshold",           _ui->spinBox_depthai_conf_threshold->value());
 	settings.setValue("lrc_threshold",            _ui->spinBox_depthai_lrc_threshold->value());
@@ -4295,7 +4295,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		else if(src == kSrcStereoDepthAI) // OAK-D-Pro (variant==2), OAK-D (variant==1), OAK-D Lite (variant==0)
 		{
 			_ui->checkBox_depthai_imu_published->setChecked(variant >= 1);
-			_ui->comboBox_depthai_resolution->setCurrentIndex(variant >= 1?1:3);
+			_ui->comboBox_depthai_image_width->setCurrentIndex(1);
 			_ui->comboBox_depthai_output_mode->setCurrentIndex(variant==2?2:0);
 			_ui->doubleSpinBox_depthai_dot_intensity->setValue(variant==2?1:0);
 		}
@@ -6871,7 +6871,7 @@ Camera * PreferencesDialog::createCamera(
 		UDEBUG("DepthAI");
 		camera = new CameraDepthAI(
 			device.toStdString().c_str(),
-			_ui->comboBox_depthai_resolution->currentIndex(),
+			_ui->comboBox_depthai_image_width->currentIndex()?1280:640,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraDepthAI*)camera)->setOutputMode(_ui->comboBox_depthai_output_mode->currentIndex());
@@ -6882,8 +6882,7 @@ Camera * PreferencesDialog::createCamera(
 		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value(), !useRawImages);
 		((CameraDepthAI*)camera)->setIMU(_ui->checkBox_depthai_imu_published->isChecked(), _ui->checkbox_publishInterIMU->isChecked());
 		((CameraDepthAI*)camera)->setIrIntensity(_ui->doubleSpinBox_depthai_dot_intensity->value(), _ui->doubleSpinBox_depthai_flood_intensity->value());
-		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
-		((CameraDepthAI*)camera)->setBlobPath(_ui->lineEdit_depthai_blob_path->text().toStdString());
+		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex(), _ui->lineEdit_depthai_blob_path->text().toStdString());
 		if(_ui->comboBox_depthai_detect_features->currentIndex() == 1)
 		{
 			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value(), _ui->reextract_maxFeatures->value());

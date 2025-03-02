@@ -5976,7 +5976,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <layout class="QGridLayout" name="gridLayout_120" columnstretch="0,1">
                                      <item row="0" column="0">
-                                      <widget class="QComboBox" name="comboBox_depthai_resolution">
+                                      <widget class="QComboBox" name="comboBox_depthai_image_width">
                                        <property name="currentIndex">
                                         <number>0</number>
                                        </property>
@@ -5985,27 +5985,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </property>
                                        <item>
                                         <property name="text">
-                                         <string>720p</string>
+                                         <string>640</string>
                                         </property>
                                        </item>
                                        <item>
                                         <property name="text">
-                                         <string>800p</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>400p</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>480p</string>
-                                        </property>
-                                       </item>
-                                       <item>
-                                        <property name="text">
-                                         <string>1200p</string>
+                                         <string>1280</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -6013,7 +5998,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <item row="0" column="1">
                                       <widget class="QLabel" name="label_626">
                                        <property name="text">
-                                        <string>Resolution.</string>
+                                        <string>Image width.</string>
                                        </property>
                                        <property name="wordWrap">
                                         <bool>true</bool>
