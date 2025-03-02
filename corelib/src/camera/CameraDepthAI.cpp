@@ -267,11 +267,13 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	device_ = std::make_unique<dai::Device>(deviceToUse);
 	auto deviceName = device_->getDeviceName();
+	auto imuType = device_->getConnectedIMU();
 	UINFO("Device Name: %s, Device Serial: %s", deviceName.c_str(), device_->getMxId().c_str());
-	UINFO("Available camera sensors: ");
+	UINFO("Available Camera Sensors: ");
 	for(auto& sensor : device_->getCameraSensorNames()) {
 		UINFO("Socket: CAM_%c - %s", 'A'+(unsigned char)sensor.first, sensor.second.c_str());
 	}
+	UINFO("IMU Type: %s", imuType.c_str());
 
 	UINFO("Loading eeprom calibration data");
 	auto calibHandler = device_->readCalibration();
@@ -395,7 +397,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		stereoModel_ = StereoCameraModel(deviceName, fx, fy, cx, cy, outputMode_==0?baseline:0, this->getLocalTransform()*Transform(-calibHandler.getBaselineDistance(dai::CameraBoardSocket::CAM_A)/100.0, 0, 0), targetSize_);
 	}
 
-	if(imuPublished_)
+	if(imuPublished_ || imuType.empty())
 	{
 		// Cannot test the following, I get "IMU calibration data is not available on device yet." with my camera
 		// Update: now (as March 6, 2022) it crashes in "dai::CalibrationHandler::getImuToCameraExtrinsics(dai::CameraBoardSocket, bool)"
@@ -441,10 +443,20 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		}
 		else if(boardName == "NG9097") // OAK-D S2 PoE, OAK-D W PoE, OAK-D Pro PoE, OAK-D Pro W PoE
 		{
-			imuLocalTransform_ = Transform(
-				 0, -1,  0,  0.04,
-				-1,  0,  0,  0.020265,
-				 0,  0, -1,  0);
+			if(imuType == "BMI270")
+			{
+				imuLocalTransform_ = Transform(
+				 	 0,  1,  0,  0.04,
+					 1,  0,  0,  0.020265,
+					 0,  0, -1,  0);
+			}
+			else // BNO085/086
+			{
+				imuLocalTransform_ = Transform(
+				 	 0, -1,  0,  0.04,
+					-1,  0,  0,  0.020265,
+					 0,  0, -1,  0);
+			}
 		}
 		else
 		{
@@ -455,6 +467,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	else
 	{
 		UINFO("IMU disabled");
+		imuPublished_ = false;
 	}
 
 	dai::Pipeline pipeline;
@@ -630,7 +643,10 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	if(imuPublished_)
 	{
 		auto imu = pipeline.create<dai::node::IMU>();
-		imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
+		if(imuType == "BMI270")
+			imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
+		else // BNO085/086
+			imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_UNCALIBRATED}, 200);
 		imu->setBatchReportThreshold(boardName=="NG9097"?4:1);
 		imu->setMaxBatchReports(10);
 
