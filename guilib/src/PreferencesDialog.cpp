@@ -1403,6 +1403,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Odometry Frame to Map
 	_ui->odom_localHistory->setObjectName(Parameters::kOdomF2MMaxSize().c_str());
 	_ui->spinBox_odom_f2m_maxNewFeatures->setObjectName(Parameters::kOdomF2MMaxNewFeatures().c_str());
+	_ui->doubleSpinBox_odom_f2m_floorThreshold->setObjectName(Parameters::kOdomF2MFloorThreshold().c_str());
 	_ui->spinBox_odom_f2m_scanMaxSize->setObjectName(Parameters::kOdomF2MScanMaxSize().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanAngle->setObjectName(Parameters::kOdomF2MScanSubtractAngle().c_str());
@@ -1412,6 +1413,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
 	_ui->odom_f2m_bundleMinMotion->setObjectName(Parameters::kOdomF2MBundleAdjustmentMinMotion().c_str());
 	_ui->odom_f2m_bundleMaxKeyFramesPerFeature->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxKeyFramesPerFeature().c_str());
+	_ui->odom_f2m_bundleUpdateFeatureMapOnAllFrames->setObjectName(Parameters::kOdomF2MBundleUpdateFeatureMapOnAllFrames().c_str());
 
 	//Odometry Frame To Frame
 	_ui->comboBox_odomf2f_corType->setObjectName(Parameters::kVisCorType().c_str());
