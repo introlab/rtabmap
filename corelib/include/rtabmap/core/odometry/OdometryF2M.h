@@ -62,6 +62,7 @@ private:
 	float keyFrameThr_;
 	int visKeyFrameThr_;
 	int maxNewFeatures_;
+	float floorThreshold_;
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;
 	float scanSubtractRadius_;
@@ -71,6 +72,7 @@ private:
 	int bundleMaxFrames_;
 	float bundleMinMotion_;
 	int bundleMaxKeyFramesPerFeature_;
+	bool bundleUpdateFeatureMapOnAllFrames_;
 	float validDepthRatio_;
 	int pointToPlaneK_;
 	float pointToPlaneRadius_;
