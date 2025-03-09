@@ -79,6 +79,8 @@ std::vector<cv::Point2f> Stereo::computeCorrespondences(
 		const std::vector<cv::Point2f> & leftCorners,
 		std::vector<unsigned char> & status) const
 {
+	UASSERT(leftImage.type() == CV_8UC1);
+	UASSERT(rightImage.type() == CV_8UC1);
 	std::vector<cv::Point2f> rightCorners;
 	UDEBUG("util2d::calcStereoCorrespondences() begin");
 	rightCorners = util2d::calcStereoCorrespondences(
@@ -145,6 +147,8 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 		const std::vector<cv::Point2f> & leftCorners,
 		std::vector<unsigned char> & status) const
 {
+	UASSERT(leftImage.type() == CV_8UC1);
+	UASSERT(rightImage.type() == CV_8UC1);
 	std::vector<cv::Point2f> rightCorners;
 	std::vector<float> err;
 #ifdef HAVE_OPENCV_CUDAOPTFLOW
@@ -184,6 +188,8 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 {
 	std::vector<cv::Point2f> rightCorners;
 #ifdef HAVE_OPENCV_CUDAOPTFLOW
+	UASSERT(leftImage.type() == CV_8UC1);
+	UASSERT(rightImage.type() == CV_8UC1);
 	UDEBUG("cv::cuda::SparsePyrLKOpticalFlow transfer host to device begin");
 	cv::cuda::GpuMat d_leftImage(leftImage);
 	cv::cuda::GpuMat d_rightImage(rightImage);

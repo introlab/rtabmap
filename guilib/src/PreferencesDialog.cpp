@@ -858,13 +858,15 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_stereoMyntEye_contrast, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoMyntEye_irControl, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
-	connect(_ui->comboBox_depthai_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_image_width, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_output_mode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_conf_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_depthai_lrc_threshold, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_extended_disparity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthai_disparity_companding, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_depthai_subpixel_fractional_bits, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->comboBox_depthai_disparity_companding, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_disparity_width, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_depthai_median_filter, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_use_spec_translation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_depthai_alpha_scaling, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthai_imu_published, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -880,6 +882,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkbox_source_feature_detection, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereo_depthGenerated, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereo_exposureCompensation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_stereo_rightGrayScale, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
@@ -2176,6 +2179,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_source_feature_detection->setChecked(false);
 		_ui->checkbox_stereo_depthGenerated->setChecked(false);
 		_ui->checkBox_stereo_exposureCompensation->setChecked(false);
+		_ui->checkBox_stereo_rightGrayScale->setChecked(true);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);
 		_ui->openni2_exposure->setValue(0);
@@ -2253,12 +2257,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoMyntEye_brightness->setValue(120);
 		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
 		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
-		_ui->comboBox_depthai_resolution->setCurrentIndex(1);
-		_ui->comboBox_depthai_output_mode->setCurrentIndex(0);
+		_ui->comboBox_depthai_image_width->setCurrentIndex(1);
+		_ui->comboBox_depthai_output_mode->setCurrentIndex(1);
 		_ui->spinBox_depthai_conf_threshold->setValue(200);
 		_ui->checkBox_depthai_extended_disparity->setChecked(false);
-		_ui->comboBox_depthai_subpixel_fractional_bits->setCurrentIndex(2);
-		_ui->comboBox_depthai_disparity_companding->setCurrentIndex(1);
+		_ui->checkBox_depthai_disparity_companding->setChecked(false);
+		_ui->comboBox_depthai_subpixel_fractional_bits->setCurrentIndex(1);
+		_ui->comboBox_depthai_disparity_width->setCurrentIndex(1);
+		_ui->comboBox_depthai_median_filter->setCurrentIndex(2);
 		_ui->spinBox_depthai_lrc_threshold->setValue(5);
 		_ui->checkBox_depthai_use_spec_translation->setChecked(false);
 		_ui->doubleSpinBox_depthai_alpha_scaling->setValue(-1);
@@ -2650,6 +2656,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_cameraStereo->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraStereo->currentIndex()).toInt());
 	_ui->checkbox_stereo_depthGenerated->setChecked(settings.value("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked()).toBool());
 	_ui->checkBox_stereo_exposureCompensation->setChecked(settings.value("exposureCompensation", _ui->checkBox_stereo_exposureCompensation->isChecked()).toBool());
+	_ui->checkBox_stereo_rightGrayScale->setChecked(settings.value("rightGrayScale", _ui->checkBox_stereo_rightGrayScale->isChecked()).toBool());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -2765,13 +2772,15 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("DepthAI");
-	_ui->comboBox_depthai_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_depthai_resolution->currentIndex()).toInt());
+	_ui->comboBox_depthai_image_width->setCurrentIndex(settings.value("image_width", _ui->comboBox_depthai_image_width->currentIndex()).toInt());
 	_ui->comboBox_depthai_output_mode->setCurrentIndex(settings.value("output_mode", _ui->comboBox_depthai_output_mode->currentIndex()).toInt());
 	_ui->spinBox_depthai_conf_threshold->setValue(settings.value("conf_threshold", _ui->spinBox_depthai_conf_threshold->value()).toInt());
 	_ui->spinBox_depthai_lrc_threshold->setValue(settings.value("lrc_threshold", _ui->spinBox_depthai_lrc_threshold->value()).toInt());
 	_ui->checkBox_depthai_extended_disparity->setChecked(settings.value("extended_disparity", _ui->checkBox_depthai_extended_disparity->isChecked()).toBool());
+	_ui->checkBox_depthai_disparity_companding->setChecked(settings.value("disparity_companding", _ui->checkBox_depthai_disparity_companding->isChecked()).toBool());
 	_ui->comboBox_depthai_subpixel_fractional_bits->setCurrentIndex(settings.value("subpixel_fractional_bits", _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()).toInt());
-	_ui->comboBox_depthai_disparity_companding->setCurrentIndex(settings.value("companding", _ui->comboBox_depthai_disparity_companding->currentIndex()).toInt());
+	_ui->comboBox_depthai_disparity_width->setCurrentIndex(settings.value("disparity_width", _ui->comboBox_depthai_disparity_width->currentIndex()).toInt());
+	_ui->comboBox_depthai_median_filter->setCurrentIndex(settings.value("median_filter", _ui->comboBox_depthai_median_filter->currentIndex()).toInt());
 	_ui->checkBox_depthai_use_spec_translation->setChecked(settings.value("use_spec_translation", _ui->checkBox_depthai_use_spec_translation->isChecked()).toBool());
 	_ui->doubleSpinBox_depthai_alpha_scaling->setValue(settings.value("alpha_scaling", _ui->doubleSpinBox_depthai_alpha_scaling->value()).toDouble());
 	_ui->checkBox_depthai_imu_published->setChecked(settings.value("imu_published", _ui->checkBox_depthai_imu_published->isChecked()).toBool());
@@ -3252,6 +3261,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("driver", 	_ui->comboBox_cameraStereo->currentIndex());
 	settings.setValue("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked());
 	settings.setValue("exposureCompensation", _ui->checkBox_stereo_exposureCompensation->isChecked());
+	settings.setValue("rightGrayScale", _ui->checkBox_stereo_rightGrayScale->isChecked());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -3367,20 +3377,22 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // MyntEye
 
 	settings.beginGroup("DepthAI");
-	settings.setValue("resolution",            _ui->comboBox_depthai_resolution->currentIndex());
-	settings.setValue("output_mode",           _ui->comboBox_depthai_output_mode->currentIndex());
-	settings.setValue("conf_threshold",        _ui->spinBox_depthai_conf_threshold->value());
-	settings.setValue("lrc_threshold",         _ui->spinBox_depthai_lrc_threshold->value());
-	settings.setValue("extended_disparity",    _ui->checkBox_depthai_extended_disparity->isChecked());
+	settings.setValue("image_width",              _ui->comboBox_depthai_image_width->currentIndex());
+	settings.setValue("output_mode",              _ui->comboBox_depthai_output_mode->currentIndex());
+	settings.setValue("conf_threshold",           _ui->spinBox_depthai_conf_threshold->value());
+	settings.setValue("lrc_threshold",            _ui->spinBox_depthai_lrc_threshold->value());
+	settings.setValue("extended_disparity",       _ui->checkBox_depthai_extended_disparity->isChecked());
+	settings.setValue("disparity_companding",	  _ui->checkBox_depthai_disparity_companding->isChecked());
 	settings.setValue("subpixel_fractional_bits", _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex());
-	settings.setValue("companding",            _ui->comboBox_depthai_disparity_companding->currentIndex());
-	settings.setValue("use_spec_translation",  _ui->checkBox_depthai_use_spec_translation->isChecked());
-	settings.setValue("alpha_scaling",         _ui->doubleSpinBox_depthai_alpha_scaling->value());
-	settings.setValue("imu_published",         _ui->checkBox_depthai_imu_published->isChecked());
-	settings.setValue("dot_intensity",         _ui->doubleSpinBox_depthai_dot_intensity->value());
-	settings.setValue("flood_intensity",       _ui->doubleSpinBox_depthai_flood_intensity->value());
-	settings.setValue("detect_features",       _ui->comboBox_depthai_detect_features->currentIndex());
-	settings.setValue("blob_path",             _ui->lineEdit_depthai_blob_path->text());
+	settings.setValue("disparity_width",          _ui->comboBox_depthai_disparity_width->currentIndex());
+	settings.setValue("median_filter",            _ui->comboBox_depthai_median_filter->currentIndex());
+	settings.setValue("use_spec_translation",	  _ui->checkBox_depthai_use_spec_translation->isChecked());
+	settings.setValue("alpha_scaling",            _ui->doubleSpinBox_depthai_alpha_scaling->value());
+	settings.setValue("imu_published",            _ui->checkBox_depthai_imu_published->isChecked());
+	settings.setValue("dot_intensity",            _ui->doubleSpinBox_depthai_dot_intensity->value());
+	settings.setValue("flood_intensity",          _ui->doubleSpinBox_depthai_flood_intensity->value());
+	settings.setValue("detect_features",          _ui->comboBox_depthai_detect_features->currentIndex());
+	settings.setValue("blob_path",                _ui->lineEdit_depthai_blob_path->text());
 	settings.endGroup(); // DepthAI
 
 	settings.beginGroup("Images");
@@ -4289,8 +4301,8 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		else if(src == kSrcStereoDepthAI) // OAK-D-Pro (variant==2), OAK-D (variant==1), OAK-D Lite (variant==0)
 		{
 			_ui->checkBox_depthai_imu_published->setChecked(variant >= 1);
-			_ui->comboBox_depthai_resolution->setCurrentIndex(variant >= 1?1:3);
-			_ui->comboBox_depthai_output_mode->setCurrentIndex(variant==2?2:0);
+			_ui->comboBox_depthai_image_width->setCurrentIndex(1);
+			_ui->comboBox_depthai_output_mode->setCurrentIndex(variant==2?2:1);
 			_ui->doubleSpinBox_depthai_dot_intensity->setValue(variant==2?1:0);
 		}
 	}
@@ -6430,6 +6442,10 @@ bool PreferencesDialog::isSourceStereoExposureCompensation() const
 {
 	return _ui->checkBox_stereo_exposureCompensation->isChecked();
 }
+bool PreferencesDialog::isRightGrayScale() const
+{
+	return _ui->checkBox_stereo_rightGrayScale->isChecked();
+}
 bool PreferencesDialog::isSourceScanFromDepth() const
 {
 	return _ui->checkBox_source_scanFromDepth->isChecked();
@@ -6752,8 +6768,8 @@ Camera * PreferencesDialog::createCamera(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
-		((CameraRGBDImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
-
+		((CameraStereoImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraStereoImages*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoUsb)
 	{
@@ -6779,6 +6795,7 @@ Camera * PreferencesDialog::createCamera(
 		{
 			((CameraStereoVideo*)camera)->setFOURCC(_ui->lineEdit_stereousbcam_fourcc->text().toStdString());
 		}
+		((CameraStereoVideo*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if(driver == kSrcStereoVideo)
 	{
@@ -6801,6 +6818,7 @@ Camera * PreferencesDialog::createCamera(
 					this->getGeneralInputRate(),
 					this->getSourceLocalTransform());
 		}
+		((CameraStereoVideo*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
     
     else if (driver == kSrcStereoTara)
@@ -6850,6 +6868,7 @@ Camera * PreferencesDialog::createCamera(
 				_ui->checkbox_publishInterIMU->isChecked(),
 				_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
 						IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+		((CameraStereoZed*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoZedOC)
 	{
@@ -6859,25 +6878,25 @@ Camera * PreferencesDialog::createCamera(
 			_ui->comboBox_stereoZedOC_resolution->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraStereoZedOC*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoDepthAI)
 	{
 		UDEBUG("DepthAI");
 		camera = new CameraDepthAI(
 			device.toStdString().c_str(),
-			_ui->comboBox_depthai_resolution->currentIndex(),
+			_ui->comboBox_depthai_image_width->currentIndex()?1280:640,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraDepthAI*)camera)->setOutputMode(_ui->comboBox_depthai_output_mode->currentIndex());
 		((CameraDepthAI*)camera)->setDepthProfile(_ui->spinBox_depthai_conf_threshold->value(), _ui->spinBox_depthai_lrc_threshold->value());
-		((CameraDepthAI*)camera)->setExtendedDisparity(_ui->checkBox_depthai_extended_disparity->isChecked());
+		((CameraDepthAI*)camera)->setExtendedDisparity(_ui->checkBox_depthai_extended_disparity->isChecked(), _ui->checkBox_depthai_disparity_companding->isChecked());
 		((CameraDepthAI*)camera)->setSubpixelMode(_ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()!=0, _ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()==2?4:_ui->comboBox_depthai_subpixel_fractional_bits->currentIndex()==3?5:3);
-		((CameraDepthAI*)camera)->setCompanding(_ui->comboBox_depthai_disparity_companding->currentIndex()!=0, _ui->comboBox_depthai_disparity_companding->currentIndex()==1?64:96);
+		((CameraDepthAI*)camera)->setDisparityWidthAndFilter(_ui->comboBox_depthai_disparity_width->currentIndex()==0?64:96, _ui->comboBox_depthai_median_filter->currentIndex()==2?5:_ui->comboBox_depthai_median_filter->currentIndex()==3?7:3);
 		((CameraDepthAI*)camera)->setRectification(_ui->checkBox_depthai_use_spec_translation->isChecked(), _ui->doubleSpinBox_depthai_alpha_scaling->value(), !useRawImages);
 		((CameraDepthAI*)camera)->setIMU(_ui->checkBox_depthai_imu_published->isChecked(), _ui->checkbox_publishInterIMU->isChecked());
 		((CameraDepthAI*)camera)->setIrIntensity(_ui->doubleSpinBox_depthai_dot_intensity->value(), _ui->doubleSpinBox_depthai_flood_intensity->value());
-		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex());
-		((CameraDepthAI*)camera)->setBlobPath(_ui->lineEdit_depthai_blob_path->text().toStdString());
+		((CameraDepthAI*)camera)->setDetectFeatures(_ui->comboBox_depthai_detect_features->currentIndex(), _ui->lineEdit_depthai_blob_path->text().toStdString());
 		if(_ui->comboBox_depthai_detect_features->currentIndex() == 1)
 		{
 			((CameraDepthAI*)camera)->setGFTTDetector(_ui->checkBox_GFTT_useHarrisDetector->isChecked(), _ui->doubleSpinBox_GFTT_minDistance->value(), _ui->reextract_maxFeatures->value());

@@ -82,7 +82,8 @@ cv::Mat StereoBM::computeDisparity(
 {
 	UASSERT(!leftImage.empty() && !rightImage.empty());
 	UASSERT(leftImage.cols == rightImage.cols && leftImage.rows == rightImage.rows);
-	UASSERT((leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3) && rightImage.type() == CV_8UC1);
+	UASSERT(leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3);
+	UASSERT(rightImage.type() == CV_8UC1 || rightImage.type() == CV_8UC3);
 
 	cv::Mat leftMono;
 	if(leftImage.channels() == 3)
@@ -92,6 +93,16 @@ cv::Mat StereoBM::computeDisparity(
 	else
 	{
 		leftMono = leftImage;
+	}
+
+	cv::Mat rightMono;
+	if(rightImage.channels() == 3)
+	{
+		cv::cvtColor(rightImage, rightMono, CV_BGR2GRAY);
+	}
+	else
+	{
+		rightMono = rightImage;
 	}
 
 	cv::Mat disparity;
@@ -106,7 +117,7 @@ cv::Mat StereoBM::computeDisparity(
 	stereo.state->textureThreshold = textureThreshold_;
 	stereo.state->speckleWindowSize = speckleWindowSize_;
 	stereo.state->speckleRange = speckleRange_;
-	stereo(leftMono, rightImage, disparity, CV_16SC1);
+	stereo(leftMono, rightMono, disparity, CV_16SC1);
 #else
 	cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create();
 	stereo->setBlockSize(blockSize_);
@@ -119,7 +130,7 @@ cv::Mat StereoBM::computeDisparity(
 	stereo->setSpeckleWindowSize(speckleWindowSize_);
 	stereo->setSpeckleRange(speckleRange_);
 	stereo->setDisp12MaxDiff(disp12MaxDiff_);
-	stereo->compute(leftMono, rightImage, disparity);
+	stereo->compute(leftMono, rightMono, disparity);
 #endif
 
 	if(minDisparity_>0)

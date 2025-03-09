@@ -822,14 +822,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		const ParametersMap & parameters)
 {
 	UASSERT(!imageLeft.empty() && !imageRight.empty());
-	UASSERT(imageRight.type() == CV_8UC1);
+	UASSERT(imageRight.type() == CV_8UC1 || imageRight.type() == CV_8UC3);
 	UASSERT(imageLeft.channels() == 3 || imageLeft.channels() == 1);
 	UASSERT(imageLeft.rows == imageRight.rows &&
 			imageLeft.cols == imageRight.cols);
 	UASSERT(decimation >= 1.0f);
 
 	cv::Mat leftColor = imageLeft;
-	cv::Mat rightMono = imageRight;
+	cv::Mat rightColor = imageRight;
 
 	cv::Mat leftMono;
 	if(leftColor.channels() == 3)
@@ -839,6 +839,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	else
 	{
 		leftMono = leftColor;
+	}
+
+	cv::Mat rightMono;
+	if(rightColor.channels() == 3)
+	{
+		cv::cvtColor(rightColor, rightMono, CV_BGR2GRAY);
+	}
+	else
+	{
+		rightMono = rightColor;
 	}
 
 	return cloudFromDisparityRGB(
@@ -954,7 +964,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && !sensorData.stereoCameraModels().empty())
 	{
 		//stereo
-		UASSERT(sensorData.rightRaw().type() == CV_8UC1);
+		UASSERT(sensorData.rightRaw().type() == CV_8UC1 || sensorData.rightRaw().type() == CV_8UC3);
 
 		cv::Mat leftMono;
 		if(sensorData.imageRaw().channels() == 3)
@@ -964,6 +974,16 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		else
 		{
 			leftMono = sensorData.imageRaw();
+		}
+
+		cv::Mat rightMono;
+		if(sensorData.rightRaw().channels() == 3)
+		{
+			cv::cvtColor(sensorData.rightRaw(), rightMono, CV_BGR2GRAY);
+		}
+		else
+		{
+			rightMono = sensorData.rightRaw();
 		}
 
 		UASSERT(int((sensorData.imageRaw().cols/sensorData.stereoCameraModels().size())*sensorData.stereoCameraModels().size()) == sensorData.imageRaw().cols);
@@ -979,7 +999,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 			if(sensorData.stereoCameraModels()[i].isValidForProjection())
 			{
 				cv::Mat left(leftMono, cv::Rect(subImageWidth*i, 0, subImageWidth, leftMono.rows));
-				cv::Mat right(sensorData.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.rightRaw().rows));
+				cv::Mat right(rightMono, cv::Rect(subImageWidth*i, 0, subImageWidth, rightMono.rows));
 				StereoCameraModel model = sensorData.stereoCameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||

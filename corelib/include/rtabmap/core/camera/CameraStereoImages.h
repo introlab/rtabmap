@@ -56,6 +56,8 @@ public:
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoImages();
 
+	void setRightGrayScale(bool enabled = true) {rightGrayScale_ = enabled;}
+
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
@@ -69,6 +71,7 @@ protected:
 private:
 	CameraImages * camera2_;
 	StereoCameraModel stereoModel_;
+	bool rightGrayScale_;
 };
 
 
