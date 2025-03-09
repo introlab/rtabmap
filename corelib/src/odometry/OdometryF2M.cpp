@@ -60,6 +60,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	keyFrameThr_(Parameters::defaultOdomKeyFrameThr()),
 	visKeyFrameThr_(Parameters::defaultOdomVisKeyFrameThr()),
 	maxNewFeatures_(Parameters::defaultOdomF2MMaxNewFeatures()),
+	initDepthFactor_(Parameters::defaultOdomF2MInitDepthFactor()),
 	floorThreshold_(Parameters::defaultOdomF2MFloorThreshold()),
 	scanKeyFrameThr_(Parameters::defaultOdomScanKeyFrameThr()),
 	scanMaximumMapSize_(Parameters::defaultOdomF2MScanMaxSize()),
@@ -85,6 +86,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomKeyFrameThr(), keyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomVisKeyFrameThr(), visKeyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomF2MMaxNewFeatures(), maxNewFeatures_);
+	Parameters::parse(parameters, Parameters::kOdomF2MInitDepthFactor(), initDepthFactor_);
 	Parameters::parse(parameters, Parameters::kOdomF2MFloorThreshold(), floorThreshold_);
 	Parameters::parse(parameters, Parameters::kOdomScanKeyFrameThr(), scanKeyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomF2MScanMaxSize(), scanMaximumMapSize_);
@@ -128,6 +130,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	UASSERT(visKeyFrameThr_>=0);
 	UASSERT(scanKeyFrameThr_ >= 0.0f && scanKeyFrameThr_<=1.0f);
 	UASSERT(maxNewFeatures_ >= 0);
+	UASSERT(initDepthFactor_>0.0f);
 
 	int corType = Parameters::defaultVisCorType();
 	Parameters::parse(parameters, Parameters::kVisCorType(), corType);
@@ -884,7 +887,7 @@ Transform OdometryF2M::computeTransform(
 										lastFrameModels[cameraIndex].cy(),
 										lastFrameModels[cameraIndex].fx(),
 										lastFrameModels[cameraIndex].fy());
-								float scaleInf = 0.05 * lastFrameModels[cameraIndex].fx();
+								float scaleInf = initDepthFactor_ * lastFrameModels[cameraIndex].fx();
 								pt = util3d::transformPoint(cv::Point3f(ray[0]*scaleInf, ray[1]*scaleInf, ray[2]*scaleInf), lastFrameModels[cameraIndex].localTransform()); // in base_link frame
 							}
 							if(floorThreshold_ != 0.0f && pt.z < floorThreshold_)

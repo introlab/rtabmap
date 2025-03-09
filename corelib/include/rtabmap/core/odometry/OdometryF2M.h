@@ -62,6 +62,7 @@ private:
 	float keyFrameThr_;
 	int visKeyFrameThr_;
 	int maxNewFeatures_;
+	float initDepthFactor_;
 	float floorThreshold_;
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;

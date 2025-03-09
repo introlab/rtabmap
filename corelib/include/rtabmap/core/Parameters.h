@@ -477,6 +477,7 @@ class RTABMAP_CORE_EXPORT Parameters
     // Odometry Frame-to-Map
     RTABMAP_PARAM(OdomF2M, MaxSize,             int, 2000,    "[Visual] Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
     RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,       "[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
+    RTABMAP_PARAM(OdomF2M, InitDepthFactor,     float, 0.05,  "[Visual] Depth factor used to initialize depth of features without depth. Depth = Factor * fx.");
     RTABMAP_PARAM(OdomF2M, FloorThreshold,      float, 0.0,   "[Visual] Only track features in 3D feature map that are over this threshold (height in base frame). Can be useful to ignore reflections on the floor. 0 means disabled.");
     RTABMAP_PARAM(OdomF2M, ScanMaxSize,         int, 2000,    "[Geometry] Maximum local scan map size.");
     RTABMAP_PARAM(OdomF2M, ScanSubtractRadius,  float, 0.05,  "[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the scans.");
