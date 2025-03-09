@@ -4519,17 +4519,55 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 {
 	UDEBUG("");
 	SensorData data = inputData;
+
+	bool isIntermediateNode = data.id() < 0;
+
+	// uncompress data if needed
+	
+	if(!isIntermediateNode)
+	{
+		// We need raw images if we need to extract features and/or do tag detection
+		bool needRawImages = _feature2D->getMaxFeatures() >= 0 && 
+			(!_useOdometryFeatures ||
+			 data.keypoints().empty() ||
+			 (int)data.keypoints().size() != data.descriptors().rows ||
+			 data.descriptors().empty() ||
+			 _detectMarkers ||
+			 _rotateImagesUpsideUp ||
+			 _imagePostDecimation > 1 ||
+			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth()));
+
+		// Note: we could avoid uncompressing scan if we don't do any filtering
+		// and if we don't use it for local occupancy grid
+		bool needRawScan = true;
+
+		if( (needRawImages && data.imageRaw().empty() && !data.imageCompressed().empty()) ||
+			(needRawImages && data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty()) ||
+			(needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty()))
+		{
+			cv::Mat left, right;
+			LaserScan laserScan;
+			UDEBUG("Uncompressing data...");
+			data.uncompressData(
+				needRawImages && data.imageRaw().empty() && !data.imageCompressed().empty() ? &left : 0,
+				needRawImages && data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty() ? &right : 0,
+				needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty() ? &laserScan : 0);
+			UDEBUG("Uncompressing data...done!");
+		}
+	}
+
 	UASSERT(data.imageRaw().empty() ||
 			data.imageRaw().type() == CV_8UC1 ||
 			data.imageRaw().type() == CV_8UC3);
 	UASSERT_MSG(data.depthOrRightRaw().empty() ||
 			(  ( data.depthOrRightRaw().type() == CV_16UC1 ||
 				 data.depthOrRightRaw().type() == CV_32FC1 ||
-				 data.depthOrRightRaw().type() == CV_8UC1)
+				 data.depthOrRightRaw().type() == CV_8UC1 ||
+				 data.depthOrRightRaw().type() == CV_8UC3)
 			   &&
-				( (data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
+				( (data.imageRaw().empty() && !(data.depthOrRightRaw().type() == CV_8UC1 || data.depthOrRightRaw().type() == CV_8UC3)) ||
 				  (data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
-				uFormat("image=(%d/%d, type=%d, [accepted=%d,%d]) depth=(%d/%d, type=%d [accepted=%d(depth mm),%d(depth m),%d(stereo)]). "
+				uFormat("image=(%d/%d, type=%d, [accepted=%d,%d]) depth=(%d/%d, type=%d [accepted=%d(depth mm),%d(depth m),%d-%d(stereo)]). "
 						"For stereo, left and right images should be same size. "
 						"For RGB-D, depth can be X times smaller than RGB (where X is an integer).",
 						data.imageRaw().cols,
@@ -4540,7 +4578,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						data.depthOrRightRaw().cols,
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
-						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
+						CV_16UC1, CV_32FC1, CV_8UC1, CV_8UC3).c_str());
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().empty() &&
@@ -4559,7 +4597,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	bool isIntermediateNode = data.id() < 0;
 	int id = data.id();
 	if(_generateIds)
 	{
@@ -5754,8 +5791,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
-	// Filter the laser scan?
 	LaserScan laserScan = data.laserScanRaw();
+	// Filter the laser scan?
 	if(!isIntermediateNode && laserScan.size())
 	{
 		if(laserScan.rangeMax() == 0.0f)
@@ -5902,12 +5939,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			!stereoCameraModels.empty()?
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.maxPoints(),
 								laserScan.rangeMax(),
 								laserScan.format(),
 								laserScan.localTransform()):
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.format(),
 								laserScan.rangeMin(),
 								laserScan.rangeMax(),
@@ -5915,20 +5952,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								laserScan.angleMax(),
 								laserScan.angleIncrement(),
 								laserScan.localTransform()),
-						compressedImage,
-						compressedDepth,
+						compressedImage.empty()?data.imageCompressed():compressedImage,
+						compressedDepth.empty()?data.depthOrRightCompressed():compressedDepth,
 						stereoCameraModels,
 						id,
 						0,
 						compressedUserData):
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.maxPoints(),
 								laserScan.rangeMax(),
 								laserScan.format(),
 								laserScan.localTransform()):
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.format(),
 								laserScan.rangeMin(),
 								laserScan.rangeMax(),
@@ -5936,8 +5973,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								laserScan.angleMax(),
 								laserScan.angleIncrement(),
 								laserScan.localTransform()),
-						compressedImage,
-						compressedDepth,
+						compressedImage.empty()?data.imageCompressed():compressedImage,
+						compressedDepth.empty()?data.depthOrRightCompressed():compressedDepth,
 						cameraModels,
 						id,
 						0,
@@ -5986,12 +6023,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			!stereoCameraModels.empty()?
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.maxPoints(),
 									laserScan.rangeMax(),
 									laserScan.format(),
 									laserScan.localTransform()):
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.format(),
 									laserScan.rangeMin(),
 									laserScan.rangeMax(),
@@ -6007,12 +6044,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						compressedUserData):
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.maxPoints(),
 									laserScan.rangeMax(),
 									laserScan.format(),
 									laserScan.localTransform()):
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.format(),
 									laserScan.rangeMin(),
 									laserScan.rangeMax(),

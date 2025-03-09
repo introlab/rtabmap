@@ -44,7 +44,8 @@ CameraStereoImages::CameraStereoImages(
 		float imageRate,
 		const Transform & localTransform) :
 		CameraImages(pathLeftImages, imageRate, localTransform),
-		camera2_(new CameraImages(pathRightImages))
+		camera2_(new CameraImages(pathRightImages)),
+		rightGrayScale_(true)
 {
 	this->setImagesRectified(rectifyImages);
 }
@@ -55,7 +56,8 @@ CameraStereoImages::CameraStereoImages(
 		float imageRate,
 		const Transform & localTransform) :
 		CameraImages("", imageRate, localTransform),
-		camera2_(0)
+		camera2_(0),
+		rightGrayScale_(true)
 {
 	std::vector<std::string> paths = uListToVector(uSplit(pathLeftRightImages, uStrContains(pathLeftRightImages, ":")?':':';'));
 	if(paths.size() >= 1)
@@ -179,7 +181,7 @@ SensorData CameraStereoImages::captureImage(SensorCaptureInfo * info)
 			// Rectification
 			cv::Mat leftImage = left.imageRaw();
 			cv::Mat rightImage = right.imageRaw();
-			if(rightImage.type() != CV_8UC1)
+			if(rightImage.type() != CV_8UC1 && rightGrayScale_)
 			{
 				cv::Mat tmp;
 				cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
