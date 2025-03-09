@@ -123,6 +123,9 @@ void OdometryThread::mainLoop()
 		{
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
 			// a null pose notify that odometry could not be computed
+			data.setImageRaw(cv::Mat());
+			if(!data.depthOrRightCompressed().empty())
+				data.setDepthOrRightRaw(cv::Mat());
 			this->post(new OdometryEvent(data, pose, info));
 		}
 	}
@@ -155,7 +158,11 @@ void OdometryThread::addData(const SensorData & data)
 	bool notify = true;
 	_dataMutex.lock();
 	{
-		if(!data.imageRaw().empty() || !data.laserScanRaw().isEmpty() || data.imu().empty())
+		if( !data.imageRaw().empty() ||
+			!data.imageCompressed().empty() ||
+			!data.laserScanRaw().isEmpty() ||
+			!data.laserScanCompressed().empty() || 
+			data.imu().empty())
 		{
 			_dataBuffer.push_back(data);
 			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)

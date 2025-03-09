@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-594</y>
+            <y>-639</y>
             <width>713</width>
-            <height>4653</height>
+            <height>4705</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -3424,7 +3424,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_src">
                          <property name="currentIndex">
-                          <number>3</number>
+                          <number>1</number>
                          </property>
                          <widget class="QWidget" name="page_41">
                           <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4972,6 +4972,32 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item>
                                <layout class="QGridLayout" name="gridLayout_58" columnstretch="0,0,1">
+                                <item row="3" column="2">
+                                 <widget class="QLabel" name="label_stereo_rectify_2">
+                                  <property name="text">
+                                   <string>Auto exposure compensation between left and right images.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="0" column="2">
+                                 <widget class="QLabel" name="label_240">
+                                  <property name="text">
+                                   <string>Driver.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
                                 <item row="0" column="1">
                                  <widget class="QComboBox" name="comboBox_cameraStereo">
                                   <property name="sizeAdjustPolicy">
@@ -5034,21 +5060,8 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                  </widget>
                                 </item>
-                                <item row="0" column="2">
-                                 <widget class="QLabel" name="label_240">
-                                  <property name="text">
-                                   <string>Driver.</string>
-                                  </property>
-                                  <property name="wordWrap">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="textInteractionFlags">
-                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item row="1" column="1">
-                                 <widget class="QCheckBox" name="checkbox_stereo_depthGenerated">
+                                <item row="2" column="1">
+                                 <widget class="QCheckBox" name="checkBox_stereo_rectify">
                                   <property name="text">
                                    <string/>
                                   </property>
@@ -5058,6 +5071,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <widget class="QLabel" name="label_stereo_depthGenerated">
                                   <property name="text">
                                    <string>Generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                   <bool>true</bool>
+                                  </property>
+                                  <property name="textInteractionFlags">
+                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="3" column="1">
+                                 <widget class="QCheckBox" name="checkBox_stereo_exposureCompensation">
+                                  <property name="text">
+                                   <string/>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item row="4" column="2">
+                                 <widget class="QLabel" name="label_stereo_rectify_3">
+                                  <property name="text">
+                                   <string>Convert right image to gray scale if not already.</string>
                                   </property>
                                   <property name="wordWrap">
                                    <bool>true</bool>
@@ -5080,28 +5113,15 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </property>
                                  </widget>
                                 </item>
-                                <item row="2" column="1">
-                                 <widget class="QCheckBox" name="checkBox_stereo_rectify">
+                                <item row="1" column="1">
+                                 <widget class="QCheckBox" name="checkbox_stereo_depthGenerated">
                                   <property name="text">
                                    <string/>
                                   </property>
                                  </widget>
                                 </item>
-                                <item row="3" column="2">
-                                 <widget class="QLabel" name="label_stereo_rectify_2">
-                                  <property name="text">
-                                   <string>Auto exposure compensation between left and right images.</string>
-                                  </property>
-                                  <property name="wordWrap">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="textInteractionFlags">
-                                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item row="3" column="1">
-                                 <widget class="QCheckBox" name="checkBox_stereo_exposureCompensation">
+                                <item row="4" column="1">
+                                 <widget class="QCheckBox" name="checkBox_stereo_rightGrayScale">
                                   <property name="text">
                                    <string/>
                                   </property>

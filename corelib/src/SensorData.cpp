@@ -365,7 +365,8 @@ void SensorData::setStereoImage(
 	}
 	else if(!right.empty())
 	{
-		UASSERT(right.type() == CV_8UC1); // Mono
+		UASSERT(right.type() == CV_8UC1 || // Mono
+				right.type() == CV_8UC3);  // RGB
 		_depthOrRightRaw = right;
 		if(clearData)
 		{

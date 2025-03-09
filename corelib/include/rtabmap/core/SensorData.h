@@ -207,8 +207,8 @@ public:
 	void setStereoCameraModels(const std::vector<StereoCameraModel> & stereoCameraModels) {_stereoCameraModels = stereoCameraModels;}
 
 	//for convenience
-	cv::Mat depthRaw() const {return _depthOrRightRaw.type()!=CV_8UC1?_depthOrRightRaw:cv::Mat();}
-	cv::Mat rightRaw() const {return _depthOrRightRaw.type()==CV_8UC1?_depthOrRightRaw:cv::Mat();}
+	cv::Mat depthRaw() const {return !(_depthOrRightRaw.type()==CV_8UC1 || _depthOrRightRaw.type()==CV_8UC3) ? _depthOrRightRaw : cv::Mat();}
+	cv::Mat rightRaw() const {return   _depthOrRightRaw.type()==CV_8UC1 || _depthOrRightRaw.type()==CV_8UC3  ? _depthOrRightRaw : cv::Mat();}
 
 	// Use setRGBDImage() or setStereoImage() with clearNotUpdated=false or removeRawData() instead. To be backward compatible, this function doesn't clear compressed data.
 	RTABMAP_DEPRECATED void setImageRaw(const cv::Mat & image);
@@ -330,7 +330,7 @@ private:
 	LaserScan _laserScanCompressed;      // compressed data
 
 	cv::Mat _imageRaw;          // CV_8UC1 or CV_8UC3
-	cv::Mat _depthOrRightRaw;   // depth CV_16UC1 or CV_32FC1, right image CV_8UC1
+	cv::Mat _depthOrRightRaw;   // depth CV_16UC1 or CV_32FC1, right image CV_8UC1 or CV_8UC3
 	LaserScan _laserScanRaw;
 
 	std::vector<CameraModel> _cameraModels;

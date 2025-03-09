@@ -448,11 +448,16 @@ Transform OdometryORBSLAM3::computeTransform(
 	{
 		localTransform = data.stereoCameraModels()[0].localTransform();
 		cv::Mat leftMono = data.imageRaw();
-                if(data.imageRaw().channels() == 3) {
+        if(data.imageRaw().channels() == 3) {
 			leftMono = cv::Mat();
 			cv::cvtColor(data.imageRaw(), leftMono, CV_BGR2GRAY);
 		}
-		Tcw = orbslam_->TrackStereo(leftMono, data.rightRaw(), data.stamp(), orbslamImus_);
+		cv::Mat rightMono = data.rightRaw();
+        if(data.rightRaw().channels() == 3) {
+			rightMono = cv::Mat();
+			cv::cvtColor(data.imageRaw(), rightMono, CV_BGR2GRAY);
+		}
+		Tcw = orbslam_->TrackStereo(leftMono, rightMono, data.stamp(), orbslamImus_);
 		orbslamImus_.clear();
 	}
 	else

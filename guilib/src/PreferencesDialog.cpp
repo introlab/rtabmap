@@ -882,6 +882,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkbox_source_feature_detection, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereo_depthGenerated, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereo_exposureCompensation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_stereo_rightGrayScale, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
@@ -2176,6 +2177,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_source_feature_detection->setChecked(false);
 		_ui->checkbox_stereo_depthGenerated->setChecked(false);
 		_ui->checkBox_stereo_exposureCompensation->setChecked(false);
+		_ui->checkBox_stereo_rightGrayScale->setChecked(true);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);
 		_ui->openni2_exposure->setValue(0);
@@ -2254,7 +2256,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereoMyntEye_contrast->setValue(116);
 		_ui->spinBox_stereoMyntEye_irControl->setValue(0);
 		_ui->comboBox_depthai_image_width->setCurrentIndex(1);
-		_ui->comboBox_depthai_output_mode->setCurrentIndex(0);
+		_ui->comboBox_depthai_output_mode->setCurrentIndex(1);
 		_ui->spinBox_depthai_conf_threshold->setValue(200);
 		_ui->checkBox_depthai_extended_disparity->setChecked(false);
 		_ui->checkBox_depthai_disparity_companding->setChecked(false);
@@ -2652,6 +2654,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_cameraStereo->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraStereo->currentIndex()).toInt());
 	_ui->checkbox_stereo_depthGenerated->setChecked(settings.value("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked()).toBool());
 	_ui->checkBox_stereo_exposureCompensation->setChecked(settings.value("exposureCompensation", _ui->checkBox_stereo_exposureCompensation->isChecked()).toBool());
+	_ui->checkBox_stereo_rightGrayScale->setChecked(settings.value("rightGrayScale", _ui->checkBox_stereo_rightGrayScale->isChecked()).toBool());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -3256,6 +3259,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("driver", 	_ui->comboBox_cameraStereo->currentIndex());
 	settings.setValue("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked());
 	settings.setValue("exposureCompensation", _ui->checkBox_stereo_exposureCompensation->isChecked());
+	settings.setValue("rightGrayScale", _ui->checkBox_stereo_rightGrayScale->isChecked());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -4296,7 +4300,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 		{
 			_ui->checkBox_depthai_imu_published->setChecked(variant >= 1);
 			_ui->comboBox_depthai_image_width->setCurrentIndex(1);
-			_ui->comboBox_depthai_output_mode->setCurrentIndex(variant==2?2:0);
+			_ui->comboBox_depthai_output_mode->setCurrentIndex(variant==2?2:1);
 			_ui->doubleSpinBox_depthai_dot_intensity->setValue(variant==2?1:0);
 		}
 	}
@@ -6436,6 +6440,10 @@ bool PreferencesDialog::isSourceStereoExposureCompensation() const
 {
 	return _ui->checkBox_stereo_exposureCompensation->isChecked();
 }
+bool PreferencesDialog::isRightGrayScale() const
+{
+	return _ui->checkBox_stereo_rightGrayScale->isChecked();
+}
 bool PreferencesDialog::isSourceScanFromDepth() const
 {
 	return _ui->checkBox_source_scanFromDepth->isChecked();
@@ -6758,8 +6766,8 @@ Camera * PreferencesDialog::createCamera(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
-		((CameraRGBDImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
-
+		((CameraStereoImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraStereoImages*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoUsb)
 	{
@@ -6785,6 +6793,7 @@ Camera * PreferencesDialog::createCamera(
 		{
 			((CameraStereoVideo*)camera)->setFOURCC(_ui->lineEdit_stereousbcam_fourcc->text().toStdString());
 		}
+		((CameraStereoVideo*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if(driver == kSrcStereoVideo)
 	{
@@ -6807,6 +6816,7 @@ Camera * PreferencesDialog::createCamera(
 					this->getGeneralInputRate(),
 					this->getSourceLocalTransform());
 		}
+		((CameraStereoVideo*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
     
     else if (driver == kSrcStereoTara)
@@ -6856,6 +6866,7 @@ Camera * PreferencesDialog::createCamera(
 				_ui->checkbox_publishInterIMU->isChecked(),
 				_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
 						IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+		((CameraStereoZed*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoZedOC)
 	{
@@ -6865,6 +6876,7 @@ Camera * PreferencesDialog::createCamera(
 			_ui->comboBox_stereoZedOC_resolution->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraStereoZedOC*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoDepthAI)
 	{

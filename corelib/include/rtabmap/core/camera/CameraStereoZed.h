@@ -79,6 +79,7 @@ public:
 	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.0);
 
 	void postInterIMUPublic(const IMU & imu, double stamp);
+	void setRightGrayScale(bool enabled = true);
 
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -100,6 +101,7 @@ private:
 	bool computeOdometry_;
 	bool lost_;
 	bool force3DoF_;
+	bool rightGrayScale_;
 	ZedIMUThread * imuPublishingThread_;
 #endif
 };
