@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-2995</y>
+        <y>-3199</y>
         <width>885</width>
-        <height>6152</height>
+        <height>6183</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2438,20 +2438,106 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             <layout class="QVBoxLayout" name="verticalLayout_16">
              <item>
               <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
-               <item row="13" column="0">
-                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
+               <item row="11" column="0">
+                <widget class="QCheckBox" name="checkBox_blending">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_3">
+                 <property name="text">
+                  <string>Camera filtering. Some criteria to select which cameras are used for texturing.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDistance">
                  <property name="suffix">
-                  <string> %</string>
+                  <string> m</string>
+                 </property>
+                 <property name="decimals">
+                  <number>1</number>
                  </property>
                  <property name="minimum">
-                  <number>0</number>
+                  <double>0.000000000000000</double>
                  </property>
                  <property name="maximum">
-                  <number>49</number>
+                  <double>99.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>3.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLabel" name="label_meshingTextureFormat">
+                 <property name="text">
+                  <string>Texture format.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_10">
+                 <property name="text">
+                  <string>Maximum angle between camera and face to apply texture (0 means disabled).</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="16" column="1">
+                <widget class="QLabel" name="label_exposureFusion">
+                 <property name="text">
+                  <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
                <item row="13" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_5">
+                 <property name="text">
+                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_2">
+                 <property name="text">
+                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_11">
+                 <property name="text">
+                  <string>Distance to camera policy. The closest camera from a polygon is used to texture the polygon. If disabled, the camera for which the polygon projection is the closest of the image center is used to texture the polygon.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="14" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_6">
                  <property name="text">
                   <string>Brightness and contrast balance high ratio. Only used when textures are merged.</string>
@@ -2461,7 +2547,17 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="0">
+               <item row="2" column="0">
+                <widget class="QSpinBox" name="spinBox_mesh_maxTextures">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>20</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="12" column="0">
                 <widget class="QComboBox" name="comboBox_blendingDecimation">
                  <item>
                   <property name="text">
@@ -2505,20 +2601,90 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </item>
                 </widget>
                </item>
-               <item row="10" column="0">
-                <widget class="QCheckBox" name="checkBox_blending">
+               <item row="7" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_4">
                  <property name="text">
-                  <string/>
+                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="14" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
+                 <property name="suffix">
+                  <string> %</string>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>49</number>
                  </property>
                 </widget>
                </item>
                <item row="11" column="1">
-                <widget class="QLabel" name="label_exposureFusion_3">
+                <widget class="QLabel" name="label_exposureFusion_2">
                  <property name="text">
-                  <string>Blending decimation. </string>
+                  <string>Blending. Only used with dense reconstruction flavor and if clouds are assembled.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="17" column="1">
+                <widget class="QLabel" name="label_multiband">
+                 <property name="text">
+                  <string>MultiBand texturing. Only available on export and RTAB-Map should be built with AliceVision support.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxAngle">
+                 <property name="suffix">
+                  <string> deg</string>
+                 </property>
+                 <property name="decimals">
+                  <number>0</number>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>180.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>0.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDepthError">
+                 <property name="suffix">
+                  <string> m</string>
+                 </property>
+                 <property name="decimals">
+                  <number>2</number>
+                 </property>
+                 <property name="minimum">
+                  <double>-1.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>99.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>0.050000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>0.000000000000000</double>
                  </property>
                 </widget>
                </item>
@@ -2532,72 +2698,24 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_8">
+               <item row="17" column="0">
+                <widget class="QCheckBox" name="checkBox_multiband">
                  <property name="text">
-                  <string>Maximum output textures.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
+                  <string/>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="1">
-                <widget class="QLabel" name="label_exposureFusion_2">
+               <item row="16" column="0">
+                <widget class="QCheckBox" name="checkBox_exposureFusion">
                  <property name="text">
-                  <string>Blending. Only used with dense reconstruction flavor and if clouds are assembled.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
+                  <string/>
                  </property>
                 </widget>
                </item>
-               <item row="4" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_2">
+               <item row="1" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize">
                  <property name="text">
-                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDistance">
-                 <property name="suffix">
-                  <string> m</string>
-                 </property>
-                 <property name="decimals">
-                  <number>1</number>
-                 </property>
-                 <property name="minimum">
-                  <double>0.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>1.000000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>3.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_5">
-                 <property name="text">
-                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QLabel" name="label_meshingTextureFormat">
-                 <property name="text">
-                  <string>Texture format.</string>
+                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -2616,6 +2734,16 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                    <string>.png</string>
                   </property>
                  </item>
+                </widget>
+               </item>
+               <item row="7" column="0">
+                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>99999</number>
+                 </property>
                 </widget>
                </item>
                <item row="1" column="0">
@@ -2667,17 +2795,17 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </item>
                 </widget>
                </item>
-               <item row="15" column="0">
-                <widget class="QCheckBox" name="checkBox_exposureFusion">
+               <item row="8" column="0">
+                <widget class="QCheckBox" name="checkBox_distanceToCamPolicy">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="7" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_4">
+               <item row="2" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_8">
                  <property name="text">
-                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
+                  <string>Maximum output textures.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -2687,73 +2815,13 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                <item row="3" column="0">
                 <widget class="QLineEdit" name="lineEdit_meshingTextureRoiRatios"/>
                </item>
-               <item row="1" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize">
+               <item row="12" column="1">
+                <widget class="QLabel" name="label_exposureFusion_3">
                  <property name="text">
-                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                  <string>Blending decimation. </string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="9" column="0">
-                <widget class="QCheckBox" name="checkBox_cameraFilter">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="0">
-                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
-                 <property name="suffix">
-                  <string> %</string>
-                 </property>
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>49</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="0">
-                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>99999</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="9" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_3">
-                 <property name="text">
-                  <string>Camera filtering. Some criteria to select which cameras are used for texturing.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="15" column="1">
-                <widget class="QLabel" name="label_exposureFusion">
-                 <property name="text">
-                  <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QSpinBox" name="spinBox_mesh_maxTextures">
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>20</number>
                  </property>
                 </widget>
                </item>
@@ -2767,92 +2835,53 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </property>
                 </widget>
                </item>
-               <item row="5" column="0">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDepthError">
+               <item row="13" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
                  <property name="suffix">
-                  <string> m</string>
-                 </property>
-                 <property name="decimals">
-                  <number>2</number>
+                  <string> %</string>
                  </property>
                  <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.050000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>0.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_10">
-                 <property name="text">
-                  <string>Maximum angle between camera and face to apply texture (0 means disabled).</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="0">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxAngle">
-                 <property name="suffix">
-                  <string> deg</string>
-                 </property>
-                 <property name="decimals">
                   <number>0</number>
                  </property>
-                 <property name="minimum">
-                  <double>0.000000000000000</double>
-                 </property>
                  <property name="maximum">
-                  <double>180.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>1.000000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>0.000000000000000</double>
+                  <number>49</number>
                  </property>
                 </widget>
                </item>
-               <item row="16" column="1">
-                <widget class="QLabel" name="label_multiband">
+               <item row="10" column="0">
+                <widget class="QCheckBox" name="checkBox_cameraFilter">
                  <property name="text">
-                  <string>MultiBand texturing. Only available on export and RTAB-Map should be built with AliceVision support.</string>
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="1">
+                <widget class="QLabel" name="label_texturingVertexColorPolicy">
+                 <property name="text">
+                  <string>Output vertex color policy.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
                  </property>
                 </widget>
                </item>
-               <item row="16" column="0">
-                <widget class="QCheckBox" name="checkBox_multiband">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_11">
-                 <property name="text">
-                  <string>Distance to camera policy. The closest camera from a polygon is used to texture the polygon. If disabled, the camera for which the polygon projection is the closest of the image center is used to texture the polygon.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="0">
-                <widget class="QCheckBox" name="checkBox_distanceToCamPolicy">
-                 <property name="text">
-                  <string/>
-                 </property>
+               <item row="9" column="0">
+                <widget class="QComboBox" name="comboBox_texturingColorPolicy">
+                 <item>
+                  <property name="text">
+                   <string>Colorless (standard OBJ)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Keep color on textureless polygons only</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Keep all color</string>
+                  </property>
+                 </item>
                 </widget>
                </item>
               </layout>
