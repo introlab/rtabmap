@@ -60,6 +60,8 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	keyFrameThr_(Parameters::defaultOdomKeyFrameThr()),
 	visKeyFrameThr_(Parameters::defaultOdomVisKeyFrameThr()),
 	maxNewFeatures_(Parameters::defaultOdomF2MMaxNewFeatures()),
+	initDepthFactor_(Parameters::defaultOdomF2MInitDepthFactor()),
+	floorThreshold_(Parameters::defaultOdomF2MFloorThreshold()),
 	scanKeyFrameThr_(Parameters::defaultOdomScanKeyFrameThr()),
 	scanMaximumMapSize_(Parameters::defaultOdomF2MScanMaxSize()),
 	scanSubtractRadius_(Parameters::defaultOdomF2MScanSubtractRadius()),
@@ -69,6 +71,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	bundleMaxFrames_(Parameters::defaultOdomF2MBundleAdjustmentMaxFrames()),
 	bundleMinMotion_(Parameters::defaultOdomF2MBundleAdjustmentMinMotion()),
 	bundleMaxKeyFramesPerFeature_(Parameters::defaultOdomF2MBundleAdjustmentMaxKeyFramesPerFeature()),
+	bundleUpdateFeatureMapOnAllFrames_(Parameters::defaultOdomF2MBundleUpdateFeatureMapOnAllFrames()),
 	validDepthRatio_(Parameters::defaultOdomF2MValidDepthRatio()),
 	pointToPlaneK_(Parameters::defaultIcpPointToPlaneK()),
 	pointToPlaneRadius_(Parameters::defaultIcpPointToPlaneRadius()),
@@ -83,6 +86,8 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomKeyFrameThr(), keyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomVisKeyFrameThr(), visKeyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomF2MMaxNewFeatures(), maxNewFeatures_);
+	Parameters::parse(parameters, Parameters::kOdomF2MInitDepthFactor(), initDepthFactor_);
+	Parameters::parse(parameters, Parameters::kOdomF2MFloorThreshold(), floorThreshold_);
 	Parameters::parse(parameters, Parameters::kOdomScanKeyFrameThr(), scanKeyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomF2MScanMaxSize(), scanMaximumMapSize_);
 	Parameters::parse(parameters, Parameters::kOdomF2MScanSubtractRadius(), scanSubtractRadius_);
@@ -95,6 +100,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustmentMaxFrames(), bundleMaxFrames_);
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustmentMinMotion(), bundleMinMotion_);
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustmentMaxKeyFramesPerFeature(), bundleMaxKeyFramesPerFeature_);
+	Parameters::parse(parameters, Parameters::kOdomF2MBundleUpdateFeatureMapOnAllFrames(), bundleUpdateFeatureMapOnAllFrames_);
 	Parameters::parse(parameters, Parameters::kOdomF2MValidDepthRatio(), validDepthRatio_);
 
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), pointToPlaneK_);
@@ -124,6 +130,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	UASSERT(visKeyFrameThr_>=0);
 	UASSERT(scanKeyFrameThr_ >= 0.0f && scanKeyFrameThr_<=1.0f);
 	UASSERT(maxNewFeatures_ >= 0);
+	UASSERT(initDepthFactor_>0.0f);
 
 	int corType = Parameters::defaultVisCorType();
 	Parameters::parse(parameters, Parameters::kVisCorType(), corType);
@@ -644,6 +651,51 @@ Transform OdometryF2M::computeTransform(
 				std::vector<cv::Point3f> mapPoints = tmpMap.getWords3();
 				cv::Mat mapDescriptors = tmpMap.getWordsDescriptors();
 
+				// update last frame features without depth (if bundle adjustment was done)
+				// Do this before adding bundle frames to keep mono observations without depth
+				bool lastFrameWords3Updated = false;
+				std::vector<cv::Point3f> lastFrameWords3;
+				if( regPipeline_->isImageRequired() &&
+					!visDepthAsMask &&
+				    bundleAdjustment_>0 &&
+					!lastFrame_->getWords().empty() &&
+					lastFrame_->getWords().size() == lastFrame_->getWords3().size() &&
+					!points3DMap.empty())
+				{
+					lastFrameWords3 = lastFrame_->getWords3();
+					Transform newFramePoseInv = newFramePose.inverse();
+					for(std::multimap<int, int>::const_iterator iter=lastFrame_->getWords().begin();
+					    iter!=lastFrame_->getWords().end();
+						++iter)
+					{
+						cv::Point3f & pt = lastFrameWords3.at(iter->second);
+						if(!util3d::isFinite(pt))
+						{
+							std::map<int, cv::Point3f>::iterator mapIter = points3DMap.find(iter->first);
+							if(mapIter != points3DMap.end())
+							{
+								// in base frame
+								pt = util3d::transformPoint(mapIter->second, newFramePoseInv);
+								lastFrameWords3Updated = true;
+							}
+						}
+					}
+				}
+
+				if( regPipeline_->isImageRequired() &&
+					bundleAdjustment_>0 &&
+					bundleUpdateFeatureMapOnAllFrames_ &&
+					!points3DMap.empty())
+				{
+					// update local map 3D points (if bundle adjustment was done)
+					for(std::map<int, cv::Point3f>::iterator iter=points3DMap.begin(); iter!=points3DMap.end(); ++iter)
+					{
+						UASSERT(mapWords.count(iter->first) == 1);
+						mapPoints[mapWords.find(iter->first)->second] = iter->second;
+					}
+					modified = true;
+				}
+
 				bool addVisualKeyFrame = regPipeline_->isImageRequired() &&
 						 (keyFrameThr_ == 0.0f ||
 						  visKeyFrameThr_ == 0 ||
@@ -674,6 +726,7 @@ Transform OdometryF2M::computeTransform(
 					UTimer tmpTimer;
 
 					UDEBUG("Update local map");
+					modified = bundleAdjustment_>0; // We always add new references even if we don't add/remove points
 
 					// update local map
 					UASSERT(mapWords.size() == mapPoints.size());
@@ -698,12 +751,14 @@ Transform OdometryF2M::computeTransform(
 						bundleModels_.insert(*bundleModels.find(lastFrame_->id()));
 						iterBundlePosesRef = bundlePoseReferences_.find(lastFrame_->id());
 
-						// update local map 3D points (if bundle adjustment was done)
-						for(std::map<int, cv::Point3f>::iterator iter=points3DMap.begin(); iter!=points3DMap.end(); ++iter)
+						if(!bundleUpdateFeatureMapOnAllFrames_)
 						{
-							UASSERT(mapWords.count(iter->first) == 1);
-							//UDEBUG("Updated %d (%f,%f,%f) -> (%f,%f,%f)", iter->first, mapPoints[mapWords.find(iter->first)->second].x, mapPoints[mapWords.find(iter->first)->second].y, mapPoints[mapWords.find(iter->first)->second].z, iter->second.x, iter->second.y, iter->second.z);
-							mapPoints[mapWords.find(iter->first)->second] = iter->second;
+							// update local map 3D points (if bundle adjustment was done)
+							for(std::map<int, cv::Point3f>::iterator iter=points3DMap.begin(); iter!=points3DMap.end(); ++iter)
+							{
+								UASSERT(mapWords.count(iter->first) == 1);
+								mapPoints[mapWords.find(iter->first)->second] = iter->second;
+							}
 						}
 					}
 
@@ -818,6 +873,28 @@ Transform OdometryF2M::computeTransform(
 						if(maxNewFeatures_ == 0  || added < maxNewFeatures_)
 						{
 							int cameraIndex = iter->second.second.second.second.second;
+							cv::Point3f pt = iter->second.second.second.first;
+							if(!util3d::isFinite(pt))
+							{
+								// get the ray instead
+								float x = iter->second.second.first.pt.x; //subImageWidth should be already removed
+								float y = iter->second.second.first.pt.y;
+								Eigen::Vector3f ray = util3d::projectDepthTo3DRay(
+										lastFrameModels[cameraIndex].imageSize(),
+										x,
+										y,
+										lastFrameModels[cameraIndex].cx(),
+										lastFrameModels[cameraIndex].cy(),
+										lastFrameModels[cameraIndex].fx(),
+										lastFrameModels[cameraIndex].fy());
+								float scaleInf = initDepthFactor_ * lastFrameModels[cameraIndex].fx();
+								pt = util3d::transformPoint(cv::Point3f(ray[0]*scaleInf, ray[1]*scaleInf, ray[2]*scaleInf), lastFrameModels[cameraIndex].localTransform()); // in base_link frame
+							}
+							if(floorThreshold_ != 0.0f && pt.z < floorThreshold_)
+							{
+								continue;
+							}
+
 							if(bundleAdjustment_>0)
 							{
 								if(lastFrame_->getWords().count(iter->second.first) == 1)
@@ -846,23 +923,6 @@ Transform OdometryF2M::computeTransform(
 
 							mapWords.insert(mapWords.end(), std::make_pair(iter->second.first, mapWords.size()));
 							mapWordsKpts.push_back(iter->second.second.first);
-							cv::Point3f pt = iter->second.second.second.first;
-							if(!util3d::isFinite(pt))
-							{
-								// get the ray instead
-								float x = iter->second.second.first.pt.x; //subImageWidth should be already removed
-								float y = iter->second.second.first.pt.y;
-								Eigen::Vector3f ray = util3d::projectDepthTo3DRay(
-										lastFrameModels[cameraIndex].imageSize(),
-										x,
-										y,
-										lastFrameModels[cameraIndex].cx(),
-										lastFrameModels[cameraIndex].cy(),
-										lastFrameModels[cameraIndex].fx(),
-										lastFrameModels[cameraIndex].fy());
-								float scaleInf = (0.05 * lastFrameModels[cameraIndex].fx()) / 0.01;
-								pt = util3d::transformPoint(cv::Point3f(ray[0]*scaleInf, ray[1]*scaleInf, ray[2]*scaleInf), lastFrameModels[cameraIndex].localTransform()); // in base_link frame
-							}
 							mapPoints.push_back(util3d::transformPoint(pt, newFramePose));
 							mapDescriptors.push_back(iter->second.second.second.second.first);
 							if(lastFrameOldestNewId_ > iter->second.first)
@@ -870,6 +930,10 @@ Transform OdometryF2M::computeTransform(
 								lastFrameOldestNewId_ = iter->second.first;
 							}
 							++added;
+						}
+						else
+						{
+							break;
 						}
 					}
 					UDEBUG("");
@@ -1192,6 +1256,12 @@ Transform OdometryF2M::computeTransform(
 					}
 
 					map_->setWords(mapWords, mapWordsKpts, mapPoints, mapDescriptors);
+				}
+
+				if(lastFrameWords3Updated)
+				{
+					// update output with refined 3d points from bundle adjustment
+					data.setFeatures(lastFrame_->getWordsKpts(), lastFrameWords3, lastFrame_->getWordsDescriptors());
 				}
 			}
 
