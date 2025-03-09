@@ -123,9 +123,6 @@ void OdometryThread::mainLoop()
 		{
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
 			// a null pose notify that odometry could not be computed
-			data.setImageRaw(cv::Mat());
-			if(!data.depthOrRightCompressed().empty())
-				data.setDepthOrRightRaw(cv::Mat());
 			this->post(new OdometryEvent(data, pose, info));
 		}
 	}
