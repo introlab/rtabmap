@@ -70,6 +70,7 @@ public:
 
 	void setResolution(int width, int height) {_width=width, _height=height;}
 	void setFOURCC(const std::string & fourcc) { _fourcc = fourcc; }
+	void setRightGrayScale(bool enabled = true) {rightGrayScale_ = enabled;}
 
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -88,6 +89,7 @@ private:
 	int _width;
 	int _height;
 	std::string _fourcc;
+	bool rightGrayScale_;
 };
 
 } // namespace rtabmap

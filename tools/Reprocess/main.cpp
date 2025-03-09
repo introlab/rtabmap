@@ -81,7 +81,8 @@ void showUsage()
 			"     -stop_s #   Last map session to process.\n"
 			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
 			"                 then next databases are reprocessed on top of the first one.\n"
-			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
+			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data. Can also be multiple \n"
+			"                 indices split by spaces in a string like \"0 2\" to stream cameras 0 and 2 only.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
@@ -225,6 +226,15 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
+	// override help from Parameters to show the whole thing
+	for(int i=1; i<argc; ++i)
+	{
+		if(strcmp(argv[i], "--help") == 0)
+		{
+			showUsage();
+		}
+	}
+
 	ParametersMap customParameters = Parameters::parseArguments(argc, argv);
 
 	if(argc < 3)
@@ -245,7 +255,7 @@ int main(int argc, char * argv[])
 	int startMapId = 0;
 	int stopMapId = -1;
 	bool appendMode = false;
-	int cameraIndex = -1;
+	std::vector<unsigned int> cameraIndices;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool ignorePriors = false;
@@ -361,8 +371,12 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc - 2)
 			{
-				cameraIndex = atoi(argv[i]);
-				printf("Camera index = %d.\n", cameraIndex);
+				std::list<std::string> indicesStr = uSplit(argv[i], ' ');
+				for(std::list<std::string>::iterator iter=indicesStr.begin(); iter!=indicesStr.end(); ++iter)
+				{
+					cameraIndices.push_back(uStr2Int(*iter));
+					printf("Camera index = %d.\n", cameraIndices.back());
+				}
 			}
 			else
 			{
@@ -768,7 +782,7 @@ int main(int argc, char * argv[])
 			false,
 			false,
 			startId,
-			cameraIndex,
+			cameraIndices,
 			stopId,
 			!intermediateNodes,
 			ignoreLandmarks,
