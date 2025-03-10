@@ -99,7 +99,7 @@ public:
 	void update(const SensorData & data, const Transform & pose, const glm::mat4 & viewMatrix, const glm::mat4 & projectionMatrix, const float * texCoord);
 	void updateOnRender();
 
-	void resetOrigin();
+	void resetOrigin(const rtabmap::Transform & offset = rtabmap::Transform());
 	virtual bool isCalibrated() const;
 
 	virtual bool odomProvided() const { return true; }
@@ -150,6 +150,7 @@ private:
 	EnvSensors lastEnvSensors_;
 	Transform originOffset_;
 	bool originUpdate_;
+    rtabmap::Transform manualOriginOffset_;
 	float upstreamRelocalizationAccThr_;
 	rtabmap::Transform previousAnchorPose_;
 	std::vector<float> previousAnchorLinearVelocity_;
