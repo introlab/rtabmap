@@ -141,6 +141,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     }
     
     @objc func defaultsChanged(){
+        print("defaultsChanged()")
         updateDisplayFromDefaults()
     }
     
@@ -543,6 +544,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     }
     
     @objc func appMovedToBackground() {
+        print("appMovedToBackground()")
         if(mState == .STATE_VISUALIZING_CAMERA || mState == .STATE_VISUALIZING_AND_MEASURING || mState == .STATE_MAPPING || mState == .STATE_CAMERA)
         {
             stopMapping(ignoreSaving: true)
@@ -550,6 +552,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     }
     
     @objc func appMovedToForeground() {
+        print("appMovedToForeground()")
         updateDisplayFromDefaults()
         
         if(mMapNodes > 0 && self.openedDatabasePath == nil)
@@ -1011,7 +1014,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 let ac = UIAlertController(title: "Reset All Default Settings", message: "Do you want to reset all settings to default?", preferredStyle: .alert)
                 ac.addAction(UIAlertAction(title: "Yes", style: .default, handler: { _ in
                     let notificationCenter = NotificationCenter.default
-                    notificationCenter.removeObserver(self)
+                    notificationCenter.removeObserver(self, name: UserDefaults.didChangeNotification, object: nil)
                     UserDefaults.standard.reset()
                     self.registerSettingsBundle()
                     self.updateDisplayFromDefaults();
@@ -2546,7 +2549,7 @@ extension ViewController: GLKViewControllerDelegate {
             let viewportSize = CGSize(width: rect.size.width * view.contentScaleFactor, height: rect.size.height * view.contentScaleFactor)
             rtabmap?.setupGraphic(size: viewportSize, orientation: rotation)
         }
-        
+
         let value = rtabmap?.render()
         
         DispatchQueue.main.async {
