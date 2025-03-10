@@ -177,6 +177,7 @@ class RTABMapApp : public UEventsHandler {
 		  int optimizedMinClusterSize,
 		  float optimizedMaxTextureDistance,
 		  int optimizedMinTextureClusterSize,
+          int textureVertexColorPolicy,
 		  bool blockRendering);
   bool postExportation(bool visualize);
   bool writeExportedMesh(const std::string & directory, const std::string & name);

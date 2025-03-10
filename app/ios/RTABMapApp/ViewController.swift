@@ -1870,6 +1870,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         let optimizedColorRadius = defaults.float(forKey: "ColorRadius")
         let optimizedCleanWhitePolygons = defaults.bool(forKey: "CleanMesh")
         let optimizedMinClusterSize = defaults.integer(forKey: "PolygonFiltering")
+        let textureVertexColorPolicy = defaults.integer(forKey: "TextureVertexColorPolicy")
         let blockRendering = false
         
         var indicator: UIActivityIndicatorView?
@@ -1924,6 +1925,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     optimizedMinClusterSize: optimizedMinClusterSize,
                     optimizedMaxTextureDistance: maxTextureDistance,
                     optimizedMinTextureClusterSize: minTextureClusterSize,
+                    textureVertexColorPolicy: textureVertexColorPolicy,
                     blockRendering: blockRendering)
                 
             }, completion:{

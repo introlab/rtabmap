@@ -170,10 +170,12 @@ const std::string kTextureMeshVertexShader =
     "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
+	"attribute vec3 aColor;\n"
     "attribute vec2 aTexCoord;\n"
 
     "uniform mat4 uMVP;\n"
 
+	"varying vec3 vColor;\n"
     "varying vec2 vTexCoord;\n"
     "varying float vLightWeighting;\n"
 
@@ -187,12 +189,14 @@ const std::string kTextureMeshVertexShader =
     "    vTexCoord = aTexCoord;\n"
     "  }\n"
 
+	"  vColor = aColor;\n"
     "  vLightWeighting = 1.0;\n"
     "}\n";
 const std::string kTextureMeshLightingVertexShader =
     "precision highp float;\n"
     "precision mediump int;\n"
     "attribute vec3 aVertex;\n"
+	"attribute vec3 aColor;\n"
 	"attribute vec3 aNormal;\n"
     "attribute vec2 aTexCoord;\n"
 
@@ -200,6 +204,7 @@ const std::string kTextureMeshLightingVertexShader =
     "uniform mat3 uN;\n"
     "uniform vec3 uLightingDirection;\n"
 
+	"varying vec3 vColor;\n"
     "varying vec2 vTexCoord;\n"
     "varying float vLightWeighting;\n"
 
@@ -213,6 +218,7 @@ const std::string kTextureMeshLightingVertexShader =
     "    vTexCoord = aTexCoord;\n"
     "  }\n"
 
+	"  vColor = aColor;\n"
     "  vec3 transformedNormal = uN * aNormal;\n"
     "  vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
     "  if(vLightWeighting<0.5) \n"
@@ -225,11 +231,12 @@ const std::string kTextureMeshFragmentShader =
 	"uniform float uGainR;\n"
 	"uniform float uGainG;\n"
 	"uniform float uGainB;\n"
+	"varying vec3 vColor;\n"
     "varying vec2 vTexCoord;\n"
 	"varying float vLightWeighting;\n"
 	""
     "void main() {\n"
-    "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
+    "  vec4 textureColor = texture2D(uTexture, vTexCoord) * vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
 	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, textureColor.a);\n"
     "}\n";
 const std::string kTextureMeshBlendingFragmentShader =
@@ -243,11 +250,12 @@ const std::string kTextureMeshBlendingFragmentShader =
 	"uniform vec2 uScreenScale;\n"
 	"uniform float uNearZ;\n"
 	"uniform float uFarZ;\n"
+	"varying vec3 vColor;\n"
     "varying vec2 vTexCoord;\n"
 	"varying float vLightWeighting;\n"
 	""
     "void main() {\n"
-    "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
+	"  vec4 textureColor = texture2D(uTexture, vTexCoord) * vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
     "  float alpha = 1.0;\n"
 	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
 	"  vec4 depthPacked = texture2D(uDepthTexture, coord);\n"
@@ -1128,11 +1136,9 @@ void PointCloudDrawable::Render(
 				attribute_texture = glGetAttribLocation(program, "aTexCoord");
 				glEnableVertexAttribArray(attribute_texture);
 			}
-			else
-			{
-				attribute_color = glGetAttribLocation(program, "aColor");
-				glEnableVertexAttribArray(attribute_color);
-			}
+
+            attribute_color = glGetAttribLocation(program, "aColor");
+            glEnableVertexAttribArray(attribute_color);
 		}
 		tango_gl::util::CheckGlError("Pointcloud::Render() common");
 
@@ -1144,7 +1150,7 @@ void PointCloudDrawable::Render(
 			{
 				glVertexAttribPointer(attribute_texture, 2, GL_FLOAT, GL_FALSE, (hasNormals_?9:6)*sizeof(GLfloat), (GLvoid*) (4 * sizeof(GLfloat)));
 			}
-			else if(!packDepthToColorChannel)
+			if(!packDepthToColorChannel)
 			{
 				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE,  (hasNormals_?9:6)*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
 			}

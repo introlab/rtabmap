@@ -55,6 +55,7 @@ bool exportMeshNative(
             int optimizedMinClusterSize,
             float optimizedMaxTextureDistance,
             int optimizedMinTextureClusterSize,
+            int textureVertexColorPolicy,
             bool blockRendering);
 bool postExportationNative(const void *object, bool visualize);
 bool writeExportedMeshNative(const void *object, const char * directory, const char * name);

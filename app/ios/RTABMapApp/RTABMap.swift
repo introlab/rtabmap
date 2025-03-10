@@ -197,6 +197,7 @@ class RTABMap {
         optimizedMinClusterSize: Int,
         optimizedMaxTextureDistance: Float,
         optimizedMinTextureClusterSize: Int,
+        textureVertexColorPolicy: Int,
         blockRendering: Bool) -> Bool
     {
        return exportMeshNative(native_rtabmap,
@@ -215,6 +216,7 @@ class RTABMap {
                                     Int32(optimizedMinClusterSize),
                                     optimizedMaxTextureDistance,
                                     Int32(optimizedMinTextureClusterSize),
+                            		Int32(textureVertexColorPolicy),
                                     blockRendering)
     }
     

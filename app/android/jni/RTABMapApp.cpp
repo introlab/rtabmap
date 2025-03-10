@@ -1467,6 +1467,24 @@ int RTABMapApp::Render()
                     optMesh_.normals.reset(new pcl::PointCloud<pcl::Normal>);
 					pcl::fromPCLPointCloud2(optTextureMesh_->cloud, *optMesh_.cloud);
 					pcl::fromPCLPointCloud2(optTextureMesh_->cloud, *optMesh_.normals);
+                    bool hasColors = false;
+                    for(unsigned int i=0; i<optTextureMesh_->cloud.fields.size(); ++i)
+                    {
+                        if(optTextureMesh_->cloud.fields[i].name.compare("rgb") == 0)
+                        {
+                            hasColors = true;
+                            break;
+                        }
+                    }
+                    if(!hasColors)
+                    {
+                        std::uint8_t r = 255, g = 255, b = 255;    // White
+                        std::uint32_t rgb = ((std::uint32_t)r << 16 | (std::uint32_t)g << 8 | (std::uint32_t)b);
+                        for(size_t i=0; i<optMesh_.cloud->size(); ++i)
+                        {
+                            optMesh_.cloud->at(i).rgb = *reinterpret_cast<float*>(&rgb);
+                        }
+                    }
                     optMesh_.polygons = optTextureMesh_->tex_polygons[0];
 					if(optTextureMesh_->tex_coordinates.size())
 					{
@@ -3267,6 +3285,7 @@ bool RTABMapApp::exportMesh(
 		int optimizedMinClusterSize,
 		float optimizedMaxTextureDistance,
 		int optimizedMinTextureClusterSize,
+        int textureVertexColorPolicy,
 		bool blockRendering)
 {
 	// make sure createdMeshes_ is not modified while exporting! We don't
@@ -3555,7 +3574,7 @@ bool RTABMapApp::exportMesh(
 									0,
 									mergedClouds,
 									optimizedColorRadius,
-									textureSize == 0,
+                                    !(textureSize > 0 && textureVertexColorPolicy == 0),
 									optimizedCleanWhitePolygons,
 									optimizedMinClusterSize);
 
@@ -3797,7 +3816,9 @@ bool RTABMapApp::exportMesh(
 							textureCount,
 							vertexToPixels,
 							true, 10.0f, true ,true, 0, 0, 0, false,
-							&progressionStatus_);
+							&progressionStatus_,
+                        	255,
+                            textureVertexColorPolicy == 1);
                     LOGI("Merging %d textures... globalTextures=%dx%d", (int)textureMesh->tex_materials.size(),
                          globalTextures.cols, globalTextures.rows);
 				}
@@ -3838,9 +3859,28 @@ bool RTABMapApp::exportMesh(
 				}
 				else if(textureMesh->tex_materials.size())
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
-					pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
-					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false).data()); // for database
+                    bool hasColors = false;
+                    for(unsigned int i=0; i<textureMesh->cloud.fields.size(); ++i)
+                    {
+                        if(textureMesh->cloud.fields[i].name.compare("rgb") == 0)
+                        {
+                            hasColors = true;
+                            break;
+                        }
+                    }
+                    cv::Mat cloudMat;
+                    if(hasColors)
+                    {
+                        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+                        pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
+                        cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false).data()); // for database
+                    }
+                    else
+                    {
+                        pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
+                        pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
+                        cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*cloud, rtabmap::Transform(), false).data()); // for database
+                    }
 
 					// save in database
 					std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons(textureMesh->tex_polygons.size());
@@ -4243,7 +4283,7 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 				totalPolygons += textureMesh->tex_polygons[i].size();
 			}
 			LOGI("Saving obj (%d vertices, %d polygons) to %s.", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, totalPolygons, filePath.c_str());
-			success = pcl::io::saveOBJFile(filePath, *textureMesh) == 0;
+			success = rtabmap::util3d::saveOBJFile(filePath, *textureMesh) == 0;
 
 			if(success)
 			{

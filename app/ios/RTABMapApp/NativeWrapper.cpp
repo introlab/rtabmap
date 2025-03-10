@@ -150,11 +150,12 @@ bool exportMeshNative(
             int optimizedMinClusterSize,
             float optimizedMaxTextureDistance,
             int optimizedMinTextureClusterSize,
+            int textureVertexColorPolicy,
             bool blockRendering)
 {
     if(object)
     {
-        return native(object)->exportMesh(cloudVoxelSize, regenerateCloud, meshing, textureSize, textureCount, normalK, optimized, optimizedVoxelSize, optimizedDepth, optimizedMaxPolygons, optimizedColorRadius, optimizedCleanWhitePolygons, optimizedMinClusterSize, optimizedMaxTextureDistance, optimizedMinTextureClusterSize, blockRendering);
+        return native(object)->exportMesh(cloudVoxelSize, regenerateCloud, meshing, textureSize, textureCount, normalK, optimized, optimizedVoxelSize, optimizedDepth, optimizedMaxPolygons, optimizedColorRadius, optimizedCleanWhitePolygons, optimizedMinClusterSize, optimizedMaxTextureDistance, optimizedMinTextureClusterSize, textureVertexColorPolicy, blockRendering);
     }
     else
     {
