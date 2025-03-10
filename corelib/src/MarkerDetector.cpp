@@ -226,8 +226,8 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 		float rgbToDepthFactorY = 1.0f;
 		if(!depth.empty())
 		{
-			rgbToDepthFactorX = 1.0f/(model.imageWidth()>0?model.imageWidth()/depth.cols:1);
-			rgbToDepthFactorY = 1.0f/(model.imageHeight()>0?model.imageHeight()/depth.rows:1);
+			rgbToDepthFactorX = 1.0f/(model.imageWidth()>0?float(model.imageWidth())/float(depth.cols):1.0f);
+			rgbToDepthFactorY = 1.0f/(model.imageHeight()>0?float(model.imageHeight())/float(depth.rows):1.0f);
 		}
         else if(markerLength_ == 0)
         {
