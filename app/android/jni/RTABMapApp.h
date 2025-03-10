@@ -285,7 +285,6 @@ class RTABMapApp : public UEventsHandler {
   float measuringTextSize_;
   float snapAxisThr_;
   std::vector<cv::Vec3f> snapAxes_;
-  bool markerDetection_;
   int measuringMode_;
   bool addMeasureClicked_;
   bool teleportClicked_;

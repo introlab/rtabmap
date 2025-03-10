@@ -273,7 +273,6 @@ RTABMapApp::RTABMapApp() :
         metricSystem_(true),
         measuringTextSize_(0.05f),
 		snapAxisThr_(0.95),
-        markerDetection_(false),
         measuringMode_(0),
         addMeasureClicked_(false),
         teleportClicked_(false),
