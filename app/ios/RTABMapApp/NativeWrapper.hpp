@@ -91,6 +91,7 @@ void setGridRotationNative(const void *object, float value);
 void setLightingNative(const void *object, bool enabled);
 void setBackfaceCullingNative(const void *object, bool enabled);
 void setWireframeNative(const void *object, bool enabled);
+void setTextureColorSeamsHiddenNative(const void *object, bool hidden);
 void setLocalizationModeNative(const void *object, bool enabled);
 void setDataRecorderModeNative(const void *object, bool enabled);
 void setTrajectoryModeNative(const void *object, bool enabled);

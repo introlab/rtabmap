@@ -128,6 +128,7 @@ class RTABMapApp : public UEventsHandler {
   void setLighting(bool enabled);
   void setBackfaceCulling(bool enabled);
   void setWireframe(bool enabled);
+  void setTextureColorSeamsHidden(bool hidden);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);

@@ -98,6 +98,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var wireframeShown: Bool = false
     private var backfaceShown: Bool = false
     private var lightingShown: Bool = false
+    private var textureColorSeamsShown: Bool = false
     private var mHudVisible: Bool = true
     private var mLastTimeHudShown: DispatchTime = .now()
     private var mMenuOpened: Bool = false
@@ -1030,6 +1031,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         // Camera menu
         let renderingMenu = UIMenu(title: "Rendering", options: .displayInline, children: [
+            UIAction(title: "Texture/Color Blend", image: self.textureColorSeamsShown ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), attributes: self.mState == .STATE_VISUALIZING || self.mState == .STATE_VISUALIZING_CAMERA || self.mState == .STATE_VISUALIZING_AND_MEASURING || self.mState == .STATE_VISUALIZING_WHILE_LOADING ? [] : .disabled, handler: { _ in
+                self.textureColorSeamsShown = !self.textureColorSeamsShown
+                self.rtabmap!.setTextureColorSeamsHidden(hidden: !self.textureColorSeamsShown)
+                self.resetNoTouchTimer(true)
+            }),
             UIAction(title: "Wireframe", image: self.wireframeShown ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), handler: { _ in
                 self.wireframeShown = !self.wireframeShown
                 self.rtabmap!.setWireframe(enabled: self.wireframeShown)
@@ -1552,7 +1558,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         let format = defaults.string(forKey: "ExportPointCloudFormat")!;
         DispatchQueue.main.async {
             self.statusLabel.textColor = bgColor>=0.6 ? UIColor(white: 0.0, alpha: 1) : UIColor(white: 1.0, alpha: 1)
-            self.exportOBJPLYButton.setTitle("Export OBJ-\(format == "las" ? "LAS" : "PLY")", for: .normal)
+            self.exportOBJPLYButton.setTitle("Export OBJ-\(format == "las" ? "LAS" : format == "laz" ? "LAZ" : "PLY")", for: .normal)
         }
     
         rtabmap!.setClusterRatio(value: defaults.float(forKey: "NoiseFilteringRatio"));

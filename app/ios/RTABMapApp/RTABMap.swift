@@ -426,6 +426,9 @@ class RTABMap {
     func setWireframe(enabled: Bool) {
         setWireframeNative(native_rtabmap, enabled)
     }
+    func setTextureColorSeamsHidden(hidden: Bool) {
+        setTextureColorSeamsHiddenNative(native_rtabmap, hidden)
+    }
     func setLocalizationMode(enabled: Bool) {
         setLocalizationModeNative(native_rtabmap, enabled)
     }

@@ -231,12 +231,22 @@ const std::string kTextureMeshFragmentShader =
 	"uniform float uGainR;\n"
 	"uniform float uGainG;\n"
 	"uniform float uGainB;\n"
+	"uniform int uHideSeams;\n"
 	"varying vec3 vColor;\n"
     "varying vec2 vTexCoord;\n"
 	"varying float vLightWeighting;\n"
 	""
     "void main() {\n"
-    "  vec4 textureColor = texture2D(uTexture, vTexCoord) * vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
+	"  vec4 textureColor;\n"
+	"  if(uHideSeams==1) {\n"
+	"    if(vTexCoord.x>0.99 && vTexCoord.y>0.99) {\n"
+	"      textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
+	"    } else {\n"
+    "      textureColor = texture2D(uTexture, vTexCoord);\n"
+	"    }\n"
+    "  } else {\n"
+    "    textureColor = texture2D(uTexture, vTexCoord) * vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
+    "  }\n"
 	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, textureColor.a);\n"
     "}\n";
 const std::string kTextureMeshBlendingFragmentShader =
@@ -1016,7 +1026,8 @@ void PointCloudDrawable::Render(
 		float nearClipPlane,
 	    float farClipPlane,
 		bool packDepthToColorChannel,
-		bool wireFrame) const
+		bool wireFrame,
+        bool hideSeams) const
 {
 	if(vertex_buffer_ && nPoints_ && visible_ && !shaderPrograms_.empty())
 	{
@@ -1135,6 +1146,12 @@ void PointCloudDrawable::Render(
 
 				attribute_texture = glGetAttribLocation(program, "aTexCoord");
 				glEnableVertexAttribArray(attribute_texture);
+                
+                if(depthTexture == 0)
+                {
+                    GLuint hideSeams_handle = glGetUniformLocation(program, "uHideSeams");
+                    glUniform1i(hideSeams_handle, hideSeams?1:0);
+                }
 			}
 
             attribute_color = glGetAttribLocation(program, "aColor");

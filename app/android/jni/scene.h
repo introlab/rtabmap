@@ -193,6 +193,7 @@ class Scene {
   void setLighting(bool enabled) {lighting_ = enabled;}
   void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
   void setWireframe(bool enabled) {wireFrame_ = enabled;}
+  void setTextureColorSeamsHidden(bool hidden) {textureColorSeamsHidden_ = hidden;}
   void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
   void setGridColor(float r, float g, float b);
 
@@ -255,6 +256,7 @@ class Scene {
   bool lighting_;
   bool backfaceCulling_;
   bool wireFrame_;
+  bool textureColorSeamsHidden_;
   float r_;
   float g_;
   float b_;

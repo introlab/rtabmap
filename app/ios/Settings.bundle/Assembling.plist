@@ -393,11 +393,13 @@
 			<array>
 				<string>PLY</string>
 				<string>LAS</string>
+				<string>LAZ</string>
 			</array>
 			<key>Values</key>
 			<array>
 				<string>ply</string>
 				<string>las</string>
+				<string>laz</string>
 			</array>
 		</dict>
 	</array>

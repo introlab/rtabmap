@@ -2926,6 +2926,10 @@ void RTABMapApp::setWireframe(bool enabled)
 {
 	main_scene_.setWireframe(enabled);
 }
+void RTABMapApp::setTextureColorSeamsHidden(bool hidden)
+{
+    main_scene_.setTextureColorSeamsHidden(hidden);
+}
 
 void RTABMapApp::setLocalizationMode(bool enabled)
 {
@@ -3113,7 +3117,7 @@ void RTABMapApp::setDepthConfidence(int value)
 void RTABMapApp::setExportPointCloudFormat(const std::string & format)
 {
 #if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
-    if(format == "las") {
+    if(format == "las" || format == "laz") {
         exportPointCloudFormat_ = format;
     }
     else
@@ -4205,9 +4209,9 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 	if(polygonMesh->cloud.data.size())
 	{
 #if defined(RTABMAP_PDAL) || defined(RTABMAP_LIBLAS)
-        if(polygonMesh->polygons.empty() && exportPointCloudFormat_ == "las") {
+        if(polygonMesh->polygons.empty() && (exportPointCloudFormat_ == "las" || exportPointCloudFormat_ == "laz")) {
             // Point cloud LAS
-            std::string filePath = directory + UDirectory::separator() + name + ".las";
+            std::string filePath = directory + UDirectory::separator() + name + (exportPointCloudFormat_ == "las"? ".las" : ".laz");
             LOGI("Saving las (%d vertices) to %s.", (int)polygonMesh->cloud.data.size()/polygonMesh->cloud.point_step, filePath.c_str());
             pcl::PointCloud<pcl::PointXYZRGB> output;
             pcl::fromPCLPointCloud2(polygonMesh->cloud, output);

@@ -435,6 +435,13 @@ void setWireframeNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
+void setTextureColorSeamsHiddenNative(const void *object, bool hidden)
+{
+    if(object)
+        native(object)->setTextureColorSeamsHidden(hidden);
+    else
+        UERROR("object is null!");
+}
 void setLocalizationModeNative(const void *object, bool enabled)
 {
     if(object)

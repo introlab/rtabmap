@@ -93,6 +93,7 @@ Scene::Scene() :
 		lighting_(false),
 		backfaceCulling_(true),
 		wireFrame_(false),
+		textureColorSeamsHidden_(false),
 		r_(0.0f),
 		g_(0.0f),
 		b_(0.0f),
@@ -674,7 +675,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 				cloud->getPose().z() - openglCamera.z());
 		float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
 
-		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_);
+		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_, textureColorSeamsHidden_);
 	}
     
     if(quads_.find(55556)!=quads_.end())
