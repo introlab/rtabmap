@@ -93,7 +93,7 @@ Scene::Scene() :
 		lighting_(false),
 		backfaceCulling_(true),
 		wireFrame_(false),
-		textureColorSeamsHidden_(false),
+		textureColorSeamsHidden_(true),
 		r_(0.0f),
 		g_(0.0f),
 		b_(0.0f),

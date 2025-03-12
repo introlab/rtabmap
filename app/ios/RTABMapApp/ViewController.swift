@@ -105,6 +105,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var lowMemoryWarningShown: Bool = false
     static var previewImages: [String: UIImage] = [:]
     private var measuringMode: Int = 0
+    private var visualizationType: Int = 0 // 0=Cloud, 1=Mesh, 2=Texture Mesh
     
     @IBOutlet weak var stopButton: UIButton!
     @IBOutlet weak var recordButton: UIButton!
@@ -324,14 +325,17 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             {
                 if(optimizedMeshDetected==1)
                 {
+                    self.visualizationType = 0;
                     self.setMeshRendering(viewMode: 0)
                 }
                 else if(optimizedMeshDetected==2)
                 {
+                    self.visualizationType = 1;
                     self.setMeshRendering(viewMode: 1)
                 }
                 else // isOBJ
                 {
+                    self.visualizationType = 2;
                     self.setMeshRendering(viewMode: 2)
                 }
 
@@ -555,6 +559,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     @objc func appMovedToForeground() {
         print("appMovedToForeground()")
         updateDisplayFromDefaults()
+        updateState(state: mState)
         
         if(mMapNodes > 0 && self.openedDatabasePath == nil)
         {
@@ -792,7 +797,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             teleportButton.isHidden = true
             addMeasureButton.isHidden = true
             removeMeasureButton.isHidden = true
-            measuringModeButton.isHidden = !mHudVisible
+            measuringModeButton.isHidden = !mHudVisible || self.visualizationType==0
             actionNewScanEnabled = true
             actionNewDataRecording = true
             actionSaveEnabled = mMapNodes>0
@@ -841,7 +846,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         {
             view?.enableSetNeedsDisplay = false
             self.isPaused = false
-            print("diaableSetNeedsDisplay")
+            print("disableSetNeedsDisplay")
         }
         
         if !self.isPaused {
@@ -849,6 +854,23 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
         
         // Update menus based on current state
+        
+        if(!exportOBJPLYButton.isHidden) {
+            let format = UserDefaults.standard.string(forKey: "ExportPointCloudFormat")!;
+            var title = "Export "
+            if (self.visualizationType == 2) {
+                title += "OBJ";
+            }
+            else if (self.visualizationType == 1)
+            {
+                title += "PLY";
+            }
+            else
+            {
+                title += format == "las" ? "LAS" : format == "laz" ? "LAZ" : "PLY";
+            }
+            self.exportOBJPLYButton.setTitle(title, for: .normal)
+        }
         
         // PointCloud menu
         let pointCloudMenu = UIMenu(title: "Point cloud...", children: [
@@ -1555,10 +1577,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         let bgColor = defaults.float(forKey: "BackgroundColor");
         rtabmap!.setBackgroundColor(gray: bgColor);
         
-        let format = defaults.string(forKey: "ExportPointCloudFormat")!;
         DispatchQueue.main.async {
             self.statusLabel.textColor = bgColor>=0.6 ? UIColor(white: 0.0, alpha: 1) : UIColor(white: 1.0, alpha: 1)
-            self.exportOBJPLYButton.setTitle("Export OBJ-\(format == "las" ? "LAS" : format == "laz" ? "LAZ" : "PLY")", for: .normal)
         }
     
         rtabmap!.setClusterRatio(value: defaults.float(forKey: "NoiseFilteringRatio"));
@@ -1952,14 +1972,17 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                             
                             if(!meshing)
                             {
+                                self.visualizationType = 0;
                                 self.setMeshRendering(viewMode: 0)
                             }
                             else if(!isOBJ)
                             {
+                                self.visualizationType = 1;
                                 self.setMeshRendering(viewMode: 1)
                             }
                             else // isOBJ
                             {
+                                self.visualizationType = 2;
                                 self.setMeshRendering(viewMode: 2)
                             }
 
@@ -2178,6 +2201,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             }
             else {
                 if(status >= 1 && status<=3) {
+                    self.visualizationType = status-1;
                     self.updateState(state: .STATE_VISUALIZING);
                     self.resetNoTouchTimer(true);
                 }
@@ -2273,10 +2297,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             if textField.text != "" {
                 self.dismiss(animated: true)
                 //Read TextFields text data
-                let fileName = textField.text!+".zip"
+                let fileName = textField.text! + (self.exportOBJPLYButton.title(for: .normal)!.contains("LAZ") ? ".laz" : ".zip")
                 let filePath = self.getDocumentDirectory().appendingPathComponent(fileName).path
                 if FileManager.default.fileExists(atPath: filePath) {
-                    let alert = UIAlertController(title: "File Already Exists", message: "Do you want to overwrite the existing file?", preferredStyle: .alert)
+                    let alert = UIAlertController(title: "File Already Exists", message: "\(fileName) already exists, do you want to overwrite it?", preferredStyle: .alert)
                     let yes = UIAlertAction(title: "Yes", style: .default) {
                         (UIAlertAction) -> Void in
                         self.writeExportedFiles(fileName: textField.text!);
@@ -2323,7 +2347,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
     func writeExportedFiles(fileName: String)
     {
-        let alertView = UIAlertController(title: "Exporting", message: "Please wait while zipping data to \(fileName+".zip")...", preferredStyle: .alert)
+        let isLAZ = self.visualizationType==0 && self.exportOBJPLYButton.title(for: .normal)!.contains("LAZ")
+        
+        let alertView = UIAlertController(title: "Exporting", message: "Please wait while exporting data to \(fileName+(isLAZ ? ".laz" : ".zip"))...", preferredStyle: .alert)
         alertView.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
             self.dismiss(animated: true)
             self.progressView = nil
@@ -2370,13 +2396,34 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                         let fileURLs = try FileManager.default.contentsOfDirectory(at: exportDir, includingPropertiesForKeys: nil)
                         if(!fileURLs.isEmpty)
                         {
-                            do {
-                                zipFileUrl = try Zip.quickZipFiles(fileURLs, fileName: fileName) // Zip
-                                print("Zip file \(zipFileUrl.path) created (size=\(zipFileUrl.fileSizeString)")
-                                success = true
+                            if(isLAZ)
+                            {
+                                zipFileUrl = self.getDocumentDirectory().appendingPathComponent(fileName+".laz")
+                                do {
+                                    if FileManager.default.fileExists(atPath: zipFileUrl.path)
+                                    {
+                                        try FileManager.default.removeItem(at: zipFileUrl)
+                                    }
+                                    try FileManager.default.moveItem(at: fileURLs.first!, to: zipFileUrl)
+                                    print("LAZ file \(zipFileUrl.path) created (size=\(zipFileUrl.fileSizeString)")
+                                    success = true
+                                }
+                                catch
+                                {
+                                    print("Failed moving \(fileURLs.first!) to \(zipFileUrl.path)")
+                                    return
+                                }
                             }
-                            catch {
-                              print("Something went wrong while zipping")
+                            else
+                            {
+                                do {
+                                    zipFileUrl = try Zip.quickZipFiles(fileURLs, fileName: fileName) // Zip
+                                    print("Zip file \(zipFileUrl.path) created (size=\(zipFileUrl.fileSizeString)")
+                                    success = true
+                                }
+                                catch {
+                                    print("Something went wrong while zipping")
+                                }
                             }
                         }
                     } catch {
@@ -2392,7 +2439,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 }
                 if(success)
                 {
-                    let alertShare = UIAlertController(title: "Mesh/Cloud Saved!", message: "\(fileName+".zip") (\(zipFileUrl.fileSizeString) successfully exported in Documents of RTAB-Map! Share it?", preferredStyle: .alert)
+                    let alertShare = UIAlertController(title: "Mesh/Cloud Saved!", message: "\(fileName+(isLAZ ? ".laz" : ".zip")) (\(zipFileUrl.fileSizeString) successfully exported in Documents of RTAB-Map! Share it?", preferredStyle: .alert)
                     let alertActionYes = UIAlertAction(title: "Yes", style: .default) {
                         (UIAlertAction) -> Void in
                         self.shareFile(zipFileUrl)

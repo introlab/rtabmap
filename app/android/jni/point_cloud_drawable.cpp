@@ -265,7 +265,7 @@ const std::string kTextureMeshBlendingFragmentShader =
 	"varying float vLightWeighting;\n"
 	""
     "void main() {\n"
-	"  vec4 textureColor = texture2D(uTexture, vTexCoord) * vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
+	"  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
     "  float alpha = 1.0;\n"
 	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
 	"  vec4 depthPacked = texture2D(uDepthTexture, coord);\n"
