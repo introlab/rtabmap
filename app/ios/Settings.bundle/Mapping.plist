@@ -850,7 +850,7 @@
 			<key>Key</key>
 			<string>MarkerMaxRange</string>
 			<key>DefaultValue</key>
-			<real>1</real>
+			<real>2</real>
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
