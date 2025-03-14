@@ -2234,22 +2234,22 @@ cv::Mat mergeTextures(
 						}
 					}
 					// Set up the full indices set
-					pcl::Indices full_indices (mesh.cloud.width * mesh.cloud.height);
-					for (size_t fii = 0; fii < full_indices.size(); ++fii)  // fii = full indices iterator
-						full_indices[fii] = fii;
+					pcl::IndicesPtr full_indices(new std::vector<int>(mesh.cloud.width* mesh.cloud.height));
+					for (size_t fii = 0; fii < full_indices->size(); ++fii)  // fii = full indices iterator
+						full_indices->at(fii) = fii;
 
 					// Set up the sorted input indices
 					std::sort (notTexturedVertexIndices->begin (), notTexturedVertexIndices->end ());
 
 					// Store the difference in indices
-					pcl::Indices texturedVertexIndices;
-					std::set_difference (full_indices.begin (), full_indices.end (), notTexturedVertexIndices->begin (), notTexturedVertexIndices->end (), std::inserter (texturedVertexIndices, texturedVertexIndices.begin ()));
+					pcl::IndicesPtr texturedVertexIndices(new std::vector<int>());
+					std::set_difference (full_indices->begin (), full_indices->end (), notTexturedVertexIndices->begin (), notTexturedVertexIndices->end (), std::inserter (*texturedVertexIndices, texturedVertexIndices->begin ()));
 
-					for(size_t i=0; i<texturedVertexIndices.size(); ++i)
+					for(size_t i=0; i<texturedVertexIndices->size(); ++i)
 					{
 						std::uint32_t white = 0xffffff;
-						UASSERT(texturedVertexIndices[i] * mesh.cloud.point_step + colorOffset < mesh.cloud.data.size());
-						memcpy(&mesh.cloud.data.data()[texturedVertexIndices[i] * mesh.cloud.point_step + colorOffset], reinterpret_cast<float*>(&white), sizeof(float));
+						UASSERT(texturedVertexIndices->at(i) * mesh.cloud.point_step + colorOffset < mesh.cloud.data.size());
+						memcpy(&mesh.cloud.data.data()[texturedVertexIndices->at(i) * mesh.cloud.point_step + colorOffset], reinterpret_cast<float*>(&white), sizeof(float));
 					}
 				}
 			}
