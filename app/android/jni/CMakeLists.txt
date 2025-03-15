@@ -3,9 +3,10 @@ SET(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/tango-gl/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third-party/include
-	${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
+	  ${PROJECT_BINARY_DIR}/corelib/include
+	  ${PROJECT_SOURCE_DIR}/corelib/include
+	  ${PROJECT_SOURCE_DIR}/utilite/include
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     "${ANDROID_NDK}/platforms/android-${ANDROID_NATIVE_API_LEVEL}/arch-${ANDROID_ARCH_NAME}/usr/include"
@@ -24,14 +25,19 @@ set(sources
   point_cloud_drawable.cpp
   graph_drawable.cpp
   background_renderer.cc
+  text_drawable.cpp
+  quad_color.cpp
+  tango-gl/bounding_box.cpp 
   tango-gl/axis.cpp 
   tango-gl/camera.cpp 
+  tango-gl/circle.cpp 
   tango-gl/conversions.cpp 
   tango-gl/drawable_object.cpp 
   tango-gl/frustum.cpp 
   tango-gl/gesture_camera.cpp 
   tango-gl/grid.cpp 
   tango-gl/line.cpp 
+  tango-gl/mesh.cpp 
   tango-gl/shaders.cpp 
   tango-gl/trace.cpp 
   tango-gl/transform.cpp 

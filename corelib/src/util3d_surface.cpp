@@ -2204,7 +2204,7 @@ cv::Mat mergeTextures(
 				}
 				if(colorOffset>0)
 				{
-					pcl::IndicesPtr notTexturedVertexIndices(new pcl::Indices());
+					pcl::IndicesPtr notTexturedVertexIndices(new std::vector<int>);
 					UASSERT(mesh.tex_coordinates.size() == mesh.tex_polygons.size());
 					for(size_t t=0; t<mesh.tex_polygons.size(); ++t)
 					{
