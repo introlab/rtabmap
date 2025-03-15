@@ -3,9 +3,10 @@ SET(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/tango-gl/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third-party/include
-	${PROJECT_BINARY_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/utilite/include
+	  ${PROJECT_BINARY_DIR}/corelib/include
+	  ${PROJECT_SOURCE_DIR}/corelib/include
+	  ${PROJECT_SOURCE_DIR}/utilite/include
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     "${ANDROID_NDK}/platforms/android-${ANDROID_NATIVE_API_LEVEL}/arch-${ANDROID_ARCH_NAME}/usr/include"
@@ -24,14 +25,19 @@ set(sources
   point_cloud_drawable.cpp
   graph_drawable.cpp
   background_renderer.cc
+  text_drawable.cpp
+  quad_color.cpp
+  tango-gl/bounding_box.cpp 
   tango-gl/axis.cpp 
   tango-gl/camera.cpp 
+  tango-gl/circle.cpp 
   tango-gl/conversions.cpp 
   tango-gl/drawable_object.cpp 
   tango-gl/frustum.cpp 
   tango-gl/gesture_camera.cpp 
   tango-gl/grid.cpp 
   tango-gl/line.cpp 
+  tango-gl/mesh.cpp 
   tango-gl/shaders.cpp 
   tango-gl/trace.cpp 
   tango-gl/transform.cpp 
@@ -114,7 +120,35 @@ add_definitions(${PCL_DEFINITIONS})
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-add_library(NativeRTABMap SHARED ${sources})        
+####################################
+# Generate resources files
+####################################
+SET(RESOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/text_atlas.png
+)
+
+foreach(arg ${RESOURCES})
+   get_filename_component(filename ${arg} NAME)
+   string(REPLACE "." "_" output ${filename})
+   set(RESOURCES_HEADERS "${RESOURCES_HEADERS}" "${CMAKE_CURRENT_BINARY_DIR}/${output}.h")
+endforeach(arg ${RESOURCES})
+
+find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool PATHS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+IF(NOT RTABMAP_RES_TOOL)
+  MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"rtabmap-res_tool\" application created by a non-Android build)." )
+ENDIF(NOT RTABMAP_RES_TOOL)
+
+ADD_CUSTOM_COMMAND(
+      OUTPUT ${RESOURCES_HEADERS}
+      COMMAND ${RTABMAP_RES_TOOL} -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+      COMMENT "[Creating resources]"
+      DEPENDS ${RESOURCES}
+)
+####################################
+# Generate resources files END
+####################################
+
+add_library(NativeRTABMap SHARED ${sources} ${RESOURCES_HEADERS})        
 target_link_libraries(NativeRTABMap ${LIBRARIES}
   android
   log

@@ -36,7 +36,7 @@
 // add an offset in z to our origin. We'll set this offset to 1.3 meters based
 // on the average height of a human standing with a Tango device. This allows us
 // to place a grid roughly on the ground for most users.
-const glm::vec3 kHeightOffset = glm::vec3(0.0f, -1.3f, 0.0f);
+const glm::vec3 Scene::kHeightOffset = glm::vec3(0.0f, -1.3f, 0.0f);
 
 // Color of the motion tracking trajectory.
 const tango_gl::Color kTraceColor(0.66f, 0.66f, 0.66f);
@@ -93,6 +93,7 @@ Scene::Scene() :
 		lighting_(false),
 		backfaceCulling_(true),
 		wireFrame_(false),
+		textureColorSeamsHidden_(true),
 		r_(0.0f),
 		g_(0.0f),
 		b_(0.0f),
@@ -124,6 +125,7 @@ void Scene::InitGLContent()
 
 	UASSERT(axis_ == 0);
 
+    TextDrawable::createShaderProgram();
 
 	axis_ = new tango_gl::Axis();
 	frustum_ = new tango_gl::Frustum();
@@ -166,6 +168,7 @@ void Scene::DeleteResources() {
 		background_renderer_ = 0;
 	}
 
+    TextDrawable::releaseShaderProgram();
 	PointCloudDrawable::releaseShaderPrograms();
 
 	if (graph_shader_program_) {
@@ -198,6 +201,10 @@ void Scene::clear()
 	{
 		delete iter->second;
 	}
+    clearLines();
+    clearQuads();
+    clearTexts();
+    clearCircles();
 	if(trace_)
 	{
 		trace_->ClearVertexArray();
@@ -213,6 +220,39 @@ void Scene::clear()
 	{
 		grid_->SetPosition(kHeightOffset);
 	}
+}
+
+void Scene::clearLines()
+{
+    for(std::map<int, tango_gl::Line*>::iterator iter=lines_.begin(); iter!=lines_.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    lines_.clear();
+}
+void Scene::clearTexts()
+{
+    for(std::map<int, TextDrawable*>::iterator iter=texts_.begin(); iter!=texts_.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    texts_.clear();
+}
+void Scene::clearQuads()
+{
+    for(std::map<int, QuadColor*>::iterator iter=quads_.begin(); iter!=quads_.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    quads_.clear();
+}
+void Scene::clearCircles()
+{
+    for(std::map<int, tango_gl::Circle*>::iterator iter=circles_.begin(); iter!=circles_.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    circles_.clear();
 }
 
 //Should only be called in OpenGL thread!
@@ -444,8 +484,14 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 	std::vector<glm::vec4> planes = computeFrustumPlanes(projectionMatrix*viewMatrix, true);
 	std::vector<PointCloudDrawable*> cloudsToDraw(pointClouds_.size());
 	int oi=0;
+    int positiveCloudIds = 0;
 	for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
 	{
+        if(iter->first > 0)
+        {
+            positiveCloudIds++;
+        }
+        
 		if(!mapRendering_ && iter->first > 0)
 		{
 			break;
@@ -487,7 +533,7 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
         (blending_ &&
          gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho &&
          mapRendering_ && meshRendering_ &&
-         (cloudsToDraw.size() > 1 || (renderBackgroundCamera && wireFrame_)));
+         (positiveCloudIds > 1 || (renderBackgroundCamera && wireFrame_)));
 
 	if(onlineBlending && fboId_)
 	{
@@ -629,8 +675,17 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 				cloud->getPose().z() - openglCamera.z());
 		float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
 
-		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_);
+		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_, textureColorSeamsHidden_);
 	}
+    
+    if(quads_.find(55556)!=quads_.end())
+    {
+        glEnable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        const QuadColor * quad = quads_.at(55556);
+        quad->Render(projectionMatrix, viewMatrix);
+        glEnable(GL_CULL_FACE);
+    }
 
 	if(onlineBlending)
 	{
@@ -642,6 +697,57 @@ int Scene::Render(const float * uvsTransformed, glm::mat4 arViewMatrix, glm::mat
 		glDisable (GL_BLEND);
 		glDepthMask(GL_TRUE);
 	}
+    
+    ///////
+    glDisable (GL_DEPTH_TEST);
+    if(lines_.size())
+    {
+        for(std::map<int, tango_gl::Line*>::const_iterator iter=lines_.begin(); iter!=lines_.end(); ++iter)
+        {
+            const tango_gl::Line * line = iter->second;
+            line->Render(projectionMatrix, viewMatrix);
+        }
+    }
+
+    if(quads_.size())
+    {
+        glEnable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        for(std::map<int, QuadColor*>::const_iterator iter=quads_.begin(); iter!=quads_.end(); ++iter)
+        {
+            if(iter->first!=55556)
+            {
+                const QuadColor * quad = iter->second;
+                quad->Render(projectionMatrix, viewMatrix);
+            }
+        }
+    }
+    if(circles_.size())
+    {
+        glEnable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        for(std::map<int, tango_gl::Circle*>::const_iterator iter=circles_.begin(); iter!=circles_.end(); ++iter)
+        {
+            const tango_gl::Circle * circle = iter->second;
+            circle->Render(projectionMatrix, viewMatrix);
+        }
+    }
+    if(texts_.size())
+    {
+        glDisable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+
+        glm::mat4 viewMatrixRotInv = viewMatrix;
+        viewMatrixRotInv[3][0] = 0;
+        viewMatrixRotInv[3][1] = 0;
+        viewMatrixRotInv[3][2] = 0;
+        viewMatrixRotInv = glm::inverse(viewMatrixRotInv);
+        for(std::map<int, TextDrawable*>::const_iterator iter=texts_.begin(); iter!=texts_.end(); ++iter)
+        {
+            const TextDrawable * text = iter->second;
+            text->Render(projectionMatrix, viewMatrix, viewMatrixRotInv);
+        }
+    }
     
 	//draw markers on foreground
 	for(std::map<int, tango_gl::Axis*>::const_iterator iter=markers_.begin(); iter!=markers_.end(); ++iter)
@@ -800,17 +906,22 @@ void Scene::addCloud(
 		const rtabmap::Transform & pose)
 {
 	LOGI("add cloud %d (%d points %d indices)", id, (int)cloud->size(), indices.get()?(int)indices->size():0);
-	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
-	if(iter != pointClouds_.end())
-	{
-		delete iter->second;
-		pointClouds_.erase(iter);
-	}
+    removeCloudOrMesh(id);
 
 	//create
 	PointCloudDrawable * drawable = new PointCloudDrawable(cloud, indices);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
+}
+
+void Scene::removeCloudOrMesh(int id)
+{
+    std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
+    if(iter != pointClouds_.end())
+    {
+        delete iter->second;
+        pointClouds_.erase(iter);
+    }
 }
 
 void Scene::addMesh(
@@ -820,12 +931,7 @@ void Scene::addMesh(
 		bool createWireframe)
 {
 	LOGI("add mesh %d", id);
-	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
-	if(iter != pointClouds_.end())
-	{
-		delete iter->second;
-		pointClouds_.erase(iter);
-	}
+    removeCloudOrMesh(id);
 
 	//create
 	PointCloudDrawable * drawable = new PointCloudDrawable(mesh, createWireframe);
@@ -885,6 +991,160 @@ void Scene::addMesh(
 	}
 }
 
+void Scene::addLine(
+        int id,
+        const cv::Point3f & pt1,
+        const cv::Point3f & pt2,
+        const tango_gl::Color & color)
+{
+    LOGI("add line %d", id);
+    removeLine(id);
+
+    //create
+    tango_gl::Line * line = new tango_gl::Line(2.0f, GL_LINES);
+    line->SetShader();
+    std::vector<glm::vec3> vertices(2);
+    vertices[0].x = pt1.x;
+    vertices[0].y = pt1.y;
+    vertices[0].z = pt1.z;
+    vertices[1].x = pt2.x;
+    vertices[1].y = pt2.y;
+    vertices[1].z = pt2.z;
+    line->UpdateLineVertices(vertices);
+    line->SetColor(color);
+    lines_.insert(std::make_pair(id, line));
+}
+
+void Scene::removeLine(int id)
+{
+    std::map<int, tango_gl::Line*>::iterator iter=lines_.find(id);
+    if(iter != lines_.end())
+    {
+        delete iter->second;
+        lines_.erase(iter);
+    }
+}
+
+void Scene::addText(
+        int id,
+        const std::string & text,
+        const rtabmap::Transform & pose,
+        float size,
+        const tango_gl::Color & color)
+{
+    LOGI("add text %d", id);
+    removeText(id);
+
+    //create
+    TextDrawable * textD = new TextDrawable(text, pose, size, color);
+    texts_.insert(std::make_pair(id, textD));
+}
+void Scene::removeText(int id)
+{
+    std::map<int, TextDrawable*>::iterator iter=texts_.find(id);
+    if(iter != texts_.end())
+    {
+        delete iter->second;
+        texts_.erase(iter);
+    }
+}
+
+void Scene::addQuad(
+        int id,
+        float size,
+        const rtabmap::Transform & pose,
+        const tango_gl::Color & color,
+        float alpha)
+{
+    //LOGI("add quad %d", id);
+    std::map<int, QuadColor*>::iterator iter=quads_.find(id);
+    if(iter != quads_.end())
+    {
+        delete iter->second;
+        quads_.erase(iter);
+    }
+
+    //create
+    QuadColor * quad = new QuadColor(size);
+    quad->SetTransformationMatrix(glmFromTransform(pose));
+    quad->SetColor(color);
+    quad->SetAlpha(alpha);
+    quads_.insert(std::make_pair(id, quad));
+}
+
+void Scene::addQuad(
+        int id,
+        float widthLeft,
+        float widthRight,
+        float heightBottom,
+        float heightTop,
+        const rtabmap::Transform & pose,
+        const tango_gl::Color & color,
+        float alpha)
+{
+    //LOGI("add quad %d", id);
+    removeQuad(id);
+
+    //create
+    QuadColor * quad = new QuadColor(widthLeft, widthRight, heightBottom, heightTop);
+    quad->SetTransformationMatrix(glmFromTransform(pose));
+    quad->SetColor(color);
+    quad->SetAlpha(alpha);
+    quads_.insert(std::make_pair(id, quad));
+}
+
+void Scene::removeQuad(int id)
+{
+    std::map<int, QuadColor*>::iterator iter=quads_.find(id);
+    if(iter != quads_.end())
+    {
+        delete iter->second;
+        quads_.erase(iter);
+    }
+}
+
+bool Scene::hasQuad(int id) const
+{
+    return quads_.find(id) != quads_.end();
+}
+
+void Scene::addCircle(
+        int id,
+        float radius,
+        const rtabmap::Transform & pose,
+        const tango_gl::Color & color,
+        float alpha)
+{
+    //LOGI("add quad %d", id);
+    std::map<int, tango_gl::Circle*>::iterator iter=circles_.find(id);
+    if(iter != circles_.end())
+    {
+        delete iter->second;
+        circles_.erase(iter);
+    }
+
+    //create
+    tango_gl::Circle * circle = new tango_gl::Circle(radius, 12);
+    circle->SetTransformationMatrix(glmFromTransform(pose));
+    circle->SetColor(color);
+    circle->SetAlpha(alpha);
+    circles_.insert(std::make_pair(id, circle));
+}
+
+void Scene::removeCircle(int id)
+{
+    std::map<int, tango_gl::Circle*>::iterator iter=circles_.find(id);
+    if(iter != circles_.end())
+    {
+        delete iter->second;
+        circles_.erase(iter);
+    }
+}
+
+bool Scene::hasCircle(int id) const
+{
+    return circles_.find(id) != circles_.end();
+}
 
 void Scene::setCloudPose(int id, const rtabmap::Transform & pose)
 {

@@ -85,6 +85,10 @@ void showUsage()
 			"    --texture_angle #     Maximum camera angle for texturing a polygon (default 0 deg: no limit).\n"
 			"    --texture_depth_error # Maximum depth error between reprojected mesh and depth image to texture a face\n"
 			"                                (-1=disabled, 0=edge length is used, default=0).\n"
+			"    --texture_color_policy # How vertices are colored when texturing: \n"
+			"                                 0=colorless (standard OBJ), \n"
+			"                                 1=keep color only on textureless polygons, \n"
+			"                                 2=keep all color.\n"
 			"    --texture_roi_ratios \"# # # #\" Region of interest from images to texture or to color scans. Format\n"
 			"                                         is \"left right top bottom\" (e.g. \"0 0 0 0.1\" means 10%%\n"
 			"                                         of the image bottom not used).\n"
@@ -236,6 +240,7 @@ int main(int argc, char * argv[])
 	double multibandAngleHardthr = 90;
 	bool multibandForceVisible = false;
 	float colorRadius = -1.0f;
+	int textureVertexColorPolicy = 0;
 	bool cloudFromScan = false;
 	bool saveInDb = false;
 	int lowBrightnessGain = 0;
@@ -853,6 +858,18 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				colorRadius = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--texture_color_policy") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				textureVertexColorPolicy = uStr2Int(argv[i]);
 			}
 			else
 			{
@@ -2306,7 +2323,7 @@ int main(int argc, char * argv[])
 						maxPolygons,
 						cloudToExport,
 						colorRadius,
-						!texture,
+						!(texture && textureVertexColorPolicy == 0),
 						doClean,
 						minCluster);
 				printf("Mesh color transfer... done (%fs).\n", timer.ticks());
@@ -2424,7 +2441,8 @@ int main(int argc, char * argv[])
 								lowBrightnessGain, highBrightnessGain, // low-high brightness/contrast balance
 								false, // exposure fusion
 								0,     // state
-								0,     // blank value (0=black)
+								255,   // blank value (0=white)
+								textureVertexColorPolicy == 1,
 								&gains,
 								&blendingGains,
 								&contrastValues);
@@ -2539,7 +2557,7 @@ int main(int argc, char * argv[])
 										f_idx += static_cast<unsigned>(textureMesh->tex_polygons[m].size());
 									}
 	#endif								
-									success = pcl::io::saveOBJFile(outputPath, *textureMesh) == 0;
+									success = util3d::saveOBJFile(outputPath, *textureMesh) == 0;
 
 									if(success)
 									{

@@ -8,12 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		4E0D83832621F52C00C879AC /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 4E0D83822621F52C00C879AC /* Settings.bundle */; };
+		4E1E9CF72D618E69000CB881 /* quad_color.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4E1E9CF62D618079000CB881 /* quad_color.cpp */; };
+		4E1E9CF82D618E69000CB881 /* text_drawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4E1E9CF52D618079000CB881 /* text_drawable.cpp */; };
 		4E20B24E266AB94300316EE6 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4E20B24D266AB94300316EE6 /* Images.xcassets */; };
 		4E20B250266AB95600316EE6 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4E20B24F266AB95600316EE6 /* Images.xcassets */; };
 		4E2C516725A63119005CEDBD /* DatabaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2C516525A63119005CEDBD /* DatabaseView.swift */; };
 		4E2C516825A63119005CEDBD /* VerticalScrollerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2C516625A63119005CEDBD /* VerticalScrollerView.swift */; };
 		4E8B155426273A580037FC53 /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = 4E8B155326273A580037FC53 /* Zip */; };
 		4EB1A66625A0D90B0043C7BF /* RTABMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB1A66525A0D90B0043C7BF /* RTABMap.swift */; };
+		4ED73AD12D7FECF3007899C2 /* liblaszip.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4ED73AD02D7FECF3007899C2 /* liblaszip.a */; };
 		4EE016B3259BE441008CCE65 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016AF259BE441008CCE65 /* ViewController.swift */; };
 		4EE016B4259BE441008CCE65 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016B0259BE441008CCE65 /* SceneDelegate.swift */; };
 		4EE016B9259BE449008CCE65 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016B8259BE449008CCE65 /* AppDelegate.swift */; };
@@ -157,12 +160,19 @@
 /* Begin PBXFileReference section */
 		44D4681D2D538A4100B094BA /* RTABMapApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = RTABMapApp.entitlements; path = RTABMapApp/RTABMapApp.entitlements; sourceTree = "<group>"; };
 		4E0D83822621F52C00C879AC /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
+		4E1E9CF22D617D08000CB881 /* Measure.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Measure.h; path = ../android/jni/Measure.h; sourceTree = "<group>"; };
+		4E1E9CF32D618079000CB881 /* quad_color.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = quad_color.h; path = ../android/jni/quad_color.h; sourceTree = "<group>"; };
+		4E1E9CF42D618079000CB881 /* text_drawable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = text_drawable.h; path = ../android/jni/text_drawable.h; sourceTree = "<group>"; };
+		4E1E9CF52D618079000CB881 /* text_drawable.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = text_drawable.cpp; path = ../android/jni/text_drawable.cpp; sourceTree = "<group>"; };
+		4E1E9CF62D618079000CB881 /* quad_color.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = quad_color.cpp; path = ../android/jni/quad_color.cpp; sourceTree = "<group>"; };
+		4E1E9CF92D619025000CB881 /* text_atlas_png.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = text_atlas_png.h; path = RTABMapApp/text_atlas_png.h; sourceTree = "<group>"; };
 		4E20B24D266AB94300316EE6 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RTABMapApp/Images.xcassets; sourceTree = SOURCE_ROOT; };
 		4E20B24F266AB95600316EE6 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RTABMapApp/Images.xcassets; sourceTree = "<group>"; };
 		4E2C516525A63119005CEDBD /* DatabaseView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DatabaseView.swift; path = RTABMapApp/DatabaseView.swift; sourceTree = "<group>"; };
 		4E2C516625A63119005CEDBD /* VerticalScrollerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = VerticalScrollerView.swift; path = RTABMapApp/VerticalScrollerView.swift; sourceTree = "<group>"; };
 		4E401BE825CC92C100240A56 /* ProgressionStatus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ProgressionStatus.h; path = ../android/jni/ProgressionStatus.h; sourceTree = "<group>"; };
 		4EB1A66525A0D90B0043C7BF /* RTABMap.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = RTABMap.swift; path = RTABMapApp/RTABMap.swift; sourceTree = "<group>"; };
+		4ED73AD02D7FECF3007899C2 /* liblaszip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblaszip.a; path = RTABMapApp/Libraries/lib/liblaszip.a; sourceTree = "<group>"; };
 		4EE015C2259A2AF0008CCE65 /* RTABMapApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RTABMapApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EE016AF259BE441008CCE65 /* ViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ViewController.swift; path = RTABMapApp/ViewController.swift; sourceTree = "<group>"; };
 		4EE016B0259BE441008CCE65 /* SceneDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = RTABMapApp/SceneDelegate.swift; sourceTree = "<group>"; };
@@ -347,6 +357,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4EFAA9432CAE4E960055DA51 /* liblas.a in Frameworks */,
+				4ED73AD12D7FECF3007899C2 /* liblaszip.a in Frameworks */,
 				4EFD0F50259D67D900575D88 /* liblibwebp.a in Frameworks */,
 				4EFD0F51259D67D900575D88 /* liblibpng.a in Frameworks */,
 				4EFD0F52259D67D900575D88 /* liblibjpeg-turbo.a in Frameworks */,
@@ -498,6 +509,7 @@
 		4EFD0B2A259D4DE900575D88 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				4ED73AD02D7FECF3007899C2 /* liblaszip.a */,
 				4EFAA9422CAE4E960055DA51 /* liblas.a */,
 				4EFD0F4D259D67D900575D88 /* liblibjpeg-turbo.a */,
 				4EFD0F4C259D67D900575D88 /* liblibpng.a */,
@@ -681,6 +693,12 @@
 		4EFD0BB0259D503200575D88 /* NativeWrapper */ = {
 			isa = PBXGroup;
 			children = (
+				4E1E9CF92D619025000CB881 /* text_atlas_png.h */,
+				4E1E9CF62D618079000CB881 /* quad_color.cpp */,
+				4E1E9CF32D618079000CB881 /* quad_color.h */,
+				4E1E9CF52D618079000CB881 /* text_drawable.cpp */,
+				4E1E9CF42D618079000CB881 /* text_drawable.h */,
+				4E1E9CF22D617D08000CB881 /* Measure.h */,
 				4EFD0F6E259F847300575D88 /* background_renderer.cc */,
 				4EFD0F6F259F847300575D88 /* background_renderer.h */,
 				4EFD0F66259E38DE00575D88 /* NativeWrapper.cpp */,
@@ -793,7 +811,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nversion=\"$MARKETING_VERSION\"\n/usr/libexec/PlistBuddy -c \"Set PreferenceSpecifiers:21:DefaultValue $version\" \"${SRCROOT}/Settings.bundle/Root.plist\"\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nversion=\"$MARKETING_VERSION\"\n/usr/libexec/PlistBuddy -c \"Set PreferenceSpecifiers:24:DefaultValue $version\" \"${SRCROOT}/Settings.bundle/Root.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -802,6 +820,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4E1E9CF72D618E69000CB881 /* quad_color.cpp in Sources */,
+				4E1E9CF82D618E69000CB881 /* text_drawable.cpp in Sources */,
 				4EFD0F70259F847300575D88 /* background_renderer.cc in Sources */,
 				4EFD0BC0259D50A800575D88 /* scene.cpp in Sources */,
 				4E2C516825A63119005CEDBD /* VerticalScrollerView.swift in Sources */,
@@ -1016,7 +1036,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 				);
-				MARKETING_VERSION = 0.21.8;
+				MARKETING_VERSION = 0.21.11;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1074,7 +1094,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 				);
-				MARKETING_VERSION = 0.21.8;
+				MARKETING_VERSION = 0.21.11;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;

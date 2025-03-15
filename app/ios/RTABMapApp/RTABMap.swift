@@ -152,6 +152,27 @@ class RTABMap {
         }
     }
     
+    func removeMeasure() {
+        removeMeasureNative(native_rtabmap)
+    }
+    func addMeasureButtonClicked() {
+        addMeasureNative(native_rtabmap)
+    }
+    func teleportButtonClicked() {
+        teleportNative(native_rtabmap)
+    }
+    func setMeasuringMode(_ mode: Int) {
+        setMeasuringModeNative(native_rtabmap, Int32(mode))
+    }
+    func setMetricSystem(_ enabled: Bool) {
+        setMetricSystemNative(native_rtabmap, enabled)
+    }
+    func setMeasuringTextSize(_ size: Float32) {
+        setMeasuringTextSizeNative(native_rtabmap, size)
+    }
+    func clearMeasures() {
+        clearMeasuresNative(native_rtabmap)
+    }
     func cancelProcessing() {
         cancelProcessingNative(native_rtabmap);
     }
@@ -176,6 +197,7 @@ class RTABMap {
         optimizedMinClusterSize: Int,
         optimizedMaxTextureDistance: Float,
         optimizedMinTextureClusterSize: Int,
+        textureVertexColorPolicy: Int,
         blockRendering: Bool) -> Bool
     {
        return exportMeshNative(native_rtabmap,
@@ -194,6 +216,7 @@ class RTABMap {
                                     Int32(optimizedMinClusterSize),
                                     optimizedMaxTextureDistance,
                                     Int32(optimizedMinTextureClusterSize),
+                            		Int32(textureVertexColorPolicy),
                                     blockRendering)
     }
     
@@ -223,7 +246,7 @@ class RTABMap {
         return Int(renderNative(native_rtabmap))
     }
     
-    func startCamera() -> Bool {
+    func startCamera(imageOverlayInFirstPerson: Bool = true) -> Bool {
         return startCameraNative(native_rtabmap)
     }
     
@@ -402,6 +425,9 @@ class RTABMap {
     }
     func setWireframe(enabled: Bool) {
         setWireframeNative(native_rtabmap, enabled)
+    }
+    func setTextureColorSeamsHidden(hidden: Bool) {
+        setTextureColorSeamsHiddenNative(native_rtabmap, hidden)
     }
     func setLocalizationMode(enabled: Bool) {
         setLocalizationModeNative(native_rtabmap, enabled)
