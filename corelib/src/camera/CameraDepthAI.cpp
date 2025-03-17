@@ -191,11 +191,6 @@ void CameraDepthAI::setDetectFeatures(int detectFeatures, const std::string & bl
 #ifdef RTABMAP_DEPTHAI
 	detectFeatures_ = detectFeatures;
 	blobPath_ = blobPath;
-	if(detectFeatures_ && outputMode_==2)
-	{
-		UWARN("On-device feature detectors cannot be enabled on color camera input, disabling on-device feature detector...");
-		detectFeatures_ = 0;
-	}
 	if(detectFeatures_>=2 && blobPath_.empty())
 	{
 		UWARN("Missing MyriadX blob file, disabling on-device feature detector");
@@ -475,9 +470,10 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	auto sync = pipeline.create<dai::node::Sync>();
 	sync->setSyncThreshold(std::chrono::milliseconds(int(500 / this->getImageRate())));
 
+	std::shared_ptr<dai::node::Camera> rgbCamera;
 	if(outputMode_ == 2)
 	{
-		auto rgbCamera = pipeline.create<dai::node::Camera>();
+		rgbCamera = pipeline.create<dai::node::Camera>();
 		rgbCamera->setCamera("color");
 		if(boardName == "BC2087")
 			rgbCamera->setSize(1920, 1200);
@@ -608,7 +604,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		cfg.featureMaintainer.minimumDistanceBetweenFeatures = minDistance_ * minDistance_;
 		gfttDetector->initialConfig.set(cfg);
 
-		if(imagesRectified_)
+		if(outputMode_ == 2)
+			rgbCamera->video.link(gfttDetector->inputImage);
+		else if(imagesRectified_)
 			stereoDepth->rectifiedLeft.link(gfttDetector->inputImage);
 		else
 			stereoDepth->syncedLeft.link(gfttDetector->inputImage);
@@ -620,6 +618,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		imageManip->setKeepAspectRatio(false);
 		imageManip->setMaxOutputFrameSize(320 * 200);
 		imageManip->initialConfig.setResize(320, 200);
+		imageManip->initialConfig.setFrameType(dai::ImgFrame::Type::GRAY8);
 
 		auto neuralNetwork = pipeline.create<dai::node::NeuralNetwork>();
 		neuralNetwork->setBlobPath(blobPath_);
@@ -627,7 +626,9 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		neuralNetwork->setNumNCEPerInferenceThread(1);
 		neuralNetwork->input.setBlocking(false);
 
-		if(imagesRectified_)
+		if(outputMode_ == 2)
+			rgbCamera->video.link(imageManip->inputImage);
+		else if(imagesRectified_)
 			stereoDepth->rectifiedLeft.link(imageManip->inputImage);
 		else
 			stereoDepth->syncedLeft.link(imageManip->inputImage);
