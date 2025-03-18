@@ -1062,9 +1062,6 @@ bool DatabaseViewer::closeDatabase()
 				}
 				generatedLocalMaps_.clear();
 				localMaps_.clear();
-
-				// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
-				dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
 			}
 
 			if(button != QMessageBox::Yes && button != QMessageBox::No)
@@ -2907,11 +2904,10 @@ void DatabaseViewer::editSaved2DMap()
 		return;
 	}
 
-	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot edit 2D map"),
-				tr("The database has modified links and/or modified local "
-				   "occupancy grids, the 2D optimized map cannot be modified."));
+				tr("The database has modified links, the 2D optimized map cannot be modified."));
 		return;
 	}
 
@@ -3038,7 +3034,7 @@ void DatabaseViewer::editSaved2DMap()
 								{
 									if(x+j>=0 && x+j<map8S.cols &&
 									   y+k>=0 && y+k<map8S.rows &&
-									   map8S.at<unsigned char>(y+k,x+j) == 100)
+									   map8S.at<signed char>(y+k,x+j) == 100)
 									{
 										obstacleDetected = true;
 									}
@@ -3102,7 +3098,7 @@ void DatabaseViewer::editSaved2DMap()
 								{
 									if(x+j>=0 && x+j<map8S.cols &&
 									   y+k>=0 && y+k<map8S.rows &&
-									   map8S.at<unsigned char>(y+k,x+j) == 100)
+									   map8S.at<signed char>(y+k,x+j) == 100)
 									{
 										obstacleDetected = true;
 									}
@@ -3238,11 +3234,10 @@ void DatabaseViewer::import2DMap()
 		return;
 	}
 
-	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot import 2D map"),
-				tr("The database has modified links and/or modified local "
-				   "occupancy grids, the 2D optimized map cannot be modified."));
+				tr("The database has modified links, the 2D optimized map cannot be modified."));
 		return;
 	}
 
@@ -3885,6 +3880,10 @@ void DatabaseViewer::regenerateLocalMaps()
 			}
 			else
 			{
+				if(modifiedLaserScans_.find(s.id())!=modifiedLaserScans_.end())
+				{
+					s.sensorData().setLaserScan(modifiedLaserScans_.at(s.id()));
+				}
 				localMapMaker.createLocalMap(s, ground, obstacles, empty, viewpoint);
 			}
 
