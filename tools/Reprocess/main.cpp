@@ -1037,8 +1037,9 @@ int main(int argc, char * argv[])
 
 		const rtabmap::Statistics & stats = rtabmap.getStatistics();
 		int refId = stats.refImageId();
+		bool rejected = uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f) != 0.0f;
 		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
-		int landmarkId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
+		int landmarkId = rejected?0:(int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		int refMapId = stats.refImageMapId();
 		++totalFrames;
 

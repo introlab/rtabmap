@@ -120,6 +120,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_detectMarkers(Parameters::defaultRGBDMarkerDetection()),
 	_markerLinVariance(Parameters::defaultMarkerVarianceLinear()),
 	_markerAngVariance(Parameters::defaultMarkerVarianceAngular()),
+	_markerOrientationIgnored(Parameters::defaultMarkerVarianceOrientationIgnored()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -615,7 +616,23 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
 	Parameters::parse(params, Parameters::kMarkerVarianceLinear(), _markerLinVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
+	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
+
+	if(_markerAngVariance>=9999)
+	{
+		UWARN("Using directly %s>=9999 to ignore marker orientation is deprecated. Use %s instead and "
+			  "read correctly the description of the new parameter. We will enable %s and set %s to "
+			  "same value than %s (%f) for backward compatibility.", 
+			Parameters::kMarkerVarianceAngular().c_str(),
+			Parameters::kMarkerVarianceOrientationIgnored().c_str(),
+			Parameters::kMarkerVarianceOrientationIgnored().c_str(),
+			Parameters::kMarkerVarianceAngular().c_str(),
+			Parameters::kMarkerVarianceLinear().c_str(),
+			_markerLinVariance);
+			_markerAngVariance = _markerLinVariance;
+			_markerOrientationIgnored = true;
+	}
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -5593,8 +5610,32 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						continue;
 					}
 					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
-					covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
-					covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
+					if(_markerOrientationIgnored)
+					{
+						covariance(cv::Range(3,6), cv::Range(3,6)) *= 9999; // disable orientation estimation
+						bool isGTSAM = uStr2Int(uValue(parameters_, Parameters::kOptimizerStrategy(), uNumber2Str(Parameters::defaultOptimizerStrategy()))) == Optimizer::kTypeGTSAM;
+						if(!isGTSAM)
+						{
+							covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
+						}
+						else if(_registrationPipeline->force3DoF())
+						{
+							// Bearing/Range in 2D, set X as bearing and Y as range (see OptimizerGTSAM)
+							covariance(cv::Range(0,1), cv::Range(0,1)) *= _markerAngVariance;
+							covariance(cv::Range(1,3), cv::Range(1,3)) *= _markerLinVariance;
+						}
+						else
+						{
+							// Bearing/Range in 3D, set X and Y as bearing and Z as range (see OptimizerGTSAM)
+							covariance(cv::Range(0,2), cv::Range(0,2)) *= _markerAngVariance;
+							covariance(cv::Range(2,3), cv::Range(2,3)) *= _markerLinVariance;
+						}
+					}
+					else
+					{
+						covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
+						covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
+					}
 					landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second.length(), iter->second.pose(), covariance)));
 				}
 				UDEBUG("Markers detected = %d", (int)markers.size());

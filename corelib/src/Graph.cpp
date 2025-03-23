@@ -958,12 +958,24 @@ void computeMaxGraphErrors(
 				return;
 			}
 
-			Transform t = t1.inverse()*t2;
+			Transform t;
+			Transform linkT;
+			if(iter->second.from() < 0)
+			{
+				// For landmarks, compare from node to landmark, in case we optimized only marker's position
+				t = t2.inverse()*t1;
+				linkT = iter->second.transform().inverse();
+			}
+			else
+			{
+				t = t1.inverse()*t2;
+				linkT = iter->second.transform();
+			}
 
 			float linearError = uMax3(
-					fabs(iter->second.transform().x() - t.x()),
-					fabs(iter->second.transform().y() - t.y()),
-					force3DoF?0:fabs(iter->second.transform().z() - t.z()));
+					fabs(linkT.x() - t.x()),
+					fabs(linkT.y() - t.y()),
+					force3DoF?0:fabs(linkT.z() - t.z()));
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
@@ -984,7 +996,7 @@ void computeMaxGraphErrors(
 				float opt_roll,opt_pitch,opt_yaw;
 				float link_roll,link_pitch,link_yaw;
 				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-				iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
+				linkT.getEulerAngles(link_roll, link_pitch, link_yaw);
 				float angularError = uMax3(
 						force3DoF?0:fabs(opt_roll - link_roll),
 						force3DoF?0:fabs(opt_pitch - link_pitch),
