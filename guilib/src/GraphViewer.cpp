@@ -1883,6 +1883,22 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	{
 		QToolTip::hideText();
 	}
+	if (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier) && event->buttons() & Qt::LeftButton) {
+		// same modifiers than 3D view, change zoom
+		if(_previousMousePos.y()!=0) {
+			if(event->pos().y() - _previousMousePos.y() > 0)
+			{
+				this->scale(0.98, 0.98);
+			}
+			else
+			{
+				this->scale(1.02, 1.02);
+			}
+		}
+		_previousMousePos = event->pos();
+		return;
+	}
+	_previousMousePos.setY(0);
 	QGraphicsView::mouseMoveEvent(event);
 }
 

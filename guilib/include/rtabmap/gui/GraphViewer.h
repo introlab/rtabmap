@@ -238,6 +238,7 @@ private:
 	bool _mouseTracking;
 	ViewPlane _viewPlane;
 	bool _ensureFrameVisible;
+	QPoint _previousMousePos;
 };
 
 } /* namespace rtabmap */
