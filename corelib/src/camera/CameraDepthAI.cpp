@@ -701,6 +701,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		});
 	}
 
+	this->setImageRate(0);
 	uSleep(2000); // avoid bad frames on start
 
 	return true;
