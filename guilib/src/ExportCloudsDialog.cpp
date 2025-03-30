@@ -4117,11 +4117,15 @@ void ExportCloudsDialog::saveClouds(
 		std::list<std::string> pdalFormats = uSplit(getPDALSupportedWriters(), ' ');
 		for(std::list<std::string>::iterator iter=pdalFormats.begin(); iter!=pdalFormats.end(); ++iter)
 		{
-			if(iter->compare("ply") == 0 || iter->compare("pcd") == 0)
+			if(iter->compare("ply") == 0 || iter->compare("pcd") == 0 || iter->compare("laz") == 0)
 			{
 				continue;
 			}
 			extensions += QString(" *.") + iter->c_str();
+			if(iter->compare("las") == 0)
+			{
+				extensions += QString(" *.laz");
+			}
 		}
 		extensions += ")";
 #elif defined(RTABMAP_LIBLAS)
@@ -4319,13 +4323,19 @@ void ExportCloudsDialog::saveClouds(
 		std::list<std::string> pdalFormats = uSplit(getPDALSupportedWriters(), ' ');
 		for(std::list<std::string>::iterator iter=pdalFormats.begin(); iter!=pdalFormats.end(); ++iter)
 		{
-			if(iter->compare("ply") == 0 || iter->compare("pcd") == 0)
+			if(iter->compare("ply") == 0 || iter->compare("pcd") == 0 || iter->compare("laz") == 0)
 			{
 				continue;
 			}
 			extensions += QString(" *.") + iter->c_str();
 
 			items.push_back(iter->c_str());
+
+			if(iter->compare("las") == 0)
+			{
+				extensions += QString(" *.laz");
+				items.push_back("laz");
+			}
 		}
 		extensions += ")...";
 #elif defined(RTABMAP_LIBLAS)
