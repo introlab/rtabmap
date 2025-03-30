@@ -463,8 +463,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
 	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
 
-	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
+	// Match by default scan colors from DatabaseViewer
 	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::yellow, nullptr));
+	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
 
 	this->restoreDefaults();
 
@@ -1832,8 +1833,8 @@ void GraphViewer::restoreDefaults()
 	setNodeColor(Qt::blue);
 	setNodeOdomCacheColor(Qt::darkGreen);
 	setCurrentGoalColor(Qt::darkMagenta);
-	setHighlightColor(Qt::magenta, 0);
-	setHighlightColor(Qt::yellow, 1);
+	setHighlightColor(Qt::yellow, 0);
+	setHighlightColor(Qt::magenta, 1);
 	setNeighborColor(Qt::blue);
 	setGlobalLoopClosureColor(Qt::red);
 	setLocalLoopClosureColor(Qt::yellow);
