@@ -481,7 +481,6 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 			rgbCamera->setSize(1280, 720);
 		else
 			rgbCamera->setSize(1920, 1080);
-		rgbCamera->setSize(1920, 1200);
 		rgbCamera->setVideoSize(targetSize_.width, targetSize_.height);
 		rgbCamera->setPreviewSize(targetSize_.width, targetSize_.height);
 		rgbCamera->setFps(this->getImageRate());
@@ -702,6 +701,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		});
 	}
 
+	this->setImageRate(0);
 	uSleep(2000); // avoid bad frames on start
 
 	return true;
