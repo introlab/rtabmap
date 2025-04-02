@@ -75,6 +75,9 @@ void showUsage()
 			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
 			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
 			"                 of a single session).\n"
+			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recompting odometry.\n"
+			"     -odom_lin_var #.#   Override computed odometry linear covariance."
+			"     -odom_ang_var #.#   Override computed odometry angular covariance."
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
@@ -250,6 +253,9 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	bool useDefaultParameters = false;
 	bool recomputeOdometry = false;
+	bool useInputOdometryAsGuess = false;
+	double odomLinVarOverride = 0.0;
+	double odomAngVarOverride = 0.0;
 	int startId = 0;
 	int stopId = 0;
 	int startMapId = 0;
@@ -304,6 +310,38 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "-odom") == 0 || strcmp(argv[i], "--odom") == 0)
 		{
 			recomputeOdometry = true;
+		}
+		else if(strcmp(argv[i], "-odom_input_guess") == 0 || strcmp(argv[i], "--odom_input_guess") == 0)
+		{
+			useInputOdometryAsGuess = true;
+		}
+		else if (strcmp(argv[i], "-odom_lin_var") == 0 || strcmp(argv[i], "--odom_lin_var") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				odomLinVarOverride = uStr2Double(argv[i]);
+				printf("Odometry linear variance overriden to = %f.\n", odomLinVarOverride);
+			}
+			else
+			{
+				printf("-odom_lin_var option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-odom_ang_var") == 0 || strcmp(argv[i], "--odom_ang_var") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				odomAngVarOverride = uStr2Double(argv[i]);
+				printf("Odometry angular variance overriden to = %f.\n", odomAngVarOverride);
+			}
+			else
+			{
+				printf("-odom_ang_var option requires a value\n");
+				showUsage();
+			}
 		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
 		{
@@ -840,19 +878,46 @@ int main(int argc, char * argv[])
 	}
 	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
+	Transform previousOdomPose = info.odomPose;
+	cv::Mat odomCovariance;
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
 		if(recomputeOdometry)
 		{
 			OdometryInfo odomInfo;
-			Transform pose = odometry->process(data, &odomInfo);
-			printf("Processed %d/%d frames (visual=%d/%d lidar=%f lost=%s)... odometry = %dms\n",
+			Transform pose = odometry->process(data, useInputOdometryAsGuess && !info.odomPose.isNull()?previousOdomPose.inverse() * info.odomPose:Transform(), &odomInfo);
+			previousOdomPose = info.odomPose;
+			if(odomInfo.reg.covariance.total() == 36)
+			{
+				if(odomLinVarOverride > 0.0)
+				{
+					odomInfo.reg.covariance.at<double>(0,0) = odomLinVarOverride;
+					odomInfo.reg.covariance.at<double>(1,1) = odomLinVarOverride;
+					odomInfo.reg.covariance.at<double>(2,2) = odomLinVarOverride;
+				}
+				if(odomAngVarOverride > 0.0)
+				{
+					odomInfo.reg.covariance.at<double>(3,3) = odomAngVarOverride;
+					odomInfo.reg.covariance.at<double>(4,4) = odomAngVarOverride;
+					odomInfo.reg.covariance.at<double>(5,5) = odomAngVarOverride;
+				}
+				if(uIsFinite(odomInfo.reg.covariance.at<double>(0,0)) &&
+					odomInfo.reg.covariance.at<double>(0,0) != 1.0 &&
+					odomInfo.reg.covariance.at<double>(0,0)>0.0)
+				{
+					// Use largest covariance error (to be independent of the odometry frame rate)
+					if(odomCovariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > odomCovariance.at<double>(0,0))
+					{
+						odomCovariance = odomInfo.reg.covariance;
+					}
+				}
+			}
+			printf("Processed %d/%d frames (visual=%s lidar=%s lost=%s)... odometry = %dms\n",
 					processed+1,
 					totalIds,
-					odomInfo.reg.inliers,
-					odomInfo.reg.matches,
-					odomInfo.reg.icpInliersRatio,
+					odomInfo.reg.matches!=0?uFormat("%d/%d", odomInfo.reg.inliers, odomInfo.reg.matches).c_str():"NA",
+					odomInfo.reg.icpInliersRatio!=0.0?uNumber2Str(odomInfo.reg.icpInliersRatio).c_str():"NA",
 					odomInfo.lost?"true":"false",
 					int(odomInfo.timeEstimation * 1000));
 			if(lastUpdateStamp > 0.0 && data.stamp() < lastUpdateStamp + rtabmapUpdateRate)
@@ -877,7 +942,8 @@ int main(int argc, char * argv[])
 				continue;
 			}
 			info.odomPose = pose;
-			info.odomCovariance = odomInfo.reg.covariance;
+			info.odomCovariance = odomCovariance;
+			odomCovariance = cv::Mat();
 			lastUpdateStamp = data.stamp();
 		}
 

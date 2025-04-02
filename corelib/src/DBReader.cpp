@@ -706,7 +706,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				UERROR("Missing feature data, features won't be published.");
 			}
 
-			if(data.imageCompressed().empty() && s->getWeight()>=0 && keypoints.empty())
+			if(data.imageRaw().empty() && data.imageCompressed().empty() && s->getWeight()>=0 && keypoints.empty())
 			{
 				UWARN("No image loaded from the database for id=%d!", seq);
 			}
