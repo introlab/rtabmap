@@ -6210,13 +6210,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
 			}
 			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
-			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*M_PI/180.0);
+			Transform gpsPose(pt.x, pt.y, data.gps().altitude(), 0, 0, -(data.gps().bearing()-90.0)*M_PI/180.0);
 			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
 
 			UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
-			// only set x, y as we don't know variance for other degrees of freedom.
+			// only set x, y, z as we don't know variance for other degrees of freedom.
 			gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
-			gpsInfMatrix.at<double>(2,2) = 1; // z variance is set to avoid issues with g2o and gtsam requiring a prior on Z
+			gpsInfMatrix.at<double>(2,2) = data.gps().error()>1.0?1.0/data.gps().error():1.0;
 			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 		}
 		else
