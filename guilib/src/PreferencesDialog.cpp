@@ -7144,7 +7144,11 @@ Lidar * PreferencesDialog::createLidar()
 			// Connect to sensor
 
 			lidar = new LidarVLP16(
+#if BOOST_VERSION >= 108700  // Version 1.87.0
+					boost::asio::ip::make_address(uFormat("%ld.%ld.%ld.%ld",
+#else
 					boost::asio::ip::address_v4::from_string(uFormat("%ld.%ld.%ld.%ld",
+#endif
 							(size_t)_ui->spinBox_vlp16_ip1->value(),
 							(size_t)_ui->spinBox_vlp16_ip2->value(),
 							(size_t)_ui->spinBox_vlp16_ip3->value(),
