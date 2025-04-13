@@ -612,6 +612,13 @@ void Optimizer::computeBACorrespondences(
 						sFrom.setWordsDescriptors(cv::Mat());
 						sTo.setWordsDescriptors(cv::Mat());
 					}
+					else if(sFrom.getWordsDescriptors().empty() && sTo.getWordsDescriptors().empty())
+					{
+						UWARN("Rematching features is enabled but signatures (%d and %d) don't have word descriptors!? "
+							  "Features won't be rematched. If it is an old database, do rtabmap-reprocess "
+							  "so that signatures contain word desriptors.",
+							  sFrom.id(), sTo.id());
+					}
 
 					RegistrationInfo info;
 					Transform t = reg.computeTransformationMod(sFrom, sTo, Transform(), &info);

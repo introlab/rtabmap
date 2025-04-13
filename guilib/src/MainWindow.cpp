@@ -8320,6 +8320,21 @@ void MainWindow::exportBundlerFormat()
 					_currentLinksMap,
 					_cachedSignatures,
 					_preferencesDialog->getAllParameters());
+		
+		if(!poses.empty())
+		{
+			UINFO("Updating map...");
+			this->updateMapCloud(
+					poses,
+					std::multimap<int, Link>(_currentLinksMap),
+					std::map<int, int>(_currentMapIds),
+					std::map<int, std::string>(_currentLabels),
+					std::map<int, Transform>(_currentGTPosesMap),
+					std::map<int, Transform>(),
+					std::multimap<int, Link>(),
+					false);
+			UINFO("Updating map... done!");
+		}
 	}
 	else
 	{

@@ -165,7 +165,7 @@ void ExportBundlerDialog::getPath()
 }
 
 void ExportBundlerDialog::exportBundler(
-		const std::map<int, Transform> & poses,
+		std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
 		const QMap<int, Signature> & signatures,
 		const ParametersMap & parameters)
@@ -185,7 +185,6 @@ void ExportBundlerDialog::exportBundler(
 
 		std::map<int, cv::Point3f> points3DMap;
 		std::map<int, std::map<int, FeatureBA> > wordReferences;
-		std::map<int, Transform> newPoses = poses;
 		if(_ui->groupBox_export_points->isEnabled() && _ui->groupBox_export_points->isChecked())
 		{
 			std::map<int, Transform> posesOut;
@@ -197,7 +196,7 @@ void ExportBundlerDialog::exportBundler(
 			uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(_ui->sba_variance->value())));
 			Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
 			sba->getConnectedGraph(poses.begin()->first, poses, links, posesOut, linksOut);
-			newPoses = sba->optimizeBA(
+			poses = sba->optimizeBA(
 					posesOut.begin()->first,
 					posesOut,
 					linksOut,
@@ -207,7 +206,7 @@ void ExportBundlerDialog::exportBundler(
 					_ui->sba_rematchFeatures->isChecked());
 			delete sba;
 
-			if(newPoses.empty())
+			if(poses.empty())
 			{
 				QMessageBox::warning(this, tr("Exporting cameras..."), tr("SBA optimization failed! Cannot export with 3D points.").arg(path));
 				return;
@@ -231,7 +230,7 @@ void ExportBundlerDialog::exportBundler(
 				std::map<int, int> cameraIndexes;
 				int camIndex = 0;
 				std::map<int, QColor> colors;
-				for(std::map<int, Transform>::const_iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
+				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 				{
 					QMap<int, Signature>::const_iterator ster = signatures.find(iter->first);
 					if(ster!= signatures.end())
@@ -536,10 +535,10 @@ void ExportBundlerDialog::exportBundler(
 				QMessageBox::information(this,
 						tr("Exporting cameras in Bundler format..."),
 						tr("%1 cameras/images and %2 points exported to directory \"%3\".%4")
-						.arg(newPoses.size())
+						.arg(poses.size())
 						.arg(points3DMap.size())
 						.arg(path)
-						.arg(newPoses.size()>cameras.size()?tr(" %1/%2 cameras ignored for too fast motion and/or blur level.").arg(newPoses.size()-cameras.size()).arg(newPoses.size()):""));
+						.arg(poses.size()>cameras.size()?tr(" %1/%2 cameras ignored for too fast motion and/or blur level.").arg(poses.size()-cameras.size()).arg(poses.size()):""));
 			}
 			else
 			{
