@@ -632,7 +632,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		if ("Stereo Module" == module_name)
 		{
 			sensors[1] = elem;
-			sensors[1].set_option(rs2_option::RS2_OPTION_EMITTER_ENABLED, emitterEnabled_);
+			if(sensors[1].supports(rs2_option::RS2_OPTION_EMITTER_ENABLED))
+			{
+				sensors[1].set_option(rs2_option::RS2_OPTION_EMITTER_ENABLED, emitterEnabled_);
+			}
 		}
 		else if ("Coded-Light Depth Sensor" == module_name)
 		{
