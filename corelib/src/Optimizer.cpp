@@ -556,7 +556,8 @@ void Optimizer::computeBACorrespondences(
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
 		std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		bool rematchFeatures)
+		bool rematchFeatures,
+		bool useLinkTransformAsGuess)
 {
 	UDEBUG("rematchFeatures=%d", rematchFeatures?1:0);
 	int wordCount = 0;
@@ -621,8 +622,7 @@ void Optimizer::computeBACorrespondences(
 					}
 
 					RegistrationInfo info;
-					Transform t = reg.computeTransformationMod(sFrom, sTo, Transform(), &info);
-					//Transform t = reg.computeTransformationMod(sFrom, sTo, iter->second.transform(), &info);
+					Transform t = reg.computeTransformationMod(sFrom, sTo, useLinkTransformAsGuess?iter->second.transform():Transform(), &info);
 					UDEBUG("%d->%d, inliers=%d",sFrom.id(), sTo.id(), (int)info.inliersIDs.size());
 
 					if(!t.isNull())

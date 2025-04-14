@@ -171,7 +171,8 @@ public:
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
 			std::map<int, std::map<int, FeatureBA > > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
-			bool rematchFeatures = false);
+			bool rematchFeatures = false,
+			bool useLinkTransformAsGuess = false);
 
 protected:
 	Optimizer(
