@@ -236,6 +236,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.21.13
+		removedParameters_.insert(std::make_pair("Vis/ForwardEstOnly",    std::make_pair(false, "")));
+
 		// 0.21.7
 		removedParameters_.insert(std::make_pair("SIFT/NFeatures",    std::make_pair(false, "")));
 

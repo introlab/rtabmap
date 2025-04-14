@@ -154,16 +154,6 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	}
 	uInsert(bundleParameters, ParametersPair(Parameters::kVisEstimationType(), uNumber2Str(estType)));
 
-	bool forwardEst = Parameters::defaultVisForwardEstOnly();
-	Parameters::parse(parameters, Parameters::kVisForwardEstOnly(), forwardEst);
-	if(!forwardEst)
-	{
-		UWARN("%s=false is not supported by OdometryF2M, setting to true.",
-				Parameters::kVisForwardEstOnly().c_str());
-		forwardEst = true;
-	}
-	uInsert(bundleParameters, ParametersPair(Parameters::kVisForwardEstOnly(), uBool2Str(forwardEst)));
-
 	regPipeline_ = Registration::create(bundleParameters);
 	if(bundleAdjustment_>0 && regPipeline_->isScanRequired())
 	{
@@ -497,8 +487,13 @@ Transform OdometryF2M::computeTransform(
 							{
 								if(!bundlePoses.rbegin()->second.isNull())
 								{
+									if(info)
+									{
+										info->localBundleOutliersPerCam = std::vector<int>(lastFrameModels.size(),0);
+									}
 									if(sbaOutliers.size())
 									{
+										regInfo.inliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 										std::vector<int> newInliers(regInfo.inliersIDs.size());
 										int oi=0;
 										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
@@ -506,6 +501,11 @@ Transform OdometryF2M::computeTransform(
 											if(sbaOutliers.find(regInfo.inliersIDs[i]) == sbaOutliers.end())
 											{
 												newInliers[oi++] = regInfo.inliersIDs[i];
+												regInfo.inliersPerCam[wordReferences.at(regInfo.inliersIDs[i]).at(lastFrame_->id()).cameraIndex] += 1;
+											}
+											else if(info)
+											{
+												info->localBundleOutliersPerCam[wordReferences.at(regInfo.inliersIDs[i]).at(lastFrame_->id()).cameraIndex] += 1;
 											}
 										}
 										newInliers.resize(oi);

@@ -1629,7 +1629,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 		UDEBUG("Time Update Pose: %fs", time.ticks());
 	}
-	_cloudViewer->refreshView();
+	// Use update instead of refreshView to avoid high CPU usage and lag
+	_cloudViewer->update();
 
 	if(_ui->graphicsView_graphView->isVisible())
 	{
@@ -1798,6 +1799,22 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/InliersMeanDistance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersMeanDistance, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersDistribution, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+		for(size_t i=0; i<odom.info().reg.matchesPerCam.size(); ++i)
+		{
+			_ui->statsToolBox->updateStat(QString("Odometry/matchesCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matchesPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+		}
+		for(size_t i=0; i<odom.info().reg.inliersPerCam.size(); ++i)
+		{
+			_ui->statsToolBox->updateStat(QString("Odometry/inliersCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+		}
+		if(odom.info().reg.matchesPerCam.size() == odom.info().reg.inliersPerCam.size())
+		{
+			for(size_t i=0; i<odom.info().reg.matchesPerCam.size(); ++i)
+			{
+				_ui->statsToolBox->updateStat(QString("Odometry/inliersRatioCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().reg.matchesPerCam[i]>0 ? (float)odom.info().reg.inliersPerCam[i] / (float)odom.info().reg.matchesPerCam[i] : 0.0f, _preferencesDialog->isCacheSavedInFigures());
+			}
+		}
+		
 		_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
@@ -1833,6 +1850,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 			_ui->statsToolBox->updateStat("Odometry/localBundleAvgInlierDistance/pix", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleAvgInlierDistance, _preferencesDialog->isCacheSavedInFigures());
 			_ui->statsToolBox->updateStat("Odometry/localBundleMaxKeyFramesForInlier/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleMaxKeyFramesForInlier, _preferencesDialog->isCacheSavedInFigures());
+			for(size_t i=0; i<odom.info().localBundleOutliersPerCam.size(); ++i)
+			{
+				_ui->statsToolBox->updateStat(QString("Odometry/localBundleOutliersCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleOutliersPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+			}
 		}
 		_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)data->id(), _preferencesDialog->isCacheSavedInFigures());

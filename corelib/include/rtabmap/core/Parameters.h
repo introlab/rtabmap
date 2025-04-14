@@ -678,7 +678,6 @@ class RTABMAP_CORE_EXPORT Parameters
 
     // Visual registration parameters
     RTABMAP_PARAM(Vis, EstimationType,           int,    1,     "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
-    RTABMAP_PARAM(Vis, ForwardEstOnly,           bool,   true,  "Forward estimation only (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
     RTABMAP_PARAM(Vis, InlierDistance,           float,  0.1,   uFormat("[%s = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, RefineIterations,         int,    5,     uFormat("[%s = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, PnPReprojError,           float,  2,     uFormat("[%s = 1] PnP reprojection error.", kVisEstimationType().c_str()));

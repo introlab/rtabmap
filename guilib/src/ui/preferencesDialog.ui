@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>18</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -21712,6 +21712,95 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_41" stretch="0,0,0,1,0">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,1">
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_554">
+                        <property name="text">
+                         <string>Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QComboBox" name="loopClosure_bundle">
+                        <property name="sizeAdjustPolicy">
+                         <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>Disabled</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>g2o</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>cvsba</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Ceres</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_346">
+                        <property name="text">
+                         <string>Refine transformation with bundle adjustment. See Optimizer panel.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QDoubleSpinBox" name="visMeanDistance">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="maximum">
+                         <double>9999.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_2">
+                        <property name="text">
+                         <string>Minimum correspondences to accept the estimated transformation.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QDoubleSpinBox" name="visMinDistribution">
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="maximum">
+                         <double>0.500000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QComboBox" name="loopClosure_estimationType">
                         <property name="sizeAdjustPolicy">
@@ -21734,22 +21823,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </widget>
                       </item>
-                      <item row="4" column="0">
-                       <widget class="QSpinBox" name="loopClosure_bowIterations">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                        <property name="maximum">
-                         <number>10000</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>1</number>
-                        </property>
-                        <property name="value">
-                         <number>100</number>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_15">
                         <property name="text">
@@ -21757,26 +21830,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_298">
-                        <property name="text">
-                         <string>Forward estimation only (A-&gt;B). If false, a transformation is also computed in backward direction (B-&gt;A), then the two resulting transforms are merged (middle interpolation between the transforms).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="loopClosure_forwardEst">
-                        <property name="text">
-                         <string/>
                         </property>
                        </widget>
                       </item>
@@ -21806,72 +21859,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_2">
-                        <property name="text">
-                         <string>Minimum correspondences to accept the estimated transformation.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="0">
-                       <widget class="QComboBox" name="loopClosure_bundle">
-                        <property name="sizeAdjustPolicy">
-                         <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>Disabled</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>g2o</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>cvsba</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>Ceres</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_346">
-                        <property name="text">
-                         <string>Refine transformation with bundle adjustment. See Optimizer panel.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_554">
-                        <property name="text">
-                         <string>Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="3" column="1">
                        <widget class="QLabel" name="label_555">
                         <property name="text">
@@ -21885,26 +21872,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
-                       <widget class="QDoubleSpinBox" name="visMinDistribution">
-                        <property name="decimals">
-                         <number>4</number>
+                      <item row="4" column="0">
+                       <widget class="QSpinBox" name="loopClosure_bowIterations">
+                        <property name="minimum">
+                         <number>1</number>
                         </property>
                         <property name="maximum">
-                         <double>0.500000000000000</double>
+                         <number>10000</number>
                         </property>
                         <property name="singleStep">
-                         <double>0.010000000000000</double>
+                         <number>1</number>
                         </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QDoubleSpinBox" name="visMeanDistance">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="maximum">
-                         <double>9999.000000000000000</double>
+                        <property name="value">
+                         <number>100</number>
                         </property>
                        </widget>
                       </item>
