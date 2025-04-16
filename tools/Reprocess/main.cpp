@@ -86,6 +86,12 @@ void showUsage()
 			"                 then next databases are reprocessed on top of the first one.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data. Can also be multiple \n"
 			"                 indices split by spaces in a string like \"0 2\" to stream cameras 0 and 2 only.\n"
+			"     -cam_tf \"x y z roll pitch yaw\" Camera local transform override(s) without optical rotation. For multi-cameras, \n"
+			"                                      use a \";\" between each transform.\n"
+			"     -cam_tf_lens_offset #.#          Override camera local transform with an y-axis offset before optical rotation. \n"
+			"                                      If -cam_tf is also used, it is combined before optical rotation. For multi-cameras,\n"
+			"                                      -cam_tf should be also used, and explicitly enumerate offsets if they are different, \n"
+			"                                      e.g., \"0.05 0.075\" for two cameras setup.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
@@ -262,6 +268,8 @@ int main(int argc, char * argv[])
 	int stopMapId = -1;
 	bool appendMode = false;
 	std::vector<unsigned int> cameraIndices;
+	std::vector<Transform> cameraLocalTransformOverrides;
+	std::vector<float> cameraLocalTransformOffsetOverrides;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool ignorePriors = false;
@@ -414,6 +422,42 @@ int main(int argc, char * argv[])
 				{
 					cameraIndices.push_back(uStr2Int(*iter));
 					printf("Camera index = %d.\n", cameraIndices.back());
+				}
+			}
+			else
+			{
+				printf("-cam option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-cam_tf") == 0 || strcmp(argv[i], "--cam_tf") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				std::list<std::string> tfStr = uSplit(argv[i], ';');
+				for(std::list<std::string>::iterator iter=tfStr.begin(); iter!=tfStr.end(); ++iter)
+				{
+					cameraLocalTransformOverrides.push_back(Transform::fromString(*iter));
+					printf("Camera transform = %s\n", cameraLocalTransformOverrides.back().prettyPrint().c_str());
+				}
+			}
+			else
+			{
+				printf("-cam option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-cam_tf_lens_offset") == 0 || strcmp(argv[i], "--cam_tf_lens_offset") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				std::list<std::string> offsetStr = uSplit(argv[i], ' ');
+				for(std::list<std::string>::iterator iter=offsetStr.begin(); iter!=offsetStr.end(); ++iter)
+				{
+					cameraLocalTransformOffsetOverrides.push_back(uStr2Float(*iter));
+					printf("Camera offset = %f\n", cameraLocalTransformOffsetOverrides.back());
 				}
 			}
 			else
@@ -604,6 +648,10 @@ int main(int argc, char * argv[])
 		if (!UFile::exists(*iter))
 		{
 			printf("Input database \"%s\" doesn't exist!\n", iter->c_str());
+			if(uStrContains(inputDatabasePath,":"))
+			{
+				printf("Did you mean \"%s\"?\n", uReplaceChar(inputDatabasePath, ':', ";").c_str());
+			}
 			return -1;
 		}
 
@@ -776,11 +824,6 @@ int main(int argc, char * argv[])
 	delete dbDriver;
 	dbDriver = 0;
 
-	if(framesToSkip)
-	{
-		totalIds/=framesToSkip+1;
-	}
-
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
 	if(!targetVersion.empty())
@@ -813,6 +856,35 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
 
+	if(!cameraLocalTransformOffsetOverrides.empty())
+	{
+		if(!cameraLocalTransformOverrides.empty() && cameraLocalTransformOffsetOverrides.size() > 1 && cameraLocalTransformOffsetOverrides.size() != cameraLocalTransformOverrides.size())
+		{
+			printf("Error: -cam_tf_lens_offset size (%ld) is not equal to -cam_tf argument (%ld). "
+				   "-cam_tf_lens_offset should be one to affect all cameras or same size than -cam_tf argument.\n",
+				   cameraLocalTransformOffsetOverrides.size(), cameraLocalTransformOverrides.size());
+			showUsage();
+			return 1;
+		}
+		if(cameraLocalTransformOverrides.empty())
+		{
+			if(cameraLocalTransformOffsetOverrides.size() > 1)
+			{
+				printf("Error: -cam_tf_lens_offset size (%ld) should be one if -cam_tf is not set.\n",
+				   cameraLocalTransformOffsetOverrides.size());
+				showUsage();
+				return 1;
+			}
+			cameraLocalTransformOverrides.push_back(Transform::getIdentity());
+		}
+		for(size_t i=0; i<cameraLocalTransformOverrides.size(); ++i)
+		{
+			float offset = cameraLocalTransformOffsetOverrides.size()==1?cameraLocalTransformOffsetOverrides[0]:cameraLocalTransformOffsetOverrides[i];
+			cameraLocalTransformOverrides[i] *= Transform(0, offset, 0);
+			printf("Overriding camera's local transform %ld to %s (offset=%f)\n", i, cameraLocalTransformOverrides[i].prettyPrint().c_str(), offset);
+		}
+	}
+
 	DBReader * dbReader = new DBReader(
 			inputDatabasePath,
 			useDatabaseRate?-1:0,
@@ -827,7 +899,8 @@ int main(int argc, char * argv[])
 			!useOdomFeatures,
 			startMapId,
 			stopMapId,
-			ignorePriors);
+			ignorePriors,
+			cameraLocalTransformOverrides);
 
 	dbReader->init();
 
@@ -920,7 +993,7 @@ int main(int argc, char * argv[])
 					odomInfo.reg.icpInliersRatio!=0.0?uNumber2Str(odomInfo.reg.icpInliersRatio).c_str():"NA",
 					odomInfo.lost?"true":"false",
 					int(odomInfo.timeEstimation * 1000));
-			if(lastUpdateStamp > 0.0 && data.stamp() < lastUpdateStamp + rtabmapUpdateRate)
+			if(lastUpdateStamp > 0.0 && (data.stamp() < lastUpdateStamp + rtabmapUpdateRate || framesToSkip>0))
 			{
 				if(framesToSkip>0)
 				{
@@ -945,6 +1018,8 @@ int main(int argc, char * argv[])
 			info.odomCovariance = odomCovariance;
 			odomCovariance = cv::Mat();
 			lastUpdateStamp = data.stamp();
+
+			uInsert(globalMapStats, odomInfo.statistics(pose));
 		}
 
 		UTimer iterationTime;
