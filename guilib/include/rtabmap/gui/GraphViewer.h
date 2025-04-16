@@ -74,7 +74,9 @@ public:
 			const std::map<int, GPS> & gpsValues);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
-	void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
+	// Use updateNodeColorByValue() instead with valueName="Posterior".
+	RTABMAP_DEPRECATED void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
+	void updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float fixedMax = 0.0f, bool invertedColorScale = false, int zValueOffset = 0);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
@@ -82,9 +84,10 @@ public:
 	void highlightNode(int nodeId, int highlightIndex);
 	void clearGraph();
 	void clearMap();
-	void clearPosterior();
+	// Use clearNodeColorByValue() instead.
+	RTABMAP_DEPRECATED void clearPosterior();
+	void clearNodeColorByValue();
 	void clearAll();
-
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 

@@ -2620,19 +2620,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			if(_preferencesDialog->isPosteriorGraphView() &&
 			   stat.posterior().size())
 			{
-				_ui->graphicsView_graphView->updatePosterior(stat.posterior());
+				_ui->graphicsView_graphView->updateNodeColorByValue("Posterior", stat.posterior());
 			}
 			else if(_preferencesDialog->isRGBDMode())
 			{
 				if(_preferencesDialog->isWordsCountGraphView() &&
 						_cachedWordsCount.size())
 				{
-					_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+					_ui->graphicsView_graphView->updateNodeColorByValue("Visual Words", _cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
 				}
 				else if(_preferencesDialog->isLocalizationsCountGraphView() &&
 						_cachedLocalizationsCount.size())
 				{
-					_ui->graphicsView_graphView->updatePosterior(_cachedLocalizationsCount, 1.0f);
+					_ui->graphicsView_graphView->updateNodeColorByValue("Re-Localization Count", _cachedLocalizationsCount, 1.0f);
 				}
 			}
 			if(_preferencesDialog->isRelocalizationColorOdomCacheGraphView() && !stat.odomCachePoses().empty())
@@ -2653,7 +2653,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						colors.insert(std::make_pair(iter->first, 240)); //red
 					}
 				}
-				_ui->graphicsView_graphView->updatePosterior(colors, 240);
+				_ui->graphicsView_graphView->updateNodeColorByValue("Re-Localized", colors, 240);
 			}
 			// update local path on the graph view
 			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
@@ -4771,7 +4771,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 				_preferencesDialog->isRGBDMode()&&
 				_cachedWordsCount.size())
 			{
-				_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+				_ui->graphicsView_graphView->updateNodeColorByValue("Visual Words", _cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
 			}
 
 			_progressDialog->appendText("Updating the 3D map cloud... done.");
@@ -4922,7 +4922,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		}
 		if(!_preferencesDialog->isPosteriorGraphView() && _ui->graphicsView_graphView->isVisible())
 		{
-			_ui->graphicsView_graphView->clearPosterior();
+			_ui->graphicsView_graphView->clearNodeColorByValue();
 		}
 	}
 
