@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRYINFO_H_
 #define ODOMETRYINFO_H_
 
+#include <rtabmap/core/rtabmap_core_export.h>
 #include <map>
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/RegistrationInfo.h"
@@ -37,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class OdometryInfo
+class RTABMAP_CORE_EXPORT OdometryInfo
 {
 public:
 	OdometryInfo();
