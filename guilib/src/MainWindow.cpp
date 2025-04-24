@@ -1629,8 +1629,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 		UDEBUG("Time Update Pose: %fs", time.ticks());
 	}
-	// Use update instead of refreshView to avoid high CPU usage and lag
-	_cloudViewer->update();
+
+	_cloudViewer->refreshView();
 
 	if(_ui->graphicsView_graphView->isVisible())
 	{
