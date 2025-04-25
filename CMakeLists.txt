@@ -166,6 +166,23 @@ OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 
+include(CTest)
+if(BUILD_TESTING)
+   # Add GTest using FetchContent
+   include(FetchContent)
+   FetchContent_Declare(
+       googletest
+       URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+   )
+   FetchContent_GetProperties(googletest)
+   if(NOT googletest_POPULATED)
+     FetchContent_Populate(googletest)
+     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+   endif()
+   include(GoogleTest)
+   set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data")
+endif()
+
 ####### DEPENDENCIES #######
 IF(MOBILE_BUILD)
 option(WITH_QT            "Include Qt support"                   OFF)
@@ -1333,6 +1350,7 @@ MESSAGE(STATUS "  CMAKE_INSTALL_LIBDIR = ${CMAKE_INSTALL_LIBDIR}")
 MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
 IF(NOT WIN32)
     # see comment above for the BUILD_SHARED_LIBS option on Windows
     MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")
