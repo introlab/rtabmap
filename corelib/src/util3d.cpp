@@ -49,7 +49,7 @@ namespace rtabmap
 namespace util3d
 {
 
-cv::Mat bgrFromCloud(const pcl::PointCloud<pcl::PointXYZRGBA> & cloud, bool bgrOrder)
+cv::Mat rgbFromCloud(const pcl::PointCloud<pcl::PointXYZRGBA> & cloud, bool bgrOrder)
 {
 	cv::Mat frameBGR = cv::Mat(cloud.height,cloud.width,CV_8UC3);
 
@@ -77,13 +77,9 @@ cv::Mat bgrFromCloud(const pcl::PointCloud<pcl::PointXYZRGBA> & cloud, bool bgrO
 // return float image in meter
 cv::Mat depthFromCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBA> & cloud,
-		float & fx,
-		float & fy,
 		bool depth16U)
 {
 	cv::Mat frameDepth = cv::Mat(cloud.height,cloud.width,depth16U?CV_16UC1:CV_32FC1);
-	fx = 0.0f; // needed to reconstruct the cloud
-	fy = 0.0f; // needed to reconstruct the cloud
 	for(unsigned int h = 0; h < cloud.height; h++)
 	{
 		for(unsigned int w = 0; w < cloud.width; w++)
@@ -103,32 +99,6 @@ cv::Mat depthFromCloud(
 			{
 				frameDepth.at<float>(h,w) = depth;
 			}
-
-			// update constants
-			if(fx == 0.0f &&
-			   uIsFinite(cloud.at(h*cloud.width + w).x) &&
-			   uIsFinite(depth) &&
-			   w != cloud.width/2 &&
-			   depth > 0)
-			{
-				fx = cloud.at(h*cloud.width + w).x / ((float(w) - float(cloud.width)/2.0f) * depth);
-				if(depth16U)
-				{
-					fx*=1000.0f;
-				}
-			}
-			if(fy == 0.0f &&
-			   uIsFinite(cloud.at(h*cloud.width + w).y) &&
-			   uIsFinite(depth) &&
-			   h != cloud.height/2 &&
-			   depth > 0)
-			{
-				fy = cloud.at(h*cloud.width + w).y / ((float(h) - float(cloud.height)/2.0f) * depth);
-				if(depth16U)
-				{
-					fy*=1000.0f;
-				}
-			}
 		}
 	}
 	return frameDepth;
@@ -138,16 +108,12 @@ cv::Mat depthFromCloud(
 void rgbdFromCloud(const pcl::PointCloud<pcl::PointXYZRGBA> & cloud,
 		cv::Mat & frameBGR,
 		cv::Mat & frameDepth,
-		float & fx,
-		float & fy,
 		bool bgrOrder,
 		bool depth16U)
 {
 	frameDepth = cv::Mat(cloud.height,cloud.width,depth16U?CV_16UC1:CV_32FC1);
 	frameBGR = cv::Mat(cloud.height,cloud.width,CV_8UC3);
 
-	fx = 0.0f; // needed to reconstruct the cloud
-	fy = 0.0f; // needed to reconstruct the cloud
 	for(unsigned int h = 0; h < cloud.height; h++)
 	{
 		for(unsigned int w = 0; w < cloud.width; w++)
@@ -181,32 +147,6 @@ void rgbdFromCloud(const pcl::PointCloud<pcl::PointXYZRGBA> & cloud,
 			else
 			{
 				frameDepth.at<float>(h,w) = depth;
-			}
-
-			// update constants
-			if(fx == 0.0f &&
-			   uIsFinite(cloud.at(h*cloud.width + w).x) &&
-			   uIsFinite(depth) &&
-			   w != cloud.width/2 &&
-			   depth > 0)
-			{
-				fx = 1.0f/(cloud.at(h*cloud.width + w).x / ((float(w) - float(cloud.width)/2.0f) * depth));
-				if(depth16U)
-				{
-					fx/=1000.0f;
-				}
-			}
-			if(fy == 0.0f &&
-			   uIsFinite(cloud.at(h*cloud.width + w).y) &&
-			   uIsFinite(depth) &&
-			   h != cloud.height/2 &&
-			   depth > 0)
-			{
-				fy = 1.0f/(cloud.at(h*cloud.width + w).y / ((float(h) - float(cloud.height)/2.0f) * depth));
-				if(depth16U)
-				{
-					fy/=1000.0f;
-				}
 			}
 		}
 	}
@@ -1381,28 +1321,25 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImages(
 		float minDepth)
 {
 	pcl::PointCloud<pcl::PointXYZ> scan;
+	UASSERT(!depthImages.empty() && !cameraModels.empty());
 	UASSERT(int((depthImages.cols/cameraModels.size())*cameraModels.size()) == depthImages.cols);
 	int subImageWidth = depthImages.cols/cameraModels.size();
 	for(int i=(int)cameraModels.size()-1; i>=0; --i)
 	{
-		if(cameraModels[i].isValidForProjection())
-		{
-			cv::Mat depth = cv::Mat(depthImages, cv::Rect(subImageWidth*i, 0, subImageWidth, depthImages.rows));
+		UASSERT(cameraModels[i].isValidForProjection());
+		UASSERT(cameraModels[i].imageWidth() == subImageWidth);
+		UASSERT(subImageWidth*(i+1) <= depthImages.cols);
+		cv::Mat depth = cv::Mat(depthImages, cv::Rect(subImageWidth*i, 0, subImageWidth, depthImages.rows));
 
-			scan += laserScanFromDepthImage(
-					depth,
-					cameraModels[i].fx(),
-					cameraModels[i].fy(),
-					cameraModels[i].cx(),
-					cameraModels[i].cy(),
-					maxDepth,
-					minDepth,
-					cameraModels[i].localTransform());
-		}
-		else
-		{
-			UERROR("Camera model %d is invalid", i);
-		}
+		scan += laserScanFromDepthImage(
+				depth,
+				cameraModels[i].fx(),
+				cameraModels[i].fy(),
+				cameraModels[i].cx(),
+				cameraModels[i].cy(),
+				maxDepth,
+				minDepth,
+				cameraModels[i].localTransform());
 	}
 	return scan;
 }
@@ -2497,11 +2434,7 @@ pcl::PointXYZRGB laserScanToPointRGB(const LaserScan & laserScan, int index, uns
 
 	if(laserScan.hasRGB())
 	{
-		int * ptrInt = (int*)ptr;
-		int indexRGB = laserScan.getRGBOffset();
-		output.b = (unsigned char)(ptrInt[indexRGB] & 0xFF);
-		output.g = (unsigned char)((ptrInt[indexRGB] >> 8) & 0xFF);
-		output.r = (unsigned char)((ptrInt[indexRGB] >> 16) & 0xFF);
+		LaserScan::unpackRGB(ptr[laserScan.getRGBOffset()], output.r, output.g, output.b);
 	}
 	else if(laserScan.hasIntensity())
 	{
@@ -2563,11 +2496,7 @@ pcl::PointXYZRGBNormal laserScanToPointRGBNormal(const LaserScan & laserScan, in
 
 	if(laserScan.hasRGB())
 	{
-		int * ptrInt = (int*)ptr;
-		int indexRGB = laserScan.getRGBOffset();
-		output.b = (unsigned char)(ptrInt[indexRGB] & 0xFF);
-		output.g = (unsigned char)((ptrInt[indexRGB] >> 8) & 0xFF);
-		output.r = (unsigned char)((ptrInt[indexRGB] >> 16) & 0xFF);
+		LaserScan::unpackRGB(ptr[laserScan.getRGBOffset()], output.r, output.g, output.b);
 	}
 	else if(laserScan.hasIntensity())
 	{
