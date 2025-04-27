@@ -6781,12 +6781,12 @@ void DBDriverSqlite3::stepGlobalDescriptor(sqlite3_stmt * ppStmt,
 	int rc = SQLITE_OK;
 	int index = 1;
 
-	//node_if
+	//node_id
 	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	//type
-	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	rc = sqlite3_bind_int(ppStmt, index++, descriptor.type());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	//info

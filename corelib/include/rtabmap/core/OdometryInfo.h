@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2025, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRYINFO_H_
 #define ODOMETRYINFO_H_
 
+#include <rtabmap/core/rtabmap_core_export.h>
 #include <map>
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/RegistrationInfo.h"
@@ -37,63 +38,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class OdometryInfo
+class RTABMAP_CORE_EXPORT OdometryInfo
 {
 public:
-	OdometryInfo() :
-		lost(true),
-		features(0),
-		localMapSize(0),
-		localScanMapSize(0),
-		localKeyFrames(0),
-		localBundleOutliers(0),
-		localBundleConstraints(0),
-		localBundleTime(0),
-		keyFrameAdded(false),
-		timeDeskewing(0.0f),
-		timeEstimation(0.0f),
-		timeParticleFiltering(0.0f),
-		stamp(0),
-		interval(0),
-		distanceTravelled(0.0f),
-		memoryUsage(0),
-		gravityRollError(0.0),
-		gravityPitchError(0.0),
-		type(0)
-	{}
-
-	OdometryInfo copyWithoutData() const
-	{
-		OdometryInfo output;
-		output.lost = lost;
-		output.reg = reg.copyWithoutData();
-		output.features = features;
-		output.localMapSize = localMapSize;
-		output.localScanMapSize = localScanMapSize;
-		output.localKeyFrames = localKeyFrames;
-		output.localBundleOutliers = localBundleOutliers;
-		output.localBundleConstraints = localBundleConstraints;
-		output.localBundleTime = localBundleTime;
-		output.localBundlePoses = localBundlePoses;
-		output.localBundleModels = localBundleModels;
-		output.keyFrameAdded = keyFrameAdded;
-		output.timeDeskewing = timeDeskewing;
-		output.timeEstimation = timeEstimation;
-		output.timeParticleFiltering = timeParticleFiltering;
-		output.stamp = stamp;
-		output.interval = interval;
-		output.transform = transform;
-		output.transformFiltered = transformFiltered;
-		output.transformGroundTruth = transformGroundTruth;
-		output.guessVelocity = guessVelocity;
-		output.guess = guess;
-		output.distanceTravelled = distanceTravelled;
-		output.memoryUsage = memoryUsage;
-		output.gravityRollError = gravityRollError;
-		output.gravityPitchError = gravityPitchError;
-		output.type = type;
-		return output;
-	}
+	OdometryInfo();
+	OdometryInfo copyWithoutData() const;
+	std::map<std::string, float> statistics(const Transform & pose = Transform());
 
 	bool lost;
 	RegistrationInfo reg;
@@ -106,6 +56,9 @@ public:
 	float localBundleTime;
 	std::map<int, Transform> localBundlePoses;
 	std::map<int, std::vector<CameraModel> > localBundleModels;
+	float localBundleAvgInlierDistance;
+	int localBundleMaxKeyFramesForInlier;
+	std::vector<int> localBundleOutliersPerCam;
 	bool keyFrameAdded;
 	float timeDeskewing;
 	float timeEstimation;

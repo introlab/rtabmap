@@ -556,7 +556,8 @@ void Optimizer::computeBACorrespondences(
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
 		std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		bool rematchFeatures)
+		bool rematchFeatures,
+		bool useLinkTransformAsGuess)
 {
 	UDEBUG("rematchFeatures=%d", rematchFeatures?1:0);
 	int wordCount = 0;
@@ -612,10 +613,16 @@ void Optimizer::computeBACorrespondences(
 						sFrom.setWordsDescriptors(cv::Mat());
 						sTo.setWordsDescriptors(cv::Mat());
 					}
+					else if(sFrom.getWordsDescriptors().empty() && sTo.getWordsDescriptors().empty())
+					{
+						UWARN("Rematching features is enabled but signatures (%d and %d) don't have word descriptors!? "
+							  "Features won't be rematched. If it is an old database, do rtabmap-reprocess "
+							  "so that signatures contain word desriptors.",
+							  sFrom.id(), sTo.id());
+					}
 
 					RegistrationInfo info;
-					Transform t = reg.computeTransformationMod(sFrom, sTo, Transform(), &info);
-					//Transform t = reg.computeTransformationMod(sFrom, sTo, iter->second.transform(), &info);
+					Transform t = reg.computeTransformationMod(sFrom, sTo, useLinkTransformAsGuess?iter->second.transform():Transform(), &info);
 					UDEBUG("%d->%d, inliers=%d",sFrom.id(), sTo.id(), (int)info.inliersIDs.size());
 
 					if(!t.isNull())

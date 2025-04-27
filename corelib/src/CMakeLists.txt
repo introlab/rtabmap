@@ -85,6 +85,7 @@ SET(SRC_FILES
     
     Odometry.cpp
     OdometryThread.cpp
+	OdometryInfo.cpp
     odometry/OdometryF2M.cpp
     odometry/OdometryMono.cpp
     odometry/OdometryF2F.cpp

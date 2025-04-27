@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_base.h>
 #include <pcl/TextureMesh.h>
 
+#include "Measure.h"
 
 // RTABMapApp handles the application lifecycle and resources.
 class RTABMapApp : public UEventsHandler {
@@ -84,7 +85,7 @@ class RTABMapApp : public UEventsHandler {
 #ifdef __ANDROID__
   bool startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver);
 #else // __APPLE__
-    bool startCamera();
+  bool startCamera();
 #endif
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
   void InitializeGLContent();
@@ -127,6 +128,7 @@ class RTABMapApp : public UEventsHandler {
   void setLighting(bool enabled);
   void setBackfaceCulling(bool enabled);
   void setWireframe(bool enabled);
+  void setTextureColorSeamsHidden(bool hidden);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
@@ -176,10 +178,19 @@ class RTABMapApp : public UEventsHandler {
 		  int optimizedMinClusterSize,
 		  float optimizedMaxTextureDistance,
 		  int optimizedMinTextureClusterSize,
+      int textureVertexColorPolicy,
 		  bool blockRendering);
   bool postExportation(bool visualize);
   bool writeExportedMesh(const std::string & directory, const std::string & name);
   int postProcessing(int approach);
+  void clearMeasures();
+  void showMeasures(bool x, bool y, bool z, bool custom);
+  void setMeasuringMode(int mode);
+  void addMeasureButtonClicked();
+  void teleportButtonClicked();
+  void removeMeasure();
+  void setMetricSystem(bool enabled);
+  void setMeasuringTextSize(float size);
 
   void postOdometryEvent(
 		rtabmap::Transform pose,
@@ -203,6 +214,7 @@ class RTABMapApp : public UEventsHandler {
  private:
   int updateMeshDecimation(int width, int height);
   rtabmap::ParametersMap getRtabmapParameters();
+  void updateMeasuringState();
   bool smoothMesh(int id, rtabmap::Mesh & mesh);
   void gainCompensation(bool full = false);
   std::vector<pcl::Vertices> filterOrganizedPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
@@ -264,11 +276,26 @@ class RTABMapApp : public UEventsHandler {
 
   bool visualizingMesh_;
   bool exportedMeshUpdated_;
-  pcl::TextureMesh::Ptr optMesh_;
+  pcl::TextureMesh::Ptr optTextureMesh_;
   cv::Mat optTexture_;
+  rtabmap::Mesh optMesh_;
   int optRefId_;
   rtabmap::Transform * optRefPose_; // App crashes when loading native library if not dynamic
-
+  std::list<Measure> measures_; // In opengl frame
+  bool measuresUpdated_;
+  bool metricSystem_;
+  float measuringTextSize_;
+  float snapAxisThr_;
+  std::vector<cv::Vec3f> snapAxes_;
+  int measuringMode_;
+  bool addMeasureClicked_;
+  bool teleportClicked_;
+  bool removeMeasureClicked_;
+  std::vector<cv::Point3f> measuringTmpPts_; // In opengl frame
+  std::vector<cv::Point3f> measuringTmpNormals_; // In opengl frame
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPoint_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr quadSample_;
+  std::vector<pcl::Vertices> quadSamplePolygons_;
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.
   Scene main_scene_;

@@ -278,6 +278,7 @@ public:
 	bool isSourceFeatureDetection() const;
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceStereoExposureCompensation() const;
+	bool isRightGrayScale() const;
 	bool isSourceScanFromDepth() const;
 	bool isSourceScanDeskewing() const;
 	int getSourceScanDownsampleStep() const;

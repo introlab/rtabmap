@@ -115,13 +115,14 @@ int savePDALFile(const std::string & filePath,
 
 	pdal::StageFactory factory;
 	std::string ext = UFile::getExtension(filePath);
-	pdal::Stage *writer = factory.createStage("writers." + ext);
+	pdal::Stage *writer = factory.createStage("writers." + (ext.compare("laz")==0?"las":ext));
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
 		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
 		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
+		if(ext.compare("laz")==0) writerOps.add("compression", "lazperf");
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -221,13 +222,14 @@ int savePDALFile(const std::string & filePath,
 
 	pdal::StageFactory factory;
 	std::string ext = UFile::getExtension(filePath);
-	pdal::Stage *writer = factory.createStage("writers." + ext);
+	pdal::Stage *writer = factory.createStage("writers." + (ext.compare("laz")==0?"las":ext));
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
 		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
 		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
+		if(ext.compare("laz")==0) writerOps.add("compression", "lazperf");
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -342,13 +344,14 @@ int savePDALFile(const std::string & filePath,
 
 	pdal::StageFactory factory;
 	std::string ext = UFile::getExtension(filePath);
-	pdal::Stage *writer = factory.createStage("writers." + ext);
+	pdal::Stage *writer = factory.createStage("writers." + (ext.compare("laz")==0?"las":ext));
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
 		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
 		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
+		if(ext.compare("laz")==0) writerOps.add("compression", "lazperf");
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -412,13 +415,14 @@ int savePDALFile(const std::string & filePath,
 
 	pdal::StageFactory factory;
 	std::string ext = UFile::getExtension(filePath);
-	pdal::Stage *writer = factory.createStage("writers." + ext);
+	pdal::Stage *writer = factory.createStage("writers." + (ext.compare("laz")==0?"las":ext));
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
 		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
 		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
+		if(ext.compare("laz")==0) writerOps.add("compression", "lazperf");
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);
@@ -491,13 +495,14 @@ int savePDALFile(const std::string & filePath,
 
 	pdal::StageFactory factory;
 	std::string ext = UFile::getExtension(filePath);
-	pdal::Stage *writer = factory.createStage("writers." + ext);
+	pdal::Stage *writer = factory.createStage("writers." + (ext.compare("laz")==0?"las":ext));
 	if(writer)
 	{
 		pdal::Options writerOps;
 		writerOps.add("filename", filePath);
 		if(ext.compare("ply")==0) writerOps.add("storage_mode", binary?"little endian":"ascii"); // PLY
 		if(ext.compare("pcd")==0) writerOps.add("compression", binary?"binary":"ascii"); // PCD
+		if(ext.compare("laz")==0) writerOps.add("compression", "lazperf");
 
 		writer->setOptions(writerOps);
 		writer->setInput(bufferReader);

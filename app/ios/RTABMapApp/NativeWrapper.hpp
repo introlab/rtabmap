@@ -55,6 +55,7 @@ bool exportMeshNative(
             int optimizedMinClusterSize,
             float optimizedMaxTextureDistance,
             int optimizedMinTextureClusterSize,
+            int textureVertexColorPolicy,
             bool blockRendering);
 bool postExportationNative(const void *object, bool visualize);
 bool writeExportedMeshNative(const void *object, const char * directory, const char * name);
@@ -90,6 +91,7 @@ void setGridRotationNative(const void *object, float value);
 void setLightingNative(const void *object, bool enabled);
 void setBackfaceCullingNative(const void *object, bool enabled);
 void setWireframeNative(const void *object, bool enabled);
+void setTextureColorSeamsHiddenNative(const void *object, bool hidden);
 void setLocalizationModeNative(const void *object, bool enabled);
 void setDataRecorderModeNative(const void *object, bool enabled);
 void setTrajectoryModeNative(const void *object, bool enabled);
@@ -114,6 +116,14 @@ void setBackgroundColorNative(const void *object, float gray);
 void setDepthConfidenceNative(const void *object, int value);
 void setExportPointCloudFormatNative(const void *object, const char * format);
 int setMappingParameterNative(const void *object, const char * key, const char * value);
+
+void removeMeasureNative(const void *object);
+void addMeasureNative(const void *object);
+void teleportNative(const void *object);
+void setMeasuringModeNative(const void *object, int mode);
+void setMetricSystemNative(const void *object, bool enabled);
+void setMeasuringTextSizeNative(const void *object, float size);
+void clearMeasuresNative(const void *object);
 
 typedef struct ImageNative
 {

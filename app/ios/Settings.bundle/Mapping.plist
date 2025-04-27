@@ -482,6 +482,14 @@
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -497,6 +505,14 @@
 			<key>Values</key>
 			<array>
 				<string>0</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -528,6 +544,14 @@
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -542,6 +566,14 @@
 			<key>Values</key>
 			<array>
 				<string>0</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -803,6 +835,56 @@
 			<string>-1</string>
 			<key>KeyboardType</key>
 			<string>NumberPad</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Maximum range at which the markers are detected. Long range increases the estimated orientation error of the tag, which can then cause bad graph optimization. Using larger tags can improve orientation estimation at longer range.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Marker Maximum Range</string>
+			<key>Key</key>
+			<string>MarkerMaxRange</string>
+			<key>DefaultValue</key>
+			<real>2</real>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>0.5 m</string>
+				<string>1 m</string>
+				<string>2 m</string>
+				<string>3 m</string>
+				<string>4 m</string>
+				<string>5 m</string>
+				<string>6 m</string>
+				<string>7 m</string>
+				<string>8 m</string>
+				<string>9 m</string>
+				<string>10 m</string>
+				<string>15 m</string>
+				<string>20 m</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<real>0.5</real>
+				<real>1</real>
+				<real>2</real>
+				<real>3</real>
+				<real>4</real>
+				<real>5</real>
+				<real>6</real>
+				<real>7</real>
+				<real>8</real>
+				<real>9</real>
+				<integer>10</integer>
+				<real>15</real>
+				<real>20</real>
+			</array>
 		</dict>
 		<dict>
 			<key>Type</key>

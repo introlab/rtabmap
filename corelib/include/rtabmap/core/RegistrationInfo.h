@@ -59,9 +59,11 @@ public:
 		output.covariance = covariance.clone();
 		output.rejectedMsg = rejectedMsg;
 		output.inliers = inliers;
+		output.inliersPerCam = inliersPerCam;
 		output.inliersMeanDistance = inliersMeanDistance;
 		output.inliersDistribution = inliersDistribution;
 		output.matches = matches;
+		output.matchesPerCam = matchesPerCam;
 		output.icpInliersRatio = icpInliersRatio;
 		output.icpTranslation = icpTranslation;
 		output.icpRotation = icpRotation;
@@ -85,6 +87,8 @@ public:
 	int matches;
 	std::vector<int> matchesIDs;
 	std::vector<int> projectedIDs; // "From" IDs
+	std::vector<int> inliersPerCam;
+	std::vector<int> matchesPerCam;
 
 	// RegistrationIcp
 	float icpInliersRatio;

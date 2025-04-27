@@ -659,6 +659,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", false);
 	_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", false);
 	_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleAvgInlierDistance/pix", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleMaxKeyFramesForInlier/", false);
 	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", false);
 	_ui->statsToolBox->updateStat("Odometry/Interval/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/Speed/kph", false);
@@ -1627,6 +1629,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 		UDEBUG("Time Update Pose: %fs", time.ticks());
 	}
+
 	_cloudViewer->refreshView();
 
 	if(_ui->graphicsView_graphView->isVisible())
@@ -1796,6 +1799,22 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/InliersMeanDistance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersMeanDistance, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersDistribution, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+		for(size_t i=0; i<odom.info().reg.matchesPerCam.size(); ++i)
+		{
+			_ui->statsToolBox->updateStat(QString("Odometry/matchesCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matchesPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+		}
+		for(size_t i=0; i<odom.info().reg.inliersPerCam.size(); ++i)
+		{
+			_ui->statsToolBox->updateStat(QString("Odometry/inliersCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+		}
+		if(odom.info().reg.matchesPerCam.size() == odom.info().reg.inliersPerCam.size())
+		{
+			for(size_t i=0; i<odom.info().reg.matchesPerCam.size(); ++i)
+			{
+				_ui->statsToolBox->updateStat(QString("Odometry/inliersRatioCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().reg.matchesPerCam[i]>0 ? (float)odom.info().reg.inliersPerCam[i] / (float)odom.info().reg.matchesPerCam[i] : 0.0f, _preferencesDialog->isCacheSavedInFigures());
+			}
+		}
+		
 		_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
@@ -1829,6 +1848,12 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleOutliers, _preferencesDialog->isCacheSavedInFigures());
 			_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleConstraints, _preferencesDialog->isCacheSavedInFigures());
 			_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/localBundleAvgInlierDistance/pix", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleAvgInlierDistance, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/localBundleMaxKeyFramesForInlier/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleMaxKeyFramesForInlier, _preferencesDialog->isCacheSavedInFigures());
+			for(size_t i=0; i<odom.info().localBundleOutliersPerCam.size(); ++i)
+			{
+				_ui->statsToolBox->updateStat(QString("Odometry/localBundleOutliersCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleOutliersPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+			}
 		}
 		_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)data->id(), _preferencesDialog->isCacheSavedInFigures());
@@ -2595,19 +2620,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			if(_preferencesDialog->isPosteriorGraphView() &&
 			   stat.posterior().size())
 			{
-				_ui->graphicsView_graphView->updatePosterior(stat.posterior());
+				_ui->graphicsView_graphView->updateNodeColorByValue("Posterior", stat.posterior());
 			}
 			else if(_preferencesDialog->isRGBDMode())
 			{
 				if(_preferencesDialog->isWordsCountGraphView() &&
 						_cachedWordsCount.size())
 				{
-					_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+					_ui->graphicsView_graphView->updateNodeColorByValue("Visual Words", _cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
 				}
 				else if(_preferencesDialog->isLocalizationsCountGraphView() &&
 						_cachedLocalizationsCount.size())
 				{
-					_ui->graphicsView_graphView->updatePosterior(_cachedLocalizationsCount, 1.0f);
+					_ui->graphicsView_graphView->updateNodeColorByValue("Re-Localization Count", _cachedLocalizationsCount, 1.0f);
 				}
 			}
 			if(_preferencesDialog->isRelocalizationColorOdomCacheGraphView() && !stat.odomCachePoses().empty())
@@ -2628,7 +2653,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						colors.insert(std::make_pair(iter->first, 240)); //red
 					}
 				}
-				_ui->graphicsView_graphView->updatePosterior(colors, 240);
+				_ui->graphicsView_graphView->updateNodeColorByValue("Re-Localized", colors, 240);
 			}
 			// update local path on the graph view
 			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
@@ -4746,7 +4771,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 				_preferencesDialog->isRGBDMode()&&
 				_cachedWordsCount.size())
 			{
-				_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+				_ui->graphicsView_graphView->updateNodeColorByValue("Visual Words", _cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
 			}
 
 			_progressDialog->appendText("Updating the 3D map cloud... done.");
@@ -4897,7 +4922,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		}
 		if(!_preferencesDialog->isPosteriorGraphView() && _ui->graphicsView_graphView->isVisible())
 		{
-			_ui->graphicsView_graphView->clearPosterior();
+			_ui->graphicsView_graphView->clearNodeColorByValue();
 		}
 	}
 
@@ -8316,6 +8341,21 @@ void MainWindow::exportBundlerFormat()
 					_currentLinksMap,
 					_cachedSignatures,
 					_preferencesDialog->getAllParameters());
+		
+		if(!poses.empty())
+		{
+			UINFO("Updating map...");
+			this->updateMapCloud(
+					poses,
+					std::multimap<int, Link>(_currentLinksMap),
+					std::map<int, int>(_currentMapIds),
+					std::map<int, std::string>(_currentLabels),
+					std::map<int, Transform>(_currentGTPosesMap),
+					std::map<int, Transform>(),
+					std::multimap<int, Link>(),
+					false);
+			UINFO("Updating map... done!");
+		}
 	}
 	else
 	{

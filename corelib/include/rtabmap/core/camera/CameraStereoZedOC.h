@@ -62,6 +62,8 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
+	void setRightGrayScale(bool enabled = true);
+
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
@@ -74,6 +76,7 @@ private:
 	int usbDevice_;
 	int resolution_;
 	uint64_t lastStamp_;
+	bool rightGrayScale_;
 #endif
 };
 

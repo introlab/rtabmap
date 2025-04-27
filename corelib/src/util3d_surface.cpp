@@ -1454,6 +1454,7 @@ cv::Mat mergeTextures(
 		bool exposureFusion,
 		const ProgressState * state,
 		unsigned char blankValue,
+		bool clearVertexColorUnderTexture,
 		std::map<int, std::map<int, cv::Vec4d> > * gains,
 		std::map<int, std::map<int, cv::Mat> > * blendingGains,
 		std::pair<float, float> * contrastValues)
@@ -1483,6 +1484,7 @@ cv::Mat mergeTextures(
 			exposureFusion,
 			state,
 			blankValue,
+			clearVertexColorUnderTexture,
 			gains,
 			blendingGains,
 			contrastValues);
@@ -1506,6 +1508,7 @@ cv::Mat mergeTextures(
 		bool exposureFusion,
 		const ProgressState * state,
 		unsigned char blankValue,
+		bool clearVertexColorUnderTexture,
 		std::map<int, std::map<int, cv::Vec4d> > * gainsOut,
 		std::map<int, std::map<int, cv::Mat> > * blendingGainsOut,
 		std::pair<float, float> * contrastValuesOut)
@@ -2184,6 +2187,70 @@ cv::Mat mergeTextures(
 						}
 					}
 					if(state) state->callback(uFormat("Brightness and contrast auto %fs", timer.ticks()));
+				}
+			}
+			
+			// Cloud color
+			if(clearVertexColorUnderTexture)
+			{
+				int colorOffset = 0;
+				for(unsigned int i=0; i<mesh.cloud.fields.size(); ++i)
+				{
+					if(mesh.cloud.fields[i].name.compare("rgb") == 0)
+					{
+						colorOffset = mesh.cloud.fields[i].offset;
+						break;
+					}
+				}
+				if(colorOffset>0)
+				{
+					pcl::IndicesPtr notTexturedVertexIndices(new std::vector<int>);
+					UASSERT(mesh.tex_coordinates.size() == mesh.tex_polygons.size());
+					for(size_t t=0; t<mesh.tex_polygons.size(); ++t)
+					{
+						int pixelIndex = 0;
+						for(size_t p=0; p<mesh.tex_polygons[t].size(); ++p)
+						{
+							// only clear polygon color if all 3 vertices have valid tex coordinates.
+							bool valid = true;
+							for(size_t v=0; v<mesh.tex_polygons[t][p].vertices.size() && valid; ++v)
+							{
+								UASSERT(pixelIndex+v < mesh.tex_coordinates[t].size());
+								const Eigen::Vector2f & uv = mesh.tex_coordinates[t][pixelIndex+v];
+								if(uv[0] == -1 || uv[1] == -1)
+								{
+									valid = false;
+								}
+							}
+							if(!valid)
+							{
+								for(size_t v=0; v<mesh.tex_polygons[t][p].vertices.size(); ++v)
+								{
+									int vertex = mesh.tex_polygons[t][p].vertices[v];
+									notTexturedVertexIndices->push_back(vertex);
+								}
+							}
+							pixelIndex+=mesh.tex_polygons[t][p].vertices.size();
+						}
+					}
+					// Set up the full indices set
+					pcl::IndicesPtr full_indices(new std::vector<int>(mesh.cloud.width* mesh.cloud.height));
+					for (size_t fii = 0; fii < full_indices->size(); ++fii)  // fii = full indices iterator
+						full_indices->at(fii) = fii;
+
+					// Set up the sorted input indices
+					std::sort (notTexturedVertexIndices->begin (), notTexturedVertexIndices->end ());
+
+					// Store the difference in indices
+					pcl::IndicesPtr texturedVertexIndices(new std::vector<int>());
+					std::set_difference (full_indices->begin (), full_indices->end (), notTexturedVertexIndices->begin (), notTexturedVertexIndices->end (), std::inserter (*texturedVertexIndices, texturedVertexIndices->begin ()));
+
+					for(size_t i=0; i<texturedVertexIndices->size(); ++i)
+					{
+						std::uint32_t white = 0xffffff;
+						UASSERT(texturedVertexIndices->at(i) * mesh.cloud.point_step + colorOffset < mesh.cloud.data.size());
+						memcpy(&mesh.cloud.data.data()[texturedVertexIndices->at(i) * mesh.cloud.point_step + colorOffset], reinterpret_cast<float*>(&white), sizeof(float));
+					}
 				}
 			}
 		}
@@ -3879,6 +3946,359 @@ bool intersectRayTriangle(
         return false;
 
     return true;                    // I is in T
+}
+
+/**
+ * This is a modified copy of https://github.com/PointCloudLibrary/pcl/blob/pcl-1.12.1/io/src/obj_io.cpp
+ * with added color on each vertex if provided
+ */
+int saveOBJFile(
+	const std::string &file_name,
+	const pcl::TextureMesh &tex_mesh,
+	unsigned precision)
+{
+  if (tex_mesh.cloud.data.empty ())
+  {
+    UERROR ("Input point cloud has no data!\n");
+    return (-1);
+  }
+  // Open file
+  std::ofstream fs;
+  fs.precision (precision);
+  fs.open (file_name.c_str ());
+
+  // Define material file
+  std::string mtl_file_name = file_name.substr (0, file_name.find_last_of ('.')) + ".mtl";
+  // Strip path for "mtllib" command
+  std::string mtl_file_name_nopath = mtl_file_name;
+  mtl_file_name_nopath.erase (0, mtl_file_name.find_last_of ('/') + 1);
+
+  /* Write 3D information */
+  // number of points
+  unsigned nr_points  = tex_mesh.cloud.width * tex_mesh.cloud.height;
+  unsigned point_size = static_cast<unsigned> (tex_mesh.cloud.data.size () / nr_points);
+
+  // mesh size
+  unsigned nr_meshes = static_cast<unsigned> (tex_mesh.tex_polygons.size ());
+  // number of faces for header
+  unsigned nr_faces = 0;
+  for (unsigned m = 0; m < nr_meshes; ++m)
+    nr_faces += static_cast<unsigned> (tex_mesh.tex_polygons[m].size ());
+
+  // Write the header information
+  fs << "####" << '\n';
+  fs << "# OBJ dataFile simple version. File name: " << file_name << '\n';
+  fs << "# Vertices: " << nr_points << '\n';
+  fs << "# Faces: " <<nr_faces << '\n';
+  fs << "# Material information:" << '\n';
+  fs << "mtllib " << mtl_file_name_nopath << '\n';
+  fs << "####" << '\n';
+
+  // Write vertex coordinates
+  fs << "# Vertices" << '\n';
+  for (unsigned i = 0; i < nr_points; ++i)
+  {
+    int xyz = 0;
+    // "v" just be written one
+    bool v_written = false;
+    for (std::size_t d = 0; d < tex_mesh.cloud.fields.size (); ++d)
+    {
+      // adding vertex
+      if ((tex_mesh.cloud.fields[d].datatype == pcl::PCLPointField::FLOAT32) && (
+          tex_mesh.cloud.fields[d].name == "x" ||
+          tex_mesh.cloud.fields[d].name == "y" ||
+          tex_mesh.cloud.fields[d].name == "z"))
+      {
+        if (!v_written)
+        {
+           // write vertices beginning with v
+          fs << "v ";
+          v_written = true;
+        }
+        float value;
+        memcpy (&value, &tex_mesh.cloud.data[i * point_size + tex_mesh.cloud.fields[d].offset], sizeof (float));
+        fs << value;
+        if (++xyz == 3)
+          continue;
+        fs << " ";
+      }
+	  else if(tex_mesh.cloud.fields[d].datatype == pcl::PCLPointField::FLOAT32 &&
+          	  tex_mesh.cloud.fields[d].name == "rgb")
+	  {
+		std::uint32_t rgb = *reinterpret_cast<const int*>(&tex_mesh.cloud.data[i * point_size + tex_mesh.cloud.fields[d].offset]);
+		std::uint8_t r = (rgb >> 16) & 0x0000ff;
+		std::uint8_t g = (rgb >> 8)  & 0x0000ff;
+		std::uint8_t b = (rgb)       & 0x0000ff;
+		fs << " " << float(r)/255.0f << " " << float(g)/255.0f << " " << float(b)/255.0f;
+		break;
+	  }
+    }
+    if (xyz != 3)
+    {
+      UERROR ("Input point cloud has no XYZ data!\n");
+      return (-2);
+    }
+    fs << '\n';
+  }
+  fs << "# "<< nr_points <<" vertices" << '\n';
+
+  // Write vertex normals
+  for (unsigned i = 0; i < nr_points; ++i)
+  {
+    int xyz = 0;
+    // "vn" just be written one
+    bool v_written = false;
+    for (std::size_t d = 0; d < tex_mesh.cloud.fields.size (); ++d)
+    {
+      // adding vertex
+      if ((tex_mesh.cloud.fields[d].datatype == pcl::PCLPointField::FLOAT32) && (
+          tex_mesh.cloud.fields[d].name == "normal_x" ||
+          tex_mesh.cloud.fields[d].name == "normal_y" ||
+          tex_mesh.cloud.fields[d].name == "normal_z"))
+      {
+    	  if (!v_written)
+    	  {
+          // write vertices beginning with vn
+          fs << "vn ";
+          v_written = true;
+    	  }
+        float value;
+        memcpy (&value, &tex_mesh.cloud.data[i * point_size + tex_mesh.cloud.fields[d].offset], sizeof (float));
+        fs << value;
+        if (++xyz == 3)
+          break;
+        fs << " ";
+      }
+    }
+    if (xyz != 3)
+    {
+      UERROR ("Input point cloud has no normals!\n");
+      return (-2);
+    }
+    fs << '\n';
+  }
+  // Write vertex texture with "vt" (adding latter)
+
+  for (unsigned m = 0; m < nr_meshes; ++m)
+  {
+    fs << "# " << tex_mesh.tex_coordinates[m].size() << " vertex textures in submesh " << m <<  '\n';
+    for (const auto &coordinate : tex_mesh.tex_coordinates[m])
+    {
+      fs << "vt ";
+      fs <<  coordinate[0] << " " << coordinate[1] << '\n';
+    }
+  }
+
+  unsigned f_idx = 0;
+
+  // int idx_vt =0;
+  for (unsigned m = 0; m < nr_meshes; ++m)
+  {
+    if (m > 0) f_idx += static_cast<unsigned> (tex_mesh.tex_polygons[m-1].size ());
+
+    fs << "# The material will be used for mesh " << m << '\n';
+    fs << "usemtl " <<  tex_mesh.tex_materials[m].tex_name << '\n';
+    fs << "# Faces" << '\n';
+
+    for (std::size_t i = 0; i < tex_mesh.tex_polygons[m].size(); ++i)
+    {
+      // Write faces with "f"
+      fs << "f";
+      // There's one UV per vertex per face, i.e., the same vertex can have
+      // different UV depending on the face.
+      for (std::size_t j = 0; j < tex_mesh.tex_polygons[m][i].vertices.size (); ++j)
+      {
+        std::uint32_t idx = tex_mesh.tex_polygons[m][i].vertices[j] + 1;
+        fs << " " << idx
+           << "/" << tex_mesh.tex_polygons[m][i].vertices.size () * (i+f_idx) +j+1
+           << "/" << idx; // vertex index in obj file format starting with 1
+      }
+      fs << '\n';
+    }
+    fs << "# "<< tex_mesh.tex_polygons[m].size() << " faces in mesh " << m << '\n';
+  }
+  fs << "# End of File" << std::flush;
+
+  // Close obj file
+  fs.close ();
+
+  /* Write material definition for OBJ file*/
+  // Open file
+
+  std::ofstream m_fs;
+  m_fs.precision (precision);
+  m_fs.open (mtl_file_name.c_str ());
+
+  // default
+  m_fs << "#" << '\n';
+  m_fs << "# Wavefront material file" << '\n';
+  m_fs << "#" << '\n';
+  for(unsigned m = 0; m < nr_meshes; ++m)
+  {
+    m_fs << "newmtl " << tex_mesh.tex_materials[m].tex_name << '\n';
+    m_fs << "Ka "<< tex_mesh.tex_materials[m].tex_Ka.r << " " << tex_mesh.tex_materials[m].tex_Ka.g << " " << tex_mesh.tex_materials[m].tex_Ka.b << '\n'; // defines the ambient color of the material to be (r,g,b).
+    m_fs << "Kd "<< tex_mesh.tex_materials[m].tex_Kd.r << " " << tex_mesh.tex_materials[m].tex_Kd.g << " " << tex_mesh.tex_materials[m].tex_Kd.b << '\n'; // defines the diffuse color of the material to be (r,g,b).
+    m_fs << "Ks "<< tex_mesh.tex_materials[m].tex_Ks.r << " " << tex_mesh.tex_materials[m].tex_Ks.g << " " << tex_mesh.tex_materials[m].tex_Ks.b << '\n'; // defines the specular color of the material to be (r,g,b). This color shows up in highlights.
+    m_fs << "d " << tex_mesh.tex_materials[m].tex_d << '\n'; // defines the transparency of the material to be alpha.
+    m_fs << "Ns "<< tex_mesh.tex_materials[m].tex_Ns  << '\n'; // defines the shininess of the material to be s.
+    m_fs << "illum "<< tex_mesh.tex_materials[m].tex_illum << '\n'; // denotes the illumination model used by the material.
+                                            // illum = 1 indicates a flat material with no specular highlights, so the value of Ks is not used.
+                                            // illum = 2 denotes the presence of specular highlights, and so a specification for Ks is required.
+    m_fs << "map_Kd " << tex_mesh.tex_materials[m].tex_file << '\n';
+    m_fs << "###" << '\n';
+  }
+  m_fs.close ();
+  return (0);
+}
+
+/**
+ * This is a modified copy of https://github.com/PointCloudLibrary/pcl/blob/pcl-1.12.1/io/src/obj_io.cpp
+ * with added color on each vertex if provided
+ */
+int saveOBJFile(
+	const std::string &file_name,
+	const pcl::PolygonMesh &mesh,
+	unsigned precision)
+{
+  if (mesh.cloud.data.empty ())
+  {
+    UERROR ("Input point cloud has no data!\n");
+    return (-1);
+  }
+  // Open file
+  std::ofstream fs;
+  fs.precision (precision);
+  fs.open (file_name.c_str ());
+
+  /* Write 3D information */
+  // number of points
+  int nr_points  = mesh.cloud.width * mesh.cloud.height;
+  // point size
+  unsigned point_size = static_cast<unsigned> (mesh.cloud.data.size () / nr_points);
+  // number of faces for header
+  unsigned nr_faces = static_cast<unsigned> (mesh.polygons.size ());
+  // Do we have vertices normals?
+  int normal_index = getFieldIndex (mesh.cloud, "normal_x");
+
+  // Write the header information
+  fs << "####" << '\n';
+  fs << "# OBJ dataFile simple version. File name: " << file_name << '\n';
+  fs << "# Vertices: " << nr_points << '\n';
+  if (normal_index != -1)
+    fs << "# Vertices normals : " << nr_points << '\n';
+  fs << "# Faces: " <<nr_faces << '\n';
+  fs << "####" << '\n';
+
+  // Write vertex coordinates
+  fs << "# List of Vertices, with (x,y,z) coordinates, w is optional." << '\n';
+  for (int i = 0; i < nr_points; ++i)
+  {
+    int xyz = 0;
+    for (std::size_t d = 0; d < mesh.cloud.fields.size (); ++d)
+    {
+      // adding vertex
+      if ((mesh.cloud.fields[d].datatype == pcl::PCLPointField::FLOAT32) && (
+          mesh.cloud.fields[d].name == "x" ||
+          mesh.cloud.fields[d].name == "y" ||
+          mesh.cloud.fields[d].name == "z"))
+      {
+        if (mesh.cloud.fields[d].name == "x")
+           // write vertices beginning with v
+          fs << "v ";
+
+        float value;
+        memcpy (&value, &mesh.cloud.data[i * point_size + mesh.cloud.fields[d].offset], sizeof (float));
+        fs << value;
+        if (++xyz == 3)
+          continue;
+        fs << " ";
+      }
+	  else if(mesh.cloud.fields[d].datatype == pcl::PCLPointField::FLOAT32 &&
+          	  mesh.cloud.fields[d].name == "rgb")
+	  {
+		std::uint32_t rgb = *reinterpret_cast<const int*>(&mesh.cloud.data[i * point_size + mesh.cloud.fields[d].offset]);
+		std::uint8_t r = (rgb >> 16) & 0x0000ff;
+		std::uint8_t g = (rgb >> 8)  & 0x0000ff;
+		std::uint8_t b = (rgb)       & 0x0000ff;
+		fs << " " << float(r)/255.0f << " " << float(g)/255.0f << " " << float(b)/255.0f;
+		break;
+	  }
+    }
+    if (xyz != 3)
+    {
+      UERROR ("Input point cloud has no XYZ data!\n");
+      return (-2);
+    }
+    fs << '\n';
+  }
+
+  fs << "# "<< nr_points <<" vertices" << '\n';
+
+  if(normal_index != -1)
+  {
+    fs << "# Normals in (x,y,z) form; normals might not be unit." <<  '\n';
+    // Write vertex normals
+    for (int i = 0; i < nr_points; ++i)
+    {
+      int nxyz = 0;
+      for (std::size_t d = 0; d < mesh.cloud.fields.size (); ++d)
+      {
+        // adding vertex
+        if ((mesh.cloud.fields[d].datatype == pcl::PCLPointField::FLOAT32) && (
+              mesh.cloud.fields[d].name == "normal_x" ||
+              mesh.cloud.fields[d].name == "normal_y" ||
+              mesh.cloud.fields[d].name == "normal_z"))
+        {
+          if (mesh.cloud.fields[d].name == "normal_x")
+            // write vertices beginning with vn
+            fs << "vn ";
+
+          float value;
+          memcpy (&value, &mesh.cloud.data[i * point_size + mesh.cloud.fields[d].offset], sizeof (float));
+          fs << value;
+          if (++nxyz == 3)
+            break;
+          fs << " ";
+        }
+      }
+      if (nxyz != 3)
+      {
+        UERROR ("Input point cloud has no normals!\n");
+        return (-2);
+      }
+      fs << '\n';
+    }
+
+    fs << "# "<< nr_points <<" vertices normals" << '\n';
+  }
+
+  fs << "# Face Definitions" << '\n';
+  // Write down faces
+  if(normal_index == -1)
+  {
+    for(unsigned i = 0; i < nr_faces; i++)
+    {
+      fs << "f ";      
+      for (std::size_t j = 0; j < mesh.polygons[i].vertices.size () - 1; ++j)
+        fs << mesh.polygons[i].vertices[j] + 1 << " ";
+      fs << mesh.polygons[i].vertices.back() + 1 << '\n';
+    }
+  }
+  else
+  {
+    for(unsigned i = 0; i < nr_faces; i++)
+    {
+      fs << "f ";
+      for (std::size_t j = 0; j < mesh.polygons[i].vertices.size () - 1; ++j)
+        fs << mesh.polygons[i].vertices[j] + 1 << "//" << mesh.polygons[i].vertices[j] + 1 << " ";
+      fs << mesh.polygons[i].vertices.back() + 1 << "//" << mesh.polygons[i].vertices.back() + 1 << '\n';
+    }
+  }
+  fs << "# End of File" << std::endl;
+
+  // Close obj file
+  fs.close ();
+  return 0;
 }
 
 }

@@ -343,6 +343,7 @@ private:
 	bool _detectMarkers;
 	float _markerLinVariance;
 	float _markerAngVariance;
+	bool _markerOrientationIgnored;
 
 	int _idCount;
 	int _idMapCount;

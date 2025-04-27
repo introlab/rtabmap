@@ -100,7 +100,11 @@ int main(int argc, char * argv[])
 	rtabmap::LidarVLP16 * lidar = 0;
 	if(driver == 0)
 	{
+#if BOOST_VERSION >= 108700  // Version 1.87.0
+		lidar = new rtabmap::LidarVLP16(boost::asio::ip::make_address(ip), port);
+#else
 		lidar = new rtabmap::LidarVLP16(boost::asio::ip::address_v4::from_string(ip), port);
+#endif
 	}
 	else
 	{

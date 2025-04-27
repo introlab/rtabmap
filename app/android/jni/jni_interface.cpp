@@ -821,6 +821,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 					optimizedMinClusterSize,
 					optimizedMaxTextureDistance,
 					optimizedMinTextureClusterSize,
+					0,
 					blockRendering);
 	}
 	else

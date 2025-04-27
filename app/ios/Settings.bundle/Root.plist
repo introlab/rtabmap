@@ -431,6 +431,60 @@
 			</array>
 		</dict>
 		<dict>
+			<key>Title</key>
+			<string>Measuring</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>0</integer>
+			<key>Key</key>
+			<string>MeasuringUnits</string>
+			<key>Title</key>
+			<string>System of Units</string>
+			<key>Titles</key>
+			<array>
+				<string>Metric</string>
+				<string>Imperial</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.050000000000000003</real>
+			<key>Key</key>
+			<string>MeasuringTextSize</string>
+			<key>Title</key>
+			<string>Text Size</string>
+			<key>Titles</key>
+			<array>
+				<string>30 cm</string>
+				<string>25 cm</string>
+				<string>20 cm</string>
+				<string>15 cm</string>
+				<string>10 cm</string>
+				<string>5 cm</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.29999999999999999</real>
+				<real>0.25</real>
+				<real>0.20000000000000001</real>
+				<real>0.14999999999999999</real>
+				<real>0.10000000000000001</real>
+				<real>0.050000000000000003</real>
+			</array>
+		</dict>
+		<dict>
 			<key>FooterText</key>
 			<string>Copyright (c) 2010-2024, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
 			<key>Title</key>
@@ -440,7 +494,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>0.21.8</string>
+			<string>0.21.11</string>
 			<key>Key</key>
 			<string>Version</string>
 			<key>Title</key>

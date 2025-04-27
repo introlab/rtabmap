@@ -76,6 +76,25 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			std::vector<int> * inliersOut = 0,
 			bool splitLinearCovarianceComponents = false);
 
+Transform estimateMotion3DTo2D(
+			const std::map<int, cv::Point3f> & words3A,
+			const std::map<int, cv::KeyPoint> & words2B,
+			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy,
+			int minInliers,
+			int iterations,
+			double reprojError,
+			int flagsPnP,
+			int refineIterations,
+			int varianceMedianRatio,
+			float maxVariance,
+			const Transform & guess,
+			const std::map<int, cv::Point3f> & words3B,
+			cv::Mat * covariance,
+			std::vector<std::vector<int> > * matchesOut,
+			std::vector<std::vector<int> > * inliersOut,
+			bool splitLinearCovarianceComponents);
+
 Transform RTABMAP_CORE_EXPORT estimateMotion3DTo3D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::Point3f> & words3B,

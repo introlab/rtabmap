@@ -205,17 +205,21 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 	int nFeatures = 0;
 
 	// convert to grayscale
-	if(data.imageRaw().channels() > 1)
+	if(data.imageRaw().channels() > 1 || data.rightRaw().channels() > 1)
 	{
-		cv::Mat newFrame;
-		cv::cvtColor(data.imageRaw(), newFrame, cv::COLOR_BGR2GRAY);
+		cv::Mat newFrame = data.imageRaw();
+		cv::Mat newFrameRight = data.rightRaw();
+		if(data.imageRaw().channels() > 1)
+			cv::cvtColor(data.imageRaw(), newFrame, cv::COLOR_BGR2GRAY);
+		if(data.rightRaw().channels() > 1)
+			cv::cvtColor(data.rightRaw(), newFrameRight, cv::COLOR_BGR2GRAY);
 		if(!data.stereoCameraModels().empty())
 		{
-			data.setStereoImage(newFrame, data.rightRaw(), data.stereoCameraModels());
+			data.setStereoImage(newFrame, newFrameRight, data.stereoCameraModels());
 		}
 		else
 		{
-			data.setRGBDImage(newFrame, data.depthRaw(), data.cameraModels());
+			data.setRGBDImage(newFrame, newFrameRight, data.cameraModels());
 		}
 	}
 

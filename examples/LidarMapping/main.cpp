@@ -86,7 +86,11 @@ int main(int argc, char * argv[])
 	if(!ip.empty())
 	{
 		printf("Using ip=%s port=%d\n", ip.c_str(), port);
+#if BOOST_VERSION >= 108700  // Version 1.87.0
+		lidar = new LidarVLP16(boost::asio::ip::make_address(ip), port);
+#else
 		lidar = new LidarVLP16(boost::asio::ip::address_v4::from_string(ip), port);
+#endif
 	}
 	else
 	{

@@ -222,6 +222,27 @@ cd $pwd
 #rm -rf opencv opencv_contrib
 fi
 
+# LAZ (dependency for liblas)
+# LAS
+if [ ! -e $prefix/include/laszip ]
+then
+if [ ! -e LASzip ]
+then
+  git clone https://github.com/LASzip/LASzip.git
+  cd LASzip
+  git checkout 2.0.1
+else
+  cd LASzip
+fi
+sed -i '' 's/add_subdirectory(tools)/#add_subdirectory(tools)/g' CMakeLists.txt
+mkdir -p build
+cd build
+cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DBUILD_STATIC=ON ..
+cmake --build . --config Release -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
+cmake --build . --config Release --target install -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
+cd $pwd
+fi
+
 # LAS
 if [ ! -e $prefix/include/liblas ]
 then
@@ -233,7 +254,7 @@ cd libLAS
 sed -i '' 's/SHARED/STATIC/g' src/CMakeLists.txt
 mkdir -p build
 cd build
-cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_UTILITIES=OFF -DWITH_TESTS=OFF -DWITH_GEOTIFF=OFF ..
+cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_UTILITIES=OFF -DWITH_TESTS=OFF -DWITH_GEOTIFF=OFF -DWITH_LASZIP=ON -DWITH_STATIC_LASZIP=ON ..
 cmake --build . --config Release -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
 cmake --build . --config Release --target install -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
 cd $pwd

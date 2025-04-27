@@ -1062,9 +1062,6 @@ bool DatabaseViewer::closeDatabase()
 				}
 				generatedLocalMaps_.clear();
 				localMaps_.clear();
-
-				// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
-				dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
 			}
 
 			if(button != QMessageBox::Yes && button != QMessageBox::No)
@@ -2907,11 +2904,10 @@ void DatabaseViewer::editSaved2DMap()
 		return;
 	}
 
-	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot edit 2D map"),
-				tr("The database has modified links and/or modified local "
-				   "occupancy grids, the 2D optimized map cannot be modified."));
+				tr("The database has modified links, the 2D optimized map cannot be modified."));
 		return;
 	}
 
@@ -3038,7 +3034,7 @@ void DatabaseViewer::editSaved2DMap()
 								{
 									if(x+j>=0 && x+j<map8S.cols &&
 									   y+k>=0 && y+k<map8S.rows &&
-									   map8S.at<unsigned char>(y+k,x+j) == 100)
+									   map8S.at<signed char>(y+k,x+j) == 100)
 									{
 										obstacleDetected = true;
 									}
@@ -3102,7 +3098,7 @@ void DatabaseViewer::editSaved2DMap()
 								{
 									if(x+j>=0 && x+j<map8S.cols &&
 									   y+k>=0 && y+k<map8S.rows &&
-									   map8S.at<unsigned char>(y+k,x+j) == 100)
+									   map8S.at<signed char>(y+k,x+j) == 100)
 									{
 										obstacleDetected = true;
 									}
@@ -3238,11 +3234,10 @@ void DatabaseViewer::import2DMap()
 		return;
 	}
 
-	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size() || generatedLocalMaps_.size())
+	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
 	{
 		QMessageBox::warning(this, tr("Cannot import 2D map"),
-				tr("The database has modified links and/or modified local "
-				   "occupancy grids, the 2D optimized map cannot be modified."));
+				tr("The database has modified links, the 2D optimized map cannot be modified."));
 		return;
 	}
 
@@ -3885,6 +3880,10 @@ void DatabaseViewer::regenerateLocalMaps()
 			}
 			else
 			{
+				if(modifiedLaserScans_.find(s.id())!=modifiedLaserScans_.end())
+				{
+					s.sensorData().setLaserScan(modifiedLaserScans_.at(s.id()));
+				}
 				localMapMaker.createLocalMap(s, ground, obstacles, empty, viewpoint);
 			}
 
@@ -4850,7 +4849,7 @@ void DatabaseViewer::update(int value,
 					{
 						keypoints.insert(std::make_pair(iter->first, signatures.front()->getWordsKpts()[iter->second]));
 					}
-					view->setFeatures(keypoints, data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
+					view->setFeatures(keypoints, data.depthOrRightRaw().type() == CV_8UC1||data.depthOrRightRaw().type() == CV_8UC3?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
 				}
 
 				Transform odomPose, g;
@@ -5088,7 +5087,7 @@ void DatabaseViewer::update(int value,
 				}
 
 				//stereo
-				if(!data.depthOrRightRaw().empty() && data.depthOrRightRaw().type() == CV_8UC1)
+				if(!data.depthOrRightRaw().empty() && (data.depthOrRightRaw().type() == CV_8UC1 || data.depthOrRightRaw().type() == CV_8UC3))
 				{
 					this->updateStereo(&data);
 				}
@@ -5782,7 +5781,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		ui_->dockWidget_stereoView->isVisible() &&
 		!data->imageRaw().empty() &&
 		!data->depthOrRightRaw().empty() &&
-		data->depthOrRightRaw().type() == CV_8UC1 &&
+		(data->depthOrRightRaw().type() == CV_8UC1 || data->depthOrRightRaw().type() == CV_8UC3) &&
 		data->stereoCameraModels().size()==1 && // Not implemented for multiple stereo cameras
 		data->stereoCameraModels()[0].isValidForProjection())
 	{
@@ -5794,6 +5793,15 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		else
 		{
 			leftMono = data->imageRaw();
+		}
+		cv::Mat rightMono;
+		if(data->rightRaw().channels() == 3)
+		{
+			cv::cvtColor(data->rightRaw(), rightMono, CV_BGR2GRAY);
+		}
+		else
+		{
+			rightMono = data->rightRaw();
 		}
 
 		UTimer timer;
@@ -5826,7 +5834,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 
 		rightCorners = stereo->computeCorrespondences(
 				leftMono,
-				data->rightRaw(),
+				rightMono,
 				leftCorners,
 				status);
 		delete stereo;
@@ -6435,7 +6443,7 @@ void DatabaseViewer::updateConstraintView(
 		}
 		dataFrom.uncompressData();
 		UASSERT(dataFrom.imageRaw().empty() || dataFrom.imageRaw().type()==CV_8UC3 || dataFrom.imageRaw().type() == CV_8UC1);
-		UASSERT(dataFrom.depthOrRightRaw().empty() || dataFrom.depthOrRightRaw().type()==CV_8UC1 || dataFrom.depthOrRightRaw().type() == CV_16UC1 || dataFrom.depthOrRightRaw().type() == CV_32FC1);
+		UASSERT(dataFrom.depthOrRightRaw().empty() || dataFrom.depthOrRightRaw().type()==CV_8UC1 || dataFrom.depthOrRightRaw().type()==CV_8UC3 || dataFrom.depthOrRightRaw().type() == CV_16UC1 || dataFrom.depthOrRightRaw().type() == CV_32FC1);
 
 		if(signatureTo.id()>0)
 		{
@@ -6447,7 +6455,7 @@ void DatabaseViewer::updateConstraintView(
 		}
 		dataTo.uncompressData();
 		UASSERT(dataTo.imageRaw().empty() || dataTo.imageRaw().type()==CV_8UC3 || dataTo.imageRaw().type() == CV_8UC1);
-		UASSERT(dataTo.depthOrRightRaw().empty() || dataTo.depthOrRightRaw().type()==CV_8UC1 || dataTo.depthOrRightRaw().type() == CV_16UC1 || dataTo.depthOrRightRaw().type() == CV_32FC1);
+		UASSERT(dataTo.depthOrRightRaw().empty() || dataTo.depthOrRightRaw().type()==CV_8UC1 || dataTo.depthOrRightRaw().type()==CV_8UC3 || dataTo.depthOrRightRaw().type() == CV_16UC1 || dataTo.depthOrRightRaw().type() == CV_32FC1);
 
 		// get odom pose
 		Transform pose = Transform::getIdentity();

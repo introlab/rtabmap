@@ -24,18 +24,11 @@ RUN apt-get update && \
     apt-get install -y git libtbb-dev ros-humble-ros-base ros-dev-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && \
+RUN apt-get update && \
     apt upgrade -y && \
     apt-get install -y libfreenect-dev ros-humble-rtabmap-ros && \
-    apt-get remove -y ros-humble-rtabmap* && \
-    apt-get clean && rm -rf /var/lib/apt/lists/; fi
-
-# current issue that ros-humble-rtabmap-ros is not available on arm64
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then apt-get update && \
-    apt upgrade -y && \
-    apt-get install -y libfreenect-dev ros-humble-rtabmap-launch && \
-    apt-get remove -y ros-humble-rtabmap* && \
-    apt-get clean && rm -rf /var/lib/apt/lists/; fi
+    apt-get remove -y ros-humble-rtabmap* ros-humble-grid-map-core && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
@@ -85,6 +78,22 @@ RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
     make install && \
     cd ../.. && \
     rm -rf opencv opencv_contrib
+
+#commit Aug 6 2020
+RUN apt-get update && apt install -y wget && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
+RUN git clone https://github.com/laurentkneip/opengv.git && \
+    cd opengv && \
+    git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
+    wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
+    git apply opengv_disable_march_native.patch && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd && \
+    rm -r opengv
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
