@@ -843,34 +843,38 @@ SensorData CameraDepthAI::captureImage(SensorCaptureInfo * info)
 
 		std::vector<cv::Point> kpts;
 		cv::findNonZero(scores > threshold_, kpts);
-		std::vector<cv::KeyPoint> keypoints;
-		for(auto& kpt : kpts)
-		{
-			float response = scores.at<float>(kpt);
-			keypoints.emplace_back(cv::KeyPoint(kpt, 8, -1, response));
-		}
 
-		cv::Mat coarse_desc(25, 40, CV_32FC(256), local_descriptor_map.data());
-		if(detectFeatures_ == 2)
-			coarse_desc.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+		if(!kpts.empty()){
+			std::vector<cv::KeyPoint> keypoints;
+			for(auto& kpt : kpts)
+			{
+				float response = scores.at<float>(kpt);
+				keypoints.emplace_back(cv::KeyPoint(kpt, 8, -1, response));
+			}
+
+			cv::Mat coarse_desc(25, 40, CV_32FC(256), local_descriptor_map.data());
+			if(detectFeatures_ == 2)
+				coarse_desc.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
+					cv::normalize(descriptor, descriptor);
+				});
+			cv::Mat mapX(keypoints.size(), 1, CV_32FC1);
+			cv::Mat mapY(keypoints.size(), 1, CV_32FC1);
+			for(size_t i=0; i<keypoints.size(); ++i)
+			{
+				mapX.at<float>(i) = (keypoints[i].pt.x - (targetSize_.width-1)/2) * 40/targetSize_.width + (40-1)/2;
+				mapY.at<float>(i) = (keypoints[i].pt.y - (targetSize_.height-1)/2) * 25/targetSize_.height + (25-1)/2;
+			}
+			cv::Mat map1, map2, descriptors;
+			cv::convertMaps(mapX, mapY, map1, map2, CV_16SC2);
+			cv::remap(coarse_desc, descriptors, map1, map2, cv::INTER_LINEAR);
+			descriptors.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
 				cv::normalize(descriptor, descriptor);
 			});
-		cv::Mat mapX(keypoints.size(), 1, CV_32FC1);
-		cv::Mat mapY(keypoints.size(), 1, CV_32FC1);
-		for(size_t i=0; i<keypoints.size(); ++i)
-		{
-			mapX.at<float>(i) = (keypoints[i].pt.x - (targetSize_.width-1)/2) * 40/targetSize_.width + (40-1)/2;
-			mapY.at<float>(i) = (keypoints[i].pt.y - (targetSize_.height-1)/2) * 25/targetSize_.height + (25-1)/2;
-		}
-		cv::Mat map1, map2, descriptors;
-		cv::convertMaps(mapX, mapY, map1, map2, CV_16SC2);
-		cv::remap(coarse_desc, descriptors, map1, map2, cv::INTER_LINEAR);
-		descriptors.forEach<cv::Vec<float, 256>>([&](cv::Vec<float, 256>& descriptor, const int position[]) -> void {
-			cv::normalize(descriptor, descriptor);
-		});
-		descriptors = descriptors.reshape(1);
+			descriptors = descriptors.reshape(1);
 
-		data.setFeatures(keypoints, std::vector<cv::Point3f>(), descriptors);
+			data.setFeatures(keypoints, std::vector<cv::Point3f>(), descriptors);
+		}
+
 		if(detectFeatures_ == 3)
 			data.addGlobalDescriptor(GlobalDescriptor(1, cv::Mat(1, global_descriptor.size(), CV_32FC1, global_descriptor.data()).clone()));
 	}
