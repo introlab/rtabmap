@@ -780,13 +780,19 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				}
 				else if(!combinedLocalTransforms.empty())
 				{
-					// We are overriding the camra local transforms, let's move 3D words accordingly
+					// We are overriding the camera local transforms, let's move 3D words accordingly
 					UASSERT(dbModels.size() == combinedLocalTransforms.size());
 					std::vector<cv::Point3f> newKeypoints3D;
+					UASSERT(dbModels[0].imageWidth()>0);
+					int subImageWidth = dbModels[0].imageWidth();
 					for(size_t i = 0; i<keypoints3D.size(); ++i)
 					{
-						cv::Point3f pt = util3d::transformPoint(keypoints3D.at(i), dbModels[i].localTransform().inverse());
-						pt = util3d::transformPoint(pt, combinedLocalTransforms[i]);
+						int cameraIndex = int(keypoints.at(i).pt.x / subImageWidth);
+						UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)dbModels.size(),
+								uFormat("cameraIndex=%d, db models=%d, kpt.x=%f, image width=%d",
+										cameraIndex, (int)dbModels.size(), keypoints[i].pt.x, subImageWidth).c_str());
+						cv::Point3f pt = util3d::transformPoint(keypoints3D.at(i), dbModels[cameraIndex].localTransform().inverse());
+						pt = util3d::transformPoint(pt, combinedLocalTransforms[cameraIndex]);
 						newKeypoints3D.push_back(pt);
 					}
 					data.setFeatures(keypoints, newKeypoints3D, descriptors);
