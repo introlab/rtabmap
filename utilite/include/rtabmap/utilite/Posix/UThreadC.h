@@ -232,10 +232,10 @@ class UThreadC<void>
     typedef THREAD_HANDLE Handle;
     typedef void ( *Handler)();
 
-    virtual ~UThreadC<void>() {}
+    virtual ~UThreadC() {}
 
   protected:
-    UThreadC<void>() {}
+    UThreadC() {}
 
     virtual void ThreadMain() = 0;
 
