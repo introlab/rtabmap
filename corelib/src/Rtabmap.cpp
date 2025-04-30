@@ -152,6 +152,7 @@ Rtabmap::Rtabmap() :
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
 	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
 	_localizationPriorInf(1.0/(Parameters::defaultRGBDLocalizationPriorError()*Parameters::defaultRGBDLocalizationPriorError())),
+	_localizationSecondTryWithoutProximityLinks(Parameters::defaultRGBDLocalizationSecondTryWithoutProximityLinks()),
 	_createGlobalScanMap(Parameters::defaultRGBDProximityGlobalScanMap()),
 	_markerPriorsLinearVariance(Parameters::defaultMarkerPriorsVarianceLinear()),
 	_markerPriorsAngularVariance(Parameters::defaultMarkerPriorsVarianceAngular()),
@@ -632,6 +633,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
 	UASSERT(localizationPriorError>0.0);
 	_localizationPriorInf = 1.0/(localizationPriorError*localizationPriorError);
+	Parameters::parse(parameters, Parameters::kRGBDLocalizationSecondTryWithoutProximityLinks(), _localizationSecondTryWithoutProximityLinks);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
 	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), _markerPriorsLinearVariance);
@@ -3424,7 +3426,8 @@ bool Rtabmap::process(
 				}
 
 				bool hasGlobalLoopClosuresOrLandmarks = false;
-				if(rejectLocalization && !graph::filterLinks(constraints, Link::kLocalSpaceClosure, true).empty())
+				if(rejectLocalization && 
+					(_localizationSecondTryWithoutProximityLinks && !graph::filterLinks(constraints, Link::kLocalSpaceClosure, true).empty()))
 				{
 					// Let's try again without local loop closures
 					localizationLinks = graph::filterLinks(localizationLinks, Link::kLocalSpaceClosure);
