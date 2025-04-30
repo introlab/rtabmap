@@ -781,10 +781,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.setMaxDistance(maxDistance);
 	tm.setMaxAngle(maxAngle);
-	if(maxDepthError > 0.0f)
-	{
-		tm.setMaxDepthError(maxDepthError);
-	}
+	tm.setMaxDepthError(maxDepthError);
 	tm.setMinClusterSize(minClusterSize);
 	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels, distanceToCamPolicy))
 	{
