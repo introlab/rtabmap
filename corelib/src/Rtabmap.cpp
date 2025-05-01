@@ -3183,7 +3183,7 @@ bool Rtabmap::process(
 	int optimizationIterations = 0;
 	Transform previousMapCorrection;
 	bool delayedLocalization = false;
-	bool odomCacheProximityLinksCleared = false;
+	int odomCacheProximityLinksCleared = 0;
 	UDEBUG("RGB-D SLAM mode: %d", _rgbdSlamMode?1:0);
 	UDEBUG("Incremental: %d", _memory->isIncremental());
 	UDEBUG("Loop hyp: %d", _loopClosureHypothesis.first);
@@ -3595,7 +3595,7 @@ bool Rtabmap::process(
 						{
 							UWARN("Successfully optimized without local loop closures!");
 						}
-						odomCacheProximityLinksCleared = true;
+						odomCacheProximityLinksCleared = before - _odomCacheConstraints.size();
 					}
 
 					// Count how many localization links are in the constraints
@@ -4140,7 +4140,7 @@ bool Rtabmap::process(
 				UINFO("Localization pose = %s", _lastLocalizationPose.prettyPrint().c_str());
 
 				if(_localizationSecondTryWithoutProximityLinks) {
-					statistics_.addStatistic(Statistics::kLoopProximity_links_cleared(), odomCacheProximityLinksCleared);
+					statistics_.addStatistic(Statistics::kLoopProximity_links_cleared(), (float)odomCacheProximityLinksCleared);
 				}
 
 				if(_localizationCovariance.total()==36)
