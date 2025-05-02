@@ -390,6 +390,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(RGBD, MaxOdomCacheSize,             int,  10,      uFormat("Maximum odometry cache size. Used only in localization mode (when %s=false). This is used to get smoother localizations and to verify localization transforms (when %s!=0) to make sure we don't teleport to a location very similar to one we previously localized on. Set 0 to disable caching.", kMemIncrementalMemory().c_str(), kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(RGBD, LocalizationSmoothing,        bool, true,    uFormat("Adjust localization constraints based on optimized odometry cache poses (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
     RTABMAP_PARAM(RGBD, LocalizationPriorError,       double, 0.001, uFormat("The corresponding variance (error x error) set to priors of the map's poses during localization (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
+    RTABMAP_PARAM(RGBD, LocalizationSecondTryWithoutProximityLinks,  bool, true, uFormat("When localization is rejected by graph optimization validation, try a second time without proximity links if landmark or loop closure links are also present in odometry cache (see %s). If it succeeds, the proximity links are removed. This assumes that global loop closure and landmark links are more accurate than proximity links.", kRGBDMaxOdomCacheSize().c_str()));
 
     // Local/Proximity loop closure detection
     RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, "Detection over all locations in STM.");
