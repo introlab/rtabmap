@@ -97,7 +97,7 @@ void showUsage()
 			"                              considered blurred. 0 means disabled. 50 can be good default.\n"
 			"    --cam_projection      Camera projection on assembled cloud and export node ID on each point (in PointSourceId field).\n"
 			"    --cam_projection_keep_all  Keep not colored points from cameras (node ID will be 0 and color will be red).\n"
-			"    --cam_projection_decimation  Decimate images before projecting the points.\n"
+			"    --cam_projection_decimation # Decimate images before projecting the points.\n"
 			"    --cam_projection_mask \"\"  File path for a mask. Format should be 8-bits grayscale. The mask should\n"
 			"                                    cover all cameras in case multi-camera is used and have the same resolution.\n"
 			"    --opt #               Optimization approach:\n"
