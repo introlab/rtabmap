@@ -3302,7 +3302,7 @@ bool Rtabmap::process(
 				if(!posesOut.empty() &&
 				   posesOut.begin()->first < _odomCachePoses.begin()->first)
 				{
-					optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+					optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance, 0, &optimizationError, &optimizationIterations);
 				}
 				else
 				{
@@ -3452,7 +3452,7 @@ bool Rtabmap::process(
 						if(!posesOut.empty() &&
 						   posesOut.begin()->first < _odomCachePoses.begin()->first)
 						{
-							optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+							optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance, 0, &optimizationError, &optimizationIterations);
 						}
 						else
 						{
@@ -3588,7 +3588,7 @@ bool Rtabmap::process(
 						_odomCacheConstraints = graph::filterLinks(_odomCacheConstraints, Link::kLocalSpaceClosure);
 						if(before != _odomCacheConstraints.size())
 						{
-							UWARN("Successfully optimized without local loop closures! Clear them from local odometry cache. %ld/%ld have been removed.",
+							UWARN("Successfully optimized without local loop closures! Clearing them from local odometry cache. %ld/%ld have been removed.",
 									before - _odomCacheConstraints.size(), before);
 						}
 						else
@@ -3650,6 +3650,14 @@ bool Rtabmap::process(
 					if(hadAlreadyLocalizationLinks || _maxOdomCacheSize == 0)
 					{
 						UINFO("Update localization");
+
+						// update odomCachePoses with optimized poses (but make sure to put them back in odom frame)
+						Transform mapToOdomCache = signature->getPose() * newOptPoseInv;
+						for(std::map<int, Transform>::iterator iter = _odomCachePoses.begin(); iter!=_odomCachePoses.end(); ++iter)
+						{
+							iter->second = mapToOdomCache * optPoses.at(iter->first);
+						}
+
 						if(_optimizeFromGraphEnd)
 						{
 							// update all previous nodes
