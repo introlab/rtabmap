@@ -152,6 +152,7 @@ Rtabmap::Rtabmap() :
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
 	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
 	_localizationPriorInf(1.0/(Parameters::defaultRGBDLocalizationPriorError()*Parameters::defaultRGBDLocalizationPriorError())),
+	_localizationSecondTryWithoutProximityLinks(Parameters::defaultRGBDLocalizationSecondTryWithoutProximityLinks()),
 	_createGlobalScanMap(Parameters::defaultRGBDProximityGlobalScanMap()),
 	_markerPriorsLinearVariance(Parameters::defaultMarkerPriorsVarianceLinear()),
 	_markerPriorsAngularVariance(Parameters::defaultMarkerPriorsVarianceAngular()),
@@ -632,6 +633,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
 	UASSERT(localizationPriorError>0.0);
 	_localizationPriorInf = 1.0/(localizationPriorError*localizationPriorError);
+	Parameters::parse(parameters, Parameters::kRGBDLocalizationSecondTryWithoutProximityLinks(), _localizationSecondTryWithoutProximityLinks);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
 	Parameters::parse(parameters, Parameters::kMarkerPriorsVarianceLinear(), _markerPriorsLinearVariance);
@@ -3181,6 +3183,7 @@ bool Rtabmap::process(
 	int optimizationIterations = 0;
 	Transform previousMapCorrection;
 	bool delayedLocalization = false;
+	int odomCacheProximityLinksCleared = 0;
 	UDEBUG("RGB-D SLAM mode: %d", _rgbdSlamMode?1:0);
 	UDEBUG("Incremental: %d", _memory->isIncremental());
 	UDEBUG("Loop hyp: %d", _loopClosureHypothesis.first);
@@ -3299,7 +3302,7 @@ bool Rtabmap::process(
 				if(!posesOut.empty() &&
 				   posesOut.begin()->first < _odomCachePoses.begin()->first)
 				{
-					optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+					optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance, 0, &optimizationError, &optimizationIterations);
 				}
 				else
 				{
@@ -3424,7 +3427,8 @@ bool Rtabmap::process(
 				}
 
 				bool hasGlobalLoopClosuresOrLandmarks = false;
-				if(rejectLocalization && !graph::filterLinks(constraints, Link::kLocalSpaceClosure, true).empty())
+				if(rejectLocalization && 
+					(_localizationSecondTryWithoutProximityLinks && !graph::filterLinks(constraints, Link::kLocalSpaceClosure, true).empty()))
 				{
 					// Let's try again without local loop closures
 					localizationLinks = graph::filterLinks(localizationLinks, Link::kLocalSpaceClosure);
@@ -3448,7 +3452,7 @@ bool Rtabmap::process(
 						if(!posesOut.empty() &&
 						   posesOut.begin()->first < _odomCachePoses.begin()->first)
 						{
-							optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance);
+							optPoses = _graphOptimizer->optimize(posesOut.begin()->first, posesOut, edgeConstraintsOut, locOptCovariance, 0, &optimizationError, &optimizationIterations);
 						}
 						else
 						{
@@ -3584,13 +3588,14 @@ bool Rtabmap::process(
 						_odomCacheConstraints = graph::filterLinks(_odomCacheConstraints, Link::kLocalSpaceClosure);
 						if(before != _odomCacheConstraints.size())
 						{
-							UWARN("Successfully optimized without local loop closures! Clear them from local odometry cache. %ld/%ld have been removed.",
+							UWARN("Successfully optimized without local loop closures! Clearing them from local odometry cache. %ld/%ld have been removed.",
 									before - _odomCacheConstraints.size(), before);
 						}
 						else
 						{
 							UWARN("Successfully optimized without local loop closures!");
 						}
+						odomCacheProximityLinksCleared = before - _odomCacheConstraints.size();
 					}
 
 					// Count how many localization links are in the constraints
@@ -3645,6 +3650,14 @@ bool Rtabmap::process(
 					if(hadAlreadyLocalizationLinks || _maxOdomCacheSize == 0)
 					{
 						UINFO("Update localization");
+
+						// update odomCachePoses with optimized poses (but make sure to put them back in odom frame)
+						Transform mapToOdomCache = signature->getPose() * newOptPoseInv;
+						for(std::map<int, Transform>::iterator iter = _odomCachePoses.begin(); iter!=_odomCachePoses.end(); ++iter)
+						{
+							iter->second = mapToOdomCache * optPoses.at(iter->first);
+						}
+
 						if(_optimizeFromGraphEnd)
 						{
 							// update all previous nodes
@@ -4133,6 +4146,10 @@ bool Rtabmap::process(
 				statistics_.addStatistic(Statistics::kLoopMapToBase_pitch(),  pitch*180.0f/M_PI);
 				statistics_.addStatistic(Statistics::kLoopMapToBase_yaw(), yaw*180.0f/M_PI);
 				UINFO("Localization pose = %s", _lastLocalizationPose.prettyPrint().c_str());
+
+				if(_localizationSecondTryWithoutProximityLinks) {
+					statistics_.addStatistic(Statistics::kLoopProximity_links_cleared(), (float)odomCacheProximityLinksCleared);
+				}
 
 				if(_localizationCovariance.total()==36)
 				{
