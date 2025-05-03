@@ -10,3 +10,8 @@ gtest_discover_tests(test_util2d)
 add_executable(test_util3d test_util3d.cpp)
 target_link_libraries(test_util3d gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d)
+
+#util3d_transforms.h
+add_executable(test_util3d_transforms test_util3d_transforms.cpp)
+target_link_libraries(test_util3d_transforms gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_transforms)
