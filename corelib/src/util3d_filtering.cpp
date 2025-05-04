@@ -87,7 +87,10 @@ LaserScan commonFiltering(
 	if(!scan.isEmpty())
 	{
 		// combined downsampling and range filtering step
-		if(downsamplingStep<=1 || scan.size() <= downsamplingStep)
+		if(downsamplingStep<=1 || 
+			scan.size() <= downsamplingStep ||
+			(scan.data().rows > scan.data().cols && scan.data().rows <= downsamplingStep) ||
+			(scan.data().cols > scan.data().rows && scan.data().cols <= downsamplingStep))
 		{
 			downsamplingStep = 1;
 		}
@@ -325,6 +328,7 @@ LaserScan commonFiltering(
 
 		if(scan.size() && !scan.is2d() && scan.hasNormals() && groundNormalsUp>0.0f)
 		{
+			// FIXME: the viewpoint should be 0,0,0 here as we don't apply the local transform
 			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,10), groundNormalsUp);
 		}
 	}

@@ -43,10 +43,36 @@ namespace util3d
 {
 
 /**
- * Do some filtering approaches and try to
- * avoid converting between pcl and opencv and to avoid not needed
- * operations like computing normals while the scan has already
- * normals and voxel filtering is not used.
+ * @brief Applies a common set of filters to a LaserScan, including downsampling, range limits, voxel grid filtering, and normal estimation.
+ *
+ * This function performs a sequence of optional preprocessing steps on the input LaserScan:
+ * - Downsampling: Reduces the number of points by selecting every N-th point.
+ * - Range filtering: Removes points outside the specified minimum and maximum range.
+ * - Voxel grid filtering: Reduces point density using a voxel grid.
+ * - Normal estimation: Computes surface normals using k-nearest neighbors or radius search.
+ * - Normal reorientation: Optionally orients normals upward if this condition is fulfilled: for each normal, 
+ *   if normal.z < `-groundNormalsUp` and the corresponding point is below viewpoint, it is flipped upward.
+ *
+ * The function supports both 2D and 3D scans and adapts behavior based on whether the scan contains RGB or intensity data.
+ * 
+ * Depending on the filtering options used, the output point cloud may be dense if the input is organized.
+ *
+ * @param scanIn Input LaserScan to be filtered.
+ * @param downsamplingStep Step size for downsampling. A value >1 will reduce the scan resolution. For organized 
+ *                         scans, only the largest dimension is downsampled and the result is dense. For example, 
+ *                         if the input organized scan is 16x1024, the resulting scan will be 1x8192 (if all values are valid).
+ * @param rangeMin Minimum range to keep points from the scan viewpoint. Points closer than this value will be discarded. Output point cloud will be dense. Set to 0 to disable.
+ * @param rangeMax Maximum range to keep points from the scan viewpoint. Points farther than this value will be discarded. Output point cloud will be dense. Set to 0 to disable.
+ * @param voxelSize Size of the voxel grid in meters. A value >0 enables voxel filtering. Output point cloud will be dense.
+ * @param normalK Number of nearest neighbors to use for normal estimation. Set to 0 to disable.
+ * @param normalRadius Radius used for normal estimation. Set to 0 to disable.
+ * @param groundNormalsUp If >0, normal vectors close to -Z axis will be oriented upward (+Z). Expected value 
+ *                        is around `0.8`.
+ *
+ * @return A new LaserScan instance with the applied filters and potential normals.
+ * @see adjustNormalsToViewPoint()
+ * 
+ *
  */
 LaserScan RTABMAP_CORE_EXPORT commonFiltering(
 		const LaserScan & scan,
@@ -57,7 +83,10 @@ LaserScan RTABMAP_CORE_EXPORT commonFiltering(
 		int normalK = 0,
 		float normalRadius = 0.0f,
 		float groundNormalsUp = 0.0f);
-// Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUp=0.8, otherwise set groundNormalsUp=0.0.
+/**
+ * @brief Applies a common set of filters to a LaserScan, including downsampling, range limits, voxel grid filtering, and normal estimation.
+ * @deprecated Use version with groundNormalsUp as float. For forceGroundNormalsUp=true, set groundNormalsUpAngle=0.8, otherwise set groundNormalsUpAngle=0.0. 
+ */ 
 RTABMAP_DEPRECATED LaserScan RTABMAP_CORE_EXPORT commonFiltering(
 		const LaserScan & scan,
 		int downsamplingStep,
