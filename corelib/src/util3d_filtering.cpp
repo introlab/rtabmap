@@ -552,27 +552,97 @@ LaserScan downsample(
 		int step)
 {
 	UASSERT(step > 0);
-	if(step <= 1 || scan.size() <= step)
+	cv::Mat output;
+	if(step <= 1 || 
+		(scan.data().cols > scan.data().rows ? scan.data().cols <= step : scan.data().rows <= step))
 	{
 		// no sampling
 		return scan;
 	}
+	else if(scan.isOrganized())
+	{
+		// Organized LaserScan
+		if(scan.data().rows <= scan.data().cols/4 ||
+	       scan.data().cols<= scan.data().rows/4)
+		 {
+			// Assuming LiDAR point cloud (e.g, 2048x64 or 32x1024),
+			// for which the lower dimension is the number of rings.
+			// Downsample each ring by the step.
+			// Example data packed:
+			// <ringA-1, ringB-1, ringC-1, ringD-1;
+			//  ringA-2, ringB-2, ringC-2, ringD-2;
+			//  ringA-3, ringB-3, ringC-3, ringD-3;
+			//  ringA-4, ringB-4, ringC-4, ringD-4;
+			//  ringA-#, ringB-#, ringC-#, ringD-#>
+			// or 
+			// <ringA-1, ringA-2, ringA-3, ringA-4, ringA-#;
+			//  ringB-1, ringB-2, ringB-3, ringB-4, ringB-#;
+			//  ringC-1, ringC-2, ringC-3, ringC-4, ringC-#;
+			//  ringD-1, ringD-2, ringD-3, ringD-4, ringD-#;>
+			bool ringsOnRows = scan.data().rows < scan.data().cols;
+			unsigned int rings = ringsOnRows ? scan.data().rows : scan.data().cols;
+			unsigned int pts = ringsOnRows ? scan.data().cols : scan.data().rows;
+			unsigned int outputPts = pts/step;
+			output = cv::Mat(
+				ringsOnRows ? rings : outputPts, 
+				ringsOnRows ? outputPts : rings, 
+				scan.data().type());
+
+			if(ringsOnRows) {
+				for(unsigned int j=0; j<rings; ++j)
+				{
+					for(unsigned int i=0; i<outputPts; ++i)
+					{
+						cv::Mat(scan.data(), cv::Range(j,j+1), cv::Range(i*step,i*step+1)).copyTo(cv::Mat(output, cv::Range(j,j+1), cv::Range(i,i+1)));
+					}
+				}
+			}
+			else {
+				for(unsigned int j=0; j<outputPts; ++j)
+				{
+					for(unsigned int i=0; i<rings; ++i)
+					{
+						cv::Mat(scan.data(), cv::Range(j*step,j*step+1), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range(j,j+1), cv::Range(i,i+1)));
+					}
+				}
+			}
+		 }
+		 else
+		 {
+			// assume depth image (e.g., 640x480), downsample like an image (step in both dimensions)
+			UASSERT_MSG(scan.data().rows % step == 0 && scan.data().cols % step == 0,
+				uFormat("Decimation of image-like scans should be exact! (decimation=%d, size=%dx%d)",
+				step, scan.data().cols, scan.data().rows).c_str());
+
+			output = cv::Mat(scan.data().rows/step, scan.data().cols/step, scan.data().type());
+
+			for(int j=0; j<output.rows; ++j)
+			{
+				for(int i=0; i<output.cols; ++i)
+				{
+					cv::Mat(scan.data(), cv::Range(j*step,j*step+1), cv::Range(i*step,i*step+1)).copyTo(cv::Mat(output, cv::Range(j,j+1), cv::Range(i,i+1)));
+				}
+			}
+		 }
+	}
 	else
 	{
+		// Dense LaserScan
 		int finalSize = scan.size()/step;
-		cv::Mat output = cv::Mat(1, finalSize, scan.dataType());
+		output = cv::Mat(1, finalSize, scan.dataType());
 		int oi = 0;
 		for(int i=0; i<scan.size()-step+1; i+=step)
 		{
 			cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
 			++oi;
 		}
-		if(scan.angleIncrement() > 0.0f)
-		{
-			return LaserScan(output, scan.format(), scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement()*step, scan.localTransform());
-		}
-		return LaserScan(output, scan.maxPoints()/step, scan.rangeMax(), scan.format(), scan.localTransform());
 	}
+
+	if(scan.angleIncrement() > 0.0f)
+	{
+		return LaserScan(output, scan.format(), scan.rangeMin(), scan.rangeMax(), scan.angleMin(), scan.angleMax(), scan.angleIncrement()*step, scan.localTransform());
+	}
+	return LaserScan(output, scan.maxPoints()/step, scan.rangeMax(), scan.format(), scan.localTransform());
 }
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr downsampleImpl(
@@ -581,42 +651,62 @@ typename pcl::PointCloud<PointT>::Ptr downsampleImpl(
 {
 	UASSERT(step > 0);
 	typename pcl::PointCloud<PointT>::Ptr output(new pcl::PointCloud<PointT>);
-	if(step <= 1 || (int)cloud->size() <= step)
+	if(step <= 1 || 
+		(cloud->width > cloud->height ? (int)cloud->width <= step : (int)cloud->height <= step))
 	{
 		// no sampling
 		*output = *cloud;
 	}
-	else
+	else if(cloud->height > 1) // Organized point cloud
 	{
-		if(cloud->height > 1 && cloud->height < cloud->width/4)
+		if(cloud->height <= cloud->width/4 ||
+		   cloud->width <= cloud->height/4)
 		{
-			// Assuming ouster point cloud (e.g, 2048x64),
+			// Assuming LiDAR point cloud (e.g, 2048x64 or 32x1024),
 			// for which the lower dimension is the number of rings.
 			// Downsample each ring by the step.
 			// Example data packed:
 			// <ringA-1, ringB-1, ringC-1, ringD-1;
 			//  ringA-2, ringB-2, ringC-2, ringD-2;
 			//  ringA-3, ringB-3, ringC-3, ringD-3;
-			//  ringA-4, ringB-4, ringC-4, ringD-4>
-			unsigned int rings = cloud->height<cloud->width?cloud->height:cloud->width;
-			unsigned int pts = cloud->height>cloud->width?cloud->height:cloud->width;
+			//  ringA-4, ringB-4, ringC-4, ringD-4;
+			//  ringA-#, ringB-#, ringC-#, ringD-#>
+			// or 
+			// <ringA-1, ringA-2, ringA-3, ringA-4, ringA-#;
+			//  ringB-1, ringB-2, ringB-3, ringB-4, ringB-#;
+			//  ringC-1, ringC-2, ringC-3, ringC-4, ringC-#;
+			//  ringD-1, ringD-2, ringD-3, ringD-4, ringD-#;>
+			bool ringsOnRows = cloud->height < cloud->width;
+			unsigned int rings = ringsOnRows ? cloud->height : cloud->width;
+			unsigned int pts = ringsOnRows ? cloud->width : cloud->height;
 			unsigned int finalSize = rings * pts/step;
+			unsigned int outputPts = pts/step;
 			output->resize(finalSize);
-			output->width =  rings;
-			output->height = pts/step;
+			output->height =  ringsOnRows ? rings : outputPts;
+			output->width = ringsOnRows ? outputPts : rings;
 
-			for(unsigned int j=0; j<rings; ++j)
-			{
-				for(unsigned int i=0; i<output->height; ++i)
+			if(ringsOnRows) {
+				for(unsigned int j=0; j<rings; ++j)
 				{
-					(*output)[i*rings + j] = cloud->at(i*step*rings + j);
+					for(unsigned int i=0; i<outputPts; ++i)
+					{
+						(*output)[j*outputPts + i] = cloud->at(j*pts + i*step);
+					}
 				}
 			}
-
+			else {
+				for(unsigned int j=0; j<outputPts; ++j)
+				{
+					for(unsigned int i=0; i<rings; ++i)
+					{
+						(*output)[j*rings + i] = cloud->at(j*step*rings + i);
+					}
+				}
+			}
 		}
-		else if(cloud->height > 1)
+		else
 		{
-			// assume depth image (e.g., 640x480), downsample like an image
+			// assume depth image (e.g., 640x480), downsample like an image (step in both dimensions)
 			UASSERT_MSG(cloud->height % step == 0 && cloud->width % step == 0,
 					uFormat("Decimation of depth images should be exact! (decimation=%d, size=%dx%d)",
 					step, cloud->width, cloud->height).c_str());
@@ -630,19 +720,19 @@ typename pcl::PointCloud<PointT>::Ptr downsampleImpl(
 			{
 				for(unsigned int i=0; i<output->width; ++i)
 				{
-					output->at(j*output->width + i) = cloud->at(j*output->width*step + i*step);
+					output->at(j*output->width + i) = cloud->at(j*cloud->width*step + i*step);
 				}
 			}
 		}
-		else
+	}
+	else // Dense cloud
+	{
+		int finalSize = int(cloud->size())/step;
+		output->resize(finalSize);
+		int oi = 0;
+		for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
 		{
-			int finalSize = int(cloud->size())/step;
-			output->resize(finalSize);
-			int oi = 0;
-			for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
-			{
-				(*output)[oi++] = cloud->at(i);
-			}
+			(*output)[oi++] = cloud->at(i);
 		}
 	}
 	return output;

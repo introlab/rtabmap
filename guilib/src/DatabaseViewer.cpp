@@ -7140,7 +7140,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 			if(!allNodesAreInWM)
 			{
-				ui_->graphViewer->updatePosterior(colors, 1, 1);
+				ui_->graphViewer->updateNodeColorByValue("In WM", colors, 1, false, 1);
 			}
 		}
 		QGraphicsRectItem * rectScaleItem = 0;

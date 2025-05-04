@@ -97,50 +97,134 @@ RTABMAP_DEPRECATED LaserScan RTABMAP_CORE_EXPORT commonFiltering(
 		float normalRadius,
 		bool forceGroundNormalsUp);
 
+/**
+ * @brief Filters a LaserScan data on a minimum and maximum Euclidean range.
+ *
+ * This function removes scan points from the input LaserScan that fall
+ * outside the specified minimum and maximum range (in meters) from the LaserScan's viewpoint.
+ *
+ * @param scan The input LaserScan object containing the scan data.
+ * @param rangeMin The minimum range threshold. Points closer than this will be excluded.
+ * @param rangeMax The maximum range threshold. Points farther than this will be excluded.
+ * @return A new LaserScan object containing only the points within the specified range.
+ *         If the input scan is empty or the range limits are both zero, the original scan is returned.
+ *
+ * @note The function handles both 2D and 3D scans based on the `scan.is2d()` flag. 
+ *       The function doesn't keep the scan organized if the input is.
+ * @throws Assertion failure if either `rangeMin` or `rangeMax` is negative.
+ */
 LaserScan RTABMAP_CORE_EXPORT rangeFiltering(
 		const LaserScan & scan,
 		float rangeMin,
 		float rangeMax);
 
+/**
+ * @defgroup PointCloudRangeFiltering Range Filtering of PCL Point Clouds
+ * @brief Filters a point cloud based on a minimum and maximum Euclidean range.
+ *
+ * This templated function computes the squared Euclidean distance of each point
+ * in the given point cloud and returns indices of points whose distance falls
+ * within the specified range limits. If no indices are provided, the entire cloud
+ * is evaluated.
+ *
+ * @param cloud The input point cloud to be filtered.
+ * @param indices The subset of point indices to evaluate. If empty, the full cloud is used.
+ * @param rangeMin Minimum distance threshold. Points closer than this are excluded.
+ * @param rangeMax Maximum distance threshold. Points farther than this are excluded.
+ * @return pcl::IndicesPtr Pointer to a vector of indices that passed the range filter.
+ *
+ * @note Both rangeMin and rangeMax must be non-negative. If both are zero, no filtering is applied.
+ * @throws Assertion failure if rangeMin or rangeMax is negative.
+ */
+/**
+ * @ingroup PointCloudRangeFiltering
+ * @brief Filters a point cloud of type `pcl::PointXYZ`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
+/**
+ * @ingroup PointCloudRangeFiltering
+ * @brief Filters a point cloud of type `pcl::PointXYZRGB`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
+/**
+ * @ingroup PointCloudRangeFiltering
+ * @brief Filters a point cloud of type `pcl::PointNormal`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
+/**
+ * @ingroup PointCloudRangeFiltering
+ * @brief Filters a point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
 
+/**
+ * @defgroup PointCloudSplitRangeFiltering Split Range Filtering of PCL Point Clouds
+ * @brief Splits a point cloud into two groups based on a distance threshold.
+ *
+ * This function divides the input point cloud (or a subset specified by indices)
+ * into two sets of indices: points closer than the given range (`closeIndices`)
+ * and points farther than or equal to the range (`farIndices`), using Euclidean
+ * distance.
+ *
+ * @param cloud The input point cloud.
+ * @param indices The subset of point indices to consider. If empty, the full cloud is used.
+ * @param range The distance threshold in meters used to classify points as "close" or "far".
+ * @param[out] closeIndices Output indices for points with distance < range.
+ * @param[out] farIndices Output indices for points with distance >= range.
+ *
+ * @note The function resets and fills both output index containers.
+ *       If the input cloud is empty, both outputs will also be empty.
+ */
+/**
+ * @ingroup PointCloudSplitRangeFiltering
+ * @brief Splits a point cloud of type `pcl::PointXYZ`.
+ */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range, 
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
+/**
+ * @ingroup PointCloudSplitRangeFiltering
+ * @brief Splits a point cloud of type `pcl::PointXYZRGB`.
+ */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range,
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
+/**
+ * @ingroup PointCloudSplitRangeFiltering
+ * @brief Splits a point cloud of type `pcl::PointNormal`.
+ */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range,
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
+/**
+ * @ingroup PointCloudSplitRangeFiltering
+ * @brief Splits a point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -148,83 +232,237 @@ void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
 
+/**
+ * @defgroup PointCloudDownSampling Point Cloud Downsampling
+ * @brief Downsamples a point cloud or LaserScan by keeping only every N-th point.
+ *
+ * This function downsamples a point cloud based on a specified step size. The method adapts based on
+ * whether the cloud is organized (2D) or unorganized (1D), and whether it's structured like a depth image or LiDAR scan.
+ * 
+ * - For **unorganized point clouds**: Every `step`-th point is retained linearly.
+ * - For **organized point clouds** with LiDAR-like layout (e.g., 2048x64): Downsampling is performed along the "long" dimension,
+ *   preserving the ring structure.
+ * - For **depth-image-like organized clouds** (e.g., 640x480): Downsampling is performed in both row and column directions,
+ *   similar to image decimation. Step size must divide both width and height exactly.
+ *
+ * @param cloud The input point cloud to downsample.
+ * @param step The decimation step. Must be greater than 0.
+ * @return A new point cloud containing only the sampled points.
+ *
+ * @note If `step <= 1` or the cloud has fewer points than `step`, the function returns a copy of the input cloud.
+ * @throws Assertion failure if `step <= 0` or, in the case of depth-image-style clouds, if the width and height are not divisible by `step`.
+ */
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a LaserScan.
+ */
 LaserScan RTABMAP_CORE_EXPORT downsample(
-		const LaserScan & cloud,
-		int step);
+	const LaserScan & cloud,
+	int step);
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a point cloud of type `pcl::PointXYZ`.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int step);
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a point cloud of type `pcl::PointXYZRGB`.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int step);
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a point cloud of type `pcl::PointXYZI`.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int step);
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a point cloud of type `pcl::PointNormal`.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		int step);
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int step);
+/**
+ * @ingroup PointCloudDownSampling
+ * @brief Downsamples a point cloud of type `pcl::PointXYZINormal`.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		int step);
 
+/**
+ * @defgroup VoxelFiltering Voxel Filtering
+ * @brief Performs voxel grid downsampling on a point cloud with optional index filtering.
+ *
+ * This function downsamples a point cloud using a voxel grid filter. It optionally accepts a set of point indices to limit
+ * the operation to a subset of the cloud. For very large point clouds or very small voxel sizes that would cause integer index
+ * overflow in the voxel grid structure, the function automatically partitions the space into smaller regions and applies the voxel
+ * filtering recursively.
+ *
+ * @param cloud The input point cloud to be voxelized.
+ * @param indices (Optional) A shared pointer to a vector of indices indicating which points to consider. If empty, the entire cloud is used.
+ * @param voxelSize The voxel (leaf) size for downsampling. Must be greater than zero.
+ * @return A new downsampled point cloud as a shared pointer.
+ *
+ * @note If the computed voxel grid exceeds 32-bit integer capacity, the function splits the bounding volume into smaller regions
+ *       (using a quadtree or octree-like subdivision depending on the Z-axis span) and processes each region recursively.
+ * @note If the cloud is not dense and no indices are provided, a warning is issued and an empty cloud is returned.
+ *
+ * @throws Assertion failure if voxelSize <= 0.
+ *
+ * @see pcl::VoxelGrid, util3d::cropBox
+ */
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZ` on provided indices.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointNormal` on provided indices.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGB` on provided indices.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGBNormal` on provided indices.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZI` on provided indices.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZINormal` on provided indices.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZ`.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointNormal`.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGB`.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZI`.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		float voxelSize);
+/**
+ * @ingroup VoxelFiltering
+ * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZINormal`.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		float voxelSize);
 
+/**
+ * @brief DEPRECATED: Use voxelize() instead.
+ *
+ * Performs uniform sampling of a point cloud by applying voxel grid filtering
+ * with the specified voxel size. This is a legacy wrapper for `voxelize()`.
+ *
+ * @param cloud The input point cloud (pcl::PointXYZ).
+ * @param voxelSize The voxel size (resolution) used for downsampling.
+ * @return A downsampled point cloud using voxel grid filtering.
+ *
+ * @deprecated This function is deprecated. Use voxelize() for equivalent behavior.
+ */
 inline pcl::PointCloud<pcl::PointXYZ>::Ptr uniformSampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize)
 {
 	return voxelize(cloud, voxelSize);
 }
+/**
+ * @brief DEPRECATED: Use voxelize() instead.
+ *
+ * Performs uniform sampling of a point cloud by applying voxel grid filtering
+ * with the specified voxel size. This is a legacy wrapper for `voxelize()`.
+ *
+ * @param cloud The input point cloud (pcl::PointXYZRGB).
+ * @param voxelSize The voxel size (resolution) used for downsampling.
+ * @return A downsampled point cloud using voxel grid filtering.
+ *
+ * @deprecated This function is deprecated. Use voxelize() for equivalent behavior.
+ */
 inline pcl::PointCloud<pcl::PointXYZRGB>::Ptr uniformSampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float voxelSize)
 {
 	return voxelize(cloud, voxelSize);
 }
+/**
+ * @brief DEPRECATED: Use voxelize() instead.
+ *
+ * Performs uniform sampling of a point cloud by applying voxel grid filtering
+ * with the specified voxel size. This is a legacy wrapper for `voxelize()`.
+ *
+ * @param cloud The input point cloud (pcl::PointXYZRGBNormal).
+ * @param voxelSize The voxel size (resolution) used for downsampling.
+ * @return A downsampled point cloud using voxel grid filtering.
+ *
+ * @deprecated This function is deprecated. Use voxelize() for equivalent behavior.
+ */
 inline pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr uniformSampling(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		float voxelSize)
