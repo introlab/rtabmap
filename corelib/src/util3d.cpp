@@ -3149,6 +3149,18 @@ public:
 	float distance;
 };
 
+class RegisteredPoints {
+	public:
+		class Point {
+			public:
+				Point(float distance_, int index_) : distance(distance_), index(index_) {}
+				float distance;
+				int index;
+		};
+		float minDistance;
+		std::vector<Point> points;
+};
+
 /**
  * For each point, return pixel of the best camera (NodeID->CameraIndex)
  * looking at it based on the policy and parameters
@@ -3160,6 +3172,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		float maxAngle,
+		float maxDepthError,
 		const std::vector<float> & roiRatios,
 		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
@@ -3170,6 +3183,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 	UINFO("cameraModels=%d", (int)cameraModels.size());
 	UINFO("maxDistance=%f", maxDistance);
 	UINFO("maxAngle=%f", maxAngle);
+	UINFO("maxDepthError=%f", maxDepthError);
 	UINFO("distanceToCamPolicy=%s", distanceToCamPolicy?"true":"false");
 	UINFO("roiRatios=%s", roiRatios.size() == 4?uFormat("%f %f %f %f", roiRatios[0], roiRatios[1], roiRatios[2], roiRatios[3]).c_str():"");
 	UINFO("projMask=%dx%d", projMask.cols, projMask.rows);
@@ -3235,8 +3249,9 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				float cx = cameraMatrixK.at<double>(0,2);
 				float cy = cameraMatrixK.at<double>(1,2);
 
-				// depth: 2 channels UINT: [depthMM, indexPt]
-				cv::Mat registered = cv::Mat::zeros(imageSize, CV_32SC2);
+				// [rows][cols][depth, indexPt]
+				std::vector<std::vector<RegisteredPoints> > registered(
+					imageSize.height, std::vector<RegisteredPoints>(imageSize.width));
 				Transform t = cameraTransform.inverse();
 
 				cv::Rect roi(0,0,imageSize.width, imageSize.height);
@@ -3258,34 +3273,44 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 					if(z > 0.0f && (maxDistance<=0 || z<maxDistance))
 					{
 						float invZ = 1.0f/z;
-						float dx = (fx*ptScan.x)*invZ + cx;
-						float dy = (fy*ptScan.y)*invZ + cy;
-						int dx_low = dx;
-						int dy_low = dy;
-						int dx_high = dx + 0.5f;
-						int dy_high = dy + 0.5f;
-						int zMM = z * 1000;
-						if(uIsInBounds(dx_low, roi.x, roi.x+roi.width) && uIsInBounds(dy_low, roi.y, roi.y+roi.height) &&
-						   (validProjMask.empty() || validProjMask.at<unsigned char>(dy_low, imageSize.width*camIndex+dx_low) > 0))
-						{
-							set = true;
-							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_low, dx_low);
-							if(zReg[0] == 0 || zMM < zReg[0])
-							{
-								zReg[0] = zMM;
-								zReg[1] = i;
+						float u = (fx*ptScan.x)*invZ + cx;
+						float v = (fy*ptScan.y)*invZ + cy;
+						int x = u + 0.5f;
+						int y = v + 0.5f;
+
+						if(uIsInBounds(x, roi.x, roi.x+roi.width) && uIsInBounds(y, roi.y, roi.y+roi.height) &&
+						   (validProjMask.empty() || validProjMask.at<unsigned char>(y, imageSize.width*camIndex+x) > 0)) {
+							RegisteredPoints &zReg = registered[y][x];
+							if(zReg.points.empty()) {
+								zReg.minDistance = z;
+								zReg.points.push_back(RegisteredPoints::Point(z, i));
+								set = true;
 							}
-						}
-						if((dx_low != dx_high || dy_low != dy_high) &&
-							uIsInBounds(dx_high, roi.x, roi.x+roi.width) && uIsInBounds(dy_high, roi.y, roi.y+roi.height) &&
-							(validProjMask.empty() || validProjMask.at<unsigned char>(dy_high, imageSize.width*camIndex+dx_high) > 0))
-						{
-							set = true;
-							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_high, dx_high);
-							if(zReg[0] == 0 || zMM < zReg[0])
-							{
-								zReg[0] = zMM;
-								zReg[1] = i;
+							else if(z < zReg.minDistance) {
+								zReg.minDistance = z;
+								if(maxDepthError<=0.0f) {
+									// keeping only closest point, just update it
+									zReg.points[0].distance = z;
+									zReg.points[0].index = i;
+								}
+								else {
+									// update the points attached to same pixel based on new closest distance
+									std::vector<RegisteredPoints::Point> reOrderedPts;
+									reOrderedPts.push_back(RegisteredPoints::Point(z, i));
+									for(size_t p=0; p<zReg.points.size(); ++p) {
+										if(zReg.points[p].distance - z < maxDepthError) {
+											reOrderedPts.push_back(zReg.points[p]);
+										}
+									}
+									zReg.points = reOrderedPts;
+								}
+								set = true;
+							}
+							else if(maxDepthError>=0.0f && z - zReg.minDistance < maxDepthError) {
+								// The point is closer than current closest one to camera, 
+								// but still under max depth difference, just append
+								zReg.points.push_back(RegisteredPoints::Point(z, i));
+								set = true;
 							}
 						}
 					}
@@ -3296,19 +3321,19 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				}
 				if(count == 0)
 				{
-					registered = cv::Mat();
+					registered.clear();
 					UINFO("No points projected in camera %d/%d", pter->first, camIndex);
 				}
 				else
 				{
 					UDEBUG("%d points projected in camera %d/%d", count, pter->first, camIndex);
 				}
-				for(int u=0; u<registered.cols; ++u)
+				for(int u=0; u<imageSize.width; ++u)
 				{
-					for(int v=0; v<registered.rows; ++v)
+					for(int v=0; v<imageSize.height; ++v)
 					{
-						cv::Vec2i &zReg = registered.at<cv::Vec2i>(v, u);
-						if(zReg[0] > 0)
+						RegisteredPoints &zReg = registered[v][u];
+						if(!zReg.points.empty())
 						{
 							ProjectionInfo info;
 							info.nodeID = pter->first;
@@ -3316,36 +3341,40 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 							info.uv.x = float(u)/float(imageSize.width);
 							info.uv.y = float(v)/float(imageSize.height);
 							const Transform & cam = cameraPoses.at(info.nodeID);
-							const PointT & pt = cloud.at(zReg[1]);
-							Eigen::Vector4f camDir(cam.x()-pt.x, cam.y()-pt.y, cam.z()-pt.z, 0);
-							Eigen::Vector4f normal(pt.normal_x, pt.normal_y, pt.normal_z, 0);
-							float angleToCam = maxAngle<=0?0:pcl::getAngle3D(normal, camDir);
-							float distanceToCam = zReg[0]/1000.0f;
-							if( (maxAngle<=0 || (camDir.dot(normal) > 0 && angleToCam < maxAngle)) && // is facing camera? is point normal perpendicular to camera?
-								(maxDistance<=0 || distanceToCam<maxDistance)) // is point not too far from camera?
+							for(size_t p=0; p<zReg.points.size(); ++p)
 							{
-								float vx = info.uv.x-0.5f;
-								float vy = info.uv.y-0.5f;
-
-								float distanceToCenter = vx*vx+vy*vy;
-								float distance = distanceToCenter;
-								if(distanceToCamPolicy)
+								int ptIdx = zReg.points[p].index;
+								const PointT & pt = cloud.at(ptIdx);
+								Eigen::Vector4f camDir(cam.x()-pt.x, cam.y()-pt.y, cam.z()-pt.z, 0);
+								Eigen::Vector4f normal(pt.normal_x, pt.normal_y, pt.normal_z, 0);
+								float angleToCam = maxAngle<=0?0:pcl::getAngle3D(normal, camDir);
+								float distanceToCam = zReg.points[p].distance;
+								if( (maxAngle<=0 || (camDir.dot(normal) > 0 && angleToCam < maxAngle)) && // is facing camera? is point normal perpendicular to camera?
+									(maxDistance<=0 || distanceToCam<maxDistance)) // is point not too far from camera?
 								{
-									distance = distanceToCam;
-								}
+									float vx = info.uv.x-0.5f;
+									float vy = info.uv.y-0.5f;
 
-								info.distance = distance;
-
-								if(invertedIndex[zReg[1]].distance != -1.0f)
-								{
-									if(distance <= invertedIndex[zReg[1]].distance)
+									float distanceToCenter = vx*vx+vy*vy;
+									float distance = distanceToCenter;
+									if(distanceToCamPolicy)
 									{
-										invertedIndex[zReg[1]] = info;
+										distance = distanceToCam;
 									}
-								}
-								else
-								{
-									invertedIndex[zReg[1]] = info;
+
+									info.distance = distance;
+
+									if(invertedIndex[ptIdx].distance != -1.0f)
+									{
+										if(distance <= invertedIndex[ptIdx].distance)
+										{
+											invertedIndex[ptIdx] = info;
+										}
+									}
+									else
+									{
+										invertedIndex[ptIdx] = info;
+									}
 								}
 							}
 						}
@@ -3415,6 +3444,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		float maxAngle,
+		float maxDepthError,
 		const std::vector<float> & roiRatios,
 		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
@@ -3425,6 +3455,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			cameraModels,
 			maxDistance,
 			maxAngle,
+			maxDepthError,
 			roiRatios,
 			projMask,
 			distanceToCamPolicy,
@@ -3437,6 +3468,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		float maxAngle,
+		float maxDepthError,
 		const std::vector<float> & roiRatios,
 		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
@@ -3447,6 +3479,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			cameraModels,
 			maxDistance,
 			maxAngle,
+			maxDepthError,
 			roiRatios,
 			projMask,
 			distanceToCamPolicy,
