@@ -1140,6 +1140,7 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	{
 #if CV_MAJOR_VERSION < 3
 		_surf = cv::Ptr<CV_SURF>(new CV_SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_));
+		std::cout << "using cpu" << std::endl;
 #else
 		_surf = CV_SURF::create(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
 #endif

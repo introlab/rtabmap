@@ -876,7 +876,6 @@ Transform OdometryF2M::computeTransform(
 								++iter;
 							}
 						}
-
 						if(mapWords.size() != mapPoints.size())
 						{
 							UDEBUG("Remove points");
@@ -1263,6 +1262,7 @@ Transform OdometryF2M::computeTransform(
 
 					map_->setWords(words, wordsKpts, transformedPoints, descriptors);
 					addKeyFrame = true;
+					descriptors.release();
 				}
 				else
 				{
