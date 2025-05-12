@@ -1024,7 +1024,7 @@ int main(int argc, char * argv[])
 
 		UTimer iterationTime;
 		std::string status;
-		if(!odometryIgnored && info.odomPose.isNull())
+		if(!odometryIgnored && info.odomPose.isNull() && incrementalMemory)
 		{
 			printf("Skipping node %d as it doesn't have odometry pose set.\n", data.id());
 		}
@@ -1235,15 +1235,22 @@ int main(int argc, char * argv[])
 				localizationAngleVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_angle()));
 			}
 
-			if(exportPoses && !info.odomPose.isNull())
+			if(exportPoses)
 			{
-				if(!odomTrajectoryPoses.empty())
+				if(!info.odomPose.isNull())
 				{
-					int previousId = odomTrajectoryPoses.rbegin()->first;
-					odomTrajectoryLinks.insert(std::make_pair(previousId, Link(previousId, refId, Link::kNeighbor, odomTrajectoryPoses.rbegin()->second.inverse()*info.odomPose, info.odomCovariance)));
+					if(!odomTrajectoryPoses.empty())
+					{
+						int previousId = odomTrajectoryPoses.rbegin()->first;
+						odomTrajectoryLinks.insert(std::make_pair(previousId, Link(previousId, refId, Link::kNeighbor, odomTrajectoryPoses.rbegin()->second.inverse()*info.odomPose, info.odomCovariance)));
+					}
+					odomTrajectoryPoses.insert(std::make_pair(refId, info.odomPose));
+					localizationPoses.insert(std::make_pair(refId, stats.mapCorrection()*info.odomPose));
 				}
-				odomTrajectoryPoses.insert(std::make_pair(refId, info.odomPose));
-				localizationPoses.insert(std::make_pair(refId, stats.mapCorrection()*info.odomPose));
+				else
+				{
+					localizationPoses.insert(std::make_pair(refId, rtabmap.getLastLocalizationPose()));
+				}
 			}
 		}
 
