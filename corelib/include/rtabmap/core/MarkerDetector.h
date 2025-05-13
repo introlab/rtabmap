@@ -65,23 +65,23 @@ public:
 
 	// Use the other detect(), in which the returned map contains the length of each marker detected.
     RTABMAP_DEPRECATED
-    MapIdPose detect(const cv::Mat & image,
+    MapIdPose detect(const cv::UMat & image,
 			const CameraModel & model,
-			const cv::Mat & depth = cv::Mat(),
+			const cv::UMat & depth = cv::UMat(),
 			float * estimatedMarkerLength = 0,
-			cv::Mat * imageWithDetections = 0);
+			cv::UMat * imageWithDetections = 0);
 
-    std::map<int, MarkerInfo> detect(const cv::Mat & image,
+    std::map<int, MarkerInfo> detect(const cv::UMat & image,
 		    const std::vector<CameraModel> & models,
-		    const cv::Mat & depth = cv::Mat(),
+		    const cv::UMat & depth = cv::UMat(),
 		    const std::map<int, float> & markerLengths = std::map<int, float>(),
-		    cv::Mat * imageWithDetections = 0);
+		    cv::UMat * imageWithDetections = 0);
 
-    std::map<int, MarkerInfo> detect(const cv::Mat & image,
+    std::map<int, MarkerInfo> detect(const cv::UMat & image,
 		    const CameraModel & model,
-		    const cv::Mat & depth = cv::Mat(),
+		    const cv::UMat & depth = cv::UMat(),
 		    const std::map<int, float> & markerLengths = std::map<int, float>(),
-		    cv::Mat * imageWithDetections = 0);
+		    cv::UMat * imageWithDetections = 0);
 
 private:
 #ifdef HAVE_OPENCV_ARUCO

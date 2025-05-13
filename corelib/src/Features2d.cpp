@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/core/version.hpp>
 #include <opencv2/opencv_modules.hpp>
+#include <opencv2/core/ocl.hpp>
 
 #ifdef RTABMAP_ORB_OCTREE
 #include "opencv/ORBextractor.h"
@@ -769,13 +770,16 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 	UASSERT(!image.empty());
 	UASSERT(image.type() == CV_8UC1);
 
-	cv::Mat mask;
+	cv::UMat imageU;
+    image.copyTo(imageU);
+	cv::UMat maskU;
+	cv::Mat maskMat;
 	if(!maskIn.empty())
 	{
 		if(maskIn.type()==CV_16UC1 || maskIn.type() == CV_32FC1)
 		{
 			mask = cv::Mat::zeros(maskIn.rows, maskIn.cols, CV_8UC1);
-			for(int i=0; i<(int)mask.total(); ++i)
+			for(int i=0; i<(int)maskMat.total(); ++i)
 			{
 				float value = 0.0f;
 				if(maskIn.type()==CV_16UC1)
@@ -795,14 +799,15 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 				   (_maxDepth == 0.0f || value <= _maxDepth) &&
 				   uIsFinite(value))
 				{
-					((unsigned char*)mask.data)[i] = 255; // ORB uses 255 to handle pyramids
+					maskMat.data[i] = 255;
 				}
 			}
+			maskMat.copyTo(maskU);
 		}
 		else if(maskIn.type()==CV_8UC1)
 		{
 			// assume a standard mask
-			mask = maskIn;
+			maskIn.copyTo(maskU);
 		}
 		else
 		{
@@ -810,14 +815,14 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		}
 	}
 
-	UASSERT(mask.empty() || (mask.cols == image.cols && mask.rows == image.rows));
+    UASSERT(maskU.empty() || (maskU.cols == imageU.cols && maskU.rows == imageU.rows));
 
 	std::vector<cv::KeyPoint> keypoints;
 	UTimer timer;
 	cv::Rect globalRoi = Feature2D::computeRoi(image, _roiRatios);
 	if(!(globalRoi.width && globalRoi.height))
 	{
-		globalRoi = cv::Rect(0,0,image.cols, image.rows);
+		globalRoi = cv::Rect(0,0,imageU.cols, imageU.rows);
 	}
 
 	// Get keypoints
@@ -854,7 +859,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 	{
 		std::vector<cv::Point2f> corners;
 		cv::KeyPoint::convert(keypoints, corners);
-		cv::cornerSubPix( image, corners,
+		cv::cornerSubPix( imageU, corners,
 				cv::Size( _subPixWinSize, _subPixWinSize ),
 				cv::Size( -1, -1 ),
 				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _subPixIterations, _subPixEps ) );
@@ -1173,11 +1178,20 @@ std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, con
 		cv::cuda::GpuMat maskGpu(maskRoi);
 		(*_gpuSurf.get())(imgGpu, maskGpu, keypoints);
 #endif
-	}
-	else
-	{
-		_surf->detect(imgRoi, keypoints, maskRoi);
-	}
+    }
+    else
+    {
+        cv::UMat imgRoiU;
+        imgRoi.copyTo(imgRoiU);
+
+        cv::UMat maskRoiU;
+        if (!maskRoi.empty())
+        {
+            maskRoi.copyTo(maskRoiU);
+        }
+
+        _surf->detect(imgRoiU, keypoints, maskRoiU);
+    }
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
 #endif
@@ -1213,7 +1227,13 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 	}
 	else
 	{
-		_surf->compute(image, keypoints, descriptors);
+		cv::UMat imageU;
+        image.copyTo(imageU);
+
+        cv::UMat descriptorsU;
+        _surf->compute(imageU, keypoints, descriptorsU);
+
+        descriptorsU.copyTo(descriptors);
 	}
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
