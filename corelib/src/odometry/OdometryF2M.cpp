@@ -656,6 +656,10 @@ Transform OdometryF2M::computeTransform(
 
 					// add points without depth only if the local map has reached its maximum size
 					bool addPointsWithoutDepth = false;
+					UDEBUG("visDepthAsMask = %s, validDepthRatio_ = %f, lastFrame_->getWords3().size() = %d",
+					(visDepthAsMask ? "true" : "false"),
+					validDepthRatio_,
+					(int)lastFrame_->getWords3().size());
 					if(!visDepthAsMask && validDepthRatio_ < 1.0f && !lastFrame_->getWords3().empty())
 					{
 						int ptsWithDepth = 0;
@@ -876,7 +880,6 @@ Transform OdometryF2M::computeTransform(
 								++iter;
 							}
 						}
-
 						if(mapWords.size() != mapPoints.size())
 						{
 							UDEBUG("Remove points");
@@ -1263,6 +1266,7 @@ Transform OdometryF2M::computeTransform(
 
 					map_->setWords(words, wordsKpts, transformedPoints, descriptors);
 					addKeyFrame = true;
+					descriptors.release();
 				}
 				else
 				{

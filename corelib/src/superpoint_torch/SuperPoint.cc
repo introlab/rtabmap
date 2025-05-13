@@ -139,7 +139,7 @@ SPDetector::~SPDetector()
 {
 }
 
-std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat & mask)
+std::vector<cv::KeyPoint> SPDetector::detect(const cv::UMat &img, const cv::UMat & mask)
 {
 	UASSERT(img.type() == CV_8UC1);
 	UASSERT(mask.empty() || (mask.type() == CV_8UC1 && img.cols == mask.cols && img.rows == mask.rows));
@@ -206,20 +206,20 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 	}
 }
 
-cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
+cv::UMat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 {
 	if(!detected_)
 	{
 		UERROR("SPDetector has been reset before extracting the descriptors! detect() should be called before compute().");
-		return cv::Mat();
+		return cv::UMat();
 	}
 	if(keypoints.empty())
 	{
-		return cv::Mat();
+		return cv::UMat();
 	}
 	if(model_.get())
 	{
-		cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
+		cv::UMat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
 
 		// Based on sample_descriptors() of SuperPoint implementation in SuperGlue:
 		// https://github.com/magicleap/SuperGluePretrainedNetwork/blob/45a750e5707696da49472f1cad35b0b203325417/models/superpoint.py#L80-L92
@@ -249,14 +249,14 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 		if(cuda_)
 			desc = desc.to(torch::kCPU);
 
-		cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data_ptr<float>());
+		cv::UMat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data_ptr<float>());
 
 		return desc_mat.clone();
 	}
 	else
 	{
 		UERROR("No model is loaded!");
-		return cv::Mat();
+		return cv::UMat();
 	}
 }
 

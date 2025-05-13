@@ -123,7 +123,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
-std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth, float * markerLengthOut, cv::Mat * imageWithDetections)
+std::map<int, Transform> MarkerDetector::detect(const cv::UMat & image, const CameraModel & model, const cv::UMat & depth, float * markerLengthOut, cv::UMat * imageWithDetections)
 {
     std::map<int, Transform> detections;
     std::map<int, MarkerInfo> infos = detect(image, model, depth, std::map<int, float>(), imageWithDetections);
@@ -141,27 +141,28 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
     return detections;
 }
 
-std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
+std::map<int, MarkerInfo> MarkerDetector::detect(const cv::UMat & image,
                            const std::vector<CameraModel> & models,
-                           const cv::Mat & depth,
+                           const cv::UMat & depth,
                            const std::map<int, float> & markerLengths,
-                           cv::Mat * imageWithDetections)
+                           cv::UMat * imageWithDetections)
 {
 	UASSERT(!models.empty() && !image.empty());
 	UASSERT(int((image.cols/models.size())*models.size()) == image.cols);
 	UASSERT(int((depth.cols/models.size())*models.size()) == depth.cols);
+	UWARN("entering thisss part");
 	int subRGBWidth = image.cols/models.size();
 	int subDepthWidth = depth.cols/models.size();
 
 	std::map<int, MarkerInfo> allInfo;
 	for(size_t i=0; i<models.size(); ++i)
 	{
-		cv::Mat subImage(image, cv::Rect(subRGBWidth*i, 0, subRGBWidth, image.rows));
-		cv::Mat subDepth;
+		cv::UMat subImage(image, cv::Rect(subRGBWidth*i, 0, subRGBWidth, image.rows));
+		cv::UMat subDepth;
 		if(!depth.empty())
-			subDepth = cv::Mat(depth, cv::Rect(subDepthWidth*i, 0, subDepthWidth, depth.rows));
+			subDepth = cv::UMat(depth, cv::Rect(subDepthWidth*i, 0, subDepthWidth, depth.rows));
 		CameraModel model = models[i];
-		cv::Mat subImageWithDetections;
+		cv::UMat subImageWithDetections;
 		std::map<int, MarkerInfo> subInfo = detect(subImage, model, subDepth, markerLengths, imageWithDetections?&subImageWithDetections:0);
 		if(ULogger::level() >= ULogger::kWarning)
 		{
@@ -182,22 +183,22 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 		{
 			if(i==0)
 			{
-				*imageWithDetections = cv::Mat(image.size(), subImageWithDetections.type());
+				*imageWithDetections = cv::UMat(image.size(), subImageWithDetections.type());
 			}
 			if(!subImageWithDetections.empty())
 			{
-				subImageWithDetections.copyTo(cv::Mat(*imageWithDetections, cv::Rect(subRGBWidth*i, 0, subRGBWidth, image.rows)));
+				subImageWithDetections.copyTo(cv::UMat(*imageWithDetections, cv::Rect(subRGBWidth*i, 0, subRGBWidth, image.rows)));
 			}
 		}
 	}
 	return allInfo;
 }
 
-std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
+std::map<int, MarkerInfo> MarkerDetector::detect(const cv::UMat & image,
                            const CameraModel & model,
-                           const cv::Mat & depth,
+                           const cv::UMat & depth,
                            const std::map<int, float> & markerLengths,
-                           cv::Mat * imageWithDetections)
+                           cv::UMat * imageWithDetections)
 {
 	if(!image.empty() && image.cols != model.imageWidth())
 	{
@@ -246,11 +247,13 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
             std::map<int, float>::const_iterator findIter = markerLengths.find(ids[i]);
             if(!depth.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==markerLengths.end())))
 			{
-                float d = util2d::getDepth(depth, (corners[i][0].x + (corners[i][2].x-corners[i][0].x)/2.0f)*rgbToDepthFactorX, (corners[i][0].y + (corners[i][2].y-corners[i][0].y)/2.0f)*rgbToDepthFactorY, true, 0.02f, true);
-				float d1 = util2d::getDepth(depth, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
-				float d2 = util2d::getDepth(depth, corners[i][1].x*rgbToDepthFactorX, corners[i][1].y*rgbToDepthFactorY, true, 0.02f, true);
-				float d3 = util2d::getDepth(depth, corners[i][2].x*rgbToDepthFactorX, corners[i][2].y*rgbToDepthFactorY, true, 0.02f, true);
-				float d4 = util2d::getDepth(depth, corners[i][3].x*rgbToDepthFactorX, corners[i][3].y*rgbToDepthFactorY, true, 0.02f, true);
+				cv::Mat depthMat;
+				depth.copyTo(depthMat);
+                float d = util2d::getDepth(depthMat, (corners[i][0].x + (corners[i][2].x-corners[i][0].x)/2.0f)*rgbToDepthFactorX, (corners[i][0].y + (corners[i][2].y-corners[i][0].y)/2.0f)*rgbToDepthFactorY, true, 0.02f, true);
+				float d1 = util2d::getDepth(depthMat, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
+				float d2 = util2d::getDepth(depthMat, corners[i][1].x*rgbToDepthFactorX, corners[i][1].y*rgbToDepthFactorY, true, 0.02f, true);
+				float d3 = util2d::getDepth(depthMat, corners[i][2].x*rgbToDepthFactorX, corners[i][2].y*rgbToDepthFactorY, true, 0.02f, true);
+				float d4 = util2d::getDepth(depthMat, corners[i][3].x*rgbToDepthFactorX, corners[i][3].y*rgbToDepthFactorY, true, 0.02f, true);
 				// Accept measurement only if all 4 depth values are valid and
 				// they are at the same depth (camera should be perpendicular to marker for
 				// best depth estimation)
@@ -363,9 +366,12 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 	if(imageWithDetections)
 	{
+		cv::Mat detections_img;
+		imageWithDetections->copyTo(detections_img);
+		UWARN("entering this part");
 		if(image.channels()==1)
 		{
-			cv::cvtColor(image, *imageWithDetections, cv::COLOR_GRAY2BGR);
+			cv::cvtColor(image, detections_img, cv::COLOR_GRAY2BGR);
 		}
 		else
 		{
