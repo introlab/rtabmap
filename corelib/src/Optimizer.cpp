@@ -447,7 +447,8 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
 		std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		bool rematchFeatures)
+		bool rematchFeatures,
+		const ParametersMap & registrationParameters)
 {
 	UDEBUG("");
 	std::map<int, std::vector<CameraModel> > multiModels;
@@ -497,7 +498,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 	}
 
 	// compute correspondences
-	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences, rematchFeatures);
+	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences, rematchFeatures, false, registrationParameters);
 
 	return optimizeBA(rootId, poses, links, multiModels, points3DMap, wordReferences);
 }
@@ -507,11 +508,12 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures,
-		bool rematchFeatures)
+		bool rematchFeatures,
+		const ParametersMap & registrationParameters)
 {
 	std::map<int, cv::Point3f> points3DMap;
 	std::map<int, std::map<int, FeatureBA> > wordReferences;
-	return optimizeBA(rootId, poses, links, signatures, points3DMap, wordReferences, rematchFeatures);
+	return optimizeBA(rootId, poses, links, signatures, points3DMap, wordReferences, rematchFeatures, registrationParameters);
 }
 
 Transform Optimizer::optimizeBA(
@@ -557,11 +559,20 @@ void Optimizer::computeBACorrespondences(
 		std::map<int, cv::Point3f> & points3DMap,
 		std::map<int, std::map<int, FeatureBA> > & wordReferences,
 		bool rematchFeatures,
-		bool useLinkTransformAsGuess)
+		bool useLinkTransformAsGuess,
+		ParametersMap registrationParameters)
 {
 	UDEBUG("rematchFeatures=%d", rematchFeatures?1:0);
 	int wordCount = 0;
 	int edgeWithWordsAdded = 0;
+
+	// Some defaults if not provided
+	registrationParameters.insert(ParametersPair(Parameters::kVisEstimationType(), "1"));
+	registrationParameters.insert(ParametersPair(Parameters::kVisPnPReprojError(), "5"));
+	registrationParameters.insert(ParametersPair(Parameters::kVisMinInliers(), "6"));
+	registrationParameters.insert(ParametersPair(Parameters::kVisCorNNDR(), "0.6"));
+	RegistrationVis reg(registrationParameters);
+
 	std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> > frameToWordMap; // <FrameId, <Keypoint, wordId> >
 	for(std::multimap<int, Link>::const_iterator iter=links.lower_bound(1); iter!=links.end(); ++iter)
 	{
@@ -601,13 +612,6 @@ void Optimizer::computeBACorrespondences(
 					sTo.getWords().size() &&
 					sFrom.getWords3().size())
 				{
-					ParametersMap regParam;
-					regParam.insert(ParametersPair(Parameters::kVisEstimationType(), "1"));
-					regParam.insert(ParametersPair(Parameters::kVisPnPReprojError(), "5"));
-					regParam.insert(ParametersPair(Parameters::kVisMinInliers(), "6"));
-					regParam.insert(ParametersPair(Parameters::kVisCorNNDR(), "0.6"));
-					RegistrationVis reg(regParam);
-
 					if(!rematchFeatures)
 					{
 						sFrom.setWordsDescriptors(cv::Mat());
