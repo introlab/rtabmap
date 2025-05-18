@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>919</width>
+    <width>895</width>
     <height>869</height>
    </rect>
   </property>
@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-3199</y>
-        <width>885</width>
-        <height>6183</height>
+        <y>-2495</y>
+        <width>861</width>
+        <height>6426</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2012,100 +2012,30 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_20" columnstretch="0,0,0,1">
+          <item row="7" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_14">
+            <property name="text">
+             <string>Distance to camera policy. The closest camera from a point is used to colorize the point. If disabled, the camera for which the point projection is the closest of the image center is used to colorize the point.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="2">
+           <widget class="QLabel" name="label_meshingTextureSize_18">
+            <property name="text">
+             <string>Recolor points from camera projection. This would be used to color laser scans with the cameras.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
           <item row="6" column="1">
-           <widget class="QCheckBox" name="checkBox_camProjDistanceToCamPolicy">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_16">
-            <property name="text">
-             <string>Decimation of camera resolution before projection. This can help to correctly estimate points hidden by other points, in case the point cloud is sparse.</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="2" colspan="2">
-           <widget class="QLabel" name="label_camProjExportCamera">
-            <property name="text">
-             <string>ID format of the camera selected for each point.</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_13">
-            <property name="text">
-             <string>Maximum distance from the camera for points to be colorized by this camera (0 means infinite).</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QSpinBox" name="spinBox_camProjDecimation">
-            <property name="suffix">
-             <string/>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>9999</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>1</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_17">
-            <property name="text">
-             <string>ROI ratios [left right top bottom] between 0 and 1. This can be used to ignore black borders of RGB images caused by calibration. </string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_12">
-            <property name="text">
-             <string>Maximum angle between camera and point's normal to apply color (0 means disabled).</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="1">
-           <widget class="QCheckBox" name="checkBox_camProjRecolorPoints">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="1">
            <widget class="QLineEdit" name="lineEdit_camProjMaskFilePath"/>
           </item>
-          <item row="7" column="1">
-           <widget class="QCheckBox" name="checkBox_camProjKeepPointsNotSeenByCameras">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="1">
+          <item row="10" column="1">
            <widget class="QComboBox" name="comboBox_camProjExportCamera">
             <property name="toolTip">
              <string>By Node ID: cameras of same node have same ID
@@ -2134,18 +2064,56 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </item>
            </widget>
           </item>
-          <item row="6" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_14">
+          <item row="9" column="1">
+           <widget class="QCheckBox" name="checkBox_camProjRecolorPoints">
             <property name="text">
-             <string>Distance to camera policy. The closest camera from a point is used to colorize the point. If disabled, the camera for which the point projection is the closest of the image center is used to colorize the point.</string>
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_13">
+            <property name="text">
+             <string>Maximum distance from the camera for points to be colorized by this camera (0 means infinite).</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_camProjRoiRatios"/>
+          <item row="8" column="1">
+           <widget class="QCheckBox" name="checkBox_camProjKeepPointsNotSeenByCameras">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_17">
+            <property name="text">
+             <string>ROI ratios [left right top bottom] between 0 and 1. This can be used to ignore black borders of RGB images caused by calibration. </string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QToolButton" name="toolButton_camProjMaskFilePath">
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_16">
+            <property name="text">
+             <string>Decimation of camera resolution before projection. This can help to correctly estimate points hidden by other points, in case the point cloud is sparse.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="doubleSpinBox_camProjMaxAngle">
@@ -2166,6 +2134,65 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </property>
             <property name="value">
              <double>0.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="lineEdit_camProjRoiRatios"/>
+          </item>
+          <item row="5" column="1">
+           <widget class="QSpinBox" name="spinBox_camProjDecimation">
+            <property name="suffix">
+             <string/>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>9999</number>
+            </property>
+            <property name="singleStep">
+             <number>1</number>
+            </property>
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QCheckBox" name="checkBox_camProjDistanceToCamPolicy">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_19">
+            <property name="text">
+             <string>File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_12">
+            <property name="text">
+             <string>Maximum angle between camera and point's normal to apply color (0 means disabled).</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="2" colspan="2">
+           <widget class="QLabel" name="label_camProjExportCamera">
+            <property name="text">
+             <string>ID format of the camera selected for each point.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -2191,7 +2218,7 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </property>
            </widget>
           </item>
-          <item row="7" column="2" colspan="2">
+          <item row="8" column="2" colspan="2">
            <widget class="QLabel" name="label_meshingTextureSize_15">
             <property name="text">
              <string>Keep points not seen by the cameras. These points will be set with a pure red color (255,0,0) if the cloud was created from laser scans.</string>
@@ -2201,30 +2228,35 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </property>
            </widget>
           </item>
-          <item row="8" column="2">
-           <widget class="QLabel" name="label_meshingTextureSize_18">
-            <property name="text">
-             <string>Recolor points from camera projection. This would be used to color laser scans with the cameras.</string>
+          <item row="4" column="1">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_camProjMaxDepthError">
+            <property name="suffix">
+             <string> m</string>
             </property>
-            <property name="wordWrap">
-             <bool>true</bool>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>9.990000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.050000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.000000000000000</double>
             </property>
            </widget>
           </item>
-          <item row="5" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_19">
+          <item row="4" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_20">
             <property name="text">
-             <string>File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.</string>
+             <string>For all points registered to same pixel, only those close enough to the closest point will be colored with same color (0 means only the closest point of all points registered in same pixel is colored).</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QToolButton" name="toolButton_camProjMaskFilePath">
-            <property name="text">
-             <string>...</string>
             </property>
            </widget>
           </item>

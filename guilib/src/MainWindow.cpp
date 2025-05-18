@@ -6623,6 +6623,8 @@ void MainWindow::postProcessing(
 			odomMaxInf = graph::getMaxOdomInf(_currentLinksMap);
 		}
 
+		std::shared_ptr<Registration> registration(Registration::create(parameters));
+
 		UASSERT(iterations>0);
 		for(int n=0; n<iterations && !_progressCanceled; ++n)
 		{
@@ -6703,7 +6705,6 @@ void MainWindow::postProcessing(
 										{
 											uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
 										}
-										Registration * registration = Registration::create(parameters);
 
 										if(reextractFeatures)
 										{
@@ -6735,7 +6736,6 @@ void MainWindow::postProcessing(
 													Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 										}
 										transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
-										delete registration;
 										if(!transform.isNull())
 										{
 											//optimize the graph to see if the new constraint is globally valid
@@ -7023,7 +7023,13 @@ void MainWindow::postProcessing(
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
 		Optimizer * sbaOptimizer = Optimizer::create(sbaType, parametersSBA);
-		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap(), sbaRematchFeatures);
+		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(
+			optimizedPoses.begin()->first,
+			optimizedPoses,
+			linksOut,
+			_cachedSignatures.toStdMap(),
+			sbaRematchFeatures,
+			parametersSBA);
 		delete sbaOptimizer;
 		if(newPoses.size())
 		{

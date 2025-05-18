@@ -194,17 +194,37 @@ void ExportBundlerDialog::exportBundler(
 			ParametersMap parametersSBA = parameters;
 			uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(_ui->sba_iterations->value())));
 			uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(_ui->sba_variance->value())));
-			Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
+			std::shared_ptr<Optimizer> sba(Optimizer::create(sbaType, parametersSBA));
 			sba->getConnectedGraph(poses.begin()->first, poses, links, posesOut, linksOut);
-			poses = sba->optimizeBA(
-					posesOut.begin()->first,
-					posesOut,
-					linksOut,
+			// set input poses as initial optimization guess
+			for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
+			{
+				iter->second = poses.at(iter->first);
+			}
+			if(_ui->sba_iterations->value() > 0)
+			{
+				poses = sba->optimizeBA(
+						posesOut.begin()->first,
+						posesOut,
+						linksOut,
+						signatures.toStdMap(),
+						points3DMap,
+						wordReferences,
+						_ui->sba_rematchFeatures->isChecked());
+			}
+			else
+			{
+				// do not optimize, just compute 3D features and word correspondences
+				poses = posesOut;
+				sba->computeBACorrespondences(poses,
+					linksOut, 
 					signatures.toStdMap(),
 					points3DMap,
 					wordReferences,
-					_ui->sba_rematchFeatures->isChecked());
-			delete sba;
+					_ui->sba_rematchFeatures->isChecked(),
+					false,
+					parametersSBA);
+			}
 
 			if(poses.empty())
 			{

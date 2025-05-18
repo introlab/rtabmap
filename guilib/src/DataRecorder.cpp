@@ -156,8 +156,12 @@ void DataRecorder::addData(const rtabmap::SensorData & data, const Transform & p
 void DataRecorder::showImage(const cv::Mat & image, const cv::Mat & depth)
 {
 	processingImages_ = true;
-	imageView_->setImage(uCvMat2QImage(image));
-	imageView_->setImageDepth(depth);
+	if(!image.empty()) {
+		imageView_->setImage(uCvMat2QImage(image));
+	}
+	if(!depth.empty()) {
+		imageView_->setImageDepth(depth);
+	}
 	label_->setText(tr("Images=%1 (~%2 MB)").arg(count_).arg(totalSizeKB_/1000));
 	processingImages_ = false;
 }

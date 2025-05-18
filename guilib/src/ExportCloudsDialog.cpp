@@ -209,6 +209,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_camProjDecimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_camProjMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_camProjMaxAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_camProjMaxDepthError, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_camProjDistanceToCamPolicy, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_camProjKeepPointsNotSeenByCameras, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_camProjRecolorPoints, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -443,6 +444,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("cam_proj_decimation", _ui->spinBox_camProjDecimation->value());
 	settings.setValue("cam_proj_max_distance", _ui->doubleSpinBox_camProjMaxDistance->value());
 	settings.setValue("cam_proj_max_angle", _ui->doubleSpinBox_camProjMaxAngle->value());
+	settings.setValue("cam_proj_max_depth_error", _ui->doubleSpinBox_camProjMaxDepthError->value());
 	settings.setValue("cam_proj_distance_policy", _ui->checkBox_camProjDistanceToCamPolicy->isChecked());
 	settings.setValue("cam_proj_keep_points", _ui->checkBox_camProjKeepPointsNotSeenByCameras->isChecked());
 	settings.setValue("cam_proj_recolor_points", _ui->checkBox_camProjRecolorPoints->isChecked());
@@ -628,6 +630,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_camProjDecimation->setValue(settings.value("cam_proj_decimation", _ui->spinBox_camProjDecimation->value()).toInt());
 	_ui->doubleSpinBox_camProjMaxDistance->setValue(settings.value("cam_proj_max_distance", _ui->doubleSpinBox_camProjMaxDistance->value()).toDouble());
 	_ui->doubleSpinBox_camProjMaxAngle->setValue(settings.value("cam_proj_max_angle", _ui->doubleSpinBox_camProjMaxAngle->value()).toDouble());
+	_ui->doubleSpinBox_camProjMaxDepthError->setValue(settings.value("cam_proj_max_depth_error", _ui->doubleSpinBox_camProjMaxDepthError->value()).toDouble());
 	_ui->checkBox_camProjDistanceToCamPolicy->setChecked(settings.value("cam_proj_distance_policy", _ui->checkBox_camProjDistanceToCamPolicy->isChecked()).toBool());
 	_ui->checkBox_camProjKeepPointsNotSeenByCameras->setChecked(settings.value("cam_proj_keep_points", _ui->checkBox_camProjKeepPointsNotSeenByCameras->isChecked()).toBool());
 	_ui->checkBox_camProjRecolorPoints->setChecked(settings.value("cam_proj_recolor_points", _ui->checkBox_camProjRecolorPoints->isChecked()).toBool());
@@ -810,6 +813,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_camProjDecimation->setValue(1);
 	_ui->doubleSpinBox_camProjMaxDistance->setValue(0);
 	_ui->doubleSpinBox_camProjMaxAngle->setValue(0);
+	_ui->doubleSpinBox_camProjMaxDepthError->setValue(0);
 	_ui->checkBox_camProjDistanceToCamPolicy->setChecked(true);
 	_ui->checkBox_camProjKeepPointsNotSeenByCameras->setChecked(false);
 	_ui->checkBox_camProjRecolorPoints->setChecked(true);
@@ -2911,6 +2915,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						cameraModelsProj,
 						_ui->doubleSpinBox_camProjMaxDistance->value(),
 						_ui->doubleSpinBox_camProjMaxAngle->value()*M_PI/180.0,
+						_ui->doubleSpinBox_camProjMaxDepthError->value(),
 						roiRatios,
 						projMask,
 						_ui->checkBox_camProjDistanceToCamPolicy->isChecked(),

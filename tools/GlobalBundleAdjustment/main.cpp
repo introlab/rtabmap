@@ -119,7 +119,7 @@ int main(int argc, char * argv[])
 
 	printf("Global bundle adjustment...\n");
 	Optimizer * optimizer = Optimizer::create(Optimizer::kTypeG2O, parameters);
-	optimizedPoses = optimizer->optimizeBA(optimizedPoses.lower_bound(1)->first, optimizedPoses, links, nodes, true);
+	optimizedPoses = optimizer->optimizeBA(optimizedPoses.lower_bound(1)->first, optimizedPoses, links, nodes, true, parameters);
 	delete optimizer;
 	printf("Global bundle adjustment... done (%fs).\n", timer.ticks());
 

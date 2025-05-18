@@ -106,9 +106,10 @@ void showUsage()
 			"                              2=Use optimized poses already computed in the database instead\n"
 			"                                of re-computing them (fallback to default if optimized poses don't exist).\n"
 			"                              3=No optimization, use odometry poses directly.\n"
-			"    --poses               Export optimized poses of the robot frame (e.g., base_link).\n"
+			"    --poses               Export optimized poses of the robot frame (e.g., base_link), including landmarks.\n"
 			"    --poses_camera        Export optimized poses of the camera frame (e.g., optical frame).\n"
 			"    --poses_scan          Export optimized poses of the scan frame.\n"
+			"    --poses_landmark      Export optimized poses of landmarks.\n"
 			"    --poses_gt            Export ground truth poses of the robot frame (e.g., base_link).\n"
 			"    --poses_gps           Export GPS poses of the GPS frame in local coordinates.\n"
 			"    --poses_format #      Format used for exported poses (default is 11):\n"
@@ -252,6 +253,7 @@ int main(int argc, char * argv[])
 	bool exportPoses = false;
 	bool exportPosesCamera = false;
 	bool exportPosesScan = false;
+	bool exportPosesLandmarks = false;
 	bool exportPosesGt = false;
 	bool exportPosesGps = false;
 	int exportPosesFormat = 11;
@@ -497,6 +499,10 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--poses_scan") == 0)
 		{
 			exportPosesScan = true;
+		}
+		else if(std::strcmp(argv[i], "--poses_landmark") == 0)
+		{
+			exportPosesLandmarks = true;
 		}
 		else if(std::strcmp(argv[i], "--poses_gt") == 0)
 		{
@@ -1079,6 +1085,7 @@ int main(int argc, char * argv[])
 		 exportPoses ||
 		 exportPosesScan ||
 		 exportPosesCamera ||
+		 exportPosesLandmarks ||
 		 exportPosesGt ||
 		 exportPosesGps ||
 		 exportGps>=0 ||
@@ -1142,7 +1149,7 @@ int main(int argc, char * argv[])
 	std::multimap<int, Link> links;
 	dbDriver->getAllOdomPoses(odomPoses, true);
 	dbDriver->getAllLinks(links, true, true);
-	if(optimizationApproach == 3 || !(exportCloud || exportMesh || exportPoses || exportPosesCamera || exportPosesScan))
+	if(optimizationApproach == 3 || !(exportCloud || exportMesh || exportPoses || exportPosesCamera || exportPosesScan || exportPosesLandmarks))
 	{
 		// Just use odometry poses when exporting only images
 		optimizedPoses = odomPoses;
@@ -1346,13 +1353,18 @@ int main(int argc, char * argv[])
 	pcl::PointCloud<pcl::PointXYZI>::Ptr assembledCloudI(new pcl::PointCloud<pcl::PointXYZI>);
 	std::map<int, rtabmap::Transform> robotPoses;
 	std::vector<std::map<int, rtabmap::Transform> > cameraPoses;
+	std::vector<std::map<int, double> > cameraStamps;
 	std::map<int, rtabmap::Transform> scanPoses;
+	std::map<int, double> scanStamps;
+	std::map<int, rtabmap::Transform> landmarkPoses;
+	std::map<int, double> landmarkStamps;
 	std::map<int, rtabmap::Transform> gtPoses;
+	std::map<int, double> gtStamps;
 	std::map<int, rtabmap::Transform> gpsPoses;
 	std::map<int, double> gpsStamps;
 	GPS gpsOrigin;
 	std::map<int, rtabmap::GPS> gpsValues;
-	std::map<int, double> cameraStamps;
+	std::map<int, double> robotStamps;
 	std::map<int, std::vector<rtabmap::CameraModel> > cameraModels;
 	std::map<int, cv::Mat> cameraDepths;
 	int imagesExported = 0;
@@ -1376,7 +1388,10 @@ int main(int argc, char * argv[])
 		{
 			// landmark, just add to list of poses
 			robotPoses.insert(*iter);
-			cameraStamps.insert(std::make_pair(iter->first, 0));
+			robotStamps.insert(std::make_pair(iter->first, 0));
+
+			landmarkPoses.insert(*iter);
+			landmarkStamps.insert(std::make_pair(iter->first, 0));
 			continue;
 		}
 		
@@ -1628,7 +1643,7 @@ int main(int argc, char * argv[])
 		}
 
 		robotPoses.insert(std::make_pair(iter->first, iter->second));
-		cameraStamps.insert(std::make_pair(iter->first, stamp));
+		robotStamps.insert(std::make_pair(iter->first, stamp));
 		if(models.empty() && weight == -1 && !cameraModels.empty())
 		{
 			// For intermediate nodes, use latest models
@@ -1645,17 +1660,20 @@ int main(int argc, char * argv[])
 				if(cameraPoses.empty())
 				{
 					cameraPoses.resize(models.size());
+					cameraStamps.resize(models.size());
 				}
 				UASSERT_MSG(models.size() == cameraPoses.size(), "Not all nodes have same number of cameras to export camera poses.");
 				for(size_t i=0; i<models.size(); ++i)
 				{
 					cameraPoses[i].insert(std::make_pair(iter->first, iter->second*models[i].localTransform()));
+					cameraStamps[i].insert(std::make_pair(iter->first, stamp));
 				}
 			}
 		}
 		if(exportPosesScan && !data.laserScanCompressed().empty())
 		{
 			scanPoses.insert(std::make_pair(iter->first, iter->second*data.laserScanCompressed().localTransform()));
+			scanStamps.insert(std::make_pair(iter->first, stamp));
 		}
 
 		if(exportPosesGps || exportGps>=0)
@@ -1688,6 +1706,7 @@ int main(int argc, char * argv[])
 		if(exportPosesGt && !gt.isNull())
 		{
 			gtPoses.insert(std::make_pair(iter->first, gt));
+			gtStamps.insert(std::make_pair(iter->first, stamp));
 		}
 
 		if(optimizedPoses.size() >= 500)
@@ -1750,11 +1769,11 @@ int main(int argc, char * argv[])
 					exportPosesFormat,
 					std::map<int, Transform>(robotPoses.lower_bound(1), robotPoses.end()),
 					links,
-					std::map<int, double>(cameraStamps.lower_bound(1), cameraStamps.end()));
+					std::map<int, double>(robotStamps.lower_bound(1), robotStamps.end()));
 			}
 			else
 			{
-				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, robotPoses, links, cameraStamps);
+				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, robotPoses, links, robotStamps);
 			}
 			cv::Vec3f vmin, vmax;
 			graph::computeMinMax(robotPoses, vmin, vmax);
@@ -1773,7 +1792,7 @@ int main(int argc, char * argv[])
 					outputPath = outputDirectory+"/"+baseName+"_camera_poses." + posesExt;
 				else
 					outputPath = outputDirectory+"/"+baseName+"_camera_poses_"+uNumber2Str((int)i)+"." + posesExt;
-				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, cameraPoses[i], std::multimap<int, Link>(), cameraStamps);
+				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, cameraPoses[i], std::multimap<int, Link>(), cameraStamps[i]);
 				cv::Vec3f vmin, vmax;
 				graph::computeMinMax(cameraPoses[i], vmin, vmax);
 				printf("%d camera poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
@@ -1786,11 +1805,35 @@ int main(int argc, char * argv[])
 		if(exportPosesScan)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), cameraStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), scanStamps);
 			cv::Vec3f min, max;
 			graph::computeMinMax(scanPoses, min, max);
 			printf("%d scan poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
 					(int)scanPoses.size(),
+					outputPath.c_str(),
+					min[0], min[1], min[2],
+					max[0], max[1], max[2]);
+		}
+		if(exportPosesScan)
+		{
+			std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses." + posesExt;
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), scanStamps);
+			cv::Vec3f min, max;
+			graph::computeMinMax(scanPoses, min, max);
+			printf("%d scan poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
+					(int)scanPoses.size(),
+					outputPath.c_str(),
+					min[0], min[1], min[2],
+					max[0], max[1], max[2]);
+		}
+		if(exportPosesLandmarks)
+		{
+			std::string outputPath=outputDirectory+"/"+baseName+"_landmark_poses." + posesExt;
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, landmarkPoses, std::multimap<int, Link>(), landmarkStamps);
+			cv::Vec3f min, max;
+			graph::computeMinMax(landmarkPoses, min, max);
+			printf("%d landmark poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
+					(int)landmarkPoses.size(),
 					outputPath.c_str(),
 					min[0], min[1], min[2],
 					max[0], max[1], max[2]);
@@ -1806,7 +1849,7 @@ int main(int argc, char * argv[])
 		if(exportPosesGt)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_gt_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gtPoses, std::multimap<int, Link>(), cameraStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gtPoses, std::multimap<int, Link>(), gtStamps);
 			printf("%d scan poses exported to \"%s\".\n",
 					(int)gtPoses.size(),
 					outputPath.c_str());
@@ -1999,7 +2042,7 @@ int main(int argc, char * argv[])
 					}
 
 					depth = rtabmap::util2d::cvtDepthFromFloat(depth);
-					std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",cameraStamps.at(iter->first)))+".png";
+					std::string outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f",robotStamps.at(iter->first)))+".png";
 					cv::imwrite(outputPath, depth);
 				}
 			}
@@ -2027,6 +2070,7 @@ int main(int argc, char * argv[])
 						cameraModelsProj,
 						textureRange,
 						textureAngle,
+						textureDepthError,
 						textureRoiRatios,
 						projMask,
 						distanceToCamPolicy,
@@ -2040,6 +2084,7 @@ int main(int argc, char * argv[])
 						cameraModelsProj,
 						textureRange,
 						textureAngle,
+						textureDepthError,
 						textureRoiRatios,
 						projMask,
 						distanceToCamPolicy,
