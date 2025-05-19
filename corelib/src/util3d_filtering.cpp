@@ -1057,7 +1057,10 @@ pcl::IndicesPtr cropBoxImpl(
 	filter.setMax(max);
 	if(!transform.isNull() && !transform.isIdentity())
 	{
-		filter.setTransform(transform.toEigen3f());
+		float x,y,z,roll,pitch,yaw;
+		transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		filter.setTranslation(Eigen::Vector3f(x,y,z));
+		filter.setRotation(Eigen::Vector3f(roll,pitch,yaw));
 	}
 	filter.setInputCloud(cloud);
 	filter.setIndices(indices);
@@ -1076,7 +1079,10 @@ pcl::IndicesPtr cropBox(const pcl::PCLPointCloud2::Ptr & cloud, const pcl::Indic
 	filter.setMax(max);
 	if(!transform.isNull() && !transform.isIdentity())
 	{
-		filter.setTransform(transform.toEigen3f());
+		float x,y,z,roll,pitch,yaw;
+		transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+		filter.setTranslation(Eigen::Vector3f(x,y,z));
+		filter.setRotation(Eigen::Vector3f(roll,pitch,yaw));
 	}
 	filter.setInputCloud(cloud);
 	filter.setIndices(indices);
@@ -1161,8 +1167,8 @@ pcl::IndicesPtr frustumFilteringImpl(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & cameraPose,
-		float horizontalFOV, // in degrees
-		float verticalFOV,   // in degrees
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative)
@@ -1184,7 +1190,18 @@ pcl::IndicesPtr frustumFilteringImpl(
 	fc.setNearPlaneDistance (nearClipPlaneDistance);
 	fc.setFarPlaneDistance (farClipPlaneDistance);
 
-	fc.setCameraPose (cameraPose.toEigen4f());
+	//The pcl function assumes a coordinate system where:
+	// - X is forward (view direction),
+	// - Y is up,
+	// - Z is to the right.
+	// Convert from the traditional camera coordinate system (X right, Y down, Z forward):
+	Transform cam2robot(
+       0, 0, 1, 0,
+	   0,-1, 0, 0,
+	   1, 0, 0, 0);
+	Transform pose_new = cameraPose * cam2robot;
+
+	fc.setCameraPose (pose_new.toEigen4f());
 	fc.filter (*output);
 
 	return output;
@@ -1217,7 +1234,18 @@ typename pcl::PointCloud<PointT>::Ptr frustumFilteringImpl(
 	fc.setNearPlaneDistance (nearClipPlaneDistance);
 	fc.setFarPlaneDistance (farClipPlaneDistance);
 
-	fc.setCameraPose (cameraPose.toEigen4f());
+	//The pcl function assumes a coordinate system where:
+	// - X is forward (view direction),
+	// - Y is up,
+	// - Z is to the right.
+	// Convert from the traditional camera coordinate system (X right, Y down, Z forward):
+	Transform cam2robot(
+		0, 0, 1, 0,
+		0,-1, 0, 0,
+		1, 0, 0, 0);
+	Transform pose_new = cameraPose * cam2robot;
+ 
+	fc.setCameraPose (pose_new.toEigen4f());
 	fc.filter (*output);
 
 	return output;

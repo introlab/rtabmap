@@ -471,26 +471,89 @@ inline pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr uniformSampling(
 }
 
 
+/**
+ * @defgroup RandomSampling Random Sampling
+ * @brief Randomly samples a subset of points from the input point cloud.
+ *
+ * This function uses the PCL (Point Cloud Library) `RandomSample` filter to randomly
+ * select a specified number of points from the input cloud. It ensures the number
+ * of samples is greater than zero and returns a new point cloud containing the sampled points.
+ *
+ * @param cloud A pointer to the input point cloud from which to sample points.
+ * @param samples The number of points to randomly sample from the input cloud. Must be > 0.
+ * @return A pointer to a new point cloud containing the randomly sampled points.
+ *
+ * @throws Assertion failure if `samples <= 0`.
+ */
+/**
+ * @ingroup RandomSampling
+ * @brief Performs random sampling on a point cloud of type `pcl::PointXYZ`.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int samples);
+/**
+ * @ingroup RandomSampling
+ * @brief Performs random sampling on a point cloud of type `pcl::PointNormal`.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		int samples);
+/**
+ * @ingroup RandomSampling
+ * @brief Performs random sampling on a point cloud of type `pcl::PointXYZRGB`.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int samples);
+/**
+ * @ingroup RandomSampling
+ * @brief Performs random sampling on a point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int samples);
+/**
+ * @ingroup RandomSampling
+ * @brief Performs random sampling on a point cloud of type `pcl::PointXYZI`.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int samples);
+/**
+ * @ingroup RandomSampling
+ * @brief Performs random sampling on a point cloud of type `pcl::PointXYZINormal`.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		int samples);
 
-
+/**
+ * @defgroup PassThrough Pass-through Filtering
+ * @brief Filters points from the input point cloud using a pass-through filter along a specified axis.
+ *
+ * This function applies a PCL `PassThrough` filter to include or exclude points in the input cloud
+ * that fall within a specified range along a given axis (`x`, `y`, or `z`). It supports optional filtering
+ * using a subset of point indices and can perform either inclusive or exclusive filtering depending on the
+ * `negative` flag.
+ *
+ * @param cloud A pointer to the input point cloud to be filtered.
+ * @param indices A pointer to the indices specifying which points in the cloud to consider for filtering.
+ *                Pass `nullptr` to apply the filter to the entire cloud.
+ * @param axis The axis (`"x"`, `"y"`, or `"z"`) along which the filtering will be applied.
+ * @param min The minimum limit of the pass-through filter (inclusive by default).
+ * @param max The maximum limit of the pass-through filter (inclusive by default). Must be greater than `min`.
+ * @param negative If `true`, the filter will exclude points within the limits; if `false`, it will include only those within.
+ *
+ * @return The indices representing the points that passed the filter if indices are 
+ *         passed to the function, or the new filtered point cloud otherwise.
+ *
+ * @throws Assertion failure if `max <= min` or if `axis` is not `"x"`, `"y"`, or `"z"`.
+ */
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -498,6 +561,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGB` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -505,6 +572,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZI` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -512,6 +583,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointNormal` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -519,6 +594,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -526,6 +605,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZINormal` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -533,36 +616,60 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZI` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointNormal` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
+/**
+ * @ingroup PassThrough
+ * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZINormal` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const std::string & axis,
@@ -570,6 +677,31 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		float max,
 		bool negative = false);
 
+/**
+ * @defgroup CropBox Crop Box Filtering
+ * @brief Filters points from a point cloud using a 3D crop box.
+ *
+ * This function applies a PCL `CropBox` filter to retain or exclude points from the input point cloud
+ * that lie within a specified 3D axis-aligned bounding box, optionally transformed by a 3D transformation.
+ * The filter can be applied to the entire cloud or limited to a subset via input indices.
+ *
+ * @param cloud A pointer to the input point cloud to be filtered.
+ * @param indices A pointer to a vector of point indices that restricts the filtering to a subset of the cloud.
+ *                Pass `nullptr` to apply the filter to all points in the cloud.
+ * @param min The minimum (corner) boundary of the crop box, as an Eigen 4D vector (x, y, z, _).
+ * @param max The maximum (corner) boundary of the crop box, as an Eigen 4D vector (x, y, z, _).
+ * @param transform A transformation to be applied to the crop box (not the cloud). If the transform is null
+ *                  or identity, no transformation is applied.
+ * @param negative If `true`, the filter will exclude points inside the box; if `false`, it will include only those inside.
+ *
+ * @return The indices corresponding to the points that passed the filter, or the new filtered point cloud otherwise.
+ *
+ * @throws Assertion failure if any of `min[x] >= max[x]`, `min[y] >= max[y]`, or `min[z] >= max[z]`.
+ */
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PCLPointCloud2` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PCLPointCloud2::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -577,6 +709,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -584,6 +720,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointNormal` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -591,6 +731,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGB` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -598,6 +742,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -605,6 +753,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZI` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -612,6 +764,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZINormal` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -619,36 +775,60 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointNormal` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZI` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZINormal` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**
+ * @ingroup CropBox
+ * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
@@ -656,31 +836,70 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
 
-//Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
+/**
+ * @defgroup FrustumFiltering Frustum Filtering
+ * @brief Filters points from a point cloud based on a camera frustum.
+ *
+ * This function uses PCL's `FrustumCulling` filter to include or exclude points from a 3D point cloud
+ * that lie within a specified camera frustum. The frustum is defined by vertical and horizontal field of view
+ * angles, near and far clipping planes, and the camera pose. It can optionally apply filtering on a subset
+ * of points specified by indices.
+ *
+ * @note This assumes the pose includes the optical rotation of the camera (X right, Y down, Z forward).
+ *
+ * @param cloud A pointer to the input point cloud to be filtered.
+ * @param indices A pointer to the subset of indices in the point cloud to consider for filtering.
+ *                Pass `nullptr` to apply the filter to the full cloud.
+ * @param cameraPose The transformation representing the camera pose in world coordinates.
+ *                   This defines the position and orientation of the frustum.
+ * @param horizontalFOV The horizontal field of view in degrees (e.g., computed as atan((image width/2)/fx) * 2).
+ * @param verticalFOV The vertical field of view in degrees (e.g., atan((image height/2)/fy) * 2).
+ * @param nearClipPlaneDistance The distance from the camera to the near clipping plane.
+ * @param farClipPlaneDistance The distance from the camera to the far clipping plane.
+ * @param negative If `true`, the filter will exclude points inside the frustum.
+ *                 If `false`, it will include only those inside.
+ *
+ * @return The indices representing the points that passed the filter, or a new filtered point cloud.
+ * 
+ * @throws Assertion failure if:
+ * - `horizontalFOV <= 0` or `verticalFOV <= 0`,
+ * - `farClipPlaneDistance <= nearClipPlaneDistance`,
+ * - `cameraPose` is null.
+ */
+/**
+ * @ingroup FrustumFiltering
+ * @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & cameraPose,
-		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
-		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float horizontalFOV,
+		float verticalFOV,
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative = false);
-//Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
+/**
+ * @ingroup FrustumFiltering
+ * @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & cameraPose,
-		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
-		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float horizontalFOV,
+		float verticalFOV,
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative = false);
-//Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
+/**
+ * @ingroup FrustumFiltering
+ * @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & cameraPose,
-		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
-		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float horizontalFOV,
+		float verticalFOV,
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative = false);

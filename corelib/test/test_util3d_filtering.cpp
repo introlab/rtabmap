@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/CameraModel.h"
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UConversion.h"
 
@@ -1007,4 +1008,338 @@ TEST(Util3dFiltering, voxelizeInvalidVoxelSize) {
     EXPECT_THROW(util3d::voxelize(pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>()), indices, 0.0f), UException);
     EXPECT_THROW(util3d::voxelize(pcl::PointCloud<pcl::PointXYZINormal>::Ptr(new pcl::PointCloud<pcl::PointXYZINormal>()), 0.0f), UException);
     EXPECT_THROW(util3d::voxelize(pcl::PointCloud<pcl::PointXYZINormal>::Ptr(new pcl::PointCloud<pcl::PointXYZINormal>()), indices, 0.0f), UException);
+}
+
+TEST(Util3dFiltering, randomSamplingSamplesCorrectNumberOfPoints)
+{
+    constexpr int total_points = 100;
+    constexpr int sample_size = 10;
+
+    // Create a point cloud with 100 points
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    for (int i = 0; i < total_points; ++i) {
+        input_cloud->points.emplace_back(static_cast<float>(i), static_cast<float>(i), static_cast<float>(i));
+    }
+    input_cloud->width = total_points;
+    input_cloud->height = 1;
+    input_cloud->is_dense = true;
+
+    // Call the function under test
+    pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_cloud = util3d::randomSampling(input_cloud, sample_size);
+
+    // Validate output
+    ASSERT_EQ(sampled_cloud->size(), sample_size);
+    // Check that the sampled points are from the input set
+    for (const auto& pt : *sampled_cloud) {
+        bool found = false;
+        for (const auto& orig_pt : *input_cloud) {
+            if (pt.x == orig_pt.x && pt.y == orig_pt.y && pt.z == orig_pt.z) {
+                found = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(found) << "Sampled point not found in input cloud: (" << pt.x << ", " << pt.y << ", " << pt.z << ")";
+    }
+}
+
+TEST(Util3dFiltering, randomSamplingThrowsAssertionForInvalidSampleSize)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    input_cloud->push_back(pcl::PointXYZ(1.0f, 2.0f, 3.0f));
+    EXPECT_THROW(util3d::randomSampling(input_cloud, 0), UException);
+}
+
+TEST(Util3dFiltering, passThroughFiltersCorrectZRange)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Create 10 points along z-axis from 0.0 to 9.0
+    for (int i = 0; i < 10; ++i)
+        cloud->points.emplace_back(0.0f, 0.0f, static_cast<float>(i));
+
+    cloud->width = 10;
+    cloud->height = 1;
+
+    pcl::IndicesPtr indices = nullptr;  // Use full cloud
+    float min = 3.0f;
+    float max = 6.0f;
+    bool negative = false;
+
+    // Run filter
+    pcl::IndicesPtr output = util3d::passThrough(cloud, indices, "z", min, max, negative);
+
+    // Should include points with z = 3, 4, 5, 6
+    ASSERT_EQ(output->size(), 4);
+    for (int idx : *output) {
+        float z = cloud->points[idx].z;
+        EXPECT_GE(z, min);
+        EXPECT_LE(z, max);
+    }
+}
+
+TEST(Util3dFiltering, passThroughFiltersOutsideZRangeWithNegative)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    for (int i = 0; i < 10; ++i)
+        cloud->points.emplace_back(0.0f, 0.0f, static_cast<float>(i));
+
+    pcl::IndicesPtr indices = nullptr;
+    float min = 3.0f;
+    float max = 6.0f;
+    bool negative = true;
+
+    pcl::IndicesPtr output = util3d::passThrough(cloud, indices, "z", min, max, negative);
+
+    // Should include all except z = 3,4,5,6 => 6 points
+    ASSERT_EQ(output->size(), 6);
+    for (int idx : *output) {
+        float z = cloud->points[idx].z;
+        EXPECT_TRUE(z < min || z > max);
+    }
+}
+
+TEST(Util3dFiltering, passThroughFiltersWithIndicesSubset)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    for (int i = 0; i < 10; ++i)
+        cloud->points.emplace_back(0.0f, 0.0f, static_cast<float>(i));
+
+    // Only consider even-indexed points
+    pcl::IndicesPtr indices(new std::vector<int>);
+    for (int i = 0; i < 10; i += 2)
+        indices->push_back(i);
+
+    float min = 2.0f;
+    float max = 6.0f;
+    bool negative = false;
+
+    pcl::IndicesPtr output = util3d::passThrough(cloud, indices, "z", min, max, negative);
+
+    // From even indices: 2, 4, 6 match => 3 points
+    ASSERT_EQ(output->size(), 3);
+    for (int idx : *output) {
+        float z = cloud->points[idx].z;
+        EXPECT_TRUE(z == 2.0f || z == 4.0f || z == 6.0f);
+    }
+}
+
+TEST(Util3dFiltering, passThroughInvalidAxisTriggersAssertion)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->push_back(pcl::PointXYZ(0.0f, 0.0f, 1.0f));
+    pcl::IndicesPtr indices = nullptr;
+
+    EXPECT_THROW(util3d::passThrough(cloud, indices, "invalid_axis", 0.0f, 1.0f, false), UException);
+}
+
+TEST(Util3dFiltering, passThroughInvalidRangeTriggersAssertion)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->push_back(pcl::PointXYZ(0.0f, 0.0f, 1.0f));
+    pcl::IndicesPtr indices = nullptr;
+
+    EXPECT_THROW(util3d::passThrough(cloud, indices, "z", 5.0f, 2.0f, false), UException);
+}
+
+TEST(Util3dFiltering, cropBoxIncludesPointsInBox)
+{
+    using PointT = pcl::PointXYZ;
+    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
+
+    // Points along x-axis from 0 to 9
+    for (int i = 0; i < 10; ++i)
+        cloud->points.emplace_back(static_cast<float>(i), 0.0f, 0.0f);
+
+    Eigen::Vector4f min(3.0f, -1.0f, -1.0f, 1.0f);
+    Eigen::Vector4f max(6.0f, 1.0f, 1.0f, 1.0f);
+    pcl::IndicesPtr indices = nullptr;
+    Transform transform = Transform::getIdentity();
+    bool negative = false;
+
+    // Point included in the box
+    auto output = util3d::cropBox(cloud, indices, min, max, transform, negative);
+
+    ASSERT_EQ(output->size(), 4);
+    for (int idx : *output) {
+        float x = cloud->points[idx].x;
+        EXPECT_GE(x, 3.0f);
+        EXPECT_LE(x, 6.0f);
+    }
+
+    // Point excluded from the box
+    negative = true;
+    output = util3d::cropBox(cloud, indices, min, max, transform, negative);
+
+    ASSERT_EQ(output->size(), 6);
+    for (int idx : *output) {
+        float x = cloud->points[idx].x;
+        EXPECT_TRUE(x < 3.0f || x > 6.0f);
+    }
+
+    // Apply translation
+    transform = Transform(3.0f, 0.0f, 0.0f, 0,0,0);  // Shift box forward by 3
+    negative = false;
+    output = util3d::cropBox(cloud, indices, min, max, transform, negative);
+
+    // Transformed box covers x = [6, 9]
+    ASSERT_EQ(output->size(), 4);
+    for (int idx : *output) {
+        float x = cloud->points[idx].x;
+        EXPECT_GE(x, 6.0f);
+        EXPECT_LE(x, 9.0f);
+    }
+}
+
+TEST(Util3dFiltering, cropBoxInvalidBoundsTriggerAssertion)
+{
+    using PointT = pcl::PointXYZ;
+    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
+    cloud->points.emplace_back(0.0f, 0.0f, 0.0f);
+    pcl::IndicesPtr indices = nullptr;
+
+    Eigen::Vector4f min(5.0f, 0.0f, 0.0f, 1.0f);
+    Eigen::Vector4f max(1.0f, 1.0f, 1.0f, 1.0f); // Invalid: min[0] > max[0]
+
+    Transform transform = Transform::getIdentity();
+
+    EXPECT_THROW(util3d::cropBox(cloud, indices, min, max, transform, false), UException);
+}
+
+// Main test: filtering points inside a frustum
+TEST(Util3dFiltering, frustumFilteringIncludesPointsInFrustum)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Add points along the X axis (frustum forward direction)
+    pcl::IndicesPtr indicesOnXAxisOnly(new std::vector<int>{0});
+    pcl::IndicesPtr indicesOnYAxisOnly(new std::vector<int>);
+    pcl::IndicesPtr indicesOnZAxisOnly(new std::vector<int>);
+    pcl::IndicesPtr allIndices(new std::vector<int>{0});
+    for (int i = 0; i <= 10; ++i) {
+        cloud->points.emplace_back(static_cast<float>(i), 0.0f, 0.0f); // x goes from 0 to 10
+        if(i>0) {
+            indicesOnXAxisOnly->emplace_back(3*(i-1)+1);
+            allIndices->emplace_back(3*(i-1)+1);
+            cloud->points.emplace_back(2.0f, static_cast<float>(i)/2.0f, 0.0f); // y goes from 1 to 10 at x=2
+            indicesOnYAxisOnly->emplace_back(3*(i-1)+2);
+            allIndices->emplace_back(3*(i-1)+2);
+            cloud->points.emplace_back(2.0f, 0.0f, static_cast<float>(i)/2.0f); // z goes from 1 to 10 at x=2
+            indicesOnZAxisOnly->emplace_back(3*(i-1)+3);
+            allIndices->emplace_back(3*(i-1)+3);
+        }
+    }
+
+    float hFOV = 90.0f;   // wide field of view
+    float vFOV = 70.0f;
+    float nearClip = 1.5f;
+    float farClip = 7.5f;
+    Transform cameraPose = Transform(-1,0,0,0,0,0) * CameraModel::opticalRotation(); // camera looking forward on x-axis, 1 meter back
+
+    pcl::IndicesPtr result = util3d::frustumFiltering(
+        cloud, nullptr, cameraPose, hFOV, vFOV, nearClip, farClip, false);
+
+    float halfhFOV = tan(hFOV*M_PI/180.0f/2.0f)*3; // at 3 meters from the camera
+    float halfvFOV = tan(vFOV*M_PI/180.0f/2.0f)*3; // at 3 meters from the camera
+
+    // Should include points with x in [1,7]
+    ASSERT_EQ(result->size(), 16);
+    for (int idx : *result) {
+        float x = cloud->points[idx].x;
+        float y = cloud->points[idx].y;
+        float z = cloud->points[idx].z;
+        EXPECT_GE(x, nearClip-1.0f);
+        EXPECT_LE(x, farClip-1.0f);
+        EXPECT_GE(y, -halfhFOV);
+        EXPECT_LE(y, halfhFOV);
+        EXPECT_GE(z, -halfvFOV);
+        EXPECT_LE(z, halfvFOV);
+    }
+    // Check with all indices, should give same result
+    result = util3d::frustumFiltering(
+        cloud, allIndices, cameraPose, hFOV, vFOV, nearClip, farClip, false);
+
+    // Should include points with x in [1,7]
+    ASSERT_EQ(result->size(), 16);
+    for (int idx : *result) {
+        float x = cloud->points[idx].x;
+        float y = cloud->points[idx].y;
+        float z = cloud->points[idx].z;
+        EXPECT_GE(x, nearClip-1.0f);
+        EXPECT_LE(x, farClip-1.0f);
+        EXPECT_GE(y, -halfhFOV);
+        EXPECT_LE(y, halfhFOV);
+        EXPECT_GE(z, -halfvFOV);
+        EXPECT_LE(z, halfvFOV);
+    }
+
+    // test negative flag
+    result = util3d::frustumFiltering(
+        cloud, nullptr, cameraPose, hFOV, vFOV, nearClip, farClip, true);
+
+    ASSERT_EQ(result->size(), 15);
+    for (int idx : *result) {
+        float x = cloud->points[idx].x;
+        float y = cloud->points[idx].y;
+        float z = cloud->points[idx].z;
+        EXPECT_TRUE(x < nearClip-1.0f || x > farClip-1.0f || y < -halfhFOV || y > halfhFOV || z < -halfvFOV || z > halfvFOV);
+    }
+
+    // test with sub-indices
+    result = util3d::frustumFiltering(
+        cloud, indicesOnXAxisOnly, cameraPose, hFOV, vFOV, nearClip, farClip, false);
+    
+    // Should return indices in [1,4,7,10,13,16] (1m, 2m, 3m, 4m, 5m, 6m, 7m) from the indicesOnXAxisOnly list
+    std::vector<int> expected = {1,4,7,10,13,16};
+    ASSERT_EQ(result->size(), expected.size());
+    for (int idx : *result) {
+        EXPECT_NE(std::find(expected.begin(), expected.end(), idx), expected.end());
+    }
+
+    // Check pitch camera rotation
+    // Should return indices in [9,12,15,18,21,24] z=(1.5m, 2m, 2.5m, 3m, 3.5m, 4m) from the indicesOnXAxisOnly list
+    result = util3d::frustumFiltering(
+        cloud, indicesOnZAxisOnly, Transform(2,0,5,0,M_PI/2,0)*CameraModel::opticalRotation(), 1, 1, 0.75, 3.75, false);
+    std::vector<int> expectedZ = {9,12,15,18,21,24};
+    ASSERT_EQ(result->size(), expectedZ.size());
+    for (int idx : *result) {
+        EXPECT_NE(std::find(expectedZ.begin(), expectedZ.end(), idx), expectedZ.end());
+    }
+
+    // Check yaw camera rotation
+    // Should return indices in [8,11,14,17,20,23] y=(1.5m, 2m, 2.5m, 3m, 3.5m, 4m) from the indicesOnYAxisOnly list
+    result = util3d::frustumFiltering(
+        cloud, indicesOnYAxisOnly, Transform(2,5,0,0,0,-M_PI/2)*CameraModel::opticalRotation(), 1, 1, 0.75, 3.75, false);
+    std::vector<int> expectedY = {8,11,14,17,20,23};
+    ASSERT_EQ(result->size(), expectedY.size());
+    for (int idx : *result) {
+        EXPECT_NE(std::find(expectedY.begin(), expectedY.end(), idx), expectedY.end());
+    }
+}
+
+
+// Test assertion failure on invalid FOV
+TEST(Util3dFiltering, frustumFilteringInvalidFOVTriggersAssertion)
+{
+    using PointT = pcl::PointXYZ;
+    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
+    cloud->push_back(PointT(0, 0, 0));
+    pcl::IndicesPtr indices = nullptr;
+    Transform cameraPose = Transform::getIdentity();
+
+    EXPECT_THROW(util3d::frustumFiltering(cloud, indices, cameraPose, 0.0f, 45.0f, 1.0f, 5.0f, false), UException);
+    EXPECT_THROW(util3d::frustumFiltering(cloud, indices, cameraPose, 45.0f, 0.0f, 1.0f, 5.0f, false), UException);
+}
+
+// Test assertion failure on invalid clip plane distances
+TEST(Util3dFiltering, frustumFilteringInvalidClipPlaneTriggersAssertion)
+{
+    using PointT = pcl::PointXYZ;
+    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
+    cloud->push_back(PointT(0, 0, 0));
+    pcl::IndicesPtr indices = nullptr;
+    Transform cameraPose = Transform::getIdentity();
+
+    EXPECT_THROW(util3d::frustumFiltering(cloud, indices, cameraPose, 60.0f, 45.0f, 5.0f, 1.0f, false), UException);
 }

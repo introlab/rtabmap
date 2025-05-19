@@ -1668,51 +1668,75 @@ TEST(Util3dTest, projectCloudToCameras) {
     pt3.normal_z = 0.0f;
     cloud.push_back(pt3);
 
-    // Mock camera poses (using some basic transform for testing)
+    pcl::PointXYZRGBNormal pt4;
+    pt4.x = 1.0f;
+    pt4.y = 0.0f;
+    pt4.z = -0.025f; // below pt1 by 2.5 cm
+    pt4.normal_x = 0.0f;
+    pt4.normal_y = 0.0f;
+    pt4.normal_z = 1.0f;  // Normal pointing upwards
+    cloud.push_back(pt4);
+
+    pcl::PointXYZRGBNormal pt5;
+    pt5.x = 1.0f;
+    pt5.y = 0.0f;
+    pt5.z = -0.1f;   // below pt1 by 10 cm
+    pt5.normal_x = 0.0f;
+    pt5.normal_y = 0.0f;
+    pt5.normal_z = 1.0f;  // Normal pointing upwards
+    cloud.push_back(pt5);
+
     std::map<int, Transform> cameraPoses;
-    cameraPoses[1] = Transform(0.5f, 0.0f, 0.0f,0,0,0); // Camera looking at pt2, but closer to pt1 than camera 2
-    cameraPoses[2] = Transform(1.0f, 0.0f, 1.0f,0,M_PI/2,0); // Camera looking at pt1 (looking down)
+    cameraPoses[1] = Transform(0.5f, 0.0f, 0.0f,0,0,0); // Camera 1 looking at pt2, but closer to pt1 than camera 2
+    cameraPoses[2] = Transform(1.0f, 0.0f, 1.0f,0,M_PI/2,0); // Camera 2 looking at pt1 (looking down)
     
-    // Mock camera models
     std::map<int, std::vector<CameraModel>> cameraModels;
     CameraModel model(500, 500, 319.5f, 239.5f, CameraModel::opticalRotation(), 0, cv::Size(640,480));
     cameraModels[1].push_back(model);
     cameraModels[2].push_back(model);
 
-    model.setLocalTransform(Transform(0,0,0,0,0,M_PI/2)*CameraModel::opticalRotation()); // this camera is looking left (only pt3 in FOV)
+    model.setLocalTransform(Transform(0,0,0,0,0,M_PI/2)*CameraModel::opticalRotation()); // this view from camera 1 position is looking left (only pt3 in FOV)
     cameraModels[1].push_back(model);
 
     // Set parameters for projection
     float maxDistance = 10.0f;
-    float maxAngle = 45.0f;
+    float maxAngle = 45.0f * M_PI/ 180.0f;
+    float maxDepthError = 0.05f; // For camera 1, it should see pt1 and pt4, but not pt5
     std::vector<float> roiRatios = {0.0f, 0.0f, 0.0f, 0.0f};  // Full image ROI
     cv::Mat projMask = cv::Mat::ones(480, 640, CV_8UC1);  // Projection mask (all valid)
     bool distanceToCamPolicy = true;
     ProgressState* state = nullptr;  // Not using progress state in this test
 
+    ULogger::setLevel(ULogger::kDebug);
+    ULogger::setType(ULogger::kTypeConsole);
+
     // Call the function to test
-    auto result = util3d::projectCloudToCameras(cloud, cameraPoses, cameraModels, maxDistance, maxAngle, roiRatios, projMask, distanceToCamPolicy, state);
+    auto result = util3d::projectCloudToCameras(cloud, cameraPoses, cameraModels, maxDistance, maxAngle, maxDepthError, roiRatios, projMask, distanceToCamPolicy, state);
 
     // Validate the result
     ASSERT_EQ(result.size(), cloud.size());  // The result should have the same size as the input point cloud
 
-    // Check the first point's projection
     EXPECT_EQ(result[0].first.first, 2);  // Camera node ID
     EXPECT_EQ(result[0].first.second, 0);  // Camera index
     EXPECT_NEAR(result[0].second.x, 0.5f, 0.1f);  // UV x-coordinate, close to the center
     EXPECT_NEAR(result[0].second.y, 0.5f, 0.1f);  // UV y-coordinate, close to the center
 
-    // Check the second point's projection
     EXPECT_EQ(result[1].first.first, 1);  // Camera node ID
     EXPECT_EQ(result[1].first.second, 0);  // Camera index
     EXPECT_NEAR(result[1].second.x, 0.5f, 0.1f);  // UV x-coordinate, close to the center
     EXPECT_NEAR(result[1].second.y, 0.5f, 0.1f);  // UV y-coordinate, close to the center
 
-    // Check the second point's projection
     EXPECT_EQ(result[2].first.first, 1);  // Camera node ID
     EXPECT_EQ(result[2].first.second, 1);  // Camera index
     EXPECT_NEAR(result[2].second.x, 0.5f, 0.1f);  // UV x-coordinate, close to the center
     EXPECT_NEAR(result[2].second.y, 0.5f, 0.1f);  // UV y-coordinate, close to the center
+
+    EXPECT_EQ(result[3].first.first, 2);  // Camera node ID
+    EXPECT_EQ(result[3].first.second, 0);  // Camera index
+    EXPECT_NEAR(result[3].second.x, 0.5f, 0.1f);  // UV x-coordinate, close to the center
+    EXPECT_NEAR(result[3].second.y, 0.5f, 0.1f);  // UV y-coordinate, close to the center
+
+    EXPECT_EQ(result[4].first.first, 0);  // Camera node ID (not found = 0)
 }
 
 TEST(Util3dTest, isFinite) {
