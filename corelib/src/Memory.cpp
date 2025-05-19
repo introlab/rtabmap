@@ -5546,7 +5546,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			if(!models.empty() && models[0].isValidForProjection())
 			{
-				std::map<int, MarkerInfo> markers = _markerDetector->detect(data.imageRaw(), models, data.depthRaw(), _landmarksSize);
+				cv::UMat imageRaw;
+				cv::UMat depthRaw;
+				data.depthRaw().copyTo(depthRaw);
+				data.imageRaw().copyTo(imageRaw);
+				std::map<int, MarkerInfo> markers = _markerDetector->detect(imageRaw, models, depthRaw, _landmarksSize);
 
 				for(std::map<int, MarkerInfo>::iterator iter=markers.begin(); iter!=markers.end(); ++iter)
 				{

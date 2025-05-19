@@ -151,9 +151,15 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 			
 		if(!models.empty() && models[0].isValidForProjection())
 		{
-			cv::Mat imageWithDetections;
-			detections = markerDetector_->detect(data.imageRaw(), models, data.depthRaw(), std::map<int, float>(), &imageWithDetections);
-			imageView_->setImage(uCvMat2QImage(imageWithDetections));
+			cv::UMat imageWithDetections;
+			cv::Mat tmp;
+			cv::UMat raw;
+			cv::UMat depth_raw;
+			data.imageRaw().copyTo(raw);
+			data.depthRaw().copyTo(depth_raw);
+			detections = markerDetector_->detect(raw, models, depth_raw, std::map<int, float>(), &imageWithDetections);
+			imageWithDetections.copyTo(tmp);
+			imageView_->setImage(uCvMat2QImage(tmp));
 		}
 		else
 		{
