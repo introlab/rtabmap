@@ -1266,7 +1266,6 @@ Transform OdometryF2M::computeTransform(
 
 					map_->setWords(words, wordsKpts, transformedPoints, descriptors);
 					addKeyFrame = true;
-					descriptors.release();
 				}
 				else
 				{

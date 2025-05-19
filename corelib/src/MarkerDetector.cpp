@@ -150,7 +150,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::UMat & image,
 	UASSERT(!models.empty() && !image.empty());
 	UASSERT(int((image.cols/models.size())*models.size()) == image.cols);
 	UASSERT(int((depth.cols/models.size())*models.size()) == depth.cols);
-	UWARN("entering thisss part");
 	int subRGBWidth = image.cols/models.size();
 	int subDepthWidth = depth.cols/models.size();
 
@@ -368,7 +367,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::UMat & image,
 	{
 		cv::Mat detections_img;
 		imageWithDetections->copyTo(detections_img);
-		UWARN("entering this part");
 		if(image.channels()==1)
 		{
 			cv::cvtColor(image, detections_img, cv::COLOR_GRAY2BGR);

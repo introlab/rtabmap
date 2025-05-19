@@ -778,7 +778,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 	{
 		if(maskIn.type()==CV_16UC1 || maskIn.type() == CV_32FC1)
 		{
-			mask = cv::Mat::zeros(maskIn.rows, maskIn.cols, CV_8UC1);
+			maskMat = cv::Mat::zeros(maskIn.rows, maskIn.cols, CV_8UC1);
 			for(int i=0; i<(int)maskMat.total(); ++i)
 			{
 				float value = 0.0f;
@@ -835,7 +835,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		{
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> subKeypoints;
-			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
+			subKeypoints = this->generateKeypointsImpl(image, roi, maskMat);
 			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
 			{
 				limitKeypoints(subKeypoints, maxFeatures, roi.size(), this->getSSC());
@@ -853,7 +853,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		}
 	}
 	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (grid=%dx%d, mask empty=%d)",
-			timer.ticks(), keypoints.size(), gridCols_, gridRows_,  mask.empty()?1:0);
+			timer.ticks(), keypoints.size(), gridCols_, gridRows_,  maskMat.empty()?1:0);
 
 	if(keypoints.size() && _subPixWinSize > 0 && _subPixIterations > 0)
 	{
@@ -1145,7 +1145,6 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	{
 #if CV_MAJOR_VERSION < 3
 		_surf = cv::Ptr<CV_SURF>(new CV_SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_));
-		std::cout << "using cpu" << std::endl;
 #else
 		_surf = CV_SURF::create(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
 #endif
