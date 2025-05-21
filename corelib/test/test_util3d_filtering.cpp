@@ -1343,3 +1343,595 @@ TEST(Util3dFiltering, frustumFilteringInvalidClipPlaneTriggersAssertion)
 
     EXPECT_THROW(util3d::frustumFiltering(cloud, indices, cameraPose, 60.0f, 45.0f, 5.0f, 1.0f, false), UException);
 }
+
+TEST(Util3dFiltering, removeNaNFromPointCloud)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Add valid points
+    cloud->push_back(pcl::PointXYZ(1.0f, 2.0f, 3.0f));
+    cloud->push_back(pcl::PointXYZ(4.0f, 5.0f, 6.0f));
+
+    // Add NaN point
+    cloud->push_back(pcl::PointXYZ(
+        std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::quiet_NaN()));
+    
+    cloud->is_dense = false;
+
+    ASSERT_EQ(cloud->size(), 3u);
+
+    auto filtered = util3d::removeNaNFromPointCloud(cloud);
+
+    // Check that the NaN point was removed
+    EXPECT_EQ(filtered->size(), 2u);
+
+    // Check that the remaining points match the original valid points
+    EXPECT_FLOAT_EQ(filtered->points[0].x, 1.0f);
+    EXPECT_FLOAT_EQ(filtered->points[0].y, 2.0f);
+    EXPECT_FLOAT_EQ(filtered->points[0].z, 3.0f);
+
+    EXPECT_FLOAT_EQ(filtered->points[1].x, 4.0f);
+    EXPECT_FLOAT_EQ(filtered->points[1].y, 5.0f);
+    EXPECT_FLOAT_EQ(filtered->points[1].z, 6.0f);
+}
+
+TEST(Util3dFiltering, removeNaNNormalsFromPointCloud)
+{
+    auto cloud = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>);
+
+    // Add valid point with proper normals
+    pcl::PointNormal pt1;
+    pt1.x = pt1.y = pt1.z = 0.0f;
+    pt1.normal_x = 1.0f; pt1.normal_y = 0.0f; pt1.normal_z = 0.0f;
+    cloud->push_back(pt1);
+
+    // Add point with NaN normal_x
+    pcl::PointNormal pt2 = pt1;
+    pt2.normal_x = std::numeric_limits<float>::quiet_NaN();
+    cloud->push_back(pt2);
+
+    // Add point with NaN normal_y
+    pcl::PointNormal pt3 = pt1;
+    pt3.normal_y = std::numeric_limits<float>::quiet_NaN();
+    cloud->push_back(pt3);
+
+    // Add point with NaN normal_z
+    pcl::PointNormal pt4 = pt1;
+    pt4.normal_z = std::numeric_limits<float>::quiet_NaN();
+    cloud->push_back(pt4);
+
+    ASSERT_EQ(cloud->size(), 4u);
+
+    auto filtered = util3d::removeNaNNormalsFromPointCloud(cloud);
+
+    // Only the valid point should remain
+    ASSERT_EQ(filtered->size(), 1u);
+    EXPECT_FLOAT_EQ(filtered->points[0].normal_x, 1.0f);
+    EXPECT_FLOAT_EQ(filtered->points[0].normal_y, 0.0f);
+    EXPECT_FLOAT_EQ(filtered->points[0].normal_z, 0.0f);
+}
+
+TEST(Util3dFiltering, radiusFilteringWithFewNeighbors)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Create a simple grid of points: 3 points within radius, 2 isolated
+    cloud->push_back(pcl::PointXYZ(0.0f, 0.0f, 0.0f));   // Index 0
+    cloud->push_back(pcl::PointXYZ(0.05f, 0.0f, 0.0f));  // Index 1
+    cloud->push_back(pcl::PointXYZ(0.1f, 0.0f, 0.0f));   // Index 2
+    cloud->push_back(pcl::PointXYZ(5.0f, 0.0f, 0.0f));   // Index 3 (isolated)
+    cloud->push_back(pcl::PointXYZ(-5.0f, 0.0f, 0.0f));  // Index 4 (isolated)
+
+    pcl::IndicesPtr indices(new std::vector<int>());  // Empty -> test whole cloud
+
+    // Radius 0.11, minimum 1 neighbor (excluding self, so 2 including self)
+    float radiusSearch = 0.11f;
+    int minNeighbors = 1;
+
+    auto filtered = util3d::radiusFiltering(cloud, indices, radiusSearch, minNeighbors);
+
+    // Only indices 0, 1, 2 are near each other; 3 and 4 are too far
+    ASSERT_EQ(filtered->size(), 3u);
+    EXPECT_EQ(filtered->at(0), 0);
+    EXPECT_EQ(filtered->at(1), 1);
+    EXPECT_EQ(filtered->at(2), 2);
+}
+
+TEST(Util3dFiltering, radiusFilteringProvidedIndicesSubset)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Add a mix of close and isolated points
+    cloud->push_back(pcl::PointXYZ(0.0f, 0.0f, 0.0f));   // 0 - neighbor
+    cloud->push_back(pcl::PointXYZ(0.05f, 0.0f, 0.0f));  // 1 - neighbor
+    cloud->push_back(pcl::PointXYZ(1.0f, 0.0f, 0.0f));   // 2 - too far
+
+    pcl::IndicesPtr subset(new std::vector<int>{0, 1}); // Only test points 0 and 1
+
+    float radiusSearch = 0.1f;
+    int minNeighbors = 1;
+
+    auto filtered = util3d::radiusFiltering(cloud, subset, radiusSearch, minNeighbors);
+
+    ASSERT_EQ(filtered->size(), 2u);
+    EXPECT_EQ(filtered->at(0), 0);
+    EXPECT_EQ(filtered->at(1), 1);
+}
+
+TEST(Util3dFiltering, proportionalRadiusFilteringBasic)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Points seen from 10 meters away, so ~5 cm radius
+    cloud->push_back(pcl::PointXYZ(0, 0, 0));      // 0, farthest is 2 (4cm < 10cm) where 10cm is error viewpoint 1 times neighborScale
+    cloud->push_back(pcl::PointXYZ(0.001, 0, 0));  // 1, farthest is 2 (3.9cm < 10cm) where 10cm is error viewpoint 1 times neighborScale
+    cloud->push_back(pcl::PointXYZ(0.04f, 0, 0));  // 2, farthest is 0 (4cm < 10cm) where 10cm is error viewpoint 1 times neighborScale
+    cloud->push_back(pcl::PointXYZ(0.06f, 0, 0));  // 3, farthest is 2 (2cm < 10cm) where 10cm is error viewpoint 1 times neighborScale
+    cloud->push_back(pcl::PointXYZ(0.15f, 0, 0));  // 4, alone, kept
+
+    // Points seen from 10 meters away, so ~50 cm radius
+    cloud->push_back(pcl::PointXYZ(0, 0, 0));      // 5, reject because of 4 (15cm > 10cm) where 10cm is error viewpoint 1 times neighborScale
+    cloud->push_back(pcl::PointXYZ(0.4f, 0, 0));   // 6, reject because of 0 (40cm > 10cm) where 10cm is error viewpoint 1 times neighborScale
+    cloud->push_back(pcl::PointXYZ(0.7f, 0, 0));   // 7, farthest is 6 (30cm < 100cm) where 100cm is error viewpoint 2 times neighborScale
+    cloud->push_back(pcl::PointXYZ(1.5f, 0, 0));   // 8, alone, kept
+
+    std::vector<int> viewpointIndices = {0, 0, 0, 0, 0, 1, 1, 1, 1};
+    std::map<int, Transform> viewpoints;
+    viewpoints[0] = Transform(-1, 0, 0, 0,0,0);
+    viewpoints[1] = Transform(-10, 0, 0, 0,0,0);
+
+    pcl::IndicesPtr indices(new std::vector<int>()); // process all
+    float factor = 0.05f; // 6 cm radius at 1 meter, 60 cm radius at 10 meters
+    float neighborScale = 2.0f;
+
+    pcl::IndicesPtr result = util3d::proportionalRadiusFiltering(
+        cloud, indices, viewpointIndices, viewpoints, factor, neighborScale
+    );
+
+    std::vector<int> expected = {0,1,2,3,4,7,8};
+    ASSERT_EQ(result->size(), expected.size());
+    for (int idx : *result) {
+        EXPECT_NE(std::find(expected.begin(), expected.end(), idx), expected.end());
+    }
+
+    // If we adjust neighborScale to 4, 5 would be accepted
+    result = util3d::proportionalRadiusFiltering(
+        cloud, indices, viewpointIndices, viewpoints, factor, 4.0f
+    );
+    std::vector<int> expected2 = {0,1,2,3,4,5,7,8};
+    ASSERT_EQ(result->size(), expected2.size());
+    for (int idx : *result) {
+        EXPECT_NE(std::find(expected2.begin(), expected2.end(), idx), expected2.end());
+    }
+}
+
+TEST(Util3dFiltering, proportionalRadiusFilteringUsingProvidedIndices)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->push_back(pcl::PointXYZ(0, 0, 0));     // 0
+    cloud->push_back(pcl::PointXYZ(0.05, 0, 0));  // 1
+    cloud->push_back(pcl::PointXYZ(0.1, 0, 0));   // 2
+    cloud->push_back(pcl::PointXYZ(10, 0, 0));    // 3 (far)
+
+    std::vector<int> viewpointIndices = {0, 0, 0, 1};
+    std::map<int, Transform> viewpoints = {
+        {0, Transform(0, 0, -1)},
+        {1, Transform(10, 0, -1)}
+    };
+
+    // Only test indices 0 and 3
+    pcl::IndicesPtr indices(new std::vector<int>{0, 3});
+    float factor = 0.1f;
+    float neighborScale = 1.5f;
+
+    auto result = util3d::proportionalRadiusFiltering(
+        cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+
+    // Point 0 has no neighbors in filtered subset, 3 too far
+    ASSERT_EQ(result->size(), 0u);
+}
+
+TEST(Util3dFiltering, proportionalRadiusFilteringAllPointsNoNeighbors)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->push_back(pcl::PointXYZ(0, 0, 0));
+    cloud->push_back(pcl::PointXYZ(10, 0, 0));
+    cloud->push_back(pcl::PointXYZ(20, 0, 0));
+
+    std::vector<int> viewpointIndices = {0, 1, 2};
+    std::map<int, Transform> viewpoints = {
+        {0, Transform(0, 0, -1)},
+        {1, Transform(10, 0, -1)},
+        {2, Transform(20, 0, -1)}
+    };
+
+    pcl::IndicesPtr indices(new std::vector<int>);
+    float factor = 0.001f;  // tiny radius
+    float neighborScale = 1.0f;
+
+    auto result = util3d::proportionalRadiusFiltering(
+        cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
+
+    ASSERT_EQ(result->size(), 0u);
+}
+
+TEST(Util3dFiltering, proportionalRadiusFilteringInvalidViewpointID)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->push_back(pcl::PointXYZ(0, 0, 0));
+
+    std::vector<int> viewpointIndices = {42};  // invalid ID
+    std::map<int, Transform> viewpoints = {
+        {0, Transform(1, 0, 0)}
+    };
+
+    pcl::IndicesPtr indices(new std::vector<int>);
+    float factor = 0.1f;
+    float neighborScale = 1.0f;
+
+    EXPECT_THROW(util3d::proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale), UException);
+}
+
+TEST(Util3dFiltering, subtractFilteringBasicFiltering)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->push_back(pcl::PointXYZ(0, 0, 0));
+    cloud->push_back(pcl::PointXYZ(1, 0, 0));
+    cloud->push_back(pcl::PointXYZ(2, 0, 0));
+    pcl::IndicesPtr indices(new std::vector<int>{0, 1, 2});
+
+    auto subtractCloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    subtractCloud->push_back(pcl::PointXYZ(1.05, 0, 0));
+    pcl::IndicesPtr subtractIndices(new std::vector<int>);  // Empty = use all
+
+    float radiusSearch = 0.2f;
+    int minNeighborsInRadius = 1;
+
+    auto result = util3d::subtractFiltering(
+        cloud,
+        indices,
+        subtractCloud,
+        subtractIndices,
+        radiusSearch,
+        minNeighborsInRadius);
+
+    // Expected: point 1 has a neighbor within radius -> excluded
+    // Points 0 and 2 do not -> included
+    ASSERT_EQ(result->size(), 2);
+    EXPECT_EQ(result->at(0), 0);
+    EXPECT_EQ(result->at(1), 2);
+}
+
+TEST(Util3dFiltering, subtractAdaptiveFilteringXYZRGB)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+    auto subtractCloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    // Input cloud: 3 points
+    pcl::PointXYZRGB pt;
+    pt.z = 1;
+    cloud->push_back(pt); // (0 ,0, 1)
+    pt.x = 1;
+    cloud->push_back(pt); // (1 ,0, 1)
+    pt.x = 2;
+    cloud->push_back(pt); // (2 ,0, 1)
+
+    // Subtract cloud: one neighbor close to point 1
+    pt.x = 1.05;         
+    subtractCloud->push_back(pt); // (1.05 ,0, 1)
+
+    pcl::IndicesPtr indices(new std::vector<int>{0, 1, 2});
+    pcl::IndicesPtr subtractIndices(new std::vector<int>); // use full subtract cloud
+
+    float radiusSearchRatio = 0.2f; // Adaptive search radius
+    int minNeighborsInRadius = 1;
+    Eigen::Vector3f viewpoint(0, 0, 0);
+
+    pcl::IndicesPtr result = util3d::subtractAdaptiveFiltering(
+        cloud, indices, subtractCloud, subtractIndices,
+        radiusSearchRatio, minNeighborsInRadius, viewpoint
+    );
+
+    // Point 1 should be excluded (has a neighbor), others retained
+    ASSERT_EQ(result->size(), 2);
+    EXPECT_EQ(result->at(0), 0);
+    EXPECT_EQ(result->at(1), 2);
+}
+
+TEST(Util3dFiltering, subtractAdaptiveFilteringXYZRGBNormal)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    auto subtractCloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+
+    // Input point with normal (point 0)
+    pcl::PointXYZRGBNormal pt;
+    pt.x = 0;
+    pt.y = 0;
+    pt.z = 1;
+    pt.normal_x = 0;
+    pt.normal_y = 0;
+    pt.normal_z = 1;
+    cloud->push_back(pt);
+
+    // Neighbor with almost same normal
+    pcl::PointXYZRGBNormal neighbor1 = pt;
+    neighbor1.x = 0.05f;
+    neighbor1.normal_x = cos(89.0f*M_PI/180.0f);
+    neighbor1.normal_z = sin(89.0f*M_PI/180.0f);
+    subtractCloud->push_back(neighbor1);
+
+    // Neighbor with very different normal
+    pcl::PointXYZRGBNormal neighbor2 = pt;
+    neighbor2.x = 0.05f;
+    neighbor2.normal_x = 1;
+    neighbor2.normal_y = 0;
+    neighbor2.normal_z = 0;
+    subtractCloud->push_back(neighbor2);
+
+    pcl::IndicesPtr indices(new std::vector<int>{0});
+    pcl::IndicesPtr subtractIndices(new std::vector<int>); // full cloud
+
+    float radiusSearchRatio = 0.2f;
+    float maxAngle = 20.0f*M_PI/180.0f; // 20 degrees max
+    int minNeighborsInRadius = 1;
+    Eigen::Vector3f viewpoint(0, 0, 0);
+
+    pcl::IndicesPtr result = util3d::subtractAdaptiveFiltering(
+        cloud, indices, subtractCloud, subtractIndices,
+        radiusSearchRatio, maxAngle, minNeighborsInRadius, viewpoint
+    );
+
+    // neighbor2 exceeds angle threshold and should be ignored
+    // neighbor1 should pass if included; result depends on number of valid neighbors
+    ASSERT_EQ(result->size(), 0) << "Point should be excluded due to having a valid neighbor";
+    
+    // Now set maxAngle very low so even neighbor1 is excluded
+    result = util3d::subtractAdaptiveFiltering(
+        cloud, indices, subtractCloud, subtractIndices,
+        radiusSearchRatio, 0.5f*M_PI/180.0f, minNeighborsInRadius, viewpoint
+    );
+
+    // No valid neighbors left -> point should be retained
+    ASSERT_EQ(result->size(), 1);
+    EXPECT_EQ(result->at(0), 0);
+}
+
+TEST(Util3dFiltering, normalFilteringBasic)
+{
+    // Create a flat plane of points along XY plane (normals should be along Z)
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    for (float x = -1.0f; x <= 1.0f; x += 0.5f)
+    {
+        for (float y = -1.0f; y <= 1.0f; y += 0.5f)
+        {
+            cloud->push_back(pcl::PointXYZ(x, y, 0.0f));
+        }
+    }
+
+    pcl::IndicesPtr indices(new std::vector<int>()); // Use all points
+
+    // We expect normals to be [0, 0, 1]
+    Eigen::Vector4f refNormal(0, 0, 1, 0);
+    float angleMax = 10.0f*M_PI/180.0f;  // Allow 10 degrees of deviation
+    int normalKSearch = 5;
+    Eigen::Vector4f viewpoint(0, 0, 1, 0);
+    float groundNormalsUp = 0.0f;  // No flipping
+
+    auto result = util3d::normalFiltering(
+        cloud,
+        indices,
+        angleMax,
+        refNormal,
+        normalKSearch,
+        viewpoint,
+        groundNormalsUp);
+
+    // Expect all points to pass (normals pointing up)
+    ASSERT_EQ(result->size(), cloud->size());
+
+    for (int idx : *result)
+    {
+        EXPECT_GE(idx, 0);
+        EXPECT_LT(idx, static_cast<int>(cloud->size()));
+    }
+}
+
+TEST(Util3dFiltering, normalFilteringRejectNormalsWithLargeDeviation)
+{
+    // Construct a simple slanted surface so normals will not be vertical
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    for (float x = -1.0f; x <= 1.0f; x += 1.0f)
+    {
+        cloud->push_back(pcl::PointXYZ(x, 0, x));  // Diagonal line: normals ≈ 45 degrees
+    }
+
+    pcl::IndicesPtr indices(new std::vector<int>()); // Use all
+
+    Eigen::Vector4f refNormal(0, 0, 1, 0);           // Want normals close to Z
+    float angleMax = 10.0f*M_PI/180.0f;            // Tight filter: only near vertical normals
+    int normalKSearch = 3;
+    Eigen::Vector4f viewpoint(0, 0, 0, 0);
+    float groundNormalsUp = 0.0f;
+
+    auto result = util3d::normalFiltering(
+        cloud,
+        indices,
+        angleMax,
+        refNormal,
+        normalKSearch,
+        viewpoint,
+        groundNormalsUp);
+
+    // Expect points to be rejected due to large angle from reference normal
+    ASSERT_EQ(result->size(), 0);
+}
+
+// Test for PointXYZ type
+TEST(Util3dFiltering, extractClustersBasic)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Generate 3 distinct clusters: centered at (0,0), (5,0), and (10,0)
+    for (float i = 0; i < 3; ++i)
+    {
+        float cx = i * 5.0f;
+        for (int j = 0; j < 10; ++j)
+        {
+            cloud->push_back(pcl::PointXYZ(cx + static_cast<float>(rand()) / RAND_MAX * 0.1f,
+                                    static_cast<float>(rand()) / RAND_MAX * 0.1f,
+                                    0.0f));
+        }
+    }
+
+    pcl::IndicesPtr indices(new std::vector<int>());  // Use all points
+    float clusterTolerance = 1.0f;
+    int minClusterSize = 3;
+    int maxClusterSize = 20;
+    int biggestClusterIdx = -1;
+
+    auto clusters = util3d::extractClusters(
+        cloud, indices, clusterTolerance,
+        minClusterSize, maxClusterSize, &biggestClusterIdx);
+
+    // We should find 3 clusters
+    ASSERT_EQ(clusters.size(), 3);
+
+    // Each cluster should have 10 points
+    for (const auto& cluster : clusters)
+    {
+        ASSERT_EQ(cluster->size(), 10);
+    }
+
+    // Largest cluster index should be valid
+    ASSERT_GE(biggestClusterIdx, 0);
+    ASSERT_LT(biggestClusterIdx, static_cast<int>(clusters.size()));
+    ASSERT_EQ(clusters[biggestClusterIdx]->size(), 10);
+}
+
+TEST(Util3dFiltering, extractClustersMinClusterSize)
+{
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // One big cluster and one tiny cluster
+    for (int i = 0; i < 10; ++i)
+        cloud->push_back(pcl::PointXYZ(i * 0.05f, 0, 0));  // Close points
+
+    cloud->push_back(pcl::PointXYZ(10.0f, 0, 0));  // Isolated point
+
+    pcl::IndicesPtr indices(new std::vector<int>());
+    float clusterTolerance = 0.2f;
+    int minClusterSize = 2;
+    int maxClusterSize = 20;
+    int biggestClusterIdx = -1;
+
+    auto clusters = util3d::extractClusters(
+        cloud, indices, clusterTolerance,
+        minClusterSize, maxClusterSize, &biggestClusterIdx);
+
+    // Should only find one cluster (ignoring the single point)
+    ASSERT_EQ(clusters.size(), 1);
+    ASSERT_EQ(clusters[0]->size(), 10);
+    ASSERT_EQ(biggestClusterIdx, 0);
+}
+
+// Test case: Extract the points corresponding to the specified indices
+TEST(Util3dFiltering, extractIndices) {
+
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud->resize(5);
+
+    // Assigning values to the cloud points
+    for (size_t i = 0; i < cloud->points.size(); ++i) {
+        cloud->points[i].x = static_cast<float>(i);
+        cloud->points[i].y = static_cast<float>(i * 2);
+        cloud->points[i].z = static_cast<float>(i * 3);
+    }
+
+    // Creating a set of indices to extract (e.g., indices 1 and 3)
+    pcl::IndicesPtr indices(new std::vector<int>({1, 3}));
+
+    pcl::IndicesPtr output = util3d::extractIndices(cloud, indices, false);
+
+    // Verify the output contains the correct indices
+    ASSERT_EQ(output->size(), 2);
+    EXPECT_EQ(output->at(0), 1);  // Index 1 should be extracted
+    EXPECT_EQ(output->at(1), 3);  // Index 3 should be extracted
+
+    // Verify the points corresponding to those indices
+    EXPECT_FLOAT_EQ(cloud->points[output->at(0)].x, 1.0);
+    EXPECT_FLOAT_EQ(cloud->points[output->at(1)].x, 3.0);
+
+    output = util3d::extractIndices(cloud, indices, true);
+
+    // Verify the output contains the correct indices (everything except 1 and 3)
+    ASSERT_EQ(output->size(), 3);  // There should be 3 points left (0, 2, 4)
+    EXPECT_EQ(output->at(0), 0);   // Index 0 should be included
+    EXPECT_EQ(output->at(1), 2);   // Index 2 should be included
+    EXPECT_EQ(output->at(2), 4);   // Index 4 should be included
+
+    // Verify that the excluded points are not in the output
+    EXPECT_NE(output->at(0), 1);   // Index 1 should not be in the output
+    EXPECT_NE(output->at(1), 3);   // Index 3 should not be in the output
+}
+
+TEST(Util3dFiltering, extractPlane) {
+
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Define some points that should form a plane
+    cloud->push_back(pcl::PointXYZ(0.0, 0.0, 0.001));
+    cloud->push_back(pcl::PointXYZ(1.0, 0.0, 0.002));
+    cloud->push_back(pcl::PointXYZ(0.0, 1.0, -0.001));
+    cloud->push_back(pcl::PointXYZ(1.0, 1.0, 0.002)); // All points are close to z = 0 plane
+
+    // Optionally, create a subset of indices to test
+    pcl::IndicesPtr indices(new std::vector<int>{0, 1, 2, 3});
+
+    pcl::ModelCoefficients coefficients;
+    pcl::IndicesPtr inliers = util3d::extractPlane(cloud, indices, 0.01, 100, &coefficients);
+
+    // Check if the extracted plane coefficients are correct
+    EXPECT_LT(fabs(coefficients.values[0]), 0.01); // Plane normal x = 0
+    EXPECT_LT(fabs(coefficients.values[1]), 0.01); // Plane normal y = 0
+    EXPECT_GT(fabs(coefficients.values[2]), 0.99); // Plane normal z = 1 (for the z = 0 plane)
+    EXPECT_LT(fabs(coefficients.values[3]), 0.01); // Plane offset (z = 0)
+
+    // Check that all the indices were identified as inliers
+    EXPECT_EQ(inliers->size(), 4); // All points should be inliers
+
+    coefficients = pcl::ModelCoefficients();
+    pcl::IndicesPtr subsetIndices = pcl::IndicesPtr(new std::vector<int>{0, 1, 2}); // Subset of points
+    inliers = util3d::extractPlane(cloud, subsetIndices, 0.01, 100, &coefficients);
+
+    // Check if the extracted plane coefficients are correct
+    EXPECT_LT(fabs(coefficients.values[0]), 0.01); // Plane normal x = 0
+    EXPECT_LT(fabs(coefficients.values[1]), 0.01); // Plane normal y = 0
+    EXPECT_GT(fabs(coefficients.values[2]), 0.99); // Plane normal z = 1 (for the z = 0 plane)
+    EXPECT_LT(fabs(coefficients.values[3]), 0.01); // Plane offset (z = 0)
+
+    // Check that the correct number of inliers are found
+    EXPECT_EQ(inliers->size(), 3); // Only 3 points were used
+
+    // Set a very strict distance threshold to ensure no inliers
+    inliers = util3d::extractPlane(cloud, indices, 0.0001, 100, &coefficients);
+
+    // Check that no inliers are found
+    EXPECT_EQ(inliers->size(), 3); // less than 4 inliers with such a small threshold
+
+    pcl::IndicesPtr emptyIndices; // Empty indices
+    coefficients = pcl::ModelCoefficients();
+    
+    // When indices are empty, the function should use the whole cloud
+    inliers = util3d::extractPlane(cloud, emptyIndices, 0.01, 100, &coefficients);
+
+    // Check if the coefficients correspond to a plane in the z = 0 plane
+    EXPECT_LT(fabs(coefficients.values[0]), 0.01); // Plane normal x = 0
+    EXPECT_LT(fabs(coefficients.values[1]), 0.01); // Plane normal y = 0
+    EXPECT_GT(fabs(coefficients.values[2]), 0.99); // Plane normal z = 1 (for the z = 0 plane)
+    EXPECT_LT(fabs(coefficients.values[3]), 0.01); // Plane offset (z = 0)
+
+    // Check if all points are inliers (since we are using the whole cloud)
+    EXPECT_EQ(inliers->size(), 4); // All points should be inliers
+}

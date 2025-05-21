@@ -1584,7 +1584,7 @@ pcl::IndicesPtr proportionalRadiusFilteringImpl(
 	{
 		std::vector<bool> kept(cloud->size());
 		tree->setInputCloud(cloud);
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for(int i=0; i<(int)cloud->size(); ++i)
 		{
 			std::vector<int> kIndices;
@@ -1595,6 +1595,7 @@ pcl::IndicesPtr proportionalRadiusFilteringImpl(
 			cv::Point3f point = cv::Point3f(cloud->at(i).x,cloud->at(i).y, cloud->at(i).z);
 			float radiusSearch = factor * cv::norm(viewpoint-point);
 			int k = tree->radiusSearch(cloud->at(i), radiusSearch, kIndices, kDistances);
+			printf("Found k=%d (radius=%f) for %d (factor=%f dist to viewpoint=%f)\n", k, radiusSearch, i, factor, cv::norm(viewpoint-point));
 			bool keep = k>0;
 			for(int j=0; j<k && keep; ++j)
 			{
@@ -1607,12 +1608,14 @@ pcl::IndicesPtr proportionalRadiusFilteringImpl(
 					UASSERT(viewpointIter != viewpoints.end());
 					viewpoint = cv::Point3f(viewpointIter->second.x(), viewpointIter->second.y(), viewpointIter->second.z());
 					float radiusSearchTmp = factor * cv::norm(viewpoint-pointTmp) * neighborScale;
+					printf("Check neighbor %d dist to %d = %f >? %f\n", kIndices[j], i, sqrt(distPtSqr), radiusSearchTmp);
 					if(distPtSqr > radiusSearchTmp*radiusSearchTmp)
 					{
 						keep = false;
 					}
 				}
 			}
+			printf("keep %d = %s\n", i, keep?"true":"false");
 			kept[i] = keep;
 		}
 		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
@@ -1690,14 +1693,26 @@ pcl::IndicesPtr proportionalRadiusFiltering(
 	return proportionalRadiusFilteringImpl<pcl::PointXYZINormal>(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale);
 }
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & subtractCloud,
+	float radiusSearch,
+	int minNeighborsInRadius)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, subtractCloud, indices, radiusSearch, minNeighborsInRadius);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr out(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::copyPointCloud(*cloud, *indicesOut, *out);
+	return out;
+}
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
 		float radiusSearch,
 		int minNeighborsInRadius)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, minNeighborsInRadius);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, subtractCloud, indices, radiusSearch, minNeighborsInRadius);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr out(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::copyPointCloud(*cloud, *indicesOut, *out);
 	return out;
@@ -1707,8 +1722,8 @@ template<typename PointT>
 pcl::IndicesPtr subtractFilteringImpl(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const typename pcl::PointCloud<PointT>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const typename pcl::PointCloud<PointT>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		int minNeighborsInRadius)
 {
@@ -1719,13 +1734,13 @@ pcl::IndicesPtr subtractFilteringImpl(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
@@ -1744,13 +1759,13 @@ pcl::IndicesPtr subtractFilteringImpl(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
@@ -1767,51 +1782,61 @@ pcl::IndicesPtr subtractFilteringImpl(
 	}
 }
 pcl::IndicesPtr subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+	const pcl::IndicesPtr & indices,
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & subtractCloud,
+	const pcl::IndicesPtr & subtractIndices,
+	float radiusSearch,
+	int minNeighborsInRadius)
+{
+return subtractFilteringImpl<pcl::PointXYZ>(cloud, indices, subtractCloud, subtractIndices, radiusSearch, minNeighborsInRadius);
+}
+pcl::IndicesPtr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		int minNeighborsInRadius)
 {
-	return subtractFilteringImpl<pcl::PointXYZRGB>(cloud, indices, substractCloud, substractIndices, radiusSearch, minNeighborsInRadius);
+	return subtractFilteringImpl<pcl::PointXYZRGB>(cloud, indices, subtractCloud, subtractIndices, radiusSearch, minNeighborsInRadius);
 }
 
 pcl::PointCloud<pcl::PointNormal>::Ptr subtractFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, subtractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
 	pcl::PointCloud<pcl::PointNormal>::Ptr out(new pcl::PointCloud<pcl::PointNormal>);
 	pcl::copyPointCloud(*cloud, *indicesOut, *out);
 	return out;
 }
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, subtractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
 	pcl::PointCloud<pcl::PointXYZINormal>::Ptr out(new pcl::PointCloud<pcl::PointXYZINormal>);
 	pcl::copyPointCloud(*cloud, *indicesOut, *out);
 	return out;
 }
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, substractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
+	pcl::IndicesPtr indicesOut = subtractFiltering(cloud, indices, subtractCloud, indices, radiusSearch, maxAngle, minNeighborsInRadius);
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr out(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	pcl::copyPointCloud(*cloud, *indicesOut, *out);
 	return out;
@@ -1821,8 +1846,8 @@ template<typename PointT>
 pcl::IndicesPtr subtractFilteringImpl(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const typename pcl::PointCloud<PointT>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const typename pcl::PointCloud<PointT>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
@@ -1834,13 +1859,13 @@ pcl::IndicesPtr subtractFilteringImpl(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
@@ -1857,7 +1882,7 @@ pcl::IndicesPtr subtractFilteringImpl(
 					int count = k;
 					for(int j=0; j<count && k >= minNeighborsInRadius; ++j)
 					{
-						Eigen::Vector4f v(substractCloud->at(kIndices.at(j)).normal_x, substractCloud->at(kIndices.at(j)).normal_y, substractCloud->at(kIndices.at(j)).normal_z, 0.0f);
+						Eigen::Vector4f v(subtractCloud->at(kIndices.at(j)).normal_x, subtractCloud->at(kIndices.at(j)).normal_y, subtractCloud->at(kIndices.at(j)).normal_z, 0.0f);
 						if(uIsFinite(v[0]) &&
 							uIsFinite(v[1]) &&
 							uIsFinite(v[2]))
@@ -1891,13 +1916,13 @@ pcl::IndicesPtr subtractFilteringImpl(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
@@ -1914,7 +1939,7 @@ pcl::IndicesPtr subtractFilteringImpl(
 					int count = k;
 					for(int j=0; j<count && k >= minNeighborsInRadius; ++j)
 					{
-						Eigen::Vector4f v(substractCloud->at(kIndices.at(j)).normal_x, substractCloud->at(kIndices.at(j)).normal_y, substractCloud->at(kIndices.at(j)).normal_z, 0.0f);
+						Eigen::Vector4f v(subtractCloud->at(kIndices.at(j)).normal_x, subtractCloud->at(kIndices.at(j)).normal_y, subtractCloud->at(kIndices.at(j)).normal_z, 0.0f);
 						if(uIsFinite(v[0]) &&
 							uIsFinite(v[1]) &&
 							uIsFinite(v[2]))
@@ -1949,42 +1974,42 @@ pcl::IndicesPtr subtractFilteringImpl(
 pcl::IndicesPtr subtractFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
 {
-	return subtractFilteringImpl<pcl::PointNormal>(cloud, indices, substractCloud, substractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
+	return subtractFilteringImpl<pcl::PointNormal>(cloud, indices, subtractCloud, subtractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
 }
 pcl::IndicesPtr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
 {
-	return subtractFilteringImpl<pcl::PointXYZINormal>(cloud, indices, substractCloud, substractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
+	return subtractFilteringImpl<pcl::PointXYZINormal>(cloud, indices, subtractCloud, subtractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
 }
 pcl::IndicesPtr subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		float maxAngle,
 		int minNeighborsInRadius)
 {
-	return subtractFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, substractCloud, substractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
+	return subtractFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, subtractCloud, subtractIndices, radiusSearch, maxAngle, minNeighborsInRadius);
 }
 
 pcl::IndicesPtr subtractAdaptiveFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearchRatio,
 		int minNeighborsInRadius,
 		const Eigen::Vector3f & viewpoint)
@@ -1998,13 +2023,13 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
@@ -2030,13 +2055,13 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
@@ -2062,8 +2087,8 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 pcl::IndicesPtr subtractAdaptiveFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearchRatio,
 		float maxAngle,
 		int minNeighborsInRadius,
@@ -2077,13 +2102,13 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(indices->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
@@ -2106,7 +2131,7 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 						int count = k;
 						for(int j=0; j<count && k >= minNeighborsInRadius; ++j)
 						{
-							Eigen::Vector4f v(substractCloud->at(kIndices.at(j)).normal_x, substractCloud->at(kIndices.at(j)).normal_y, substractCloud->at(kIndices.at(j)).normal_z, 0.0f);
+							Eigen::Vector4f v(subtractCloud->at(kIndices.at(j)).normal_x, subtractCloud->at(kIndices.at(j)).normal_y, subtractCloud->at(kIndices.at(j)).normal_z, 0.0f);
 							if(uIsFinite(v[0]) &&
 								uIsFinite(v[1]) &&
 								uIsFinite(v[2]))
@@ -2142,13 +2167,13 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 	{
 		pcl::IndicesPtr output(new std::vector<int>(cloud->size()));
 		int oi = 0; // output iterator
-		if(substractIndices->size())
+		if(subtractIndices->size())
 		{
-			tree->setInputCloud(substractCloud, substractIndices);
+			tree->setInputCloud(subtractCloud, subtractIndices);
 		}
 		else
 		{
-			tree->setInputCloud(substractCloud);
+			tree->setInputCloud(subtractCloud);
 		}
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
@@ -2171,7 +2196,7 @@ pcl::IndicesPtr subtractAdaptiveFiltering(
 						int count = k;
 						for(int j=0; j<count && k >= minNeighborsInRadius; ++j)
 						{
-							Eigen::Vector4f v(substractCloud->at(kIndices.at(j)).normal_x, substractCloud->at(kIndices.at(j)).normal_y, substractCloud->at(kIndices.at(j)).normal_z, 0.0f);
+							Eigen::Vector4f v(subtractCloud->at(kIndices.at(j)).normal_x, subtractCloud->at(kIndices.at(j)).normal_y, subtractCloud->at(kIndices.at(j)).normal_z, 0.0f);
 							if(uIsFinite(v[0]) &&
 								uIsFinite(v[1]) &&
 								uIsFinite(v[2]))
@@ -2655,12 +2680,19 @@ pcl::IndicesPtr extractPlane(
 	seg.setMethodType (pcl::SAC_RANSAC);
 	seg.setDistanceThreshold (distanceThreshold);
 
-	seg.setInputCloud (cloud);
-	if(indices->size())
-	{
-		seg.setIndices(indices);
+	try {
+		seg.setInputCloud (cloud);
+		if(indices.get() && indices->size())
+		{
+			seg.setIndices(indices);
+		}
+		seg.segment (*inliers, *coefficients);
 	}
-	seg.segment (*inliers, *coefficients);
+	catch(const pcl::PCLException& e)
+	{
+		UWARN("PCL exception: %s", e.what());
+		return pcl::IndicesPtr(new std::vector<int>); // return empty indices
+	}
 
 	if(coefficientsOut)
 	{

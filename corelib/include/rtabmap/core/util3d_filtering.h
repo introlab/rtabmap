@@ -904,146 +904,304 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		float farClipPlaneDistance,
 		bool negative = false);
 
-
+/**
+ * @defgroup RemoveNaNFromPointCloud Remove NaN Points from a Point Cloud
+ * @brief Removes NaN (Not-a-Number) points from an organized point cloud.
+ *
+ * This function takes a pointer to an organized PCL point cloud and returns a new dense point cloud
+ * with all NaN points removed. It uses the PCL function `pcl::removeNaNFromPointCloud`
+ * to perform the filtering.
+ * 
+ * @note If the input cloud is already dense, no filtering happens and 
+ *       a copy of the input cloud is returned.
+ *
+ * @param cloud The organized input point cloud containing possible NaN values.
+ * @return A new dense point cloud with NaN points removed.
+ *
+ */
+/**
+ * @ingroup RemoveNaNFromPointCloud
+ * @brief Remove NaN points from a point cloud of type `pcl::PointXYZ`.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
+/**
+ * @ingroup RemoveNaNFromPointCloud
+ * @brief Remove NaN points from a point cloud of type `pcl::PointXYZRGB`.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+/**
+ * @ingroup RemoveNaNFromPointCloud
+ * @brief Remove NaN points from a point cloud of type `pcl::PointXYZI`.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud);
+/**
+ * @ingroup RemoveNaNFromPointCloud
+ * @brief Remove NaN points from a point cloud of type `pcl::PCLPointCloud2`.
+ */
 pcl::PCLPointCloud2::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PCLPointCloud2::Ptr & cloud);
 
 
+/**
+ * @defgroup RemoveNaNNormalsFromPointCloud Remove NaN Points from a Point Cloud
+ * @brief Removes points with NaN normal values from a point cloud.
+ *
+ * This function filters out all points in the input point cloud whose normal components
+ * contain NaN (Not-a-Number) values. It uses the PCL utility function 
+ * `pcl::removeNaNNormalsFromPointCloud` to perform the filtering operation.
+ *
+ * @param cloud The input point cloud, which may contain NaN normal values.
+ * @return A new point cloud with all NaN normals removed.
+ *
+ */
+/**
+ * @ingroup RemoveNaNNormalsFromPointCloud
+ * @brief Removes points with NaN normal values from a point cloud of type `pcl::PointNormal`.
+ */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud);
+/**
+ * @ingroup RemoveNaNNormalsFromPointCloud
+ * @brief Removes points with NaN normal values from a point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
+/**
+ * @ingroup RemoveNaNNormalsFromPointCloud
+ * @brief Removes points with NaN normal values from a point cloud of type `pcl::PointXYZINormal`.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud);
 
 /**
- * For convenience.
- */
-
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		float radiusSearch,
-		int minNeighborsInRadius);
-
-/**
- * @brief Wrapper of the pcl::RadiusOutlierRemoval class.
+ * @defgroup RadiusFiltering Radius Filtering
+ * @brief Filters points based on the number of neighbors within a given radius.
  *
- * Points in the cloud which have less than a minimum of neighbors in the
- * specified radius are filtered.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearch the radius in meter.
- * @param minNeighborsInRadius the minimum of neighbors to keep the point.
- * @return the indices of the points satisfying the parameters.
- */
-
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float radiusSearch,
-		int minNeighborsInRadius);
-
-/* for convenience */
-pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const std::vector<int> & viewpointIndices,
-		const std::map<int, Transform> & viewpoints,
-		float factor=0.01f,
-		float neighborScale=2.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const std::vector<int> & viewpointIndices,
-		const std::map<int, Transform> & viewpoints,
-		float factor=0.01f,
-		float neighborScale=2.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::vector<int> & viewpointIndices,
-		const std::map<int, Transform> & viewpoints,
-		float factor=0.01f,
-		float neighborScale=2.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const std::vector<int> & viewpointIndices,
-		const std::map<int, Transform> & viewpoints,
-		float factor=0.01f,
-		float neighborScale=2.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
-		const std::vector<int> & viewpointIndices,
-		const std::map<int, Transform> & viewpoints,
-		float factor=0.01f,
-		float neighborScale=2.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		const std::vector<int> & viewpointIndices,
-		const std::map<int, Transform> & viewpoints,
-		float factor=0.01f,
-		float neighborScale=2.0f);
-
-/**
- * @brief Filter points based on distance from their viewpoint.
+ * This function performs a radius-based outlier filtering on a point cloud. It returns
+ * a set of point indices where each corresponding point has more than 
+ * `minNeighborsInRadius` neighboring points within the specified `radiusSearch`.
  *
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param viewpointIndices should be same size than the input cloud, it tells the viewpoint index in viewpoints for each point.
- * @param viewpoints the viewpoints.
- * @param factor will determine the search radius based on the distance from a point and its viewpoint. Setting it higher will filter points farther from accurate points (but processing time will be also higher).
- * @param neighborScale will scale the search radius of neighbors found around a point. Setting it higher will accept more noisy points close to accurate points (but processing time will be also higher).
- * @return the indices of the points satisfying the parameters.
+ * If an input index list is provided (`indices` is non-empty), the filtering is applied
+ * only to those points. Otherwise, the function processes the entire cloud.
+ *
+ * @param cloud The input point cloud.
+ * @param indices An optional vector of indices specifying the subset of points to process.
+ * @param radiusSearch The radius within which to search for neighboring points.
+ * @param minNeighborsInRadius The minimum number of neighbors required within the radius
+ *                              for a point to be retained.
+ * @return A vector of indices of points that passed the filtering criteria.
+ *
+ * @note Uses a KdTree for efficient neighbor search. The `+1` in `minNeighborsInRadius + 1`
+ * accounts for the point itself being included in the neighbor list.
+ *
  */
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZ`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointNormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZRGB`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZRGBNormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZI`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZINormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZ` with indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointNormal` with indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZRGB` with indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZRGBNormal` with indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZI` with indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+/**
+ * @ingroup RadiusFiltering
+ * @brief Radius filtering for point cloud of type `pcl::PointXYZINormal` with indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
 
+/**
+ * @defgroup ProportionalRadiusFiltering Proportional Radius Filtering
+ * @brief Performs proportional radius outlier filtering using viewpoint-dependent adaptive radii.
+ *
+ * This function filters a point cloud by performing a radius search for each point,
+ * where the radius is proportional to the distance from a known viewpoint.
+ * A point is retained only if it has at least one neighbor within the computed radius,
+ * and all neighbors lie within an *adjusted* radius from their own viewpoints,
+ * scaled by `neighborScale`.
+ *
+ * This method is useful in 3D reconstruction and SLAM where density can vary with distance from the sensor,
+ * and traditional fixed-radius filtering is insufficient.
+ * 
+ *
+ * @param cloud The input point cloud.
+ * @param indices The subset of indices to process. If empty, the entire cloud is processed.
+ * @param viewpointIndices A vector mapping each point index in the cloud to its associated viewpoint ID.
+ *                         Must be the same size as the input cloud.
+ * @param viewpoints A map from viewpoint IDs to 3D poses (transforms) representing sensor positions.
+ * @param factor A scaling factor used to determine the radius search distance based on viewpoint distance.
+ *               Must be greater than 0. Setting it higher will filter points farther from the more accurate points 
+ *               (but processing time will be also higher).
+ * @param neighborScale A scaling factor applied to neighbors' viewpoint-based radius. Must be ≥ 1. Setting 
+ *                      it higher will accept more noisy points close to the more accurate points (but processing time 
+ *                      will be also higher).
+ * @return A vector of indices of the points that passed the filtering criteria.
+ *
+ * @note
+ * - A KdTree is used for neighbor search.
+ * - Points with no valid neighbors within the proportional radius are removed.
+ * - For a point to be kept, all its neighbors (except itself) must also lie within their own
+ *   scaled proportional radius (`factor * distance_to_own_viewpoint * neighborScale`).
+ * - OpenMP is used to parallelize the full-cloud version for performance.
+ * - The function throws exceptions to enforce internal assumptions (e.g., input sizes and valid viewpoint mappings).
+ *
+ */
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZ`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointNormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGB`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGBNormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZI`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZINormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const std::vector<int> & viewpointIndices,
+		const std::map<int, Transform> & viewpoints,
+		float factor=0.01f,
+		float neighborScale=2.0f);
+
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZ` with indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1051,6 +1209,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointNormal` with indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1058,6 +1220,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGB` with indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1065,6 +1231,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGBNormal` with indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1072,6 +1242,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZI` with indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1079,6 +1253,10 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
+/**
+ * @ingroup ProportionalRadiusFiltering
+ * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZINormal` with indices.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1088,133 +1266,194 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		float neighborScale=2.0f);
 
 /**
- * For convenience.
+ * @defgroup SubtractFiltering Subtract Filtering
+ * @brief Filters a point cloud by removing points that have a sufficient number of neighbors
+ *        within a given radius in a second point cloud.
+ *
+ * This function performs a radius-based subtraction filter between two point clouds. It searches 
+ * the `subtractCloud` for neighbors around each point in the `cloud`, and retains only those 
+ * points from `cloud` (or from the `indices` subset of it) that have fewer than 
+ * `minNeighborsInRadius` neighbors within the `radiusSearch` radius in `subtractCloud`.
+ *
+ * @param cloud The input point cloud to filter.
+ * @param indices The indices of the input point cloud to consider. If empty, the entire cloud is used.
+ * @param subtractCloud The point cloud to search against for neighboring points.
+ * @param subtractIndices Optional indices to use from the subtractCloud. If empty, the whole cloud is used.
+ * @param radiusSearch The radius within which to search for neighbors in the `subtractCloud`.
+ * @param minNeighborsInRadius Minimum number of neighbors required within `radiusSearch` to consider
+ *        a point in `cloud` as not filtered out. Points with fewer neighbors are kept.
+ *
+ * @return The indices of points from `cloud` that passed the filter, or the new filtered point cloud otherwise.
  */
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
-		float radiusSearch,
-		int minNeighborsInRadius = 1);
-
 /**
- * Subtract a cloud from another one using radius filtering.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param cloud the input cloud to subtract.
- * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearch the radius in meter.
- * @return the indices of the points satisfying the parameters.
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZ`, returning filtered indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+	const pcl::IndicesPtr & indices,
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & subtractCloud,
+	const pcl::IndicesPtr & subtractIndices,
+	float radiusSearch,
+	int minNeighborsInRadius = 1);
+ /**
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZRGB`, returning filtered indices.
  */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		int minNeighborsInRadius = 1);
-
 /**
- * For convenience.
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointNormal`, returning filtered indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
+		float radiusSearch,
+		float maxAngle = M_PI/4.0f,
+		int minNeighborsInRadius = 1);
+/**
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZINormal`, returning filtered indices.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+	const pcl::IndicesPtr & indices,
+	const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & subtractCloud,
+	const pcl::IndicesPtr & subtractIndices,
+	float radiusSearch,
+	float maxAngle = M_PI/4.0f,
+	int minNeighborsInRadius = 1);
+/**
+* @ingroup SubtractFiltering
+* @brief Subtract filtering for point cloud of type `pcl::PointXYZRGBNormal`, returning filtered indices.
+*/
+pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+	const pcl::IndicesPtr & indices,
+	const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
+	const pcl::IndicesPtr & subtractIndices,
+	float radiusSearch,
+	float maxAngle = M_PI/4.0f,
+	int minNeighborsInRadius = 1);
+/**
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZ`, returning a new filtered point cloud.
+ */
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr & subtractCloud,
+	float radiusSearch,
+	int minNeighborsInRadius = 1);
+/**
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZRGB`, returning a new filtered point cloud.
+ */
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
+	float radiusSearch,
+	int minNeighborsInRadius = 1);
+/**
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointNormal`, returning a new filtered point cloud.
  */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
-
 /**
- * Subtract a cloud from another one using radius filtering.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param cloud the input cloud to subtract.
- * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearch the radius in meter.
- * @return the indices of the points satisfying the parameters.
- */
-pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
-		float radiusSearch,
-		float maxAngle = M_PI/4.0f,
-		int minNeighborsInRadius = 1);
-
-/**
- * For convenience.
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZINormal`, returning a new filtered point cloud.
  */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
+/**
+ * @ingroup SubtractFiltering
+ * @brief Subtract filtering for point cloud of type `pcl::PointXYZRGBNormal`, returning a new filtered point cloud.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
 
 /**
- * Subtract a cloud from another one using radius filtering.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param cloud the input cloud to subtract.
- * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearch the radius in meter.
- * @return the indices of the points satisfying the parameters.
- */
-pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
-		float radiusSearch,
-		float maxAngle = M_PI/4.0f,
-		int minNeighborsInRadius = 1);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
-		float radiusSearch,
-		float maxAngle = M_PI/4.0f,
-		int minNeighborsInRadius = 1);
-
-/**
- * Subtract a cloud from another one using radius filtering.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param cloud the input cloud to subtract.
- * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearchRatio the ratio used to compute the radius at different distances (e.g., a ratio of 0.1 at 4 m results in a radius of 4 cm).
- * @return the indices of the points satisfying the parameters.
+ * @brief Performs adaptive radius-based subtraction filtering on a point cloud.
+ *
+ * This function removes points from the input `cloud` that have at least 
+ * `minNeighborsInRadius` neighbors within an adaptive radius in the `subtractCloud`.
+ * The search radius is scaled proportionally to the distance of each point from the `viewpoint`,
+ * using the `radiusSearchRatio`.
+ *
+ * @param cloud The input point cloud to filter.
+ * @param indices The subset of points in `cloud` to consider. If empty, the entire cloud is used.
+ * @param subtractCloud The reference point cloud to search against.
+ * @param subtractIndices Optional indices for `subtractCloud`. If empty, the full cloud is used.
+ * @param radiusSearchRatio The ratio to scale the radius based on distance to `viewpoint`.
+ * @param minNeighborsInRadius Minimum number of neighbors required to consider a point "covered".
+ * @param viewpoint The reference viewpoint used to compute adaptive search radius.
+ *
+ * @return The retained point indices from `cloud`.
+ *
+ * @note Points with fewer than `minNeighborsInRadius` neighbors in the subtract cloud are retained.
+ * @warning This version does not consider surface normals; it is purely geometric.
  */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearchRatio = 0.01,
 		int minNeighborsInRadius = 1,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
 
 /**
- * Subtract a cloud from another one using radius filtering.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
- * @param cloud the input cloud to subtract.
- * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
- * @param radiusSearchRatio the ratio used to compute the radius at different distances (e.g., a ratio of 0.01 at 4 m results in a radius of 4 cm).
- * @return the indices of the points satisfying the parameters.
+ * @brief Performs adaptive radius-based subtraction filtering on a point cloud with normals,
+ *        also considering normal direction differences.
+ *
+ * This function removes points from the input `cloud` that have at least 
+ * `minNeighborsInRadius` neighbors within an adaptive radius in the `subtractCloud`, 
+ * unless the angular difference between normals exceeds `maxAngle`.
+ *
+ * The search radius is scaled based on the distance of each point from the `viewpoint`,
+ * using the `radiusSearchRatio`. For neighbors found, the angle between their normals 
+ * and the input point’s normal is evaluated. If the angle exceeds `maxAngle`, the neighbor
+ * is ignored.
+ *
+ * @param cloud The input point cloud with normals to filter.
+ * @param indices The subset of points in `cloud` to consider. If empty, the entire cloud is used.
+ * @param subtractCloud The reference point cloud with normals to search against.
+ * @param subtractIndices Optional indices for `subtractCloud`. If empty, the full cloud is used.
+ * @param radiusSearchRatio The ratio to scale the radius based on distance to `viewpoint`.
+ * @param maxAngle Maximum angle (in radians) allowed between normals of matched neighbors.
+ * @param minNeighborsInRadius Minimum number of valid neighbors required to exclude a point.
+ * @param viewpoint The reference viewpoint used to compute adaptive search radius.
+ *
+ * @return The retained point indices from `cloud`.
+ *
+ * @note Neighbors with normals exceeding `maxAngle` from the input point's normal are discarded.
+ *       Points with fewer than `minNeighborsInRadius` valid neighbors are retained.
  */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
-		const pcl::IndicesPtr & substractIndices,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
+		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearchRatio = 0.01,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1,
@@ -1222,116 +1461,174 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(
 
 
 /**
- * For convenience.
- */
-
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-
-/**
- * @brief Given a normal and a maximum angle error, keep all points of the cloud
- * respecting this normal.
+ * @defgroup PointNormalFiltering Point Normal Filtering
+ * @brief Filters points in a point cloud based on the angle between their estimated surface normals
+ *        and a given reference normal.
  *
- * The normals are computed using the radius search parameter (pcl::NormalEstimation class is used for this), then
- * for each normal, the corresponding point is filtered if the
- * angle (using pcl::getAngle3D()) with the normal specified by the user is larger than the maximum
- * angle specified by the user.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
- * @param angleMax the maximum angle.
- * @param normal the normal to which each point's normal is compared.
- * @param normalKSearch number of neighbor points used for normal estimation (see pcl::NormalEstimation).
- * @param viewpoint from which viewpoint the normals should be estimated (see pcl::NormalEstimation).
- * @return the indices of the points which respect the normal constraint.
- */
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
-		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		float angleMax,
-		const Eigen::Vector4f & normal,
-		int normalKSearch,
-		const Eigen::Vector4f & viewpoint,
-		float groundNormalsUp = 0.0f);
-
-/**
- * For convenience.
- */
-std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		float clusterTolerance,
-		int minClusterSize,
-		int maxClusterSize = std::numeric_limits<int>::max(),
-		int * biggestClusterIndex = 0);
-std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		float clusterTolerance,
-		int minClusterSize,
-		int maxClusterSize = std::numeric_limits<int>::max(),
-		int * biggestClusterIndex = 0);
-
-/**
- * @brief Wrapper of the pcl::EuclideanClusterExtraction class.
+ * This function estimates surface normals for each point (or subset of points) in the input point cloud,
+ * and retains only those points whose normals are within `angleMax` radians from the given reference normal.
+ * 
+ * If `groundNormalsUp` is set, normals that are facing significantly downward (based on the Z-axis) may be
+ * flipped to point upwards before comparison, especially useful for handling sensors like Velodyne where
+ * some road-facing rays produce downward normals.
  *
- * Extract all clusters from a point cloud given a maximum cluster distance tolerance.
- * @param cloud the input cloud.
- * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
- * @param clusterTolerance the cluster distance tolerance (see pcl::EuclideanClusterExtraction).
- * @param minClusterSize minimum size of the clusters to return (see pcl::EuclideanClusterExtraction).
- * @param maxClusterSize maximum size of the clusters to return (see pcl::EuclideanClusterExtraction).
- * @param biggestClusterIndex the index of the biggest cluster, if the clusters are empty, a negative index is set.
- * @return the indices of each cluster found.
+ * @param cloud The input point cloud to process. If the input cloud type doesn't have normals, the 
+ *              normals will be computed using `normalKSearh` and `viewpoint` parameters.
+ * @param indices Optional subset of indices in `cloud` to consider. If empty, the entire cloud is used.
+ * @param angleMax Maximum allowed angle (in radians) between estimated normals and the given reference `normal`.
+ * @param normal The reference normal vector to compare against (must be normalized).
+ * @param normalKSearch Number of nearest neighbors used for normal estimation, when input cloud doesn't have normals.
+ * @param viewpoint The viewpoint position to be used in normal estimation (can affect direction of normals).
+ * @param groundNormalsUp Threshold used to detect and flip ground-facing normals (set to 0.0f to disable).
+ *        If the Z component of a normal is less than `-groundNormalsUp` and the corresponding point is
+ *        below the viewpoint, the normal will be flipped.
+ *
+ * @return The indices of points whose normals are within `angleMax` of the reference `normal`.
+ *
+ * @note This function uses PCL's `NormalEstimationOMP` for efficient multi-threaded normal estimation when input cloud doesn't have normals.
+ * @note Normal flipping is typically used to correct misoriented normals on flat ground surfaces.
+ */
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZ`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZRGB`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZ`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZRGB`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZI`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointNormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZRGBNormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+/**
+ * @ingroup PointNormalFiltering
+ * @brief Point normal filtering for point cloud of type `pcl::PointXYZINormal`.
+ */
+pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float angleMax,
+		const Eigen::Vector4f & normal,
+		int normalKSearch,
+		const Eigen::Vector4f & viewpoint,
+		float groundNormalsUp = 0.0f);
+
+/**
+ * @defgroup ExtractClusters Point Cloud Cluster Extraction
+ * @brief Performs Euclidean cluster extraction on a point cloud.
+ *
+ * This function uses PCL's Euclidean clustering algorithm to segment the input point cloud
+ * into clusters based on spatial proximity. It optionally considers a subset of indices within
+ * the cloud, and returns the list of clusters as vectors of point indices.
+ *
+ * Additionally, it can return the index of the largest cluster found.
+ *
+ * @param cloud The input point cloud from which clusters will be extracted.
+ * @param indices Optional pointer to a list of indices to consider for clustering. If empty, the full cloud is used.
+ * @param clusterTolerance The spatial distance threshold for clustering. Points within this distance are considered part of the same cluster.
+ * @param minClusterSize The minimum number of points required for a valid cluster.
+ * @param maxClusterSize The maximum number of points allowed in a cluster.
+ * @param biggestClusterIndex Optional output pointer. If not null, it will be set to the index of the largest cluster in the output.
+ *
+ * @return A vector of indices, where each element contains the indices of one extracted cluster.
+ *
+ * @note Internally, this uses a KdTree for spatial searches and `pcl::EuclideanClusterExtraction` for segmentation.
+ * @note The order of clusters in the output is not guaranteed to reflect size or position.
+ * @note If no clusters are found, the output vector will be empty and biggestClusterIndex will be set to -1.
+ */
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZ`.
+ */
+std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize = std::numeric_limits<int>::max(),
+		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZRGB`.
+ */
+std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float clusterTolerance,
+		int minClusterSize,
+		int maxClusterSize = std::numeric_limits<int>::max(),
+		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZ` inside provided indices.
  */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
@@ -1340,6 +1637,10 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointNormal` inside provided indices.
+ */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1347,6 +1648,10 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZRGB` inside provided indices.
+ */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1354,6 +1659,10 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZRGBNormal` inside provided indices.
+ */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1361,6 +1670,10 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZI` inside provided indices.
+ */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1368,6 +1681,10 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
+/**
+ * @ingroup ExtractClusters
+ * @brief Extract clusters from point cloud of type `pcl::PointXYZ`.
+ */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1376,71 +1693,150 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
 
+/**
+ * @defgroup ExtractIndices Point Cloud Indices Extraction
+ * @brief Extracts a subset of points from a point cloud based on specified indices.
+ *
+ * This function filters the input point cloud by extracting the points corresponding
+ * to the provided set of indices. The `negative` parameter determines whether to
+ * extract the points listed in the indices (if `negative` is false) or to exclude
+ * the points listed in the indices (if `negative` is true).
+ *
+ * The function uses PCL's `ExtractIndices` to perform the extraction and returns the
+ * resulting set of indices as a shared pointer to a vector of integers.
+ *
+ * @param cloud The input point cloud from which to extract points.
+ * @param indices A pointer to the indices specifying the points to be extracted (or excluded).
+ * @param negative If true, the points specified by `indices` are excluded; otherwise, they are included.
+ *
+ * @return A vector of indices representing the extracted points (or remaining points if `negative` is true), 
+ *         or a new point cloud with the corresponding points.
+ *
+ * @note This function uses PCL's `ExtractIndices` filter to extract or remove the points based on the provided indices.
+ * @note The returned `output` indices correspond to the points that are either extracted or excluded from the input cloud.
+ */
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract indices from point cloud of type `pcl::PointXYZ`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract indices from point cloud of type `pcl::PointNormal`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract indices from point cloud of type `pcl::PointXYZRGB`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract indices from point cloud of type `pcl::PointXYZRGBNormal`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract indices from point cloud of type `pcl::PointXYZI`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract indices from point cloud of type `pcl::PointXYZINormal`.
+ */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract points from point cloud of type `pcl::PointXYZ` with corresponding indices.
+ */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract points from point cloud of type `pcl::PointXYZRGB` with corresponding indices.
+ */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
-// PCL default lacks of pcl::PointNormal type support
-//pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT extractIndices(
-//		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-//		const pcl::IndicesPtr & indices,
-//		bool negative,
-//		bool keepOrganized);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract points from point cloud of type `pcl::PointXYZRGBNormal` with corresponding indices.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract points from point cloud of type `pcl::PointXYZI` with corresponding indices.
+ */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
+/**
+ * @ingroup ExtractIndices
+ * @brief Extract points from point cloud of type `pcl::PointXYZINormal` with corresponding indices.
+ */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
 
+/**
+ * @brief Extracts the indices of the inliers that belong to a plane using RANSAC.
+ *
+ * This function uses the RANSAC algorithm to fit a plane model to a set of 3D points
+ * and returns the indices of the points that are considered inliers (i.e., those that
+ * lie close to the fitted plane). It also optionally outputs the coefficients of the plane
+ * (normal and offset).
+ *
+ * @param cloud The input point cloud.
+ * @param indices An optional set of indices in the point cloud to use for segmentation. If empty, the whole cloud is used.
+ * @param distanceThreshold The distance threshold for considering points as inliers to the plane. Points within this threshold are classified as inliers.
+ * @param maxIterations The maximum number of iterations the RANSAC algorithm should run.
+ * @param coefficientsOut An optional output pointer to store the coefficients of the plane model. The coefficients include the plane normal and offset.
+ * 
+ * @return A list of indices of points that are considered inliers to the fitted plane.
+ * 
+ * @note If the input `indices` is empty, the entire point cloud will be used for segmentation.
+ * @note If the `coefficientsOut` is not null, it will be filled with the model coefficients of the plane.
+ * 
+ */
 pcl::IndicesPtr extractPlane(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		float distanceThreshold,
 		int maxIterations = 100,
 		pcl::ModelCoefficients * coefficientsOut = 0);
 pcl::IndicesPtr extractPlane(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
 		float distanceThreshold,
 		int maxIterations = 100,
 		pcl::ModelCoefficients * coefficientsOut = 0);
