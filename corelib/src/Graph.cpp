@@ -993,15 +993,21 @@ void computeMaxGraphErrors(
 			if(iter->second.type() != Link::kLandmark ||
 				1.0 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0)
 			{
-				float opt_roll,opt_pitch,opt_yaw;
-				float link_roll,link_pitch,link_yaw;
-				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-				linkT.getEulerAngles(link_roll, link_pitch, link_yaw);
-				float angularError = uMax3(
-						force3DoF?0:fabs(opt_roll - link_roll),
-						force3DoF?0:fabs(opt_pitch - link_pitch),
-						fabs(opt_yaw - link_yaw));
-				angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				float angularError = 0.0f;
+				if(force3DoF)
+				{
+					float opt_roll,opt_pitch,opt_yaw;
+					float link_roll,link_pitch,link_yaw;
+					t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
+					linkT.getEulerAngles(link_roll, link_pitch, link_yaw);
+					angularError = fabs(opt_yaw - link_yaw);
+					angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				}
+				else
+				{
+					angularError = t.getAngle(linkT);
+				}
+
 				UASSERT(iter->second.rotVariance(false)>0.0);
 				float stddevAngular = sqrt(iter->second.rotVariance(false));
 				float angularErrorRatio = angularError/stddevAngular;

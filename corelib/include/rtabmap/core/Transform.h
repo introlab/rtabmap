@@ -114,6 +114,7 @@ public:
 	void getEulerAngles(float & roll, float & pitch, float & yaw) const;
 	void getTranslation(float & x, float & y, float & z) const;
 	float getAngle(float x=1.0f, float y=0.0f, float z=0.0f) const;
+	float getAngle(const Transform & t) const;
 	float getNorm() const;
 	float getNormSquared() const;
 	float getDistance(const Transform & t) const;
