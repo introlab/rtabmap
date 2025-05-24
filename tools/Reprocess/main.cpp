@@ -1289,7 +1289,7 @@ int main(int argc, char * argv[])
 		   !info.odomPose.isNull())
 		{
 			float distance = odomPose.getDistance(info.odomPose);
-			float angle = (odomPose.inverse()*info.odomPose).getAngle();
+			float angle = odomPose.getAngle(info.odomPose);
 			odomDistances.push_back(distance);
 			if(distance < linearUpdate && angle <= angularUpdate)
 			{

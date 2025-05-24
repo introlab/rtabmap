@@ -6358,11 +6358,12 @@ void DatabaseViewer::updateConstraintView(
 			ui_->checkBox_showOptimized->setEnabled(true);
 			Transform topt = iterFrom->second.inverse()*iterTo->second;
 			float diff = topt.getDistance(t);
+
 			Transform v1 = t.rotation()*Transform(1,0,0,0,0,0);
 			Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
 			float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
 			a = (a *180.0f) / CV_PI;
-			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((t.getNorm()>0?diff/t.getNorm():0)*100.0f).arg(a));
+			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3 deg)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((t.getNorm()>0?diff/t.getNorm():0)*100.0f).arg(a));
 
 			if(ui_->checkBox_showOptimized->isChecked())
 			{

@@ -1255,9 +1255,8 @@ int main(int argc, char * argv[])
 												t.r11(), t.r12(), t.r13(), t.x()*bestScale,
 												t.r21(), t.r22(), t.r23(), t.y()*bestScale,
 												t.r31(), t.r32(), t.r33(), t.z()*bestScale);
-										Transform diff = gtLink.inverse()*scaledLink;
-										sumDist += diff.getNorm();
-										sumAngle += diff.getAngle();
+										sumDist += gtLink.getDistance(scaledLink);
+										sumAngle += gtLink.getAngle(scaledLink);
 										++count;
 									}
 								}
