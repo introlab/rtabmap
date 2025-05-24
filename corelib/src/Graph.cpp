@@ -744,9 +744,8 @@ void calcRelativeErrors (
 		// compute rotational and translational errors
 		Transform pose_delta_gt     = poses_gt[i].inverse()*poses_gt[i+1];
 		Transform pose_delta_result = poses_result[i].inverse()*poses_result[i+1];
-		Transform pose_error        = pose_delta_result.inverse()*pose_delta_gt;
-		float r_err = pose_error.getAngle();
-		float t_err = pose_error.getNorm();
+		float r_err = pose_delta_result.getAngle(pose_delta_gt);
+		float t_err = pose_delta_result.getDistance(pose_delta_gt);
 
 		// write to file
 		err.push_back(errors(i,r_err,t_err,0,0));

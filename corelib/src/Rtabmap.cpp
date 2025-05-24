@@ -1701,7 +1701,7 @@ bool Rtabmap::process(
 			{
 				distanceToClosestNodeInTheGraph = sqrt(sqrdDistance);
 				UDEBUG("Last localization pose = %s, closest node=%d (%f m)", newPose.prettyPrint().c_str(), closestNode, distanceToClosestNodeInTheGraph);
-				angleToClosestNodeInTheGraph = (newPose.inverse() * _optimizedPoses.at(closestNode)).getAngle();
+				angleToClosestNodeInTheGraph = newPose.getAngle(_optimizedPoses.at(closestNode));
 			}
 		}
 
@@ -3954,7 +3954,7 @@ bool Rtabmap::process(
 			{
 				distanceToClosestNodeInTheGraph = _lastLocalizationPose.getDistance(_optimizedPoses.at(closestNode));
 				UDEBUG("Last localization pose = %s, updated closest node=%d (%f m)", _lastLocalizationPose.prettyPrint().c_str(), closestNode, distanceToClosestNodeInTheGraph);
-				angleToClosestNodeInTheGraph = (_lastLocalizationPose.inverse() * _optimizedPoses.at(closestNode)).getAngle();
+				angleToClosestNodeInTheGraph = _lastLocalizationPose.getAngle(_optimizedPoses.at(closestNode));
 			}
 		}
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
@@ -4103,16 +4103,15 @@ bool Rtabmap::process(
 					if(!sLoop->getGroundTruthPose().isNull() && !signature->getGroundTruthPose().isNull())
 					{
 						Transform transformGT = sLoop->getGroundTruthPose().inverse() * signature->getGroundTruthPose();
-						Transform error = loopIter->second.transform().inverse() * transformGT;
-						statistics_.addStatistic(Statistics::kGtLocalization_linear_error(), error.getNorm());
-						statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), error.getAngle(1,0,0)*180/M_PI);
+						statistics_.addStatistic(Statistics::kGtLocalization_linear_error(), loopIter->second.transform().getDistance(transformGT));
+						statistics_.addStatistic(Statistics::kGtLocalization_angular_error(), loopIter->second.transform().getAngle(transformGT)*180/M_PI);
 					}
 				}
 
 				_distanceTravelledSinceLastLocalization = 0.0f;
 
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_norm(), _mapCorrection.getNorm());
-				statistics_.addStatistic(Statistics::kLoopMapToOdom_angle(), _mapCorrection.getAngle()*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopMapToOdom_angle(), _mapCorrection.getAngle(Transform::getIdentity())*180.0f/M_PI);
 				_mapCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_x(), x);
 				statistics_.addStatistic(Statistics::kLoopMapToOdom_y(), y);
@@ -4126,7 +4125,7 @@ bool Rtabmap::process(
 				{
 					Transform odomCorrection = (previousMapCorrection*odomPose).inverse()*_mapCorrection*odomPose;
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_norm(), odomCorrection.getNorm());
-					statistics_.addStatistic(Statistics::kLoopOdom_correction_angle(), odomCorrection.getAngle()*180.0f/M_PI);
+					statistics_.addStatistic(Statistics::kLoopOdom_correction_angle(), odomCorrection.getAngle(Transform::getIdentity())*180.0f/M_PI);
 					odomCorrection.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_x(), x);
 					statistics_.addStatistic(Statistics::kLoopOdom_correction_y(), y);

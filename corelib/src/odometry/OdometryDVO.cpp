@@ -217,7 +217,7 @@ Transform OdometryDVO::computeTransform(
 			t = motionFromKeyFrame_.inverse() * t;
 
 			// TODO make parameters?
-			if(currentMotion.getNorm() > 0.01 || currentMotion.getAngle() > 0.01)
+			if(currentMotion.getNorm() > 0.01 || currentMotion.getAngle(Transform::getIdentity()) > 0.01)
 			{
 				if(info)
 				{
