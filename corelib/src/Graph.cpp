@@ -744,9 +744,8 @@ void calcRelativeErrors (
 		// compute rotational and translational errors
 		Transform pose_delta_gt     = poses_gt[i].inverse()*poses_gt[i+1];
 		Transform pose_delta_result = poses_result[i].inverse()*poses_result[i+1];
-		Transform pose_error        = pose_delta_result.inverse()*pose_delta_gt;
-		float r_err = pose_error.getAngle();
-		float t_err = pose_error.getNorm();
+		float r_err = pose_delta_result.getAngle(pose_delta_gt);
+		float t_err = pose_delta_result.getDistance(pose_delta_gt);
 
 		// write to file
 		err.push_back(errors(i,r_err,t_err,0,0));
@@ -993,15 +992,21 @@ void computeMaxGraphErrors(
 			if(iter->second.type() != Link::kLandmark ||
 				1.0 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0)
 			{
-				float opt_roll,opt_pitch,opt_yaw;
-				float link_roll,link_pitch,link_yaw;
-				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-				linkT.getEulerAngles(link_roll, link_pitch, link_yaw);
-				float angularError = uMax3(
-						force3DoF?0:fabs(opt_roll - link_roll),
-						force3DoF?0:fabs(opt_pitch - link_pitch),
-						fabs(opt_yaw - link_yaw));
-				angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				float angularError = 0.0f;
+				if(force3DoF)
+				{
+					float opt_roll,opt_pitch,opt_yaw;
+					float link_roll,link_pitch,link_yaw;
+					t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
+					linkT.getEulerAngles(link_roll, link_pitch, link_yaw);
+					angularError = fabs(opt_yaw - link_yaw);
+					angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				}
+				else
+				{
+					angularError = t.getAngle(linkT);
+				}
+
 				UASSERT(iter->second.rotVariance(false)>0.0);
 				float stddevAngular = sqrt(iter->second.rotVariance(false));
 				float angularErrorRatio = angularError/stddevAngular;
