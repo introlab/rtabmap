@@ -73,6 +73,17 @@
 		4E20B250266AB95600316EE6 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4E20B24F266AB95600316EE6 /* Images.xcassets */; };
 		4E2C516725A63119005CEDBD /* DatabaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2C516525A63119005CEDBD /* DatabaseView.swift */; };
 		4E2C516825A63119005CEDBD /* VerticalScrollerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2C516625A63119005CEDBD /* VerticalScrollerView.swift */; };
+		4E3525542DE4C6E500F39D8F /* libg2o_csparse_extension.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFD0F13259D5C2200575D88 /* libg2o_csparse_extension.a */; };
+		4E3525552DE4C6E500F39D8F /* libg2o_solver_csparse.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFD0F10259D5C2200575D88 /* libg2o_solver_csparse.a */; };
+		4E3525572DE4C6E500F39D8F /* libg2o_solver_cholmod.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E3525562DE4C6E500F39D8F /* libg2o_solver_cholmod.a */; };
+		4E3525592DE4C6F600F39D8F /* libcholmod.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E3525582DE4C6F600F39D8F /* libcholmod.a */; };
+		4E35255E2DE4C71000F39D8F /* libcxsparse.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E35255A2DE4C71000F39D8F /* libcxsparse.a */; };
+		4E35255F2DE4C71000F39D8F /* libcolamd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E35255B2DE4C71000F39D8F /* libcolamd.a */; };
+		4E3525602DE4C71000F39D8F /* libcamd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E35255C2DE4C71000F39D8F /* libcamd.a */; };
+		4E3525612DE4C71000F39D8F /* libccolamd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E35255D2DE4C71000F39D8F /* libccolamd.a */; };
+		4E3525642DE4C71C00F39D8F /* libsuitesparseconfig.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E3525622DE4C71C00F39D8F /* libsuitesparseconfig.a */; };
+		4E3525652DE4C71C00F39D8F /* libspqr.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E3525632DE4C71C00F39D8F /* libspqr.a */; };
+		4E3525672DE4C72D00F39D8F /* libamd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E3525662DE4C72D00F39D8F /* libamd.a */; };
 		4E8B155426273A580037FC53 /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = 4E8B155326273A580037FC53 /* Zip */; };
 		4EB1A66625A0D90B0043C7BF /* RTABMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB1A66525A0D90B0043C7BF /* RTABMap.swift */; };
 		4EE016B3259BE441008CCE65 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016AF259BE441008CCE65 /* ViewController.swift */; };
@@ -164,6 +175,15 @@
 		4E20B24F266AB95600316EE6 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RTABMapApp/Images.xcassets; sourceTree = "<group>"; };
 		4E2C516525A63119005CEDBD /* DatabaseView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DatabaseView.swift; path = RTABMapApp/DatabaseView.swift; sourceTree = "<group>"; };
 		4E2C516625A63119005CEDBD /* VerticalScrollerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = VerticalScrollerView.swift; path = RTABMapApp/VerticalScrollerView.swift; sourceTree = "<group>"; };
+		4E3525562DE4C6E500F39D8F /* libg2o_solver_cholmod.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libg2o_solver_cholmod.a; path = RTABMapApp/Libraries/lib/libg2o_solver_cholmod.a; sourceTree = "<group>"; };
+		4E3525582DE4C6F600F39D8F /* libcholmod.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcholmod.a; path = RTABMapApp/Libraries/lib/libcholmod.a; sourceTree = "<group>"; };
+		4E35255A2DE4C71000F39D8F /* libcxsparse.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcxsparse.a; path = RTABMapApp/Libraries/lib/libcxsparse.a; sourceTree = "<group>"; };
+		4E35255B2DE4C71000F39D8F /* libcolamd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcolamd.a; path = RTABMapApp/Libraries/lib/libcolamd.a; sourceTree = "<group>"; };
+		4E35255C2DE4C71000F39D8F /* libcamd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcamd.a; path = RTABMapApp/Libraries/lib/libcamd.a; sourceTree = "<group>"; };
+		4E35255D2DE4C71000F39D8F /* libccolamd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libccolamd.a; path = RTABMapApp/Libraries/lib/libccolamd.a; sourceTree = "<group>"; };
+		4E3525622DE4C71C00F39D8F /* libsuitesparseconfig.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsuitesparseconfig.a; path = RTABMapApp/Libraries/lib/libsuitesparseconfig.a; sourceTree = "<group>"; };
+		4E3525632DE4C71C00F39D8F /* libspqr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libspqr.a; path = RTABMapApp/Libraries/lib/libspqr.a; sourceTree = "<group>"; };
+		4E3525662DE4C72D00F39D8F /* libamd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libamd.a; path = RTABMapApp/Libraries/lib/libamd.a; sourceTree = "<group>"; };
 		4E401BE825CC92C100240A56 /* ProgressionStatus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ProgressionStatus.h; path = ../android/jni/ProgressionStatus.h; sourceTree = "<group>"; };
 		4EB1A66525A0D90B0043C7BF /* RTABMap.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = RTABMap.swift; path = RTABMapApp/RTABMap.swift; sourceTree = "<group>"; };
 		4ED73AD02D7FECF3007899C2 /* liblaszip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblaszip.a; path = RTABMapApp/Libraries/lib/liblaszip.a; sourceTree = "<group>"; };
@@ -370,7 +390,18 @@
 				4E10D8AA2DE40A6C0015926D /* libopencv_objdetect.a in Frameworks */,
 				4E10D8AB2DE40A8C0015926D /* libopencv_stitching.a in Frameworks */,
 				4E10D8AC2DE40AA20015926D /* libopencv_imgcodecs.a in Frameworks */,
+				4E3525672DE4C72D00F39D8F /* libamd.a in Frameworks */,
+				4E3525642DE4C71C00F39D8F /* libsuitesparseconfig.a in Frameworks */,
+				4E3525652DE4C71C00F39D8F /* libspqr.a in Frameworks */,
+				4E35255E2DE4C71000F39D8F /* libcxsparse.a in Frameworks */,
+				4E35255F2DE4C71000F39D8F /* libcolamd.a in Frameworks */,
+				4E3525602DE4C71000F39D8F /* libcamd.a in Frameworks */,
+				4E3525612DE4C71000F39D8F /* libccolamd.a in Frameworks */,
+				4E3525592DE4C6F600F39D8F /* libcholmod.a in Frameworks */,
 				4E10D8AD2DE40E990015926D /* libg2o_core.a in Frameworks */,
+				4E3525572DE4C6E500F39D8F /* libg2o_solver_cholmod.a in Frameworks */,
+				4E3525542DE4C6E500F39D8F /* libg2o_csparse_extension.a in Frameworks */,
+				4E3525552DE4C6E500F39D8F /* libg2o_solver_csparse.a in Frameworks */,
 				4E10D8AE2DE40E990015926D /* libg2o_solver_dense.a in Frameworks */,
 				4E10D8AF2DE40E990015926D /* libg2o_solver_eigen.a in Frameworks */,
 				4E10D8B02DE40E990015926D /* libg2o_solver_pcg.a in Frameworks */,
@@ -461,6 +492,15 @@
 		4EFD0B2A259D4DE900575D88 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				4E3525662DE4C72D00F39D8F /* libamd.a */,
+				4E3525632DE4C71C00F39D8F /* libspqr.a */,
+				4E3525622DE4C71C00F39D8F /* libsuitesparseconfig.a */,
+				4E35255C2DE4C71000F39D8F /* libcamd.a */,
+				4E35255D2DE4C71000F39D8F /* libccolamd.a */,
+				4E35255B2DE4C71000F39D8F /* libcolamd.a */,
+				4E35255A2DE4C71000F39D8F /* libcxsparse.a */,
+				4E3525582DE4C6F600F39D8F /* libcholmod.a */,
+				4E3525562DE4C6E500F39D8F /* libg2o_solver_cholmod.a */,
 				4E10D8DB2DE40FF60015926D /* libade.a */,
 				4E10D8DA2DE40FF60015926D /* libIlmImf.a */,
 				4E10D8DC2DE40FF60015926D /* liblibprotobuf.a */,
