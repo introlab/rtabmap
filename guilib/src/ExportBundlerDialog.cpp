@@ -203,6 +203,7 @@ void ExportBundlerDialog::exportBundler(
 			}
 			if(_ui->sba_iterations->value() > 0)
 			{
+				UINFO("Do BA optimization with %d iterations.", _ui->sba_iterations->value());
 				poses = sba->optimizeBA(
 						posesOut.begin()->first,
 						posesOut,
@@ -210,11 +211,12 @@ void ExportBundlerDialog::exportBundler(
 						signatures.toStdMap(),
 						points3DMap,
 						wordReferences,
-						_ui->sba_rematchFeatures->isChecked());
+						_ui->sba_rematchFeatures->isChecked(),
+						parametersSBA);
 			}
 			else
 			{
-				// do not optimize, just compute 3D features and word correspondences
+				UINFO("Do not optimize, just compute 3D features and word correspondences.");
 				poses = posesOut;
 				sba->computeBACorrespondences(poses,
 					linksOut, 
