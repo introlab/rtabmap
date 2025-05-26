@@ -875,11 +875,11 @@ int RTABMapApp::updateMeshDecimation(int width, int height)
         {
             meshDecimation = 5;
         }
-        else if(width % 3 == 0 && width % 3 == 0)
+        else if(width % 3 == 0 && height % 3 == 0)
         {
             meshDecimation = 3;
         }
-        else if(width % 2 == 0 && width % 2 == 0)
+        else if(width % 2 == 0 && height % 2 == 0)
         {
             meshDecimation = 2;
         }
