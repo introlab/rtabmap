@@ -163,7 +163,7 @@ cd g2o
 if [ ! -e g2o_20241228_ios.patch ]
 then
 ls
-  curl -L https://gist.githubusercontent.com/matlabbe/b9ccfeae8f0744b275cab23510872680/raw/ce516b2ddaec60fd07fdf13482fb108cebef179f/g2o_20241228_ios.patch -o g2o_20241228_ios.patch
+  curl -L https://gist.githubusercontent.com/matlabbe/b9ccfeae8f0744b275cab23510872680/raw/6fe2ffe5ba8fba59171adbd2f38f9c3999c61f75/g2o_20241228_ios.patch -o g2o_20241228_ios.patch
   git apply g2o_20241228_ios.patch
 fi
 mkdir -p build
