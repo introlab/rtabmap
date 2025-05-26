@@ -23,11 +23,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ humble, jazzy ]
+        ros_distribution: [ humble, jazzy, rolling ]
         include:
         - ros_distribution: 'humble'
           os: ubuntu-22.04
         - ros_distribution: 'jazzy'
+          os: ubuntu-24.04
+        - ros_distribution: 'rolling'
           os: ubuntu-24.04
 
     steps:   
