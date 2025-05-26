@@ -1003,7 +1003,11 @@ bool RTABMapApp::startCamera()
 		cameraJustInitialized_ = true;
 		if(useExternalLidar_)
 		{
+#if BOOST_VERSION >= 108700
+            rtabmap::LidarVLP16 * lidar = new rtabmap::LidarVLP16(boost::asio::ip::make_address("192.168.1.201"), 2368, true);
+#else
 			rtabmap::LidarVLP16 * lidar = new rtabmap::LidarVLP16(boost::asio::ip::address_v4::from_string("192.168.1.201"), 2368, true);
+#endif
 			lidar->init();
 			camera_->setImageRate(0); // if lidar, to get close camera synchronization
 			sensorCaptureThread_ = new rtabmap::SensorCaptureThread(lidar, camera_, camera_, rtabmap::Transform::getIdentity());
