@@ -135,6 +135,22 @@ cd $pwd
 #rm -rf gtsam
 fi
 
+# suitesparse (dependency of g2o)
+if [ ! -e $prefix/include/suitesparse/SuiteSparse_config.h ]
+then
+if [ ! -e SuiteSparse ]
+then
+  git clone https://github.com/DrTimothyAldenDavis/SuiteSparse.git -b v7.6.1
+fi
+cd SuiteSparse
+mkdir -p build
+cd build
+cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DSUITESPARSE_USE_OPENMP=OFF -DSUITESPARSE_ENABLE_PROJECTS="cholmod;cxsparse;spqr"  ..
+cmake --build . --config Release -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
+cmake --build . --config Release --target install -- CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS=""  CODE_SIGNING_ALLOWED="NO"
+cd $pwd
+fi
+
 # g2o
 if [ ! -e $prefix/include/g2o ]
 then
