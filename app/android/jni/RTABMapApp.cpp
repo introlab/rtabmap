@@ -574,7 +574,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
                         rawPoses_.insert(std::make_pair(id, signatures.at(id).getPose()));
 
 						cv::Mat tmpA, tmpB, tmpC;
-						data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, &tmpC);
+						data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, depthConfidence_>0?&tmpC:0);
 
 						if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
 						{
@@ -1362,8 +1362,8 @@ int RTABMapApp::Render()
 #ifdef DEBUG_RENDERING_PERFORMANCE
 				LOGD("Camera updateOnRender %fs", time.ticks());
 #endif
-                // We detect if we are in measuring mode if rtabmap is not running
-				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0 && !(rtabmapThread_ == 0 || !rtabmapThread_->isRunning()))
+                // We check if we are in measuring mode: not visualizing mesh or rtabmap is not started (localization mode)
+				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0 && (!visualizingMesh_ || !(rtabmapThread_ == 0 || !rtabmapThread_->isRunning())))
 				{
 					main_scene_.background_renderer_ = new BackgroundRenderer();
 					main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), cameraDriver_ <= 2);
@@ -2019,7 +2019,7 @@ int RTABMapApp::Render()
 									rtabmap::SensorData data = bufferedSensorData.at(id);
 
 									cv::Mat tmpA, tmpB, tmpC;
-									data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, &tmpC);
+									data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, depthConfidence_>0?&tmpC:0);
 									if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
 									{
 										rtabmap::LaserScan scan;
@@ -4671,8 +4671,8 @@ void RTABMapApp::postOdometryEvent(
                         depthModel.setLocalTransform(pose*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);
                     }
-                    
-					rtabmap::SensorData data(scan, outputRGB, outputDepth, model, 0, stamp);
+
+					rtabmap::SensorData data(scan, outputRGB, outputDepth, outputDepthConfidence, model, 0, stamp);
 					data.setFeatures(kpts,  kpts3, cv::Mat());
                     glm::mat4 projectionMatrix(0);
                     projectionMatrix[0][0] = p00;

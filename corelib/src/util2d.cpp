@@ -1931,6 +1931,61 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 	return output;
 }
 
+void depthBleedingFiltering(cv::Mat & depth, float maxDepthError)
+{
+	if(depth.empty())
+	{
+		return;
+	}
+	UASSERT(depth.type() == CV_32FC1 || depth.type() == CV_16UC1);
+
+	// ignore border
+	depth.row(0).setTo(cv::Scalar(0));
+	depth.row(depth.rows-1).setTo(cv::Scalar(0));
+	depth.col(0).setTo(cv::Scalar(0));
+	depth.col(depth.cols-1).setTo(cv::Scalar(0));
+
+	if(depth.type() == CV_32FC1)
+	{
+		float * depthPtr = depth.ptr<float>();
+		for(int v=1; v<depth.rows-1; ++v)
+		{
+			for(int u=1; u<depth.cols-1; ++u)
+			{
+				int row = depth.cols*v;
+				float & ref  = depthPtr[row + u];
+				if((fabs(ref - depthPtr[row + u - 1]) > maxDepthError && 
+				    fabs(ref - depthPtr[row + u + 1]) > maxDepthError) || 
+				   (fabs(ref - depthPtr[depth.cols*(v-1) + u]) > maxDepthError && 
+				    fabs(ref - depthPtr[depth.cols*(v+1) + u]) > maxDepthError)) 
+				{
+					ref = 0.0f;
+				} 
+			}
+		}
+	}
+	else if(depth.type() == CV_16UC1)
+	{
+		unsigned short * depthPtr = depth.ptr<unsigned short>();
+		unsigned short maxDepthErrorMM = (unsigned short)(maxDepthError*1000.0f);
+		for(int v=1; v<depth.rows-1; ++v)
+		{
+			for(int u=1; u<depth.cols-1; ++u)
+			{
+				int row = depth.cols*v;
+				unsigned short & ref  = depthPtr[row + u];
+				if((abs((int)ref - (int)depthPtr[row + u - 1]) > maxDepthErrorMM && 
+				    abs((int)ref - (int)depthPtr[row + u + 1]) > maxDepthErrorMM) || 
+				   (abs((int)ref - (int)depthPtr[depth.cols*(v-1) + u]) > maxDepthErrorMM && 
+				    abs((int)ref - (int)depthPtr[depth.cols*(v+1) + u]) > maxDepthErrorMM)) 
+				{
+					ref = 0;
+				} 
+			}
+		}
+	}
+}
+
 /**
  *  \brief Automatic brightness and contrast optimization with optional histogram clipping
  *  \param [in]src Input image GRAY or BGR or BGRA

@@ -6280,7 +6280,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	//depth confidence
 	if(uStrNumCmp(_version, "0.22.0") >= 0)
 	{
-		if(!sensorData.depthOrRightCompressed().empty())
+		if(!sensorData.depthConfidenceCompressed().empty())
 		{
 			rc = sqlite3_bind_blob(ppStmt, index++, sensorData.depthConfidenceCompressed().data, (int)sensorData.depthConfidenceCompressed().cols, SQLITE_STATIC);
 		}

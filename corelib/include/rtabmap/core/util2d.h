@@ -144,6 +144,10 @@ cv::Mat RTABMAP_CORE_EXPORT fastBilateralFiltering(
 		float sigmaR = 0.05f,
 		bool earlyDivision = false);
 
+void RTABMAP_CORE_EXPORT depthBleedingFiltering(
+	cv::Mat & depth,
+	float maxDepthError);
+
 cv::Mat RTABMAP_CORE_EXPORT brightnessAndContrastAuto(
 		const cv::Mat & src,
 		const cv::Mat & mask,

@@ -97,11 +97,32 @@ public:
 			int id = 0,
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
+	
+	// RGB-D constructor + confidence + laser scan
+	SensorData(
+			const LaserScan & laserScan,
+			const cv::Mat & rgb,
+			const cv::Mat & depth,
+			const cv::Mat & depthConfidence,
+			const CameraModel & cameraModel,
+			int id = 0,
+			double stamp = 0.0,
+			const cv::Mat & userData = cv::Mat());
 
 	// Multi-cameras RGB-D constructor
 	SensorData(
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
+			const std::vector<CameraModel> & cameraModels,
+			int id = 0,
+			double stamp = 0.0,
+			const cv::Mat & userData = cv::Mat());
+	
+	// Multi-cameras RGB-D constructor + depth confidence
+	SensorData(
+			const cv::Mat & rgb,
+			const cv::Mat & depth,
+			const cv::Mat & depthConfidence,
 			const std::vector<CameraModel> & cameraModels,
 			int id = 0,
 			double stamp = 0.0,
@@ -112,6 +133,17 @@ public:
 			const LaserScan & laserScan,
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
+			const std::vector<CameraModel> & cameraModels,
+			int id = 0,
+			double stamp = 0.0,
+			const cv::Mat & userData = cv::Mat());
+
+	// Multi-cameras RGB-D constructor + depth confidence + laser scan
+	SensorData(
+			const LaserScan & laserScan,
+			const cv::Mat & rgb,
+			const cv::Mat & depth,
+			const cv::Mat & depthConfidence,
 			const std::vector<CameraModel> & cameraModels,
 			int id = 0,
 			double stamp = 0.0,
