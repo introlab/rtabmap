@@ -245,7 +245,11 @@ RTABMapApp::RTABMapApp() :
 		maxGainRadius_(0.02f),
 		renderingTextureDecimation_(4),
 		backgroundColor_(0.2f),
-        depthConfidence_(2),
+#ifndef RTABMAP_ARCORE
+        depthConfidence_(100), // iOS
+#else
+		depthConfidence_(0),
+#endif
         upstreamRelocalizationMaxAcc_(0.0f),
 		exportPointCloudFormat_("ply"),
 		dataRecorderMode_(false),
@@ -569,8 +573,8 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 						rtabmap::SensorData data = signatures.at(id).sensorData();
                         rawPoses_.insert(std::make_pair(id, signatures.at(id).getPose()));
 
-						cv::Mat tmpA, depth;
-						data.uncompressData(&tmpA, &depth);
+						cv::Mat tmpA, tmpB, tmpC;
+						data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, &tmpC);
 
 						if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
 						{
@@ -587,7 +591,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 							{
                                 int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
                                 
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 							}
 							else
 							{
@@ -2014,8 +2018,8 @@ int RTABMapApp::Render()
 								{
 									rtabmap::SensorData data = bufferedSensorData.at(id);
 
-									cv::Mat tmpA, depth;
-									data.uncompressData(&tmpA, &depth);
+									cv::Mat tmpA, tmpB, tmpC;
+									data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, &tmpC);
 									if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
 									{
 										rtabmap::LaserScan scan;
@@ -2033,7 +2037,7 @@ int RTABMapApp::Render()
 										if(!data.imageRaw().empty() && !data.depthRaw().empty() && (!useExternalLidar_ || data.laserScanRaw().isEmpty()))
 										{
                                             int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-											cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+											cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 										}
 										else
 										{
@@ -2249,7 +2253,7 @@ int RTABMapApp::Render()
 							if(!sensorEvent.data().imageRaw().empty() && !sensorEvent.data().depthRaw().empty() && (!useExternalLidar_ || sensorEvent.data().laserScanRaw().isEmpty()))
 							{
                                 int meshDecimation = updateMeshDecimation(sensorEvent.data().depthRaw().cols, sensorEvent.data().depthRaw().rows);
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(sensorEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(sensorEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 							}
 							else
 							{
@@ -3111,10 +3115,10 @@ void RTABMapApp::setBackgroundColor(float gray)
 
 void RTABMapApp::setDepthConfidence(int value)
 {
-    depthConfidence_ = value;
-    if(depthConfidence_>2)
+    depthConfidence_ = value*50; // [0,2] -> [0,100]
+    if(depthConfidence_>100)
     {
-        depthConfidence_ = 2;
+        depthConfidence_ = 100;
     }
 }
 
@@ -3681,7 +3685,7 @@ bool RTABMapApp::exportMesh(
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
                                 int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_);
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, 0, rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 								polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 							}
 						}
@@ -3939,7 +3943,7 @@ bool RTABMapApp::exportMesh(
 					if(!data.imageRaw().empty() && !data.depthRaw().empty())
 					{
 						// full resolution
-						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, minCloudDepth_, indices.get());
+						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 					}
                     else if(!data.laserScanRaw().empty())
                     {
@@ -3969,7 +3973,7 @@ bool RTABMapApp::exportMesh(
 						if(!data.imageRaw().empty() && !data.depthRaw().empty())
 						{
                             int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 						}
                         else if(!data.laserScanRaw().empty())
                         {
@@ -4528,6 +4532,7 @@ void RTABMapApp::postOdometryEvent(
 
 
 				cv::Mat outputDepth;
+				cv::Mat outputDepthConfidence;
 				if(depth && depthHeight>0 && depthWidth>0)
 				{
 #ifndef DISABLE_LOG
@@ -4537,32 +4542,21 @@ void RTABMapApp::postOdometryEvent(
                     {
                         // IOS
                         outputDepth = cv::Mat(depthHeight, depthWidth, CV_32FC1, (void*)depth).clone();
-                        if(conf && confWidth == depthWidth && confHeight == depthHeight && confFormat == 1278226488 && depthConfidence_>0)
+                        if(conf && confWidth == depthWidth && confHeight == depthHeight && confFormat == 1278226488)
                         {
-                            const unsigned char * confPtr = (const unsigned char *)conf;
-                            float * depthPtr = outputDepth.ptr<float>();
-                            int i=0;
-                            for (int y = 0; y < outputDepth.rows; ++y)
-                            {
-                                for (int x = 0; x < outputDepth.cols; ++x)
-                                {
-                                    // https://developer.apple.com/documentation/arkit/arconfidencelevel
-                                    // 0 = low
-                                    // 1 = medium
-                                    // 2 = high
-                                    if(confPtr[y*outputDepth.cols + x] < depthConfidence_)
-                                    {
-                                        depthPtr[y*outputDepth.cols + x] = 0.0f;
-                                        ++i;
-                                    }
-                                }
-                            }
+							// https://developer.apple.com/documentation/arkit/arconfidencelevel
+							// 0 = low
+							// 1 = medium
+							// 2 = high
+							// Re-scale confidence from [0,2] to [0,100]
+							cv::Mat(depthHeight, depthWidth, CV_8UC1, (void*)conf).convertTo(outputDepthConfidence, CV_8UC1, 50, 0);
                         }
                     }
                     else if(depthLen == 2*depthWidth*depthHeight)
                     {
                         // ANDROID
                         outputDepth = cv::Mat(depthHeight, depthWidth, CV_16UC1);
+						outputDepthConfidence = cv::Mat(depthHeight, depthWidth, CV_8UC1);
                         uint16_t *dataShort = (uint16_t *)depth;
                         for (int y = 0; y < outputDepth.rows; ++y)
                         {
@@ -4571,6 +4565,13 @@ void RTABMapApp::postOdometryEvent(
                                 uint16_t depthSample = dataShort[y*outputDepth.cols + x];
                                 uint16_t depthRange = (depthSample & 0x1FFF); // first 3 bits are confidence
                                 outputDepth.at<uint16_t>(y,x) = depthRange;
+								// https://developer.android.com/reference/android/graphics/ImageFormat#DEPTH16
+								// The confidence value is an estimate of correctness for this sample. It 
+								// is encoded in the 3 most significant bits of the sample, with a value of 
+								// 0 representing 100% confidence, a value of 1 representing 0% confidence, a 
+								// value of 2 representing 1/7, a value of 3 representing 2/7, and so on.
+								uint8_t depthConfidence = uint8_t((depthSample >> 13) & 0x7);
+								outputDepthConfidence.at<uint8_t>(y,x) = depthConfidence == 0 ? 100 : (depthConfidence - 1)*100 / 7;
                             }
                         }
                     }

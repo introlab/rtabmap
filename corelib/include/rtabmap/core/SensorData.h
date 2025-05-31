@@ -78,6 +78,16 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
+	// RGB-D constructor + depth confidence
+	SensorData(
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const cv::Mat & depth_confidence,
+		const CameraModel & cameraModel,
+		int id = 0,
+		double stamp = 0.0,
+		const cv::Mat & userData = cv::Mat());
+
 	// RGB-D constructor + laser scan
 	SensorData(
 			const LaserScan & laserScan,
@@ -160,6 +170,8 @@ public:
 			_imageCompressed.empty() &&
 			_depthOrRightRaw.empty() &&
 			_depthOrRightCompressed.empty() &&
+			_depthConfidenceRaw.empty() &&
+			_depthConfidenceCompressed.empty() &&
 			_laserScanRaw.isEmpty() &&
 			_laserScanCompressed.isEmpty() &&
 			_cameraModels.empty() &&
@@ -178,10 +190,12 @@ public:
 
 	const cv::Mat & imageCompressed() const {return _imageCompressed;}
 	const cv::Mat & depthOrRightCompressed() const {return _depthOrRightCompressed;}
+	const cv::Mat & depthConfidenceCompressed() const {return _depthConfidenceCompressed;}
 	const LaserScan & laserScanCompressed() const {return _laserScanCompressed;}
 
 	const cv::Mat & imageRaw() const {return _imageRaw;}
 	const cv::Mat & depthOrRightRaw() const {return _depthOrRightRaw;}
+	const cv::Mat & depthConfidenceRaw() const {return _depthConfidenceRaw;}
 	const LaserScan & laserScanRaw() const {return _laserScanRaw;}
 
 	/**
@@ -190,7 +204,9 @@ public:
 	 * @param clearPreviousData, clear previous raw and compressed images before setting the new ones.
 	 */
 	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const CameraModel & model, bool clearPreviousData = true);
+	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const cv::Mat & depth_confidence, const CameraModel & model, bool clearPreviousData = true);
 	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const std::vector<CameraModel> & models, bool clearPreviousData = true);
+	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const cv::Mat & depth_confidence, const std::vector<CameraModel> & models, bool clearPreviousData = true);
 	void setStereoImage(const cv::Mat & left, const cv::Mat & right, const StereoCameraModel & stereoCameraModel, bool clearPreviousData = true);
 	void setStereoImage(const cv::Mat & left, const cv::Mat & right, const std::vector<StereoCameraModel> & stereoCameraModels, bool clearPreviousData = true);
 
@@ -227,7 +243,8 @@ public:
 			cv::Mat * userDataRaw = 0,
 			cv::Mat * groundCellsRaw = 0,
 			cv::Mat * obstacleCellsRaw = 0,
-			cv::Mat * emptyCellsRaw = 0);
+			cv::Mat * emptyCellsRaw = 0,
+			cv::Mat * depthConfidenceRaw = 0);
 	void uncompressDataConst(
 			cv::Mat * imageRaw,
 			cv::Mat * depthOrRightRaw,
@@ -235,7 +252,8 @@ public:
 			cv::Mat * userDataRaw = 0,
 			cv::Mat * groundCellsRaw = 0,
 			cv::Mat * obstacleCellsRaw = 0,
-			cv::Mat * emptyCellsRaw = 0) const;
+			cv::Mat * emptyCellsRaw = 0,
+			cv::Mat * depthConfidenceRaw = 0) const;
 
 	const std::vector<CameraModel> & cameraModels() const {return _cameraModels;}
 	const std::vector<StereoCameraModel> & stereoCameraModels() const {return _stereoCameraModels;}
@@ -327,10 +345,12 @@ private:
 
 	cv::Mat _imageCompressed;          // compressed image
 	cv::Mat _depthOrRightCompressed;   // compressed image
+	cv::Mat _depthConfidenceCompressed;   // compressed data
 	LaserScan _laserScanCompressed;      // compressed data
 
 	cv::Mat _imageRaw;          // CV_8UC1 or CV_8UC3
 	cv::Mat _depthOrRightRaw;   // depth CV_16UC1 or CV_32FC1, right image CV_8UC1 or CV_8UC3
+	cv::Mat _depthConfidenceRaw;   // CV_8UC1
 	LaserScan _laserScanRaw;
 
 	std::vector<CameraModel> _cameraModels;

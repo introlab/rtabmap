@@ -32,7 +32,6 @@ CREATE TABLE Data (
 	id INTEGER NOT NULL,
 	image BLOB,               -- compressed image (Grayscale or RGB)
 	depth BLOB,               -- compressed image (Depth or Right image)
-	depth_confidence BLOB,    -- compressed data (low=0 high=100)
 	calibration BLOB,         -- fx, fy, cx, cy, [baseline,] width, height, local_transform
 	
 	scan BLOB,                -- compressed data (Laser scan)
@@ -179,5 +178,5 @@ CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
 -- *******************************************************************
 -- VERSION
 -- *******************************************************************
-INSERT INTO Admin(version) VALUES('@PROJECT_VERSION@');
+INSERT INTO Admin(version) VALUES('0.20.0');
 
