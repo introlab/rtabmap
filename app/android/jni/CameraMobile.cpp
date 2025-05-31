@@ -429,15 +429,21 @@ void CameraMobile::postUpdate()
 		if(colorCameraToDisplayRotation_ == ROTATION_90)
 		{
 			UDEBUG("ROTATION_90");
-			cv::Mat rgb, depth;
-			cv::Mat rgbt(data_.imageRaw().cols, data_.imageRaw().rows, data_.imageRaw().type());
+			cv::Mat rgb, depth, confidence;
+            cv::Mat rgbt;
 			cv::flip(data_.imageRaw(),rgb,1);
 			cv::transpose(rgb,rgbt);
 			rgb = rgbt;
-			cv::Mat deptht(data_.depthRaw().cols, data_.depthRaw().rows, data_.depthRaw().type());
+            cv::Mat deptht;
 			cv::flip(data_.depthRaw(),depth,1);
 			cv::transpose(depth,deptht);
 			depth = deptht;
+            if(!data_.depthConfidenceRaw().empty()) {
+                cv::Mat conft;
+                cv::flip(data_.depthRaw(),confidence,1);
+                cv::transpose(confidence,conft);
+                confidence = conft;
+            }
 			CameraModel model = data_.cameraModels()[0];
 			cv::Size sizet(model.imageHeight(), model.imageWidth());
 			model = CameraModel(
@@ -447,7 +453,7 @@ void CameraMobile::postUpdate()
 					model.cx()>0?model.imageWidth()-model.cx():0,
 					model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
-			data_.setRGBDImage(rgb, depth, model);
+			data_.setRGBDImage(rgb, depth, confidence, model);
 
 			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
 			for(size_t i=0; i<keypoints.size(); ++i)
@@ -460,11 +466,15 @@ void CameraMobile::postUpdate()
 		else if(colorCameraToDisplayRotation_ == ROTATION_180)
 		{
 			UDEBUG("ROTATION_180");
-			cv::Mat rgb, depth;
+			cv::Mat rgb, depth, confidence;
 			cv::flip(data_.imageRaw(),rgb,1);
 			cv::flip(rgb,rgb,0);
 			cv::flip(data_.depthOrRightRaw(),depth,1);
 			cv::flip(depth,depth,0);
+            if(!data_.depthConfidenceRaw().empty()) {
+                cv::flip(data_.depthConfidenceRaw(),confidence,1);
+                cv::flip(confidence,confidence,0);
+            }
 			CameraModel model = data_.cameraModels()[0];
 			cv::Size sizet(model.imageWidth(), model.imageHeight());
 			model = CameraModel(
@@ -474,7 +484,7 @@ void CameraMobile::postUpdate()
 					model.cy()>0?model.imageHeight()-model.cy():0,
 					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
 			model.setImageSize(sizet);
-			data_.setRGBDImage(rgb, depth, model);
+			data_.setRGBDImage(rgb, depth, confidence, model);
 
 			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
 			for(size_t i=0; i<keypoints.size(); ++i)
@@ -487,12 +497,16 @@ void CameraMobile::postUpdate()
 		else if(colorCameraToDisplayRotation_ == ROTATION_270)
 		{
 			UDEBUG("ROTATION_270");
-			cv::Mat rgb(data_.imageRaw().cols, data_.imageRaw().rows, data_.imageRaw().type());
+			cv::Mat rgb, depth, confidence;
 			cv::transpose(data_.imageRaw(),rgb);
 			cv::flip(rgb,rgb,1);
-			cv::Mat depth(data_.depthOrRightRaw().cols, data_.depthOrRightRaw().rows, data_.depthOrRightRaw().type());
 			cv::transpose(data_.depthOrRightRaw(),depth);
 			cv::flip(depth,depth,1);
+            if(!data_.depthConfidenceRaw().empty()) {
+                confidence = cv::Mat(data_.depthConfidenceRaw().cols, data_.depthConfidenceRaw().rows, data_.depthConfidenceRaw().type());
+                cv::transpose(data_.depthConfidenceRaw(),confidence);
+                cv::flip(confidence,confidence,1);
+            }
 			CameraModel model = data_.cameraModels()[0];
 			cv::Size sizet(model.imageHeight(), model.imageWidth());
 			model = CameraModel(
@@ -502,7 +516,7 @@ void CameraMobile::postUpdate()
 					model.cx(),
 					model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
 			model.setImageSize(sizet);
-			data_.setRGBDImage(rgb, depth, model);
+			data_.setRGBDImage(rgb, depth, confidence, model);
 
 			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
 			for(size_t i=0; i<keypoints.size(); ++i)

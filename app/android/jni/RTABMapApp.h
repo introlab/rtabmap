@@ -250,7 +250,7 @@ class RTABMapApp : public UEventsHandler {
   float maxGainRadius_;
   int renderingTextureDecimation_;
   float backgroundColor_;
-  int depthConfidence_;
+  unsigned char depthConfidence_;
   float upstreamRelocalizationMaxAcc_;
   std::string exportPointCloudFormat_;
 

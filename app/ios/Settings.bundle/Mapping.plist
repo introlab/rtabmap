@@ -58,7 +58,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>Choosing between high and low depth confidence depends on the application. If precise geometry is critical, prioritize high depth confidence even if it means fewer points. If you need a dense point cloud for analysis, even in areas with weak LiDAR signal, a lower depth confidence might be suitable at the cost of highly interpolated points (that could give a wavy look of some surfaces). Important: the points with too low confidence are not saved in the db file, so we cannot recover or filter these points in post-processing.</string>
+			<string>Choosing between high and low depth confidence depends on the application. If precise geometry is critical, prioritize high depth confidence even if it means fewer points. If you need a dense point cloud for analysis, even in areas with weak LiDAR signal, a lower depth confidence might be suitable at the cost of highly interpolated points (that could give a wavy look of some surfaces). Note: it is possible to change confidence level in post-processing.</string>
 		</dict>
 		<dict>
 			<key>DefaultValue</key>

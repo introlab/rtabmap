@@ -607,6 +607,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				// update images and local transforms
 				cv::Mat combinedImages;
 				cv::Mat combinedDepthImages;
+				cv::Mat combinedDepthConfidenceImages;
 				std::vector<CameraModel> combinedModels;
 				std::vector<StereoCameraModel> combinedStereoModels;
 				for(size_t i=0; i<_cameraIndices.size(); ++i)
@@ -645,6 +646,18 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 						fromROI = cv::Mat(data.depthOrRightRaw(), cv::Rect(_cameraIndices[i]*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows));
 						toROI = cv::Mat(combinedDepthImages, cv::Rect(addedCameras*subImageWidth, 0, subImageWidth, combinedDepthImages.rows));
 						fromROI.copyTo(toROI);
+
+						if(!data.depthConfidenceRaw().empty())
+						{
+							UASSERT(data.depthConfidenceRaw().size() == data.depthOrRightRaw().size());
+							if(combinedDepthConfidenceImages.empty())
+							{
+								combinedDepthConfidenceImages = cv::Mat(data.depthConfidenceRaw().rows, subImageWidth*(_cameraIndices.size()-i), data.depthConfidenceRaw().type());
+							}
+							fromROI = cv::Mat(data.depthConfidenceRaw(), cv::Rect(_cameraIndices[i]*subImageWidth, 0, subImageWidth, data.depthConfidenceRaw().rows));
+							toROI = cv::Mat(combinedDepthConfidenceImages, cv::Rect(addedCameras*subImageWidth, 0, subImageWidth, combinedDepthConfidenceImages.rows));
+							fromROI.copyTo(toROI);
+						}
 					}
 
 					if(!data.cameraModels().empty())
@@ -671,7 +684,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				}
 				if(!combinedModels.empty())
 				{
-					data.setRGBDImage(combinedImages, combinedDepthImages, combinedModels);
+					data.setRGBDImage(combinedImages, combinedDepthImages, combinedDepthConfidenceImages, combinedModels);
 				}
 				else
 				{
@@ -728,10 +741,11 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 			}
 			data.setLandmarks(landmarks);
 
-			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Grid=%d, UserData=%d, GlobalPose=%d, GPS=%d, IMU=%d",
+			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, Conf=%d, Grid=%d, UserData=%d, GlobalPose=%d, GPS=%d, IMU=%d",
 					data.laserScanRaw().isEmpty()?0:1,
 					data.imageRaw().empty()?0:1,
 					data.depthOrRightRaw().empty()?0:1,
+					data.depthConfidenceRaw().empty()?0:1,
 					data.gridCellSize()==0.0f?0:1,
 					data.userDataRaw().empty()?0:1,
 					globalPose.isNull()?0:1,
