@@ -35,7 +35,7 @@ jobs:
     steps:   
     - name: Update ROS2 key
       run: |
-        curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
+        sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
 
     - uses: ros-tooling/setup-ros@v0.7
       with:
