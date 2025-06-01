@@ -469,7 +469,13 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 				LOGI("Open: Found optimized mesh! Visualizing it.");
 				optTextureMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
                 optMesh_ = rtabmap::Mesh();
-				optTexture_ = textures;
+                if(textures.rows > 4096) // Limitation iOS, just for rendering on device
+                {
+                    cv::resize(textures, optTexture_, cv::Size(4096, 4096), 0.0f, 0.0f, cv::INTER_AREA);
+                }
+                else {
+                    optTexture_ = textures;
+                }
                 if(!optTexture_.empty())
 				{
 					LOGI("Open: Texture mesh: %dx%d.", optTexture_.cols, optTexture_.rows);
@@ -3062,7 +3068,7 @@ void RTABMapApp::setSmoothing(bool enabled)
 	}
 }
 
-void RTABMapApp::setDepthBleedingThreshold(float value)
+void RTABMapApp::setDepthBleedingError(float value)
 {
 	depthBleedingError_ = value;
 }
@@ -4221,7 +4227,13 @@ bool RTABMapApp::postExportation(bool visualize)
 				LOGI("postExportation: Found optimized mesh! Visualizing it.");
 				optTextureMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
                 optMesh_ = rtabmap::Mesh();
-                optTexture_ = textures;
+                if(textures.rows > 4096) // Limitation iOS, just for rendering on device
+                {
+                    cv::resize(textures, optTexture_, cv::Size(4096, 4096), 0.0f, 0.0f, cv::INTER_AREA);
+                }
+                else {
+                    optTexture_ = textures;
+                }
 
 				boost::mutex::scoped_lock  lock(renderingMutex_);
 				visualizingMesh_ = true;

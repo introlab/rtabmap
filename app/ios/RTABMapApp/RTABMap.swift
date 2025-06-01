@@ -453,6 +453,9 @@ class RTABMap {
     func setSmoothing(enabled: Bool) {
         setSmoothingNative(native_rtabmap, enabled)
     }
+    func setDepthBleedingError(value: Float) {
+        setDepthBleedingErrorNative(native_rtabmap, value)
+    }
     func setAppendMode(enabled: Bool) {
         setAppendModeNative(native_rtabmap, enabled)
     }

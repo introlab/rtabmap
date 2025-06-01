@@ -139,7 +139,7 @@ class RTABMapApp : public UEventsHandler {
   void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
   void setSmoothing(bool enabled);
-  void setDepthBleedingThreshold(float value);
+  void setDepthBleedingError(float value);
   void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
   void setUpstreamRelocalizationAccThr(float value);
