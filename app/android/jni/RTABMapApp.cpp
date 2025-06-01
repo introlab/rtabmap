@@ -274,20 +274,20 @@ RTABMapApp::RTABMapApp() :
 		lastPoseEventTime_(0.0),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
+		optTextureMesh_(new pcl::TextureMesh),
+		optRefId_(0),
+		optRefPose_(0),
 		measuresUpdated_(false),
-        targetPoint_(new pcl::PointCloud<pcl::PointXYZRGB>),
-        quadSample_(new pcl::PointCloud<pcl::PointXYZ>),
-        quadSamplePolygons_(2),
-        metricSystem_(true),
+		metricSystem_(true),
         measuringTextSize_(0.05f),
 		snapAxisThr_(0.95),
         measuringMode_(0),
         addMeasureClicked_(false),
         teleportClicked_(false),
         removeMeasureClicked_(false),
-		optTextureMesh_(new pcl::TextureMesh),
-		optRefId_(0),
-		optRefPose_(0),
+		targetPoint_(new pcl::PointCloud<pcl::PointXYZRGB>),
+        quadSample_(new pcl::PointCloud<pcl::PointXYZ>),
+        quadSamplePolygons_(2),
 		mapToOdom_(rtabmap::Transform::getIdentity())
 
 {
@@ -1576,7 +1576,6 @@ int RTABMapApp::Render()
                 int textId = 0;
                 int quadId = 0;
                 int circleId = 0;
-                float sphereRadius = 0.02f;
                 float quadSize=0.05f;
                 float quadAlpha = 0.3f;
 
