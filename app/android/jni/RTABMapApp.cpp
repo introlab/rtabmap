@@ -4730,9 +4730,9 @@ void RTABMapApp::postOdometryEvent(
 						cv::Mat regConfidence;
 						outputDepth = rtabmap::util2d::registerDepth(outputDepth, outputDepthConfidence, depthK, outputDepth.size(), colorK, rgbToDepth, regConfidence);
 						outputDepthConfidence = regConfidence;
-//#ifndef DISABLE_LOG
-						UERROR("Depth registration time: %fs", time.elapsed());
-//#endif
+#ifndef DISABLE_LOG
+						UDEBUG("Depth registration time: %fs", time.elapsed());
+#endif
 					}
 
 					rtabmap::CameraModel model = rtabmap::CameraModel(rgb_fx, rgb_fy, rgb_cx, rgb_cy, camera_->getDeviceTColorCamera(), 0, cv::Size(rgbWidth, rgbHeight));
