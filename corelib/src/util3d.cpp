@@ -277,11 +277,32 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
+	const cv::Mat & imageDepthIn,
+	const CameraModel & model,
+	int decimation,
+	float maxDepth,
+	float minDepth,
+	std::vector<int> * validIndices)
+{
+	return cloudFromDepth(
+		imageDepthIn,
+		cv::Mat(),
+		model,
+		decimation,
+		maxDepth,
+		minDepth,
+		0,
+		validIndices);
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		const cv::Mat & imageDepthIn,
+		const cv::Mat & imageDepthConfidenceIn,
 		const CameraModel & model,
 		int decimation,
 		float maxDepth,
 		float minDepth,
+		unsigned char confidenceThr,
 		std::vector<int> * validIndices)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -294,8 +315,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 
 	UASSERT(model.isValidForProjection());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
+	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr == 0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
 
 	cv::Mat imageDepth = imageDepthIn;
+	cv::Mat imageDepthConfidence = confidenceThr==0?cv::Mat():imageDepthConfidenceIn;
 	if(model.imageHeight()>0 && model.imageWidth()>0)
 	{
 		UASSERT(model.imageHeight() % imageDepthIn.rows == 0 && model.imageWidth() % imageDepthIn.cols == 0);
@@ -322,6 +345,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 			{
 				UDEBUG("Depth interpolation factor=%d", targetSize/imageDepthIn.rows);
 				imageDepth = util2d::interpolate(imageDepthIn, targetSize/imageDepthIn.rows);
+				if(!imageDepthConfidence.empty()) {
+					imageDepthConfidence = util2d::interpolate(imageDepthConfidenceIn, targetSize/imageDepthConfidenceIn.rows);
+				}
 				decimation = 1;
 			}
 			else if(targetSize == imageDepthIn.rows)
@@ -373,11 +399,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	float depthCx = model.cx() * rgbToDepthFactorX;
 	float depthCy = model.cy() * rgbToDepthFactorY;
 
-	UDEBUG("depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
+	UDEBUG("depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) has confidence=%d (thr=%d) decimation=%d",
 			imageDepth.cols, imageDepth.rows,
 			model.fx(), model.fy(), model.cx(), model.cy(),
 			rgbToDepthFactorX,
 			rgbToDepthFactorY,
+			imageDepthConfidenceIn.empty()?0:1,
+			(int)confidenceThr,
 			decimation);
 
 	int oi = 0;
@@ -387,20 +415,20 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		{
 			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
+			pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+			if(imageDepthConfidence.empty() || imageDepthConfidence.at<unsigned char>(h,w) >= confidenceThr)
 			{
-				pt.x = ptXYZ.x;
-				pt.y = ptXYZ.y;
-				pt.z = ptXYZ.z;
-				if(validIndices)
+				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
+				if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 				{
-					validIndices->at(oi++) = (h/decimation)*cloud->width + (w/decimation);
+					pt.x = ptXYZ.x;
+					pt.y = ptXYZ.y;
+					pt.z = ptXYZ.z;
+					if(validIndices)
+					{
+						validIndices->at(oi++) = (h/decimation)*cloud->width + (w/decimation);
+					}
 				}
-			}
-			else
-			{
-				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
 			}
 		}
 	}
@@ -428,12 +456,35 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
+	const cv::Mat & imageRgb,
+	const cv::Mat & imageDepthIn,
+	const CameraModel & model,
+	int decimation,
+	float maxDepth,
+	float minDepth,
+	std::vector<int> * validIndices)
+{
+	return cloudFromDepthRGB(
+		imageRgb,
+		imageDepthIn,
+		cv::Mat(),
+		model,
+		decimation,
+		maxDepth,
+		minDepth,
+		0,
+		validIndices);
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDepthIn,
+		const cv::Mat & imageDepthConfidenceIn,
 		const CameraModel & model,
 		int decimation,
 		float maxDepth,
 		float minDepth,
+		unsigned char confidenceThr,
 		std::vector<int> * validIndices)
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -449,6 +500,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	//UASSERT_MSG(imageRgb.rows % imageDepthIn.rows == 0 && imageRgb.cols % imageDepthIn.cols == 0,
 	//		uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepthIn.cols, imageDepthIn.rows).c_str());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
+	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr==0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
 	if(decimation < 0)
 	{
 		if(imageRgb.rows % decimation != 0 || imageRgb.cols % decimation != 0)
@@ -491,6 +543,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	}
 
 	cv::Mat imageDepth = imageDepthIn;
+	cv::Mat imageDepthConfidence = confidenceThr==0?cv::Mat():imageDepthConfidenceIn;
 	if(decimation < 0)
 	{
 		UDEBUG("Decimation from RGB image (%d)", decimation);
@@ -502,6 +555,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		{
 			UDEBUG("Depth interpolation factor=%d", targetSize/imageDepthIn.rows);
 			imageDepth = util2d::interpolate(imageDepthIn, targetSize/imageDepthIn.rows);
+			if(!imageDepthConfidence.empty()) {
+				imageDepthConfidence = util2d::interpolate(imageDepthConfidenceIn, targetSize/imageDepthConfidenceIn.rows);
+			}
 			decimation = 1;
 		}
 		else if(targetSize == imageDepthIn.rows)
@@ -546,12 +602,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	float depthCx = model.cx() / rgbToDepthFactorX;
 	float depthCy = model.cy() / rgbToDepthFactorY;
 
-	UDEBUG("rgb=%dx%d depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
+	UDEBUG("rgb=%dx%d depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) has confidence=%d (thr=%d) decimation=%d",
 			imageRgb.cols, imageRgb.rows,
 			imageDepth.cols, imageDepth.rows,
 			model.fx(), model.fy(), model.cx(), model.cy(),
 			rgbToDepthFactorX,
 			rgbToDepthFactorY,
+			imageDepthConfidenceIn.empty()?0:1,
+			(int)confidenceThr,
 			decimation);
 
 	int oi = 0;
@@ -579,21 +637,21 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.r = v;
 			}
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-			if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
+			pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+			if(imageDepthConfidence.empty() || imageDepthConfidence.at<unsigned char>(h,w) >= confidenceThr)
 			{
-				pt.x = ptXYZ.x;
-				pt.y = ptXYZ.y;
-				pt.z = ptXYZ.z;
-				if (validIndices)
+				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
+				if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
 				{
-					validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
+					pt.x = ptXYZ.x;
+					pt.y = ptXYZ.y;
+					pt.z = ptXYZ.z;
+					if (validIndices)
+					{
+						validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
+					}
+					++oi;
 				}
-				++oi;
-			}
-			else
-			{
-				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
 			}
 		}
 	}
@@ -868,7 +926,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		float minDepth,
 		std::vector<pcl::IndicesPtr> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	if(decimation == 0)
 	{
@@ -881,6 +940,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 	{
 		//depth
 		UASSERT(int((sensorData.depthRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.depthRaw().cols);
+		UASSERT(sensorData.depthConfidenceRaw().empty() || confidenceThr==0 || (sensorData.depthConfidenceRaw().type() == CV_8UC1 && sensorData.depthConfidenceRaw().cols == sensorData.depthRaw().cols && sensorData.depthConfidenceRaw().rows == sensorData.depthRaw().rows));
 		int subImageWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
@@ -892,6 +952,10 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
 				cv::Mat depth = cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows));
+				cv::Mat depthConfidence;
+				if(!sensorData.depthConfidenceRaw().empty() && confidenceThr > 0) {
+					depthConfidence = cv::Mat(sensorData.depthConfidenceRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthConfidenceRaw().rows));
+				}
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					(roiRatios[0] > 0.0f ||
@@ -912,6 +976,9 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 							roiRgb.height%decimation==0)))
 					{
 						depth = cv::Mat(depth, roiDepth);
+						if(!depthConfidence.empty()) {
+							depthConfidence = cv::Mat(depthConfidence, roiDepth);
+						}
 						if(model.imageWidth() != 0 && model.imageHeight() != 0)
 						{
 							model = model.roi(util2d::computeRoi(model.imageSize(), roiRatios));
@@ -940,10 +1007,12 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr tmp = util3d::cloudFromDepth(
 						depth,
+						depthConfidence,
 						model,
 						decimation,
 						maxDepth,
 						minDepth,
+						confidenceThr,
 						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
@@ -1064,7 +1133,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		float minDepth,
 		std::vector<int> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	std::vector<pcl::IndicesPtr> validIndicesV;
 	std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds = cloudsFromSensorData(
@@ -1074,7 +1144,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		minDepth,
 		validIndices?&validIndicesV:0,
 		stereoParameters,
-		roiRatios);
+		roiRatios,
+		confidenceThr);
 
 	if(validIndices)
 	{
@@ -1117,7 +1188,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 		float minDepth,
 		std::vector<pcl::IndicesPtr> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	if(decimation == 0)
 	{
@@ -1136,6 +1208,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 		//UASSERT_MSG(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().rows, sensorData.depthRaw().rows).c_str());
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
+		UASSERT(sensorData.depthConfidenceRaw().empty() || confidenceThr==0 || (sensorData.depthConfidenceRaw().type() == CV_8UC1 && sensorData.depthConfidenceRaw().cols == sensorData.depthRaw().cols && sensorData.depthConfidenceRaw().rows == sensorData.depthRaw().rows));
 
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
@@ -1148,6 +1221,10 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 			{
 				cv::Mat rgb(sensorData.imageRaw(), cv::Rect(subRGBWidth*i, 0, subRGBWidth, sensorData.imageRaw().rows));
 				cv::Mat depth(sensorData.depthRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthRaw().rows));
+				cv::Mat depthConfidence;
+				if(!sensorData.depthConfidenceRaw().empty() && confidenceThr>0) {
+					depthConfidence = cv::Mat(sensorData.depthConfidenceRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthConfidenceRaw().rows));
+				}
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
@@ -1163,6 +1240,9 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 						roiRgb.height%decimation==0)
 					{
 						depth = cv::Mat(depth, roiDepth);
+						if(!depthConfidence.empty()) {
+							depthConfidence = cv::Mat(depthConfidence, roiDepth);
+						}
 						rgb = cv::Mat(rgb, roiRgb);
 						model = model.roi(roiRgb);
 					}
@@ -1186,10 +1266,12 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = util3d::cloudFromDepthRGB(
 						rgb,
 						depth,
+						depthConfidence,
 						model,
 						decimation,
 						maxDepth,
 						minDepth,
+						confidenceThr,
 						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
@@ -1292,7 +1374,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		float minDepth,
 		std::vector<int> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	std::vector<pcl::IndicesPtr> validIndicesV;
 	std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds = cloudsRGBFromSensorData(
@@ -1302,7 +1385,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		minDepth,
 		validIndices?&validIndicesV:0,
 		stereoParameters,
-		roiRatios);
+		roiRatios,
+		confidenceThr);
 
 	if(validIndices)
 	{

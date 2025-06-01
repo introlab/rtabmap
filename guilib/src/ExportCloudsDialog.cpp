@@ -151,6 +151,9 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->lineEdit_distortionModel, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(selectDistortionModel()));
 
+	connect(_ui->spinBox_depthConfidence, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_depthEdgeFiltering, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+
 	connect(_ui->checkBox_bilateral, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_bilateral, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -401,6 +404,8 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value());
 	settings.setValue("regenerate_roi", _ui->lineEdit_roiRatios->text());
 	settings.setValue("regenerate_distortion_model", _ui->lineEdit_distortionModel->text());
+	settings.setValue("regenerate_min_depth_confidence", _ui->spinBox_depthConfidence->value());
+	settings.setValue("regenerate_edge_bleeding_error", _ui->doubleSpinBox_depthEdgeFiltering->value());
 
 	settings.setValue("bilateral", _ui->checkBox_bilateral->isChecked());
 	settings.setValue("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value());
@@ -584,6 +589,8 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_fillDepthHolesError->setValue(settings.value("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value()).toInt());
 	_ui->lineEdit_roiRatios->setText(settings.value("regenerate_roi", _ui->lineEdit_roiRatios->text()).toString());
 	_ui->lineEdit_distortionModel->setText(settings.value("regenerate_distortion_model", _ui->lineEdit_distortionModel->text()).toString());
+	_ui->spinBox_depthConfidence->setValue(settings.value("regenerate_min_depth_confidence", _ui->spinBox_depthConfidence->value()).toInt());
+	_ui->doubleSpinBox_depthEdgeFiltering->setValue(settings.value("regenerate_edge_bleeding_error", _ui->doubleSpinBox_depthEdgeFiltering->value()).toDouble());
 
 	_ui->checkBox_bilateral->setChecked(settings.value("bilateral", _ui->checkBox_bilateral->isChecked()).toBool());
 	_ui->doubleSpinBox_bilateral_sigmaS->setValue(settings.value("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value()).toDouble());
@@ -770,6 +777,8 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_fillDepthHolesError->setValue(2);
 	_ui->lineEdit_roiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->lineEdit_distortionModel->setText("");
+	_ui->spinBox_depthConfidence->setValue(0);
+	_ui->doubleSpinBox_depthEdgeFiltering->setValue(0.0);
 
 	_ui->checkBox_bilateral->setChecked(false);
 	_ui->doubleSpinBox_bilateral_sigmaS->setValue(10.0);
@@ -3685,20 +3694,30 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
 					data = s.sensorData();
-					cv::Mat image,depth;
+					cv::Mat image,depth,confidence;
 					data.uncompressData(
 							_ui->checkBox_fromDepth->isChecked()?&image:0,
 							_ui->checkBox_fromDepth->isChecked()?&depth:0,
-							!_ui->checkBox_fromDepth->isChecked()?&scan:0);
+							!_ui->checkBox_fromDepth->isChecked()?&scan:0,
+							0,
+							0,
+							0,
+							0,
+							_ui->checkBox_fromDepth->isChecked()?&confidence:0);
 				}
 				else if(_dbDriver)
 				{
-					cv::Mat image,depth;
+					cv::Mat image,depth,confidence;
 					_dbDriver->getNodeData(iter->first, data, _ui->checkBox_fromDepth->isChecked(), !_ui->checkBox_fromDepth->isChecked(), false, false);
 					data.uncompressData(
 							_ui->checkBox_fromDepth->isChecked()?&image:0,
 							_ui->checkBox_fromDepth->isChecked()?&depth:0,
-							!_ui->checkBox_fromDepth->isChecked()?&scan:0);
+							!_ui->checkBox_fromDepth->isChecked()?&scan:0,
+							0,
+							0,
+							0,
+							0,
+							_ui->checkBox_fromDepth->isChecked()?&confidence:0);
 				}
 
 				if(_ui->checkBox_fromDepth->isChecked() && !data.imageRaw().empty() && !data.depthOrRightRaw().empty())
@@ -3719,6 +3738,12 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						model.undistort(depth);
 					}
 
+					// edge bleeding filter
+					if(!depth.empty() && _ui->doubleSpinBox_depthEdgeFiltering->value()>0.0)
+					{
+						util2d::depthBleedingFiltering(depth, _ui->doubleSpinBox_depthEdgeFiltering->value());
+					}
+
 					// bilateral filtering
 					if(!depth.empty() && _ui->checkBox_bilateral->isChecked())
 					{
@@ -3729,7 +3754,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 					if(!depth.empty())
 					{
-						data.setRGBDImage(data.imageRaw(), depth, data.cameraModels());
+						data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
 					}
 
 					UASSERT(iter->first == data.id());
@@ -3754,7 +3779,8 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							_ui->doubleSpinBox_minDepth->value(),
 							indices.get(),
 							parameters,
-							roiRatios);
+							roiRatios,
+							(unsigned char)_ui->spinBox_depthConfidence->value());
 
 					if(cloudWithoutNormals->size())
 					{

@@ -1225,13 +1225,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				pcl::IndicesPtr indices(new std::vector<int>);
 
-				cloud = util3d::cloudRGBFromSensorData(*data,
+				cloud = util3d::cloudRGBFromSensorData(
+						*data,
 						_preferencesDialog->getCloudDecimation(1),
 						_preferencesDialog->getCloudMaxDepth(1),
 						_preferencesDialog->getCloudMinDepth(1),
 						indices.get(),
 						_preferencesDialog->getAllParameters(),
-						_preferencesDialog->getCloudRoiRatios(1));
+						_preferencesDialog->getCloudRoiRatios(1),
+						_preferencesDialog->getCloudConfidenceThr(1));
 				if(indices->size())
 				{
 					cloud = util3d::transformPointCloud(cloud, pose);
@@ -1717,7 +1719,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->imageView_odometry->setImage(uCvMat2QImage(data->imageRaw()));
 			if(_ui->imageView_odometry->isImageDepthShown() && !data->depthOrRightRaw().empty())
 			{
-				_ui->imageView_odometry->setImageDepth(data->depthOrRightRaw());
+				_ui->imageView_odometry->setImageDepth(data->depthOrRightRaw(), data->depthConfidenceRaw());
 			}
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
@@ -2342,7 +2344,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				if(!signature.sensorData().depthOrRightRaw().empty())
 				{
-					_ui->imageView_source->setImageDepth(signature.sensorData().depthOrRightRaw());
+					_ui->imageView_source->setImageDepth(signature.sensorData().depthOrRightRaw(), signature.sensorData().depthConfidenceRaw());
 				}
 				if(img.isNull() && signature.sensorData().depthOrRightRaw().empty())
 				{
@@ -2374,7 +2376,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				if(!loopSignature.sensorData().depthOrRightRaw().empty())
 				{
-					_ui->imageView_loopClosure->setImageDepth(loopSignature.sensorData().depthOrRightRaw());
+					_ui->imageView_loopClosure->setImageDepth(loopSignature.sensorData().depthOrRightRaw(), loopSignature.sensorData().depthConfidenceRaw());
 				}
 				if(_ui->imageView_loopClosure->sceneRect().isNull())
 				{
@@ -3717,7 +3719,8 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				_preferencesDialog->getCloudMinDepth(0),
 				indices.get(),
 				allParameters,
-				_preferencesDialog->getCloudRoiRatios(0));
+				_preferencesDialog->getCloudRoiRatios(0),
+				_preferencesDialog->getCloudConfidenceThr(0));
 
 		// view point
 		Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
@@ -8186,6 +8189,12 @@ void MainWindow::exportImages()
 							QDir dir;
 							dir.mkdir(QString("%1/rgb").arg(path));
 							dir.mkdir(QString("%1/depth").arg(path));
+
+							if(!data.depthConfidenceRaw().empty())
+							{
+								QDir dir;
+								dir.mkdir(QString("%1/confidence").arg(path));
+							}
 						}
 
 						if(data.cameraModels().size() > 1)
@@ -8244,7 +8253,14 @@ void MainWindow::exportImages()
 					UWARN("Failed saving \"%s\"", QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 				if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
 					UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
-				info = tr("Saved rgb/%1.%2 and depth/%1.png.").arg(id).arg(ext);
+				if(data.depthConfidenceRaw().empty()) {
+					info = tr("Saved rgb/%1.%2 and depth/%1.png.").arg(id).arg(ext);
+				}
+				else {
+					if(!cv::imwrite(QString("%1/confidence/%2.png").arg(path).arg(id).toStdString(), data.depthConfidenceRaw()))
+						UWARN("Failed saving \"%s\"", QString("%1/confidence/%2.png").arg(path).arg(id).toStdString().c_str());
+					info = tr("Saved rgb/%1.%2, depth/%1.png and confidence/%1.png.").arg(id).arg(ext);
+				}
 			}
 			else if(!data.imageRaw().empty())
 			{

@@ -153,6 +153,8 @@ void showUsage()
 			"    --min_range     #     Minimum range of the created clouds (default 0 m).\n"
 			"    --max_range     #     Maximum range of the created clouds (default 4 m, 0 m with --scan).\n"
 			"    --decimation    #     Depth image decimation before creating the clouds (default 4, 1 with --scan).\n"
+			"    --edge_bleeding_error #  Depth's edge bleeding filtering error (default 0 m).\n"
+			"    --depth_confidence    #  Depth confidence threshold (should be in [0,100]) (default 0=Low).\n"
 			"    --voxel         #     Voxel size of the created clouds (default 0.01 m, 0 m with --scan).\n"
 			"    --ground_normals_up  #  Flip ground normals up if close to -z axis (default 0, 0=disabled, value should be >0 and <1, typical 0.9).\n"
 			"    --noise_radius  #     Noise filtering search radius (default 0, 0=disabled).\n"
@@ -214,6 +216,8 @@ int main(int argc, char * argv[])
 	float poissonSize = 0.03;
 	int maxPolygons = 300000;
 	int decimation = -1;
+	float depthEdgeBleedingFilterError = 0.0f;
+	unsigned char depthConfidenceThr = 0;
 	float minRange = 0.0f;
 	float maxRange = -1.0f;
 	float voxelSize = -1.0f;
@@ -767,6 +771,30 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				decimation = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--edge_bleeding_error") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				depthEdgeBleedingFilterError = uStr2Float(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
+		else if(std::strcmp(argv[i], "--depth_confidence") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				depthConfidenceThr = (unsigned char)uStr2Int(argv[i]);
 			}
 			else
 			{
@@ -1432,6 +1460,7 @@ int main(int argc, char * argv[])
 			bool densityFiltered = !densityPoses.empty() && densityPoses.find(iter->first) == densityPoses.end();
 			cv::Mat rgb;
 			cv::Mat depth;
+			cv::Mat confidence;
 			pcl::IndicesPtr indices(new std::vector<int>);
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 			pcl::PointCloud<pcl::PointXYZI>::Ptr cloudI;
@@ -1440,7 +1469,7 @@ int main(int argc, char * argv[])
 				if(!densityFiltered && cloudFromScan && (exportCloud || exportMesh))
 				{
 					LaserScan scan;
-					data.uncompressData(exportImages?&rgb:0, (texture||exportImages)&&!data.depthOrRightCompressed().empty()?&depth:0, &scan);
+					data.uncompressData(exportImages?&rgb:0, (texture||exportImages)&&!data.depthOrRightCompressed().empty()?&depth:0, &scan, 0, 0, 0, 0, exportImages?&confidence:0);
 					if(scan.empty())
 					{
 						printf("Node %d doesn't have scan data, empty cloud is created.\n", iter->first);
@@ -1468,7 +1497,7 @@ int main(int argc, char * argv[])
 				}
 				else
 				{
-					data.uncompressData(&rgb, &depth);
+					data.uncompressData(&rgb, &depth, 0, 0, 0, 0, 0, &confidence);
 					if(!densityFiltered && (exportCloud || exportMesh))
 					{
 						if(depth.empty())
@@ -1476,12 +1505,20 @@ int main(int argc, char * argv[])
 							printf("Node %d doesn't have depth or stereo data, empty cloud is "
 									"created (if you want to create point cloud from scan, use --scan option).\n", iter->first);
 						}
+						else if(!data.depthRaw().empty() && depthEdgeBleedingFilterError>0.0f)
+						{
+							util2d::depthBleedingFiltering(depth, depthEdgeBleedingFilterError);
+							data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+						}
 						cloud = util3d::cloudRGBFromSensorData(
 								data,
 								decimation,      // image decimation before creating the clouds
 								maxRange,        // maximum depth of the cloud
 								minRange,
-								indices.get());
+								indices.get(),
+								ParametersMap(),
+								std::vector<float>(),
+								depthConfidenceThr);
 						if(noiseRadius>0.0f && noiseMinNeighbors>0)
 						{
 							indices = util3d::radiusFiltering(cloud, indices, noiseRadius, noiseMinNeighbors);
@@ -1524,6 +1561,16 @@ int main(int argc, char * argv[])
 
 					outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f", stamp))+ext;
 					cv::imwrite(outputPath, depthExported);
+				}
+				if(!confidence.empty())
+				{
+					dir = outputDirectory+"/"+baseName+"_confidence";
+					if(!UDirectory::exists(dir)) {
+						UDirectory::makeDir(dir);
+					}
+
+					outputPath=dir+"/"+(exportImagesId?uNumber2Str(iter->first):uFormat("%f", stamp))+".png";
+					cv::imwrite(outputPath, confidence);
 				}
 
 				// save calibration per image (calibration can change over time, e.g. camera has auto focus)

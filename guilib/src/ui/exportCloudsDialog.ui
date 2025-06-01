@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-2495</y>
+        <y>-654</y>
         <width>861</width>
-        <height>6426</height>
+        <height>6498</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -710,6 +710,26 @@
          <layout class="QVBoxLayout" name="verticalLayout_14">
           <item>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,1">
+            <item row="3" column="1">
+             <widget class="QLineEdit" name="lineEdit_roiRatios"/>
+            </item>
+            <item row="2" column="2">
+             <widget class="QLabel" name="label_133">
+              <property name="text">
+               <string>3D cloud minimum depth.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QSpinBox" name="spinBox_fillDepthHolesError">
+              <property name="suffix">
+               <string> %</string>
+              </property>
+             </widget>
+            </item>
             <item row="6" column="2">
              <widget class="QLabel" name="label_134">
               <property name="text">
@@ -720,13 +740,10 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="2">
-             <widget class="QLabel" name="label_135">
-              <property name="text">
-               <string>ROI ratios [left, right, top, bottom] between 0 and 1. Only generate 3D points for pixels inside the region of interest (RGB image).</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="spinBox_fillDepthHoles">
+              <property name="suffix">
+               <string> pixels</string>
               </property>
              </widget>
             </item>
@@ -749,21 +766,18 @@
               </property>
              </widget>
             </item>
-            <item row="5" column="2">
-             <widget class="QLabel" name="label_198">
+            <item row="3" column="2">
+             <widget class="QLabel" name="label_135">
               <property name="text">
-               <string>Fill depth hole error.</string>
+               <string>ROI ratios [left, right, top, bottom] between 0 and 1. Only generate 3D points for pixels inside the region of interest (RGB image).</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
               </property>
-              <property name="textInteractionFlags">
-               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-              </property>
              </widget>
             </item>
-            <item row="3" column="1">
-             <widget class="QLineEdit" name="lineEdit_roiRatios"/>
+            <item row="6" column="1">
+             <widget class="QLineEdit" name="lineEdit_distortionModel"/>
             </item>
             <item row="2" column="1">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth">
@@ -794,39 +808,6 @@
               </property>
              </widget>
             </item>
-            <item row="8" column="1">
-             <widget class="QCheckBox" name="checkBox_subtraction">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QLineEdit" name="lineEdit_distortionModel"/>
-            </item>
-            <item row="8" column="2">
-             <widget class="QLabel" name="label_137">
-              <property name="text">
-               <string>Cloud subtraction. Superposed points from different nodes are filtered.</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="2">
-             <widget class="QLabel" name="label_197">
-              <property name="text">
-               <string>Fill depth hole size (0 means no fill).</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-              <property name="textInteractionFlags">
-               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="2">
              <widget class="QLabel" name="label_132">
               <property name="text">
@@ -850,13 +831,6 @@
               </property>
              </widget>
             </item>
-            <item row="5" column="1">
-             <widget class="QSpinBox" name="spinBox_fillDepthHolesError">
-              <property name="suffix">
-               <string> %</string>
-              </property>
-             </widget>
-            </item>
             <item row="6" column="0">
              <widget class="QToolButton" name="toolButton_distortionModel">
               <property name="text">
@@ -864,24 +838,57 @@
               </property>
              </widget>
             </item>
-            <item row="7" column="1">
-             <widget class="QCheckBox" name="checkBox_bilateral">
+            <item row="10" column="2">
+             <widget class="QLabel" name="label_137">
               <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="2">
-             <widget class="QLabel" name="label_133">
-              <property name="text">
-               <string>3D cloud minimum depth.</string>
+               <string>Cloud subtraction. Superposed points from different nodes are filtered.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
               </property>
              </widget>
             </item>
-            <item row="7" column="2">
+            <item row="5" column="2">
+             <widget class="QLabel" name="label_198">
+              <property name="text">
+               <string>Fill depth hole error.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+            <item row="10" column="1">
+             <widget class="QCheckBox" name="checkBox_subtraction">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="1">
+             <widget class="QCheckBox" name="checkBox_bilateral">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QLabel" name="label_197">
+              <property name="text">
+               <string>Fill depth hole size (0 means no fill).</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="2">
              <widget class="QLabel" name="label_136">
               <property name="text">
                <string>Bilateral filtering of the depth image. Reduce noise in depth images.</string>
@@ -891,10 +898,52 @@
               </property>
              </widget>
             </item>
-            <item row="4" column="1">
-             <widget class="QSpinBox" name="spinBox_fillDepthHoles">
+            <item row="7" column="2">
+             <widget class="QLabel" name="label_147">
+              <property name="text">
+               <string>Depth's edge bleeding filter error (0 means disabled). Reduce depth noise around edges.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_depthEdgeFiltering">
               <property name="suffix">
-               <string> pixels</string>
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>4.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="2">
+             <widget class="QLabel" name="label_149">
+              <property name="text">
+               <string>Minimum depth confidence: 0% is low confidence, 100% is high confidence. Ignored if no depth confidence images were recorded or if set to 0%.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="1">
+             <widget class="QSpinBox" name="spinBox_depthConfidence">
+              <property name="suffix">
+               <string> %</string>
+              </property>
+              <property name="maximum">
+               <number>100</number>
               </property>
              </widget>
             </item>

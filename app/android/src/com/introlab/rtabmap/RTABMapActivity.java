@@ -1140,6 +1140,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			RTABMapLib.setRawScanSaved(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_raw_scan_saved), Boolean.parseBoolean(getString(R.string.pref_default_raw_scan_saved))));
 			RTABMapLib.setFullResolution(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_resolution), Boolean.parseBoolean(getString(R.string.pref_default_resolution))));
 			RTABMapLib.setSmoothing(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_smoothing), Boolean.parseBoolean(getString(R.string.pref_default_smoothing))));
+			RTABMapLib.setDepthBleedingError(nativeApplication, Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_depth_bleeding_error), getString(R.string.pref_default_depth_bleeding_error))));
 			RTABMapLib.setDepthFromMotion(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_depth_from_motion), Boolean.parseBoolean(getString(R.string.pref_default_depth_from_motion))));
 			RTABMapLib.setCameraColor(nativeApplication, !sharedPref.getBoolean(getString(R.string.pref_key_fisheye), Boolean.parseBoolean(getString(R.string.pref_default_fisheye))));
 			RTABMapLib.setAppendMode(nativeApplication, sharedPref.getBoolean(getString(R.string.pref_key_append), Boolean.parseBoolean(getString(R.string.pref_default_append))));

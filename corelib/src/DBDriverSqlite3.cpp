@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_20_0_sql.h"
 #include "DatabaseSchema_0_18_3_sql.h"
 #include "DatabaseSchema_0_18_0_sql.h"
 #include "DatabaseSchema_0_17_0_sql.h"
@@ -402,6 +403,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			schemas.push_back(std::make_pair("0.17.0", DATABASESCHEMA_0_17_0_SQL));
 			schemas.push_back(std::make_pair("0.18.0", DATABASESCHEMA_0_18_0_SQL));
 			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
+			schemas.push_back(std::make_pair("0.20.0", DATABASESCHEMA_0_20_0_SQL));
 			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
 			for(size_t i=0; i<schemas.size(); ++i)
 			{
@@ -1317,7 +1319,15 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 			if(images)
 			{
-				fields << "image, depth, calibration";
+				if(uStrNumCmp(_version, "0.22.0") >= 0)
+				{
+					fields << "image, depth, depth_confidence, calibration";
+				}
+				else
+				{
+					fields << "image, depth, calibration";
+				}
+				
 				if(scan || userData || occupancyGrid)
 				{
 					fields << ", ";
@@ -1448,6 +1458,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 				cv::Mat imageCompressed;
 				cv::Mat depthOrRightCompressed;
+				cv::Mat depthConfidenceCompressed;
 				std::vector<CameraModel> models;
 				std::vector<StereoCameraModel> stereoModels;
 				Transform localTransform = Transform::getIdentity();
@@ -1470,6 +1481,17 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					if(dataSize>4 && data)
 					{
 						depthOrRightCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+					}
+
+					if(uStrNumCmp(_version, "0.22.0") >= 0)
+					{
+						//Create the depth image
+						data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						if(dataSize>4 && data)
+						{
+							depthConfidenceCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+						}
 					}
 
 					if(uStrNumCmp(_version, "0.10.0") < 0)
@@ -1823,7 +1845,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				{
 					if(models.size())
 					{
-						(*iter)->sensorData().setRGBDImage(imageCompressed, depthOrRightCompressed, models);
+						(*iter)->sensorData().setRGBDImage(imageCompressed, depthOrRightCompressed, depthConfidenceCompressed, models);
 					}
 					else
 					{
@@ -4478,6 +4500,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			{
 				if(!(*i)->sensorData().imageCompressed().empty() ||
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
+				   !(*i)->sensorData().depthConfidenceCompressed().empty() ||
 				   !(*i)->sensorData().laserScanCompressed().isEmpty() ||
 				   !(*i)->sensorData().userDataCompressed().empty() ||
 				   !(*i)->sensorData().cameraModels().empty() ||
@@ -6186,7 +6209,11 @@ void DBDriverSqlite3::stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const La
 std::string DBDriverSqlite3::queryStepSensorData() const
 {
 	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
-	if(uStrNumCmp(_version, "0.16.0") >= 0)
+	if(uStrNumCmp(_version, "0.22.0") >= 0)
+	{
+		return "INSERT INTO Data(id, image, depth, depth_confidence, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.16.0") >= 0)
 	{
 		return "INSERT INTO Data(id, image, depth, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -6249,6 +6276,20 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		rc = sqlite3_bind_null(ppStmt, index++);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//depth confidence
+	if(uStrNumCmp(_version, "0.22.0") >= 0)
+	{
+		if(!sensorData.depthConfidenceCompressed().empty())
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, sensorData.depthConfidenceCompressed().data, (int)sensorData.depthConfidenceCompressed().cols, SQLITE_STATIC);
+		}
+		else
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
 
 	// calibration
 	std::vector<unsigned char> calibrationData;

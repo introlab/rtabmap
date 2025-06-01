@@ -139,6 +139,7 @@ class RTABMapApp : public UEventsHandler {
   void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
   void setSmoothing(bool enabled);
+  void setDepthBleedingError(float value);
   void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
   void setUpstreamRelocalizationAccThr(float value);
@@ -235,6 +236,7 @@ class RTABMapApp : public UEventsHandler {
   bool trajectoryMode_;
   bool rawScanSaved_;
   bool smoothing_;
+  float depthBleedingError_;
   bool depthFromMotion_;
   bool cameraColor_;
   bool fullResolution_;
@@ -250,7 +252,7 @@ class RTABMapApp : public UEventsHandler {
   float maxGainRadius_;
   int renderingTextureDecimation_;
   float backgroundColor_;
-  int depthConfidence_;
+  unsigned char depthConfidence_;
   float upstreamRelocalizationMaxAcc_;
   std::string exportPointCloudFormat_;
 

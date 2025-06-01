@@ -4893,9 +4893,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					else
 					{
 						decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
+						UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
 					}
 				}
-				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth);
+				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);
 
 				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 				for(unsigned int i=0; i<cameraModels.size(); ++i)
@@ -4907,6 +4908,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					decimatedData.setRGBDImage(
 							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
 							util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth),
+							util2d::decimate(decimatedData.depthConfidenceRaw(), decimationDepth),
 							cameraModels);
 				}
 
@@ -5656,6 +5658,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	cv::Mat image = data.imageRaw();
 	cv::Mat depthOrRightImage = data.depthOrRightRaw();
+	cv::Mat depthConfidence = data.depthConfidenceRaw();
+
 	std::vector<CameraModel> cameraModels = data.cameraModels();
 	std::vector<StereoCameraModel> stereoCameraModels = data.stereoCameraModels();
 
@@ -5666,6 +5670,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			image = decimatedData.imageRaw();
 			depthOrRightImage = decimatedData.depthOrRightRaw();
+			depthConfidence = decimatedData.depthConfidenceRaw();
 			cameraModels = decimatedData.cameraModels();
 			stereoCameraModels = decimatedData.stereoCameraModels();
 		}
@@ -5879,9 +5884,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	Signature * s;
 	if(this->isBinDataKept() && (!isIntermediateNode || _saveIntermediateNodeData))
 	{
-		UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
+		UDEBUG("Bin data kept: rgb=%d, depth=%d, conf=%d, scan=%d, userData=%d",
 				image.empty()?0:1,
 				depthOrRightImage.empty()?0:1,
+				depthConfidence.empty()?0:1,
 				laserScan.isEmpty()?0:1,
 				data.userDataRaw().empty()?0:1);
 
@@ -5928,12 +5934,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 		cv::Mat compressedImage;
 		cv::Mat compressedDepth;
+		cv::Mat compressedDepthConfidence;
 		cv::Mat compressedScan;
 		cv::Mat compressedUserData;
 		if(_compressionParallelized)
 		{
 			rtabmap::CompressionThread ctImage(image, _rgbCompressionFormat);
 			rtabmap::CompressionThread ctDepth(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
+			rtabmap::CompressionThread ctDepthConfidence(depthConfidence);
 			rtabmap::CompressionThread ctLaserScan(laserScan.data());
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
 			if(!image.empty())
@@ -5943,6 +5951,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(!depthOrRightImage.empty())
 			{
 				ctDepth.start();
+			}
+			if(!depthConfidence.empty())
+			{
+				ctDepthConfidence.start();
 			}
 			if(!laserScan.isEmpty())
 			{
@@ -5954,11 +5966,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			ctImage.join();
 			ctDepth.join();
+			ctDepthConfidence.join();
 			ctLaserScan.join();
 			ctUserData.join();
 
 			compressedImage = ctImage.getCompressedData();
 			compressedDepth = ctDepth.getCompressedData();
+			compressedDepthConfidence = ctDepthConfidence.getCompressedData();
 			compressedScan = ctLaserScan.getCompressedData();
 			compressedUserData = ctUserData.getCompressedData();
 		}
@@ -5966,6 +5980,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			compressedImage = compressImage2(image, _rgbCompressionFormat);
 			compressedDepth = compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
+			compressedDepthConfidence = compressData2(depthConfidence);
 			compressedScan = compressData2(laserScan.data());
 			compressedUserData = compressData2(data.userDataRaw());
 		}
@@ -6016,6 +6031,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								laserScan.localTransform()),
 						compressedImage.empty()?data.imageCompressed():compressedImage,
 						compressedDepth.empty()?data.depthOrRightCompressed():compressedDepth,
+						compressedDepthConfidence.empty()?data.depthConfidenceCompressed():compressedDepthConfidence,
 						cameraModels,
 						id,
 						0,
@@ -6113,7 +6129,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	// set raw data
 	if(!cameraModels.empty())
 	{
-		s->sensorData().setRGBDImage(image, depthOrRightImage, cameraModels, false);
+		s->sensorData().setRGBDImage(image, depthOrRightImage, depthConfidence, cameraModels, false);
 	}
 	else
 	{

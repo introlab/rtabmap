@@ -58,7 +58,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>Choosing between high and low depth confidence depends on the application. If precise geometry is critical, prioritize high depth confidence even if it means fewer points. If you need a dense point cloud for analysis, even in areas with weak LiDAR signal, a lower depth confidence might be suitable at the cost of highly interpolated points (that could give a wavy look of some surfaces). Important: the points with too low confidence are not saved in the db file, so we cannot recover or filter these points in post-processing.</string>
+			<string>Choosing between high and low depth confidence depends on the application. If precise geometry is critical, prioritize high depth confidence even if it means fewer points. If you need a dense point cloud for analysis, even in areas with weak LiDAR signal, a lower depth confidence might be suitable at the cost of highly interpolated points (that could give a wavy look of some surfaces). Note: it is possible to change confidence level in post-processing.</string>
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
@@ -86,7 +86,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>Smooth the point clouds.</string>
+			<string>Smooth the point clouds. Note that this can be changed in post-processing.</string>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -97,6 +97,44 @@
 			<string>Smoothing</string>
 			<key>DefaultValue</key>
 			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Filter interpolated depth pixels between foreground and background objects. Note that values can be changed in post-processing.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Depth Bleeding Filter Error</string>
+			<key>Key</key>
+			<string>DepthBleedingError</string>
+			<key>DefaultValue</key>
+			<string>0</string>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>2.5 cm</string>
+				<string>5 cm</string>
+				<string>10 cm</string>
+				<string>15 cm</string>
+				<string>20 cm</string>
+				<string>25 cm</string>
+				<string>30 cm</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>0.025</string>
+				<string>0.05</string>
+				<string>0.10</string>
+				<string>0.15</string>
+				<string>0.20</string>
+				<string>0.25</string>
+				<string>0.30</string>
+			</array>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -590,7 +628,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>BRIEF features are fast to compute but are not rotation invariant like FREAK. Warning: Changing feature type will automatically reset the map!</string>
+			<string>BRIEF, FREAK and ORB are binary features, which are fast to compute and use less memory. SURF and SIFT are high dimensional float descriptors (rotation/scale/shear-invariant), so they use more memory and CPU but they are significantly better to detect loop closures in large environments. Warning: Changing feature type will automatically reset the map!</string>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -603,13 +641,21 @@
 			<string>6</string>
 			<key>Titles</key>
 			<array>
-				<string>BRIEF</string>
-				<string>FREAK</string>
+				<string>SURF</string>
+				<string>SIFT</string>
+				<string>GFTT-FREAK</string>
+				<string>GFTT-BRIEF</string>
+				<string>GFTT-ORB</string>
+				<string>ORB-OCTREE</string>
 			</array>
 			<key>Values</key>
 			<array>
-				<string>6</string>
+				<string>0</string>
+				<string>1</string>
 				<string>5</string>
+				<string>6</string>
+				<string>8</string>
+				<string>10</string>
 			</array>
 		</dict>
 		<dict>

@@ -114,8 +114,7 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 //////////////////////////////
 // CameraTango
 //////////////////////////////
-CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing) :
-		CameraMobile(smoothing),
+CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan) :
 		tango_config_(0),
 		colorCamera_(colorCamera),
 		decimation_(decimation),

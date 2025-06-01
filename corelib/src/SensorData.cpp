@@ -107,6 +107,25 @@ SensorData::SensorData(
 	setUserData(userData);
 }
 
+// RGB-D constructor + confidence + laser scan
+SensorData::SensorData(
+		const LaserScan & laserScan,
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const cv::Mat & depthConfidence,
+		const CameraModel & cameraModel,
+		int id,
+		double stamp,
+		const cv::Mat & userData) :
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	setRGBDImage(rgb, depth, depthConfidence, cameraModel);
+	setLaserScan(laserScan);
+	setUserData(userData);
+}
+
 // Multi-cameras RGB-D constructor
 SensorData::SensorData(
 		const cv::Mat & rgb,
@@ -120,6 +139,23 @@ SensorData::SensorData(
 		_cellSize(0.0f)
 {
 	setRGBDImage(rgb, depth, cameraModels);
+	setUserData(userData);
+}
+
+// Multi-cameras RGB-D constructor + confidence
+SensorData::SensorData(
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const cv::Mat & depthConfidence,
+		const std::vector<CameraModel> & cameraModels,
+		int id,
+		double stamp,
+		const cv::Mat & userData) :
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	setRGBDImage(rgb, depth, depthConfidence, cameraModels);
 	setUserData(userData);
 }
 
@@ -137,6 +173,25 @@ SensorData::SensorData(
 		_cellSize(0.0f)
 {
 	setRGBDImage(rgb, depth, cameraModels);
+	setLaserScan(laserScan);
+	setUserData(userData);
+}
+
+// Multi-cameras RGB-D constructor + confidence + laser scan
+SensorData::SensorData(
+		const LaserScan & laserScan,
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const cv::Mat & depthConfidence,
+		const std::vector<CameraModel> & cameraModels,
+		int id,
+		double stamp,
+		const cv::Mat & userData) :
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	setRGBDImage(rgb, depth, depthConfidence, cameraModels);
 	setLaserScan(laserScan);
 	setUserData(userData);
 }
@@ -235,8 +290,28 @@ void SensorData::setRGBDImage(
 	setRGBDImage(rgb, depth, models, clearPreviousData);
 }
 void SensorData::setRGBDImage(
+	const cv::Mat & rgb,
+	const cv::Mat & depth,
+	const cv::Mat & depthConfidence,
+	const CameraModel & model,
+	bool clearPreviousData)
+{
+	std::vector<CameraModel> models;
+	models.push_back(model);
+	setRGBDImage(rgb, depth, depthConfidence, models, clearPreviousData);
+}
+void SensorData::setRGBDImage(
+	const cv::Mat & rgb,
+	const cv::Mat & depth,
+	const std::vector<CameraModel> & models,
+	bool clearPreviousData)
+{
+	setRGBDImage(rgb, depth, models, clearPreviousData);
+}
+void SensorData::setRGBDImage(
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
+		const cv::Mat & depthConfidence,
 		const std::vector<CameraModel> & models,
 		bool clearPreviousData)
 {
@@ -299,6 +374,30 @@ void SensorData::setRGBDImage(
 	{
 		_depthOrRightRaw = cv::Mat();
 		_depthOrRightCompressed = cv::Mat();
+	}
+
+	if(depthConfidence.rows == 1)
+	{
+		UASSERT(depthConfidence.type() == CV_8UC1); // Bytes
+		_depthConfidenceCompressed = depthConfidence;
+		if(clearData)
+		{
+			_depthConfidenceRaw = cv::Mat();
+		}
+	}
+	else if(!depthConfidence.empty())
+	{
+		UASSERT(depthConfidence.type() == CV_8UC1);
+		_depthConfidenceRaw = depthConfidence;
+		if(clearData)
+		{
+			_depthConfidenceCompressed = cv::Mat();
+		}
+	}
+	else if(clearData)
+	{
+		_depthConfidenceRaw = cv::Mat();
+		_depthConfidenceCompressed = cv::Mat();
 	}
 }
 void SensorData::setStereoImage(
@@ -528,7 +627,7 @@ void SensorData::setOccupancyGrid(
 
 void SensorData::uncompressData()
 {
-	cv::Mat tmpA, tmpB, tmpD, tmpE, tmpF, tmpG;
+	cv::Mat tmpA, tmpB, tmpD, tmpE, tmpF, tmpG, tmpH;
 	LaserScan tmpC;
 	uncompressData(_imageCompressed.empty()?0:&tmpA,
 				_depthOrRightCompressed.empty()?0:&tmpB,
@@ -536,7 +635,8 @@ void SensorData::uncompressData()
 				_userDataCompressed.empty()?0:&tmpD,
 				_groundCellsCompressed.empty()?0:&tmpE,
 				_obstacleCellsCompressed.empty()?0:&tmpF,
-				_emptyCellsCompressed.empty()?0:&tmpG);
+				_emptyCellsCompressed.empty()?0:&tmpG,
+				_depthConfidenceCompressed.empty()?0:&tmpH);
 }
 
 void SensorData::uncompressData(
@@ -546,16 +646,27 @@ void SensorData::uncompressData(
 		cv::Mat * userDataRaw,
 		cv::Mat * groundCellsRaw,
 		cv::Mat * obstacleCellsRaw,
-		cv::Mat * emptyCellsRaw)
+		cv::Mat * emptyCellsRaw,
+		cv::Mat * depthConfidenceRaw)
 {
-	UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d)", this->id(), imageRaw?1:0, depthRaw?1:0, laserScanRaw?1:0, userDataRaw?1:0, groundCellsRaw?1:0, obstacleCellsRaw?1:0, emptyCellsRaw?1:0);
+	UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d,%d)", 
+		this->id(),
+		imageRaw?1:0,
+		depthRaw?1:0,
+		laserScanRaw?1:0,
+		userDataRaw?1:0,
+		groundCellsRaw?1:0,
+		obstacleCellsRaw?1:0, 
+		emptyCellsRaw?1:0,
+		depthConfidenceRaw?1:0);
 	if(imageRaw == 0 &&
 		depthRaw == 0 &&
 		laserScanRaw == 0 &&
 		userDataRaw == 0 &&
 		groundCellsRaw == 0 &&
 		obstacleCellsRaw == 0 &&
-		emptyCellsRaw == 0)
+		emptyCellsRaw == 0 &&
+		depthConfidenceRaw == 0)
 	{
 		return;
 	}
@@ -566,7 +677,8 @@ void SensorData::uncompressData(
 			userDataRaw,
 			groundCellsRaw,
 			obstacleCellsRaw,
-			emptyCellsRaw);
+			emptyCellsRaw,
+			depthConfidenceRaw);
 
 	if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
 	{
@@ -587,6 +699,10 @@ void SensorData::uncompressData(
 	if(depthRaw && !depthRaw->empty() && _depthOrRightRaw.empty())
 	{
 		_depthOrRightRaw = *depthRaw;
+	}
+	if(depthConfidenceRaw && !depthConfidenceRaw->empty() && _depthConfidenceRaw.empty())
+	{
+		_depthConfidenceRaw = *depthConfidenceRaw;
 	}
 	if(laserScanRaw && !laserScanRaw->isEmpty() && _laserScanRaw.isEmpty())
 	{
@@ -628,7 +744,8 @@ void SensorData::uncompressDataConst(
 		cv::Mat * userDataRaw,
 		cv::Mat * groundCellsRaw,
 		cv::Mat * obstacleCellsRaw,
-		cv::Mat * emptyCellsRaw) const
+		cv::Mat * emptyCellsRaw,
+		cv::Mat * depthConfidenceRaw) const
 {
 	if(imageRaw)
 	{
@@ -637,6 +754,10 @@ void SensorData::uncompressDataConst(
 	if(depthRaw)
 	{
 		*depthRaw = _depthOrRightRaw;
+	}
+	if(depthConfidenceRaw)
+	{
+		*depthConfidenceRaw = _depthConfidenceRaw;
 	}
 	if(laserScanRaw)
 	{
@@ -660,6 +781,7 @@ void SensorData::uncompressDataConst(
 	}
 	if( (imageRaw && imageRaw->empty()) ||
 		(depthRaw && depthRaw->empty()) ||
+		(depthConfidenceRaw && depthConfidenceRaw->empty()) ||
 		(laserScanRaw && laserScanRaw->isEmpty()) ||
 		(userDataRaw && userDataRaw->empty()) ||
 		(groundCellsRaw && groundCellsRaw->empty()) ||
@@ -668,6 +790,7 @@ void SensorData::uncompressDataConst(
 	{
 		rtabmap::CompressionThread ctImage(_imageCompressed, true);
 		rtabmap::CompressionThread ctDepth(_depthOrRightCompressed, true);
+		rtabmap::CompressionThread ctDepthConfidence(_depthConfidenceCompressed, false);
 		rtabmap::CompressionThread ctLaserScan(_laserScanCompressed.data(), false);
 		rtabmap::CompressionThread ctUserData(_userDataCompressed, false);
 		rtabmap::CompressionThread ctGroundCells(_groundCellsCompressed, false);
@@ -682,6 +805,11 @@ void SensorData::uncompressDataConst(
 		{
 			UASSERT(_depthOrRightCompressed.type() == CV_8UC1);
 			ctDepth.start();
+		}
+		if(depthConfidenceRaw && depthConfidenceRaw->empty() && !_depthConfidenceCompressed.empty())
+		{
+			UASSERT(_depthConfidenceCompressed.type() == CV_8UC1);
+			ctDepthConfidence.start();
 		}
 		if(laserScanRaw && laserScanRaw->isEmpty() && !_laserScanCompressed.isEmpty())
 		{
@@ -710,6 +838,7 @@ void SensorData::uncompressDataConst(
 		}
 		ctImage.join();
 		ctDepth.join();
+		ctDepthConfidence.join();
 		ctLaserScan.join();
 		ctUserData.join();
 		ctGroundCells.join();
@@ -743,6 +872,21 @@ void SensorData::uncompressDataConst(
 				else
 				{
 					UERROR("Requested depth/right image data, but failed to uncompress (%d).", this->id());
+				}
+			}
+		}
+		if(depthConfidenceRaw && depthConfidenceRaw->empty())
+		{
+			*depthConfidenceRaw = ctDepthConfidence.getUncompressedData();
+			if(depthConfidenceRaw->empty())
+			{
+				if(_depthConfidenceCompressed.empty())
+				{
+					UWARN("Requested depth confidence data, but the sensor data (%d) doesn't have depth confidence.", this->id());
+				}
+				else
+				{
+					UERROR("Requested depth confidence data, but failed to uncompress (%d).", this->id());
 				}
 			}
 		}
@@ -815,6 +959,8 @@ unsigned long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			(_imageRaw.empty()?0:_imageRaw.total()*_imageRaw.elemSize()) +
 			(_depthOrRightCompressed.empty()?0:_depthOrRightCompressed.total()*_depthOrRightCompressed.elemSize()) +
 			(_depthOrRightRaw.empty()?0:_depthOrRightRaw.total()*_depthOrRightRaw.elemSize()) +
+			(_depthConfidenceCompressed.empty()?0:_depthConfidenceCompressed.total()*_depthConfidenceCompressed.elemSize()) +
+			(_depthConfidenceRaw.empty()?0:_depthConfidenceRaw.total()*_depthConfidenceRaw.elemSize()) +
 			(_userDataCompressed.empty()?0:_userDataCompressed.total()*_userDataCompressed.elemSize()) +
 			(_userDataRaw.empty()?0:_userDataRaw.total()*_userDataRaw.elemSize()) +
 			(_laserScanCompressed.empty()?0:_laserScanCompressed.data().total()*_laserScanCompressed.data().elemSize()) +
@@ -836,6 +982,7 @@ void SensorData::clearCompressedData(bool images, bool scan, bool userData)
 	{
 		_imageCompressed=cv::Mat();
 		_depthOrRightCompressed=cv::Mat();
+		_depthConfidenceCompressed=cv::Mat();
 	}
 	if(scan)
 	{
@@ -852,6 +999,7 @@ void SensorData::clearRawData(bool images, bool scan, bool userData)
 	{
 		_imageRaw=cv::Mat();
 		_depthOrRightRaw=cv::Mat();
+		_depthConfidenceRaw=cv::Mat();
 	}
 	if(scan)
 	{

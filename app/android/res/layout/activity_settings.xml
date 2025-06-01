@@ -114,6 +114,13 @@
 		        android:title="@string/pref_title_smoothing"
 		        android:summary="@string/pref_summary_smoothing"
 		        android:defaultValue="@string/pref_default_smoothing"/>
+			<ListPreference
+		        android:key="@string/pref_key_depth_bleeding_error"
+		        android:title="@string/pref_title_depth_bleeding_error"
+		        android:summary="@string/pref_summary_depth_bleeding_error"
+		        android:entries="@array/pref_depth_bleeding_error_keys"
+		   	    android:entryValues="@array/pref_depth_bleeding_error_values"
+		   		android:defaultValue="@string/pref_default_depth_bleeding_error"/>
 		    <com.introlab.rtabmap.CustomSwitchPreference
 		        android:key="@string/pref_key_fisheye"
 		        android:title="@string/pref_title_fisheye"

@@ -505,6 +505,13 @@ void setSmoothingNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
+void setDepthBleedingErrorNative(const void *object, float value)
+{
+    if(object)
+        native(object)->setDepthBleedingError(value);
+    else
+        UERROR("object is null!");
+}
 void setAppendModeNative(const void *object, bool enabled)
 {
     if(object)
