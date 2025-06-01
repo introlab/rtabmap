@@ -1390,7 +1390,7 @@ cv::Mat registerDepth(
 	UASSERT(depth.type() == CV_16UC1 || depth.type() == CV_32FC1); // mm or m
 	UASSERT(depthK.type() == CV_64FC1 && depthK.cols == 3 && depthK.cols == 3);
 	UASSERT(colorK.type() == CV_64FC1 && colorK.cols == 3 && colorK.cols == 3);
-	UASSERT(confidence.empty() || confidence.size() == depth.size() && confidence.type()==CV_8UC1);
+	UASSERT(confidence.empty() || (confidence.size() == depth.size() && confidence.type()==CV_8UC1));
 
 	float fx = depthK.at<double>(0,0);
 	float fy = depthK.at<double>(1,1);
