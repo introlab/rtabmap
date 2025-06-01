@@ -1065,7 +1065,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib/opencv4/3rdparty",
 				);
-				MARKETING_VERSION = 0.21.11;
+				MARKETING_VERSION = 0.22.0;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1125,7 +1125,7 @@
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/share/OpenCV/3rdparty/lib",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib/opencv4/3rdparty",
 				);
-				MARKETING_VERSION = 0.21.11;
+				MARKETING_VERSION = 0.22.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;

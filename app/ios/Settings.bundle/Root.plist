@@ -494,7 +494,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>0.21.11</string>
+			<string>0.22.0</string>
 			<key>Key</key>
 			<string>Version</string>
 			<key>Title</key>
