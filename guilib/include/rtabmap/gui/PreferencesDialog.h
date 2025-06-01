@@ -208,6 +208,7 @@ public:
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
 	double getCloudMinDepth(int index) const;  // 0=map, 1=odom
 	std::vector<float> getCloudRoiRatios(int index) const; // 0=map, 1=odom
+	unsigned char getCloudConfidenceThr(int index) const; // 0=map, 1=odom
 	int getCloudColorScheme(int index) const;   // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
@@ -466,6 +467,7 @@ private:
 	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
 	QVector<QDoubleSpinBox*> _3dRenderingMinDepth;
 	QVector<QLineEdit*> _3dRenderingRoiRatios;
+	QVector<QSpinBox*> _3dRenderingDepthConfidenceThr;
 	QVector<QSpinBox*> _3dRenderingColorScheme;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
 	QVector<QSpinBox*> _3dRenderingPtSize;

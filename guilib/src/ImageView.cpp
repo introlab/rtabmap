@@ -181,7 +181,8 @@ ImageView::ImageView(QWidget * parent) :
 		_depthColorMapMinRange(0),
 		_depthColorMapMaxRange(0),
 		_imageItem(0),
-		_imageDepthItem(0)
+		_imageDepthItem(0),
+		_imageDepthConfidenceItem(0)
 {
 #if QT_VERSION >= 0x050000
 	_savedFileName = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
@@ -209,9 +210,12 @@ ImageView::ImageView(QWidget * parent) :
 	_showImage = _menu->addAction(tr("Show image"));
 	_showImage->setCheckable(true);
 	_showImage->setChecked(true);
-	_showImageDepth = _menu->addAction(tr("Show image depth"));
+	_showImageDepth = _menu->addAction(tr("Show depth image"));
 	_showImageDepth->setCheckable(true);
 	_showImageDepth->setChecked(false);
+	_showImageDepthConfidence = _menu->addAction(tr("Show depth confidence"));
+	_showImageDepthConfidence->setCheckable(true);
+	_showImageDepthConfidence->setChecked(false);
 	_featureMenu = _menu->addMenu("Features");
 	_showFeatures = _featureMenu->addAction(tr("Show features"));
 	_showFeatures->setCheckable(true);
@@ -293,6 +297,7 @@ void ImageView::saveSettings(QSettings & settings, const QString & group) const
 	}
 	settings.setValue("image_shown", this->isImageShown());
 	settings.setValue("depth_shown", this->isImageDepthShown());
+	settings.setValue("confidence_shown", this->isImageDepthConfidenceShown());
 	settings.setValue("features_shown", this->isFeaturesShown());
 	settings.setValue("features_size", this->getFeaturesSize());
 	settings.setValue("lines_shown", this->isLinesShown());
@@ -322,6 +327,7 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	}
 	this->setImageShown(settings.value("image_shown", this->isImageShown()).toBool());
 	this->setImageDepthShown(settings.value("depth_shown", this->isImageDepthShown()).toBool());
+	this->setImageDepthConfidenceShown(settings.value("confidence_shown", this->isImageDepthConfidenceShown()).toBool());
 	this->setFeaturesShown(settings.value("features_shown", this->isFeaturesShown()).toBool());
 	this->setFeaturesSize(settings.value("features_size", this->getFeaturesSize()).toInt());
 	this->setLinesShown(settings.value("lines_shown", this->isLinesShown()).toBool());
@@ -361,6 +367,11 @@ bool ImageView::isImageShown() const
 bool ImageView::isImageDepthShown() const
 {
 	return _showImageDepth->isChecked();
+}
+
+bool ImageView::isImageDepthConfidenceShown() const
+{
+	return _showImageDepthConfidence->isChecked();
 }
 
 bool ImageView::isFeaturesShown() const
@@ -466,9 +477,38 @@ void ImageView::setImageShown(bool shown)
 void ImageView::setImageDepthShown(bool shown)
 {
 	_showImageDepth->setChecked(shown);
+	if(shown)
+	{
+		_showImageDepthConfidence->setChecked(false);
+		if(_imageDepthConfidenceItem) {
+			_imageDepthConfidenceItem->setVisible(false);
+		}
+	}
 	if(_imageDepthItem)
 	{
 		_imageDepthItem->setVisible(_showImageDepth->isChecked());
+		this->updateOpacity();
+	}
+
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
+}
+
+void ImageView::setImageDepthConfidenceShown(bool shown)
+{
+	_showImageDepthConfidence->setChecked(shown);
+	if(shown)
+	{
+		_showImageDepth->setChecked(false);
+		if(_imageDepthItem) {
+			_imageDepthItem->setVisible(false);
+		}
+	}
+	if(_imageDepthConfidenceItem)
+	{
+		_imageDepthConfidenceItem->setVisible(_showImageDepthConfidence->isChecked());
 		this->updateOpacity();
 	}
 
@@ -517,6 +557,8 @@ void ImageView::setGraphicsViewMode(bool on)
 	_graphicsView->setVisible(on);
 	_scaleMenu->setEnabled(on);
 
+	_mouseTracking->setEnabled(!on);
+
 	if(on)
 	{
 		for(QMultiMap<int, KeypointItem*>::iterator iter=_features.begin(); iter!=_features.end(); ++iter)
@@ -550,10 +592,19 @@ void ImageView::setGraphicsViewMode(bool on)
 		{
 			_imageDepthItem->setPixmap(_imageDepth);
 		}
-		else
+		else if(!_imageDepth.isNull())
 		{
 			_imageDepthItem = _graphicsView->scene()->addPixmap(_imageDepth);
 			_imageDepthItem->setVisible(_showImageDepth->isChecked());
+		}
+		if(_imageDepthConfidenceItem)
+		{
+			_imageDepthConfidenceItem->setPixmap(_imageDepthConfidence);
+		}
+		else if(!_imageDepthConfidence.isNull())
+		{
+			_imageDepthConfidenceItem = _graphicsView->scene()->addPixmap(_imageDepthConfidence);
+			_imageDepthConfidenceItem->setVisible(_showImageDepthConfidence->isChecked());
 		}
 		this->updateOpacity();
 
@@ -790,7 +841,8 @@ void ImageView::paintEvent(QPaintEvent *event)
 
 			painter.save();
 			if(_showImage->isChecked() && !_image.isNull() &&
-			   _showImageDepth->isChecked() && !_imageDepth.isNull())
+			   ((_showImageDepth->isChecked() && !_imageDepth.isNull()) || 
+			    (_showImageDepthConfidence->isChecked()&&!_imageDepthConfidence.isNull())))
 			{
 				painter.setOpacity(0.5);
 			}
@@ -803,6 +855,10 @@ void ImageView::paintEvent(QPaintEvent *event)
 			if(_showImageDepth->isChecked() && !_imageDepth.isNull())
 			{
 				painter.drawPixmap(QPoint(0,0), _imageDepth);
+			}
+			else if(_showImageDepthConfidence->isChecked() && !_imageDepthConfidence.isNull())
+			{
+				painter.drawPixmap(QPoint(0,0), _imageDepthConfidence);
 			}
 			painter.restore();
 
@@ -966,6 +1022,11 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		this->setImageDepthShown(_showImageDepth->isChecked());
 		Q_EMIT configChanged();
 	}
+	else if(action == _showImageDepthConfidence)
+	{
+		this->setImageDepthConfidenceShown(_showImageDepthConfidence->isChecked());
+		Q_EMIT configChanged();
+	}
 	else if(action == _showLines)
 	{
 		this->setLinesShown(_showLines->isChecked());
@@ -988,8 +1049,9 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	}
 	else if(action == _colorMapBlackToWhite || action == _colorMapWhiteToBlack || action == _colorMapRedToBlue || action == _colorMapBlueToRed)
 	{
-		if(!_imageDepthCv.empty())
-			this->setImageDepth(_imageDepthCv);
+		if(!_imageDepthCv.empty()) {
+			this->setImageDepth(_imageDepthCv, _imageDepthConfidenceCv);
+		}
 		Q_EMIT configChanged();
 	}
 	else if(action == _colorMapMinRange)
@@ -999,8 +1061,9 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		if(ok)
 		{
 			this->setDepthColorMapRange(value, _depthColorMapMaxRange);
-			if(!_imageDepthCv.empty())
-				this->setImageDepth(_imageDepthCv);
+			if(!_imageDepthCv.empty()) {
+				this->setImageDepth(_imageDepthCv, _imageDepthConfidenceCv);
+			}
 			Q_EMIT configChanged();
 		}
 	}
@@ -1011,8 +1074,9 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		if(ok)
 		{
 			this->setDepthColorMapRange(_depthColorMapMinRange, value);
-			if(!_imageDepthCv.empty())
-				this->setImageDepth(_imageDepthCv);
+			if(!_imageDepthCv.empty()) {
+				this->setImageDepth(_imageDepthCv, _imageDepthConfidenceCv);
+			}
 			Q_EMIT configChanged();
 		}
 	}
@@ -1047,7 +1111,7 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		}
 	}
 
-	if(action == _showImage || action ==_showImageDepth)
+	if(action == _showImage || action ==_showImageDepth || action ==_showImageDepthConfidence)
 	{
 		this->updateOpacity();
 		Q_EMIT configChanged();
@@ -1059,17 +1123,16 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 	if(_mouseTracking->isChecked() &&
 		!_graphicsView->scene()->sceneRect().isNull() &&
 		!_image.isNull() &&
-		!_imageDepthCv.empty() &&
-		(_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
+		!_imageDepthCv.empty() &&(_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
 	{
 		float scale, offsetX, offsetY;
 		computeScaleOffsets(this->rect(), scale, offsetX, offsetY);
 		float u = (event->pos().x() - offsetX) / scale;
 		float v = (event->pos().y() - offsetY) / scale;
 		float depthScale = 1;
-		if(_image.width() > _imageDepth.width())
+		if(_image.width() > _imageDepthCv.cols)
 		{
-			depthScale = _imageDepth.width() / _image.width();
+			depthScale = float(_imageDepthCv.cols) / float(_image.width());
 		}
 		int ud = int(u*depthScale);
 		int vd = int(v*depthScale);
@@ -1077,33 +1140,47 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 			ud < _imageDepthCv.cols &&
 			vd < _imageDepthCv.rows)
 		{
-			float depth = 0;
-			if(_imageDepthCv.type() == CV_32FC1)
+			if( _showImageDepthConfidence->isChecked() &&
+				!_imageDepthConfidenceCv.empty() && 
+				_imageDepthCv.size() == _imageDepthConfidenceCv.size())
 			{
-				depth = _imageDepthCv.at<float>(vd, ud);
+				unsigned char confidence = _imageDepthConfidenceCv.at<unsigned char>(vd, ud);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+				QToolTip::showText(event->globalPosition().toPoint(), tr("Confidence=%1%").arg(confidence));
+#else
+				QToolTip::showText(event->globalPos(), tr("Confidence=%1%").arg(confidence));
+#endif
 			}
 			else
 			{
-				depth = float(_imageDepthCv.at<unsigned short>(vd, ud)) / 1000.0f;
-			}
+				float depth = 0;
+				if(_imageDepthCv.type() == CV_32FC1)
+				{
+					depth = _imageDepthCv.at<float>(vd, ud);
+				}
+				else
+				{
+					depth = float(_imageDepthCv.at<unsigned short>(vd, ud)) / 1000.0f;
+				}
 
-			cv::Point3f pt(0,0,0);
-			if(depth>0 && !_models.empty() && !_pose.isNull())
-			{
-				int subImageWidth = _imageDepthCv.cols / _models.size();
-				int subImageIndex = ud / subImageWidth;
-				UASSERT(subImageIndex < (int)_models.size());
-				float x,y,z;
-				_models[subImageIndex].project(u, v, depth, x, y, z);
-				pt = cv::Point3f(x,y,z);
-				pt = util3d::transformPoint(pt, _pose*_models[subImageIndex].localTransform());
-			}
+				cv::Point3f pt(0,0,0);
+				if(depth>0 && !_models.empty() && !_pose.isNull())
+				{
+					int subImageWidth = _imageDepthCv.cols / _models.size();
+					int subImageIndex = ud / subImageWidth;
+					UASSERT(subImageIndex < (int)_models.size());
+					float x,y,z;
+					_models[subImageIndex].project(u, v, depth, x, y, z);
+					pt = cv::Point3f(x,y,z);
+					pt = util3d::transformPoint(pt, _pose*_models[subImageIndex].localTransform());
+				}
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-			QToolTip::showText(event->globalPosition().toPoint(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
+				QToolTip::showText(event->globalPosition().toPoint(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
 #else
-			QToolTip::showText(event->globalPos(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
+				QToolTip::showText(event->globalPos(), pt.x!=0?tr("Depth=%1m Map=(%2,%3,%4)").arg(depth).arg(pt.x).arg(pt.y).arg(pt.z):depth > 0?tr("Depth=%1m").arg(depth):tr("Depth=NA"));
 #endif
+			}
 		}
 		else
 		{
@@ -1115,22 +1192,30 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 
 void ImageView::updateOpacity()
 {
-	if(_imageItem && _imageDepthItem)
+	if(_imageItem && (_imageDepthItem || _imageDepthConfidenceItem))
 	{
-		if(_imageItem->isVisible() && _imageDepthItem->isVisible())
+		if(_imageItem->isVisible() && 
+			((_imageDepthItem && _imageDepthItem->isVisible()) || 
+			 (_imageDepthConfidenceItem && _imageDepthConfidenceItem->isVisible())))
 		{
-			QGraphicsOpacityEffect * effect = new QGraphicsOpacityEffect();
-			effect->setOpacity(0.5);
-			_imageDepthItem->setGraphicsEffect(effect);
-		}
-		else
-		{
-			_imageDepthItem->setGraphicsEffect(0);
+			if(_imageDepthItem) {
+				QGraphicsOpacityEffect * effect = new QGraphicsOpacityEffect();
+				effect->setOpacity(0.5);
+				_imageDepthItem->setGraphicsEffect(effect);
+			}
+			if(_imageDepthConfidenceItem) {
+				QGraphicsOpacityEffect * effect = new QGraphicsOpacityEffect();
+				effect->setOpacity(0.5);
+				_imageDepthConfidenceItem->setGraphicsEffect(effect);
+			}
+			return;
 		}
 	}
-	else if(_imageDepthItem)
-	{
+	if(_imageDepthItem) {
 		_imageDepthItem->setGraphicsEffect(0);
+	}
+	if(_imageDepthConfidenceItem) {
+		_imageDepthConfidenceItem->setGraphicsEffect(0);
 	}
 }
 
@@ -1261,15 +1346,23 @@ void ImageView::setImage(const QImage & image, const std::vector<CameraModel> & 
 	}
 }
 
-void ImageView::setImageDepth(const cv::Mat & imageDepth)
+void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageDepthConfidence)
 {
 	_imageDepthCv = imageDepth;
-	setImageDepth(uCvMat2QImage(_imageDepthCv, true, getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange));
+	_imageDepthConfidenceCv = imageDepthConfidence;
+	setImageDepth(
+		uCvMat2QImage(_imageDepthCv, true, getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange),
+		uCvMat2QImage(_imageDepthConfidenceCv, true, getDepthColorMap()));
 }
 
-void ImageView::setImageDepth(const QImage & imageDepth)
+void ImageView::setImageDepth(const QImage & imageDepth, const QImage & imageDepthConfidence)
 {
 	_imageDepth = QPixmap::fromImage(imageDepth);
+	if(!imageDepthConfidence.isNull()) {
+		_imageDepthConfidence = QPixmap::fromImage(imageDepthConfidence);
+	} else {
+		_showImageDepthConfidence->setChecked(false);
+	}
 
 	UASSERT(_imageDepth.width() && _imageDepth.height());
 
@@ -1279,6 +1372,9 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 	{
 		// scale depth to rgb
 		_imageDepth = _imageDepth.scaled(_image.size());
+		if(!_imageDepthConfidence.isNull()) {
+			_imageDepthConfidence = _imageDepthConfidence.scaled(_image.size());
+		}
 	}
 
 	if(_graphicsView->isVisible())
@@ -1286,11 +1382,18 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 		if(_imageDepthItem)
 		{
 			_imageDepthItem->setPixmap(_imageDepth);
+			if(_imageDepthConfidenceItem) {
+				_imageDepthConfidenceItem->setPixmap(_imageDepthConfidence);
+			}
 		}
 		else
 		{
 			_imageDepthItem = _graphicsView->scene()->addPixmap(_imageDepth);
 			_imageDepthItem->setVisible(_showImageDepth->isChecked());
+			if(!_imageDepthConfidence.isNull()) {
+				_imageDepthConfidenceItem = _graphicsView->scene()->addPixmap(_imageDepthConfidence);
+				_imageDepthConfidenceItem->setVisible(_showImageDepthConfidence->isChecked());
+			}
 			this->updateOpacity();
 		}
 	}
@@ -1470,6 +1573,12 @@ void ImageView::clear()
 		_graphicsView->scene()->removeItem(_imageDepthItem);
 		delete _imageDepthItem;
 		_imageDepthItem = 0;
+	}
+	if(_imageDepthConfidenceItem)
+	{
+		_graphicsView->scene()->removeItem(_imageDepthConfidenceItem);
+		delete _imageDepthConfidenceItem;
+		_imageDepthConfidenceItem = 0;
 	}
 	_imageDepth = QPixmap();
 

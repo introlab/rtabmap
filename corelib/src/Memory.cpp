@@ -4893,7 +4893,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					else
 					{
 						decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
-						UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
+						UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
 					}
 				}
 				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);

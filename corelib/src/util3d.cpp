@@ -315,7 +315,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 
 	UASSERT(model.isValidForProjection());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
-	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr == 0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
+	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr == 0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
 
 	cv::Mat imageDepth = imageDepthIn;
 	cv::Mat imageDepthConfidence = confidenceThr==0?cv::Mat():imageDepthConfidenceIn;
@@ -500,7 +500,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	//UASSERT_MSG(imageRgb.rows % imageDepthIn.rows == 0 && imageRgb.cols % imageDepthIn.cols == 0,
 	//		uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepthIn.cols, imageDepthIn.rows).c_str());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
-	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr==0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
+	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr==0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
 	if(decimation < 0)
 	{
 		if(imageRgb.rows % decimation != 0 || imageRgb.cols % decimation != 0)
@@ -1208,7 +1208,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 		//UASSERT_MSG(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().rows, sensorData.depthRaw().rows).c_str());
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
-		UASSERT(sensorData.depthConfidenceRaw().empty() || confidenceThr==0 || (sensorData.depthConfidenceRaw().type() == CV_8UC1 && sensorData.depthConfidenceRaw().cols == sensorData.depthRaw().cols && sensorData.depthConfidenceRaw().rows == sensorData.depthRaw().rows));
+		UASSERT(sensorData.depthConfidenceRaw().empty() || confidenceThr==0 || (sensorData.depthConfidenceRaw().type() == CV_8UC1 && sensorData.depthConfidenceRaw().cols == sensorData.depthRaw().cols && sensorData.depthConfidenceRaw().rows == sensorData.depthRaw().rows));
 
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
