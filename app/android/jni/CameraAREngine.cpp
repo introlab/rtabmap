@@ -40,8 +40,8 @@ namespace rtabmap {
 //////////////////////////////
 // CameraAREngine
 //////////////////////////////
-CameraAREngine::CameraAREngine(void* env, void* context, void* activity, bool smoothing, float upstreamRelocalizationAccThr):
-	CameraMobile(smoothing, upstreamRelocalizationAccThr),
+CameraAREngine::CameraAREngine(void* env, void* context, void* activity, float upstreamRelocalizationAccThr):
+	CameraMobile(upstreamRelocalizationAccThr),
 	env_(env),
 	context_(context),
 	activity_(activity),

@@ -70,9 +70,6 @@ private:
 
 class CameraMobile : public Camera, public UEventsSender {
 public:
-	static const float bilateralFilteringSigmaS;
-	static const float bilateralFilteringSigmaR;
-
 	static const rtabmap::Transform opticalRotation;
 	static const rtabmap::Transform opticalRotationInv;
     
@@ -87,7 +84,7 @@ public:
             int kptsSize = 3);
 
 public:
-	CameraMobile(bool smoothing = false, float upstreamRelocalizationAccThr = 0.0f);
+	CameraMobile(float upstreamRelocalizationAccThr = 0.0f);
 	virtual ~CameraMobile();
 
 	// abstract functions
@@ -110,7 +107,6 @@ public:
 
 	const CameraModel & getCameraModel() const {return model_;}
 	const Transform & getDeviceTColorCamera() const {return deviceTColorCamera_;}
-	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 	void setGPS(const GPS & gps);
 	void addEnvSensor(int type, float value);
@@ -144,7 +140,6 @@ protected:
 private:
 	bool firstFrame_;
 	double stampEpochOffset_;
-	bool smoothing_;
 	ScreenRotation colorCameraToDisplayRotation_;
 	GPS lastKnownGPS_;
 	EnvSensors lastEnvSensors_;

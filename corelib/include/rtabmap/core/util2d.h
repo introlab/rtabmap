@@ -126,6 +126,14 @@ cv::Mat RTABMAP_CORE_EXPORT registerDepth(
 		const cv::Size & colorSize,
 		const cv::Mat & colorK,
 		const rtabmap::Transform & transform);
+cv::Mat RTABMAP_CORE_EXPORT registerDepth(
+	const cv::Mat & depth,
+	const cv::Mat & confidence,
+	const cv::Mat & depthK,
+	const cv::Size & colorSize,
+	const cv::Mat & colorK,
+	const rtabmap::Transform & transform,
+	cv::Mat & registeredConfidence);
 
 cv::Mat RTABMAP_CORE_EXPORT fillDepthHoles(
 		const cv::Mat & depth,

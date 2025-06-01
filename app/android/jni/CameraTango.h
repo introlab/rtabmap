@@ -45,7 +45,7 @@ namespace rtabmap {
 
 class CameraTango : public CameraMobile {
 public:
-	CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing);
+	CameraTango(bool colorCamera, int decimation, bool publishRawScan);
 	virtual ~CameraTango();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");

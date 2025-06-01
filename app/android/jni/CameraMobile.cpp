@@ -41,9 +41,6 @@ namespace rtabmap {
 //////////////////////////////
 // CameraMobile
 //////////////////////////////
-const float CameraMobile::bilateralFilteringSigmaS = 2.0f;
-const float CameraMobile::bilateralFilteringSigmaR = 0.075f;
-
 const rtabmap::Transform CameraMobile::opticalRotation = Transform(
 		0.0f,  0.0f,  1.0f, 0.0f,
 	   -1.0f,  0.0f,  0.0f, 0.0f,
@@ -53,13 +50,12 @@ const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
 	    0.0f,  0.0f, -1.0f, 0.0f,
 		1.0f,  0.0f,  0.0f, 0.0f);
 
-CameraMobile::CameraMobile(bool smoothing, float upstreamRelocalizationAccThr) :
+CameraMobile::CameraMobile(float upstreamRelocalizationAccThr) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		textureId_(0),
 		uvs_initialized_(false),
 		stampEpochOffset_(0.0),
-		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
 		originUpdate_(true),
 		upstreamRelocalizationAccThr_(upstreamRelocalizationAccThr),
@@ -418,12 +414,6 @@ void CameraMobile::postUpdate()
 			lastEnvSensors_.clear();
 		}
 
-		if(smoothing_ && !data_.depthRaw().empty())
-		{
-			//UTimer t;
-			data_.setDepthOrRightRaw(rtabmap::util2d::fastBilateralFiltering(data_.depthRaw(), bilateralFilteringSigmaS, bilateralFilteringSigmaR));
-			//LOGD("Bilateral filtering, time=%fs", t.ticks());
-		}
 
 		// Rotate image depending on the camera orientation
 		if(colorCameraToDisplayRotation_ == ROTATION_90)
