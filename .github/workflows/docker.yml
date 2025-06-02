@@ -15,7 +15,7 @@ jobs:
     #    $ sudo apt-get upgrade qemu-user-static
     #    $ docker run --rm --privileged multiarch/qemu-user-static --reset -p yes -c yes
     # More info: https://github.com/introlab/rtabmap/issues/1454
-    if: false
+    # if: false
 
     runs-on: ubuntu-latest
     
