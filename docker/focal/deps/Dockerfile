@@ -29,7 +29,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
     export CFLAGS="-D_FILE_OFFSET_BITS=64" && \
     export CXXFLAGS="-D_FILE_OFFSET_BITS=64" && \
     ./bootstrap && \
-    make -j$(nproc) && \
+    make -j4 && \
     sudo make install && \
     cd .. && \
     cmake --version && \
@@ -84,7 +84,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r libfreenect2; fi
@@ -98,7 +98,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r zed-open-capture; fi
@@ -117,7 +117,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     mkdir build && \
     cd build && \
     cmake -DUSE_PYTHON=OFF -DOIIO_BUILD_TESTS=OFF -DOIIO_BUILD_TOOLS=OFF .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r oiio; fi
@@ -127,7 +127,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r assimp; fi
@@ -140,7 +140,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     git apply geogram_8b2ae61.patch && \
     ./configure.sh && \
     cd build/Linux64-gcc-dynamic-Release && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r geogram; fi
@@ -153,7 +153,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     mkdir build && \
     cd build && \
     cmake -DALICEVISION_USE_CUDA=OFF -DALICEVISION_USE_APRILTAG=OFF -DALICEVISION_BUILD_SOFTWARE=OFF .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r AliceVision; fi
@@ -164,7 +164,7 @@ RUN git clone --branch 4.2.0 https://github.com/opencv/opencv.git && \
     mkdir build && \
     cd build && \
     cmake -DWITH_TBB=ON -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DWITH_VTK=OFF -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd ../.. && \
     rm -rf opencv opencv_contrib

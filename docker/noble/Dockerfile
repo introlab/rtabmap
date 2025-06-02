@@ -11,7 +11,7 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r opengv
@@ -26,7 +26,7 @@ COPY . /root/rtabmap
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
     cmake -DWITH_OPENGV=ON .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \

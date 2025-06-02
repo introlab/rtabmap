@@ -49,7 +49,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r libfreenect2; fi
@@ -63,7 +63,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r zed-open-capture; fi
@@ -74,7 +74,7 @@ RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
     mkdir build && \
     cd build && \
     cmake -DWITH_TBB=ON -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd ../.. && \
     rm -rf opencv opencv_contrib
@@ -90,7 +90,7 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r opengv

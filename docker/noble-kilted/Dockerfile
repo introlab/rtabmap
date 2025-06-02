@@ -1,10 +1,8 @@
-# Image: introlab3it/rtabmap:focal
+# Image: introlab3it/rtabmap:noble-kilted
 
-FROM introlab3it/rtabmap:focal-deps
+FROM introlab3it/rtabmap:noble-kilted-deps
 
-# June 19 2023: moved opengv here so that focal-deps can be built on my computer. Not sure why but on my machine opengv arm64 fails, but not on CI.
-#commit Aug 6 2020
-RUN apt-get update && apt install wget && apt-get clean && rm -rf /var/lib/apt/lists/
+# OpenGV (issue seg fault on my computer, moved here from noble-deps to be built on ci)
 RUN git clone https://github.com/laurentkneip/opengv.git && \
     cd opengv && \
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
@@ -12,7 +10,7 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     git apply opengv_disable_march_native.patch && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
     make -j4 && \
     make install && \
     cd && \
@@ -27,9 +25,10 @@ COPY . /root/rtabmap
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    cmake -DWITH_ALICE_VISION=ON -DWITH_OPENGV=ON .. && \
+    cmake -DWITH_OPENGV=ON .. && \
     make -j4 && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
     ldconfig
+

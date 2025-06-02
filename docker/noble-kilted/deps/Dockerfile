@@ -1,4 +1,4 @@
-# Image: introlab3it/rtabmap:noble-deps
+# Image: introlab3it/rtabmap:noble-kilted-deps
 
 FROM ubuntu:24.04
 
@@ -29,29 +29,29 @@ RUN apt-get update && \
       libpcl-dev \
       liboctomap-dev \
       libfreenect-dev \
-      ros-jazzy-ros-base \
+      ros-kilted-ros-base \
       ros-dev-tools \
-      ros-jazzy-cv-bridge \
-      ros-jazzy-image-geometry \
-      ros-jazzy-laser-geometry \
-      ros-jazzy-pcl-conversions \
-      ros-jazzy-rviz-common \
-      ros-jazzy-rviz-rendering \
-      ros-jazzy-rviz-default-plugins \
-      ros-jazzy-pcl-ros \
-      ros-jazzy-imu-filter-madgwick \
-      ros-jazzy-velodyne \
-      ros-jazzy-image-transport \
-      ros-jazzy-octomap-msgs \
-      ros-jazzy-libg2o \
-      ros-jazzy-libpointmatcher \
-      ros-jazzy-qt-gui-cpp \
-      ros-jazzy-diagnostic-updater && \
+      ros-kilted-cv-bridge \
+      ros-kilted-image-geometry \
+      ros-kilted-laser-geometry \
+      ros-kilted-pcl-conversions \
+      ros-kilted-rviz-common \
+      ros-kilted-rviz-rendering \
+      ros-kilted-rviz-default-plugins \
+      ros-kilted-pcl-ros \
+      ros-kilted-imu-filter-madgwick \
+      ros-kilted-velodyne \
+      ros-kilted-image-transport \
+      ros-kilted-octomap-msgs \
+      ros-kilted-libg2o \
+      ros-kilted-libpointmatcher \
+      ros-kilted-qt-gui-cpp \
+      ros-kilted-diagnostic-updater && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
-# GTSAM (we cannot use ros-jazzy-gtsam on Noble because it is linked to a different internal Eigen version than system one)
+# GTSAM (we cannot use ros-kilted-gtsam on Noble because it is linked to a different internal Eigen version than system one)
 RUN git clone https://github.com/borglab/gtsam.git && \
     cd gtsam && \
     git checkout 4.2.0 && \ 
@@ -113,7 +113,7 @@ RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 
 # ros2 seems not sourcing by default its multi-arch folders
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/lib/aarch64-linux-gnu
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/ros/kilted/lib/x86_64-linux-gnu:/opt/ros/kilted/lib/aarch64-linux-gnu
 
 # for jetson (https://github.com/introlab/rtabmap/issues/776)
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/aarch64-linux-gnu/tegra

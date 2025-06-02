@@ -12,7 +12,7 @@ COPY . /root/rtabmap
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
     cmake -DWITH_OPENGV=ON .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
