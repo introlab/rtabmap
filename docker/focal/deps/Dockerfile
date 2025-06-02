@@ -10,6 +10,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /root/
 
+# issue: https://github.com/introlab/rtabmap/issues/1523
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
+
 # Install build dependencies
 RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
     apt-get update && \

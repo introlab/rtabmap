@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        docker_tag: [focal-deps, jammy-deps, jammy-iron-deps, noble-deps, noble-kilted-deps]
+        docker_tag: [focal-deps, jammy-deps, noble-deps, noble-kilted-deps]
         include:
         - docker_tag: focal-deps
           docker_tags: |
@@ -85,7 +85,7 @@ jobs:
           cache-to: type=inline
   
   docker:
-    #needs: docker_deps
+    needs: docker_deps
     runs-on: ubuntu-latest
     
     strategy:
