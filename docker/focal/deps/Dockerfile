@@ -11,7 +11,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /root/
 
 # issue: https://github.com/introlab/rtabmap/issues/1523
-RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
+RUN rm /etc/apt/sources.list.d/ros1-latest.list && \
+    apt-get update && apt-get install -y curl && \
+    sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
+    curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 # Install build dependencies
 RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
@@ -55,7 +59,7 @@ RUN apt-get update && apt-get install -y ros-noetic-librealsense2 && \
 # Taken from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1190#issuecomment-822772494
 # K4A binaries on 20.04 not released yet, we should take those from 18.04
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing k4a..." && \
-    apt-get update && apt-get install -y curl && \
+    apt-get update && \
     echo "Download libk4a1.3_1.3.0_amd64.deb..." && \
     curl -sSL https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/libk4a1.3/libk4a1.3_1.3.0_amd64.deb > /tmp/libk4a1.3_1.3.0_amd64.deb && \
     echo "Download libk4a1.3-dev_1.3.0_amd64.deb..." && \
