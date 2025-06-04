@@ -92,12 +92,11 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     rm -r zed-open-capture; fi
 
 # OpenCV with all modules (same version than distro version to avoid conflicts with cv_bridge ros package)
-COPY ./docker/noble/deps/opencv_4_6_0_ffmpeg.patch .
 RUN git clone --branch 4.6.0 https://github.com/opencv/opencv.git && \
     git clone --branch 4.6.0 https://github.com/opencv/opencv_contrib.git && \
     mv opencv_4_6_0_ffmpeg.patch opencv/. && \
     cd opencv && \
-    git apply opencv_4_6_0_ffmpeg.patch && \
+    sed -i '/#include <libavformat\/avformat.h>/i #include <libavcodec/version.h>' modules/videoio/src/ffmpeg_codecs.hpp && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DWITH_TBB=ON -DWITH_ADE=OFF -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
@@ -108,7 +107,7 @@ RUN git clone --branch 4.6.0 https://github.com/opencv/opencv.git && \
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-COPY ./docker/noble/deps/ros_entrypoint.sh /ros_entrypoint.sh
+RUN echo -e '#!/bin/bash\nset -e\n\n# setup ros2 environment\nsource "/opt/ros/jazzy/setup.bash" --\nexec "$@"' > /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 

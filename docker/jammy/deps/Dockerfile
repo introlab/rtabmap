@@ -97,7 +97,7 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-COPY ./docker/jammy/deps/ros_entrypoint.sh /ros_entrypoint.sh
+RUN echo -e '#!/bin/bash\nset -e\n\n# setup ros2 environment\nsource "/opt/ros/humble/setup.bash" --\nexec "$@"' > /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 
