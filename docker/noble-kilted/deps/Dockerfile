@@ -1,3 +1,4 @@
+
 # Image: introlab3it/rtabmap:noble-kilted-deps
 
 FROM ubuntu:24.04
@@ -94,7 +95,6 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
 # OpenCV with all modules (same version than distro version to avoid conflicts with cv_bridge ros package)
 RUN git clone --branch 4.6.0 https://github.com/opencv/opencv.git && \
     git clone --branch 4.6.0 https://github.com/opencv/opencv_contrib.git && \
-    mv opencv_4_6_0_ffmpeg.patch opencv/. && \
     cd opencv && \
     sed -i '/#include <libavformat\/avformat.h>/i #include <libavcodec/version.h>' modules/videoio/src/ffmpeg_codecs.hpp && \
     mkdir build && \
