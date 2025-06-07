@@ -306,7 +306,7 @@ void SensorData::setRGBDImage(
 	const std::vector<CameraModel> & models,
 	bool clearPreviousData)
 {
-	setRGBDImage(rgb, depth, models, clearPreviousData);
+	setRGBDImage(rgb, depth, cv::Mat(), models, clearPreviousData);
 }
 void SensorData::setRGBDImage(
 		const cv::Mat & rgb,
