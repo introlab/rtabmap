@@ -3,7 +3,7 @@ name: CMake-ROS
 on:
   push:
     branches: 
-      - master
+      - kilted-devel
   pull_request:
     branches: 
       - '**'
@@ -23,15 +23,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ humble, jazzy, kilted, rolling ]
+        ros_distribution: [ kilted ]
         include:
-        - ros_distribution: 'humble'
-          os: ubuntu-22.04
-        - ros_distribution: 'jazzy'
-          os: ubuntu-24.04
         - ros_distribution: 'kilted'
-          os: ubuntu-24.04
-        - ros_distribution: 'rolling'
           os: ubuntu-24.04
 
     steps:   
