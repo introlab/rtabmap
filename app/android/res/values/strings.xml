@@ -76,6 +76,8 @@
     <string name="pref_default_resolution">false</string>
     <string name="pref_key_smoothing">pref_key_smoothing</string>
     <string name="pref_default_smoothing">false</string>
+    <string name="pref_key_depth_bleeding_error">pref_key_depth_bleeding_error</string>
+    <string name="pref_default_depth_bleeding_error">0.0</string>
     <string name="pref_key_fisheye">pref_key_fisheye</string>
     <string name="pref_default_fisheye">false</string>
     
@@ -337,6 +339,8 @@
     <string name="pref_summary_resolution">Save HD images of the color camera if you want very detailed textures. More memory will be required.</string>
     <string name="pref_title_smoothing">Smoothing</string>
     <string name="pref_summary_smoothing">Smooth the point clouds.</string>
+    <string name="pref_title_depth_bleeding_error">Depth Bleeding Filtering Error</string>
+    <string name="pref_summary_depth_bleeding_error">Filter noisy depth points on the edges.</string>
     <string name="pref_title_fisheye">Fish Eye Camera</string>
     <string name="pref_summary_fisheye">Use fish eye camera instead of the color camera. May not work on some devices.</string>
     <string name="pref_title_update_rate">Update Rate</string>
@@ -435,6 +439,26 @@
         <item>"39.2266"</item>
         <item>"29.41995"</item>
         <item>"19.6133"</item>
+    </string-array>
+    <string-array name="pref_depth_bleeding_error_keys">
+        <item>"Disabled"</item>
+        <item>"2.5 cm"</item>
+        <item>"5 cm"</item>
+        <item>"10 cm"</item>
+        <item>"15 cm"</item>
+        <item>"20 cm"</item>
+        <item>"25 cm"</item>
+        <item>"30 cm"</item>
+    </string-array>
+    <string-array name="pref_depth_bleeding_error_values">
+        <item>"0"</item>
+        <item>"0.025"</item>
+        <item>"0.05"</item>
+        <item>"0.10"</item>
+        <item>"0.15"</item>
+        <item>"0.20"</item>
+        <item>"0.25"</item>
+        <item>"0.30"</item>
     </string-array>
     <string-array name="pref_max_speed_keys">
         <item>"No Limit"</item>

@@ -56,7 +56,8 @@ CameraStereoVideo::CameraStereoVideo(
 		usbDevice_(0),
 		usbDevice2_(-1),
 		_width(0),
-		_height(0)
+		_height(0),
+		rightGrayScale_(true)
 {
 }
 
@@ -74,7 +75,8 @@ CameraStereoVideo::CameraStereoVideo(
 		usbDevice_(0),
 		usbDevice2_(-1),
 		_width(0),
-		_height(0)
+		_height(0),
+		rightGrayScale_(true)
 {
 }
 
@@ -89,7 +91,8 @@ CameraStereoVideo::CameraStereoVideo(
 	usbDevice_(device),
 	usbDevice2_(-1),
 	_width(0),
-	_height(0)
+	_height(0),
+	rightGrayScale_(true)
 {
 }
 
@@ -105,7 +108,8 @@ CameraStereoVideo::CameraStereoVideo(
 	usbDevice_(deviceLeft),
 	usbDevice2_(deviceRight),
 	_width(0),
-	_height(0)
+	_height(0),
+	rightGrayScale_(true)
 {
 }
 
@@ -379,7 +383,7 @@ SensorData CameraStereoVideo::captureImage(SensorCaptureInfo * info)
 
 		// Rectification
 		bool rightCvt = false;
-		if(rightImage.type() != CV_8UC1)
+		if(rightImage.type() != CV_8UC1 && rightGrayScale_)
 		{
 			cv::Mat tmp;
 			cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);

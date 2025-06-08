@@ -90,7 +90,14 @@ typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSpa
 typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 #endif
 
-#ifdef G2O_SRC_DIR
+// We use G2O_SRC_DIR to know we are version after December 24 2020
+// where VertexSBAPointXYZ has been renamed to VertexPointXYZ
+// (g2o: 0fcccb302787e70ff19f65e70fb103a1295b33a2)
+//
+// VCPKG commented G2O_SRC_DIR from their port so we cannot use
+// G2O_SRC_DIR on windows to deduce it, we then assume it is the
+// latest version without VertexSBAPointXYZ
+#if defined(G2O_SRC_DIR) or defined(WIN32)
 namespace g2o {
 typedef VertexPointXYZ VertexSBAPointXYZ;
 }

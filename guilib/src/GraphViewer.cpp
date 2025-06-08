@@ -92,7 +92,7 @@ public:
 	}
 	virtual ~NodeItem() {}
 
-	void setColor(const QColor & color)
+	void setColor(const QColor & color, const QString & valueName = QString(), float value = 0.0f)
 	{
 		QPen p = this->pen();
 		p.setColor(color);
@@ -104,6 +104,9 @@ public:
 		QPen pen = _line->pen();
 		pen.setColor(QColor(255-color.red(), 255-color.green(), 255-color.blue()));
 		_line->setPen(pen);
+
+		_valueName = valueName;
+		_value = value;
 	}
 
 	void setRadius(float radius)
@@ -144,14 +147,22 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
+		QString msg;
 		if(_weight>=0)
 		{
-			this->setToolTip(QString("%1 [map=%2, w=%3] %4").arg(_id).arg(_mapId).arg(_weight).arg(_pose.prettyPrint().c_str()));
+			msg = QString("%1 [map=%2, w=%3]\n%4").arg(_id).arg(_mapId).arg(_weight).arg(_pose.prettyPrint().c_str());
 		}
 		else
 		{
-			this->setToolTip(QString("%1 [map=%2] %3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str()));
+			msg = QString("%1 [map=%2]\n%3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str());
 		}
+		if(!_valueName.isEmpty())
+		{
+			msg += QString("\n%1=%2").arg(_valueName).arg(_value);
+		}
+
+		this->setToolTip(msg);
+		
 		this->setScale(2);
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
@@ -168,6 +179,8 @@ private:
 	int _weight;
 	Transform _pose;
 	QGraphicsLineItem * _line;
+	QString _valueName;
+	float _value;
 };
 
 class NodeGPSItem: public NodeItem
@@ -463,8 +476,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
 	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
 
-	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
+	// Match by default scan colors from DatabaseViewer
 	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::yellow, nullptr));
+	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
 
 	this->restoreDefaults();
 
@@ -1071,10 +1085,15 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 
 void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float max, int zValueOffset)
 {
+	updateNodeColorByValue("Posterior Prob", posterior, max, false, zValueOffset);
+}
+
+void GraphViewer::updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float max, bool invertedColorScale, int zValueOffset)
+{
 	//find max
 	if(max <= 0.0f)
 	{
-		for(std::map<int, float>::const_iterator iter = posterior.begin(); iter!=posterior.end(); ++iter)
+		for(std::map<int, float>::const_iterator iter = values.begin(); iter!=values.end(); ++iter)
 		{
 			if(iter->first > 0 && iter->second>max)
 			{
@@ -1086,11 +1105,11 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float 
 	{
 		for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 		{
-			std::map<int,float>::const_iterator jter = posterior.find(iter.key());
-			if(jter != posterior.end())
+			std::map<int,float>::const_iterator jter = values.find(iter.key());
+			if(jter != values.end())
 			{
 				float v = jter->second>max?max:jter->second;
-				iter.value()->setColor(QColor::fromHsvF((1-v/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
+				iter.value()->setColor(QColor::fromHsvF(( invertedColorScale ? v/max : 1-v/max )*240.0f/360.0f, 1, 1, 1), valueName.c_str(), jter->second); //0=red 240=blue
 				iter.value()->setZValue(iter.value()->zValue()+zValueOffset);
 			}
 		}
@@ -1285,6 +1304,11 @@ void GraphViewer::clearMap()
 }
 
 void GraphViewer::clearPosterior()
+{
+	clearNodeColorByValue();
+}
+
+void GraphViewer::clearNodeColorByValue()
 {
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
@@ -1832,8 +1856,8 @@ void GraphViewer::restoreDefaults()
 	setNodeColor(Qt::blue);
 	setNodeOdomCacheColor(Qt::darkGreen);
 	setCurrentGoalColor(Qt::darkMagenta);
-	setHighlightColor(Qt::magenta, 0);
-	setHighlightColor(Qt::yellow, 1);
+	setHighlightColor(Qt::yellow, 0);
+	setHighlightColor(Qt::magenta, 1);
 	setNeighborColor(Qt::blue);
 	setGlobalLoopClosureColor(Qt::red);
 	setLocalLoopClosureColor(Qt::yellow);
@@ -1883,6 +1907,22 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	{
 		QToolTip::hideText();
 	}
+	if (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier) && event->buttons() & Qt::LeftButton) {
+		// same modifiers than 3D view, change zoom
+		if(_previousMousePos.y()!=0) {
+			if(event->pos().y() - _previousMousePos.y() > 0)
+			{
+				this->scale(0.98, 0.98);
+			}
+			else
+			{
+				this->scale(1.02, 1.02);
+			}
+		}
+		_previousMousePos = event->pos();
+		return;
+	}
+	_previousMousePos.setY(0);
 	QGraphicsView::mouseMoveEvent(event);
 }
 

@@ -390,6 +390,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(RGBD, MaxOdomCacheSize,             int,  10,      uFormat("Maximum odometry cache size. Used only in localization mode (when %s=false). This is used to get smoother localizations and to verify localization transforms (when %s!=0) to make sure we don't teleport to a location very similar to one we previously localized on. Set 0 to disable caching.", kMemIncrementalMemory().c_str(), kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(RGBD, LocalizationSmoothing,        bool, true,    uFormat("Adjust localization constraints based on optimized odometry cache poses (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
     RTABMAP_PARAM(RGBD, LocalizationPriorError,       double, 0.001, uFormat("The corresponding variance (error x error) set to priors of the map's poses during localization (when %s>0).",  kRGBDMaxOdomCacheSize().c_str()));
+    RTABMAP_PARAM(RGBD, LocalizationSecondTryWithoutProximityLinks,  bool, true, uFormat("When localization is rejected by graph optimization validation, try a second time without proximity links if landmark or loop closure links are also present in odometry cache (see %s). If it succeeds, the proximity links are removed. This assumes that global loop closure and landmark links are more accurate than proximity links.", kRGBDMaxOdomCacheSize().c_str()));
 
     // Local/Proximity loop closure detection
     RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, "Detection over all locations in STM.");
@@ -477,6 +478,8 @@ class RTABMAP_CORE_EXPORT Parameters
     // Odometry Frame-to-Map
     RTABMAP_PARAM(OdomF2M, MaxSize,             int, 2000,    "[Visual] Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
     RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,       "[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
+    RTABMAP_PARAM(OdomF2M, InitDepthFactor,     float, 0.05,  "[Visual] Depth factor used to initialize depth of features without depth. Depth = Factor * fx.");
+    RTABMAP_PARAM(OdomF2M, FloorThreshold,      float, 0.0,   "[Visual] Only track features in 3D feature map that are over this threshold (height in base frame). Can be useful to ignore reflections on the floor. 0 means disabled.");
     RTABMAP_PARAM(OdomF2M, ScanMaxSize,         int, 2000,    "[Geometry] Maximum local scan map size.");
     RTABMAP_PARAM(OdomF2M, ScanSubtractRadius,  float, 0.05,  "[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the scans.");
     RTABMAP_PARAM(OdomF2M, ScanSubtractAngle,   float, 45,    uFormat("[Geometry] Max angle (degrees) used to filter points of a new added scan to local map (when \"%s\">0). 0 means any angle.", kOdomF2MScanSubtractRadius().c_str()).c_str());
@@ -488,6 +491,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #endif
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 10, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustmentMinMotion, float, 0.0, "To create a new keyframe with bundle adjustment, a minimum motion (in pixels) can be required. The motion is computed by the average distance between inliers of the previous keyframe and new frame.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxKeyFramesPerFeature, int, 0, "Maximum keyframes per feature for bundle adjustment. 0 means not limit.");
+    RTABMAP_PARAM(OdomF2M, BundleUpdateFeatureMapOnAllFrames, bool, false, uFormat("Update 3D local feature map on every frame with bundle adjustment. Recommended if %s=false and %s=true so that features without depth are better triangulated on every frame (not only on keyframes). If disabled, the feature map is updated only when a new keyframe is added (legacy approach).", kVisDepthAsMask().c_str(), kMemUseOdomFeatures().c_str()));
 
     // Odometry Mono
     RTABMAP_PARAM(OdomMono, InitMinFlow,        float, 100,  "Minimum optical flow required for the initialization step.");
@@ -673,7 +679,6 @@ class RTABMAP_CORE_EXPORT Parameters
 
     // Visual registration parameters
     RTABMAP_PARAM(Vis, EstimationType,           int,    1,     "Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
-    RTABMAP_PARAM(Vis, ForwardEstOnly,           bool,   true,  "Forward estimation only (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
     RTABMAP_PARAM(Vis, InlierDistance,           float,  0.1,   uFormat("[%s = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, RefineIterations,         int,    5,     uFormat("[%s = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, PnPReprojError,           float,  2,     uFormat("[%s = 1] PnP reprojection error.", kVisEstimationType().c_str()));
@@ -878,8 +883,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Marker, Dictionary,             int,   0,     "Dictionary to use: DICT_ARUCO_4X4_50=0, DICT_ARUCO_4X4_100=1, DICT_ARUCO_4X4_250=2, DICT_ARUCO_4X4_1000=3, DICT_ARUCO_5X5_50=4, DICT_ARUCO_5X5_100=5, DICT_ARUCO_5X5_250=6, DICT_ARUCO_5X5_1000=7, DICT_ARUCO_6X6_50=8, DICT_ARUCO_6X6_100=9, DICT_ARUCO_6X6_250=10, DICT_ARUCO_6X6_1000=11, DICT_ARUCO_7X7_50=12, DICT_ARUCO_7X7_100=13, DICT_ARUCO_7X7_250=14, DICT_ARUCO_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16, DICT_APRILTAG_16h5=17, DICT_APRILTAG_25h9=18, DICT_APRILTAG_36h10=19, DICT_APRILTAG_36h11=20");
     RTABMAP_PARAM(Marker, Length,                 float, 0,     "The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).");
     RTABMAP_PARAM(Marker, MaxDepthError,          float, 0.01,  uFormat("Maximum depth error between all corners of a marker when estimating the marker length (when %s is 0). The smaller it is, the more perpendicular the camera should be toward the marker to initialize the length.", kMarkerLength().c_str()));
-    RTABMAP_PARAM(Marker, VarianceLinear,         float, 0.001, "Linear variance to set on marker detections.");
-    RTABMAP_PARAM(Marker, VarianceAngular,        float, 0.01,  "Angular variance to set on marker detections. Set to >=9999 to use only position (xyz) constraint in graph optimization.");
+    RTABMAP_PARAM(Marker, VarianceLinear,         float, 0.001, uFormat("Linear variance to set on marker detections. If %s is enabled and %s=2 (GTSAM): it is the variance of the range factor, with 9999 to disable range factor and to do only bearing.", kMarkerVarianceOrientationIgnored().c_str(), kOptimizerStrategy().c_str()));
+    RTABMAP_PARAM(Marker, VarianceAngular,        float, 0.01,  uFormat("Angular variance to set on marker detections. If %s is enabled, it is ignored with %s=1 (g2o) and it corresponds to bearing variance with %s=2 (GTSAM).", kMarkerVarianceOrientationIgnored().c_str(), kOptimizerStrategy().c_str(), kOptimizerStrategy().c_str()));
+    RTABMAP_PARAM(Marker, VarianceOrientationIgnored, bool, false, uFormat("When this setting is false, the landmark's orientation is optimized during graph optimization. When this setting is true, only the position of the landmark is optimized. This can be useful when the landmark's orientation estimation is not reliable. Note that for %s=1 (g2o), only %s needs be set if we ignore orientation. For %s=2 (GTSAM), instead of optimizing the landmark's position directly, a bearing/range factor is used, with %s as the variance of the range factor (with 9999 to optimize the position with only a bearing factor) and %s as the variance of the bearing factor (pitch/yaw).", kOptimizerStrategy().c_str(), kMarkerVarianceLinear().c_str(), kOptimizerStrategy().c_str(), kMarkerVarianceLinear().c_str(), kMarkerVarianceAngular().c_str()));
     RTABMAP_PARAM(Marker, CornerRefinementMethod, int,   0,     "Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag2). For OpenCV <3.3.0, this is \"doCornerRefinement\" parameter: set 0 for false and 1 for true.");
     RTABMAP_PARAM(Marker, MaxRange,               float, 0.0,   "Maximum range in which markers will be detected. <=0 for unlimited range.");
     RTABMAP_PARAM(Marker, MinRange,               float, 0.0,   "Miniminum range in which markers will be detected. <=0 for unlimited range.");

@@ -50,7 +50,7 @@ namespace rtabmap {
 
 class CameraARCore : public CameraMobile {
 public:
-	CameraARCore(void* env, void* context, void* activity, bool depthFromMotion = false, bool smoothing = false, float upstreamRelocalizationAccThr = 0.0f);
+	CameraARCore(void* env, void* context, void* activity, bool depthFromMotion = false, float upstreamRelocalizationAccThr = 0.0f);
 	virtual ~CameraARCore();
 
 	virtual void setScreenRotationAndSize(ScreenRotation colorCameraToDisplayRotation, int width, int height);

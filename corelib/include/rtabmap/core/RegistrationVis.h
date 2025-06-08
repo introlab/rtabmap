@@ -78,7 +78,6 @@ private:
 	int _refineIterations;
 	float _epipolarGeometryVar;
 	int _estimationType;
-	bool _forwardEstimateOnly;
 	float _PnPReprojError;
 	int _PnPFlags;
 	int _PnPRefineIterations;

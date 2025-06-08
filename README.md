@@ -64,8 +64,8 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
             <td><a href="http://build.ros2.org/job/Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
-            <td>Iron</td>
-            <td><a href="http://build.ros2.org/job/Ibin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Ibin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
+            <td>Jazzy</td>
+            <td><a href="http://build.ros2.org/job/Jbin_uN64__rtabmap__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Jbin_uN64__rtabmap__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
             <td>Rolling</td>
@@ -76,7 +76,7 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
            <td>
              <a href="https://hub.docker.com/r/introlab3it/rtabmap">rtabmap</a>
            </td>
-           <td><img src="https://img.shields.io/docker/pulls/introlab3it/rtabmap.svg?label=pulls" alt="Docker Pulls"/></td>
+           <td><img src="https://img.shields.io/docker/pulls/introlab3it/rtabmap" alt="Docker Pulls"/></td>
         </tr>
     </tbody>
 </table>

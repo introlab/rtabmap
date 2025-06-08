@@ -1360,17 +1360,37 @@ cv::Mat interpolate(const cv::Mat & image, int factor, float depthErrorRatio)
 
 // Registration Depth to RGB (return registered depth image)
 cv::Mat registerDepth(
+	const cv::Mat & depth,
+	const cv::Mat & depthK,
+	const cv::Size & colorSize,
+	const cv::Mat & colorK,
+	const rtabmap::Transform & transform)
+{
+	cv::Mat tmp;
+	return registerDepth(
+		depth,
+		cv::Mat(),
+		depthK,
+		colorSize,
+		colorK,
+		transform,
+		tmp);
+}
+cv::Mat registerDepth(
 		const cv::Mat & depth,
+		const cv::Mat & confidence,
 		const cv::Mat & depthK,
 		const cv::Size & colorSize,
 		const cv::Mat & colorK,
-		const rtabmap::Transform & transform)
+		const rtabmap::Transform & transform,
+		cv::Mat & registeredConfidence)
 {
 	UASSERT(!transform.isNull());
 	UASSERT(!depth.empty());
 	UASSERT(depth.type() == CV_16UC1 || depth.type() == CV_32FC1); // mm or m
 	UASSERT(depthK.type() == CV_64FC1 && depthK.cols == 3 && depthK.cols == 3);
 	UASSERT(colorK.type() == CV_64FC1 && colorK.cols == 3 && colorK.cols == 3);
+	UASSERT(confidence.empty() || (confidence.size() == depth.size() && confidence.type()==CV_8UC1));
 
 	float fx = depthK.at<double>(0,0);
 	float fy = depthK.at<double>(1,1);
@@ -1389,10 +1409,19 @@ cv::Mat registerDepth(
 	Eigen::Vector4f P4,P3;
 	P4[3] = 1;
 	cv::Mat registered = cv::Mat::zeros(colorSize, depth.type());
+	registeredConfidence = cv::Mat();
+	if(!confidence.empty())
+	{
+		registeredConfidence = cv::Mat::zeros(colorSize, confidence.type());
+	}
 
 	bool depthInMM = depth.type() == CV_16UC1;
 	for(int y=0; y<depth.rows; ++y)
 	{
+		const unsigned char * confPtr = 0;
+		if(!confidence.empty()) {
+			confPtr = confidence.ptr<unsigned char>(y);
+		}
 		for(int x=0; x<depth.cols; ++x)
 		{
 			//filtering
@@ -1419,6 +1448,9 @@ cv::Mat registerDepth(
 						if(zReg == 0 || z16 < zReg)
 						{
 							zReg = z16;
+							if(confPtr) {
+								registeredConfidence.at<unsigned char>(dy, dx) = confPtr[x];
+							}
 						}
 					}
 					else
@@ -1427,6 +1459,9 @@ cv::Mat registerDepth(
 						if(zReg == 0 || z < zReg)
 						{
 							zReg = z;
+							if(confPtr) {
+								registeredConfidence.at<unsigned char>(dy, dx) = confPtr[x];
+							}
 						}
 					}
 				}
@@ -1929,6 +1964,61 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 
 	UDEBUG("End");
 	return output;
+}
+
+void depthBleedingFiltering(cv::Mat & depth, float maxDepthError)
+{
+	if(depth.empty())
+	{
+		return;
+	}
+	UASSERT(depth.type() == CV_32FC1 || depth.type() == CV_16UC1);
+
+	// ignore border
+	depth.row(0).setTo(cv::Scalar(0));
+	depth.row(depth.rows-1).setTo(cv::Scalar(0));
+	depth.col(0).setTo(cv::Scalar(0));
+	depth.col(depth.cols-1).setTo(cv::Scalar(0));
+
+	if(depth.type() == CV_32FC1)
+	{
+		float * depthPtr = depth.ptr<float>();
+		for(int v=1; v<depth.rows-1; ++v)
+		{
+			for(int u=1; u<depth.cols-1; ++u)
+			{
+				int row = depth.cols*v;
+				float & ref  = depthPtr[row + u];
+				if((fabs(ref - depthPtr[row + u - 1]) > maxDepthError && 
+				    fabs(ref - depthPtr[row + u + 1]) > maxDepthError) || 
+				   (fabs(ref - depthPtr[depth.cols*(v-1) + u]) > maxDepthError && 
+				    fabs(ref - depthPtr[depth.cols*(v+1) + u]) > maxDepthError)) 
+				{
+					ref = 0.0f;
+				} 
+			}
+		}
+	}
+	else if(depth.type() == CV_16UC1)
+	{
+		unsigned short * depthPtr = depth.ptr<unsigned short>();
+		unsigned short maxDepthErrorMM = (unsigned short)(maxDepthError*1000.0f);
+		for(int v=1; v<depth.rows-1; ++v)
+		{
+			for(int u=1; u<depth.cols-1; ++u)
+			{
+				int row = depth.cols*v;
+				unsigned short & ref  = depthPtr[row + u];
+				if((abs((int)ref - (int)depthPtr[row + u - 1]) > maxDepthErrorMM && 
+				    abs((int)ref - (int)depthPtr[row + u + 1]) > maxDepthErrorMM) || 
+				   (abs((int)ref - (int)depthPtr[depth.cols*(v-1) + u]) > maxDepthErrorMM && 
+				    abs((int)ref - (int)depthPtr[depth.cols*(v+1) + u]) > maxDepthErrorMM)) 
+				{
+					ref = 0;
+				} 
+			}
+		}
+	}
 }
 
 /**

@@ -530,7 +530,7 @@ void SensorCaptureThread::mainLoop()
 		info.odomPose.setNull();
 	}
 
-	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	if(!data.imageCompressed().empty() || !data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
 		info.cameraName = _lidar?_lidar->getSerial():_camera->getSerial();

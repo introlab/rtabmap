@@ -908,24 +908,35 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 				if(d_imageLeft.empty()) {
 					d_imageLeft = cv::cuda::GpuMat(imageLeft);
 				}
-				// convert to grayscale
+				// convert to grayscale if not already
 				if(d_imageLeft.channels() > 1) {
 					cv::cuda::GpuMat tmp;
 					cv::cuda::cvtColor(d_imageLeft, tmp, cv::COLOR_BGR2GRAY);
 					d_imageLeft = tmp;
 				}
+
 				d_imageRight = data.depthOrRightRawGpu();
 				if(d_imageRight.empty()) {
 					d_imageRight = cv::cuda::GpuMat(imageRight);
+				}
+				// convert to grayscale if not already
+				if(d_imageRight.channels() > 1) {
+					cv::cuda::GpuMat tmp;
+					cv::cuda::cvtColor(d_imageRight, tmp, cv::COLOR_BGR2GRAY);
+					d_imageRight = tmp;
 				}
 			}
 			else
 #endif
 			{
-				// convert to grayscale (right image should be already grayscale)
+				// convert to grayscale
 				if(imageLeft.channels() > 1)
 				{
 					cv::cvtColor(data.imageRaw(), imageLeft, cv::COLOR_BGR2GRAY);
+				}
+				if(imageRight.channels() > 1)
+				{
+					cv::cvtColor(data.rightRaw(), imageRight, cv::COLOR_BGR2GRAY);
 				}
 			}
 
