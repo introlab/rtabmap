@@ -350,6 +350,7 @@ public:
 	void setLighting(bool on);
 	void setShading(bool on);
 	void setEdgeVisibility(bool visible);
+	void setScalarVisibility(bool visible);
 	void setInteractorLayer(int layer);
 
 	bool isBackfaceCulling() const;
@@ -459,6 +460,7 @@ private:
     QAction * _aSetLighting;
     QAction * _aSetFlatShading;
     QAction * _aSetEdgeVisibility;
+	QAction * _aSetScalarVisibility;
     QAction * _aBackfaceCulling;
     QAction * _aPolygonPicking;
     QMenu * _menu;

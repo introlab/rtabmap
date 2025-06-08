@@ -58,7 +58,7 @@ RUN git clone https://github.com/borglab/gtsam.git && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTSAM_USE_SYSTEM_EIGEN=ON .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r gtsam
@@ -72,7 +72,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r libfreenect2; fi
@@ -86,29 +86,40 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd && \
     rm -r zed-open-capture; fi
 
 # OpenCV with all modules (same version than distro version to avoid conflicts with cv_bridge ros package)
-COPY ./docker/noble/deps/opencv_4_6_0_ffmpeg.patch .
 RUN git clone --branch 4.6.0 https://github.com/opencv/opencv.git && \
     git clone --branch 4.6.0 https://github.com/opencv/opencv_contrib.git && \
-    mv opencv_4_6_0_ffmpeg.patch opencv/. && \
     cd opencv && \
-    git apply opencv_4_6_0_ffmpeg.patch && \
+    sed -i '/#include <libavformat\/avformat.h>/i #include <libavcodec/version.h>' modules/videoio/src/ffmpeg_codecs.hpp && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DWITH_TBB=ON -DWITH_ADE=OFF -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
-    make -j$(nproc) && \
+    make -j4 && \
     make install && \
     cd ../.. && \
     rm -rf opencv opencv_contrib
 
+RUN git clone https://github.com/laurentkneip/opengv.git && \
+    cd opengv && \
+    git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
+    wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
+    git apply opengv_disable_march_native.patch && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
+    make -j4 && \
+    make install && \
+    cd && \
+    rm -r opengv
+
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-COPY ./docker/noble/deps/ros_entrypoint.sh /ros_entrypoint.sh
+RUN echo -e '#!/bin/bash\nset -e\n\n# setup ros2 environment\nsource "/opt/ros/jazzy/setup.bash" --\nexec "$@"' > /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 

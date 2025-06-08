@@ -80,6 +80,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkObjectFactory.h>
 #include <vtkQuad.h>
 #include <vtkWarpScalar.h>
+#include <vtkUnsignedCharArray.h>
 #include <opencv/vtkImageMatSource.h>
 
 #if VTK_MAJOR_VERSION >= 7
@@ -94,6 +95,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/global_map/OctoMap.h>
+#endif
+
+// For compatibility with new VTK generic data arrays.
+#ifdef vtkGenericDataArray_h
+#define InsertNextTupleValue InsertNextTypedTuple
 #endif
 
 namespace rtabmap {
@@ -124,6 +130,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_aSetLighting(0),
 		_aSetFlatShading(0),
 		_aSetEdgeVisibility(0),
+		_aSetScalarVisibility(0),
 		_aBackfaceCulling(0),
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
@@ -347,6 +354,9 @@ void CloudViewer::createMenu()
 	_aSetEdgeVisibility = new QAction("Show edges", this);
 	_aSetEdgeVisibility->setCheckable(true);
 	_aSetEdgeVisibility->setChecked(false);
+	_aSetScalarVisibility = new QAction("Show vertex colors", this);
+	_aSetScalarVisibility->setCheckable(true);
+	_aSetScalarVisibility->setChecked(true);
 	_aBackfaceCulling = new QAction("Backface culling", this);
 	_aBackfaceCulling->setCheckable(true);
 	_aBackfaceCulling->setChecked(true);
@@ -408,6 +418,7 @@ void CloudViewer::createMenu()
 	_menu->addAction(_aSetLighting);
 	_menu->addAction(_aSetFlatShading);
 	_menu->addAction(_aSetEdgeVisibility);
+	_menu->addAction(_aSetScalarVisibility);
 	_menu->addAction(_aBackfaceCulling);
 	_menu->addAction(_aPolygonPicking);
 }
@@ -1408,10 +1419,20 @@ bool CloudViewer::addTextureMesh (
   // Create points from mesh.cloud
   vtkSmartPointer<vtkPoints> poly_points = vtkSmartPointer<vtkPoints>::New ();
   vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New ();
-  bool has_color = false;
+  colors->SetNumberOfComponents(3);
+  colors->SetName ("Colors");
+  bool hasColors = false;
+  for(unsigned int i=0; i<mesh.cloud.fields.size(); ++i)
+  {
+	if(mesh.cloud.fields[i].name.compare("rgb") == 0)
+	{
+		hasColors = true;
+		break;
+	}
+  }
   vtkSmartPointer<vtkMatrix4x4> transformation = vtkSmartPointer<vtkMatrix4x4>::New ();
   
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ> ());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB> ());
     pcl::fromPCLPointCloud2 (mesh.cloud, *cloud);
     // no points --> exit
     if (cloud->points.size () == 0)
@@ -1423,8 +1444,17 @@ bool CloudViewer::addTextureMesh (
     poly_points->SetNumberOfPoints (cloud->points.size ());
     for (std::size_t i = 0; i < cloud->points.size (); ++i)
     {
-      const pcl::PointXYZ &p = cloud->points[i];
+      const pcl::PointXYZRGB &p = cloud->points[i];
       poly_points->InsertPoint (i, p.x, p.y, p.z);
+
+	  if(hasColors) {
+	  	unsigned char color[3] = {p.r, p.g, p.b}; 
+#if VTK_MAJOR_VERSION > 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION >= 1)
+	  	colors->InsertNextTypedTuple(color);
+#else
+	  	colors->InsertNextTupleValue(color);
+#endif
+	  }
     }
 
   //create polys from polyMesh.tex_polygons
@@ -1443,8 +1473,9 @@ bool CloudViewer::addTextureMesh (
   vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
   polydata->SetPolys (polys);
   polydata->SetPoints (poly_points);
-  if (has_color)
+  if (hasColors) {
     polydata->GetPointData()->SetScalars(colors);
+  }
 
   vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New ();
 #if VTK_MAJOR_VERSION < 6
@@ -1524,6 +1555,7 @@ bool CloudViewer::addTextureMesh (
   actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
   actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
   actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
+  actor->GetMapper()->SetScalarVisibility(_aSetScalarVisibility->isChecked());
   return true;
 }
 
@@ -2892,6 +2924,21 @@ void CloudViewer::setEdgeVisibility(bool visible)
 	this->refreshView();
 }
 
+void CloudViewer::setScalarVisibility(bool visible)
+{
+	_aSetScalarVisibility->setChecked(visible);
+	pcl::visualization::ShapeActorMapPtr shapeActorMap = _visualizer->getShapeActorMap();
+	for(pcl::visualization::ShapeActorMap::iterator iter=shapeActorMap->begin(); iter!=shapeActorMap->end(); ++iter)
+	{
+		vtkActor* actor = vtkActor::SafeDownCast (iter->second);
+		if(actor && _addedClouds.contains(iter->first))
+		{
+			actor->GetMapper()->SetScalarVisibility(_aSetScalarVisibility->isChecked());
+		}
+	}
+	this->refreshView();
+}
+
 void CloudViewer::setInteractorLayer(int layer)
 {
 	_visualizer->getRendererCollection()->InitTraversal ();
@@ -3982,6 +4029,10 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aSetEdgeVisibility)
 	{
 		this->setEdgeVisibility(_aSetEdgeVisibility->isChecked());
+	}
+	else if(a == _aSetScalarVisibility)
+	{
+		this->setScalarVisibility(_aSetScalarVisibility->isChecked());
 	}
 	else if(a == _aBackfaceCulling)
 	{

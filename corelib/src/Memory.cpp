@@ -120,6 +120,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_detectMarkers(Parameters::defaultRGBDMarkerDetection()),
 	_markerLinVariance(Parameters::defaultMarkerVarianceLinear()),
 	_markerAngVariance(Parameters::defaultMarkerVarianceAngular()),
+	_markerOrientationIgnored(Parameters::defaultMarkerVarianceOrientationIgnored()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -615,7 +616,23 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRGBDMarkerDetection(), _detectMarkers);
 	Parameters::parse(params, Parameters::kMarkerVarianceLinear(), _markerLinVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
+	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
+
+	if(_markerAngVariance>=9999)
+	{
+		UWARN("Using directly %s>=9999 to ignore marker orientation is deprecated. Use %s instead and "
+			  "read correctly the description of the new parameter. We will enable %s and set %s to "
+			  "same value than %s (%f) for backward compatibility.", 
+			Parameters::kMarkerVarianceAngular().c_str(),
+			Parameters::kMarkerVarianceOrientationIgnored().c_str(),
+			Parameters::kMarkerVarianceOrientationIgnored().c_str(),
+			Parameters::kMarkerVarianceAngular().c_str(),
+			Parameters::kMarkerVarianceLinear().c_str(),
+			_markerLinVariance);
+			_markerAngVariance = _markerLinVariance;
+			_markerOrientationIgnored = true;
+	}
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -4519,17 +4536,55 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 {
 	UDEBUG("");
 	SensorData data = inputData;
+
+	bool isIntermediateNode = data.id() < 0;
+
+	// uncompress data if needed
+	
+	if(!isIntermediateNode)
+	{
+		// We need raw images if we need to extract features and/or do tag detection
+		bool needRawImages = _feature2D->getMaxFeatures() >= 0 && 
+			(!_useOdometryFeatures ||
+			 data.keypoints().empty() ||
+			 (int)data.keypoints().size() != data.descriptors().rows ||
+			 data.descriptors().empty() ||
+			 _detectMarkers ||
+			 _rotateImagesUpsideUp ||
+			 _imagePostDecimation > 1 ||
+			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth()));
+
+		// Note: we could avoid uncompressing scan if we don't do any filtering
+		// and if we don't use it for local occupancy grid
+		bool needRawScan = true;
+
+		if( (needRawImages && data.imageRaw().empty() && !data.imageCompressed().empty()) ||
+			(needRawImages && data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty()) ||
+			(needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty()))
+		{
+			cv::Mat left, right;
+			LaserScan laserScan;
+			UDEBUG("Uncompressing data...");
+			data.uncompressData(
+				needRawImages && data.imageRaw().empty() && !data.imageCompressed().empty() ? &left : 0,
+				needRawImages && data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty() ? &right : 0,
+				needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty() ? &laserScan : 0);
+			UDEBUG("Uncompressing data...done!");
+		}
+	}
+
 	UASSERT(data.imageRaw().empty() ||
 			data.imageRaw().type() == CV_8UC1 ||
 			data.imageRaw().type() == CV_8UC3);
 	UASSERT_MSG(data.depthOrRightRaw().empty() ||
 			(  ( data.depthOrRightRaw().type() == CV_16UC1 ||
 				 data.depthOrRightRaw().type() == CV_32FC1 ||
-				 data.depthOrRightRaw().type() == CV_8UC1)
+				 data.depthOrRightRaw().type() == CV_8UC1 ||
+				 data.depthOrRightRaw().type() == CV_8UC3)
 			   &&
-				( (data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
+				( (data.imageRaw().empty() && !(data.depthOrRightRaw().type() == CV_8UC1 || data.depthOrRightRaw().type() == CV_8UC3)) ||
 				  (data.depthOrRightRaw().rows <= data.imageRaw().rows && data.depthOrRightRaw().cols <= data.imageRaw().cols))),
-				uFormat("image=(%d/%d, type=%d, [accepted=%d,%d]) depth=(%d/%d, type=%d [accepted=%d(depth mm),%d(depth m),%d(stereo)]). "
+				uFormat("image=(%d/%d, type=%d, [accepted=%d,%d]) depth=(%d/%d, type=%d [accepted=%d(depth mm),%d(depth m),%d-%d(stereo)]). "
 						"For stereo, left and right images should be same size. "
 						"For RGB-D, depth can be X times smaller than RGB (where X is an integer).",
 						data.imageRaw().cols,
@@ -4540,7 +4595,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						data.depthOrRightRaw().cols,
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
-						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
+						CV_16UC1, CV_32FC1, CV_8UC1, CV_8UC3).c_str());
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().empty() &&
@@ -4559,7 +4614,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	float t;
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
-	bool isIntermediateNode = data.id() < 0;
 	int id = data.id();
 	if(_generateIds)
 	{
@@ -4839,9 +4893,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					else
 					{
 						decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
+						UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
 					}
 				}
-				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth);
+				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);
 
 				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 				for(unsigned int i=0; i<cameraModels.size(); ++i)
@@ -4853,6 +4908,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					decimatedData.setRGBDImage(
 							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
 							util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth),
+							util2d::decimate(decimatedData.depthConfidenceRaw(), decimationDepth),
 							cameraModels);
 				}
 
@@ -5556,8 +5612,32 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						continue;
 					}
 					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
-					covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
-					covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
+					if(_markerOrientationIgnored)
+					{
+						covariance(cv::Range(3,6), cv::Range(3,6)) *= 9999; // disable orientation estimation
+						bool isGTSAM = uStr2Int(uValue(parameters_, Parameters::kOptimizerStrategy(), uNumber2Str(Parameters::defaultOptimizerStrategy()))) == Optimizer::kTypeGTSAM;
+						if(!isGTSAM)
+						{
+							covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
+						}
+						else if(_registrationPipeline->force3DoF())
+						{
+							// Bearing/Range in 2D, set X as bearing and Y as range (see OptimizerGTSAM)
+							covariance(cv::Range(0,1), cv::Range(0,1)) *= _markerAngVariance;
+							covariance(cv::Range(1,3), cv::Range(1,3)) *= _markerLinVariance;
+						}
+						else
+						{
+							// Bearing/Range in 3D, set X and Y as bearing and Z as range (see OptimizerGTSAM)
+							covariance(cv::Range(0,2), cv::Range(0,2)) *= _markerAngVariance;
+							covariance(cv::Range(2,3), cv::Range(2,3)) *= _markerLinVariance;
+						}
+					}
+					else
+					{
+						covariance(cv::Range(0,3), cv::Range(0,3)) *= _markerLinVariance;
+						covariance(cv::Range(3,6), cv::Range(3,6)) *= _markerAngVariance;
+					}
 					landmarks.insert(std::make_pair(iter->first, Landmark(iter->first, iter->second.length(), iter->second.pose(), covariance)));
 				}
 				UDEBUG("Markers detected = %d", (int)markers.size());
@@ -5578,6 +5658,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	cv::Mat image = data.imageRaw();
 	cv::Mat depthOrRightImage = data.depthOrRightRaw();
+	cv::Mat depthConfidence = data.depthConfidenceRaw();
+
 	std::vector<CameraModel> cameraModels = data.cameraModels();
 	std::vector<StereoCameraModel> stereoCameraModels = data.stereoCameraModels();
 
@@ -5588,6 +5670,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			image = decimatedData.imageRaw();
 			depthOrRightImage = decimatedData.depthOrRightRaw();
+			depthConfidence = decimatedData.depthConfidenceRaw();
 			cameraModels = decimatedData.cameraModels();
 			stereoCameraModels = decimatedData.stereoCameraModels();
 		}
@@ -5754,8 +5837,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
-	// Filter the laser scan?
 	LaserScan laserScan = data.laserScanRaw();
+	// Filter the laser scan?
 	if(!isIntermediateNode && laserScan.size())
 	{
 		if(laserScan.rangeMax() == 0.0f)
@@ -5801,9 +5884,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	Signature * s;
 	if(this->isBinDataKept() && (!isIntermediateNode || _saveIntermediateNodeData))
 	{
-		UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
+		UDEBUG("Bin data kept: rgb=%d, depth=%d, conf=%d, scan=%d, userData=%d",
 				image.empty()?0:1,
 				depthOrRightImage.empty()?0:1,
+				depthConfidence.empty()?0:1,
 				laserScan.isEmpty()?0:1,
 				data.userDataRaw().empty()?0:1);
 
@@ -5850,12 +5934,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 		cv::Mat compressedImage;
 		cv::Mat compressedDepth;
+		cv::Mat compressedDepthConfidence;
 		cv::Mat compressedScan;
 		cv::Mat compressedUserData;
 		if(_compressionParallelized)
 		{
 			rtabmap::CompressionThread ctImage(image, _rgbCompressionFormat);
 			rtabmap::CompressionThread ctDepth(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
+			rtabmap::CompressionThread ctDepthConfidence(depthConfidence);
 			rtabmap::CompressionThread ctLaserScan(laserScan.data());
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
 			if(!image.empty())
@@ -5865,6 +5951,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(!depthOrRightImage.empty())
 			{
 				ctDepth.start();
+			}
+			if(!depthConfidence.empty())
+			{
+				ctDepthConfidence.start();
 			}
 			if(!laserScan.isEmpty())
 			{
@@ -5876,11 +5966,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			}
 			ctImage.join();
 			ctDepth.join();
+			ctDepthConfidence.join();
 			ctLaserScan.join();
 			ctUserData.join();
 
 			compressedImage = ctImage.getCompressedData();
 			compressedDepth = ctDepth.getCompressedData();
+			compressedDepthConfidence = ctDepthConfidence.getCompressedData();
 			compressedScan = ctLaserScan.getCompressedData();
 			compressedUserData = ctUserData.getCompressedData();
 		}
@@ -5888,6 +5980,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		{
 			compressedImage = compressImage2(image, _rgbCompressionFormat);
 			compressedDepth = compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
+			compressedDepthConfidence = compressData2(depthConfidence);
 			compressedScan = compressData2(laserScan.data());
 			compressedUserData = compressData2(data.userDataRaw());
 		}
@@ -5902,12 +5995,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			!stereoCameraModels.empty()?
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.maxPoints(),
 								laserScan.rangeMax(),
 								laserScan.format(),
 								laserScan.localTransform()):
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.format(),
 								laserScan.rangeMin(),
 								laserScan.rangeMax(),
@@ -5915,20 +6008,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								laserScan.angleMax(),
 								laserScan.angleIncrement(),
 								laserScan.localTransform()),
-						compressedImage,
-						compressedDepth,
+						compressedImage.empty()?data.imageCompressed():compressedImage,
+						compressedDepth.empty()?data.depthOrRightCompressed():compressedDepth,
 						stereoCameraModels,
 						id,
 						0,
 						compressedUserData):
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.maxPoints(),
 								laserScan.rangeMax(),
 								laserScan.format(),
 								laserScan.localTransform()):
-							LaserScan(compressedScan,
+							LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 								laserScan.format(),
 								laserScan.rangeMin(),
 								laserScan.rangeMax(),
@@ -5936,8 +6029,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 								laserScan.angleMax(),
 								laserScan.angleIncrement(),
 								laserScan.localTransform()),
-						compressedImage,
-						compressedDepth,
+						compressedImage.empty()?data.imageCompressed():compressedImage,
+						compressedDepth.empty()?data.depthOrRightCompressed():compressedDepth,
+						compressedDepthConfidence.empty()?data.depthConfidenceCompressed():compressedDepthConfidence,
 						cameraModels,
 						id,
 						0,
@@ -5986,12 +6080,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			!stereoCameraModels.empty()?
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.maxPoints(),
 									laserScan.rangeMax(),
 									laserScan.format(),
 									laserScan.localTransform()):
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.format(),
 									laserScan.rangeMin(),
 									laserScan.rangeMax(),
@@ -6007,12 +6101,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						compressedUserData):
 				SensorData(
 						laserScan.angleIncrement() == 0.0f?
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.maxPoints(),
 									laserScan.rangeMax(),
 									laserScan.format(),
 									laserScan.localTransform()):
-								LaserScan(compressedScan,
+								LaserScan(compressedScan.empty()?data.laserScanCompressed().data():compressedScan,
 									laserScan.format(),
 									laserScan.rangeMin(),
 									laserScan.rangeMax(),
@@ -6035,7 +6129,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	// set raw data
 	if(!cameraModels.empty())
 	{
-		s->sensorData().setRGBDImage(image, depthOrRightImage, cameraModels, false);
+		s->sensorData().setRGBDImage(image, depthOrRightImage, depthConfidence, cameraModels, false);
 	}
 	else
 	{
@@ -6132,13 +6226,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				UINFO("Added GPS origin: long=%f lat=%f alt=%f bearing=%f error=%f", data.gps().longitude(), data.gps().latitude(), data.gps().altitude(), data.gps().bearing(), data.gps().error());
 			}
 			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
-			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*M_PI/180.0);
+			Transform gpsPose(pt.x, pt.y, data.gps().altitude(), 0, 0, -(data.gps().bearing()-90.0)*M_PI/180.0);
 			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)/9999.0; // variance not used >= 9999
 
 			UDEBUG("Added GPS prior: x=%f y=%f z=%f yaw=%f", gpsPose.x(), gpsPose.y(), gpsPose.z(), gpsPose.theta());
-			// only set x, y as we don't know variance for other degrees of freedom.
+			// only set x, y, z as we don't know variance for other degrees of freedom.
 			gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 1.0/data.gps().error();
-			gpsInfMatrix.at<double>(2,2) = 1; // z variance is set to avoid issues with g2o and gtsam requiring a prior on Z
+			gpsInfMatrix.at<double>(2,2) = data.gps().error()>1.0?1.0/data.gps().error():1.0;
 			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
 		}
 		else

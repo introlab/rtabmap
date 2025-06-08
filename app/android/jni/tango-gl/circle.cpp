@@ -28,8 +28,8 @@ Circle::Circle(float radius, int resolution) : Mesh(GL_TRIANGLE_FAN){
   for (int i = resolution; i >= 0; i--) {
     float theta = delta_theta * static_cast<float>(i);
     vertices.push_back(cos(theta) * radius);
-    vertices.push_back(0);
     vertices.push_back(sin(theta) * radius);
+    vertices.push_back(0);
   }
   SetVertices(vertices);
 }

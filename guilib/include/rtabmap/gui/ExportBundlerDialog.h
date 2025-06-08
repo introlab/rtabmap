@@ -54,7 +54,7 @@ public:
 	void setWorkingDirectory(const QString & path);
 
 	void exportBundler(
-			const std::map<int, Transform> & poses,
+			std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
 			const QMap<int, Signature> & signatures,
 			const ParametersMap & parameters);

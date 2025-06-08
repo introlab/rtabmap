@@ -132,9 +132,23 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 {
 	processingImages_ = true;
 	QString sizes;
-	imageView_->setVisible(!data.imageRaw().empty() || !data.imageRaw().empty());
+
+	cv::Mat left;
+	cv::Mat depthOrRight;
+	LaserScan scan;
+	if( !data.imageRaw().empty() || !data.imageCompressed().empty() ||
+		!data.depthOrRightRaw().empty() || !data.depthOrRightCompressed().empty() ||
+		!data.laserScanRaw().empty() || !data.laserScanCompressed().empty())
+	{
+		data.uncompressDataConst(
+			!data.imageRaw().empty() || !data.imageCompressed().empty()?&left:0, 
+			!data.depthOrRightRaw().empty() || !data.depthOrRightCompressed().empty()?&depthOrRight:0,
+			!data.laserScanRaw().empty() || !data.laserScanCompressed().empty()?&scan:0);
+	}
+
+	imageView_->setVisible(!left.empty() || !left.empty());
 	std::map<int, MarkerInfo> detections;
-	if(!data.imageRaw().empty())
+	if(!left.empty())
 	{
 		std::vector<CameraModel> models;
 		if(markerCheckbox_->isEnabled() && markerCheckbox_->isChecked())
@@ -152,36 +166,58 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		if(!models.empty() && models[0].isValidForProjection())
 		{
 			cv::Mat imageWithDetections;
-			detections = markerDetector_->detect(data.imageRaw(), models, data.depthRaw(), std::map<int, float>(), &imageWithDetections);
+			detections = markerDetector_->detect(left, models, depthOrRight, std::map<int, float>(), &imageWithDetections);
 			imageView_->setImage(uCvMat2QImage(imageWithDetections));
 		}
 		else
 		{
-			imageView_->setImage(uCvMat2QImage(data.imageRaw()));
+			imageView_->setImage(uCvMat2QImage(left));
 		}
-		sizes.append(QString("Color=%1x%2").arg(data.imageRaw().cols).arg(data.imageRaw().rows));
+		sizes.append(QString("Color=%1x%2").arg(left.cols).arg(left.rows));
 	}
-	if(!data.depthOrRightRaw().empty())
+	if(!depthOrRight.empty())
 	{
-		imageView_->setImageDepth(data.depthOrRightRaw());
-		sizes.append(QString(" Depth=%1x%2").arg(data.depthOrRightRaw().cols).arg(data.depthOrRightRaw().rows));
+		imageView_->setImageDepth(depthOrRight);
+		sizes.append(QString(" Depth=%1x%2").arg(depthOrRight.cols).arg(depthOrRight.rows));
 	}
 	imageSizeLabel_->setText(sizes);
 
-	if(!data.depthOrRightRaw().empty() &&
+	if(!depthOrRight.empty() &&
 	   ((data.stereoCameraModels().size() && data.stereoCameraModels()[0].isValidForProjection()) || (data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())))
 	{
 		if(showCloudCheckbox_->isChecked())
 		{
-			if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
+			if(!left.empty() && !depthOrRight.empty())
 			{
 				showCloudCheckbox_->setEnabled(true);
-				cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(data, decimationSpin_->value()!=0?decimationSpin_->value():1, 0, 0, 0, parameters_));
+				if(data.imageRaw().empty())
+				{
+					if(!data.stereoCameraModels().empty())
+					{
+						cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(SensorData(left, depthOrRight, data.stereoCameraModels()), decimationSpin_->value()!=0?decimationSpin_->value():1, 0, 0, 0, parameters_));
+					}
+					else
+					{
+						cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(SensorData(left, depthOrRight, data.cameraModels()), decimationSpin_->value()!=0?decimationSpin_->value():1, 0, 0, 0, parameters_));
+					}
+					
+				}
+				else
+				{
+					cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(data, decimationSpin_->value()!=0?decimationSpin_->value():1, 0, 0, 0, parameters_));
+				}
 			}
-			else if(!data.depthOrRightRaw().empty())
+			else if(!depthOrRight.empty())
 			{
 				showCloudCheckbox_->setEnabled(true);
-				cloudView_->addCloud("cloud", util3d::cloudFromSensorData(data, decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1, 0, 0, 0, parameters_));
+				if(data.depthOrRightRaw().empty())
+				{
+					cloudView_->addCloud("cloud", util3d::cloudFromSensorData(SensorData(cv::Mat(), depthOrRight, data.cameraModels()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1, 0, 0, 0, parameters_));
+				}
+				else
+				{
+					cloudView_->addCloud("cloud", util3d::cloudFromSensorData(data, decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1, 0, 0, 0, parameters_));
+				}
 			}
 
 			// Add landmarks to 3D Map view
@@ -208,37 +244,37 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		}
 	}
 
-	if(!data.laserScanRaw().isEmpty())
+	if(!scan.isEmpty())
 	{
 		showScanCheckbox_->setEnabled(true);
 		if(showScanCheckbox_->isChecked())
 		{
-			if(data.laserScanRaw().hasNormals())
+			if(scan.hasNormals())
 			{
-				if(data.laserScanRaw().hasIntensity())
+				if(scan.hasIntensity())
 				{
-					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudINormal(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudINormal(scan), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), scan.localTransform(), Qt::yellow);
 				}
-				else if(data.laserScanRaw().hasRGB())
+				else if(scan.hasRGB())
 				{
-					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudRGBNormal(scan), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), scan.localTransform(), Qt::yellow);
 				}
 				else
 				{
-					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudNormal(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+					cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudNormal(scan), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), scan.localTransform(), Qt::yellow);
 				}
 			}
-			else if(data.laserScanRaw().hasIntensity())
+			else if(scan.hasIntensity())
 			{
-				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudI(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudI(scan), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), scan.localTransform(), Qt::yellow);
 			}
-			else if(data.laserScanRaw().hasRGB())
+			else if(scan.hasRGB())
 			{
-				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudRGB(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloudRGB(scan), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), scan.localTransform(), Qt::yellow);
 			}
 			else
 			{
-				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), data.laserScanRaw().localTransform(), Qt::yellow);
+				cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(scan), decimationSpin_->value()!=0?fabs(decimationSpin_->value()):1), scan.localTransform(), Qt::yellow);
 			}
 		}
 	}

@@ -659,6 +659,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", false);
 	_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", false);
 	_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleAvgInlierDistance/pix", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleMaxKeyFramesForInlier/", false);
 	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", false);
 	_ui->statsToolBox->updateStat("Odometry/Interval/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/Speed/kph", false);
@@ -1223,13 +1225,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				pcl::IndicesPtr indices(new std::vector<int>);
 
-				cloud = util3d::cloudRGBFromSensorData(*data,
+				cloud = util3d::cloudRGBFromSensorData(
+						*data,
 						_preferencesDialog->getCloudDecimation(1),
 						_preferencesDialog->getCloudMaxDepth(1),
 						_preferencesDialog->getCloudMinDepth(1),
 						indices.get(),
 						_preferencesDialog->getAllParameters(),
-						_preferencesDialog->getCloudRoiRatios(1));
+						_preferencesDialog->getCloudRoiRatios(1),
+						_preferencesDialog->getCloudConfidenceThr(1));
 				if(indices->size())
 				{
 					cloud = util3d::transformPointCloud(cloud, pose);
@@ -1627,6 +1631,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 		UDEBUG("Time Update Pose: %fs", time.ticks());
 	}
+
 	_cloudViewer->refreshView();
 
 	if(_ui->graphicsView_graphView->isVisible())
@@ -1714,7 +1719,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->imageView_odometry->setImage(uCvMat2QImage(data->imageRaw()));
 			if(_ui->imageView_odometry->isImageDepthShown() && !data->depthOrRightRaw().empty())
 			{
-				_ui->imageView_odometry->setImageDepth(data->depthOrRightRaw());
+				_ui->imageView_odometry->setImageDepth(data->depthOrRightRaw(), data->depthConfidenceRaw());
 			}
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
@@ -1796,6 +1801,22 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/InliersMeanDistance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersMeanDistance, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersDistribution, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+		for(size_t i=0; i<odom.info().reg.matchesPerCam.size(); ++i)
+		{
+			_ui->statsToolBox->updateStat(QString("Odometry/matchesCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matchesPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+		}
+		for(size_t i=0; i<odom.info().reg.inliersPerCam.size(); ++i)
+		{
+			_ui->statsToolBox->updateStat(QString("Odometry/inliersCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+		}
+		if(odom.info().reg.matchesPerCam.size() == odom.info().reg.inliersPerCam.size())
+		{
+			for(size_t i=0; i<odom.info().reg.matchesPerCam.size(); ++i)
+			{
+				_ui->statsToolBox->updateStat(QString("Odometry/inliersRatioCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().reg.matchesPerCam[i]>0 ? (float)odom.info().reg.inliersPerCam[i] / (float)odom.info().reg.matchesPerCam[i] : 0.0f, _preferencesDialog->isCacheSavedInFigures());
+			}
+		}
+		
 		_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
@@ -1829,6 +1850,12 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleOutliers, _preferencesDialog->isCacheSavedInFigures());
 			_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleConstraints, _preferencesDialog->isCacheSavedInFigures());
 			_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/localBundleAvgInlierDistance/pix", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleAvgInlierDistance, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/localBundleMaxKeyFramesForInlier/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleMaxKeyFramesForInlier, _preferencesDialog->isCacheSavedInFigures());
+			for(size_t i=0; i<odom.info().localBundleOutliersPerCam.size(); ++i)
+			{
+				_ui->statsToolBox->updateStat(QString("Odometry/localBundleOutliersCam%1/").arg(i), _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleOutliersPerCam[i], _preferencesDialog->isCacheSavedInFigures());
+			}
 		}
 		_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)data->id(), _preferencesDialog->isCacheSavedInFigures());
@@ -1883,9 +1910,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			if(!odomT.isNull())
 			{
-				rtabmap::Transform diff = odom.info().transformGroundTruth.inverse()*odomT;
-				_ui->statsToolBox->updateStat("Odometry/TG_error_lin/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), diff.getNorm(), _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("Odometry/TG_error_ang/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), diff.getAngle()*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/TG_error_lin/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().transformGroundTruth.getDistance(odomT), _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/TG_error_ang/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().transformGroundTruth.getAngle(odomT)*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
 			}
 
 			odom.info().transformGroundTruth.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
@@ -2318,7 +2344,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				if(!signature.sensorData().depthOrRightRaw().empty())
 				{
-					_ui->imageView_source->setImageDepth(signature.sensorData().depthOrRightRaw());
+					_ui->imageView_source->setImageDepth(signature.sensorData().depthOrRightRaw(), signature.sensorData().depthConfidenceRaw());
 				}
 				if(img.isNull() && signature.sensorData().depthOrRightRaw().empty())
 				{
@@ -2350,7 +2376,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				}
 				if(!loopSignature.sensorData().depthOrRightRaw().empty())
 				{
-					_ui->imageView_loopClosure->setImageDepth(loopSignature.sensorData().depthOrRightRaw());
+					_ui->imageView_loopClosure->setImageDepth(loopSignature.sensorData().depthOrRightRaw(), loopSignature.sensorData().depthConfidenceRaw());
 				}
 				if(_ui->imageView_loopClosure->sceneRect().isNull())
 				{
@@ -2595,19 +2621,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			if(_preferencesDialog->isPosteriorGraphView() &&
 			   stat.posterior().size())
 			{
-				_ui->graphicsView_graphView->updatePosterior(stat.posterior());
+				_ui->graphicsView_graphView->updateNodeColorByValue("Posterior", stat.posterior());
 			}
 			else if(_preferencesDialog->isRGBDMode())
 			{
 				if(_preferencesDialog->isWordsCountGraphView() &&
 						_cachedWordsCount.size())
 				{
-					_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+					_ui->graphicsView_graphView->updateNodeColorByValue("Visual Words", _cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
 				}
 				else if(_preferencesDialog->isLocalizationsCountGraphView() &&
 						_cachedLocalizationsCount.size())
 				{
-					_ui->graphicsView_graphView->updatePosterior(_cachedLocalizationsCount, 1.0f);
+					_ui->graphicsView_graphView->updateNodeColorByValue("Re-Localization Count", _cachedLocalizationsCount, 1.0f);
 				}
 			}
 			if(_preferencesDialog->isRelocalizationColorOdomCacheGraphView() && !stat.odomCachePoses().empty())
@@ -2628,7 +2654,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 						colors.insert(std::make_pair(iter->first, 240)); //red
 					}
 				}
-				_ui->graphicsView_graphView->updatePosterior(colors, 240);
+				_ui->graphicsView_graphView->updateNodeColorByValue("Re-Localized", colors, 240);
 			}
 			// update local path on the graph view
 			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
@@ -3693,7 +3719,8 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				_preferencesDialog->getCloudMinDepth(0),
 				indices.get(),
 				allParameters,
-				_preferencesDialog->getCloudRoiRatios(0));
+				_preferencesDialog->getCloudRoiRatios(0),
+				_preferencesDialog->getCloudConfidenceThr(0));
 
 		// view point
 		Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
@@ -4746,7 +4773,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 				_preferencesDialog->isRGBDMode()&&
 				_cachedWordsCount.size())
 			{
-				_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+				_ui->graphicsView_graphView->updateNodeColorByValue("Visual Words", _cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
 			}
 
 			_progressDialog->appendText("Updating the 3D map cloud... done.");
@@ -4897,7 +4924,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		}
 		if(!_preferencesDialog->isPosteriorGraphView() && _ui->graphicsView_graphView->isVisible())
 		{
-			_ui->graphicsView_graphView->clearPosterior();
+			_ui->graphicsView_graphView->clearNodeColorByValue();
 		}
 	}
 
@@ -6598,6 +6625,8 @@ void MainWindow::postProcessing(
 			odomMaxInf = graph::getMaxOdomInf(_currentLinksMap);
 		}
 
+		std::shared_ptr<Registration> registration(Registration::create(parameters));
+
 		UASSERT(iterations>0);
 		for(int n=0; n<iterations && !_progressCanceled; ++n)
 		{
@@ -6678,7 +6707,6 @@ void MainWindow::postProcessing(
 										{
 											uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
 										}
-										Registration * registration = Registration::create(parameters);
 
 										if(reextractFeatures)
 										{
@@ -6710,7 +6738,6 @@ void MainWindow::postProcessing(
 													Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 										}
 										transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
-										delete registration;
 										if(!transform.isNull())
 										{
 											//optimize the graph to see if the new constraint is globally valid
@@ -6998,7 +7025,13 @@ void MainWindow::postProcessing(
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
 		Optimizer * sbaOptimizer = Optimizer::create(sbaType, parametersSBA);
-		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap(), sbaRematchFeatures);
+		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(
+			optimizedPoses.begin()->first,
+			optimizedPoses,
+			linksOut,
+			_cachedSignatures.toStdMap(),
+			sbaRematchFeatures,
+			parametersSBA);
 		delete sbaOptimizer;
 		if(newPoses.size())
 		{
@@ -8156,6 +8189,12 @@ void MainWindow::exportImages()
 							QDir dir;
 							dir.mkdir(QString("%1/rgb").arg(path));
 							dir.mkdir(QString("%1/depth").arg(path));
+
+							if(!data.depthConfidenceRaw().empty())
+							{
+								QDir dir;
+								dir.mkdir(QString("%1/confidence").arg(path));
+							}
 						}
 
 						if(data.cameraModels().size() > 1)
@@ -8214,7 +8253,14 @@ void MainWindow::exportImages()
 					UWARN("Failed saving \"%s\"", QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 				if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
 					UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
-				info = tr("Saved rgb/%1.%2 and depth/%1.png.").arg(id).arg(ext);
+				if(data.depthConfidenceRaw().empty()) {
+					info = tr("Saved rgb/%1.%2 and depth/%1.png.").arg(id).arg(ext);
+				}
+				else {
+					if(!cv::imwrite(QString("%1/confidence/%2.png").arg(path).arg(id).toStdString(), data.depthConfidenceRaw()))
+						UWARN("Failed saving \"%s\"", QString("%1/confidence/%2.png").arg(path).arg(id).toStdString().c_str());
+					info = tr("Saved rgb/%1.%2, depth/%1.png and confidence/%1.png.").arg(id).arg(ext);
+				}
 			}
 			else if(!data.imageRaw().empty())
 			{
@@ -8316,6 +8362,21 @@ void MainWindow::exportBundlerFormat()
 					_currentLinksMap,
 					_cachedSignatures,
 					_preferencesDialog->getAllParameters());
+		
+		if(!poses.empty())
+		{
+			UINFO("Updating map...");
+			this->updateMapCloud(
+					poses,
+					std::multimap<int, Link>(_currentLinksMap),
+					std::map<int, int>(_currentMapIds),
+					std::map<int, std::string>(_currentLabels),
+					std::map<int, Transform>(_currentGTPosesMap),
+					std::map<int, Transform>(),
+					std::multimap<int, Link>(),
+					false);
+			UINFO("Updating map... done!");
+		}
 	}
 	else
 	{

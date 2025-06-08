@@ -19,8 +19,8 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 # VERSION
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
-SET(RTABMAP_MINOR_VERSION 21)
-SET(RTABMAP_PATCH_VERSION 10)
+SET(RTABMAP_MINOR_VERSION 22)
+SET(RTABMAP_PATCH_VERSION 0)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
   
@@ -208,7 +208,7 @@ option(WITH_MYNTEYE       "Include mynteye-s support"            ON)
 option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
 option(WITH_XVSDK         "Include XVisio SDK support"           OFF)
 option(WITH_OCTOMAP       "Include OctoMap support"              ON)
-option(WITH_GRIDMAP       "Include GridMap support"              ON)
+option(WITH_GRIDMAP       "Include GridMap support"              OFF)
 option(WITH_CPUTSDF       "Include CPUTSDF support"              OFF)
 option(WITH_OPENCHISEL    "Include open_chisel support"          OFF)
 option(WITH_ALICE_VISION  "Include AliceVision support"          OFF)

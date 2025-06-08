@@ -783,7 +783,10 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #endif
 				cv::Mat rgbaRight = slMat2cvMat(tmp);
 				cv::Mat right;
-				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
+				if(rightGrayScale_)
+					cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
+				else
+					cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2BGR);
 #if ZED_SDK_MAJOR_VERSION < 3
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
 #else
@@ -889,6 +892,13 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 void CameraStereoZed::postInterIMUPublic(const IMU & imu, double stamp)
 {
 	postInterIMU(imu, stamp);
+}
+
+void CameraStereoZed::setRightGrayScale(bool enabled)
+{
+#ifdef RTABMAP_ZED
+	rightGrayScale_ = enabled;
+#endif
 }
 
 } // namespace rtabmap

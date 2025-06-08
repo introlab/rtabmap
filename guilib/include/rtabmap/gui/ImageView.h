@@ -60,6 +60,7 @@ public:
 	QRectF sceneRect() const;
 	bool isImageShown() const;
 	bool isImageDepthShown() const;
+	bool isImageDepthConfidenceShown() const;
 	bool isFeaturesShown() const;
 	bool isLinesShown() const;
 	int getAlpha() const {return _alpha;}
@@ -82,6 +83,7 @@ public:
 	void setFeaturesShown(bool shown);
 	void setImageShown(bool shown);
 	void setImageDepthShown(bool shown);
+	void setImageDepthConfidenceShown(bool shown);
 	void setLinesShown(bool shown);
 	void setGraphicsViewMode(bool on);
 	void setGraphicsViewScaled(bool scaled);
@@ -98,8 +100,8 @@ public:
 	void addFeature(int id, const cv::KeyPoint & kpt, float depth, QColor color);
 	void addLine(float x1, float y1, float x2, float y2, QColor color, const QString & text = QString());
 	void setImage(const QImage & image, const std::vector<CameraModel> & models = std::vector<CameraModel>(), const Transform & pose = Transform());
-	void setImageDepth(const cv::Mat & imageDepth);
-	void setImageDepth(const QImage & image);
+	void setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageDepthConfidence = cv::Mat());
+	void setImageDepth(const QImage & image, const QImage & imageDepthConfidence = QImage());
 	void setFeatureColor(int id, QColor color);
 	void setFeaturesColor(QColor color);
 	void setAlpha(int alpha);
@@ -147,6 +149,7 @@ private:
 	QMenu * _menu;
 	QAction * _showImage;
 	QAction * _showImageDepth;
+	QAction * _showImageDepthConfidence;
 	QAction * _showFeatures;
 	QAction * _showLines;
 	QAction * _setFeatureColor;
@@ -175,9 +178,12 @@ private:
 	QList<QGraphicsLineItem*> _lines;
 	QGraphicsPixmapItem * _imageItem;
 	QGraphicsPixmapItem * _imageDepthItem;
+	QGraphicsPixmapItem * _imageDepthConfidenceItem;
 	QPixmap _image;
 	QPixmap _imageDepth;
+	QPixmap _imageDepthConfidence;
 	cv::Mat _imageDepthCv;
+	cv::Mat _imageDepthConfidenceCv;
 	std::vector<CameraModel> _models;
 	Transform _pose;
 };

@@ -703,10 +703,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				cv::Point2i end((pt[0]-xMin)/cellSize, (pt[1]-yMin)/cellSize);
 				if(end!=start)
 				{
-					if(localScans.size() > 1 || map.at<signed char>(end.y, end.x) != 0)
-					{
-						rayTrace(start, end, map, true); // trace free space
-					}
+					rayTrace(start, end, map, true); // trace free space
 				}
 			}
 			// ray tracing for no hits
@@ -730,14 +727,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				cv::Point2i end((pt[0]-xMin)/cellSize, (pt[1]-yMin)/cellSize);
 				if(end!=start)
 				{
-					if(localScans.size() > 1 || map.at<signed char>(end.y, end.x) != 0)
-					{
-						rayTrace(start, end, map, true); // trace free space
-						if(map.at<signed char>(end.y, end.x) == -1)
-						{
-							map.at<signed char>(end.y, end.x) = 0; // empty
-						}
-					}
+					rayTrace(start, end, map, true); // trace free space
 				}
 			}
 		}
@@ -823,14 +813,16 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 {
 	UASSERT_MSG(start.x >= 0 && start.x < grid.cols, uFormat("start.x=%d grid.cols=%d", start.x, grid.cols).c_str());
 	UASSERT_MSG(start.y >= 0 && start.y < grid.rows, uFormat("start.y=%d grid.rows=%d", start.y, grid.rows).c_str());
-	UASSERT_MSG(end.x >= 0 && end.x < grid.cols, uFormat("end.x=%d grid.cols=%d", end.x, grid.cols).c_str());
-	UASSERT_MSG(end.y >= 0 && end.y < grid.rows, uFormat("end.x=%d grid.cols=%d", end.y, grid.rows).c_str());
 
 	cv::Point2i ptA, ptB;
 	ptA = start;
 	ptB = end;
 
 	float slope = float(ptB.y - ptA.y)/float(ptB.x - ptA.x);
+
+	// clip end point
+	ptB.x = std::min(std::max(ptB.x, 0), grid.cols-1);
+	ptB.y = std::min(std::max(ptB.y, 0), grid.rows-1);
 
 	bool swapped = false;
 	if(slope<-1.0f || slope>1.0f)

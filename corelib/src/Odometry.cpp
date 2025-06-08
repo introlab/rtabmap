@@ -337,6 +337,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	if((data.imageRaw().empty() && !data.imageCompressed().empty()) ||
+	   (data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty()) ||
+	   (data.laserScanRaw().empty() && !data.laserScanCompressed().empty()))
+	{
+		UDEBUG("Received compressed data, uncompressing...");
+		data.uncompressData();
+		UDEBUG("Received compressed data, uncompressing...done!");
+	}
+
 	if(!data.imageRaw().empty())
 	{
 		UDEBUG("Processing image data %dx%d: rgbd models=%ld, stereo models=%ld",

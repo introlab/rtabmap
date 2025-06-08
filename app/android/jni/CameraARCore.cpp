@@ -37,8 +37,8 @@ namespace rtabmap {
 //////////////////////////////
 // CameraARCore
 //////////////////////////////
-CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthFromMotion, bool smoothing, float upstreamRelocalizationAccThr):
-	CameraMobile(smoothing, upstreamRelocalizationAccThr),
+CameraARCore::CameraARCore(void* env, void* context, void* activity, bool depthFromMotion, float upstreamRelocalizationAccThr):
+	CameraMobile(upstreamRelocalizationAccThr),
 	env_(env),
 	context_(context),
 	activity_(activity),

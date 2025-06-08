@@ -51,28 +51,30 @@ public:
 			 bool ignoreGoalDelay = false,
 			 bool goalsIgnored = false,
 			 int startId = 0,
-			 int cameraIndex = -1,
+			 const std::vector<unsigned int> & cameraIndices = std::vector<unsigned int>(),
 			 int stopId = 0,
 			 bool intermediateNodesIgnored = false,
 			 bool landmarksIgnored = false,
 			 bool featuresIgnored = false,
 			 int startMapId = 0,
 			 int stopMapId = -1,
-			 bool priorsIgnored = false);
+			 bool priorsIgnored = false,
+			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>());
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
 			 bool ignoreGoalDelay = false,
 			 bool goalsIgnored = false,
 			 int startId = 0,
-			 int cameraIndex = -1,
+			 const std::vector<unsigned int> & cameraIndices = std::vector<unsigned int>(),
 			 int stopId = 0,
 			 bool intermediateNodesIgnored = false,
 			 bool landmarksIgnored = false,
 			 bool featuresIgnored = false,
 			 int startMapId = 0,
 			 int stopMapId = -1,
-			 bool priorsIgnored = false);
+			 bool priorsIgnored = false,
+			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>());
 	virtual ~DBReader();
 
 	virtual bool init(
@@ -91,6 +93,7 @@ protected:
 
 private:
 	SensorData getNextData(SensorCaptureInfo * info = 0);
+	void checkArguments();
 
 private:
 	std::list<std::string> _paths;
@@ -99,13 +102,14 @@ private:
 	bool _goalsIgnored;
 	int _startId;
 	int _stopId;
-	int _cameraIndex;
+	std::vector<unsigned int> _cameraIndices;
 	bool _intermediateNodesIgnored;
 	bool _landmarksIgnored;
 	bool _featuresIgnored;
 	bool _priorsIgnored;
 	int _startMapId;
 	int _stopMapId;
+	std::vector<Transform> _cameraLocalTransformOverrides;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

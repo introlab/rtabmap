@@ -81,6 +81,7 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Landmark_detected_node_ref,);
 	RTABMAP_STATS(Loop, Visual_inliers_mean_dist,m);
 	RTABMAP_STATS(Loop, Visual_inliers_distribution,);
+	RTABMAP_STATS(Loop, Proximity_links_cleared,);
 	//Odom correction
 	RTABMAP_STATS(Loop, Odom_correction_norm, m);
 	RTABMAP_STATS(Loop, Odom_correction_angle, deg);
