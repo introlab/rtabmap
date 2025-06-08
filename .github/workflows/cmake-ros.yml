@@ -27,12 +27,6 @@ jobs:
         include:
         - ros_distribution: 'humble'
           os: ubuntu-22.04
-        - ros_distribution: 'jazzy'
-          os: ubuntu-24.04
-        - ros_distribution: 'kilted'
-          os: ubuntu-24.04
-        - ros_distribution: 'rolling'
-          os: ubuntu-24.04
 
     steps:   
     - name: Setup ROS2
