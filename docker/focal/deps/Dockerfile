@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /root/
 
 # issue: https://github.com/introlab/rtabmap/issues/1523
-RUN rm /etc/apt/sources.list.d/ros1-latest.list && \
+RUN rm /etc/apt/sources.list.d/ros1-latest.list || true && \
     apt-get update && apt-get install -y curl && \
     sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
     curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - && \
