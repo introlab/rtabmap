@@ -27222,13 +27222,13 @@ Lower the ratio -&gt; higher the precision.</string>
                  <item>
                   <widget class="QGroupBox" name="groupBox_detector_superpoint_torch2">
                    <property name="title">
-                    <string>SupertPoint Torch</string>
+                    <string>SuperPoint Torch</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_147">
                     <item>
                      <widget class="QLabel" name="label_575">
                       <property name="text">
-                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;SupertPoint c++ implementation from &lt;a href=&quot;https://github.com/KinglittleQ/SuperPoint_SLAM&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperPoint_SLAM&lt;/span&gt;&lt;/a&gt; project based on pytorch. A &lt;span style=&quot; font-weight:600;&quot;&gt;superpoint.pt&lt;/span&gt; weights file can be downloaded from its Git. It should be the same weights file &lt;a href=&quot;https://pytorch.org/tutorials/advanced/cpp_export.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;converted&lt;/span&gt;&lt;/a&gt; from &lt;span style=&quot; font-weight:600;&quot;&gt;superpoint.pth&lt;/span&gt; of the &lt;a href=&quot;https://github.com/magicleap/SuperPointPretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperPointPretrainedNetwork&lt;/span&gt;&lt;/a&gt; project.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;SuperPoint c++ implementation from &lt;a href=&quot;https://github.com/KinglittleQ/SuperPoint_SLAM&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperPoint_SLAM&lt;/span&gt;&lt;/a&gt; project based on pytorch. A &lt;span style=&quot; font-weight:600;&quot;&gt;superpoint.pt&lt;/span&gt; weights file can be downloaded from its Git. It should be the same weights file &lt;a href=&quot;https://pytorch.org/tutorials/advanced/cpp_export.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;converted&lt;/span&gt;&lt;/a&gt; from &lt;span style=&quot; font-weight:600;&quot;&gt;superpoint.pth&lt;/span&gt; of the &lt;a href=&quot;https://github.com/magicleap/SuperPointPretrainedNetwork&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;SuperPointPretrainedNetwork&lt;/span&gt;&lt;/a&gt; project.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>

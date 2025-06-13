@@ -688,7 +688,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #ifndef RTABMAP_TORCH
 	if(type == Feature2D::kFeatureSuperPointTorch)
 	{
-		UWARN("SupertPoint Torch feature cannot be used as RTAB-Map is not built with the option enabled. GFTT/ORB is used instead.");
+		UWARN("SuperPoint Torch feature cannot be used as RTAB-Map is not built with the option enabled. GFTT/ORB is used instead.");
 		type = Feature2D::kFeatureGfttOrb;
 	}
 #endif
