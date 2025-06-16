@@ -423,6 +423,32 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 
 			if(_createGlobalScanMap)
 				createGlobalScanMap();
+
+			if(true)
+			{
+				std::string externalLocalizationDataPath = _wDir +"/rtabmap_log.db"; // use parameter to know prefix, then generate timestamp
+				_externalLocalizationDbDriver = DBDriver::create(allParameters);
+				if(!_externalLocalizationDbDriver->openConnection(externalLocalizationDataPath)) {
+					UERROR("Failed to create database \"%s\" to save external localization data!");
+				}
+				else
+				{
+					float x, y, resolution;
+					cv::Mat map = _memory->load2DMap(x, y, resolution);
+					if(!map.empty()) {
+						_externalLocalizationDbDriver->save2DMap(map, x, y, resolution);
+					}
+					if(!_optimizedPoses.empty()) {
+						_externalLocalizationDbDriver->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
+					}
+					if(!allParameters.empty())
+					{
+						ParametersMap params = allParameters;
+						params.erase(Parameters::kRtabmapWorkingDirectory()); // don't save working directory as it is machine dependent
+						_externalLocalizationDbDriver->addInfoAfterRun(0, 0, 0, 0, 0, params);
+					}
+				}
+			}
 		}
 		else
 		{
@@ -519,6 +545,9 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 					_optimizedPoses.erase(iter->first);
 				}
 			}
+			if(!_memory->isIncremental() && _externalLocalizationDbDriver) {
+				_externalLocalizationDbDriver->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
+			}
 			_memory->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
 		}
 		_memory->close(databaseSaved, true, ouputDatabasePath);
@@ -527,6 +556,12 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	}
 	_optimizedPoses.clear();
 	_lastLocalizationPose.setNull();
+
+	if(_externalLocalizationDbDriver) {
+		_externalLocalizationDbDriver->closeConnection();
+		delete _externalLocalizationDbDriver;
+		_externalLocalizationDbDriver = 0;
+	}
 
 	if(_bayesFilter)
 	{
@@ -4265,9 +4300,19 @@ bool Rtabmap::process(
 
 	// Localization mode and saving localization data: save odometry covariance in a prior link
 	// so that DBReader can republish the covariance of localization data
-	if(!_memory->isIncremental() && _memory->isLocalizationDataSaved() && !odomCovariance.empty())
+	if(!_memory->isIncremental())
 	{
-		_memory->addLink(Link(signature->id(), signature->id(), Link::kPosePrior, odomPose, odomCovariance.inv()));
+		if(_externalLocalizationDbDriver)
+		{
+			Signature * cpy = new Signature();
+			*cpy = *signature;
+			_externalLocalizationDbDriver->asyncSave(cpy);
+		}
+
+		if(_memory->isLocalizationDataSaved() && !odomCovariance.empty())
+		{
+			_memory->addLink(Link(signature->id(), signature->id(), Link::kPosePrior, odomPose, odomCovariance.inv()));
+		}
 	}
 
 	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)
@@ -4688,6 +4733,11 @@ bool Rtabmap::process(
 	if(_memory->isIncremental() || _memory->isLocalizationDataSaved())
 	{
 		_memory->saveStatistics(statistics_, _saveWMState);
+	}
+	
+	if(_externalLocalizationDbDriver) // external db log
+	{
+		_externalLocalizationDbDriver->addStatistics(statistics_, _saveWMState);
 	}
 
 	//Start trashing
