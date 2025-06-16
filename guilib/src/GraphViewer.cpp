@@ -568,7 +568,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				item->setZValue(iter->first<0?21:20);
 				item->setColor(color);
 				item->setParentItem(_graphRoot);
-				item->setVisible(_nodeVisible);
+				item->show();
 				_nodeItems.insert(iter->first, item);
 			}
 		}
@@ -742,6 +742,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		}
 		else
 		{
+			iter.value()->setVisible(_nodeVisible);
 			++iter;
 		}
 	}
@@ -1185,7 +1186,7 @@ void GraphViewer::setNodeInfo(int id, const QString & info)
 	}
 	else
 	{
-		UWARN("Current goal %d not found in the graph", id);
+		UWARN("Node %d not found in the graph", id);
 	}
 }
 
