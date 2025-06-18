@@ -3481,18 +3481,24 @@ void DatabaseViewer::exportOptimizedMesh()
 					path += ".obj";
 				}
 				QString baseName = QFileInfo(path).baseName();
+				UDEBUG("Materials: %d", mesh->tex_materials.size());
 				if(mesh->tex_materials.size() == 1)
 				{
 					mesh->tex_materials.at(0).tex_file = baseName.toStdString() + ".png";
-					cv::imwrite((QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+baseName).toStdString() + ".png", textures);
+					std::string filename = (QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+baseName).toStdString() + ".png";
+					cv::imwrite(filename, textures);
+					UDEBUG("Saved %s", filename.c_str());
 				}
 				else
 				{
+					QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(baseName);
 					for(unsigned int i=0; i<mesh->tex_materials.size(); ++i)
 					{
 						mesh->tex_materials.at(i).tex_file = (baseName+QDir::separator()+QString::number(i)+".png").toStdString();
 						UASSERT((i+1)*textures.rows <= (unsigned int)textures.cols);
-						cv::imwrite((QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+baseName+QDir::separator()+QString::number(i)+".png").toStdString(), textures(cv::Range::all(), cv::Range(i*textures.rows, (i+1)*textures.rows)));
+						std::string filename = (QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+baseName+QDir::separator()+QString::number(i)+".png").toStdString();
+						cv::imwrite(filename, textures(cv::Range::all(), cv::Range(i*textures.rows, (i+1)*textures.rows)));
+						UDEBUG("Saved %s", filename.c_str());
 					}
 				}
 				pcl::io::saveOBJFile(path.toStdString(), *mesh);
