@@ -994,6 +994,63 @@ TEST(Util2dTest, fastBilateralFilteringEarlyDivisionOptionConsistency) {
     }
 }
 
+// Test for empty input
+TEST(Util2dTest, depthBleedingFilteringHandlesEmptyInput)
+{
+    cv::Mat empty;
+    EXPECT_NO_THROW(util2d::depthBleedingFiltering(empty, 0.1f));
+}
+
+// Test that borders are zeroed out
+TEST(Util2dTest, depthBleedingFilteringBordersAreZeroed)
+{
+    cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
+    util2d::depthBleedingFiltering(depth, 0.1f);
+
+    for(int i = 0; i < 5; ++i)
+    {
+        EXPECT_EQ(depth.at<float>(0, i), 0.0f);
+        EXPECT_EQ(depth.at<float>(4, i), 0.0f);
+        EXPECT_EQ(depth.at<float>(i, 0), 0.0f);
+        EXPECT_EQ(depth.at<float>(i, 4), 0.0f);
+    }
+}
+
+// Test that valid depths are not removed
+TEST(Util2dTest, depthBleedingFilteringKeepsValidDepths)
+{
+    cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
+    depth.at<float>(2,2) = 1.01f; // Within threshold of 0.1
+    util2d::depthBleedingFiltering(depth, 0.1f);
+    EXPECT_GT(depth.at<float>(2,2), 0.0f);
+}
+
+// Test that invalid depth is removed
+TEST(Util2dTest, depthBleedingFilteringFiltersInvalidDepths)
+{
+    cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
+    depth.at<float>(2,2) = 5.0f; // Large depth jump
+    util2d::depthBleedingFiltering(depth, 0.1f);
+    EXPECT_EQ(depth.at<float>(2,2), 0.0f);
+}
+
+// Repeat the above for CV_16UC1
+TEST(Util2dTest, depthBleedingFilteringFiltersInvalidDepths16U)
+{
+    cv::Mat depth = cv::Mat::ones(5, 5, CV_16UC1) * 1000; // 1.0m in mm
+    depth.at<uint16_t>(2,2) = 5000; // 5.0m
+    util2d::depthBleedingFiltering(depth, 0.1f);
+    EXPECT_EQ(depth.at<uint16_t>(2,2), 0);
+}
+
+TEST(Util2dTest, depthBleedingFilteringKeepsValidDepths16U)
+{
+    cv::Mat depth = cv::Mat::ones(5, 5, CV_16UC1) * 1000;
+    depth.at<uint16_t>(2,2) = 1090; // 0.09m difference, within 0.1m
+    util2d::depthBleedingFiltering(depth, 0.1f);
+    EXPECT_GT(depth.at<uint16_t>(2,2), 0);
+}
+
 TEST(Util2dTest, HSVtoRGBPureRed) {
     float r, g, b;
     util2d::HSVtoRGB(&r, &g, &b, 0.0f, 1.0f, 1.0f);

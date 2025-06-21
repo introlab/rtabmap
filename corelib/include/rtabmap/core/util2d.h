@@ -606,6 +606,21 @@ cv::Mat RTABMAP_CORE_EXPORT fastBilateralFiltering(
 		float sigmaR = 0.05f,
 		bool earlyDivision = false);
 
+/**
+ * @brief Filters out depth bleeding artifacts in a depth image.
+ *
+ * This function sets depth values to zero (invalid) if their value significantly differs
+ * from both neighboring pixels in either horizontal or vertical direction. It works on
+ * depth images of type `CV_32FC1` (32-bit float, in meters) or `CV_16UC1` (16-bit unsigned int, in millimeters).
+ * 
+ * The function also ignores the image border by setting the first and last rows and columns to zero.
+ *
+ * @param depth Input/output depth image. Must be of type `CV_32FC1` or `CV_16UC1`.
+ *              The filtering is done in-place.
+ * @param maxDepthError Maximum allowed depth difference between a pixel and its neighbors
+ *                      before it is considered invalid and filtered out. For `CV_32FC1`,
+ *                      this value is in meters; for `CV_16UC1`, it's converted to millimeters.
+ */
 void RTABMAP_CORE_EXPORT depthBleedingFiltering(
 	cv::Mat & depth,
 	float maxDepthError);
