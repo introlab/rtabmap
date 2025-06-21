@@ -41,9 +41,6 @@ namespace rtabmap {
 //////////////////////////////
 // CameraMobile
 //////////////////////////////
-const float CameraMobile::bilateralFilteringSigmaS = 2.0f;
-const float CameraMobile::bilateralFilteringSigmaR = 0.075f;
-
 const rtabmap::Transform CameraMobile::opticalRotation = Transform(
 		0.0f,  0.0f,  1.0f, 0.0f,
 	   -1.0f,  0.0f,  0.0f, 0.0f,
@@ -53,13 +50,12 @@ const rtabmap::Transform CameraMobile::opticalRotationInv = Transform(
 	    0.0f,  0.0f, -1.0f, 0.0f,
 		1.0f,  0.0f,  0.0f, 0.0f);
 
-CameraMobile::CameraMobile(bool smoothing, float upstreamRelocalizationAccThr) :
+CameraMobile::CameraMobile(float upstreamRelocalizationAccThr) :
 		Camera(10),
 		deviceTColorCamera_(Transform::getIdentity()),
 		textureId_(0),
 		uvs_initialized_(false),
 		stampEpochOffset_(0.0),
-		smoothing_(smoothing),
 		colorCameraToDisplayRotation_(ROTATION_0),
 		originUpdate_(true),
 		upstreamRelocalizationAccThr_(upstreamRelocalizationAccThr),
@@ -394,124 +390,135 @@ SensorData CameraMobile::updateDataOnRender(Transform & pose)
 void CameraMobile::postUpdate()
 {
 	if(data_.isValid())
-	{
-		// adjust origin
-		if(!originOffset_.isNull())
-		{
-			dataPose_ = originOffset_ * dataPose_;
-			viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-			occlusionModel_.setLocalTransform(originOffset_ * occlusionModel_.localTransform());
-		}
-
-		if(lastKnownGPS_.stamp() > 0.0 && data_.stamp()-lastKnownGPS_.stamp()<1.0)
-		{
-			data_.setGPS(lastKnownGPS_);
-		}
-		else if(lastKnownGPS_.stamp()>0.0)
-		{
-			LOGD("GPS too old (current time=%f, gps time = %f)", data_.stamp(), lastKnownGPS_.stamp());
-		}
-
-		if(lastEnvSensors_.size())
-		{
-			data_.setEnvSensors(lastEnvSensors_);
-			lastEnvSensors_.clear();
-		}
-
-		if(smoothing_ && !data_.depthRaw().empty())
-		{
-			//UTimer t;
-			data_.setDepthOrRightRaw(rtabmap::util2d::fastBilateralFiltering(data_.depthRaw(), bilateralFilteringSigmaS, bilateralFilteringSigmaR));
-			//LOGD("Bilateral filtering, time=%fs", t.ticks());
-		}
-
-		// Rotate image depending on the camera orientation
-		if(colorCameraToDisplayRotation_ == ROTATION_90)
-		{
-			UDEBUG("ROTATION_90");
-			cv::Mat rgb, depth;
-			cv::Mat rgbt(data_.imageRaw().cols, data_.imageRaw().rows, data_.imageRaw().type());
-			cv::flip(data_.imageRaw(),rgb,1);
-			cv::transpose(rgb,rgbt);
-			rgb = rgbt;
-			cv::Mat deptht(data_.depthRaw().cols, data_.depthRaw().rows, data_.depthRaw().type());
-			cv::flip(data_.depthRaw(),depth,1);
-			cv::transpose(depth,deptht);
-			depth = deptht;
-			CameraModel model = data_.cameraModels()[0];
-			cv::Size sizet(model.imageHeight(), model.imageWidth());
-			model = CameraModel(
-					model.fy(),
-					model.fx(),
-					model.cy(),
-					model.cx()>0?model.imageWidth()-model.cx():0,
-					model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
-			model.setImageSize(sizet);
-			data_.setRGBDImage(rgb, depth, model);
-
-			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
-			for(size_t i=0; i<keypoints.size(); ++i)
-			{
-				keypoints[i].pt.x = data_.keypoints()[i].pt.y;
-				keypoints[i].pt.y = rgb.rows - data_.keypoints()[i].pt.x;
-			}
-			data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
-		}
-		else if(colorCameraToDisplayRotation_ == ROTATION_180)
-		{
-			UDEBUG("ROTATION_180");
-			cv::Mat rgb, depth;
-			cv::flip(data_.imageRaw(),rgb,1);
-			cv::flip(rgb,rgb,0);
-			cv::flip(data_.depthOrRightRaw(),depth,1);
-			cv::flip(depth,depth,0);
-			CameraModel model = data_.cameraModels()[0];
-			cv::Size sizet(model.imageWidth(), model.imageHeight());
-			model = CameraModel(
-					model.fx(),
-					model.fy(),
-					model.cx()>0?model.imageWidth()-model.cx():0,
-					model.cy()>0?model.imageHeight()-model.cy():0,
-					model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
-			model.setImageSize(sizet);
-			data_.setRGBDImage(rgb, depth, model);
-
-			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
-			for(size_t i=0; i<keypoints.size(); ++i)
-			{
-				keypoints[i].pt.x = rgb.cols - data_.keypoints()[i].pt.x;
-				keypoints[i].pt.y = rgb.rows - data_.keypoints()[i].pt.y;
-			}
-			data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
-		}
-		else if(colorCameraToDisplayRotation_ == ROTATION_270)
-		{
-			UDEBUG("ROTATION_270");
-			cv::Mat rgb(data_.imageRaw().cols, data_.imageRaw().rows, data_.imageRaw().type());
-			cv::transpose(data_.imageRaw(),rgb);
-			cv::flip(rgb,rgb,1);
-			cv::Mat depth(data_.depthOrRightRaw().cols, data_.depthOrRightRaw().rows, data_.depthOrRightRaw().type());
-			cv::transpose(data_.depthOrRightRaw(),depth);
-			cv::flip(depth,depth,1);
-			CameraModel model = data_.cameraModels()[0];
-			cv::Size sizet(model.imageHeight(), model.imageWidth());
-			model = CameraModel(
-					model.fy(),
-					model.fx(),
-					model.cy()>0?model.imageHeight()-model.cy():0,
-					model.cx(),
-					model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
-			model.setImageSize(sizet);
-			data_.setRGBDImage(rgb, depth, model);
-
-			std::vector<cv::KeyPoint> keypoints = data_.keypoints();
-			for(size_t i=0; i<keypoints.size(); ++i)
-			{
-				keypoints[i].pt.x = rgb.cols - data_.keypoints()[i].pt.y;
-				keypoints[i].pt.y = data_.keypoints()[i].pt.x;
-			}
-			data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
-		}
+    {
+        // adjust origin
+        if(!originOffset_.isNull())
+        {
+            dataPose_ = originOffset_ * dataPose_;
+            viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * originOffset_ *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
+            occlusionModel_.setLocalTransform(originOffset_ * occlusionModel_.localTransform());
+        }
+        
+        if(lastKnownGPS_.stamp() > 0.0 && data_.stamp()-lastKnownGPS_.stamp()<1.0)
+        {
+            data_.setGPS(lastKnownGPS_);
+        }
+        else if(lastKnownGPS_.stamp()>0.0)
+        {
+            LOGD("GPS too old (current time=%f, gps time = %f)", data_.stamp(), lastKnownGPS_.stamp());
+        }
+        
+        if(lastEnvSensors_.size())
+        {
+            data_.setEnvSensors(lastEnvSensors_);
+            lastEnvSensors_.clear();
+        }
+        
+        
+        // Rotate image depending on the camera orientation
+        if(colorCameraToDisplayRotation_ == ROTATION_90)
+        {
+            UDEBUG("ROTATION_90");
+            cv::Mat rgb, depth, confidence;
+            cv::Mat rgbt;
+            cv::flip(data_.imageRaw(),rgb,1);
+            cv::transpose(rgb,rgbt);
+            rgb = rgbt;
+            cv::Mat deptht;
+            cv::flip(data_.depthRaw(),depth,1);
+            cv::transpose(depth,deptht);
+            depth = deptht;
+            if(!data_.depthConfidenceRaw().empty()) {
+                cv::Mat conft;
+                cv::flip(data_.depthConfidenceRaw(),confidence,1);
+                cv::transpose(confidence,conft);
+                confidence = conft;
+            }
+            CameraModel model = data_.cameraModels()[0];
+            cv::Size sizet(model.imageHeight(), model.imageWidth());
+            model = CameraModel(
+                                model.fy(),
+                                model.fx(),
+                                model.cy(),
+                                model.cx()>0?model.imageWidth()-model.cx():0,
+                                model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
+            model.setImageSize(sizet);
+            data_.setRGBDImage(rgb, depth, confidence, model);
+            
+            std::vector<cv::KeyPoint> keypoints = data_.keypoints();
+            for(size_t i=0; i<keypoints.size(); ++i)
+            {
+                keypoints[i].pt.x = data_.keypoints()[i].pt.y;
+                keypoints[i].pt.y = rgb.rows - data_.keypoints()[i].pt.x;
+            }
+            data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
+        }
+        else if(colorCameraToDisplayRotation_ == ROTATION_180)
+        {
+            UDEBUG("ROTATION_180");
+            cv::Mat rgb, depth, confidence;
+            cv::flip(data_.imageRaw(),rgb,1);
+            cv::flip(rgb,rgb,0);
+            cv::flip(data_.depthOrRightRaw(),depth,1);
+            cv::flip(depth,depth,0);
+            if(!data_.depthConfidenceRaw().empty()) {
+                cv::flip(data_.depthConfidenceRaw(),confidence,1);
+                cv::flip(confidence,confidence,0);
+            }
+            CameraModel model = data_.cameraModels()[0];
+            cv::Size sizet(model.imageWidth(), model.imageHeight());
+            model = CameraModel(
+                                model.fx(),
+                                model.fy(),
+                                model.cx()>0?model.imageWidth()-model.cx():0,
+                                model.cy()>0?model.imageHeight()-model.cy():0,
+                                model.localTransform()*rtabmap::Transform(0,0,0,0,0,1,0));
+            model.setImageSize(sizet);
+            data_.setRGBDImage(rgb, depth, confidence, model);
+            
+            std::vector<cv::KeyPoint> keypoints = data_.keypoints();
+            for(size_t i=0; i<keypoints.size(); ++i)
+            {
+                keypoints[i].pt.x = rgb.cols - data_.keypoints()[i].pt.x;
+                keypoints[i].pt.y = rgb.rows - data_.keypoints()[i].pt.y;
+            }
+            data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
+        }
+        else if(colorCameraToDisplayRotation_ == ROTATION_270)
+        {
+            UDEBUG("ROTATION_270");
+            cv::Mat rgb, depth, confidence;
+            cv::transpose(data_.imageRaw(),rgb);
+            cv::flip(rgb,rgb,1);
+            cv::transpose(data_.depthOrRightRaw(),depth);
+            cv::flip(depth,depth,1);
+            if(!data_.depthConfidenceRaw().empty()) {
+                cv::transpose(data_.depthConfidenceRaw(),confidence);
+                cv::flip(confidence,confidence,1);
+            }
+            CameraModel model = data_.cameraModels()[0];
+            cv::Size sizet(model.imageHeight(), model.imageWidth());
+            model = CameraModel(
+                                model.fy(),
+                                model.fx(),
+                                model.cy()>0?model.imageHeight()-model.cy():0,
+                                model.cx(),
+                                model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
+            model.setImageSize(sizet);
+            data_.setRGBDImage(rgb, depth, confidence, model);
+            
+            std::vector<cv::KeyPoint> keypoints = data_.keypoints();
+            for(size_t i=0; i<keypoints.size(); ++i)
+            {
+                keypoints[i].pt.x = rgb.cols - data_.keypoints()[i].pt.y;
+                keypoints[i].pt.y = data_.keypoints()[i].pt.x;
+            }
+            data_.setFeatures(keypoints, data_.keypoints3D(), cv::Mat());
+        }
+        else
+        {
+            UDEBUG("ROTATION_0");
+        }
 	}
 }
 

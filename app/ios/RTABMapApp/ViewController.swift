@@ -162,7 +162,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     func resetNoTouchTimer(_ showHud: Bool = false) {
         if(showHud)
         {
-            print("Show HUD")
             mMenuOpened = false
             mHudVisible = true
             setNeedsStatusBarAppearanceUpdate()
@@ -184,7 +183,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
         else if(mState != .STATE_WELCOME && mState != .STATE_CAMERA && presentedViewController as? UIAlertController == nil && !mMenuOpened)
         {
-            print("Hide HUD")
             self.mHudVisible = false
             self.setNeedsStatusBarAppearanceUpdate()
             self.updateState(state: self.mState)
@@ -840,13 +838,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.isPaused = true
             view?.enableSetNeedsDisplay = true
             self.view.setNeedsDisplay()
-            print("enableSetNeedsDisplay")
         }
         else
         {
             view?.enableSetNeedsDisplay = false
             self.isPaused = false
-            print("disableSetNeedsDisplay")
         }
         
         if !self.isPaused {
@@ -934,7 +930,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         ])
         
         // Measuring menu
-        print("measuringMode = \(measuringMode)")
         let measuringMenu = UIMenu(title: "Measuring...", image: UIImage(systemName: "ruler"), children: [
             UIAction(title: "Plane to Plane Mode", image: measuringMode == 0 ? UIImage(systemName: "checkmark.circle") : UIImage(systemName: "circle"), handler: { _ in
                 self.measuringMode = 0
@@ -1516,6 +1511,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap!.setNodesFiltering(enabled: defaults.bool(forKey: "NodesFiltering"));
         rtabmap!.setFullResolution(enabled: defaults.bool(forKey: "HDMode"));
         rtabmap!.setSmoothing(enabled: defaults.bool(forKey: "Smoothing"));
+        rtabmap!.setDepthBleedingError(value: defaults.float(forKey: "DepthBleedingError"));
         rtabmap!.setAppendMode(enabled: defaults.bool(forKey: "AppendMode"));
         rtabmap!.setUpstreamRelocalizationAccThr(value: defaults.float(forKey: "UpstreamRelocalizationFilteringAccThr"));
         rtabmap!.setExportPointCloudFormat(format: defaults.string(forKey: "ExportPointCloudFormat")!);
@@ -1918,7 +1914,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             })
             
         }))
-
+	
+        let previousState = mState
+        
         updateState(state: .STATE_PROCESSING);
         
         present(alertView, animated: true, completion: {
@@ -1989,8 +1987,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                             self.updateState(state: .STATE_VISUALIZING)
                             
                             self.rtabmap!.postExportation(visualize: true)
-
-                            self.setGLCamera(type: 2)
+							
+                            if previousState != .STATE_VISUALIZING
+                            {
+                                self.setGLCamera(type: 2)
+                            }
 
                             if self.openedDatabasePath == nil
                             {

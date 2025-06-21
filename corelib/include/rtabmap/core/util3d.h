@@ -211,6 +211,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromDepth(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromDepth(
+		const cv::Mat & imageDepth,
+		const cv::Mat & imageDepthConfidence,
+		const CameraModel & model,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
+		unsigned char confidenceThr = 0,
+		std::vector<int> * validIndices = 0);
 
 /**
  * @brief Creates a point cloud from an RGB image and a depth image.
@@ -276,6 +285,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudFromDepthRGB(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudFromDepthRGB(
+	const cv::Mat & imageRgb,
+	const cv::Mat & imageDepth,
+	const cv::Mat & imageDepthConfidence,
+	const CameraModel & model,
+	int decimation = 1,
+	float maxDepth = 0.0f,
+	float minDepth = 0.0f,
+	unsigned char confidenceThr = 0, // 0=low, 100=high
+	std::vector<int> * validIndices = 0);
 
 /**
  * @brief Converts a disparity image to a 3D point cloud.
@@ -447,7 +466,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> RTABMAP_CORE_EXPORT cloudsFromS
 		float minDepth = 0.0f,
 		std::vector<pcl::IndicesPtr> * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                            // ignored for stereo
 
 /**
  * @brief Generates a point cloud from sensor data.
@@ -484,7 +504,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromSensorData(
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                                // ignored for stereo
 
 /**
  * @brief Generates a point cloud with RGB color data from sensor data.
@@ -525,7 +546,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> RTABMAP_CORE_EXPORT cloudsRG
 		float minDepth = 0.0f,
 		std::vector<pcl::IndicesPtr > * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                            // ignored for stereo
 
 /**
  * @brief Generates a point cloud of type pcl::PointXYZRGB from sensor data.
@@ -560,7 +582,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudRGBFromSensorDat
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                            // ignored for stereo
 
 /**
  * @brief Converts the middle row of a depth image into a laser scan (point cloud) using camera intrinsics and a local transformation.

@@ -513,6 +513,14 @@ cv::Mat RTABMAP_CORE_EXPORT registerDepth(
 		const cv::Size & colorSize,
 		const cv::Mat & colorK,
 		const rtabmap::Transform & transform);
+cv::Mat RTABMAP_CORE_EXPORT registerDepth(
+	const cv::Mat & depth,
+	const cv::Mat & confidence,
+	const cv::Mat & depthK,
+	const cv::Size & colorSize,
+	const cv::Mat & colorK,
+	const rtabmap::Transform & transform,
+	cv::Mat & registeredConfidence);
 
 /**
  * @brief Fills holes in the depth image using linear interpolation.
@@ -597,6 +605,10 @@ cv::Mat RTABMAP_CORE_EXPORT fastBilateralFiltering(
 		float sigmaS = 15.0f,
 		float sigmaR = 0.05f,
 		bool earlyDivision = false);
+
+void RTABMAP_CORE_EXPORT depthBleedingFiltering(
+	cv::Mat & depth,
+	float maxDepthError);
 
 /**
  * @brief Automatic brightness and contrast optimization with optional histogram clipping.

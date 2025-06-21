@@ -1,6 +1,6 @@
-# Image: introlab3it/rtabmap:noble
+# Image: introlab3it/rtabmap:noble-kilted
 
-FROM introlab3it/rtabmap:noble-deps
+FROM introlab3it/rtabmap:noble-kilted-deps
 
 # Will be used to read/store databases on host
 RUN mkdir -p /root/Documents/RTAB-Map && chmod 777 /root/Documents/RTAB-Map

@@ -101,6 +101,7 @@ void setGraphVisibleNative(const void *object, bool visible);
 void setGridVisibleNative(const void *object, bool visible);
 void setFullResolutionNative(const void *object, bool enabled);
 void setSmoothingNative(const void *object, bool enabled);
+void setDepthBleedingErrorNative(const void *object, float value);
 void setAppendModeNative(const void *object, bool enabled);
 void setUpstreamRelocalizationAccThrNative(const void *object, float value);
 void setMaxCloudDepthNative(const void *object, float value);

@@ -19,8 +19,8 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 # VERSION
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
-SET(RTABMAP_MINOR_VERSION 21)
-SET(RTABMAP_PATCH_VERSION 14)
+SET(RTABMAP_MINOR_VERSION 22)
+SET(RTABMAP_PATCH_VERSION 0)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
   
@@ -1428,11 +1428,11 @@ MESSAGE(STATUS "  With ORB OcTree           = NO (WITH_ORB_OCTREE=OFF)")
 ENDIF()
 
 IF(TORCH_FOUND)
-MESSAGE(STATUS "  With SupertPoint          = YES (License: GPLv3) libtorch=${Torch_VERSION}")
+MESSAGE(STATUS "  With SuperPoint          = YES (License: GPLv3) libtorch=${Torch_VERSION}")
 ELSEIF(NOT WITH_TORCH)
-MESSAGE(STATUS "  With SupertPoint          = NO (WITH_TORCH=OFF)")
+MESSAGE(STATUS "  With SuperPoint          = NO (WITH_TORCH=OFF)")
 ELSE()
-MESSAGE(STATUS "  With SupertPoint          = NO (libtorch not found)")
+MESSAGE(STATUS "  With SuperPoint          = NO (libtorch not found)")
 ENDIF()
 
 IF(WITH_PYTHON AND Python3_FOUND)

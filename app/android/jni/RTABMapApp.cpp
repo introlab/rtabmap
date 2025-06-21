@@ -84,6 +84,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const int g_optMeshId = -100;
 
+const float g_bilateralFilteringSigmaS = 2.0f;
+const float g_bilateralFilteringSigmaR = 0.075f;
+
 #ifdef __ANDROID__
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
@@ -230,6 +233,7 @@ RTABMapApp::RTABMapApp() :
 		trajectoryMode_(false),
 		rawScanSaved_(false),
 		smoothing_(true),
+		depthBleedingError_(0.0f),
 		depthFromMotion_(false),
 		cameraColor_(true),
 		fullResolution_(false),
@@ -245,7 +249,11 @@ RTABMapApp::RTABMapApp() :
 		maxGainRadius_(0.02f),
 		renderingTextureDecimation_(4),
 		backgroundColor_(0.2f),
-        depthConfidence_(2),
+#ifndef RTABMAP_ARCORE
+        depthConfidence_(100), // iOS
+#else
+		depthConfidence_(0),
+#endif
         upstreamRelocalizationMaxAcc_(0.0f),
 		exportPointCloudFormat_("ply"),
 		dataRecorderMode_(false),
@@ -266,20 +274,20 @@ RTABMapApp::RTABMapApp() :
 		lastPoseEventTime_(0.0),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
+		optTextureMesh_(new pcl::TextureMesh),
+		optRefId_(0),
+		optRefPose_(0),
 		measuresUpdated_(false),
-        targetPoint_(new pcl::PointCloud<pcl::PointXYZRGB>),
-        quadSample_(new pcl::PointCloud<pcl::PointXYZ>),
-        quadSamplePolygons_(2),
-        metricSystem_(true),
+		metricSystem_(true),
         measuringTextSize_(0.05f),
 		snapAxisThr_(0.95),
         measuringMode_(0),
         addMeasureClicked_(false),
         teleportClicked_(false),
         removeMeasureClicked_(false),
-		optTextureMesh_(new pcl::TextureMesh),
-		optRefId_(0),
-		optRefPose_(0),
+		targetPoint_(new pcl::PointCloud<pcl::PointXYZRGB>),
+        quadSample_(new pcl::PointCloud<pcl::PointXYZ>),
+        quadSamplePolygons_(2),
 		mapToOdom_(rtabmap::Transform::getIdentity())
 
 {
@@ -461,7 +469,13 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 				LOGI("Open: Found optimized mesh! Visualizing it.");
 				optTextureMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
                 optMesh_ = rtabmap::Mesh();
-				optTexture_ = textures;
+                if(textures.rows > 4096) // Limitation iOS, just for rendering on device
+                {
+                    cv::resize(textures, optTexture_, cv::Size(4096, 4096), 0.0f, 0.0f, cv::INTER_AREA);
+                }
+                else {
+                    optTexture_ = textures;
+                }
                 if(!optTexture_.empty())
 				{
 					LOGI("Open: Texture mesh: %dx%d.", optTexture_.cols, optTexture_.rows);
@@ -569,8 +583,8 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 						rtabmap::SensorData data = signatures.at(id).sensorData();
                         rawPoses_.insert(std::make_pair(id, signatures.at(id).getPose()));
 
-						cv::Mat tmpA, depth;
-						data.uncompressData(&tmpA, &depth);
+						cv::Mat tmpA, tmpB, tmpC;
+						data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, depthConfidence_>0?&tmpC:0);
 
 						if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
 						{
@@ -586,8 +600,30 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && (!useExternalLidar_ || data.laserScanRaw().isEmpty()))
 							{
                                 int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-                                
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+
+								if(smoothing_ || depthBleedingError_>0.0f)
+								{
+									cv::Mat depth = data.depthRaw();
+									if(depthBleedingError_ > 0.0f)
+									{
+										rtabmap::util2d::depthBleedingFiltering(depth, depthBleedingError_);
+									}
+									if(smoothing_)
+									{
+										depth = rtabmap::util2d::fastBilateralFiltering(depth, g_bilateralFilteringSigmaS, g_bilateralFilteringSigmaR);
+									}
+									data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+								}
+
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(
+									data, 
+									meshDecimation, 
+									maxCloudDepth_, 
+									minCloudDepth_, 
+									indices.get(), 
+									rtabmap::ParametersMap(), 
+									std::vector<float>(), 
+									depthConfidence_);
 							}
 							else
 							{
@@ -875,11 +911,11 @@ int RTABMapApp::updateMeshDecimation(int width, int height)
         {
             meshDecimation = 5;
         }
-        else if(width % 3 == 0 && width % 3 == 0)
+        else if(width % 3 == 0 && height % 3 == 0)
         {
             meshDecimation = 3;
         }
-        else if(width % 2 == 0 && width % 2 == 0)
+        else if(width % 2 == 0 && height % 2 == 0)
         {
             meshDecimation = 2;
         }
@@ -946,7 +982,7 @@ bool RTABMapApp::startCamera()
 	if(cameraDriver_ == 0) // Tango
 	{
 #ifdef RTABMAP_TANGO
-		camera_ = new rtabmap::CameraTango(cameraColor_, !cameraColor_ || fullResolution_?1:2, rawScanSaved_, smoothing_);
+		camera_ = new rtabmap::CameraTango(cameraColor_, !cameraColor_ || fullResolution_?1:2, rawScanSaved_);
 
 		if (TangoService_setBinder(env, iBinder) != TANGO_SUCCESS) {
 		    UERROR("TangoHandler::ConnectTango, TangoService_setBinder error");
@@ -961,7 +997,7 @@ bool RTABMapApp::startCamera()
 	else if(cameraDriver_ == 1)
 	{
 #ifdef RTABMAP_ARCORE
-		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, smoothing_, upstreamRelocalizationMaxAcc_);
+		camera_ = new rtabmap::CameraARCore(env, context, activity, depthFromMotion_, upstreamRelocalizationMaxAcc_);
 #else
 		UERROR("RTAB-Map is not built with ARCore support!");
 #endif
@@ -969,14 +1005,14 @@ bool RTABMapApp::startCamera()
 	else if(cameraDriver_ == 2)
 	{
 #ifdef RTABMAP_ARENGINE
-		camera_ = new rtabmap::CameraAREngine(env, context, activity, smoothing_, upstreamRelocalizationMaxAcc_);
+		camera_ = new rtabmap::CameraAREngine(env, context, activity, upstreamRelocalizationMaxAcc_);
 #else
 		UERROR("RTAB-Map is not built with AREngine support!");
 #endif
 	}
 	else if(cameraDriver_ == 3)
 	{
-		camera_ = new rtabmap::CameraMobile(smoothing_, upstreamRelocalizationMaxAcc_);
+		camera_ = new rtabmap::CameraMobile(upstreamRelocalizationMaxAcc_);
 	}
 
 	if(camera_ == 0)
@@ -1003,7 +1039,11 @@ bool RTABMapApp::startCamera()
 		cameraJustInitialized_ = true;
 		if(useExternalLidar_)
 		{
+#if BOOST_VERSION >= 108700
+            rtabmap::LidarVLP16 * lidar = new rtabmap::LidarVLP16(boost::asio::ip::make_address("192.168.1.201"), 2368, true);
+#else
 			rtabmap::LidarVLP16 * lidar = new rtabmap::LidarVLP16(boost::asio::ip::address_v4::from_string("192.168.1.201"), 2368, true);
+#endif
 			lidar->init();
 			camera_->setImageRate(0); // if lidar, to get close camera synchronization
 			sensorCaptureThread_ = new rtabmap::SensorCaptureThread(lidar, camera_, camera_, rtabmap::Transform::getIdentity());
@@ -1354,8 +1394,8 @@ int RTABMapApp::Render()
 #ifdef DEBUG_RENDERING_PERFORMANCE
 				LOGD("Camera updateOnRender %fs", time.ticks());
 #endif
-                // We detect if we are in measuring mode if rtabmap is not running
-				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0 && !(rtabmapThread_ == 0 || !rtabmapThread_->isRunning()))
+                // We check if we are in measuring mode: not visualizing mesh or rtabmap is not started (localization mode)
+				if(main_scene_.background_renderer_ == 0 && camera_->getTextureId() != 0 && (!visualizingMesh_ || !(rtabmapThread_ == 0 || !rtabmapThread_->isRunning())))
 				{
 					main_scene_.background_renderer_ = new BackgroundRenderer();
 					main_scene_.background_renderer_->InitializeGlContent(((rtabmap::CameraMobile*)camera_)->getTextureId(), cameraDriver_ <= 2);
@@ -1536,7 +1576,6 @@ int RTABMapApp::Render()
                 int textId = 0;
                 int quadId = 0;
                 int circleId = 0;
-                float sphereRadius = 0.02f;
                 float quadSize=0.05f;
                 float quadAlpha = 0.3f;
 
@@ -2010,8 +2049,8 @@ int RTABMapApp::Render()
 								{
 									rtabmap::SensorData data = bufferedSensorData.at(id);
 
-									cv::Mat tmpA, depth;
-									data.uncompressData(&tmpA, &depth);
+									cv::Mat tmpA, tmpB, tmpC;
+									data.uncompressData(&tmpA, &tmpB, 0, 0, 0, 0, 0, depthConfidence_>0?&tmpC:0);
 									if(!(!data.imageRaw().empty() && !data.depthRaw().empty()) && !data.laserScanCompressed().isEmpty())
 									{
 										rtabmap::LaserScan scan;
@@ -2029,7 +2068,20 @@ int RTABMapApp::Render()
 										if(!data.imageRaw().empty() && !data.depthRaw().empty() && (!useExternalLidar_ || data.laserScanRaw().isEmpty()))
 										{
                                             int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-											cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+											if(smoothing_ || depthBleedingError_>0.0f)
+											{
+												cv::Mat depth = data.depthRaw();
+												if(depthBleedingError_ > 0.0f)
+												{
+													rtabmap::util2d::depthBleedingFiltering(depth, depthBleedingError_);
+												}
+												if(smoothing_)
+												{
+													depth = rtabmap::util2d::fastBilateralFiltering(depth, g_bilateralFilteringSigmaS, g_bilateralFilteringSigmaR);
+												}
+												data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+											}
+											cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 										}
 										else
 										{
@@ -2245,7 +2297,7 @@ int RTABMapApp::Render()
 							if(!sensorEvent.data().imageRaw().empty() && !sensorEvent.data().depthRaw().empty() && (!useExternalLidar_ || sensorEvent.data().laserScanRaw().isEmpty()))
 							{
                                 int meshDecimation = updateMeshDecimation(sensorEvent.data().depthRaw().cols, sensorEvent.data().depthRaw().rows);
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(sensorEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(sensorEvent.data(), meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 							}
 							else
 							{
@@ -3015,6 +3067,11 @@ void RTABMapApp::setSmoothing(bool enabled)
 	}
 }
 
+void RTABMapApp::setDepthBleedingError(float value)
+{
+	depthBleedingError_ = value;
+}
+
 void RTABMapApp::setDepthFromMotion(bool enabled)
 {
 	if(depthFromMotion_ != enabled)
@@ -3107,10 +3164,10 @@ void RTABMapApp::setBackgroundColor(float gray)
 
 void RTABMapApp::setDepthConfidence(int value)
 {
-    depthConfidence_ = value;
-    if(depthConfidence_>2)
+    depthConfidence_ = value*50; // [0,2] -> [0,100]
+    if(depthConfidence_>100)
     {
-        depthConfidence_ = 2;
+        depthConfidence_ = 100;
     }
 }
 
@@ -3410,6 +3467,19 @@ bool RTABMapApp::exportMesh(
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
                                 int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
+								if(smoothing_ || depthBleedingError_>0.0f)
+								{
+									cv::Mat depth = data.depthRaw();
+									if(depthBleedingError_ > 0.0f)
+									{
+										rtabmap::util2d::depthBleedingFiltering(depth, depthBleedingError_);
+									}
+									if(smoothing_)
+									{
+										depth = rtabmap::util2d::fastBilateralFiltering(depth, g_bilateralFilteringSigmaS, g_bilateralFilteringSigmaR);
+									}
+									data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+								}
 								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
 								model = data.cameraModels()[0];
 								depth = data.depthRaw();
@@ -3677,7 +3747,20 @@ bool RTABMapApp::exportMesh(
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
                                 int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_);
+								if(smoothing_ || depthBleedingError_>0.0f)
+								{
+									cv::Mat depth = data.depthRaw();
+									if(depthBleedingError_ > 0.0f)
+									{
+										rtabmap::util2d::depthBleedingFiltering(depth, depthBleedingError_);
+									}
+									if(smoothing_)
+									{
+										depth = rtabmap::util2d::fastBilateralFiltering(depth, g_bilateralFilteringSigmaS, g_bilateralFilteringSigmaR);
+									}
+									data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+								}
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, 0, rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 								polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 							}
 						}
@@ -3935,7 +4018,20 @@ bool RTABMapApp::exportMesh(
 					if(!data.imageRaw().empty() && !data.depthRaw().empty())
 					{
 						// full resolution
-						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, minCloudDepth_, indices.get());
+						if(smoothing_ || depthBleedingError_>0.0f)
+						{
+							cv::Mat depth = data.depthRaw();
+							if(depthBleedingError_ > 0.0f)
+							{
+								rtabmap::util2d::depthBleedingFiltering(depth, depthBleedingError_);
+							}
+							if(smoothing_)
+							{
+								depth = rtabmap::util2d::fastBilateralFiltering(depth, g_bilateralFilteringSigmaS, g_bilateralFilteringSigmaR);
+							}
+							data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+						}
+						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 					}
                     else if(!data.laserScanRaw().empty())
                     {
@@ -3965,7 +4061,20 @@ bool RTABMapApp::exportMesh(
 						if(!data.imageRaw().empty() && !data.depthRaw().empty())
 						{
                             int meshDecimation = updateMeshDecimation(data.depthRaw().cols, data.depthRaw().rows);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get());
+							if(smoothing_ || depthBleedingError_>0.0f)
+							{
+								cv::Mat depth = data.depthRaw();
+								if(depthBleedingError_ > 0.0f)
+								{
+									rtabmap::util2d::depthBleedingFiltering(depth, depthBleedingError_);
+								}
+								if(smoothing_)
+								{
+									depth = rtabmap::util2d::fastBilateralFiltering(depth, g_bilateralFilteringSigmaS, g_bilateralFilteringSigmaR);
+								}
+								data.setRGBDImage(data.imageRaw(), depth, data.depthConfidenceRaw(), data.cameraModels());
+							}
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation, maxCloudDepth_, minCloudDepth_, indices.get(), rtabmap::ParametersMap(), std::vector<float>(), depthConfidence_);
 						}
                         else if(!data.laserScanRaw().empty())
                         {
@@ -4117,7 +4226,13 @@ bool RTABMapApp::postExportation(bool visualize)
 				LOGI("postExportation: Found optimized mesh! Visualizing it.");
 				optTextureMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
                 optMesh_ = rtabmap::Mesh();
-                optTexture_ = textures;
+                if(textures.rows > 4096) // Limitation iOS, just for rendering on device
+                {
+                    cv::resize(textures, optTexture_, cv::Size(4096, 4096), 0.0f, 0.0f, cv::INTER_AREA);
+                }
+                else {
+                    optTexture_ = textures;
+                }
 
 				boost::mutex::scoped_lock  lock(renderingMutex_);
 				visualizingMesh_ = true;
@@ -4524,6 +4639,7 @@ void RTABMapApp::postOdometryEvent(
 
 
 				cv::Mat outputDepth;
+				cv::Mat outputDepthConfidence;
 				if(depth && depthHeight>0 && depthWidth>0)
 				{
 #ifndef DISABLE_LOG
@@ -4533,32 +4649,21 @@ void RTABMapApp::postOdometryEvent(
                     {
                         // IOS
                         outputDepth = cv::Mat(depthHeight, depthWidth, CV_32FC1, (void*)depth).clone();
-                        if(conf && confWidth == depthWidth && confHeight == depthHeight && confFormat == 1278226488 && depthConfidence_>0)
+                        if(conf && confWidth == depthWidth && confHeight == depthHeight && confFormat == 1278226488)
                         {
-                            const unsigned char * confPtr = (const unsigned char *)conf;
-                            float * depthPtr = outputDepth.ptr<float>();
-                            int i=0;
-                            for (int y = 0; y < outputDepth.rows; ++y)
-                            {
-                                for (int x = 0; x < outputDepth.cols; ++x)
-                                {
-                                    // https://developer.apple.com/documentation/arkit/arconfidencelevel
-                                    // 0 = low
-                                    // 1 = medium
-                                    // 2 = high
-                                    if(confPtr[y*outputDepth.cols + x] < depthConfidence_)
-                                    {
-                                        depthPtr[y*outputDepth.cols + x] = 0.0f;
-                                        ++i;
-                                    }
-                                }
-                            }
+							// https://developer.apple.com/documentation/arkit/arconfidencelevel
+							// 0 = low
+							// 1 = medium
+							// 2 = high
+							// Re-scale confidence from [0,2] to [0,100]
+							cv::Mat(depthHeight, depthWidth, CV_8UC1, (void*)conf).convertTo(outputDepthConfidence, CV_8UC1, 50, 0);
                         }
                     }
                     else if(depthLen == 2*depthWidth*depthHeight)
                     {
                         // ANDROID
                         outputDepth = cv::Mat(depthHeight, depthWidth, CV_16UC1);
+						outputDepthConfidence = cv::Mat(depthHeight, depthWidth, CV_8UC1);
                         uint16_t *dataShort = (uint16_t *)depth;
                         for (int y = 0; y < outputDepth.rows; ++y)
                         {
@@ -4567,6 +4672,13 @@ void RTABMapApp::postOdometryEvent(
                                 uint16_t depthSample = dataShort[y*outputDepth.cols + x];
                                 uint16_t depthRange = (depthSample & 0x1FFF); // first 3 bits are confidence
                                 outputDepth.at<uint16_t>(y,x) = depthRange;
+								// https://developer.android.com/reference/android/graphics/ImageFormat#DEPTH16
+								// The confidence value is an estimate of correctness for this sample. It 
+								// is encoded in the 3 most significant bits of the sample, with a value of 
+								// 0 representing 100% confidence, a value of 1 representing 0% confidence, a 
+								// value of 2 representing 1/7, a value of 3 representing 2/7, and so on.
+								uint8_t depthConfidence = uint8_t((depthSample >> 13) & 0x7);
+								outputDepthConfidence.at<uint8_t>(y,x) = depthConfidence == 0 ? 100 : (depthConfidence - 1)*100 / 7;
                             }
                         }
                     }
@@ -4626,7 +4738,9 @@ void RTABMapApp::postOdometryEvent(
 								depth_fx, 0, depth_cx,
 								0, depth_fy, depth_cy,
 								0, 0, 1);
-						outputDepth = rtabmap::util2d::registerDepth(outputDepth, depthK, outputDepth.size(), colorK, rgbToDepth);
+						cv::Mat regConfidence;
+						outputDepth = rtabmap::util2d::registerDepth(outputDepth, outputDepthConfidence, depthK, outputDepth.size(), colorK, rgbToDepth, regConfidence);
+						outputDepthConfidence = regConfidence;
 #ifndef DISABLE_LOG
 						UDEBUG("Depth registration time: %fs", time.elapsed());
 #endif
@@ -4666,8 +4780,8 @@ void RTABMapApp::postOdometryEvent(
                         depthModel.setLocalTransform(pose*model.localTransform());
                         camera_->setOcclusionImage(outputDepth, depthModel);
                     }
-                    
-					rtabmap::SensorData data(scan, outputRGB, outputDepth, model, 0, stamp);
+
+					rtabmap::SensorData data(scan, outputRGB, outputDepth, outputDepthConfidence, model, 0, stamp);
 					data.setFeatures(kpts,  kpts3, cv::Mat());
                     glm::mat4 projectionMatrix(0);
                     projectionMatrix[0][0] = p00;
