@@ -339,7 +339,6 @@ TEST(Util3DRegistration, icpTranslatedTransformConverges)
 
 TEST(Util3DRegistration, icp2DAlignsFlatClouds)
 {
-
     pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
     auto cloud_source = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     for (float x = 0; x < 5; ++x)
@@ -375,8 +374,6 @@ TEST(Util3DRegistration, icp2DAlignsFlatClouds)
 
 TEST(Util3DRegistration, icpPointToPlaneAlignsTranslatedPlane)
 {
-
-
     // Create a plane point cloud
     auto cloud_source_raw = std::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
     for (float x = -0.5f; x <= 0.5f; x += 0.1f)
