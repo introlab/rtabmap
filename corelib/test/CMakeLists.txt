@@ -25,3 +25,8 @@ gtest_discover_tests(test_util3d_filtering)
 add_executable(test_util3d_registration test_util3d_registration.cpp)
 target_link_libraries(test_util3d_registration gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d_registration)
+
+#util3d_features.h
+add_executable(test_util3d_features test_util3d_features.cpp)
+target_link_libraries(test_util3d_features gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_features)
