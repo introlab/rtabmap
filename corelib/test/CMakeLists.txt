@@ -1,0 +1,42 @@
+
+add_definitions("-DRTABMAP_TEST_DATA_ROOT=\"${TEST_DATA_ROOT}\"")
+
+#util2d.h
+add_executable(test_util2d test_util2d.cpp)
+target_link_libraries(test_util2d gtest_main rtabmap_core)
+gtest_discover_tests(test_util2d)
+
+#util3d.h
+add_executable(test_util3d test_util3d.cpp)
+target_link_libraries(test_util3d gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d)
+
+#util3d_transforms.h
+add_executable(test_util3d_transforms test_util3d_transforms.cpp)
+target_link_libraries(test_util3d_transforms gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_transforms)
+
+#util3d_filtering.h
+add_executable(test_util3d_filtering test_util3d_filtering.cpp)
+target_link_libraries(test_util3d_filtering gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_filtering)
+
+#util3d_registration.h
+add_executable(test_util3d_registration test_util3d_registration.cpp)
+target_link_libraries(test_util3d_registration gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_registration)
+
+#util3d_features.h
+add_executable(test_util3d_features test_util3d_features.cpp)
+target_link_libraries(test_util3d_features gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_features)
+
+#util3d_correspondences.h
+add_executable(test_util3d_correspondences test_util3d_correspondences.cpp)
+target_link_libraries(test_util3d_correspondences gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_correspondences)
+
+#util3d_mapping.h
+add_executable(test_util3d_mapping test_util3d_mapping.cpp)
+target_link_libraries(test_util3d_mapping gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_mapping)

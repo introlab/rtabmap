@@ -62,6 +62,33 @@ RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f);
 
+/**
+ * @brief Generates 2D occupancy grid maps (free and occupied cells) from laser scan data.
+ *
+ * This function takes in a laser scan composed of hit and no-hit points and computes two
+ * 2D maps:
+ * - `empty`: 2D coordinates of free space (where the laser passed without hitting obstacles).
+ * - `occupied`: precise 2D coordinates of obstacle hits (where the laser reflected).
+ *
+ * The internal representation uses a temporary occupancy map generated from `create2DMap()`,
+ * from which free cells are extracted. Obstacle points are directly passed through, potentially
+ * clipped by a maximum range filter.
+ *
+ * @param[in] scanHitIn          CV_32FC2 or CV_32FC(n>=2) matrix representing obstacle hits in 2D or 3D space (relative to base frame, not laser frame).
+ * @param[in] scanNoHitIn        CV_32FC2 or CV_32FC(n>=2) matrix representing laser rays that did not hit an obstacle (relative to base frame, not laser frame).
+ * @param[in] viewpoint          The viewpoint (sensor origin) from which the scan was taken, in 3D space, relative to base frame.
+ *                               This used to determinate the origin of ray tracing.
+ * @param[out] empty             Output matrix (CV_32FC2) of free space points derived from ray tracing.
+ * @param[out] occupied          Output matrix (CV_32FC2) of occupied (hit) points, filtered by max range if required.
+ * @param[in] cellSize           The resolution of the occupancy map grid (in meters per cell).
+ * @param[in] unknownSpaceFilled If true, unknown space between hits is also filled via ray tracing.
+ * @param[in] scanMaxRange       Maximum range of the scan (in meters). Values beyond this are clipped.
+ *
+ * @note The function assumes a single scan already converted in base frame for internal processing.
+ * @note If `scanMaxRange <= cellSize`, no range filtering is applied to the occupied points.
+ *
+ * @see create2DMap(), util3d::rangeFiltering()
+ */
 void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		const cv::Mat & scanHit, // in /base_link frame
 		const cv::Mat & scanNoHit, // in /base_link frame
@@ -72,6 +99,42 @@ void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true
 
+/**
+ * @brief Creates a 2D occupancy grid map from local occupancy data.
+ *
+ * Generates a 2D occupancy grid (`CV_8S`) where:
+ * - -1 indicates unknown space,
+ * - 0 indicates free space,
+ * - 100 indicates an occupied (obstacle) cell.
+ *
+ * This function transforms and merges local empty/occupied occupancy maps
+ * from multiple robot poses into a single global 2D grid map.
+ *
+ * @param posesIn            Map of robot poses, indexed by node ID.
+ * @param occupancy          Map of local occupancy data, indexed by node ID.
+ *                           Each pair contains two cv::Mat elements:
+ *                           - First: empty cells (CV_32FC2) relative to base frame,
+ *                           - Second: occupied cells (CV_32FC2) relative to base frame.
+ * @param cellSize           The resolution of the map in meters per cell.
+ * @param[out] xMin          Minimum x-coordinate (origin offset) of the resulting map (in meters).
+ * @param[out] yMin          Minimum y-coordinate (origin offset) of the resulting map (in meters).
+ * @param minMapSize         Minimum width/height of the output map in meters.
+ *                           If 0, size is computed from poses and occupancy data.
+ * @param erode              Whether to post-process (erode) noisy obstacles.
+ *                           This helps remove isolated or thin obstacle artifacts.
+ * @param footprintRadius    Radius of the robot footprint (in meters).
+ *                           Free space will be cleared under the robot.
+ *
+ * @return cv::Mat           The resulting occupancy grid map (CV_8S):
+ *                           -1 = unknown,
+ *                            0 = free space,
+ *                          100 = obstacle.
+ *
+ * @warning The output map can be very large if poses are far apart or cellSize is small.
+ *          The function will not create a map if the estimated size exceeds reasonable limits (e.g. > 1.5 km).
+ *
+ * @note The function will fill small holes surrounded by known cells and optionally erode noisy borders.
+ */
 cv::Mat RTABMAP_CORE_EXPORT create2DMapFromOccupancyLocalMaps(
 		const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & occupancy,
@@ -104,19 +167,39 @@ RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, T
 		float scanMaxRange = 0.0f);
 
 /**
- * Create 2d Occupancy grid (CV_8S)
- * -1 = unknown
- * 0 = empty space
- * 100 = obstacle
- * @param poses
- * @param scans, should be CV_32FC2 type!
- * @param viewpoints
- * @param cellSize m
- * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
- * @param xMin
- * @param yMin
- * @param minMapSize minimum map size in meters
- * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
+ * @brief Generates a 2D occupancy grid map from a set of poses, laser scans, and viewpoints.
+ * 
+ * This function aggregates laser scan data from multiple poses and creates a 2D occupancy grid
+ * (CV_8S: signed 8-bit) where:
+ * - `-1` represents unknown space,
+ * - `0` represents free space,
+ * - `100` represents occupied space (obstacles).
+ * 
+ * The scans are first transformed into the global map frame using the corresponding pose.
+ * Obstacles and free space are inserted using ray tracing. Optionally, unknown areas between
+ * known rays can also be filled using radial sweeping.
+ * 
+ * @param poses             A map of node IDs to 3D poses (used to transform local scans to the global frame).
+ * @param scans             A map of node IDs to pairs of laser scans (`<hit, no-hit>`), each as a `cv::Mat` of type `CV_32FC2`.
+ *                          - `first`: endpoints of beams hitting obstacles (relative to base frame, not laser frame).
+ *                          - `second`: endpoints of beams not hitting any obstacle (relative to base frame, not laser frame).
+ * @param viewpoints        A map of node IDs to local sensor origin offsets relative to each pose (e.g., lidar offset /base_link -> /base_scan).
+ *                          This is used to determinate the starting point for each ray trace.
+ * @param cellSize          The size of each grid cell in meters.
+ * @param unknownSpaceFilled If true, fills areas between known rays (fan sweeping) up to `scanMaxRange`.
+ * @param[out] xMin         The minimum x value (in meters) of the grid origin relative to map coordinates.
+ * @param[out] yMin         The minimum y value (in meters) of the grid origin relative to map coordinates.
+ * @param minMapSize        The minimum width and height (in meters) of the map. Ensures the output map has a minimum footprint.
+ * @param scanMaxRange      The maximum range (in meters) of the sensor. Used to limit ray tracing and padding.
+ * 
+ * @return A 2D occupancy grid map (`cv::Mat` of type `CV_8S`) where:
+ *         - `-1` = unknown
+ *         - `0`  = free space
+ *         - `100` = obstacle
+ *
+ * @note If `scanMaxRange <= 0`, map size is determined based on scan data bounds.
+ * @note Grid coordinates are calculated with padding to ensure all points fall within the map.
+ * @note This function uses ray tracing internally via the `rayTrace()` function.
  */
 cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, std::pair<cv::Mat, cv::Mat> > & scans, // <id, <hit, no hit> >, in /base_link frame
@@ -126,16 +209,106 @@ cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		float & xMin,
 		float & yMin,
 		float minMapSize = 0.0f,
-		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true
+		float scanMaxRange = 0.0f);
 
+/**
+ * @brief Performs a 2D ray tracing operation between two points on a grid map.
+ *
+ * This function draws a line from the `start` point to the `end` point on a grid (e.g., occupancy grid),
+ * marking all traversed cells as free (value = 0) unless an obstacle (value = 100) is encountered.
+ * The line follows an integer rasterization algorithm (like Bresenham’s line), accounting for steep slopes
+ * by transposing axes when needed.
+ *
+ * @param start           The starting point of the ray (2D grid coordinates).
+ * @param end             The ending point of the ray (2D grid coordinates). This point is clipped to the grid bounds.
+ * @param grid            A mutable 2D grid represented as a `cv::Mat` of signed char values. 
+ *                        Assumes 100 denotes obstacles; 0 denotes free space.
+ * @param stopOnObstacle  If true, the ray trace stops upon hitting a cell marked with 100 (an obstacle).
+ *
+ * @note 
+ * - If the slope of the line is steep (outside the range [-1, 1]), the algorithm swaps x and y axes for correctness.
+ * - The function ensures both the start and end points are within the bounds of the grid.
+ * - All visited cells along the path (except obstacles when `stopOnObstacle` is true) will be updated to 0 (free).
+ * - The grid must have type `CV_8SC1` (signed 8-bit single-channel matrix).
+ *
+ */
 void RTABMAP_CORE_EXPORT rayTrace(const cv::Point2i & start,
 		const cv::Point2i & end,
 		cv::Mat & grid,
 		bool stopOnObstacle);
 
+/**
+ * @brief Converts an occupancy grid map (CV_8S) to a grayscale image (CV_8U).
+ *
+ * This function takes a signed 8-bit occupancy grid map and produces a corresponding
+ * 8-bit unsigned grayscale image. The pixel values are mapped based on the occupancy values:
+ * 
+ * - `0`   (free space)       → 178 (normal) or 254 (PGM format)
+ * - `100` (obstacle)         → 0   (black)
+ * - `-2`  (robot footprint)  → 200 (normal) or 254 (PGM format)
+ * - `-1`  (unknown)          → 89  (normal) or 205 (PGM format)
+ * - `v > 50` (partial obstacle): scaled to range [0, 89]
+ * - `v < 50` (partial free): scaled to range [89, 178]
+ *
+ * If `pgmFormat` is true, the vertical axis is flipped (for PGM format compatibility).
+ *
+ * @param map8S The input occupancy grid map as a CV_8S single-channel matrix.
+ *              Must contain values such as -1 (unknown), 0 (free), 100 (occupied).
+ * @param pgmFormat If true, output will be formatted for PGM file format (inverted Y-axis and different gray scale mapping).
+ *
+ * @return A CV_8U grayscale image with pixel values representing occupancy status.
+ *
+ * @throws UASSERT if the input map is not a single-channel CV_8S matrix.
+ */
 cv::Mat RTABMAP_CORE_EXPORT convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat = false);
+
+/**
+ * @brief Converts a grayscale occupancy image (CV_8U) to an occupancy grid map (CV_8S).
+ *
+ * This function interprets grayscale pixel values from an input image and converts
+ * them into occupancy values used in a typical occupancy grid map:
+ * - 100: Occupied
+ * -   0: Free
+ * -  -1: Unknown
+ * -  -2: Free space under robot footprint (non-PGM only)
+ *
+ * The interpretation differs slightly depending on whether the input image is in
+ * PGM format (common in ROS map_server) or in standard grayscale.
+ *
+ * @param map8U       Input grayscale image (type CV_8U, single-channel).
+ * @param pgmFormat   If true, assumes PGM format:
+ *                    - 0   = occupied
+ *                    - 254 = free
+ *                    - 205 = unknown
+ *                    If false (normal format):
+ *                    -   0 = occupied
+ *                    - 178 = free
+ *                    - 200 = footprint (free space under robot)
+ *                    -  89 = unknown
+ *
+ * @return A CV_8S occupancy grid map with encoded occupancy values.
+ *
+ * @throws Assertion failure if input image is not of type CV_8U or not single-channel.
+ */
 cv::Mat RTABMAP_CORE_EXPORT convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat = false);
 
+/**
+ * @brief Performs erosion on an occupancy grid map to reduce small noisy obstacles.
+ *
+ * This function scans a given occupancy grid (`CV_8SC1` format) and removes
+ * obstacle cells (value `100`) that are surrounded by at least 3 empty cells (value `0`)
+ * and no adjacent unknown cells (value `-1`). These obstacles are likely noise
+ * and are converted into empty space (value `0`) in the resulting map.
+ *
+ * @param map Input occupancy grid map of type `CV_8SC1` where:
+ *   - `100` represents obstacles,
+ *   - `0` represents free space,
+ *   - `-1` represents unknown space.
+ *
+ * @return A new `cv::Mat` of the same size and type as the input map,
+ *         with eroded obstacles.
+ *
+ */
 cv::Mat RTABMAP_CORE_EXPORT erodeMap(const cv::Mat & map);
 
 template<typename PointT>
