@@ -35,3 +35,8 @@ gtest_discover_tests(test_util3d_features)
 add_executable(test_util3d_correspondences test_util3d_correspondences.cpp)
 target_link_libraries(test_util3d_correspondences gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d_correspondences)
+
+#util3d_mapping.h
+add_executable(test_util3d_mapping test_util3d_mapping.cpp)
+target_link_libraries(test_util3d_mapping gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_mapping)
