@@ -29,12 +29,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
+#include <filesystem>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <set>
+#include <string_view>
 #include "rtabmap/core/Parameters.h"
+#include <fstream>
 
 namespace rtabmap
 {
@@ -74,7 +77,8 @@ public:
 	}
 
 public:
-	VWDictionary(const ParametersMap & parameters = ParametersMap());
+	explicit VWDictionary(const ParametersMap & parameters = ParametersMap());
+	void setSavedIndex(const std::filesystem::path& dir);
 	virtual ~VWDictionary();
 
 	virtual void parseParameters(const ParametersMap & parameters);
@@ -86,36 +90,40 @@ public:
 			int signatureId);
 	virtual void addWord(VisualWord * vw);
 
-	std::vector<int> findNN(const std::list<VisualWord *> & vws) const;
-	std::vector<int> findNN(const cv::Mat & descriptors) const;
+	[[nodiscard]] std::vector<int> findNN(const std::list<VisualWord *> & vws) const;
+	[[nodiscard]] std::vector<int> findNN(const cv::Mat & queryIn) const;
 
 	void addWordRef(int wordId, int signatureId);
 	void removeAllWordRef(int wordId, int signatureId);
-	const VisualWord * getWord(int id) const;
-	VisualWord * getUnusedWord(int id) const;
+	[[nodiscard]] const VisualWord * getWord(int id) const;
+	[[nodiscard]] VisualWord * getUnusedWord(int id) const;
 	void setLastWordId(int id) {_lastWordId = id;}
-	const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}
-	float getNndrRatio() const {return _nndrRatio;}
-	unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
-	int getLastIndexedWordId() const;
-	int getTotalActiveReferences() const {return _totalActiveReferences;}
-	unsigned int getIndexedWordsCount() const;
-	unsigned int getIndexMemoryUsed() const; // KB
-	unsigned long getMemoryUsed() const; //Bytes
+	[[nodiscard]] const std::map<int, VisualWord *> & getVisualWords() const {return _visualWords;}
+	[[nodiscard]] float getNndrRatio() const {return _nndrRatio;}
+	[[nodiscard]] unsigned int getNotIndexedWordsCount() const {return (int)_notIndexedWords.size();}
+	[[nodiscard]] int getLastIndexedWordId() const;
+	[[nodiscard]] int getTotalActiveReferences() const {return _totalActiveReferences;}
+	[[nodiscard]] unsigned int getIndexedWordsCount() const;
+	[[nodiscard]] unsigned int getIndexMemoryUsed() const; // KB
+	[[nodiscard]] unsigned long getMemoryUsed() const; //Bytes
 	bool setNNStrategy(NNStrategy strategy); // Return true if the search tree has been re-initialized
-	bool isIncremental() const {return _incrementalDictionary;}
-	bool isIncrementalFlann() const {return _incrementalFlann;}
+	[[nodiscard]] bool isIncremental() const {return _incrementalDictionary;}
+	[[nodiscard]] bool isIncrementalFlann() const {return _incrementalFlann;}
 	void setIncrementalDictionary();
 	void setFixedDictionary(const std::string & dictionaryPath);
 
 	void exportDictionary(const char * fileNameReferences, const char * fileNameDescriptors) const;
 
 	void clear(bool printWarningsIfNotEmpty = true);
-	std::vector<VisualWord *> getUnusedWords() const;
-	std::vector<int> getUnusedWordIds() const;
-	unsigned int getUnusedWordsSize() const {return (int)_unusedWords.size();}
+	[[nodiscard]] std::vector<VisualWord *> getUnusedWords() const;
+	[[nodiscard]] std::vector<int> getUnusedWordIds() const;
+	[[nodiscard]] unsigned int getUnusedWordsSize() const {return (int)_unusedWords.size();}
 	void removeWords(const std::vector<VisualWord*> & words); // caller must delete the words
 	void deleteUnusedWords();
+
+	void save(std::string_view dir) const;
+	void load(std::string_view dir);
+	void loadMapIndex(const std::filesystem::path& file);
 
 public:
 	static cv::Mat convertBinTo32F(const cv::Mat & descriptorsIn, bool byteToFloat = true);
@@ -123,23 +131,24 @@ public:
 
 protected:
 	int getNextId();
-
-protected:
+	void saveVars(const std::filesystem::path& filename) const;
 	std::map<int, VisualWord *> _visualWords; //<id,VisualWord*>
 	int _totalActiveReferences; // keep track of all references for updating the common signature
 
 private:
+	bool _useSavedFile{false};
 	bool _incrementalDictionary;
 	bool _incrementalFlann;
 	float _rebalancingFactor;
 	bool _byteToFloat;
 	float _nndrRatio;
+	std::string save_dir_;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt or .db)
 	std::string _newDictionaryPath; // a pre-computed dictionary (.txt or .db)
 	bool _newWordsComparedTogether;
 	int _lastWordId;
 	bool useDistanceL1_;
-	FlannIndex * _flannIndex;
+	FlannIndex * _flannIndex; // save
 	cv::Mat _dataTree;
 	NNStrategy _strategy;
 	std::map<int ,int> _mapIndexId;
