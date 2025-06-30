@@ -445,6 +445,10 @@ bool importPoses(
 				std::list<std::string> strList = uSplit(str);
 				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
 				{
+					if(!uIsNumber(strList.front())) {
+						UWARN("Skipping \"%s\"", str.c_str());
+						continue;
+					}
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
 					if(format==11)

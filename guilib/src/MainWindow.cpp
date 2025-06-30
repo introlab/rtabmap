@@ -8693,11 +8693,13 @@ void MainWindow::changeState(MainWindow::State newState)
 
 		if(_sensorCapture)
 		{
-			_sensorCapture->start();
 			if(_imuThread)
 			{
 				_imuThread->start();
+				// give imu thread a head start
+				uSleep(10);
 			}
+			_sensorCapture->start();
 			ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 		}
 		break;
@@ -8729,11 +8731,13 @@ void MainWindow::changeState(MainWindow::State newState)
 
 			if(_sensorCapture)
 			{
-				_sensorCapture->start();
 				if(_imuThread)
 				{
 					_imuThread->start();
+					// give imu thread a head start
+					uSleep(10);
 				}
+				_sensorCapture->start();
 				ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 			}
 		}
