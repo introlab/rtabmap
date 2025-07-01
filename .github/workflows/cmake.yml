@@ -24,7 +24,7 @@ jobs:
           extra_deps: "libunwind-dev libceres-dev"
           extra_cmake_def: ""
         - os: ubuntu-24.04
-          extra_deps: "libg2o-dev libgtsam-dev libceres-dev"
+          extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
 
     steps:    
