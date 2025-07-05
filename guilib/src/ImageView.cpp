@@ -1351,7 +1351,7 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 	_imageDepthCv = imageDepth;
 	_imageDepthConfidenceCv = imageDepthConfidence;
 	setImageDepth(
-		uCvMat2QImage(_imageDepthCv, true, getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange),
+		uCvMat2QImage(_imageDepthCv, true, _imageDepthCv.type()==CV_8UC1?uCvQtDepthBlackToWhite:getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange),
 		uCvMat2QImage(_imageDepthConfidenceCv, true, getDepthColorMap()));
 }
 
