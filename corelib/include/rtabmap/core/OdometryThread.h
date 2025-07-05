@@ -67,8 +67,8 @@ private:
 	unsigned int _dataBufferMaxSize;
 	bool _resetOdometry;
 	Transform _resetPose;
-	double _lastImuStamp;
-	double _imuEstimatedDelay;
+	double _oldestAsyncImuStamp;
+	double _newestAsyncImuStamp;
 };
 
 } // namespace rtabmap

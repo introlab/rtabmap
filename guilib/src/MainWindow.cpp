@@ -5878,8 +5878,11 @@ void MainWindow::startDetection()
 		}
 	}
 
-	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase &&
-	   camera && camera->odomProvided())
+	if((_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase ||
+	    _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
+	    _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||
+	    _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRGBDImages) &&
+	    camera && camera->odomProvided())
 	{
 		odomSensor = camera;
 	}
@@ -8690,11 +8693,13 @@ void MainWindow::changeState(MainWindow::State newState)
 
 		if(_sensorCapture)
 		{
-			_sensorCapture->start();
 			if(_imuThread)
 			{
 				_imuThread->start();
+				// give imu thread a head start
+				uSleep(10);
 			}
+			_sensorCapture->start();
 			ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 		}
 		break;
@@ -8726,11 +8731,13 @@ void MainWindow::changeState(MainWindow::State newState)
 
 			if(_sensorCapture)
 			{
-				_sensorCapture->start();
 				if(_imuThread)
 				{
 					_imuThread->start();
+					// give imu thread a head start
+					uSleep(10);
 				}
+				_sensorCapture->start();
 				ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 			}
 		}

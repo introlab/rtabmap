@@ -577,32 +577,39 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	for(std::multimap<int, Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 	{
 		// make the first id the smallest one
-		int idFrom = iter->first<iter->second.to()?iter->first:iter->second.to();
-		int idTo = iter->first<iter->second.to()?iter->second.to():iter->first;
+		int idFrom = iter->second.from() < iter->second.to() ? iter->second.from() : iter->second.to();
+		int idTo = iter->second.from() < iter->second.to() ? iter->second.to() : iter->second.from();
+
+		if(idFrom == idTo) {
+			continue;
+		}
 
 		std::map<int, Transform>::const_iterator jterA = poses.find(idFrom);
 		std::map<int, Transform>::const_iterator jterB = poses.find(idTo);
 		LinkItem * linkItem = 0;
 		if(jterA != poses.end() && jterB != poses.end() &&
-		   _nodeItems.contains(iter->first) && _nodeItems.contains(idTo))
+		   _nodeItems.contains(idFrom) && _nodeItems.contains(idTo))
 		{
 			const Transform & poseA = jterA->second;
 			const Transform & poseB = jterB->second;
 
 			QMultiMap<int, LinkItem*>::iterator itemIter = _linkItems.end();
+
 			if(_linkItems.contains(idFrom))
 			{
-				itemIter = _linkItems.find(iter->first);
-				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
+				itemIter = _linkItems.find(idFrom);
+				bool alreadyAdded = false;
+				while(itemIter != _linkItems.end() && itemIter.key() == idFrom)
 				{
-					if(itemIter.value()->to() == idTo && itemIter.value()->type() == iter->second.type())
+					if(itemIter.value()->to() == idTo && itemIter.value()->isVisible())
 					{
-						itemIter.value()->setPoses(poseA, poseB, _viewPlane);
-						itemIter.value()->show();
-						linkItem = itemIter.value();
+						alreadyAdded = true;
 						break;
 					}
 					++itemIter;
+				}
+				if(alreadyAdded){
+					continue;
 				}
 			}
 
