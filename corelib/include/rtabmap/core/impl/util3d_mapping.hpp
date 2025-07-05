@@ -85,7 +85,8 @@ void segmentObstaclesFromGround(
 				viewPoint,
 				groundNormalsUp);
 
-		if(segmentFlatObstacles && flatSurfaces->size())
+		if(flatSurfaces->size() && 
+		   (segmentFlatObstacles || maxGroundHeight != 0.0f || minClusterSize>1))
 		{
 			int biggestFlatSurfaceIndex;
 			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = extractClusters(
@@ -135,7 +136,9 @@ void segmentObstaclesFromGround(
 						{
 							Eigen::Vector4f centroid(0,0,0,1);
 							pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-							if(maxGroundHeight==0.0f || centroid[2] <= maxGroundHeight || centroid[2] <= biggestSurfaceMax[2]) // epsilon
+							if((maxGroundHeight!=0.0f && centroid[2] <= maxGroundHeight) ||
+								centroid[2] <= biggestSurfaceMax[2] ||
+								(maxGroundHeight==0.0f && !segmentFlatObstacles))
 							{
 								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
 							}

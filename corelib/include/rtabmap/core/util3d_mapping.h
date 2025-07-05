@@ -311,11 +311,54 @@ cv::Mat RTABMAP_CORE_EXPORT convertImage8U2Map(const cv::Mat & map8U, bool pgmFo
  */
 cv::Mat RTABMAP_CORE_EXPORT erodeMap(const cv::Mat & map);
 
+// templated methods
+
+/**
+ * @brief Projects a point cloud onto the XY plane by setting all Z coordinates to zero.
+ *
+ * This function creates a copy of the input point cloud and modifies each point's Z coordinate
+ * to be zero, effectively projecting the entire cloud onto the XY plane.
+ *
+ * @tparam PointT The type of point used in the point cloud (e.g., pcl::PointXYZ).
+ * @param cloud The input point cloud to project.
+ * @return typename pcl::PointCloud<PointT>::Ptr A pointer to the projected point cloud
+ *         with Z coordinates set to zero.
+ */
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr projectCloudOnXYPlane(
 		const typename pcl::PointCloud<PointT> & cloud);
 
-// templated methods
+
+/**
+ * @brief Segments ground and obstacle indices from a point cloud using surface normals and clustering.
+ *
+ * This function analyzes a point cloud to identify flat surfaces (e.g., ground) and separates them
+ * from potential obstacles based on normal orientation, height constraints, and optional clustering.
+ * Optionally, flat obstacles (e.g., tables, ramps) can be segmented separately.
+ *
+ * @tparam PointT The type of point used in the point cloud (e.g., pcl::PointXYZ).
+ * 
+ * @param cloud The input point cloud.
+ * @param indices Optional input indices to consider from the cloud (e.g., from a prior ROI extraction).
+ * @param ground Output pointer where indices corresponding to ground points will be stored.
+ * @param obstacles Output pointer where indices corresponding to obstacle points will be stored.
+ * @param normalKSearch Number of neighbors to use for normal estimation.
+ * @param groundNormalAngle Maximum angle (in radians) between the estimated normal and the "up" direction
+ *                          for a surface to be considered ground.
+ * @param clusterRadius The Euclidean distance threshold for clustering flat surfaces and obstacles.
+ * @param minClusterSize The minimum number of points required to form a valid cluster.
+ * @param segmentFlatObstacles If true, flat but non-ground surfaces (e.g., tables) are detected and
+ *                             optionally returned via `flatObstacles`.
+ * @param maxGroundHeight Maximum Z-height for a surface to be considered ground (0 disables filtering). 
+ *                        Note that all obstacle points under that threshold will be ignored (i.e., won't 
+ *                        be returned in `obstacles`).
+ * @param flatObstacles Optional output pointer where indices corresponding to flat obstacles will be stored
+ *                      (only valid if `segmentFlatObstacles` is true).
+ * @param viewPoint The viewpoint to use for normal estimation (important for consistent orientation).
+ * @param groundNormalsUp Threshold (between 0 and 1) used to detect and flip ground-facing normals 
+ *        (set to 0.0f to disable). If the Z component of a normal is less than `-groundNormalsUp` 
+ *        and the corresponding point is below the viewpoint, the normal will be flipped.
+ */
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
@@ -331,6 +374,10 @@ void segmentObstaclesFromGround(
 		pcl::IndicesPtr * flatObstacles = 0,
 		const Eigen::Vector4f & viewPoint = Eigen::Vector4f(0,0,100,0),
 		float groundNormalsUp = 0);
+/**
+ * @brief Segments ground and obstacle indices from a point cloud using surface normals and clustering.
+ * @see `segmentObstaclesFromGround()` with indices
+ */
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
@@ -346,6 +393,33 @@ void segmentObstaclesFromGround(
 		const Eigen::Vector4f & viewPoint = Eigen::Vector4f(0,0,100,0),
 		float groundNormalsUp = 0);
 
+/**
+ * @brief Projects 3D ground and obstacle point clouds onto the 2D XY plane and voxelizes them into 2D occupancy data.
+ *
+ * This function takes two 3D point clouds—representing ground and obstacles—and performs the following steps:
+ * - Projects them onto the XY plane (setting Z = 0).
+ * - Voxelizes them based on the specified cell size.
+ * - Converts the resulting 2D points into OpenCV matrices (1-row, N-columns, `CV_32FC2`) where each element is a (x, y) coordinate.
+ *
+ * @tparam PointT The type of point in the input point clouds (e.g., pcl::PointXYZ).
+ * 
+ * @param groundCloud The input point cloud representing ground points.
+ * @param obstaclesCloud The input point cloud representing obstacle points.
+ * @param ground Output matrix containing 2D (x, y) coordinates of projected ground points (type: `CV_32FC2`).
+ * @param obstacles Output matrix containing 2D (x, y) coordinates of projected obstacle points (type: `CV_32FC2`).
+ * @param cellSize The size of each voxel/grid cell used for downsampling the projected cloud (in meters).
+ */
+template<typename PointT>
+void occupancy2DFromGroundObstacles(
+		const typename pcl::PointCloud<PointT>::Ptr & groundCloud,
+		const typename pcl::PointCloud<PointT>::Ptr & obstaclesCloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize);
+/**
+ * @brief Projects 3D ground and obstacle point clouds onto the 2D XY plane and voxelizes them into 2D occupancy data.
+ * @see occupancy2DFromGroundObstacles() without indices
+ */
 template<typename PointT>
 void occupancy2DFromGroundObstacles(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
@@ -355,17 +429,36 @@ void occupancy2DFromGroundObstacles(
 		cv::Mat & obstacles,
 		float cellSize);
 
-template<typename PointT>
-void occupancy2DFromGroundObstacles(
-		const typename pcl::PointCloud<PointT>::Ptr & groundCloud,
-		const typename pcl::PointCloud<PointT>::Ptr & obstaclesCloud,
-		cv::Mat & ground,
-		cv::Mat & obstacles,
-		float cellSize);
-
+/**
+ * @brief Generates 2D ground and obstacle occupancy data from a 3D point cloud.
+ *
+ * This function performs segmentation on a 3D point cloud to separate ground and obstacle points
+ * based on normal orientation and clustering, then projects both onto the XY plane to create
+ * 2D occupancy representations using voxelization.
+ *
+ * The resulting occupancy data is returned as two OpenCV matrices (`cv::Mat`) of type `CV_32FC2`,
+ * where each entry contains a 2D point (x, y) in meters corresponding to a ground or obstacle voxel.
+ *
+ * @tparam PointT The type of point used in the input point cloud (e.g., pcl::PointXYZ).
+ *
+ * @param cloud The input 3D point cloud.
+ * @param indices Optional subset of points from the cloud to use for processing (can be full cloud indices).
+ * @param ground Output matrix containing 2D ground points projected and voxelized (`CV_32FC2`).
+ * @param obstacles Output matrix containing 2D obstacle points projected and voxelized (`CV_32FC2`).
+ * @param cellSize The voxel size (in meters) for projecting and grouping points in 2D.
+ * @param groundNormalAngle Maximum allowable angle (in radians) between a point's normal and the vertical axis for it to be considered part of the ground.
+ * @param minClusterSize Minimum number of points required to form a valid obstacle cluster.
+ * @param segmentFlatObstacles Whether to separate flat horizontal surfaces (e.g., tables) from the ground and treat them as obstacles.
+ * @param maxGroundHeight Maximum Z value (in meters) for a surface to be considered ground. If 0, height filtering is disabled.
+ *
+ * @note Internally, this function calls:
+ * - `segmentObstaclesFromGround()` to classify ground vs. obstacle points.
+ * - `occupancy2DFromGroundObstacles()` to project and voxelize the classified data.
+ */
 template<typename PointT>
 void occupancy2DFromCloud3D(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize = 0.05f,
@@ -373,10 +466,13 @@ void occupancy2DFromCloud3D(
 		int minClusterSize = 20,
 		bool segmentFlatObstacles = false,
 		float maxGroundHeight = 0.0f);
+/**
+ * @brief Generates 2D ground and obstacle occupancy data from a 3D point cloud.
+ * @see `occupancy2DFromCloud3D()` with indices
+ */
 template<typename PointT>
 void occupancy2DFromCloud3D(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize = 0.05f,

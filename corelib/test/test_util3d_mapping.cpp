@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
+#include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -418,4 +419,264 @@ TEST(Util3dMapping, erodeMapNoErosionWithUnknown)
 
     // Obstacle should NOT be eroded because adjacent unknown cell (-1)
     EXPECT_EQ(erodedMap.at<signed char>(1,1), 100);
+}
+
+TEST(Util3dMapping, projectCloudOnXYPlaneZCoordinatesAreZero)
+{
+    // Create a test point cloud
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    input_cloud->push_back(pcl::PointXYZ(1.0, 2.0, 3.0));
+    input_cloud->push_back(pcl::PointXYZ(4.0, 5.0, -1.0));
+    input_cloud->push_back(pcl::PointXYZ(0.0, 0.0, 10.0));
+
+    // Project the cloud
+    auto projected_cloud = util3d::projectCloudOnXYPlane<pcl::PointXYZ>(*input_cloud);
+
+    // Check that the size remains the same
+    ASSERT_EQ(projected_cloud->size(), input_cloud->size());
+
+    // Check that x and y remain the same, and z is set to zero
+    for (size_t i = 0; i < projected_cloud->size(); ++i)
+    {
+        EXPECT_FLOAT_EQ(projected_cloud->at(i).x, input_cloud->at(i).x);
+        EXPECT_FLOAT_EQ(projected_cloud->at(i).y, input_cloud->at(i).y);
+        EXPECT_FLOAT_EQ(projected_cloud->at(i).z, 0.0f);
+    }
+}
+
+TEST(Util3dMapping, segmentObstaclesFromGround)
+{
+    // Create a cloud of a floor, then elevate some part of it to make a flat obstacle
+    pcl::IndicesPtr expected_ground(new std::vector<int>);
+    pcl::IndicesPtr expected_big_obstacles(new std::vector<int>);
+    pcl::IndicesPtr expected_small_obstacles(new std::vector<int>);
+    pcl::IndicesPtr expected_flat_obstacles(new std::vector<int>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    for(int i=0; i<10; ++i) {
+        for(int j=0; j<10; ++j) {
+            if(i>5 && j>5) {
+                expected_flat_obstacles->push_back(cloud->size());
+            }
+            else {
+                expected_ground->push_back(cloud->size());
+            }
+            cloud->push_back(pcl::PointXYZ(0.05f*i, 0.05f*j, 0.01f*i+(i>5 && j>5 ? 0.25f:0.0f)));
+        }
+    }
+    // Add a wall and a small obstacle
+    for(int i=0; i<10; ++i) {
+        for(int k=0; k<10; ++k) {
+            if(i>5 && k>5) {
+                expected_small_obstacles->push_back(cloud->size());
+                cloud->push_back(pcl::PointXYZ(0.05f*i, -0.35f, 0.05f*k));
+            }
+            expected_big_obstacles->push_back(cloud->size());
+            cloud->push_back(pcl::PointXYZ(0.05f*i, -0.15f, 0.05f*k));
+        }
+    }
+
+    pcl::IndicesPtr ground, obstacles, flatObs;
+
+    // test basic
+    float normalKSearch = 5;
+    float angleMax = 20.0f*M_PI/180.0f;  // Allow 20 degrees of deviation
+    float clusterRadius = 0.1f;
+    util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+        cloud,
+        ground,
+        obstacles,
+        normalKSearch,       
+        angleMax,     
+        clusterRadius,
+        1,        // minClusterSize
+        false,    // segmentFlatObstacles
+        0.0f,     // maxGroundHeight
+        &flatObs, // flatObstacles
+        Eigen::Vector4f(0,0,2,0), // viewpoint
+        0.8f      // groundNormalsUp
+    );
+
+    ASSERT_EQ(ground->size(), expected_ground->size() + expected_flat_obstacles->size());
+    ASSERT_EQ(obstacles->size(), expected_big_obstacles->size() + expected_small_obstacles->size());
+
+    // test indices
+    util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+        cloud,
+        expected_ground,
+        ground,
+        obstacles,
+        normalKSearch,
+        angleMax,
+        clusterRadius,
+        1,        // minClusterSize
+        false,    // segmentFlatObstacles
+        0.0f,     // maxGroundHeight
+        &flatObs, // flatObstacles
+        Eigen::Vector4f(0,0,2,0), // viewpoint
+        0.8f      // groundNormalsUp
+    );
+
+    ASSERT_EQ(ground->size(), expected_ground->size());
+    ASSERT_EQ(obstacles->size(), 0);
+
+    // test flat obstacles
+    util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+        cloud,
+        ground,
+        obstacles,
+        normalKSearch,
+        angleMax,
+        clusterRadius,
+        1,        // minClusterSize
+        true,    // segmentFlatObstacles
+        0.0f,     // maxGroundHeight
+        &flatObs,  // flatObstacles
+        Eigen::Vector4f(0,0,2,0), // viewpoint
+        0.8f      // groundNormalsUp
+    );
+
+    ASSERT_EQ(flatObs->size(), expected_flat_obstacles->size());
+    ASSERT_EQ(ground->size(), expected_ground->size());
+    ASSERT_EQ(obstacles->size(), expected_big_obstacles->size() + expected_small_obstacles->size() + expected_flat_obstacles->size());
+
+    // test flat obstacles with maxGroundHeight
+    for(int i=0; i<2; ++i) {
+        util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+            cloud,
+            ground,
+            obstacles,
+            normalKSearch,
+            angleMax,
+            clusterRadius,
+            1,        // minClusterSize
+            i==0,    // segmentFlatObstacles
+            0.1f,     // maxGroundHeight
+            &flatObs,  // flatObstacles
+            Eigen::Vector4f(0,0,2,0), // viewpoint
+            0.8f      // groundNormalsUp
+        );
+
+        ASSERT_EQ(flatObs->size(), expected_flat_obstacles->size());
+        ASSERT_EQ(ground->size(), expected_ground->size());
+        // all obstacles under maxGroundHeight are ignored
+        ASSERT_EQ(obstacles->size(), expected_big_obstacles->size() + expected_small_obstacles->size() + expected_flat_obstacles->size() - 20);
+    }
+
+    // test viewpoint (ceiling segmentation)
+    util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+        cloud,
+        ground,
+        obstacles,
+        normalKSearch,
+        angleMax,
+        clusterRadius,
+        1,        // minClusterSize
+        false,    // segmentFlatObstacles
+        0.0f,     // maxGroundHeight
+        &flatObs,  // flatObstacles
+        Eigen::Vector4f(0,0,0.15f,0), // viewpoint under the top flat obstacle
+        0.8f      // groundNormalsUp
+    );
+
+    ASSERT_EQ(ground->size(), expected_ground->size());
+    ASSERT_EQ(obstacles->size(), expected_big_obstacles->size() + expected_small_obstacles->size() + expected_flat_obstacles->size());
+
+    // test min cluster radius 
+    util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+        cloud,
+        ground,
+        obstacles,
+        normalKSearch,
+        angleMax,
+        clusterRadius,
+        17,        // minClusterSize
+        false,    // segmentFlatObstacles
+        0.0f,     // maxGroundHeight
+        &flatObs,  // flatObstacles
+        Eigen::Vector4f(0,0,2,0),
+        0.8f      // groundNormalsUp
+    );
+
+    ASSERT_EQ(ground->size(), expected_ground->size());
+    ASSERT_EQ(obstacles->size(), expected_big_obstacles->size());
+
+    // Everything obstacles
+    util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+        cloud,
+        ground,
+        obstacles,
+        normalKSearch,
+        angleMax,
+        clusterRadius,
+        1,        // minClusterSize
+        false,    // segmentFlatObstacles
+        -0.1f,     // maxGroundHeight
+        &flatObs,  // flatObstacles
+        Eigen::Vector4f(0,0,2,0),
+        0.8f      // groundNormalsUp
+    );
+
+    ASSERT_EQ(ground->size(), 0);
+    ASSERT_EQ(obstacles->size(), expected_ground->size() + expected_big_obstacles->size() + expected_small_obstacles->size() + expected_flat_obstacles->size());
+
+    // Everything ground or ignored
+    for(int i=0; i<2; ++i) {
+        util3d::segmentObstaclesFromGround<pcl::PointXYZ>(
+            cloud,
+            ground,
+            obstacles,
+            normalKSearch,
+            angleMax,
+            clusterRadius,
+            1,        // minClusterSize
+            i==0,    // segmentFlatObstacles
+            10,     // maxGroundHeight
+            &flatObs,  // flatObstacles
+            Eigen::Vector4f(0,0,2,0),
+            0.8f      // groundNormalsUp
+        );
+        // wether we segment or not, all flat surfaces are under 10 meters
+        ASSERT_EQ(ground->size(), expected_ground->size() + expected_flat_obstacles->size());
+        ASSERT_EQ(obstacles->size(), 0);
+    }
+}
+
+TEST(Util3dMapping, occupancy2DFromGroundObstaclesBasic)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Ground points (clustered near 0,0)
+    groundCloud->push_back(pcl::PointXYZ(0.05f, 0.05f, -0.2f));
+    groundCloud->push_back(pcl::PointXYZ(0.06f, 0.04f, -0.1f));
+    groundCloud->push_back(pcl::PointXYZ(0.5f, 0.5f, -0.2f)); // Separate voxel
+
+    // Obstacle points
+    obstaclesCloud->push_back(pcl::PointXYZ(1.0f, 1.0f, 1.0f));
+    obstaclesCloud->push_back(pcl::PointXYZ(1.02f, 1.01f, 1.2f)); // Same voxel
+    obstaclesCloud->push_back(pcl::PointXYZ(2.0f, 2.0f, 1.5f));
+
+    cv::Mat groundMat, obstaclesMat;
+    float cellSize = 0.1f;
+
+    util3d::occupancy2DFromGroundObstacles<pcl::PointXYZ>(groundCloud, obstaclesCloud, groundMat, obstaclesMat, cellSize);
+
+    // Check that points were voxelized and projected
+    EXPECT_EQ(groundMat.rows, 1);
+    EXPECT_EQ(groundMat.cols, 2); // Expect 2 distinct voxels
+    EXPECT_EQ(groundMat.type(), CV_32FC2);
+
+    EXPECT_NEAR(groundMat.at<cv::Vec2f>(0)[0], 0.055, 0.001);
+    EXPECT_NEAR(groundMat.at<cv::Vec2f>(0)[1], 0.045, 0.001);
+    EXPECT_NEAR(groundMat.at<cv::Vec2f>(1)[0], 0.5, 0.001);
+    EXPECT_NEAR(groundMat.at<cv::Vec2f>(1)[1], 0.5, 0.001);
+
+    EXPECT_EQ(obstaclesMat.rows, 1);
+    EXPECT_EQ(obstaclesMat.cols, 2); // Expect 2 voxels (1.0,1.0) and (2.0,2.0)
+    EXPECT_EQ(obstaclesMat.type(), CV_32FC2);
+
+    EXPECT_NEAR(obstaclesMat.at<cv::Vec2f>(0)[0], 1.01, 0.001);
+    EXPECT_NEAR(obstaclesMat.at<cv::Vec2f>(0)[1], 1.005, 0.001);
+    EXPECT_NEAR(obstaclesMat.at<cv::Vec2f>(1)[0], 2, 0.001);
+    EXPECT_NEAR(obstaclesMat.at<cv::Vec2f>(1)[1], 2, 0.001);
 }
