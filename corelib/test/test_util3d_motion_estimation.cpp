@@ -465,3 +465,134 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo2DMultiCamWithNoise) {
 #endif
     }
 }
+
+TEST(Util3dMotionEstimation, estimateMotion3DTo3DBasic) {
+
+    // Three triangles in front of the camera at three different depths, centered with the middle of the image frame
+    std::map<int, cv::Point3f> words3A = {
+        {0, cv::Point3f(1,0,0.5)},
+        {1, cv::Point3f(1,0.5,-0.5)},
+        {2, cv::Point3f(1,-0.5,-0.5)},
+        {3, cv::Point3f(2,0,0)},
+        {4, cv::Point3f(2,0.25,0)},
+        {5, cv::Point3f(3,-0.25,0)},
+        {6, cv::Point3f(4,0,0)},
+        {7, cv::Point3f(4,0.15,0)},
+        {8, cv::Point3f(5,-0.15,0)},
+        {9, cv::Point3f(2,0,10)} // outlier
+    };
+    // Transform that point cloud for the second camera
+    std::map<int, cv::Point3f> words3B;
+    Transform secondT(0,0.5,0);
+
+    for(auto & pt: words3A) {
+        cv::Point3f ptT = util3d::transformPoint(pt.second, secondT);
+        if(pt.second.z < 9) {
+            words3B.insert(std::make_pair(pt.first, ptT));
+        }
+        else { // outlier
+            words3B.insert(std::make_pair(pt.first, cv::Point3f(5,5,10)));
+        }
+    }
+
+    cv::Mat covariance;
+    std::vector<int> matchesOut, inliersOut;
+
+    Transform result = util3d::estimateMotion3DTo3D(
+        words3A, words3B, 
+        /*minInliers=*/4,
+        /*inliersDistance=*/0.1,
+        /*iterations=*/100,
+        /*refineIterations=*/5,
+        &covariance,
+        &matchesOut,
+        &inliersOut
+    );
+
+    EXPECT_FALSE(result.isNull());
+    float x,y,z,roll,pitch,yaw;
+    result.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+    EXPECT_NEAR(x, 0, 1e-2);
+    EXPECT_NEAR(y, -0.5, 1e-2);
+    EXPECT_NEAR(z, 0, 1e-2);
+    EXPECT_NEAR(roll, 0, 1e-3);
+    EXPECT_NEAR(pitch, 0, 1e-3);
+    EXPECT_NEAR(yaw, 0, 1e-3);
+    EXPECT_EQ(matchesOut.size(), 10u);
+    EXPECT_EQ(inliersOut.size(), 9u);
+
+    // covariance must be 6x6
+    EXPECT_EQ(covariance.rows, 6);
+    EXPECT_EQ(covariance.cols, 6);
+    EXPECT_NEAR(covariance.at<double>(0,0), 1e-6, 1e-6);
+    EXPECT_NEAR(covariance.at<double>(3,3), 1e-6, 1e-6);
+}
+
+// Same as above but with noise
+TEST(Util3dMotionEstimation, estimateMotion3DTo3DWithNoise) {
+
+    // Three triangles in front of the camera at three different depths, centered with the middle of the image frame
+    std::map<int, cv::Point3f> words3A = {
+        {0, cv::Point3f(1,0,0.5)},
+        {1, cv::Point3f(1,0.5,-0.5)},
+        {2, cv::Point3f(1,-0.5,-0.5)},
+        {3, cv::Point3f(2,0,0)},
+        {4, cv::Point3f(2,0.25,0)},
+        {5, cv::Point3f(3,-0.25,0)},
+        {6, cv::Point3f(4,0,0)},
+        {7, cv::Point3f(4,0.15,0)},
+        {8, cv::Point3f(5,-0.15,0)},
+        {9, cv::Point3f(2,0,10)} // outlier
+    };
+    // Transform that point cloud for the second camera
+    std::map<int, cv::Point3f> words3B;
+    Transform secondT(0,0.5,0);
+
+    for(auto & pt: words3A) {
+        cv::Point3f ptT = util3d::transformPoint(pt.second, secondT);
+        ptT.x += randomNoise(0.02);
+        ptT.y += randomNoise(0.02);
+        ptT.z += randomNoise(0.02);
+        if(pt.second.z < 9) {
+            words3B.insert(std::make_pair(pt.first, ptT));
+        }
+        else { // outlier
+            words3B.insert(std::make_pair(pt.first, cv::Point3f(5,5,10)));
+        }
+        pt.second.x += randomNoise(0.02);
+        pt.second.y += randomNoise(0.02);
+        pt.second.z += randomNoise(0.02);
+    }
+
+    cv::Mat covariance;
+    std::vector<int> matchesOut, inliersOut;
+
+    Transform result = util3d::estimateMotion3DTo3D(
+        words3A, words3B, 
+        /*minInliers=*/4,
+        /*inliersDistance=*/0.1,
+        /*iterations=*/100,
+        /*refineIterations=*/5,
+        &covariance,
+        &matchesOut,
+        &inliersOut
+    );
+
+    EXPECT_FALSE(result.isNull());
+    float x,y,z,roll,pitch,yaw;
+    result.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+    EXPECT_NEAR(x, 0, 2e-2);
+    EXPECT_NEAR(y, -0.5, 2e-2);
+    EXPECT_NEAR(z, 0, 2e-2);
+    EXPECT_NEAR(roll, 0, 1e-2);
+    EXPECT_NEAR(pitch, 0, 1e-2);
+    EXPECT_NEAR(yaw, 0, 1e-2);
+    EXPECT_EQ(matchesOut.size(), 10u);
+    EXPECT_EQ(inliersOut.size(), 9u);
+
+    // covariance must be 6x6
+    EXPECT_EQ(covariance.rows, 6);
+    EXPECT_EQ(covariance.cols, 6);
+    EXPECT_NEAR(covariance.at<double>(0,0), 0.001, 1e-3);
+    EXPECT_NEAR(covariance.at<double>(3,3), 0.001, 1e-3);
+}

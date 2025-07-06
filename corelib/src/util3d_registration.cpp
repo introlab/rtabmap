@@ -206,7 +206,7 @@ Transform transformFromXYZCorrespondences(
 				{
 					double variance =  model->computeVariance();
 					UASSERT(uIsFinite(variance));
-					*covariance *= variance;
+					*covariance *= variance + 1e-6;
 				}
 
 				// get best transformation
