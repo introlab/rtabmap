@@ -45,3 +45,8 @@ gtest_discover_tests(test_util3d_mapping)
 add_executable(test_util3d_motion_estimation test_util3d_motion_estimation.cpp)
 target_link_libraries(test_util3d_motion_estimation gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d_motion_estimation)
+
+#util3d_surface.h
+add_executable(test_util3d_surface test_util3d_surface.cpp)
+target_link_libraries(test_util3d_surface gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_surface)
