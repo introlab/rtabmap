@@ -50,3 +50,13 @@ gtest_discover_tests(test_util3d_motion_estimation)
 add_executable(test_util3d_surface test_util3d_surface.cpp)
 target_link_libraries(test_util3d_surface gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d_surface)
+
+#VisualWord.h
+add_executable(VisualWordTests VisualWordTests.cpp)
+target_link_libraries(VisualWordTests gtest_main rtabmap_core)
+gtest_discover_tests(VisualWordTests)
+
+#Transform.h
+add_executable(TransformTests TransformTests.cpp)
+target_link_libraries(TransformTests gtest_main rtabmap_core)
+gtest_discover_tests(TransformTests)

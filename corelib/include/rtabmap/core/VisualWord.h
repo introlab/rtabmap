@@ -35,32 +35,95 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+/**
+ * @class VisualWord
+ * @brief Represents a visual word (feature descriptor) used in the bag-of-words (BoW) model.
+ *
+ * A VisualWord holds a unique identifier, its descriptor (usually a feature vector from an image),
+ * and a record of where (in which signatures/images) it was observed. This is a key component in 
+ * loop closure detection and visual place recognition in RTAB-Map.
+ *
+ * The word keeps track of references (signature IDs) where it appears, and how many times it was observed 
+ * in each signature. It also tracks whether the word has been saved to a database.
+ */
 class RTABMAP_CORE_EXPORT VisualWord
 {
 public:
+	/**
+     * @brief Constructor.
+     * @param id          Unique ID of the visual word.
+     * @param descriptor  The descriptor associated with the word (e.g., ORB, SIFT).
+     * @param signatureId Optional signature ID where the word is first observed.
+     */
 	VisualWord(int id, const cv::Mat & descriptor, int signatureId = 0);
+
+	/**
+     * @brief Destructor.
+     */
 	~VisualWord();
 
+	/**
+     * @brief Adds a reference to this word for the given signature ID.
+     * @param signatureId ID of the signature in which this word is observed.
+     */
 	void addRef(int signatureId);
+
+	/**
+     * @brief Removes all references to this word for the given signature ID.
+     * @param signatureId ID of the signature from which references will be removed.
+     * @return Number of references removed.
+     */
 	int removeAllRef(int signatureId);
+
+	/**
+     * @brief Estimates the memory used by this visual word in bytes.
+     * @return Size in bytes.
+     */
 	unsigned long getMemoryUsed() const;
 
+	/**
+     * @brief Returns the total number of references (across all signatures).
+     * @return Number of total references.
+     */
 	int getTotalReferences() const {return _totalReferences;}
-	int id() const {return _id;}
-	const cv::Mat & getDescriptor() const {return _descriptor;}
-	const std::map<int, int> & getReferences() const {return _references;} // (signature id , occurrence in the signature)
 
+	/**
+     * @brief Returns the ID of this visual word.
+     * @return Word ID.
+     */
+	int id() const {return _id;}
+
+	/**
+     * @brief Returns the feature descriptor of this word.
+     * @return The OpenCV matrix descriptor.
+     */
+	const cv::Mat & getDescriptor() const {return _descriptor;}
+
+	/**
+     * @brief Returns the references of this word.
+     * @return A map of (signature ID, occurrence count).
+     */
+	const std::map<int, int> & getReferences() const {return _references;}
+
+	/**
+     * @brief Checks if the word has been saved to the database.
+     * @return True if saved, false otherwise.
+     */
 	bool isSaved() const {return _saved;}
+
+	/**
+     * @brief Sets the saved flag for the word.
+     * @param saved True if the word has been saved to the database.
+     */
 	void setSaved(bool saved) {_saved = saved;}
 
 private:
-	int _id;
-	cv::Mat _descriptor;
-	bool _saved; // If it's saved to db
+	int _id;                                  ///< Unique ID of the visual word.
+	cv::Mat _descriptor;                      ///< Feature descriptor (e.g., ORB, SIFT).
+	bool _saved;                              ///< Whether the word is saved to the database.
 
-	int _totalReferences;
-	std::map<int, int> _references; // (signature id , occurrence in the signature)
-	std::map<int, int> _oldReferences; // (signature id , occurrence in the signature)
+	int _totalReferences;                     ///< Total reference count across all signatures.
+	std::map<int, int> _references;           ///< Active references: map of (signature ID, occurrence count).
 };
 
 } // namespace rtabmap
