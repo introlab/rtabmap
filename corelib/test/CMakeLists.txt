@@ -40,3 +40,8 @@ gtest_discover_tests(test_util3d_correspondences)
 add_executable(test_util3d_mapping test_util3d_mapping.cpp)
 target_link_libraries(test_util3d_mapping gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d_mapping)
+
+#util3d_motion_estimation.h
+add_executable(test_util3d_motion_estimation test_util3d_motion_estimation.cpp)
+target_link_libraries(test_util3d_motion_estimation gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_motion_estimation)
