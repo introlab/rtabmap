@@ -64,11 +64,22 @@ jobs:
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: |
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        ldconfig
+        env
+        ls /opt/ros/${{ matrix.ros_distribution }}/lib/x86_64-linux-gnu/
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
       run: |
         source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
         ./rtabmap-console --version
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: |
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure
       
