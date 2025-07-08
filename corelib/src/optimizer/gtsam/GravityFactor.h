@@ -74,8 +74,8 @@ public:
   friend class boost::serialization::access;
   template<class ARCHIVE>
   void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
-    ar & boost::serialization::make_nvp("nZ_", const_cast<Unit3&>(nZ_));
-    ar & boost::serialization::make_nvp("bRef_", const_cast<Unit3&>(bRef_));
+    /*ar & boost::serialization::make_nvp("nZ_", const_cast<Unit3&>(nZ_));
+    ar & boost::serialization::make_nvp("bRef_", const_cast<Unit3&>(bRef_));*/
   }
 #endif
 };
@@ -158,10 +158,10 @@ private:
   friend class boost::serialization::access;
   template<class ARCHIVE>
   void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
-    ar & boost::serialization::make_nvp("NoiseModelFactor1",
+    /*ar & boost::serialization::make_nvp("NoiseModelFactor1",
         boost::serialization::base_object<Base>(*this));
     ar & boost::serialization::make_nvp("GravityFactor",
-        boost::serialization::base_object<GravityFactor>(*this));
+        boost::serialization::base_object<GravityFactor>(*this));*/
   }
 #endif
 
@@ -254,10 +254,10 @@ private:
   friend class boost::serialization::access;
   template<class ARCHIVE>
   void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
-    ar & boost::serialization::make_nvp("NoiseModelFactor1",
+    /*ar & boost::serialization::make_nvp("NoiseModelFactor1",
         boost::serialization::base_object<Base>(*this));
     ar & boost::serialization::make_nvp("GravityFactor",
-        boost::serialization::base_object<GravityFactor>(*this));
+        boost::serialization::base_object<GravityFactor>(*this));*/
   }
 #endif
 public:
