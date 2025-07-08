@@ -1,4 +1,6 @@
-FROM introlab3it/rtabmap:jammy-deps
+FROM introlab3it/rtabmap:noble-kilted-deps
+# remove ubuntu user
+RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu
 
 RUN apt-get update && apt-get install -y sudo && \
     apt-get clean && rm -rf /var/lib/apt/lists/
@@ -15,4 +17,4 @@ RUN set -ex && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
 
 RUN echo "source /usr/share/bash-completion/completions/git" >> /home/${USERNAME}/.bashrc
-RUN echo 'source /opt/ros/humble/setup.bash' >> /home/${USERNAME}/.bashrc
+RUN echo 'source /opt/ros/kilted/setup.bash' >> /home/${USERNAME}/.bashrc
