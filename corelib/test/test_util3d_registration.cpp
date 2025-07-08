@@ -91,12 +91,13 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDMismatchedSizes)
 
 TEST(Util3DRegistration, transformFromXYZCorrespondencesIdentityTransform)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     cloud1->push_back(pcl::PointXYZ(1, 0, 0));
     cloud1->push_back(pcl::PointXYZ(0, 1, 0));
     cloud1->push_back(pcl::PointXYZ(0, 0, 1));
 
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(*cloud1);
+    auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+    *cloud2 = *cloud1;
 
     std::vector<int> inliers;
     cv::Mat covariance;
@@ -114,13 +115,13 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesIdentityTransform)
 
 TEST(Util3DRegistration, transformFromXYZCorrespondencesTranslatedCloud)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+    auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     Eigen::Vector3f t(1.0f, 2.0f, 3.0f);
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 10; ++i)
     {
-        pcl::PointXYZ p(i, i * 2, i * 3);
+        pcl::PointXYZ p(i, i % 2, i % 3);
         cloud1->push_back(p);
         cloud2->push_back(pcl::PointXYZ(p.x + t.x(), p.y + t.y(), p.z + t.z()));
     }
@@ -135,13 +136,13 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesTranslatedCloud)
     EXPECT_NEAR(result.x(), t.x(), 1e-4f);
     EXPECT_NEAR(result.y(), t.y(), 1e-4f);
     EXPECT_NEAR(result.z(), t.z(), 1e-4f);
-    EXPECT_EQ(inliers.size(), 3);
+    EXPECT_EQ(inliers.size(), 10);
 }
 
 TEST(Util3DRegistration, transformFromXYZCorrespondencesTooFewPoints)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+    auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 
     cloud1->push_back(pcl::PointXYZ(0, 0, 0));
     cloud2->push_back(pcl::PointXYZ(1, 1, 1));
@@ -154,8 +155,8 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesTooFewPoints)
 
 TEST(Util3DRegistration, transformFromXYZCorrespondencesMismatchedPointCounts)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+    auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 
     cloud1->push_back(pcl::PointXYZ(0, 0, 0));
     cloud1->push_back(pcl::PointXYZ(1, 0, 0));
@@ -171,8 +172,8 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesMismatchedPointCounts)
 
 TEST(Util3DRegistration, computeVarianceAndCorrespondencesPerfectMatchNoAngleCheck)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
+    auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
+    auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
 
     for (int i = 0; i < 5; ++i)
     {
@@ -194,8 +195,8 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesPerfectMatchNoAngleChe
 
 TEST(Util3DRegistration, computeVarianceAndCorrespondencesNormalMismatchFilteredByAngle)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
+    auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
+    auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
 
     for (int i = 0; i < 5; ++i)
     {
@@ -221,8 +222,8 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesNormalMismatchFiltered
 
 TEST(Util3DRegistration, computeVarianceAndCorrespondencesAnglePassWithLargeThreshold)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
+    auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
+    auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
 
     for (int i = 0; i < 5; ++i)
     {
@@ -248,8 +249,8 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesAnglePassWithLargeThre
 
 TEST(Util3DRegistration, computeVarianceAndCorrespondencesNoCorrespondencesDueToDistance)
 {
-    auto cloud1 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
-    auto cloud2 = std::make_shared<pcl::PointCloud<pcl::PointNormal> >();
+    auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
+    auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
 
     for (int i = 0; i < 5; ++i)
     {
@@ -280,13 +281,14 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesNoCorrespondencesDueTo
 
 TEST(Util3DRegistration, icpIdentityTransformConverges)
 {
-    auto cloud_source = std::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
+    auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float i = 0; i < 5; ++i)
     {
         cloud_source->emplace_back(i, i * 2.0f, 0.0f);
     }
 
-    auto cloud_target = std::make_shared<pcl::PointCloud<pcl::PointXYZ> >(*cloud_source); // identical
+    auto cloud_target = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+    *cloud_target = *cloud_source; // identical
 
     bool hasConverged = false;
     pcl::PointCloud<pcl::PointXYZ> aligned;
@@ -308,7 +310,7 @@ TEST(Util3DRegistration, icpIdentityTransformConverges)
 
 TEST(Util3DRegistration, icpTranslatedTransformConverges)
 {
-    auto cloud_source = std::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
+    auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float i = 0; i < 5; ++i)
     {
         cloud_source->emplace_back(i, i * 2.0f, 0);
@@ -340,7 +342,7 @@ TEST(Util3DRegistration, icpTranslatedTransformConverges)
 TEST(Util3DRegistration, icp2DAlignsFlatClouds)
 {
     pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
-    auto cloud_source = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float x = 0; x < 5; ++x)
     {
         for (float y = 0; y < 5; ++y)
@@ -375,7 +377,7 @@ TEST(Util3DRegistration, icp2DAlignsFlatClouds)
 TEST(Util3DRegistration, icpPointToPlaneAlignsTranslatedPlane)
 {
     // Create a plane point cloud
-    auto cloud_source_raw = std::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
+    auto cloud_source_raw = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float x = -0.5f; x <= 0.5f; x += 0.1f)
     {
         for (float y = -0.5f; y <= 0.5f; y += 0.1f)
