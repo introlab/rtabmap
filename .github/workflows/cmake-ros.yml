@@ -66,8 +66,6 @@ jobs:
     - name: Build
       run: |
         source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
-        env
-        ls /opt/ros/${{ matrix.ros_distribution }}/lib/x86_64-linux-gnu/
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Info
