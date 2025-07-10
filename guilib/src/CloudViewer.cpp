@@ -3172,6 +3172,12 @@ bool CloudViewer::getCloudVisibility(const std::string & id)
 	return false;
 }
 
+
+int CloudViewer::getCloudColorIndex(const std::string & id) const
+{
+	return _visualizer->getColorHandlerIndex(id);
+}
+	
 void CloudViewer::setCloudColorIndex(const std::string & id, int index)
 {
 	if(index>0)
@@ -3180,6 +3186,26 @@ void CloudViewer::setCloudColorIndex(const std::string & id, int index)
 	}
 }
 
+double CloudViewer::getCloudOpacity(const std::string & id) const
+{
+	double opacity = 1.0;
+	if(!_visualizer->getPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, opacity, id))
+	{
+#if VTK_MAJOR_VERSION >= 7
+		pcl::visualization::ShapeActorMap::iterator am_it = _visualizer->getShapeActorMap()->find (id);
+		if (am_it != _visualizer->getShapeActorMap()->end ())
+		{
+			vtkActor* actor = vtkActor::SafeDownCast (am_it->second);
+			if(actor)
+			{
+				opacity = actor->GetProperty ()->GetOpacity ();
+			}
+		}
+#endif
+	}
+	return opacity;
+}
+	
 void CloudViewer::setCloudOpacity(const std::string & id, double opacity)
 {
 	double lastOpacity;
@@ -3207,6 +3233,12 @@ void CloudViewer::setCloudOpacity(const std::string & id, double opacity)
 #endif
 }
 
+int CloudViewer::getCloudPointSize(const std::string & id) const
+{
+	double size = 1.0;
+	_visualizer->getPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, size, id);
+	return (int)size;
+}
 void CloudViewer::setCloudPointSize(const std::string & id, int size)
 {
 	double lastSize;

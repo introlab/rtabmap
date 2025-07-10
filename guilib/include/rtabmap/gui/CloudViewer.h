@@ -334,6 +334,9 @@ public:
 
 	bool getPose(const std::string & id, Transform & pose); //including meshes
 	bool getCloudVisibility(const std::string & id);
+	int getCloudColorIndex(const std::string & id) const;
+	double getCloudOpacity(const std::string & id) const;
+	int getCloudPointSize(const std::string & id) const;
 
 	const QMap<std::string, Transform> & getAddedClouds() const {return _addedClouds;} //including meshes
 	const QColor & getDefaultBackgroundColor() const;
