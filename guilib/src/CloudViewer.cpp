@@ -3949,6 +3949,7 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		_cloudColorRangeMin = 0.0f;
 		_cloudColorRangeMax = 0.0f;
+		_aCloudColorRangeInverted->setChecked(false);
 	}
 	else if(a == _aSetBackgroundColor)
 	{
