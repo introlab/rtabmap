@@ -80,6 +80,7 @@ public:
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
+	void setNodeInfo(int id, const QString & info);
 	void setLocalRadius(float radius);
 	void highlightNode(int nodeId, int highlightIndex);
 	void clearGraph();

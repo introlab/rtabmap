@@ -150,7 +150,7 @@ jobs:
             API_VERSION=23
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_apiXX'
+          docker_path: 'noble/android/rtabmap_apiXX'
         - docker_tag: android24
           docker_tags: |
             introlab3it/rtabmap:android24
@@ -158,7 +158,7 @@ jobs:
             API_VERSION=24
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_apiXX'
+          docker_path: 'noble/android/rtabmap_apiXX'
         - docker_tag: android26
           docker_tags: |
             introlab3it/rtabmap:android26
@@ -166,7 +166,7 @@ jobs:
             API_VERSION=26
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_apiXX'
+          docker_path: 'noble/android/rtabmap_apiXX'
         - docker_tag: android30
           docker_tags: |
             introlab3it/rtabmap:android30
@@ -174,7 +174,7 @@ jobs:
             API_VERSION=30
           docker_platforms: |
             linux/amd64
-          docker_path: 'bionic/android/rtabmap_apiXX'
+          docker_path: 'noble/android/rtabmap_apiXX'
     
     steps:
       -

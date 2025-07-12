@@ -334,6 +334,9 @@ public:
 
 	bool getPose(const std::string & id, Transform & pose); //including meshes
 	bool getCloudVisibility(const std::string & id);
+	int getCloudColorIndex(const std::string & id) const;
+	double getCloudOpacity(const std::string & id) const;
+	int getCloudPointSize(const std::string & id) const;
 
 	const QMap<std::string, Transform> & getAddedClouds() const {return _addedClouds;} //including meshes
 	const QColor & getDefaultBackgroundColor() const;
@@ -399,6 +402,12 @@ public:
 	void setIntensityRedColormap(bool value);
 	void setIntensityRainbowColormap(bool value);
 	void setIntensityMax(float value);
+	float getCloudColorRangeMin() const;
+	float getCloudColorRangeMax() const;
+	bool isCloudColorRangeInverted() const;
+	void setCloudColorRangeMin(float value);
+	void setCloudColorRangeMax(float value);
+	void setCloudColorRangeInverted(bool enabled);
 	void buildPickingLocator(bool enable);
 	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
 
@@ -454,6 +463,10 @@ private:
 	QAction * _aSetIntensityRedColormap;
 	QAction * _aSetIntensityRainbowColormap;
 	QAction * _aSetIntensityMaximum;
+	QAction * _aSetCloudColorRangeMin;
+	QAction * _aSetCloudColorRangeMax;
+	QAction * _aCloudColorRangeInverted;
+	QAction * _aClearCloudColorRanges;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
     QAction * _aSetEDLShading;
@@ -494,6 +507,8 @@ private:
     double _renderingRate;
     vtkProp * _octomapActor;
     float _intensityAbsMax;
+	float _cloudColorRangeMin;
+	float _cloudColorRangeMax;
     double  _coordinateFrameScale;
 };
 

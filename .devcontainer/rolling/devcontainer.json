@@ -4,18 +4,14 @@
     },
     "customizations": {
         "vscode": {
-          "extensions": ["ms-vscode.cpptools-themes", "ms-vscode.cmake-tools", "vscjava.vscode-java-pack"]
+          "extensions": ["ms-vscode.cpptools-themes", "ms-vscode.cmake-tools"]
         }
       },
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/rtabmap,type=bind",
     "workspaceFolder": "/home/vscode/rtabmap",
-    "postStartCommand": "./.devcontainer/android/init.sh",
     "settings": {
       "terminal.integrated.defaultProfile.linux": "bash"
     },
     "remoteUser": "vscode",
     "runArgs": ["--privileged", "--network=host"]
 }
-
-
-  
