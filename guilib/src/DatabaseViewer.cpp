@@ -445,6 +445,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->graphViewer, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->graphicsView_A, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
+	connect(cloudViewer_, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 	connect(ui_->actionConcise_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
@@ -653,6 +654,9 @@ void DatabaseViewer::readSettings()
 	ui_->graphicsView_A->loadSettings(settings, "ImageViewA");
 	ui_->graphicsView_B->loadSettings(settings, "ImageViewB");
 
+	// CloudViewer
+	cloudViewer_->loadSettings(settings, "CloudViewer");
+
 	// ICP parameters
 	settings.beginGroup("icp");
 	ui_->spinBox_icp_decimation->setValue(settings.value("decimation", ui_->spinBox_icp_decimation->value()).toInt());
@@ -746,6 +750,9 @@ void DatabaseViewer::writeSettings()
 	// ImageViews
 	ui_->graphicsView_A->saveSettings(settings, "ImageViewA");
 	ui_->graphicsView_B->saveSettings(settings, "ImageViewB");
+
+	// CloudViewer
+	cloudViewer_->saveSettings(settings, "CloudViewer");
 
 	// save ICP parameters
 	settings.beginGroup("icp");
@@ -5138,6 +5145,15 @@ void DatabaseViewer::update(int value,
 					cloudViewer_->removeAllLines();
 					cloudViewer_->removeAllFrustums();
 					cloudViewer_->removeOccupancyGridMap();
+					std::map<std::string, std::pair<int, int> > colorIndexAndPointSizeMap;
+					for(auto iter=cloudViewer_->getAddedClouds().constBegin(); iter!=cloudViewer_->getAddedClouds().constEnd(); ++iter) {
+						if(uStrContains(iter.key(), "cloud") || uStrContains(iter.key(), "scan")) {
+							colorIndexAndPointSizeMap.insert(std::make_pair(iter.key(), 
+								std::make_pair(
+									cloudViewer_->getCloudColorIndex(iter.key())+1,
+									cloudViewer_->getCloudPointSize(iter.key()))));
+						}
+					}
 					cloudViewer_->removeAllClouds();
 					cloudViewer_->removeOctomap();
 					cloudViewer_->removeElevationMap();
@@ -5194,6 +5210,10 @@ void DatabaseViewer::update(int value,
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(laserScanRaw, laserScanRaw.localTransform());
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						if(colorIndexAndPointSizeMap.find("scan") != colorIndexAndPointSizeMap.end()) {
+							cloudViewer_->setCloudColorIndex("scan", colorIndexAndPointSizeMap.at("scan").first);
+							cloudViewer_->setCloudPointSize("scan", colorIndexAndPointSizeMap.at("scan").second);
 						}
 					}
 
@@ -5281,6 +5301,10 @@ void DatabaseViewer::update(int value,
 								}
 
 								cloudViewer_->addCloud("cloud", cloudValidPoints, pose);
+								if(colorIndexAndPointSizeMap.find("cloud") != colorIndexAndPointSizeMap.end()) {
+									cloudViewer_->setCloudColorIndex("cloud", colorIndexAndPointSizeMap.at("cloud").first);
+									cloudViewer_->setCloudPointSize("cloud", colorIndexAndPointSizeMap.at("cloud").second);
+								}
 							}
 							else
 							{
@@ -5404,7 +5428,12 @@ void DatabaseViewer::update(int value,
 										}
 										if(ui_->checkBox_showCloud->isChecked())
 										{
-											cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+											std::string cloudName = uFormat("cloud_%d", i);
+											cloudViewer_->addCloud(cloudName, cloud, pose);
+											if(colorIndexAndPointSizeMap.find(cloudName) != colorIndexAndPointSizeMap.end()) {
+												cloudViewer_->setCloudColorIndex(cloudName, colorIndexAndPointSizeMap.at(cloudName).first);
+												cloudViewer_->setCloudPointSize(cloudName, colorIndexAndPointSizeMap.at(cloudName).second);
+											}
 										}
 									}
 								}
@@ -5434,7 +5463,12 @@ void DatabaseViewer::update(int value,
 											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 										}
 
-										cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+										std::string cloudName = uFormat("cloud_%d", i);
+										cloudViewer_->addCloud(cloudName, cloud, pose);
+										if(colorIndexAndPointSizeMap.find(cloudName) != colorIndexAndPointSizeMap.end()) {
+											cloudViewer_->setCloudColorIndex(cloudName, colorIndexAndPointSizeMap.at(cloudName).first);
+											cloudViewer_->setCloudPointSize(cloudName, colorIndexAndPointSizeMap.at(cloudName).second);
+										}
 									}
 								}
 							}

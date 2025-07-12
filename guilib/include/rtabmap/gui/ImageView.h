@@ -77,6 +77,7 @@ public:
 	float getDepthColorMapMinRange() const;
 	float getDepthColorMapMaxRange() const;
 	uCvQtDepthColorMap getDepthColorMap() const;
+	bool isDepthColorMapInCameraFrame() const;
 
 	float viewScale() const;
 
@@ -94,6 +95,7 @@ public:
 	void setDefaultMatchingLineColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 	void setDepthColorMapRange(float min, float max);
+	void setDepthColorMapInCameraFrame(bool enabled);
 
 	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
 	void setFeatures(const std::vector<cv::KeyPoint> & features, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
@@ -167,6 +169,7 @@ private:
 	QAction * _colorMapBlackToWhite;
 	QAction * _colorMapRedToBlue;
 	QAction * _colorMapBlueToRed;
+	QAction * _colorMapInCameraFrame;
 	QAction * _colorMapMinRange;
 	QAction * _colorMapMaxRange;
 	QAction * _mouseTracking;
