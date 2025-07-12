@@ -109,6 +109,10 @@ public:
 		_value = value;
 	}
 
+	void setToolTipInfo(const QString & info) {
+		_info = info;
+	}
+
 	void setRadius(float radius)
 	{
 		float r,p,yaw;
@@ -160,6 +164,10 @@ protected:
 		{
 			msg += QString("\n%1=%2").arg(_valueName).arg(_value);
 		}
+		if(!_info.isEmpty())
+		{
+			msg += QString("\n%1").arg(_info);
+		}
 
 		this->setToolTip(msg);
 		
@@ -181,6 +189,7 @@ private:
 	QGraphicsLineItem * _line;
 	QString _valueName;
 	float _value;
+	QString _info;
 };
 
 class NodeGPSItem: public NodeItem
@@ -522,6 +531,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		}
 		iter.value()->hide();
 		iter.value()->setColor(color); // reset color
+		iter.value()->setToolTipInfo(QString());
 		iter.value()->setZValue(iter.key()<0?21:20);
 	}
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
@@ -558,7 +568,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				item->setZValue(iter->first<0?21:20);
 				item->setColor(color);
 				item->setParentItem(_graphRoot);
-				item->setVisible(_nodeVisible);
+				item->show();
 				_nodeItems.insert(iter->first, item);
 			}
 		}
@@ -567,32 +577,39 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	for(std::multimap<int, Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 	{
 		// make the first id the smallest one
-		int idFrom = iter->first<iter->second.to()?iter->first:iter->second.to();
-		int idTo = iter->first<iter->second.to()?iter->second.to():iter->first;
+		int idFrom = iter->second.from() < iter->second.to() ? iter->second.from() : iter->second.to();
+		int idTo = iter->second.from() < iter->second.to() ? iter->second.to() : iter->second.from();
+
+		if(idFrom == idTo) {
+			continue;
+		}
 
 		std::map<int, Transform>::const_iterator jterA = poses.find(idFrom);
 		std::map<int, Transform>::const_iterator jterB = poses.find(idTo);
 		LinkItem * linkItem = 0;
 		if(jterA != poses.end() && jterB != poses.end() &&
-		   _nodeItems.contains(iter->first) && _nodeItems.contains(idTo))
+		   _nodeItems.contains(idFrom) && _nodeItems.contains(idTo))
 		{
 			const Transform & poseA = jterA->second;
 			const Transform & poseB = jterB->second;
 
 			QMultiMap<int, LinkItem*>::iterator itemIter = _linkItems.end();
+
 			if(_linkItems.contains(idFrom))
 			{
-				itemIter = _linkItems.find(iter->first);
-				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
+				itemIter = _linkItems.find(idFrom);
+				bool alreadyAdded = false;
+				while(itemIter != _linkItems.end() && itemIter.key() == idFrom)
 				{
-					if(itemIter.value()->to() == idTo && itemIter.value()->type() == iter->second.type())
+					if(itemIter.value()->to() == idTo && itemIter.value()->isVisible())
 					{
-						itemIter.value()->setPoses(poseA, poseB, _viewPlane);
-						itemIter.value()->show();
-						linkItem = itemIter.value();
+						alreadyAdded = true;
 						break;
 					}
 					++itemIter;
+				}
+				if(alreadyAdded){
+					continue;
 				}
 			}
 
@@ -732,6 +749,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		}
 		else
 		{
+			iter.value()->setVisible(_nodeVisible);
 			++iter;
 		}
 	}
@@ -1163,6 +1181,19 @@ void GraphViewer::setCurrentGoalID(int id, const Transform & pose)
 		{
 			iter.value()->setPoses(t*iter.value()->getPoseA(), t*iter.value()->getPoseB(), _viewPlane);
 		}
+	}
+}
+
+void GraphViewer::setNodeInfo(int id, const QString & info)
+{
+	NodeItem * node = _nodeItems.value(id, 0);
+	if(node)
+	{
+		node->setToolTipInfo(info);
+	}
+	else
+	{
+		UWARN("Node %d not found in the graph", id);
 	}
 }
 
