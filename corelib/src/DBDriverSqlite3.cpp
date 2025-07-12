@@ -5526,7 +5526,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 								materialPolygons[p][i] = serializedPolygons.at<int>(t + p*polygonSize + i);
 							}
 						}
-						t+=materialPolygons.size()*polygonSize;
+						t+=materialPolygons.size()*polygonSize-1;
 						polygons->push_back(materialPolygons);
 					}
 				}
@@ -5543,7 +5543,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 						UASSERT(serializedTexCoords.total());
 						for(int t=0; t<serializedTexCoords.cols; ++t)
 						{
-							UASSERT(int(serializedTexCoords.at<float>(t)) > 0);
+							UASSERT_MSG(int(serializedTexCoords.at<float>(t)) > 0, uFormat("serializedTexCoords.at<float>(%d)=%f", t, serializedTexCoords.at<float>(t)).c_str());
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 							std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > materialtexCoords(int(serializedTexCoords.at<float>(t)));
 #else
@@ -5556,8 +5556,10 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 							{
 								materialtexCoords[p][0] = serializedTexCoords.at<float>(t + p*2);
 								materialtexCoords[p][1] = serializedTexCoords.at<float>(t + p*2 + 1);
+								UASSERT(materialtexCoords[p][0]>=0.0f && materialtexCoords[p][0] <= 1.0f);
+								UASSERT(materialtexCoords[p][1]>=0.0f && materialtexCoords[p][1] <= 1.0f);
 							}
-							t+=materialtexCoords.size()*2;
+							t+=materialtexCoords.size()*2-1;
 							texCoords->push_back(materialtexCoords);
 						}
 					}

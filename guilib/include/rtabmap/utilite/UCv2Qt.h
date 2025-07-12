@@ -117,7 +117,7 @@ inline QImage uCvMat2QImage(
 		// Assume depth image (float in meters)
 		const float * data = (const float *)image.data;
 		float min,max;
-		if(depthMax>depthMin)
+		if(depthMin != 0 && depthMax != 0 && depthMax > depthMin)
 		{
 			min = depthMin;
 			max = depthMax;
@@ -127,23 +127,23 @@ inline QImage uCvMat2QImage(
 			min = max = data[0];
 			for(unsigned int i=1; i<image.total(); ++i)
 			{
-				if(uIsFinite(data[i]) && data[i] > 0)
+				if(uIsFinite(data[i]) && data[i] != 0)
 				{
-					if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+					if(!uIsFinite(min) || (data[i] != 0 && data[i]<min))
 					{
 						min = data[i];
 					}
-					if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
+					if(!uIsFinite(max) || (data[i] != 0 && data[i]>max))
 					{
 						max = data[i];
 					}
 				}
 			}
-			if(depthMax > 0 && depthMax > depthMin)
+			if(depthMax != 0 && depthMax > depthMin)
 			{
 				max = depthMax;
 			}
-			if(depthMin>0 && (depthMin < depthMax || depthMin < max))
+			if(depthMin != 0 && (depthMin < depthMax || depthMin < max))
 			{
 				min = depthMin;
 			}
@@ -198,7 +198,7 @@ inline QImage uCvMat2QImage(
 		// Assume depth image (unsigned short in mm)
 		const unsigned short * data = (const unsigned short *)image.data;
 		unsigned short min,max;
-		if(depthMax>depthMin)
+		if(depthMin != 0 && depthMax != 0 && depthMax > depthMin)
 		{
 			min = depthMin*1000;
 			max = depthMax*1000;
@@ -208,23 +208,23 @@ inline QImage uCvMat2QImage(
 			min = max = data[0];
 			for(unsigned int i=1; i<image.total(); ++i)
 			{
-				if(uIsFinite(data[i]) && data[i] > 0)
+				if(uIsFinite(data[i]) && data[i] != 0)
 				{
-					if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+					if(!uIsFinite(min) || (data[i] != 0 && data[i]<min))
 					{
 						min = data[i];
 					}
-					if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
+					if(!uIsFinite(max) || (data[i] != 0 && data[i]>max))
 					{
 						max = data[i];
 					}
 				}
 			}
-			if(depthMax > 0 && depthMax > depthMin)
+			if(depthMax != 0 && depthMax > depthMin)
 			{
 				max = depthMax*1000;
 			}
-			if(depthMin>0 && (depthMin < depthMax || depthMin*1000 < max))
+			if(depthMin != 0 && (depthMin < depthMax || depthMin*1000 < max))
 			{
 				min = depthMin*1000;
 			}

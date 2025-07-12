@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /root/
 
 # issue: https://github.com/introlab/rtabmap/issues/1523
-RUN rm /etc/apt/sources.list.d/ros1-latest.list && \
+RUN rm /etc/apt/sources.list.d/ros1-latest.list || true && \
     apt-get update && apt-get install -y curl && \
     sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
     curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - && \
@@ -155,7 +155,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then git clone https://github.com/
     cd AliceVision && \
     git checkout 0f6115b6af6183c524aa7fcf26141337c1cf3872 && \
     git submodule update -i && \
-    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/b3ed4cb8f9b270833a40d57d870a259eabfa4415/alicevision_0f6115b.patch && \
+    wget https://gist.githubusercontent.com/matlabbe/1df724465106c056ca4cc195c81d8cf0/raw/5e3437cf6229c8d534bbaee475ed9bcb92eb84a1/alicevision_0f6115b.patch && \
     git apply alicevision_0f6115b.patch && \
     mkdir build && \
     cd build && \
