@@ -489,6 +489,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 	imageView_->update();
 	cloudView_->update();
+	cloudView_->refreshView();
 	QApplication::processEvents();
 	processingData_ = false;
 }

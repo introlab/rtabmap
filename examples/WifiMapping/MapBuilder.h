@@ -156,6 +156,7 @@ protected Q_SLOTS:
 			}
 		}
 		cloudViewer_->update();
+		cloudViewer_->refreshView();
 
 		lastOdometryProcessed_ = true;
 	}
@@ -245,6 +246,7 @@ protected Q_SLOTS:
 		odometryCorrection_ = stats.mapCorrection();
 
 		cloudViewer_->update();
+		cloudViewer_->refreshView();
 
 		processingStatistics_ = false;
 	}

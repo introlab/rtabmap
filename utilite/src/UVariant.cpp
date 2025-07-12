@@ -32,11 +32,11 @@ UVariant::UVariant(const bool & value) :
 {
 	data_[0] = value?1:0;
 }
-UVariant::UVariant(const char & value) :
+UVariant::UVariant(const signed char & value) :
 	type_(kChar),
-	data_(sizeof(char))
+	data_(sizeof(signed char))
 {
-	memcpy(data_.data(), &value, sizeof(char));
+	memcpy(data_.data(), &value, sizeof(signed char));
 }
 UVariant::UVariant(const unsigned char & value) :
 	type_(kUChar),
@@ -93,11 +93,11 @@ UVariant::UVariant(const std::string & value) :
 {
 	memcpy(data_.data(), value.data(), value.size()+1);
 }
-UVariant::UVariant(const std::vector<char> & value) :
+UVariant::UVariant(const std::vector<signed char> & value) :
 	type_(kCharArray),
-	data_(sizeof(char)*value.size())
+	data_(sizeof(signed char)*value.size())
 {
-	memcpy(data_.data(), value.data(), sizeof(char)*value.size());
+	memcpy(data_.data(), value.data(), sizeof(signed char)*value.size());
 }
 UVariant::UVariant(const std::vector<unsigned char> & value) :
 	type_(kUCharArray),
@@ -155,16 +155,16 @@ bool UVariant::toBool() const
 	return false;
 }
 
-char UVariant::toChar(bool * ok) const
+signed char UVariant::toChar(bool * ok) const
 {
 	if(ok)
 	{
 		*ok = false;
 	}
-	char v = 0;
+	signed char v = 0;
 	if(type_ == kChar)
 	{
-		memcpy(&v, data_.data(), sizeof(char));
+		memcpy(&v, data_.data(), sizeof(signed char));
 		if(ok)
 		{
 			*ok = true;
@@ -173,9 +173,9 @@ char UVariant::toChar(bool * ok) const
 	else if(type_ == kUChar)
 	{
 		unsigned char tmp = toUChar();
-		if(tmp <= std::numeric_limits<char>::max())
+		if(tmp <= std::numeric_limits<signed char>::max())
 		{
-			v = (char)tmp;
+			v = (signed char)tmp;
 			if(ok)
 			{
 				*ok = true;
@@ -185,9 +185,9 @@ char UVariant::toChar(bool * ok) const
 	else if(type_ == kShort)
 	{
 		short tmp = toShort();
-		if(tmp >= std::numeric_limits<char>::min() && tmp <= std::numeric_limits<char>::max())
+		if(tmp >= std::numeric_limits<signed char>::min() && tmp <= std::numeric_limits<signed char>::max())
 		{
-			v = (char)tmp;
+			v = (signed char)tmp;
 			if(ok)
 			{
 				*ok = true;
@@ -197,9 +197,9 @@ char UVariant::toChar(bool * ok) const
 	else if(type_ == kUShort)
 	{
 		unsigned short tmp = toUShort();
-		if(tmp <= std::numeric_limits<char>::max())
+		if(tmp <= std::numeric_limits<signed char>::max())
 		{
-			v = (char)tmp;
+			v = (signed char)tmp;
 			if(ok)
 			{
 				*ok = true;
@@ -209,9 +209,9 @@ char UVariant::toChar(bool * ok) const
 	else if(type_ == kInt)
 	{
 		int tmp = toInt();
-		if(tmp >= std::numeric_limits<char>::min() && tmp <= std::numeric_limits<char>::max())
+		if(tmp >= std::numeric_limits<signed char>::min() && tmp <= std::numeric_limits<signed char>::max())
 		{
-			v = (char)tmp;
+			v = (signed char)tmp;
 			if(ok)
 			{
 				*ok = true;
@@ -221,9 +221,9 @@ char UVariant::toChar(bool * ok) const
 	else if(type_ == kUInt)
 	{
 		unsigned int tmp = toUInt();
-		if(tmp <= (unsigned int)std::numeric_limits<char>::max())
+		if(tmp <= (unsigned int)std::numeric_limits<signed char>::max())
 		{
-			v = (char)tmp;
+			v = (signed char)tmp;
 			if(ok)
 			{
 				*ok = true;
@@ -395,7 +395,7 @@ unsigned short UVariant::toUShort(bool * ok) const
 	}
 	else if(type_ == kChar)
 	{
-		char tmp = toChar();
+		signed char tmp = toChar();
 		if(tmp >= 0)
 		{
 			v = (unsigned short)tmp;
@@ -529,7 +529,7 @@ unsigned int UVariant::toUInt(bool * ok) const
 	}
 	else if(type_ == kChar)
 	{
-		char tmp = toChar();
+		signed char tmp = toChar();
 		if(tmp >= 0)
 		{
 			v = (unsigned int)tmp;
@@ -690,14 +690,14 @@ std::string UVariant::toStr(bool * ok) const
 	return v;
 }
 
-std::vector<char> UVariant::toCharArray(bool * ok) const
+std::vector<signed char> UVariant::toCharArray(bool * ok) const
 {
 	if(ok)
 	{
 		*ok = false;
 	}
 
-	std::vector<char> v;
+	std::vector<signed char> v;
 	if(type_ == kCharArray)
 	{
 		if(ok)
@@ -706,7 +706,7 @@ std::vector<char> UVariant::toCharArray(bool * ok) const
 		}
 		if(data_.size())
 		{
-			v.resize(data_.size() / sizeof(char));
+			v.resize(data_.size() / sizeof(signed char));
 			memcpy(v.data(), data_.data(), data_.size());
 		}
 	}

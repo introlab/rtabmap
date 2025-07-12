@@ -333,6 +333,7 @@ private:
 	int _maxOdomCacheSize;
 	bool _localizationSmoothing;
 	double _localizationPriorInf;
+	bool _localizationSecondTryWithoutProximityLinks;
 	bool _createGlobalScanMap;
 	float _markerPriorsLinearVariance;
 	float _markerPriorsAngularVariance;

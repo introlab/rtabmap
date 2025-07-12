@@ -39,7 +39,7 @@ enum uCvQtDepthColorMap{
  * depth (float32, uint16) image and RGB/BGR 8bits images.
  * @param image the cv::Mat image (can be 1 channel [CV_8U, CV_16U or CV_32F] or 3 channels [CV_U8])
  * @param isBgr if 3 channels, it is BGR or RGB order.
- * @param colorMap gradient of color to use to visualize depth
+ * @param colorMap gradient of color to use to visualize depth or monochrome images
  * @param depthMin fixed minimum range (m) of the depth gradient (if depthMax<=depthMin, max/min are computed based on data in depth image)
  * @param depthMax fixed maximum range (m) of the depth gradient (if depthMax<=depthMin, max/min are computed based on data in depth image)
  * @return the QImage
@@ -47,7 +47,7 @@ enum uCvQtDepthColorMap{
 inline QImage uCvMat2QImage(
 		const cv::Mat & image,
 		bool isBgr = true,
-		uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack,
+		uCvQtDepthColorMap colorMap = uCvQtDepthBlackToWhite,
 		float depthMin = 0,
 		float depthMax = 0)
 {
@@ -81,9 +81,30 @@ inline QImage uCvMat2QImage(
 		{
 			// mono grayscale
 			qtemp = QImage(image.data, image.cols, image.rows, image.cols, QImage::Format_Indexed8).copy();
+
 			QVector<QRgb> my_table;
-			for(int i = 0; i < 256; i++)
-				my_table.push_back(qRgb(i,i,i));
+			my_table.reserve(256);
+			if(colorMap == uCvQtDepthRedToBlue || colorMap == uCvQtDepthBlueToRed)
+			{
+				if(colorMap == uCvQtDepthBlueToRed) {
+					for(int i = 0; i < 256; i++)
+						my_table.push_back(QColor::fromHsv(255-i, 255, 255, 255).rgb());
+				}
+				else {
+					for(int i = 0; i < 256; i++)
+						my_table.push_back(QColor::fromHsv(i, 255, 255, 255).rgb());
+				}
+			}
+			else if(colorMap == uCvQtDepthBlackToWhite)
+			{
+				for(int i = 0; i < 256; i++)
+					my_table.push_back(qRgb(i,i,i));
+			}
+			else // uCvQtDepthWhiteToBlack
+			{
+				for(int i = 0; i < 256; i++)
+					my_table.push_back(qRgb(255-i,255-i,255-i));
+			}
 			qtemp.setColorTable(my_table);
 		}
 		else
@@ -96,7 +117,7 @@ inline QImage uCvMat2QImage(
 		// Assume depth image (float in meters)
 		const float * data = (const float *)image.data;
 		float min,max;
-		if(depthMax>depthMin)
+		if(depthMin != 0 && depthMax != 0 && depthMax > depthMin)
 		{
 			min = depthMin;
 			max = depthMax;
@@ -106,23 +127,23 @@ inline QImage uCvMat2QImage(
 			min = max = data[0];
 			for(unsigned int i=1; i<image.total(); ++i)
 			{
-				if(uIsFinite(data[i]) && data[i] > 0)
+				if(uIsFinite(data[i]) && data[i] != 0)
 				{
-					if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+					if(!uIsFinite(min) || (data[i] != 0 && data[i]<min))
 					{
 						min = data[i];
 					}
-					if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
+					if(!uIsFinite(max) || (data[i] != 0 && data[i]>max))
 					{
 						max = data[i];
 					}
 				}
 			}
-			if(depthMax > 0 && depthMax > depthMin)
+			if(depthMax != 0 && depthMax > depthMin)
 			{
 				max = depthMax;
 			}
-			if(depthMin>0 && (depthMin < depthMax || depthMin < max))
+			if(depthMin != 0 && (depthMin < depthMax || depthMin < max))
 			{
 				min = depthMin;
 			}
@@ -177,7 +198,7 @@ inline QImage uCvMat2QImage(
 		// Assume depth image (unsigned short in mm)
 		const unsigned short * data = (const unsigned short *)image.data;
 		unsigned short min,max;
-		if(depthMax>depthMin)
+		if(depthMin != 0 && depthMax != 0 && depthMax > depthMin)
 		{
 			min = depthMin*1000;
 			max = depthMax*1000;
@@ -187,23 +208,23 @@ inline QImage uCvMat2QImage(
 			min = max = data[0];
 			for(unsigned int i=1; i<image.total(); ++i)
 			{
-				if(uIsFinite(data[i]) && data[i] > 0)
+				if(uIsFinite(data[i]) && data[i] != 0)
 				{
-					if(!uIsFinite(min) || (data[i] > 0 && data[i]<min))
+					if(!uIsFinite(min) || (data[i] != 0 && data[i]<min))
 					{
 						min = data[i];
 					}
-					if(!uIsFinite(max) || (data[i] > 0 && data[i]>max))
+					if(!uIsFinite(max) || (data[i] != 0 && data[i]>max))
 					{
 						max = data[i];
 					}
 				}
 			}
-			if(depthMax > 0 && depthMax > depthMin)
+			if(depthMax != 0 && depthMax > depthMin)
 			{
 				max = depthMax*1000;
 			}
-			if(depthMin>0 && (depthMin < depthMax || depthMin*1000 < max))
+			if(depthMin != 0 && (depthMin < depthMax || depthMin*1000 < max))
 			{
 				min = depthMin*1000;
 			}

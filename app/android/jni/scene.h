@@ -33,6 +33,7 @@
 #include <tango-gl/trace.h>
 #include <tango-gl/transform.h>
 #include <tango-gl/util.h>
+#include <tango-gl/circle.h>
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Link.h>
@@ -41,12 +42,16 @@
 #include "graph_drawable.h"
 #include "bounding_box_drawable.h"
 #include "background_renderer.h"
+#include "text_drawable.h"
+#include "quad_color.h"
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
 // Scene provides OpenGL drawable objects and renders them for visualization.
 class Scene {
+ public:
+    static const glm::vec3 kHeightOffset;
  public:
   // Constructor and destructor.
   Scene();
@@ -67,6 +72,10 @@ class Scene {
   void setScreenRotation(rtabmap::ScreenRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
 
   void clear(); // removed all point clouds
+  void clearLines();
+  void clearTexts();
+  void clearQuads();
+  void clearCircles();
 
   // Render loop.
   // @param: cur_pose_transformation, latest pose's transformation.
@@ -119,11 +128,50 @@ class Scene {
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		  const pcl::IndicesPtr & indices,
   		  const rtabmap::Transform & pose);
+  void removeCloudOrMesh(int id);
   void addMesh(
   		int id,
   		const rtabmap::Mesh & mesh,
   		const rtabmap::Transform & pose,
 		bool createWireframe = false);
+  void addLine(
+        int id,
+        const cv::Point3f & pt1,
+        const cv::Point3f & pt2,
+        const tango_gl::Color & color = tango_gl::Color(1.0f, 1.0f, 1.0f));
+  void removeLine(int id);
+  void addText(
+        int id,
+        const std::string & text,
+        const rtabmap::Transform & pose,
+        float size,
+        const tango_gl::Color & color);
+  void removeText(int id);
+  void addQuad(
+        int id,
+        float size,
+        const rtabmap::Transform & pose,
+        const tango_gl::Color & color,
+        float alpha = 1.0f);
+  void addQuad(
+        int id,
+        float widthLeft,
+        float widthRight,
+        float heightBottom,
+        float heightTop,
+        const rtabmap::Transform & pose,
+        const tango_gl::Color & color,
+        float alpha =1.0f);
+  void removeQuad(int id);
+  bool hasQuad(int id) const;
+  void addCircle(
+          int id,
+          float radius,
+          const rtabmap::Transform & pose,
+          const tango_gl::Color & color,
+          float alpha = 1.0f);
+  void removeCircle(int id);
+  bool hasCircle(int id) const;
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
@@ -145,6 +193,7 @@ class Scene {
   void setLighting(bool enabled) {lighting_ = enabled;}
   void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
   void setWireframe(bool enabled) {wireFrame_ = enabled;}
+  void setTextureColorSeamsHidden(bool hidden) {textureColorSeamsHidden_ = hidden;}
   void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
   void setGridColor(float r, float g, float b);
 
@@ -188,6 +237,10 @@ class Scene {
   rtabmap::ScreenRotation color_camera_to_display_rotation_;
 
   std::map<int, PointCloudDrawable*> pointClouds_;
+  std::map<int, tango_gl::Line*> lines_;
+  std::map<int, TextDrawable*> texts_;
+  std::map<int, QuadColor*> quads_;
+  std::map<int, tango_gl::Circle*> circles_;
 
   rtabmap::Transform * currentPose_;
 
@@ -203,6 +256,7 @@ class Scene {
   bool lighting_;
   bool backfaceCulling_;
   bool wireFrame_;
+  bool textureColorSeamsHidden_;
   float r_;
   float g_;
   float b_;

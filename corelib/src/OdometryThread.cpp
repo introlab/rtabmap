@@ -40,8 +40,8 @@ OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSi
 	_dataBufferMaxSize(dataBufferMaxSize),
 	_resetOdometry(false),
 	_resetPose(Transform::getIdentity()),
-	_lastImuStamp(0.0),
-	_imuEstimatedDelay(0.0)
+	_oldestAsyncImuStamp(0.0),
+	_newestAsyncImuStamp(0.0)
 {
 	UASSERT(_odometry != 0);
 }
@@ -110,7 +110,8 @@ void OdometryThread::mainLoop()
 		UScopeMutex lock(_dataMutex);
 		_dataBuffer.clear();
 		_imuBuffer.clear();
-		_lastImuStamp = 0.0f;
+		_oldestAsyncImuStamp = 0.0;
+		_newestAsyncImuStamp = 0.0;
 	}
 
 	SensorData data;
@@ -155,24 +156,45 @@ void OdometryThread::addData(const SensorData & data)
 	bool notify = true;
 	_dataMutex.lock();
 	{
-		if(!data.imageRaw().empty() || !data.laserScanRaw().isEmpty() || data.imu().empty())
+		if( !data.imageRaw().empty() ||
+			!data.imageCompressed().empty() ||
+			!data.laserScanRaw().isEmpty() ||
+			!data.laserScanCompressed().empty() || 
+			data.imu().empty())
 		{
-			_dataBuffer.push_back(data);
-			while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
-			{
-				UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
-				_dataBuffer.erase(_dataBuffer.begin());
+			if(_oldestAsyncImuStamp > 0.0 && data.stamp() < _oldestAsyncImuStamp) {
+				UWARN("Received image/lidar with stamp (%f) older than oldest received imu "
+					"(%f), skipping that frame (imu buffer size=%ld). "
+					"When using async IMU, make sure IMU is published faster "
+					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar).",
+					data.stamp(), _oldestAsyncImuStamp, _imuBuffer.size());
 				notify = false;
+			}
+			else if(_newestAsyncImuStamp > 0.0 && data.stamp()>=_newestAsyncImuStamp) {
+				UWARN("Received image/lidar with stamp (%f) newer than latest received imu "
+					"(%f), skipping that frame (imu buffer size=%ld). "
+					"When using async IMU, make sure IMU is published faster "
+					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar).",
+					data.stamp(), _newestAsyncImuStamp, _imuBuffer.size());
+				notify = false;
+			}
+			else {
+				_dataBuffer.push_back(data);
+				while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
+				{
+					UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
+					_dataBuffer.erase(_dataBuffer.begin());
+					notify = false;
+				}
 			}
 		}
 		else
 		{
 			_imuBuffer.push_back(data);
-			if(_lastImuStamp != 0.0 && data.stamp() > _lastImuStamp)
-			{
-				_imuEstimatedDelay = data.stamp() - _lastImuStamp;
+			if(_oldestAsyncImuStamp == 0) {
+				_oldestAsyncImuStamp = data.stamp();
 			}
-			_lastImuStamp = data.stamp();
+			_newestAsyncImuStamp = data.stamp();
 		}
 	}
 	_dataMutex.unlock();
@@ -191,18 +213,14 @@ bool OdometryThread::getData(SensorData & data)
 	{
 		if(!_dataBuffer.empty())
 		{
-			if(!_imuBuffer.empty())
+			// Send IMU up to stamp greater than image (OpenVINS needs this).
+			while(!_imuBuffer.empty())
 			{
-				// Send IMU up to stamp greater than image (OpenVINS needs this).
-				while(!_imuBuffer.empty())
-				{
-					_odometry->process(_imuBuffer.front());
-					double stamp = _imuBuffer.front().stamp();
-					_imuBuffer.pop_front();
-					if(stamp > _dataBuffer.front().stamp())
-					{
-						break;
-					}
+				_odometry->process(_imuBuffer.front());
+				double stamp =_imuBuffer.front().stamp();
+				_imuBuffer.pop_front();
+				if(stamp > _dataBuffer.front().stamp()) {
+					break;
 				}
 			}
 

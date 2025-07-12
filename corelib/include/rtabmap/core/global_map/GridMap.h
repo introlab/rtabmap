@@ -35,7 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/PolygonMesh.h>
 
-#include <grid_map_core/GridMap.hpp>
+namespace grid_map {
+	class GridMap;
+}
 
 namespace rtabmap {
 
@@ -44,9 +46,10 @@ class RTABMAP_CORE_EXPORT GridMap : public GlobalMap
 public:
 	GridMap(const LocalGridCache * cache, const ParametersMap & parameters = ParametersMap());
 
+	virtual ~GridMap();
 	virtual void clear();
 
-	const grid_map::GridMap & gridMap() const {return gridMap_;}
+	const grid_map::GridMap * gridMap() const {return gridMap_;}
 
 	cv::Mat createHeightMap(float & xMin, float & yMin, float & cellSize) const;
 	cv::Mat createColorMap(float & xMin, float & yMin, float & cellSize) const;
@@ -60,7 +63,7 @@ private:
 	cv::Mat toImage(const std::string & layer, float & xMin, float & yMin, float & cellSize) const;
 
 private:
-	grid_map::GridMap gridMap_;
+	grid_map::GridMap * gridMap_;
 	float minMapSize_;
 };
 

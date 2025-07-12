@@ -6,7 +6,7 @@
 	<array>
 		<dict>
 			<key>FooterText</key>
-			<string>Decrease density to reduce rendering time and memory. Tip: To apply a different density to current map: save the map, change density and re-open the same map to regenerate the point clouds at this density. Points over the maximum depth, under minimum depth or under the depth confidence are not rendered.</string>
+			<string>Decrease density to reduce rendering time and memory. Points over the maximum depth or under minimum depth are not rendered. In all cases, the raw data is still saved in the db file, meaning that the the point cloud can be regenerated differently by changing these settings and by re-opening the scan in the Library.</string>
 			<key>Title</key>
 			<string>Rendering</string>
 			<key>Type</key>
@@ -104,28 +104,6 @@
 				<real>2</real>
 				<real>2.5</real>
 				<real>3</real>
-			</array>
-		</dict>
-		<dict>
-			<key>DefaultValue</key>
-			<integer>2</integer>
-			<key>Key</key>
-			<string>DepthConfidence</string>
-			<key>Title</key>
-			<string>Depth Confidence</string>
-			<key>Titles</key>
-			<array>
-				<string>High</string>
-				<string>Medium</string>
-				<string>Low</string>
-			</array>
-			<key>Type</key>
-			<string>PSMultiValueSpecifier</string>
-			<key>Values</key>
-			<array>
-				<integer>2</integer>
-				<integer>1</integer>
-				<integer>0</integer>
 			</array>
 		</dict>
 		<dict>
@@ -453,8 +431,62 @@
 			</array>
 		</dict>
 		<dict>
+			<key>Title</key>
+			<string>Measuring</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>0</integer>
+			<key>Key</key>
+			<string>MeasuringUnits</string>
+			<key>Title</key>
+			<string>System of Units</string>
+			<key>Titles</key>
+			<array>
+				<string>Metric</string>
+				<string>Imperial</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>0</integer>
+				<integer>1</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<real>0.050000000000000003</real>
+			<key>Key</key>
+			<string>MeasuringTextSize</string>
+			<key>Title</key>
+			<string>Text Size</string>
+			<key>Titles</key>
+			<array>
+				<string>30 cm</string>
+				<string>25 cm</string>
+				<string>20 cm</string>
+				<string>15 cm</string>
+				<string>10 cm</string>
+				<string>5 cm</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<real>0.29999999999999999</real>
+				<real>0.25</real>
+				<real>0.20000000000000001</real>
+				<real>0.14999999999999999</real>
+				<real>0.10000000000000001</real>
+				<real>0.050000000000000003</real>
+			</array>
+		</dict>
+		<dict>
 			<key>FooterText</key>
-			<string>Copyright (c) 2010-2023, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
+			<string>Copyright (c) 2010-2024, Mathieu Labbe - IntRoLab - Université de Sherbrooke. All rights reserved.</string>
 			<key>Title</key>
 			<string>About</string>
 			<key>Type</key>
@@ -462,7 +494,7 @@
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
-			<string>0.21.0</string>
+			<string>0.22.0</string>
 			<key>Key</key>
 			<string>Version</string>
 			<key>Title</key>

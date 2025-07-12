@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_base.h>
 #include <pcl/TextureMesh.h>
 
+#include "Measure.h"
 
 // RTABMapApp handles the application lifecycle and resources.
 class RTABMapApp : public UEventsHandler {
@@ -70,7 +71,8 @@ class RTABMapApp : public UEventsHandler {
                                                     int,
                                                     float, float, float, float,
                                                     int, int,
-                                                    float, float, float, float, float, float));
+                                                    float, float, float, float, float, float),
+                           void(*cameraInfoCallback)(void *, int, const char*, const char*));
     
 #endif
   ~RTABMapApp();
@@ -83,7 +85,7 @@ class RTABMapApp : public UEventsHandler {
 #ifdef __ANDROID__
   bool startCamera(JNIEnv* env, jobject iBinder, jobject context, jobject activity, int driver);
 #else // __APPLE__
-    bool startCamera();
+  bool startCamera();
 #endif
   // Allocate OpenGL resources for rendering, mainly for initializing the Scene.
   void InitializeGLContent();
@@ -126,6 +128,7 @@ class RTABMapApp : public UEventsHandler {
   void setLighting(bool enabled);
   void setBackfaceCulling(bool enabled);
   void setWireframe(bool enabled);
+  void setTextureColorSeamsHidden(bool hidden);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
@@ -136,8 +139,10 @@ class RTABMapApp : public UEventsHandler {
   void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
   void setSmoothing(bool enabled);
+  void setDepthBleedingError(float value);
   void setDepthFromMotion(bool enabled);
   void setAppendMode(bool enabled);
+  void setUpstreamRelocalizationAccThr(float value);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
   void setMinCloudDepth(float value);
@@ -150,6 +155,7 @@ class RTABMapApp : public UEventsHandler {
   void setRenderingTextureDecimation(int value);
   void setBackgroundColor(float gray);
   void setDepthConfidence(int value);
+  void setExportPointCloudFormat(const std::string & format);
   int setMappingParameter(const std::string & key, const std::string & value);
   void setGPS(const rtabmap::GPS & gps);
   void addEnvSensor(int type, float value);
@@ -173,13 +179,19 @@ class RTABMapApp : public UEventsHandler {
 		  int optimizedMinClusterSize,
 		  float optimizedMaxTextureDistance,
 		  int optimizedMinTextureClusterSize,
+      int textureVertexColorPolicy,
 		  bool blockRendering);
   bool postExportation(bool visualize);
   bool writeExportedMesh(const std::string & directory, const std::string & name);
   int postProcessing(int approach);
-
-  void postCameraPoseEvent(
-  		float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
+  void clearMeasures();
+  void showMeasures(bool x, bool y, bool z, bool custom);
+  void setMeasuringMode(int mode);
+  void addMeasureButtonClicked();
+  void teleportButtonClicked();
+  void removeMeasure();
+  void setMetricSystem(bool enabled);
+  void setMeasuringTextSize(float size);
 
   void postOdometryEvent(
 		rtabmap::Transform pose,
@@ -193,7 +205,7 @@ class RTABMapApp : public UEventsHandler {
         const void * depth, int depthLen, int depthWidth, int depthHeight, int depthFormat,
         const void * conf, int confLen, int confWidth, int confHeight, int confFormat,
         const float * points, int pointsLen, int pointsChannels,
-		const rtabmap::Transform & viewMatrix, //view matrix
+		rtabmap::Transform viewMatrix, //view matrix
         float p00, float p11, float p02, float p12, float p22, float p32, float p23, // projection matrix
         float t0, float t1, float t2, float t3, float t4, float t5, float t6, float t7); // tex coord
 
@@ -203,6 +215,7 @@ class RTABMapApp : public UEventsHandler {
  private:
   int updateMeshDecimation(int width, int height);
   rtabmap::ParametersMap getRtabmapParameters();
+  void updateMeasuringState();
   bool smoothMesh(int id, rtabmap::Mesh & mesh);
   void gainCompensation(bool full = false);
   std::vector<pcl::Vertices> filterOrganizedPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
@@ -223,6 +236,7 @@ class RTABMapApp : public UEventsHandler {
   bool trajectoryMode_;
   bool rawScanSaved_;
   bool smoothing_;
+  float depthBleedingError_;
   bool depthFromMotion_;
   bool cameraColor_;
   bool fullResolution_;
@@ -238,7 +252,9 @@ class RTABMapApp : public UEventsHandler {
   float maxGainRadius_;
   int renderingTextureDecimation_;
   float backgroundColor_;
-  int depthConfidence_;
+  unsigned char depthConfidence_;
+  float upstreamRelocalizationMaxAcc_;
+  std::string exportPointCloudFormat_;
 
   rtabmap::ParametersMap mappingParameters_;
 
@@ -262,11 +278,26 @@ class RTABMapApp : public UEventsHandler {
 
   bool visualizingMesh_;
   bool exportedMeshUpdated_;
-  pcl::TextureMesh::Ptr optMesh_;
+  pcl::TextureMesh::Ptr optTextureMesh_;
   cv::Mat optTexture_;
+  rtabmap::Mesh optMesh_;
   int optRefId_;
   rtabmap::Transform * optRefPose_; // App crashes when loading native library if not dynamic
-
+  std::list<Measure> measures_; // In opengl frame
+  bool measuresUpdated_;
+  bool metricSystem_;
+  float measuringTextSize_;
+  float snapAxisThr_;
+  std::vector<cv::Vec3f> snapAxes_;
+  int measuringMode_;
+  bool addMeasureClicked_;
+  bool teleportClicked_;
+  bool removeMeasureClicked_;
+  std::vector<cv::Point3f> measuringTmpPts_; // In opengl frame
+  std::vector<cv::Point3f> measuringTmpNormals_; // In opengl frame
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr targetPoint_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr quadSample_;
+  std::vector<pcl::Vertices> quadSamplePolygons_;
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.
   Scene main_scene_;
@@ -309,6 +340,7 @@ class RTABMapApp : public UEventsHandler {
                              float, float, float, float,
                              int, int,
                              float, float, float, float, float, float);
+    void(*swiftCameraInfoEventCallback)(void *, int, const char *, const char *);
     
 #endif
 };

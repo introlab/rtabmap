@@ -289,6 +289,62 @@ Transform estimateMotion3DTo2D(
 }
 
 Transform estimateMotion3DTo2D(
+	const std::map<int, cv::Point3f> & words3A,
+	const std::map<int, cv::KeyPoint> & words2B,
+	const std::vector<CameraModel> & cameraModels,
+	unsigned int samplingPolicy,
+	int minInliers,
+	int iterations,
+	double reprojError,
+	int flagsPnP,
+	int refineIterations,
+	int varianceMedianRatio,
+	float maxVariance,
+	const Transform & guess,
+	const std::map<int, cv::Point3f> & words3B,
+	cv::Mat * covariance,
+	std::vector<int> * matchesOut,
+	std::vector<int> * inliersOut,
+	bool splitLinearCovarianceComponents)
+{
+	std::vector<std::vector<int> > matchesPerCamera;
+	std::vector<std::vector<int> > inliersPerCamera;
+	Transform t = estimateMotion3DTo2D(
+		words3A,
+		words2B,
+		cameraModels,
+		samplingPolicy,
+		minInliers,
+		iterations,
+		reprojError,
+		flagsPnP,
+		refineIterations,
+		varianceMedianRatio,
+		maxVariance,
+		guess,
+		words3B,
+		covariance,
+		matchesOut?&matchesPerCamera:0,
+		inliersOut?&inliersPerCamera:0,
+		splitLinearCovarianceComponents);
+	if(matchesOut)
+	{
+		for(size_t i=0; i<matchesPerCamera.size(); ++i)
+		{
+			matchesOut->insert(matchesOut->end(), matchesPerCamera[i].begin(), matchesPerCamera[i].end());
+		}
+	}
+	if(inliersOut)
+	{
+		for(size_t i=0; i<inliersPerCamera.size(); ++i)
+		{
+			inliersOut->insert(inliersOut->end(), inliersPerCamera[i].begin(), inliersPerCamera[i].end());
+		}
+	}
+	return t;
+}
+
+Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const std::vector<CameraModel> & cameraModels,
@@ -303,8 +359,8 @@ Transform estimateMotion3DTo2D(
 			const Transform & guess,
 			const std::map<int, cv::Point3f> & words3B,
 			cv::Mat * covariance,
-			std::vector<int> * matchesOut,
-			std::vector<int> * inliersOut,
+			std::vector<std::vector<int> > * matchesOut,
+			std::vector<std::vector<int> > * inliersOut,
 			bool splitLinearCovarianceComponents)
 {
 	Transform transform;
@@ -649,14 +705,22 @@ Transform estimateMotion3DTo2D(
 
 	if(matchesOut)
 	{
-		*matchesOut = matches;
+		matchesOut->resize(cameraModels.size());
+		UASSERT(matches.size() == cameraIndexes.size());
+		for(size_t i=0; i<matches.size(); ++i)
+		{
+			UASSERT(cameraIndexes[i]>=0 && cameraIndexes[i] < (int)cameraModels.size());
+			matchesOut->at(cameraIndexes[i]).push_back(matches[i]);
+		}
 	}
 	if(inliersOut)
 	{
-		inliersOut->resize(inliers.size());
+		inliersOut->resize(cameraModels.size());
 		for(unsigned int i=0; i<inliers.size(); ++i)
 		{
-			inliersOut->at(i) = matches[inliers[i]];
+			UASSERT(inliers[i]>=0 && inliers[i] < (int)cameraIndexes.size());
+			UASSERT(cameraIndexes[inliers[i]]>=0 && cameraIndexes[inliers[i]] < (int)cameraModels.size());
+			inliersOut->at(cameraIndexes[inliers[i]]).push_back(matches[inliers[i]]);
 		}
 	}
 #endif

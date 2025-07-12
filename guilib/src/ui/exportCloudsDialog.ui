@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>919</width>
+    <width>895</width>
     <height>869</height>
    </rect>
   </property>
@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1328</y>
-        <width>885</width>
-        <height>6169</height>
+        <y>-654</y>
+        <width>861</width>
+        <height>6498</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -710,6 +710,26 @@
          <layout class="QVBoxLayout" name="verticalLayout_14">
           <item>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,1">
+            <item row="3" column="1">
+             <widget class="QLineEdit" name="lineEdit_roiRatios"/>
+            </item>
+            <item row="2" column="2">
+             <widget class="QLabel" name="label_133">
+              <property name="text">
+               <string>3D cloud minimum depth.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QSpinBox" name="spinBox_fillDepthHolesError">
+              <property name="suffix">
+               <string> %</string>
+              </property>
+             </widget>
+            </item>
             <item row="6" column="2">
              <widget class="QLabel" name="label_134">
               <property name="text">
@@ -720,13 +740,10 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="2">
-             <widget class="QLabel" name="label_135">
-              <property name="text">
-               <string>ROI ratios [left, right, top, bottom] between 0 and 1. Only generate 3D points for pixels inside the region of interest (RGB image).</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="spinBox_fillDepthHoles">
+              <property name="suffix">
+               <string> pixels</string>
               </property>
              </widget>
             </item>
@@ -749,21 +766,18 @@
               </property>
              </widget>
             </item>
-            <item row="5" column="2">
-             <widget class="QLabel" name="label_198">
+            <item row="3" column="2">
+             <widget class="QLabel" name="label_135">
               <property name="text">
-               <string>Fill depth hole error.</string>
+               <string>ROI ratios [left, right, top, bottom] between 0 and 1. Only generate 3D points for pixels inside the region of interest (RGB image).</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
               </property>
-              <property name="textInteractionFlags">
-               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-              </property>
              </widget>
             </item>
-            <item row="3" column="1">
-             <widget class="QLineEdit" name="lineEdit_roiRatios"/>
+            <item row="6" column="1">
+             <widget class="QLineEdit" name="lineEdit_distortionModel"/>
             </item>
             <item row="2" column="1">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth">
@@ -794,39 +808,6 @@
               </property>
              </widget>
             </item>
-            <item row="8" column="1">
-             <widget class="QCheckBox" name="checkBox_subtraction">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QLineEdit" name="lineEdit_distortionModel"/>
-            </item>
-            <item row="8" column="2">
-             <widget class="QLabel" name="label_137">
-              <property name="text">
-               <string>Cloud subtraction. Superposed points from different nodes are filtered.</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="2">
-             <widget class="QLabel" name="label_197">
-              <property name="text">
-               <string>Fill depth hole size (0 means no fill).</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-              <property name="textInteractionFlags">
-               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="2">
              <widget class="QLabel" name="label_132">
               <property name="text">
@@ -850,13 +831,6 @@
               </property>
              </widget>
             </item>
-            <item row="5" column="1">
-             <widget class="QSpinBox" name="spinBox_fillDepthHolesError">
-              <property name="suffix">
-               <string> %</string>
-              </property>
-             </widget>
-            </item>
             <item row="6" column="0">
              <widget class="QToolButton" name="toolButton_distortionModel">
               <property name="text">
@@ -864,24 +838,57 @@
               </property>
              </widget>
             </item>
-            <item row="7" column="1">
-             <widget class="QCheckBox" name="checkBox_bilateral">
+            <item row="10" column="2">
+             <widget class="QLabel" name="label_137">
               <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="2">
-             <widget class="QLabel" name="label_133">
-              <property name="text">
-               <string>3D cloud minimum depth.</string>
+               <string>Cloud subtraction. Superposed points from different nodes are filtered.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
               </property>
              </widget>
             </item>
-            <item row="7" column="2">
+            <item row="5" column="2">
+             <widget class="QLabel" name="label_198">
+              <property name="text">
+               <string>Fill depth hole error.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+            <item row="10" column="1">
+             <widget class="QCheckBox" name="checkBox_subtraction">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="1">
+             <widget class="QCheckBox" name="checkBox_bilateral">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QLabel" name="label_197">
+              <property name="text">
+               <string>Fill depth hole size (0 means no fill).</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="2">
              <widget class="QLabel" name="label_136">
               <property name="text">
                <string>Bilateral filtering of the depth image. Reduce noise in depth images.</string>
@@ -891,10 +898,52 @@
               </property>
              </widget>
             </item>
-            <item row="4" column="1">
-             <widget class="QSpinBox" name="spinBox_fillDepthHoles">
+            <item row="7" column="2">
+             <widget class="QLabel" name="label_147">
+              <property name="text">
+               <string>Depth's edge bleeding filter error (0 means disabled). Reduce depth noise around edges.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_depthEdgeFiltering">
               <property name="suffix">
-               <string> pixels</string>
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>4.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="2">
+             <widget class="QLabel" name="label_149">
+              <property name="text">
+               <string>Minimum depth confidence: 0% is low confidence, 100% is high confidence. Ignored if no depth confidence images were recorded or if set to 0%.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="1">
+             <widget class="QSpinBox" name="spinBox_depthConfidence">
+              <property name="suffix">
+               <string> %</string>
+              </property>
+              <property name="maximum">
+               <number>100</number>
               </property>
              </widget>
             </item>
@@ -2012,100 +2061,30 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_20" columnstretch="0,0,0,1">
+          <item row="7" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_14">
+            <property name="text">
+             <string>Distance to camera policy. The closest camera from a point is used to colorize the point. If disabled, the camera for which the point projection is the closest of the image center is used to colorize the point.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="2">
+           <widget class="QLabel" name="label_meshingTextureSize_18">
+            <property name="text">
+             <string>Recolor points from camera projection. This would be used to color laser scans with the cameras.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
           <item row="6" column="1">
-           <widget class="QCheckBox" name="checkBox_camProjDistanceToCamPolicy">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_16">
-            <property name="text">
-             <string>Decimation of camera resolution before projection. This can help to correctly estimate points hidden by other points, in case the point cloud is sparse.</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="2" colspan="2">
-           <widget class="QLabel" name="label_camProjExportCamera">
-            <property name="text">
-             <string>ID format of the camera selected for each point.</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_13">
-            <property name="text">
-             <string>Maximum distance from the camera for points to be colorized by this camera (0 means infinite).</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QSpinBox" name="spinBox_camProjDecimation">
-            <property name="suffix">
-             <string/>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>9999</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>1</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_17">
-            <property name="text">
-             <string>ROI ratios [left right top bottom] between 0 and 1. This can be used to ignore black borders of RGB images caused by calibration. </string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_12">
-            <property name="text">
-             <string>Maximum angle between camera and point's normal to apply color (0 means disabled).</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="1">
-           <widget class="QCheckBox" name="checkBox_camProjRecolorPoints">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="1">
            <widget class="QLineEdit" name="lineEdit_camProjMaskFilePath"/>
           </item>
-          <item row="7" column="1">
-           <widget class="QCheckBox" name="checkBox_camProjKeepPointsNotSeenByCameras">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="1">
+          <item row="10" column="1">
            <widget class="QComboBox" name="comboBox_camProjExportCamera">
             <property name="toolTip">
              <string>By Node ID: cameras of same node have same ID
@@ -2134,18 +2113,56 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </item>
            </widget>
           </item>
-          <item row="6" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_14">
+          <item row="9" column="1">
+           <widget class="QCheckBox" name="checkBox_camProjRecolorPoints">
             <property name="text">
-             <string>Distance to camera policy. The closest camera from a point is used to colorize the point. If disabled, the camera for which the point projection is the closest of the image center is used to colorize the point.</string>
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_13">
+            <property name="text">
+             <string>Maximum distance from the camera for points to be colorized by this camera (0 means infinite).</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
             </property>
            </widget>
           </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_camProjRoiRatios"/>
+          <item row="8" column="1">
+           <widget class="QCheckBox" name="checkBox_camProjKeepPointsNotSeenByCameras">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_17">
+            <property name="text">
+             <string>ROI ratios [left right top bottom] between 0 and 1. This can be used to ignore black borders of RGB images caused by calibration. </string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QToolButton" name="toolButton_camProjMaskFilePath">
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_16">
+            <property name="text">
+             <string>Decimation of camera resolution before projection. This can help to correctly estimate points hidden by other points, in case the point cloud is sparse.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item row="3" column="1">
            <widget class="QDoubleSpinBox" name="doubleSpinBox_camProjMaxAngle">
@@ -2166,6 +2183,65 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </property>
             <property name="value">
              <double>0.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="lineEdit_camProjRoiRatios"/>
+          </item>
+          <item row="5" column="1">
+           <widget class="QSpinBox" name="spinBox_camProjDecimation">
+            <property name="suffix">
+             <string/>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>9999</number>
+            </property>
+            <property name="singleStep">
+             <number>1</number>
+            </property>
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QCheckBox" name="checkBox_camProjDistanceToCamPolicy">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_19">
+            <property name="text">
+             <string>File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_12">
+            <property name="text">
+             <string>Maximum angle between camera and point's normal to apply color (0 means disabled).</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="2" colspan="2">
+           <widget class="QLabel" name="label_camProjExportCamera">
+            <property name="text">
+             <string>ID format of the camera selected for each point.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -2191,7 +2267,7 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </property>
            </widget>
           </item>
-          <item row="7" column="2" colspan="2">
+          <item row="8" column="2" colspan="2">
            <widget class="QLabel" name="label_meshingTextureSize_15">
             <property name="text">
              <string>Keep points not seen by the cameras. These points will be set with a pure red color (255,0,0) if the cloud was created from laser scans.</string>
@@ -2201,30 +2277,35 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             </property>
            </widget>
           </item>
-          <item row="8" column="2">
-           <widget class="QLabel" name="label_meshingTextureSize_18">
-            <property name="text">
-             <string>Recolor points from camera projection. This would be used to color laser scans with the cameras.</string>
+          <item row="4" column="1">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_camProjMaxDepthError">
+            <property name="suffix">
+             <string> m</string>
             </property>
-            <property name="wordWrap">
-             <bool>true</bool>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>9.990000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.050000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.000000000000000</double>
             </property>
            </widget>
           </item>
-          <item row="5" column="2" colspan="2">
-           <widget class="QLabel" name="label_meshingTextureSize_19">
+          <item row="4" column="2" colspan="2">
+           <widget class="QLabel" name="label_meshingTextureSize_20">
             <property name="text">
-             <string>File path for a mask. Format should be 8-bits grayscale. The mask should cover all cameras in case multi-camera is used and have the same resolution.</string>
+             <string>For all points registered to same pixel, only those close enough to the closest point will be colored with same color (0 means only the closest point of all points registered in same pixel is colored).</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QToolButton" name="toolButton_camProjMaskFilePath">
-            <property name="text">
-             <string>...</string>
             </property>
            </widget>
           </item>
@@ -2353,7 +2434,7 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                <string> m</string>
               </property>
               <property name="decimals">
-               <number>2</number>
+               <number>3</number>
               </property>
               <property name="minimum">
                <double>-1.000000000000000</double>
@@ -2438,20 +2519,106 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
             <layout class="QVBoxLayout" name="verticalLayout_16">
              <item>
               <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
-               <item row="13" column="0">
-                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
+               <item row="11" column="0">
+                <widget class="QCheckBox" name="checkBox_blending">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_3">
+                 <property name="text">
+                  <string>Camera filtering. Some criteria to select which cameras are used for texturing.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDistance">
                  <property name="suffix">
-                  <string> %</string>
+                  <string> m</string>
+                 </property>
+                 <property name="decimals">
+                  <number>1</number>
                  </property>
                  <property name="minimum">
-                  <number>0</number>
+                  <double>0.000000000000000</double>
                  </property>
                  <property name="maximum">
-                  <number>49</number>
+                  <double>99.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>3.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLabel" name="label_meshingTextureFormat">
+                 <property name="text">
+                  <string>Texture format.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_10">
+                 <property name="text">
+                  <string>Maximum angle between camera and face to apply texture (0 means disabled).</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="16" column="1">
+                <widget class="QLabel" name="label_exposureFusion">
+                 <property name="text">
+                  <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
                <item row="13" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_5">
+                 <property name="text">
+                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_2">
+                 <property name="text">
+                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_11">
+                 <property name="text">
+                  <string>Distance to camera policy. The closest camera from a polygon is used to texture the polygon. If disabled, the camera for which the polygon projection is the closest of the image center is used to texture the polygon.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="14" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_6">
                  <property name="text">
                   <string>Brightness and contrast balance high ratio. Only used when textures are merged.</string>
@@ -2461,7 +2628,17 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </property>
                 </widget>
                </item>
-               <item row="11" column="0">
+               <item row="2" column="0">
+                <widget class="QSpinBox" name="spinBox_mesh_maxTextures">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>20</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="12" column="0">
                 <widget class="QComboBox" name="comboBox_blendingDecimation">
                  <item>
                   <property name="text">
@@ -2505,20 +2682,90 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </item>
                 </widget>
                </item>
-               <item row="10" column="0">
-                <widget class="QCheckBox" name="checkBox_blending">
+               <item row="7" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_4">
                  <property name="text">
-                  <string/>
+                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="14" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
+                 <property name="suffix">
+                  <string> %</string>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>49</number>
                  </property>
                 </widget>
                </item>
                <item row="11" column="1">
-                <widget class="QLabel" name="label_exposureFusion_3">
+                <widget class="QLabel" name="label_exposureFusion_2">
                  <property name="text">
-                  <string>Blending decimation. </string>
+                  <string>Blending. Only used with dense reconstruction flavor and if clouds are assembled.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="17" column="1">
+                <widget class="QLabel" name="label_multiband">
+                 <property name="text">
+                  <string>MultiBand texturing. Only available on export and RTAB-Map should be built with AliceVision support.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxAngle">
+                 <property name="suffix">
+                  <string> deg</string>
+                 </property>
+                 <property name="decimals">
+                  <number>0</number>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>180.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>0.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDepthError">
+                 <property name="suffix">
+                  <string> m</string>
+                 </property>
+                 <property name="decimals">
+                  <number>2</number>
+                 </property>
+                 <property name="minimum">
+                  <double>-1.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>99.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>0.050000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>0.000000000000000</double>
                  </property>
                 </widget>
                </item>
@@ -2532,72 +2779,24 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_8">
+               <item row="17" column="0">
+                <widget class="QCheckBox" name="checkBox_multiband">
                  <property name="text">
-                  <string>Maximum output textures.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
+                  <string/>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="1">
-                <widget class="QLabel" name="label_exposureFusion_2">
+               <item row="16" column="0">
+                <widget class="QCheckBox" name="checkBox_exposureFusion">
                  <property name="text">
-                  <string>Blending. Only used with dense reconstruction flavor and if clouds are assembled.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
+                  <string/>
                  </property>
                 </widget>
                </item>
-               <item row="4" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_2">
+               <item row="1" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize">
                  <property name="text">
-                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDistance">
-                 <property name="suffix">
-                  <string> m</string>
-                 </property>
-                 <property name="decimals">
-                  <number>1</number>
-                 </property>
-                 <property name="minimum">
-                  <double>0.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>1.000000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>3.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_5">
-                 <property name="text">
-                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QLabel" name="label_meshingTextureFormat">
-                 <property name="text">
-                  <string>Texture format.</string>
+                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -2616,6 +2815,16 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                    <string>.png</string>
                   </property>
                  </item>
+                </widget>
+               </item>
+               <item row="7" column="0">
+                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>99999</number>
+                 </property>
                 </widget>
                </item>
                <item row="1" column="0">
@@ -2667,17 +2876,17 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </item>
                 </widget>
                </item>
-               <item row="15" column="0">
-                <widget class="QCheckBox" name="checkBox_exposureFusion">
+               <item row="8" column="0">
+                <widget class="QCheckBox" name="checkBox_distanceToCamPolicy">
                  <property name="text">
                   <string/>
                  </property>
                 </widget>
                </item>
-               <item row="7" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_4">
+               <item row="2" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_8">
                  <property name="text">
-                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
+                  <string>Maximum output textures.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -2687,73 +2896,13 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                <item row="3" column="0">
                 <widget class="QLineEdit" name="lineEdit_meshingTextureRoiRatios"/>
                </item>
-               <item row="1" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize">
+               <item row="12" column="1">
+                <widget class="QLabel" name="label_exposureFusion_3">
                  <property name="text">
-                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                  <string>Blending decimation. </string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="9" column="0">
-                <widget class="QCheckBox" name="checkBox_cameraFilter">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="0">
-                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
-                 <property name="suffix">
-                  <string> %</string>
-                 </property>
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>49</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="0">
-                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>99999</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="9" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_3">
-                 <property name="text">
-                  <string>Camera filtering. Some criteria to select which cameras are used for texturing.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="15" column="1">
-                <widget class="QLabel" name="label_exposureFusion">
-                 <property name="text">
-                  <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QSpinBox" name="spinBox_mesh_maxTextures">
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>20</number>
                  </property>
                 </widget>
                </item>
@@ -2767,92 +2916,53 @@ By Node ID and Camera Index: NodeID*10+CameraIndex</string>
                  </property>
                 </widget>
                </item>
-               <item row="5" column="0">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDepthError">
+               <item row="13" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
                  <property name="suffix">
-                  <string> m</string>
-                 </property>
-                 <property name="decimals">
-                  <number>2</number>
+                  <string> %</string>
                  </property>
                  <property name="minimum">
-                  <double>-1.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>99.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.050000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>0.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_10">
-                 <property name="text">
-                  <string>Maximum angle between camera and face to apply texture (0 means disabled).</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="0">
-                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxAngle">
-                 <property name="suffix">
-                  <string> deg</string>
-                 </property>
-                 <property name="decimals">
                   <number>0</number>
                  </property>
-                 <property name="minimum">
-                  <double>0.000000000000000</double>
-                 </property>
                  <property name="maximum">
-                  <double>180.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>1.000000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>0.000000000000000</double>
+                  <number>49</number>
                  </property>
                 </widget>
                </item>
-               <item row="16" column="1">
-                <widget class="QLabel" name="label_multiband">
+               <item row="10" column="0">
+                <widget class="QCheckBox" name="checkBox_cameraFilter">
                  <property name="text">
-                  <string>MultiBand texturing. Only available on export and RTAB-Map should be built with AliceVision support.</string>
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="1">
+                <widget class="QLabel" name="label_texturingVertexColorPolicy">
+                 <property name="text">
+                  <string>Output vertex color policy.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
                  </property>
                 </widget>
                </item>
-               <item row="16" column="0">
-                <widget class="QCheckBox" name="checkBox_multiband">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_11">
-                 <property name="text">
-                  <string>Distance to camera policy. The closest camera from a polygon is used to texture the polygon. If disabled, the camera for which the polygon projection is the closest of the image center is used to texture the polygon.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="0">
-                <widget class="QCheckBox" name="checkBox_distanceToCamPolicy">
-                 <property name="text">
-                  <string/>
-                 </property>
+               <item row="9" column="0">
+                <widget class="QComboBox" name="comboBox_texturingColorPolicy">
+                 <item>
+                  <property name="text">
+                   <string>Colorless (standard OBJ)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Keep color on textureless polygons only</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Keep all color</string>
+                  </property>
+                 </item>
                 </widget>
                </item>
               </layout>

@@ -58,7 +58,35 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>Smooth the point clouds.</string>
+			<string>Choosing between high and low depth confidence depends on the application. If precise geometry is critical, prioritize high depth confidence even if it means fewer points. If you need a dense point cloud for analysis, even in areas with weak LiDAR signal, a lower depth confidence might be suitable at the cost of highly interpolated points (that could give a wavy look of some surfaces). Note: it is possible to change confidence level in post-processing.</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<integer>2</integer>
+			<key>Key</key>
+			<string>DepthConfidence</string>
+			<key>Title</key>
+			<string>Depth Confidence</string>
+			<key>Titles</key>
+			<array>
+				<string>High</string>
+				<string>Medium</string>
+				<string>Low</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<integer>2</integer>
+				<integer>1</integer>
+				<integer>0</integer>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Smooth the point clouds. Note that this can be changed in post-processing.</string>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -69,6 +97,86 @@
 			<string>Smoothing</string>
 			<key>DefaultValue</key>
 			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Filter interpolated depth pixels between foreground and background objects. Note that values can be changed in post-processing.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Depth Bleeding Filter Error</string>
+			<key>Key</key>
+			<string>DepthBleedingError</string>
+			<key>DefaultValue</key>
+			<string>0</string>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>2.5 cm</string>
+				<string>5 cm</string>
+				<string>10 cm</string>
+				<string>15 cm</string>
+				<string>20 cm</string>
+				<string>25 cm</string>
+				<string>30 cm</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>0.025</string>
+				<string>0.05</string>
+				<string>0.10</string>
+				<string>0.15</string>
+				<string>0.20</string>
+				<string>0.25</string>
+				<string>0.30</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Filter ARKit&apos;s re-localization events to avoid jumps in odometry when creating a map with RTAB-Map, which would cause large drift errors that are difficult to correct. Set an acceleration threshold to detect those events.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>ARKit Re-Localization Acceleration Threshold</string>
+			<key>Key</key>
+			<string>UpstreamRelocalizationFilteringAccThr</string>
+			<key>DefaultValue</key>
+			<string>58.8399</string>
+			<key>Titles</key>
+			<array>
+				<string>Disabled</string>
+				<string>10 g</string>
+				<string>9 g</string>
+				<string>8 g</string>
+				<string>7 g</string>
+				<string>6 g</string>
+				<string>5 g</string>
+				<string>4 g</string>
+				<string>3 g</string>
+				<string>2 g</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<string>98.0665</string>
+				<string>88.25985</string>
+				<string>78.4532</string>
+				<string>68.64655</string>
+				<string>58.8399</string>
+				<string>49.03325</string>
+				<string>39.2266</string>
+				<string>29.41995</string>
+				<string>19.6133</string>
+			</array>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -368,7 +476,7 @@
 			<key>Key</key>
 			<string>MaxOptimizationError</string>
 			<key>DefaultValue</key>
-			<integer>1</integer>
+			<integer>2</integer>
 			<key>Titles</key>
 			<array>
 				<string>4x</string>
@@ -412,6 +520,14 @@
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -427,6 +543,14 @@
 			<key>Values</key>
 			<array>
 				<string>0</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -458,6 +582,14 @@
 			<key>Titles</key>
 			<array>
 				<string>No Limit</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -472,6 +604,14 @@
 			<key>Values</key>
 			<array>
 				<string>0</string>
+				<string>5000</string>
+				<string>4500</string>
+				<string>4000</string>
+				<string>3500</string>
+				<string>3000</string>
+				<string>2500</string>
+				<string>2000</string>
+				<string>1500</string>
 				<string>1000</string>
 				<string>900</string>
 				<string>800</string>
@@ -488,7 +628,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>BRIEF features are fast to compute but are not rotation invariant like FREAK. Warning: Changing feature type will automatically reset the map!</string>
+			<string>BRIEF, FREAK and ORB are binary features, which are fast to compute and use less memory. SURF and SIFT are high dimensional float descriptors (rotation/scale/shear-invariant), so they use more memory and CPU but they are significantly better to detect loop closures in large environments. Warning: Changing feature type will automatically reset the map!</string>
 		</dict>
 		<dict>
 			<key>Type</key>
@@ -501,13 +641,21 @@
 			<string>6</string>
 			<key>Titles</key>
 			<array>
-				<string>BRIEF</string>
-				<string>FREAK</string>
+				<string>SURF</string>
+				<string>SIFT</string>
+				<string>GFTT-FREAK</string>
+				<string>GFTT-BRIEF</string>
+				<string>GFTT-ORB</string>
+				<string>ORB-OCTREE</string>
 			</array>
 			<key>Values</key>
 			<array>
-				<string>6</string>
+				<string>0</string>
+				<string>1</string>
 				<string>5</string>
+				<string>6</string>
+				<string>8</string>
+				<string>10</string>
 			</array>
 		</dict>
 		<dict>
@@ -600,13 +748,13 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>ArUco markers can be detected for localization and graph optimization.</string>
+			<string>ArUco or AprilTag markers can be detected for localization and graph optimization. Marker number should be &gt;0.</string>
 		</dict>
 		<dict>
 			<key>Type</key>
 			<string>PSMultiValueSpecifier</string>
 			<key>Title</key>
-			<string>ArUco Marker Detection</string>
+			<string>ArUco/AprilTag Marker Detection</string>
 			<key>Key</key>
 			<string>ArUcoMarkerDetection</string>
 			<key>DefaultValue</key>
@@ -737,6 +885,56 @@
 		<dict>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
+			<key>FooterText</key>
+			<string>Maximum range at which the markers are detected. Long range increases the estimated orientation error of the tag, which can then cause bad graph optimization. Using larger tags can improve orientation estimation at longer range.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Title</key>
+			<string>Marker Maximum Range</string>
+			<key>Key</key>
+			<string>MarkerMaxRange</string>
+			<key>DefaultValue</key>
+			<real>2</real>
+			<key>Titles</key>
+			<array>
+				<string>No Limit</string>
+				<string>0.5 m</string>
+				<string>1 m</string>
+				<string>2 m</string>
+				<string>3 m</string>
+				<string>4 m</string>
+				<string>5 m</string>
+				<string>6 m</string>
+				<string>7 m</string>
+				<string>8 m</string>
+				<string>9 m</string>
+				<string>10 m</string>
+				<string>15 m</string>
+				<string>20 m</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>0</string>
+				<real>0.5</real>
+				<real>1</real>
+				<real>2</real>
+				<real>3</real>
+				<real>4</real>
+				<real>5</real>
+				<real>6</real>
+				<real>7</real>
+				<real>8</real>
+				<real>9</real>
+				<integer>10</integer>
+				<real>15</real>
+				<real>20</real>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
 			<key>Title</key>
 			<string>Database</string>
 			<key>FooterText</key>
@@ -772,7 +970,7 @@
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>FooterText</key>
-			<string>The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
+			<string>The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened. Important: if enabled, the database cannot be recovered in case of the App crashes for some reason (e.g., low battery).</string>
 		</dict>
 		<dict>
 			<key>Type</key>

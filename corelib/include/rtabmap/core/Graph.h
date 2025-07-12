@@ -115,7 +115,8 @@ Transform RTABMAP_CORE_EXPORT calcRMSE(
 		float & rotational_median,
 		float & rotational_std,
 		float & rotational_min,
-		float & rotational_max);
+		float & rotational_max,
+		bool align2D = false);
 
 void RTABMAP_CORE_EXPORT computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,

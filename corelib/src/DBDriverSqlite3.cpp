@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_20_0_sql.h"
 #include "DatabaseSchema_0_18_3_sql.h"
 #include "DatabaseSchema_0_18_0_sql.h"
 #include "DatabaseSchema_0_17_0_sql.h"
@@ -402,6 +403,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			schemas.push_back(std::make_pair("0.17.0", DATABASESCHEMA_0_17_0_SQL));
 			schemas.push_back(std::make_pair("0.18.0", DATABASESCHEMA_0_18_0_SQL));
 			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
+			schemas.push_back(std::make_pair("0.20.0", DATABASESCHEMA_0_20_0_SQL));
 			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
 			for(size_t i=0; i<schemas.size(); ++i)
 			{
@@ -1317,7 +1319,15 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 			if(images)
 			{
-				fields << "image, depth, calibration";
+				if(uStrNumCmp(_version, "0.22.0") >= 0)
+				{
+					fields << "image, depth, depth_confidence, calibration";
+				}
+				else
+				{
+					fields << "image, depth, calibration";
+				}
+				
 				if(scan || userData || occupancyGrid)
 				{
 					fields << ", ";
@@ -1448,6 +1458,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 				cv::Mat imageCompressed;
 				cv::Mat depthOrRightCompressed;
+				cv::Mat depthConfidenceCompressed;
 				std::vector<CameraModel> models;
 				std::vector<StereoCameraModel> stereoModels;
 				Transform localTransform = Transform::getIdentity();
@@ -1470,6 +1481,17 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					if(dataSize>4 && data)
 					{
 						depthOrRightCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+					}
+
+					if(uStrNumCmp(_version, "0.22.0") >= 0)
+					{
+						//Create the depth image
+						data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						if(dataSize>4 && data)
+						{
+							depthConfidenceCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+						}
 					}
 
 					if(uStrNumCmp(_version, "0.10.0") < 0)
@@ -1823,7 +1845,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				{
 					if(models.size())
 					{
-						(*iter)->sensorData().setRGBDImage(imageCompressed, depthOrRightCompressed, models);
+						(*iter)->sensorData().setRGBDImage(imageCompressed, depthOrRightCompressed, depthConfidenceCompressed, models);
 					}
 					else
 					{
@@ -2427,9 +2449,13 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 			  << "FROM Node ";
 		if(ignoreChildren)
 		{
-			query << "INNER JOIN Link ";
-			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
-			query << "WHERE from_id != to_id "; // ignore self referring links
+			// use to_id to ignore all children (which don't have link pointing on them)
+			// ignore self referring links
+			// keep nodes without link to other nodes (map has only a single node)
+			query << "WHERE ";
+			query << "(EXISTS (select 1 from Link where Node.id=to_id and from_id != to_id) OR ";
+			query << " NOT EXISTS (select 1 from Link where id=to_id and from_id != to_id)) ";
+			
 			query << "AND weight>-9 "; //ignore invalid nodes
 			if(ignoreIntermediateNodes)
 			{
@@ -2480,6 +2506,75 @@ void DBDriverSqlite3::getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildre
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		ULOGGER_DEBUG("Time=%f ids=%d", timer.ticks(), (int)ids.size());
+	}
+}
+
+void DBDriverSqlite3::getAllOdomPosesQuery(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const
+{
+	if(_ppDb)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT DISTINCT id, pose "
+			  << "FROM Node ";
+		if(ignoreChildren)
+		{
+			query << "INNER JOIN Link ";
+			query << "ON id = to_id "; // use to_id to ignore all children (which don't have link pointing on them)
+			query << "WHERE from_id != to_id "; // ignore self referring links
+			query << "AND weight>-9 "; //ignore invalid nodes
+			if(ignoreIntermediateNodes)
+			{
+				query << "AND weight!=-1 "; //ignore intermediate nodes
+			}
+		}
+		else if(ignoreIntermediateNodes)
+		{
+			query << "WHERE weight!=-1 "; //ignore intermediate nodes
+		}
+
+		query  << "ORDER BY id";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		const void * data = 0;
+		int dataSize = 0;
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		while(rc == SQLITE_ROW)
+		{
+			int id = sqlite3_column_int(ppStmt, 0); // Signature Id
+			data = sqlite3_column_blob(ppStmt, 1);  // Pose
+			dataSize = sqlite3_column_bytes(ppStmt, 1);
+
+			Transform pose;
+			if((unsigned int)dataSize == pose.size()*sizeof(float) && data)
+			{
+				memcpy(pose.data(), data, dataSize);
+				if(uStrNumCmp(_version, "0.15.2") < 0)
+				{
+					pose.normalizeRotation();
+				}
+			}
+			else if(dataSize)
+			{
+				UERROR("Error while loading pose for node %d! Setting to null...", id);
+			}
+			poses.insert(std::make_pair(id, pose));
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%f ids=%d", timer.ticks(), (int)poses.size());
 	}
 }
 
@@ -4405,6 +4500,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			{
 				if(!(*i)->sensorData().imageCompressed().empty() ||
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
+				   !(*i)->sensorData().depthConfidenceCompressed().empty() ||
 				   !(*i)->sensorData().laserScanCompressed().isEmpty() ||
 				   !(*i)->sensorData().userDataCompressed().empty() ||
 				   !(*i)->sensorData().cameraModels().empty() ||
@@ -4650,7 +4746,8 @@ void DBDriverSqlite3::updateCalibrationQuery(
 
 void DBDriverSqlite3::updateDepthImageQuery(
 		int nodeId,
-		const cv::Mat & image) const
+		const cv::Mat & image,
+		const std::string & format) const
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -4669,7 +4766,8 @@ void DBDriverSqlite3::updateDepthImageQuery(
 		// Save depth
 		stepDepthUpdate(ppStmt,
 				nodeId,
-				image);
+				image,
+				format);
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -5428,7 +5526,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 								materialPolygons[p][i] = serializedPolygons.at<int>(t + p*polygonSize + i);
 							}
 						}
-						t+=materialPolygons.size()*polygonSize;
+						t+=materialPolygons.size()*polygonSize-1;
 						polygons->push_back(materialPolygons);
 					}
 				}
@@ -5445,7 +5543,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 						UASSERT(serializedTexCoords.total());
 						for(int t=0; t<serializedTexCoords.cols; ++t)
 						{
-							UASSERT(int(serializedTexCoords.at<float>(t)) > 0);
+							UASSERT_MSG(int(serializedTexCoords.at<float>(t)) > 0, uFormat("serializedTexCoords.at<float>(%d)=%f", t, serializedTexCoords.at<float>(t)).c_str());
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 							std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > materialtexCoords(int(serializedTexCoords.at<float>(t)));
 #else
@@ -5458,8 +5556,10 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 							{
 								materialtexCoords[p][0] = serializedTexCoords.at<float>(t + p*2);
 								materialtexCoords[p][1] = serializedTexCoords.at<float>(t + p*2 + 1);
+								UASSERT(materialtexCoords[p][0]>=0.0f && materialtexCoords[p][0] <= 1.0f);
+								UASSERT(materialtexCoords[p][1]>=0.0f && materialtexCoords[p][1] <= 1.0f);
 							}
-							t+=materialtexCoords.size()*2;
+							t+=materialtexCoords.size()*2-1;
 							texCoords->push_back(materialtexCoords);
 						}
 					}
@@ -5940,7 +6040,7 @@ std::string DBDriverSqlite3::queryStepDepthUpdate() const
 		return "UPDATE Data SET depth=? WHERE id=?;";
 	}
 }
-void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image) const
+void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image, const std::string & format) const
 {
 	if(!ppStmt)
 	{
@@ -5954,7 +6054,7 @@ void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const c
 	if(!image.empty() && (image.type()!=CV_8UC1 || image.rows > 1))
 	{
 		// compress
-		imageCompressed = compressImage2(image, ".png");
+		imageCompressed = compressImage2(image, format);
 	}
 	else
 	{
@@ -6111,7 +6211,11 @@ void DBDriverSqlite3::stepScanUpdate(sqlite3_stmt * ppStmt, int nodeId, const La
 std::string DBDriverSqlite3::queryStepSensorData() const
 {
 	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
-	if(uStrNumCmp(_version, "0.16.0") >= 0)
+	if(uStrNumCmp(_version, "0.22.0") >= 0)
+	{
+		return "INSERT INTO Data(id, image, depth, depth_confidence, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.16.0") >= 0)
 	{
 		return "INSERT INTO Data(id, image, depth, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -6174,6 +6278,20 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		rc = sqlite3_bind_null(ppStmt, index++);
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//depth confidence
+	if(uStrNumCmp(_version, "0.22.0") >= 0)
+	{
+		if(!sensorData.depthConfidenceCompressed().empty())
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, sensorData.depthConfidenceCompressed().data, (int)sensorData.depthConfidenceCompressed().cols, SQLITE_STATIC);
+		}
+		else
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+		}
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
 
 	// calibration
 	std::vector<unsigned char> calibrationData;
@@ -6706,12 +6824,12 @@ void DBDriverSqlite3::stepGlobalDescriptor(sqlite3_stmt * ppStmt,
 	int rc = SQLITE_OK;
 	int index = 1;
 
-	//node_if
+	//node_id
 	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	//type
-	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	rc = sqlite3_bind_int(ppStmt, index++, descriptor.type());
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	//info

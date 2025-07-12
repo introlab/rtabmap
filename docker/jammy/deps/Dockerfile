@@ -24,18 +24,11 @@ RUN apt-get update && \
     apt-get install -y git libtbb-dev ros-humble-ros-base ros-dev-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then apt-get update && \
+RUN apt-get update && \
     apt upgrade -y && \
-    apt-get install -y ros-humble-rtabmap-ros && \
-    apt-get remove -y ros-humble-rtabmap* && \
-    apt-get clean && rm -rf /var/lib/apt/lists/; fi
-
-# current issue that ros-humble-rtabmap-ros is not available on arm64
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then apt-get update && \
-    apt upgrade -y && \
-    apt-get install -y ros-humble-rtabmap-launch && \
-    apt-get remove -y ros-humble-rtabmap* && \
-    apt-get clean && rm -rf /var/lib/apt/lists/; fi
+    apt-get install -y libfreenect-dev ros-humble-rtabmap-ros && \
+    apt-get remove -y ros-humble-rtabmap* ros-humble-grid-map-core && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
 
 WORKDIR /root/
 
@@ -56,7 +49,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing libfreenect2
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j2 && \
     make install && \
     cd && \
     rm -r libfreenect2; fi
@@ -70,7 +63,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     mkdir build && \
     cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j2 && \
     make install && \
     cd && \
     rm -r zed-open-capture; fi
@@ -81,14 +74,30 @@ RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
     mkdir build && \
     cd build && \
     cmake -DWITH_TBB=ON -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
-    make -j$(nproc) && \
+    make -j2 && \
     make install && \
     cd ../.. && \
     rm -rf opencv opencv_contrib
 
+#commit Aug 6 2020
+RUN apt-get update && apt install -y wget && \
+    apt-get clean && rm -rf /var/lib/apt/lists/
+RUN git clone https://github.com/laurentkneip/opengv.git && \
+    cd opengv && \
+    git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3 && \
+    wget https://gist.githubusercontent.com/matlabbe/a412cf7c4627253874f81a00745a7fbb/raw/accc3acf465d1ffd0304a46b17741f62d4d354ef/opengv_disable_march_native.patch && \
+    git apply opengv_disable_march_native.patch && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j2 && \
+    make install && \
+    cd && \
+    rm -r opengv
+
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-COPY ./docker/jammy/deps/ros_entrypoint.sh /ros_entrypoint.sh
+RUN echo -e '#!/bin/bash\nset -e\n\n# setup ros2 environment\nsource "/opt/ros/humble/setup.bash" --\nexec "$@"' > /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
 

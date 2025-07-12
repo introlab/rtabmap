@@ -104,7 +104,20 @@ bool exportPoses(
 #endif
 		if(fout)
 		{
-			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			std::list<std::pair<int, Transform> > posesList;
+			for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(0); iter!=poses.end(); ++iter)
+			{
+				posesList.push_back(*iter);
+			}
+			if(format == 11)
+			{	
+				// Put landmarks at the end
+				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end() && iter->first < 0; ++iter)
+				{
+					posesList.push_back(*iter);
+				}
+			}
+			for(std::list<std::pair<int, Transform> >::const_iterator iter=posesList.begin(); iter!=posesList.end(); ++iter)
 			{
 				if(format == 1 || format == 10 || format == 11) // rgbd-slam format
 				{
@@ -125,7 +138,7 @@ bool exportPoses(
 					// Format: stamp x y z qx qy qz qw
 					Eigen::Quaternionf q = pose.getQuaternionf();
 
-					if(iter == poses.begin())
+					if(iter == posesList.begin())
 					{
 						// header
 						if(format == 11)
@@ -432,6 +445,10 @@ bool importPoses(
 				std::list<std::string> strList = uSplit(str);
 				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
 				{
+					if(!uIsNumber(strList.front())) {
+						UWARN("Skipping \"%s\"", str.c_str());
+						continue;
+					}
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
 					if(format==11)
@@ -731,9 +748,8 @@ void calcRelativeErrors (
 		// compute rotational and translational errors
 		Transform pose_delta_gt     = poses_gt[i].inverse()*poses_gt[i+1];
 		Transform pose_delta_result = poses_result[i].inverse()*poses_result[i+1];
-		Transform pose_error        = pose_delta_result.inverse()*pose_delta_gt;
-		float r_err = pose_error.getAngle();
-		float t_err = pose_error.getNorm();
+		float r_err = pose_delta_result.getAngle(pose_delta_gt);
+		float t_err = pose_delta_result.getDistance(pose_delta_gt);
 
 		// write to file
 		err.push_back(errors(i,r_err,t_err,0,0));
@@ -770,7 +786,8 @@ Transform calcRMSE (
 		float & rotational_median,
 		float & rotational_std,
 		float & rotational_min,
-		float & rotational_max)
+		float & rotational_max,
+		bool align2D)
 {
 
 	translational_rmse = 0.0f;
@@ -802,8 +819,8 @@ Transform calcRMSE (
 			{
 				idFirst = iter->first;
 			}
-			cloud1[oi] = pcl::PointXYZ(jter->second.x(), jter->second.y(), jter->second.z());
-			cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+			cloud1[oi] = pcl::PointXYZ(jter->second.x(), jter->second.y(), align2D?0:jter->second.z());
+			cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), align2D?0:iter->second.z());
 		}
 	}
 
@@ -944,12 +961,24 @@ void computeMaxGraphErrors(
 				return;
 			}
 
-			Transform t = t1.inverse()*t2;
+			Transform t;
+			Transform linkT;
+			if(iter->second.from() < 0)
+			{
+				// For landmarks, compare from node to landmark, in case we optimized only marker's position
+				t = t2.inverse()*t1;
+				linkT = iter->second.transform().inverse();
+			}
+			else
+			{
+				t = t1.inverse()*t2;
+				linkT = iter->second.transform();
+			}
 
 			float linearError = uMax3(
-					fabs(iter->second.transform().x() - t.x()),
-					fabs(iter->second.transform().y() - t.y()),
-					force3DoF?0:fabs(iter->second.transform().z() - t.z()));
+					fabs(linkT.x() - t.x()),
+					fabs(linkT.y() - t.y()),
+					force3DoF?0:fabs(linkT.z() - t.z()));
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
@@ -967,15 +996,21 @@ void computeMaxGraphErrors(
 			if(iter->second.type() != Link::kLandmark ||
 				1.0 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) < 9999.0)
 			{
-				float opt_roll,opt_pitch,opt_yaw;
-				float link_roll,link_pitch,link_yaw;
-				t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
-				iter->second.transform().getEulerAngles(link_roll, link_pitch, link_yaw);
-				float angularError = uMax3(
-						force3DoF?0:fabs(opt_roll - link_roll),
-						force3DoF?0:fabs(opt_pitch - link_pitch),
-						fabs(opt_yaw - link_yaw));
-				angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				float angularError = 0.0f;
+				if(force3DoF)
+				{
+					float opt_roll,opt_pitch,opt_yaw;
+					float link_roll,link_pitch,link_yaw;
+					t.getEulerAngles(opt_roll, opt_pitch, opt_yaw);
+					linkT.getEulerAngles(link_roll, link_pitch, link_yaw);
+					angularError = fabs(opt_yaw - link_yaw);
+					angularError = angularError>M_PI?2*M_PI-angularError:angularError;
+				}
+				else
+				{
+					angularError = t.getAngle(linkT);
+				}
+
 				UASSERT(iter->second.rotVariance(false)>0.0);
 				float stddevAngular = sqrt(iter->second.rotVariance(false));
 				float angularErrorRatio = angularError/stddevAngular;

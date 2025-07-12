@@ -114,8 +114,7 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 //////////////////////////////
 // CameraTango
 //////////////////////////////
-CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing) :
-		CameraMobile(smoothing),
+CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan) :
 		tango_config_(0),
 		colorCamera_(colorCamera),
 		decimation_(decimation),
@@ -193,6 +192,8 @@ void initFisheyeRectificationMap(
 bool CameraTango::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	close();
+
+	CameraMobile::init(calibrationFolder, cameraName);
 
 	TangoSupport_initialize(TangoService_getPoseAtTime, TangoService_getCameraIntrinsics);
 
@@ -657,12 +658,6 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 					//LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
 					//LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
 
-					// adjust origin
-					if(!getOriginOffset().isNull())
-					{
-						odom = getOriginOffset() * odom;
-					}
-
 					// occlusion depth
 					if(!depth.empty())
 					{
@@ -832,10 +827,6 @@ SensorData CameraTango::updateDataOnRender(Transform & pose)
 					float cy = static_cast<float>(color_camera_intrinsics.cy);
 
 					viewMatrix_ = glm::make_mat4(matrix_transform.matrix);
-					if(!getOriginOffset().isNull())
-					{
-						viewMatrix_ = glm::inverse(rtabmap::glmFromTransform(rtabmap::opengl_world_T_rtabmap_world * getOriginOffset() *rtabmap::rtabmap_world_T_opengl_world)*glm::inverse(viewMatrix_));
-					}
 
 					projectionMatrix_ = tango_gl::Camera::ProjectionMatrixForCameraIntrinsics(
 							image_width, image_height, fx, fy, cx, cy, 0.3, 50);

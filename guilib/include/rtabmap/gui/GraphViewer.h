@@ -74,16 +74,21 @@ public:
 			const std::map<int, GPS> & gpsValues);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
-	void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
+	// Use updateNodeColorByValue() instead with valueName="Posterior".
+	RTABMAP_DEPRECATED void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
+	void updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float fixedMax = 0.0f, bool invertedColorScale = false, int zValueOffset = 0);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
+	void setNodeInfo(int id, const QString & info);
 	void setLocalRadius(float radius);
+	void highlightNode(int nodeId, int highlightIndex);
 	void clearGraph();
 	void clearMap();
-	void clearPosterior();
+	// Use clearNodeColorByValue() instead.
+	RTABMAP_DEPRECATED void clearPosterior();
+	void clearNodeColorByValue();
 	void clearAll();
-
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 
@@ -144,6 +149,7 @@ public:
 	void setGlobalPathColor(const QColor & color);
 	void setGTColor(const QColor & color);
 	void setGPSColor(const QColor & color);
+	void setHighlightColor(const QColor & color, int index);
 	void setIntraSessionLoopColor(const QColor & color);
 	void setInterSessionLoopColor(const QColor & color);
 	void setIntraInterSessionColorsEnabled(bool enabled);
@@ -175,7 +181,7 @@ public Q_SLOTS:
 protected:
 	virtual void wheelEvent ( QWheelEvent * event );
 	virtual void mouseMoveEvent(QMouseEvent * event);
-	virtual void mouseDoubleClickEvent(QMouseEvent * event);
+	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
@@ -214,6 +220,7 @@ private:
 	QMultiMap<int, LinkItem*> _gpsLinkItems;
 	QMultiMap<int, LinkItem*> _localPathLinkItems;
 	QMultiMap<int, LinkItem*> _globalPathLinkItems;
+	QVector<QPair<QColor, NodeItem*> > _highlightedNodes;
 	bool _nodeVisible;
 	float _nodeRadius;
 	float _linkWidth;
@@ -235,6 +242,7 @@ private:
 	bool _mouseTracking;
 	ViewPlane _viewPlane;
 	bool _ensureFrameVisible;
+	QPoint _previousMousePos;
 };
 
 } /* namespace rtabmap */

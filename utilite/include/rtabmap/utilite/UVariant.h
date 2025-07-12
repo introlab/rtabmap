@@ -54,7 +54,7 @@ public:
 public:
 	UVariant();
 	UVariant(const bool & value);
-	UVariant(const char & value);
+	UVariant(const signed char & value);
 	UVariant(const unsigned char & value);
 	UVariant(const short & value);
 	UVariant(const unsigned short & value);
@@ -64,7 +64,7 @@ public:
 	UVariant(const double & value);
 	UVariant(const char * value);
 	UVariant(const std::string & value);
-	UVariant(const std::vector<char> & value);
+	UVariant(const std::vector<signed char> & value);
 	UVariant(const std::vector<unsigned char> & value);
 	UVariant(const std::vector<short> & value);
 	UVariant(const std::vector<unsigned short> & value);
@@ -96,7 +96,7 @@ public:
 	bool isDoubleArray() const {return type_ == kDoubleArray;}
 
 	bool toBool() const;
-	char toChar(bool * ok = 0) const;
+	signed char toChar(bool * ok = 0) const;
 	unsigned char toUChar(bool * ok = 0) const;
 	short toShort(bool * ok = 0) const;
 	unsigned short toUShort(bool * ok = 0) const;
@@ -105,7 +105,7 @@ public:
 	float toFloat(bool * ok = 0) const;
 	double toDouble(bool * ok = 0) const;
 	std::string toStr(bool * ok = 0) const;
-	std::vector<char> toCharArray(bool * ok = 0) const;
+	std::vector<signed char> toCharArray(bool * ok = 0) const;
 	std::vector<unsigned char> toUCharArray(bool * ok = 0) const;
 	std::vector<short> toShortArray(bool * ok = 0) const;
 	std::vector<unsigned short> toUShortArray(bool * ok = 0) const;

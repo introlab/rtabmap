@@ -18,20 +18,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
+        os: [ubuntu-24.04, ubuntu-22.04]
+        include:
+        - os: ubuntu-22.04
+          extra_deps: "libunwind-dev libceres-dev"
+          extra_cmake_def: ""
+        - os: ubuntu-24.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON"
 
     steps:    
     - name: Install dependencies
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
 
     - uses: actions/checkout@v4
 
     - name: Configure CMake
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}

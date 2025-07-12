@@ -137,7 +137,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED SDK support...");
 			exit(-1);
 		}
-		camera = new CameraStereoZed(0, 2, 1, 1, 100, false);
+		camera = new CameraStereoZed(0, -1, 1, 1, 100, false);
 	}
 	else if (driver == 7)
 	{
@@ -256,7 +256,8 @@ int main(int argc, char * argv[])
 				node.sensorData(),
 				4,           // image decimation before creating the clouds
 				4.0f,        // maximum depth of the cloud
-				0.0f);
+				0.0f,
+				0);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpNoNaN(new pcl::PointCloud<pcl::PointXYZRGB>);
 		std::vector<int> index;
 		pcl::removeNaNFromPointCloud(*tmp, *tmpNoNaN, index);

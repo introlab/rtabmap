@@ -277,11 +277,32 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
+	const cv::Mat & imageDepthIn,
+	const CameraModel & model,
+	int decimation,
+	float maxDepth,
+	float minDepth,
+	std::vector<int> * validIndices)
+{
+	return cloudFromDepth(
+		imageDepthIn,
+		cv::Mat(),
+		model,
+		decimation,
+		maxDepth,
+		minDepth,
+		0,
+		validIndices);
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		const cv::Mat & imageDepthIn,
+		const cv::Mat & imageDepthConfidenceIn,
 		const CameraModel & model,
 		int decimation,
 		float maxDepth,
 		float minDepth,
+		unsigned char confidenceThr,
 		std::vector<int> * validIndices)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -294,8 +315,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 
 	UASSERT(model.isValidForProjection());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
+	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr == 0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
 
 	cv::Mat imageDepth = imageDepthIn;
+	cv::Mat imageDepthConfidence = confidenceThr==0?cv::Mat():imageDepthConfidenceIn;
 	if(model.imageHeight()>0 && model.imageWidth()>0)
 	{
 		UASSERT(model.imageHeight() % imageDepthIn.rows == 0 && model.imageWidth() % imageDepthIn.cols == 0);
@@ -322,6 +345,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 			{
 				UDEBUG("Depth interpolation factor=%d", targetSize/imageDepthIn.rows);
 				imageDepth = util2d::interpolate(imageDepthIn, targetSize/imageDepthIn.rows);
+				if(!imageDepthConfidence.empty()) {
+					imageDepthConfidence = util2d::interpolate(imageDepthConfidenceIn, targetSize/imageDepthConfidenceIn.rows);
+				}
 				decimation = 1;
 			}
 			else if(targetSize == imageDepthIn.rows)
@@ -373,11 +399,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	float depthCx = model.cx() * rgbToDepthFactorX;
 	float depthCy = model.cy() * rgbToDepthFactorY;
 
-	UDEBUG("depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
+	UDEBUG("depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) has confidence=%d (thr=%d) decimation=%d",
 			imageDepth.cols, imageDepth.rows,
 			model.fx(), model.fy(), model.cx(), model.cy(),
 			rgbToDepthFactorX,
 			rgbToDepthFactorY,
+			imageDepthConfidenceIn.empty()?0:1,
+			(int)confidenceThr,
 			decimation);
 
 	int oi = 0;
@@ -387,20 +415,20 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		{
 			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
+			pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+			if(imageDepthConfidence.empty() || imageDepthConfidence.at<unsigned char>(h,w) >= confidenceThr)
 			{
-				pt.x = ptXYZ.x;
-				pt.y = ptXYZ.y;
-				pt.z = ptXYZ.z;
-				if(validIndices)
+				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
+				if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 				{
-					validIndices->at(oi++) = (h/decimation)*cloud->width + (w/decimation);
+					pt.x = ptXYZ.x;
+					pt.y = ptXYZ.y;
+					pt.z = ptXYZ.z;
+					if(validIndices)
+					{
+						validIndices->at(oi++) = (h/decimation)*cloud->width + (w/decimation);
+					}
 				}
-			}
-			else
-			{
-				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
 			}
 		}
 	}
@@ -428,12 +456,35 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
+	const cv::Mat & imageRgb,
+	const cv::Mat & imageDepthIn,
+	const CameraModel & model,
+	int decimation,
+	float maxDepth,
+	float minDepth,
+	std::vector<int> * validIndices)
+{
+	return cloudFromDepthRGB(
+		imageRgb,
+		imageDepthIn,
+		cv::Mat(),
+		model,
+		decimation,
+		maxDepth,
+		minDepth,
+		0,
+		validIndices);
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDepthIn,
+		const cv::Mat & imageDepthConfidenceIn,
 		const CameraModel & model,
 		int decimation,
 		float maxDepth,
 		float minDepth,
+		unsigned char confidenceThr,
 		std::vector<int> * validIndices)
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -449,6 +500,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	//UASSERT_MSG(imageRgb.rows % imageDepthIn.rows == 0 && imageRgb.cols % imageDepthIn.cols == 0,
 	//		uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepthIn.cols, imageDepthIn.rows).c_str());
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
+	UASSERT(imageDepthConfidenceIn.empty() || confidenceThr==0 || (imageDepthConfidenceIn.type() == CV_8UC1 && imageDepthConfidenceIn.size() == imageDepthIn.size()));
 	if(decimation < 0)
 	{
 		if(imageRgb.rows % decimation != 0 || imageRgb.cols % decimation != 0)
@@ -491,6 +543,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	}
 
 	cv::Mat imageDepth = imageDepthIn;
+	cv::Mat imageDepthConfidence = confidenceThr==0?cv::Mat():imageDepthConfidenceIn;
 	if(decimation < 0)
 	{
 		UDEBUG("Decimation from RGB image (%d)", decimation);
@@ -502,6 +555,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		{
 			UDEBUG("Depth interpolation factor=%d", targetSize/imageDepthIn.rows);
 			imageDepth = util2d::interpolate(imageDepthIn, targetSize/imageDepthIn.rows);
+			if(!imageDepthConfidence.empty()) {
+				imageDepthConfidence = util2d::interpolate(imageDepthConfidenceIn, targetSize/imageDepthConfidenceIn.rows);
+			}
 			decimation = 1;
 		}
 		else if(targetSize == imageDepthIn.rows)
@@ -546,12 +602,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	float depthCx = model.cx() / rgbToDepthFactorX;
 	float depthCy = model.cy() / rgbToDepthFactorY;
 
-	UDEBUG("rgb=%dx%d depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
+	UDEBUG("rgb=%dx%d depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) has confidence=%d (thr=%d) decimation=%d",
 			imageRgb.cols, imageRgb.rows,
 			imageDepth.cols, imageDepth.rows,
 			model.fx(), model.fy(), model.cx(), model.cy(),
 			rgbToDepthFactorX,
 			rgbToDepthFactorY,
+			imageDepthConfidenceIn.empty()?0:1,
+			(int)confidenceThr,
 			decimation);
 
 	int oi = 0;
@@ -579,21 +637,21 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.r = v;
 			}
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-			if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
+			pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
+			if(imageDepthConfidence.empty() || imageDepthConfidence.at<unsigned char>(h,w) >= confidenceThr)
 			{
-				pt.x = ptXYZ.x;
-				pt.y = ptXYZ.y;
-				pt.z = ptXYZ.z;
-				if (validIndices)
+				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
+				if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
 				{
-					validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
+					pt.x = ptXYZ.x;
+					pt.y = ptXYZ.y;
+					pt.z = ptXYZ.z;
+					if (validIndices)
+					{
+						validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
+					}
+					++oi;
 				}
-				++oi;
-			}
-			else
-			{
-				pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
 			}
 		}
 	}
@@ -822,14 +880,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		const ParametersMap & parameters)
 {
 	UASSERT(!imageLeft.empty() && !imageRight.empty());
-	UASSERT(imageRight.type() == CV_8UC1);
+	UASSERT(imageRight.type() == CV_8UC1 || imageRight.type() == CV_8UC3);
 	UASSERT(imageLeft.channels() == 3 || imageLeft.channels() == 1);
 	UASSERT(imageLeft.rows == imageRight.rows &&
 			imageLeft.cols == imageRight.cols);
 	UASSERT(decimation >= 1.0f);
 
 	cv::Mat leftColor = imageLeft;
-	cv::Mat rightMono = imageRight;
+	cv::Mat rightColor = imageRight;
 
 	cv::Mat leftMono;
 	if(leftColor.channels() == 3)
@@ -839,6 +897,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	else
 	{
 		leftMono = leftColor;
+	}
+
+	cv::Mat rightMono;
+	if(rightColor.channels() == 3)
+	{
+		cv::cvtColor(rightColor, rightMono, CV_BGR2GRAY);
+	}
+	else
+	{
+		rightMono = rightColor;
 	}
 
 	return cloudFromDisparityRGB(
@@ -858,7 +926,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		float minDepth,
 		std::vector<pcl::IndicesPtr> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	if(decimation == 0)
 	{
@@ -871,6 +940,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 	{
 		//depth
 		UASSERT(int((sensorData.depthRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.depthRaw().cols);
+		UASSERT(sensorData.depthConfidenceRaw().empty() || confidenceThr==0 || (sensorData.depthConfidenceRaw().type() == CV_8UC1 && sensorData.depthConfidenceRaw().cols == sensorData.depthRaw().cols && sensorData.depthConfidenceRaw().rows == sensorData.depthRaw().rows));
 		int subImageWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
@@ -882,6 +952,10 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
 				cv::Mat depth = cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows));
+				cv::Mat depthConfidence;
+				if(!sensorData.depthConfidenceRaw().empty() && confidenceThr > 0) {
+					depthConfidence = cv::Mat(sensorData.depthConfidenceRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthConfidenceRaw().rows));
+				}
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					(roiRatios[0] > 0.0f ||
@@ -902,6 +976,9 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 							roiRgb.height%decimation==0)))
 					{
 						depth = cv::Mat(depth, roiDepth);
+						if(!depthConfidence.empty()) {
+							depthConfidence = cv::Mat(depthConfidence, roiDepth);
+						}
 						if(model.imageWidth() != 0 && model.imageHeight() != 0)
 						{
 							model = model.roi(util2d::computeRoi(model.imageSize(), roiRatios));
@@ -930,10 +1007,12 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr tmp = util3d::cloudFromDepth(
 						depth,
+						depthConfidence,
 						model,
 						decimation,
 						maxDepth,
 						minDepth,
+						confidenceThr,
 						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
@@ -954,7 +1033,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && !sensorData.stereoCameraModels().empty())
 	{
 		//stereo
-		UASSERT(sensorData.rightRaw().type() == CV_8UC1);
+		UASSERT(sensorData.rightRaw().type() == CV_8UC1 || sensorData.rightRaw().type() == CV_8UC3);
 
 		cv::Mat leftMono;
 		if(sensorData.imageRaw().channels() == 3)
@@ -964,6 +1043,16 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		else
 		{
 			leftMono = sensorData.imageRaw();
+		}
+
+		cv::Mat rightMono;
+		if(sensorData.rightRaw().channels() == 3)
+		{
+			cv::cvtColor(sensorData.rightRaw(), rightMono, CV_BGR2GRAY);
+		}
+		else
+		{
+			rightMono = sensorData.rightRaw();
 		}
 
 		UASSERT(int((sensorData.imageRaw().cols/sensorData.stereoCameraModels().size())*sensorData.stereoCameraModels().size()) == sensorData.imageRaw().cols);
@@ -979,7 +1068,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 			if(sensorData.stereoCameraModels()[i].isValidForProjection())
 			{
 				cv::Mat left(leftMono, cv::Rect(subImageWidth*i, 0, subImageWidth, leftMono.rows));
-				cv::Mat right(sensorData.rightRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.rightRaw().rows));
+				cv::Mat right(rightMono, cv::Rect(subImageWidth*i, 0, subImageWidth, rightMono.rows));
 				StereoCameraModel model = sensorData.stereoCameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
@@ -1044,7 +1133,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		float minDepth,
 		std::vector<int> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	std::vector<pcl::IndicesPtr> validIndicesV;
 	std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds = cloudsFromSensorData(
@@ -1054,7 +1144,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromSensorData(
 		minDepth,
 		validIndices?&validIndicesV:0,
 		stereoParameters,
-		roiRatios);
+		roiRatios,
+		confidenceThr);
 
 	if(validIndices)
 	{
@@ -1097,7 +1188,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 		float minDepth,
 		std::vector<pcl::IndicesPtr> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	if(decimation == 0)
 	{
@@ -1116,6 +1208,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 		//UASSERT_MSG(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().rows, sensorData.depthRaw().rows).c_str());
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
+		UASSERT(sensorData.depthConfidenceRaw().empty() || confidenceThr==0 || (sensorData.depthConfidenceRaw().type() == CV_8UC1 && sensorData.depthConfidenceRaw().cols == sensorData.depthRaw().cols && sensorData.depthConfidenceRaw().rows == sensorData.depthRaw().rows));
 
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
@@ -1128,6 +1221,10 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 			{
 				cv::Mat rgb(sensorData.imageRaw(), cv::Rect(subRGBWidth*i, 0, subRGBWidth, sensorData.imageRaw().rows));
 				cv::Mat depth(sensorData.depthRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthRaw().rows));
+				cv::Mat depthConfidence;
+				if(!sensorData.depthConfidenceRaw().empty() && confidenceThr>0) {
+					depthConfidence = cv::Mat(sensorData.depthConfidenceRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthConfidenceRaw().rows));
+				}
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
@@ -1143,6 +1240,9 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 						roiRgb.height%decimation==0)
 					{
 						depth = cv::Mat(depth, roiDepth);
+						if(!depthConfidence.empty()) {
+							depthConfidence = cv::Mat(depthConfidence, roiDepth);
+						}
 						rgb = cv::Mat(rgb, roiRgb);
 						model = model.roi(roiRgb);
 					}
@@ -1166,10 +1266,12 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudsRGBFromSensorData(
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = util3d::cloudFromDepthRGB(
 						rgb,
 						depth,
+						depthConfidence,
 						model,
 						decimation,
 						maxDepth,
 						minDepth,
+						confidenceThr,
 						validIndices?validIndices->back().get():0);
 
 				if(tmp->size())
@@ -1272,7 +1374,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		float minDepth,
 		std::vector<int> * validIndices,
 		const ParametersMap & stereoParameters,
-		const std::vector<float> & roiRatios)
+		const std::vector<float> & roiRatios,
+		unsigned char confidenceThr)
 {
 	std::vector<pcl::IndicesPtr> validIndicesV;
 	std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds = cloudsRGBFromSensorData(
@@ -1282,7 +1385,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGBFromSensorData(
 		minDepth,
 		validIndices?&validIndicesV:0,
 		stereoParameters,
-		roiRatios);
+		roiRatios,
+		confidenceThr);
 
 	if(validIndices)
 	{
@@ -3007,6 +3111,115 @@ void fillProjectedCloudHoles(cv::Mat & registeredDepth, bool verticalDirection, 
 	}
 }
 
+cv::Mat filterFloor(const cv::Mat & depth, const std::vector<CameraModel> & cameraModels, float threshold, cv::Mat * depthBelow)
+{
+	cv::Mat output = depth.clone();
+	if(depth.empty())
+	{
+		return output;
+	}
+	if(depthBelow)
+	{
+		*depthBelow = cv::Mat::zeros(output.size(), output.type());
+	}
+
+	UASSERT(!cameraModels.empty());
+	UASSERT(cameraModels[0].isValidForReprojection());
+	// Support camera model with different resolution than depth image
+	float rgbToDepthFactorX = float(cameraModels[0].imageWidth()) / float(output.cols/cameraModels.size());
+	float rgbToDepthFactorY = float(cameraModels[0].imageHeight()) / float(output.rows);
+	int depthWidth = output.cols/cameraModels.size();
+	UASSERT(depthWidth*(int)cameraModels.size() == output.cols);
+
+	// for each camera
+	for(size_t i=0; i<cameraModels.size(); ++i)
+	{
+		const CameraModel & cam = cameraModels[i];
+		UASSERT(cam.isValidForReprojection());
+		const Transform & localTransform = cam.localTransform();
+		UASSERT(!localTransform.isNull());
+		if(i>0)
+		{
+			// Make sure all models are the same resolution
+			UASSERT(cam.imageWidth() == cameraModels[i-1].imageWidth());
+			UASSERT(cam.imageHeight() == cameraModels[i-1].imageHeight());
+		}
+
+		float depthFx = cam.fx() / rgbToDepthFactorX;
+		float depthFy = cam.fy() / rgbToDepthFactorY;
+		float depthCx = cam.cx() / rgbToDepthFactorX;
+		float depthCy = cam.cy() / rgbToDepthFactorY;
+
+		cv::Mat subImage = output.colRange(cv::Range(i*depthWidth, (i+1)*depthWidth));
+		cv::Mat subImageBelow;
+		if(depthBelow)
+			subImageBelow = depthBelow->colRange(cv::Range(i*depthWidth, (i+1)*depthWidth));
+
+		for(int y=0; y<subImage.rows; ++y)
+		{
+			if(subImage.type() == CV_16UC1)
+			{
+				unsigned short * ptr = (unsigned short *)subImage.row(y).ptr();
+				unsigned short * ptrBelow = 0;
+				if(depthBelow)
+				{
+					ptrBelow = (unsigned short *)subImageBelow.row(y).ptr();
+				}
+				for(int x=0; x<subImage.cols; ++x)
+				{
+					if(ptr[x] > 0)
+					{
+						float d = float(ptr[x])/1000.0f;
+						cv::Point3f pt;
+						pt.x = (x - depthCx) * d / depthFx;
+						pt.y = (y - depthCy) * d / depthFy;
+						pt.z = d;
+						pt = util3d::transformPoint(pt, localTransform);
+						if(pt.z < threshold)
+						{
+							if(ptrBelow)
+							{
+								ptrBelow[x] = ptr[x];
+							}
+							ptr[x] = 0;
+						}
+					}
+				}
+			}
+			else // CV_32FC1
+			{
+				float * ptr = (float *)subImage.row(y).ptr();
+				float * ptrBelow = 0;
+				if(depthBelow)
+				{
+					ptrBelow = (float *)subImageBelow.row(y).ptr();
+				}
+				for(int x=0; x<subImage.cols; ++x)
+				{
+					if(ptr[x] > 0.0f)
+					{
+						float & d = ptr[x];
+						cv::Point3f pt;
+						pt.x = (x - depthCx) * d / depthFx;
+						pt.y = (y - depthCy) * d / depthFy;
+						pt.z = d;
+						pt = util3d::transformPoint(pt, localTransform);
+						if(pt.z < threshold)
+						{
+							if(ptrBelow)
+							{
+								ptrBelow[x] = ptr[x];
+							}
+							d = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+	return output;
+}
+
 class ProjectionInfo {
 public:
 	ProjectionInfo():
@@ -3020,6 +3233,18 @@ public:
 	float distance;
 };
 
+class RegisteredPoints {
+	public:
+		class Point {
+			public:
+				Point(float distance_, int index_) : distance(distance_), index(index_) {}
+				float distance;
+				int index;
+		};
+		float minDistance;
+		std::vector<Point> points;
+};
+
 /**
  * For each point, return pixel of the best camera (NodeID->CameraIndex)
  * looking at it based on the policy and parameters
@@ -3031,6 +3256,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		float maxAngle,
+		float maxDepthError,
 		const std::vector<float> & roiRatios,
 		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
@@ -3041,6 +3267,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 	UINFO("cameraModels=%d", (int)cameraModels.size());
 	UINFO("maxDistance=%f", maxDistance);
 	UINFO("maxAngle=%f", maxAngle);
+	UINFO("maxDepthError=%f", maxDepthError);
 	UINFO("distanceToCamPolicy=%s", distanceToCamPolicy?"true":"false");
 	UINFO("roiRatios=%s", roiRatios.size() == 4?uFormat("%f %f %f %f", roiRatios[0], roiRatios[1], roiRatios[2], roiRatios[3]).c_str():"");
 	UINFO("projMask=%dx%d", projMask.cols, projMask.rows);
@@ -3106,8 +3333,9 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				float cx = cameraMatrixK.at<double>(0,2);
 				float cy = cameraMatrixK.at<double>(1,2);
 
-				// depth: 2 channels UINT: [depthMM, indexPt]
-				cv::Mat registered = cv::Mat::zeros(imageSize, CV_32SC2);
+				// [rows][cols][depth, indexPt]
+				std::vector<std::vector<RegisteredPoints> > registered(
+					imageSize.height, std::vector<RegisteredPoints>(imageSize.width));
 				Transform t = cameraTransform.inverse();
 
 				cv::Rect roi(0,0,imageSize.width, imageSize.height);
@@ -3129,34 +3357,44 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 					if(z > 0.0f && (maxDistance<=0 || z<maxDistance))
 					{
 						float invZ = 1.0f/z;
-						float dx = (fx*ptScan.x)*invZ + cx;
-						float dy = (fy*ptScan.y)*invZ + cy;
-						int dx_low = dx;
-						int dy_low = dy;
-						int dx_high = dx + 0.5f;
-						int dy_high = dy + 0.5f;
-						int zMM = z * 1000;
-						if(uIsInBounds(dx_low, roi.x, roi.x+roi.width) && uIsInBounds(dy_low, roi.y, roi.y+roi.height) &&
-						   (validProjMask.empty() || validProjMask.at<unsigned char>(dy_low, imageSize.width*camIndex+dx_low) > 0))
-						{
-							set = true;
-							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_low, dx_low);
-							if(zReg[0] == 0 || zMM < zReg[0])
-							{
-								zReg[0] = zMM;
-								zReg[1] = i;
+						float u = (fx*ptScan.x)*invZ + cx;
+						float v = (fy*ptScan.y)*invZ + cy;
+						int x = u + 0.5f;
+						int y = v + 0.5f;
+
+						if(uIsInBounds(x, roi.x, roi.x+roi.width) && uIsInBounds(y, roi.y, roi.y+roi.height) &&
+						   (validProjMask.empty() || validProjMask.at<unsigned char>(y, imageSize.width*camIndex+x) > 0)) {
+							RegisteredPoints &zReg = registered[y][x];
+							if(zReg.points.empty()) {
+								zReg.minDistance = z;
+								zReg.points.push_back(RegisteredPoints::Point(z, i));
+								set = true;
 							}
-						}
-						if((dx_low != dx_high || dy_low != dy_high) &&
-							uIsInBounds(dx_high, roi.x, roi.x+roi.width) && uIsInBounds(dy_high, roi.y, roi.y+roi.height) &&
-							(validProjMask.empty() || validProjMask.at<unsigned char>(dy_high, imageSize.width*camIndex+dx_high) > 0))
-						{
-							set = true;
-							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_high, dx_high);
-							if(zReg[0] == 0 || zMM < zReg[0])
-							{
-								zReg[0] = zMM;
-								zReg[1] = i;
+							else if(z < zReg.minDistance) {
+								zReg.minDistance = z;
+								if(maxDepthError<=0.0f) {
+									// keeping only closest point, just update it
+									zReg.points[0].distance = z;
+									zReg.points[0].index = i;
+								}
+								else {
+									// update the points attached to same pixel based on new closest distance
+									std::vector<RegisteredPoints::Point> reOrderedPts;
+									reOrderedPts.push_back(RegisteredPoints::Point(z, i));
+									for(size_t p=0; p<zReg.points.size(); ++p) {
+										if(zReg.points[p].distance - z < maxDepthError) {
+											reOrderedPts.push_back(zReg.points[p]);
+										}
+									}
+									zReg.points = reOrderedPts;
+								}
+								set = true;
+							}
+							else if(maxDepthError>=0.0f && z - zReg.minDistance < maxDepthError) {
+								// The point is closer than current closest one to camera, 
+								// but still under max depth difference, just append
+								zReg.points.push_back(RegisteredPoints::Point(z, i));
+								set = true;
 							}
 						}
 					}
@@ -3167,19 +3405,19 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				}
 				if(count == 0)
 				{
-					registered = cv::Mat();
+					registered.clear();
 					UINFO("No points projected in camera %d/%d", pter->first, camIndex);
 				}
 				else
 				{
 					UDEBUG("%d points projected in camera %d/%d", count, pter->first, camIndex);
 				}
-				for(int u=0; u<registered.cols; ++u)
+				for(int u=0; u<imageSize.width; ++u)
 				{
-					for(int v=0; v<registered.rows; ++v)
+					for(int v=0; v<imageSize.height; ++v)
 					{
-						cv::Vec2i &zReg = registered.at<cv::Vec2i>(v, u);
-						if(zReg[0] > 0)
+						RegisteredPoints &zReg = registered[v][u];
+						if(!zReg.points.empty())
 						{
 							ProjectionInfo info;
 							info.nodeID = pter->first;
@@ -3187,36 +3425,40 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 							info.uv.x = float(u)/float(imageSize.width);
 							info.uv.y = float(v)/float(imageSize.height);
 							const Transform & cam = cameraPoses.at(info.nodeID);
-							const PointT & pt = cloud.at(zReg[1]);
-							Eigen::Vector4f camDir(cam.x()-pt.x, cam.y()-pt.y, cam.z()-pt.z, 0);
-							Eigen::Vector4f normal(pt.normal_x, pt.normal_y, pt.normal_z, 0);
-							float angleToCam = maxAngle<=0?0:pcl::getAngle3D(normal, camDir);
-							float distanceToCam = zReg[0]/1000.0f;
-							if( (maxAngle<=0 || (camDir.dot(normal) > 0 && angleToCam < maxAngle)) && // is facing camera? is point normal perpendicular to camera?
-								(maxDistance<=0 || distanceToCam<maxDistance)) // is point not too far from camera?
+							for(size_t p=0; p<zReg.points.size(); ++p)
 							{
-								float vx = info.uv.x-0.5f;
-								float vy = info.uv.y-0.5f;
-
-								float distanceToCenter = vx*vx+vy*vy;
-								float distance = distanceToCenter;
-								if(distanceToCamPolicy)
+								int ptIdx = zReg.points[p].index;
+								const PointT & pt = cloud.at(ptIdx);
+								Eigen::Vector4f camDir(cam.x()-pt.x, cam.y()-pt.y, cam.z()-pt.z, 0);
+								Eigen::Vector4f normal(pt.normal_x, pt.normal_y, pt.normal_z, 0);
+								float angleToCam = maxAngle<=0?0:pcl::getAngle3D(normal, camDir);
+								float distanceToCam = zReg.points[p].distance;
+								if( (maxAngle<=0 || (camDir.dot(normal) > 0 && angleToCam < maxAngle)) && // is facing camera? is point normal perpendicular to camera?
+									(maxDistance<=0 || distanceToCam<maxDistance)) // is point not too far from camera?
 								{
-									distance = distanceToCam;
-								}
+									float vx = info.uv.x-0.5f;
+									float vy = info.uv.y-0.5f;
 
-								info.distance = distance;
-
-								if(invertedIndex[zReg[1]].distance != -1.0f)
-								{
-									if(distance <= invertedIndex[zReg[1]].distance)
+									float distanceToCenter = vx*vx+vy*vy;
+									float distance = distanceToCenter;
+									if(distanceToCamPolicy)
 									{
-										invertedIndex[zReg[1]] = info;
+										distance = distanceToCam;
 									}
-								}
-								else
-								{
-									invertedIndex[zReg[1]] = info;
+
+									info.distance = distance;
+
+									if(invertedIndex[ptIdx].distance != -1.0f)
+									{
+										if(distance <= invertedIndex[ptIdx].distance)
+										{
+											invertedIndex[ptIdx] = info;
+										}
+									}
+									else
+									{
+										invertedIndex[ptIdx] = info;
+									}
 								}
 							}
 						}
@@ -3286,6 +3528,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		float maxAngle,
+		float maxDepthError,
 		const std::vector<float> & roiRatios,
 		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
@@ -3296,6 +3539,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			cameraModels,
 			maxDistance,
 			maxAngle,
+			maxDepthError,
 			roiRatios,
 			projMask,
 			distanceToCamPolicy,
@@ -3308,6 +3552,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		float maxAngle,
+		float maxDepthError,
 		const std::vector<float> & roiRatios,
 		const cv::Mat & projMask,
 		bool distanceToCamPolicy,
@@ -3318,6 +3563,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 			cameraModels,
 			maxDistance,
 			maxAngle,
+			maxDepthError,
 			roiRatios,
 			projMask,
 			distanceToCamPolicy,

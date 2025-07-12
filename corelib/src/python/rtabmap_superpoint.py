@@ -2,7 +2,7 @@
 #
 # Drop this file in the root folder of SuperPoint git: https://github.com/magicleap/SuperPointPretrainedNetwork
 # To use with rtabmap:
-#   --Vis/FeatureType 15 --PyDetector/Path "~/SuperPointPretrainedNetwork/rtabmap_superpoint.py" --PyDetector/Model "~/SuperPointPretrainedNetwork/superpoint_v1.pth"
+#   --Vis/FeatureType 15 --Kp/DetectorStrategy 15 --PyDetector/Path "~/SuperPointPretrainedNetwork/rtabmap_superpoint.py"
 #
 
 import random

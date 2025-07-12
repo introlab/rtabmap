@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Should be first on windows to avoid "WinSock.h has already been included" error
 #include <pcl/io/vlp_grabber.h>
+#include <boost/version.hpp>
 
 #include <rtabmap/core/Lidar.h>
 #include <rtabmap/utilite/USemaphore.h>

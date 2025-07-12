@@ -126,6 +126,14 @@ cv::Mat RTABMAP_CORE_EXPORT registerDepth(
 		const cv::Size & colorSize,
 		const cv::Mat & colorK,
 		const rtabmap::Transform & transform);
+cv::Mat RTABMAP_CORE_EXPORT registerDepth(
+	const cv::Mat & depth,
+	const cv::Mat & confidence,
+	const cv::Mat & depthK,
+	const cv::Size & colorSize,
+	const cv::Mat & colorK,
+	const rtabmap::Transform & transform,
+	cv::Mat & registeredConfidence);
 
 cv::Mat RTABMAP_CORE_EXPORT fillDepthHoles(
 		const cv::Mat & depth,
@@ -143,6 +151,10 @@ cv::Mat RTABMAP_CORE_EXPORT fastBilateralFiltering(
 		float sigmaS = 15.0f,
 		float sigmaR = 0.05f,
 		bool earlyDivision = false);
+
+void RTABMAP_CORE_EXPORT depthBleedingFiltering(
+	cv::Mat & depth,
+	float maxDepthError);
 
 cv::Mat RTABMAP_CORE_EXPORT brightnessAndContrastAuto(
 		const cv::Mat & src,
@@ -165,7 +177,7 @@ void RTABMAP_CORE_EXPORT NMS(
 		int border, int dist_thresh, int img_width, int img_height);
 
 std::vector<int> RTABMAP_CORE_EXPORT SSC(
-	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows);
+	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows, const std::vector<int> & indx = {});
 
 /**
  * @brief Rotate images and camera model so that the top of the image is up.
@@ -180,8 +192,9 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @param model a valid camera model
  * @param rgb a rgb/grayscale image (set cv::Mat() if not used)
  * @param depth a depth image (set cv::Mat() if not used)
+ * @return true if the model/images have been rotated, false otherwise
  */
-void RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
+bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,
 	cv::Mat & rgb,
 	cv::Mat & depth);

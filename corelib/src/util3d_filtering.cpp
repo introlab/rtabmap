@@ -395,6 +395,154 @@ LaserScan rangeFiltering(
 	return scan;
 }
 
+template<typename PointT>
+pcl::IndicesPtr rangeFilteringImpl(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	UASSERT(rangeMin >=0.0f && rangeMax>=0.0f);
+	int size = indices->empty()?cloud->size():indices->size();
+	pcl::IndicesPtr output(new std::vector<int>());
+	output->reserve(size);
+	if(!cloud->empty())
+	{
+		if(rangeMin > 0.0f || rangeMax > 0.0f)
+		{
+			float rangeMinSqrd = rangeMin * rangeMin;
+			float rangeMaxSqrd = rangeMax * rangeMax;
+			for(int i=0; i<size; ++i)
+			{
+				int index = indices->empty()?i:indices->at(i);
+				const PointT & pt = cloud->at(index);
+				float r = pt.x*pt.x + pt.y*pt.y + pt.z*pt.z;
+
+				if(rangeMin > 0.0f && r < rangeMinSqrd)
+				{
+					continue;
+				}
+				if(rangeMax > 0.0f && r > rangeMaxSqrd)
+				{
+					continue;
+				}
+
+				output->push_back(index);
+			}
+		}
+		else
+		{
+			*output = *indices;
+		}
+	}
+
+	return output;
+}
+
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointXYZ>(cloud, indices, rangeMin, rangeMax);
+}
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointXYZRGB>(cloud, indices, rangeMin, rangeMax);
+}
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointNormal>(cloud, indices, rangeMin, rangeMax);
+}
+pcl::IndicesPtr rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax)
+{
+	return rangeFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, rangeMin, rangeMax);
+}
+
+template<typename PointT>
+void rangeSplitFilteringImpl(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	int size = indices->empty()?cloud->size():indices->size();
+	closeIndices.reset(new std::vector<int>());
+	farIndices.reset(new std::vector<int>());
+	closeIndices->reserve(size);
+	farIndices->reserve(size);
+	if(!cloud->empty())
+	{
+		float rangeSqrd = range * range;
+		for(int i=0; i<size; ++i)
+		{
+			int index = indices->empty()?i:indices->at(i);
+			const PointT & pt = cloud->at(index);
+			float r = pt.x*pt.x + pt.y*pt.y + pt.z*pt.z;
+
+			if(r < rangeSqrd)
+			{
+				closeIndices->push_back(index);
+			}
+			else
+			{
+				farIndices->push_back(index);
+			}
+		}
+	}
+}
+
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointXYZ>(cloud, indices, range, closeIndices, farIndices);
+}
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointXYZRGB>(cloud, indices, range, closeIndices, farIndices);
+}
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointNormal>(cloud, indices, range, closeIndices, farIndices);
+}
+void rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices)
+{
+	rangeSplitFilteringImpl<pcl::PointXYZRGBNormal>(cloud, indices, range, closeIndices, farIndices);
+}
+
 LaserScan downsample(
 		const LaserScan & scan,
 		int step)
@@ -546,7 +694,7 @@ typename pcl::PointCloud<PointT>::Ptr voxelizeImpl(
 
 		if ((dx*dy*dz) > static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()))
 		{
-			UWARN("Leaf size is too small for the input dataset. Integer indices would overflow. "
+			UDEBUG("Leaf size is too small for the input dataset. Integer indices would overflow. "
 				  "We will split space to be able to voxelize (lvl=%d cloud=%d min=[%f %f %f] max=[%f %f %f] voxel=%f).",
 				  level,
 				  (int)(indices->empty()?cloud->size():indices->size()),
@@ -2007,7 +2155,7 @@ pcl::IndicesPtr normalFilteringImpl(
 		for(unsigned int i=0; i<cloud_normals->size(); ++i)
 		{
 			Eigen::Vector4f v(cloud_normals->at(i).normal_x, cloud_normals->at(i).normal_y, cloud_normals->at(i).normal_z, 0.0f);
-			if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->size()!=0?indices->at(i):i).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+			if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->size()!=0?indices->at(i):i).z < viewpoint[2]) // some far velodyne rays on road can have normals toward ground
 			{
 				//reverse normal
 				v *= -1.0f;
@@ -2078,7 +2226,7 @@ pcl::IndicesPtr normalFilteringImpl(
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				Eigen::Vector4f v(cloud->at(indices->at(i)).normal_x, cloud->at(indices->at(i)).normal_y, cloud->at(indices->at(i)).normal_z, 0.0f);
-				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->at(i)).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(indices->at(i)).z < viewpoint[2]) // some far velodyne rays on road can have normals toward ground
 				{
 					//reverse normal
 					v *= -1.0f;
@@ -2096,7 +2244,7 @@ pcl::IndicesPtr normalFilteringImpl(
 			for(unsigned int i=0; i<cloud->size(); ++i)
 			{
 				Eigen::Vector4f v(cloud->at(i).normal_x, cloud->at(i).normal_y, cloud->at(i).normal_z, 0.0f);
-				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(i).z < viewpoint[3]) // some far velodyne rays on road can have normals toward ground
+				if(groundNormalsUp>0.0f && v[2] < -groundNormalsUp && cloud->at(i).z < viewpoint[2]) // some far velodyne rays on road can have normals toward ground
 				{
 					//reverse normal
 					v *= -1.0f;

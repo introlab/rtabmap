@@ -225,6 +225,7 @@ cv::Mat RTABMAP_CORE_EXPORT mergeTextures(
 		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
 		const ProgressState * state = 0,
 		unsigned char blankValue = 255,      //Gray value for blank polygons (without texture)
+		bool clearVertexColorUnderTexture = true,
 		std::map<int, std::map<int, cv::Vec4d> > * gains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B>
 		std::map<int, std::map<int, cv::Mat> > * blendingGains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains>
 		std::pair<float, float> * contrastValues = 0); // Alpha/beta contrast values
@@ -247,6 +248,7 @@ cv::Mat RTABMAP_CORE_EXPORT mergeTextures(
 		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
 		const ProgressState * state = 0,
 		unsigned char blankValue = 255,      //Gray value for blank polygons (without texture)
+		bool clearVertexColorUnderTexture = true,
 		std::map<int, std::map<int, cv::Vec4d> > * gains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B>
 		std::map<int, std::map<int, cv::Mat> > * blendingGains = 0, // <Camera ID, Camera Sub Index (multi-cameras), gains>
 		std::pair<float, float> * contrastValues = 0); // Alpha/beta contrast values
@@ -484,6 +486,22 @@ void RTABMAP_CORE_EXPORT adjustNormalsToViewPoint(
 
 void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const std::vector<int> & cameraIndices,
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		float groundNormalsUp = 0.0f);
+
+void RTABMAP_CORE_EXPORT adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
@@ -570,6 +588,15 @@ bool intersectRayMesh(
 		Eigen::Vector3f & normal,
 		int & index);
 
+int RTABMAP_CORE_EXPORT saveOBJFile(
+	const std::string &file_name,
+    const pcl::TextureMesh &tex_mesh,
+	unsigned precision = 5);
+
+int RTABMAP_CORE_EXPORT saveOBJFile(
+	const std::string &file_name,
+	const pcl::PolygonMesh &mesh,
+	unsigned precision = 5);
 
 } // namespace util3d
 } // namespace rtabmap

@@ -322,7 +322,9 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				Transform previous = this->getPose();
 				Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
 				UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
+				std::map<double, rtabmap::Transform> imus = imus_;
 				this->reset(newFramePose);
+				imus_ = imus;
 			}
 
 			imus_.insert(std::make_pair(data.stamp(), imuT));
@@ -335,6 +337,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			UWARN("Received IMU doesn't have orientation set! It is ignored.");
 		}
+	}
+
+	if((data.imageRaw().empty() && !data.imageCompressed().empty()) ||
+	   (data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty()) ||
+	   (data.laserScanRaw().empty() && !data.laserScanCompressed().empty()))
+	{
+		UDEBUG("Received compressed data, uncompressing...");
+		data.uncompressData();
+		UDEBUG("Received compressed data, uncompressing...done!");
 	}
 
 	if(!data.imageRaw().empty())

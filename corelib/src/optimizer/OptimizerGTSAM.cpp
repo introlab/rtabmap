@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/sam/BearingFactor.h>
 #include <gtsam/sam/BearingRangeFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -208,7 +209,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			UDEBUG("hasGPSPrior=%s", hasGPSPrior?"true":"false");
 			if(isSlam2d())
 			{
-				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:std::numeric_limits<double>::min()));
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:1e-9));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
 				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
 			}
@@ -216,7 +217,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(
 						(gtsam::Vector(6) <<
-								(hasGravityConstraints?2:1e-2), (hasGravityConstraints?2:1e-2), hasGPSPrior?1e-2:std::numeric_limits<double>::min(), // roll, pitch, fixed yaw if there are no priors
+								(hasGravityConstraints?2:1e-2), (hasGravityConstraints?2:1e-2), (hasGPSPrior?1e-2:1e-9), // roll, pitch, fixed yaw if there are no priors
 								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
@@ -472,7 +473,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					Vector3 r = gtsam::Pose3(iter->second.transform().toEigen4d()).rotation().xyz();
 					gtsam::Unit3 nG = gtsam::Rot3::RzRyRx(r.x(), r.y(), 0).rotate(gtsam::Unit3(0,0,-1));
-					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigmas(gtsam::Vector2(gravitySigma(), 10));
+					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigmas(gtsam::Vector2(gravitySigma(), gravitySigma()));
 					graph.add(Pose3GravityFactor(iter->first, nG, model, Unit3(0,0,1)));
 					lastAddedConstraints_.push_back(ConstraintToFactor(iter->first, iter->first, -1));
 				}
@@ -551,7 +552,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 							}
 						}
-						else
+						else if(1 / static_cast<double>(iter->second.infMatrix().at<double>(1,1)) < 9999)
 						{
 							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
 							if(!isCovarianceIgnored())
@@ -564,6 +565,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point2 landmark(t.x(), t.y());
 							gtsam::Pose2 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+						}
+						else
+						{
+							Eigen::Matrix<double, 1, 1> information = Eigen::Matrix<double, 1, 1>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,1), cv::Range(0,1)).clone();;
+								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+							}
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+
+							gtsam::Point2 landmark(t.x(), t.y());
+							gtsam::Pose2 p;
+							graph.add(gtsam::BearingFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), model));
 							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 					}
@@ -599,19 +615,36 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 							}
 						}
-						else
+						else if(1 / static_cast<double>(iter->second.infMatrix().at<double>(2,2)) < 9999)
 						{
 							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
 							{
-								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();;
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,3), cv::Range(0,3)).clone();
 								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
 							}
+
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
 
 							gtsam::Point3 landmark(t.x(), t.y(), t.z());
 							gtsam::Pose3 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
+							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+						}
+						else
+						{
+							Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity();
+							if(!isCovarianceIgnored())
+							{
+								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,2), cv::Range(0,2)).clone();
+								memcpy(information.data(), linearCov.data, linearCov.total()*sizeof(double));
+							}
+
+							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(information);
+
+							gtsam::Point3 landmark(t.x(), t.y(), t.z());
+							gtsam::Pose3 p;
+							graph.add(gtsam::BearingFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), model));
 							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
 						}
 					}
@@ -891,22 +924,42 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			// early stop condition
 			UDEBUG("iteration %d error =%f", i+1, error);
 			double errorDelta = lastError - error;
-			if((isam2_ || i>0) && errorDelta < this->epsilon())
+			if(this->epsilon() > 0.0 && fabs(error) > 1000000000000.0)
 			{
-				if(errorDelta < 0)
-				{
-					UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
-				}
-				else
-				{
-					UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
-					break;
-				}
+				UWARN("Error computed (%e) is very huge and/or diverging! Aborting! "
+					   "Set %s to 0 to ignore that check and keep iterating up to %s (%d).",
+					   error,
+					   Parameters::kOptimizerEpsilon().c_str(),
+					   Parameters::kOptimizerIterations().c_str(),
+					   this->iterations());
+				return optimizedPoses;
 			}
-			else if(i==0 && error < this->epsilon())
+			else
 			{
-				UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
-				break;
+				if((isam2_ || i>0) && errorDelta < this->epsilon())
+				{
+					if(errorDelta < 0)
+					{
+						UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+					}
+					else
+					{
+						UDEBUG("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+						break;
+					}
+				}
+				else if(i==0)
+				{ 
+					if(error < 0)
+					{
+						UDEBUG("Negative error?! Ignore and continue optimizing... (%f)", error);
+					}
+					else if(error < this->epsilon())
+					{
+						UINFO("Stop optimizing, error is already under epsilon (%f < %f)", error, this->epsilon());
+						break;
+					}
+				}
 			}
 			lastError = error;
 		}

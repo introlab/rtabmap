@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/CloudViewerCellPicker.h"
+#include "rtabmap/gui/PointCloudColorHandlerIntensityField.h"
+#include "rtabmap/gui/PointCloudColorHandlerMinMaxGenericField.h"
 
 #include <rtabmap/core/Version.h>
 #include <rtabmap/core/util3d_transforms.h>
@@ -80,6 +82,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkObjectFactory.h>
 #include <vtkQuad.h>
 #include <vtkWarpScalar.h>
+#include <vtkUnsignedCharArray.h>
 #include <opencv/vtkImageMatSource.h>
 
 #if VTK_MAJOR_VERSION >= 7
@@ -94,6 +97,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/global_map/OctoMap.h>
+#endif
+
+// For compatibility with new VTK generic data arrays.
+#ifdef vtkGenericDataArray_h
+#define InsertNextTupleValue InsertNextTypedTuple
 #endif
 
 namespace rtabmap {
@@ -124,6 +132,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_aSetLighting(0),
 		_aSetFlatShading(0),
 		_aSetEdgeVisibility(0),
+		_aSetScalarVisibility(0),
 		_aBackfaceCulling(0),
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
@@ -143,6 +152,8 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_renderingRate(5.0),
 		_octomapActor(0),
 		_intensityAbsMax(100.0f),
+		_cloudColorRangeMin(0.0f),
+		_cloudColorRangeMax(0.0f),
 		_coordinateFrameScale(1.0)
 {
 	this->setMinimumSize(200, 200);
@@ -330,6 +341,12 @@ void CloudViewer::createMenu()
 	_aSetIntensityRainbowColormap->setCheckable(true);
 	_aSetIntensityRainbowColormap->setChecked(false);
 	_aSetIntensityMaximum = new QAction("Set maximum absolute intensity...", this);
+	_aSetCloudColorRangeMin = new QAction("Set minimum color range...", this);
+	_aSetCloudColorRangeMax = new QAction("Set maximum color range...", this);
+	_aCloudColorRangeInverted = new QAction("Inverted color scale", this);
+	_aCloudColorRangeInverted->setCheckable(true);
+	_aCloudColorRangeInverted->setChecked(false);
+	_aClearCloudColorRanges = new QAction("Reset ranges", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
 	_aSetEDLShading = new QAction("Eye-Dome Lighting Shading", this);
@@ -347,6 +364,9 @@ void CloudViewer::createMenu()
 	_aSetEdgeVisibility = new QAction("Show edges", this);
 	_aSetEdgeVisibility->setCheckable(true);
 	_aSetEdgeVisibility->setChecked(false);
+	_aSetScalarVisibility = new QAction("Show vertex colors", this);
+	_aSetScalarVisibility->setCheckable(true);
+	_aSetScalarVisibility->setChecked(true);
 	_aBackfaceCulling = new QAction("Backface culling", this);
 	_aBackfaceCulling->setCheckable(true);
 	_aBackfaceCulling->setChecked(true);
@@ -392,6 +412,12 @@ void CloudViewer::createMenu()
 	scanMenu->addAction(_aSetIntensityRainbowColormap);
 	scanMenu->addAction(_aSetIntensityMaximum);
 
+	QMenu * cloudMenu = new QMenu("XYZ color", this);
+	cloudMenu->addAction(_aSetCloudColorRangeMin);
+	cloudMenu->addAction(_aSetCloudColorRangeMax);
+	cloudMenu->addAction(_aCloudColorRangeInverted);
+	cloudMenu->addAction(_aClearCloudColorRanges);
+
 	//menus
 	_menu = new QMenu(this);
 	_menu->addMenu(cameraMenu);
@@ -402,12 +428,14 @@ void CloudViewer::createMenu()
 	_menu->addMenu(gridMenu);
 	_menu->addMenu(normalsMenu);
 	_menu->addMenu(scanMenu);
+	_menu->addMenu(cloudMenu);
 	_menu->addAction(_aSetBackgroundColor);
 	_menu->addAction(_aSetRenderingRate);
 	_menu->addAction(_aSetEDLShading);
 	_menu->addAction(_aSetLighting);
 	_menu->addAction(_aSetFlatShading);
 	_menu->addAction(_aSetEdgeVisibility);
+	_menu->addAction(_aSetScalarVisibility);
 	_menu->addAction(_aBackfaceCulling);
 	_menu->addAction(_aPolygonPicking);
 }
@@ -453,6 +481,10 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("intensity_red_colormap", this->isIntensityRedColormap());
 	settings.setValue("intensity_rainbow_colormap", this->isIntensityRainbowColormap());
 	settings.setValue("intensity_max", (double)this->getIntensityMax());
+
+	settings.setValue("color_range_min", (double)this->getCloudColorRangeMin());
+	settings.setValue("color_range_max", (double)this->getCloudColorRangeMax());
+	settings.setValue("color_range_inverted", (double)this->isCloudColorRangeInverted());
 
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
@@ -504,6 +536,10 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setIntensityRedColormap(settings.value("intensity_red_colormap", this->isIntensityRedColormap()).toBool());
 	this->setIntensityRainbowColormap(settings.value("intensity_rainbow_colormap", this->isIntensityRainbowColormap()).toBool());
 	this->setIntensityMax(settings.value("intensity_max", this->getIntensityMax()).toFloat());
+
+	this->setCloudColorRangeMin(settings.value("color_range_min", this->getCloudColorRangeMin()).toFloat());
+	this->setCloudColorRangeMax(settings.value("color_range_max", this->getCloudColorRangeMax()).toFloat());
+	this->setCloudColorRangeInverted(settings.value("color_range_inverted", this->isCloudColorRangeInverted()).toBool());
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
@@ -595,153 +631,6 @@ bool CloudViewer::updateCloudPose(
 	return false;
 }
 
-class PointCloudColorHandlerIntensityField : public pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>
-{
-	typedef pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloud PointCloud;
-	typedef PointCloud::Ptr PointCloudPtr;
-	typedef PointCloud::ConstPtr PointCloudConstPtr;
-
-public:
-	typedef boost::shared_ptr<PointCloudColorHandlerIntensityField > Ptr;
-	typedef boost::shared_ptr<const PointCloudColorHandlerIntensityField > ConstPtr;
-
-	/** \brief Constructor. */
-	PointCloudColorHandlerIntensityField (const PointCloudConstPtr &cloud, float maxAbsIntensity = 0.0f, int colorMap = 0) :
-		pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloudColorHandler (cloud),
-		maxAbsIntensity_(maxAbsIntensity),
-		colormap_(colorMap)
-		{
-		field_idx_  = pcl::getFieldIndex (*cloud, "intensity");
-		if (field_idx_ != -1)
-			capable_ = true;
-		else
-			capable_ = false;
-		}
-
-	/** \brief Empty destructor */
-	virtual ~PointCloudColorHandlerIntensityField () {}
-
-	/** \brief Obtain the actual color for the input dataset as vtk scalars.
-	 * \param[out] scalars the output scalars containing the color for the dataset
-	 * \return true if the operation was successful (the handler is capable and
-	 * the input cloud was given as a valid pointer), false otherwise
-	 */
-#if PCL_VERSION_COMPARE(>, 1, 11, 1)
-	virtual vtkSmartPointer<vtkDataArray> getColor () const {
-		vtkSmartPointer<vtkDataArray> scalars;
-		if (!capable_ || !cloud_)
-			return scalars;
-#else
-	virtual bool getColor (vtkSmartPointer<vtkDataArray> &scalars) const {
-		if (!capable_ || !cloud_)
-			return (false);
-#endif
-		if (!scalars)
-			scalars = vtkSmartPointer<vtkUnsignedCharArray>::New ();
-		scalars->SetNumberOfComponents (3);
-
-		vtkIdType nr_points = cloud_->width * cloud_->height;
-		// Allocate enough memory to hold all colors
-		float * intensities = new float[nr_points];
-		float intensity;
-		size_t point_offset = cloud_->fields[field_idx_].offset;
-		size_t j = 0;
-
-		// If XYZ present, check if the points are invalid
-		int x_idx = pcl::getFieldIndex (*cloud_, "x");
-		if (x_idx != -1)
-		{
-			float x_data, y_data, z_data;
-			size_t x_point_offset = cloud_->fields[x_idx].offset;
-
-			// Color every point
-			for (vtkIdType cp = 0; cp < nr_points; ++cp,
-			point_offset += cloud_->point_step,
-			x_point_offset += cloud_->point_step)
-			{
-				// Copy the value at the specified field
-				memcpy (&intensity, &cloud_->data[point_offset], sizeof (float));
-
-				memcpy (&x_data, &cloud_->data[x_point_offset], sizeof (float));
-				memcpy (&y_data, &cloud_->data[x_point_offset + sizeof (float)], sizeof (float));
-				memcpy (&z_data, &cloud_->data[x_point_offset + 2 * sizeof (float)], sizeof (float));
-
-				if (!std::isfinite (x_data) || !std::isfinite (y_data) || !std::isfinite (z_data))
-					continue;
-
-				intensities[j++] = intensity;
-			}
-		}
-		// No XYZ data checks
-		else
-		{
-			// Color every point
-			for (vtkIdType cp = 0; cp < nr_points; ++cp, point_offset += cloud_->point_step)
-			{
-				// Copy the value at the specified field
-				memcpy (&intensity, &cloud_->data[point_offset], sizeof (float));
-
-				intensities[j++] = intensity;
-			}
-		}
-		if (j != 0)
-		{
-			// Allocate enough memory to hold all colors
-			unsigned char* colors = new unsigned char[j * 3];
-			float min, max;
-			if(maxAbsIntensity_>0.0f)
-			{
-				max = maxAbsIntensity_;
-			}
-			else
-			{
-				uMinMax(intensities, j, min, max);
-			}
-			for(size_t k=0; k<j; ++k)
-			{
-				colors[k*3+0] = colors[k*3+1] = colors[k*3+2] = max>0?(unsigned char)(std::min(intensities[k]/max*255.0f, 255.0f)):255;
-				if(colormap_ == 1)
-				{
-					colors[k*3+0] = 255;
-					colors[k*3+2] = 0;
-				}
-				else if(colormap_ == 2)
-				{
-					float r,g,b;
-					util2d::HSVtoRGB(&r, &g, &b, colors[k*3+0]*299.0f/255.0f, 1.0f, 1.0f);
-					colors[k*3+0] = r*255.0f;
-					colors[k*3+1] = g*255.0f;
-					colors[k*3+2] = b*255.0f;
-				}
-			}
-			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (j);
-			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetArray (colors, j*3, 0, vtkUnsignedCharArray::VTK_DATA_ARRAY_DELETE);
-		}
-		else
-			reinterpret_cast<vtkUnsignedCharArray*>(&(*scalars))->SetNumberOfTuples (0);
-		//delete [] colors;
-		delete [] intensities;
-#if PCL_VERSION_COMPARE(>, 1, 11, 1)
-		return scalars;
-#else
-		return (true);
-#endif
-	}
-
-protected:
-	/** \brief Get the name of the class. */
-	virtual std::string
-	getName () const { return ("PointCloudColorHandlerIntensityField"); }
-
-	/** \brief Get the name of the field used. */
-	virtual std::string
-	getFieldName () const { return ("intensity"); }
-
-private:
-	float maxAbsIntensity_;
-	int colormap_; // 0=grayscale, 1=redYellow, 2=RainbowHSV
-};
-
 bool CloudViewer::addCloud(
 		const std::string & id,
 		const pcl::PCLPointCloud2Ptr & binaryCloud,
@@ -788,11 +677,20 @@ bool CloudViewer::addCloud(
 		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 
 		// x,y,z
-		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "x"));
+		colorHandler.reset (new PointCloudColorHandlerMinMaxGenericField (binaryCloud, "x",
+			_cloudColorRangeMin==0.0f?std::numeric_limits<float>::lowest():_cloudColorRangeMin,
+			_cloudColorRangeMax==0.0f?std::numeric_limits<float>::max():_cloudColorRangeMax,
+			_aCloudColorRangeInverted->isChecked()));
 		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
-		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "y"));
+		colorHandler.reset (new PointCloudColorHandlerMinMaxGenericField (binaryCloud, "y",
+			_cloudColorRangeMin==0.0f?std::numeric_limits<float>::lowest():_cloudColorRangeMin,
+			_cloudColorRangeMax==0.0f?std::numeric_limits<float>::max():_cloudColorRangeMax,
+			_aCloudColorRangeInverted->isChecked()));
 		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
-		colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "z"));
+		colorHandler.reset (new PointCloudColorHandlerMinMaxGenericField (binaryCloud, "z",
+			_cloudColorRangeMin==0.0f?std::numeric_limits<float>::lowest():_cloudColorRangeMin,
+			_cloudColorRangeMax==0.0f?std::numeric_limits<float>::max():_cloudColorRangeMax,
+			_aCloudColorRangeInverted->isChecked()));
 		_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id, viewport);
 
 		if(rgb)
@@ -1408,10 +1306,20 @@ bool CloudViewer::addTextureMesh (
   // Create points from mesh.cloud
   vtkSmartPointer<vtkPoints> poly_points = vtkSmartPointer<vtkPoints>::New ();
   vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New ();
-  bool has_color = false;
+  colors->SetNumberOfComponents(3);
+  colors->SetName ("Colors");
+  bool hasColors = false;
+  for(unsigned int i=0; i<mesh.cloud.fields.size(); ++i)
+  {
+	if(mesh.cloud.fields[i].name.compare("rgb") == 0)
+	{
+		hasColors = true;
+		break;
+	}
+  }
   vtkSmartPointer<vtkMatrix4x4> transformation = vtkSmartPointer<vtkMatrix4x4>::New ();
   
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ> ());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB> ());
     pcl::fromPCLPointCloud2 (mesh.cloud, *cloud);
     // no points --> exit
     if (cloud->points.size () == 0)
@@ -1423,8 +1331,17 @@ bool CloudViewer::addTextureMesh (
     poly_points->SetNumberOfPoints (cloud->points.size ());
     for (std::size_t i = 0; i < cloud->points.size (); ++i)
     {
-      const pcl::PointXYZ &p = cloud->points[i];
+      const pcl::PointXYZRGB &p = cloud->points[i];
       poly_points->InsertPoint (i, p.x, p.y, p.z);
+
+	  if(hasColors) {
+	  	unsigned char color[3] = {p.r, p.g, p.b}; 
+#if VTK_MAJOR_VERSION > 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION >= 1)
+	  	colors->InsertNextTypedTuple(color);
+#else
+	  	colors->InsertNextTupleValue(color);
+#endif
+	  }
     }
 
   //create polys from polyMesh.tex_polygons
@@ -1443,8 +1360,9 @@ bool CloudViewer::addTextureMesh (
   vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
   polydata->SetPolys (polys);
   polydata->SetPoints (poly_points);
-  if (has_color)
+  if (hasColors) {
     polydata->GetPointData()->SetScalars(colors);
+  }
 
   vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New ();
 #if VTK_MAJOR_VERSION < 6
@@ -1524,6 +1442,7 @@ bool CloudViewer::addTextureMesh (
   actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
   actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
   actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
+  actor->GetMapper()->SetScalarVisibility(_aSetScalarVisibility->isChecked());
   return true;
 }
 
@@ -2892,6 +2811,21 @@ void CloudViewer::setEdgeVisibility(bool visible)
 	this->refreshView();
 }
 
+void CloudViewer::setScalarVisibility(bool visible)
+{
+	_aSetScalarVisibility->setChecked(visible);
+	pcl::visualization::ShapeActorMapPtr shapeActorMap = _visualizer->getShapeActorMap();
+	for(pcl::visualization::ShapeActorMap::iterator iter=shapeActorMap->begin(); iter!=shapeActorMap->end(); ++iter)
+	{
+		vtkActor* actor = vtkActor::SafeDownCast (iter->second);
+		if(actor && _addedClouds.contains(iter->first))
+		{
+			actor->GetMapper()->SetScalarVisibility(_aSetScalarVisibility->isChecked());
+		}
+	}
+	this->refreshView();
+}
+
 void CloudViewer::setInteractorLayer(int layer)
 {
 	_visualizer->getRendererCollection()->InitTraversal ();
@@ -3238,6 +3172,12 @@ bool CloudViewer::getCloudVisibility(const std::string & id)
 	return false;
 }
 
+
+int CloudViewer::getCloudColorIndex(const std::string & id) const
+{
+	return _visualizer->getColorHandlerIndex(id);
+}
+	
 void CloudViewer::setCloudColorIndex(const std::string & id, int index)
 {
 	if(index>0)
@@ -3246,6 +3186,26 @@ void CloudViewer::setCloudColorIndex(const std::string & id, int index)
 	}
 }
 
+double CloudViewer::getCloudOpacity(const std::string & id) const
+{
+	double opacity = 1.0;
+	if(!_visualizer->getPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, opacity, id))
+	{
+#if VTK_MAJOR_VERSION >= 7
+		pcl::visualization::ShapeActorMap::iterator am_it = _visualizer->getShapeActorMap()->find (id);
+		if (am_it != _visualizer->getShapeActorMap()->end ())
+		{
+			vtkActor* actor = vtkActor::SafeDownCast (am_it->second);
+			if(actor)
+			{
+				opacity = actor->GetProperty ()->GetOpacity ();
+			}
+		}
+#endif
+	}
+	return opacity;
+}
+	
 void CloudViewer::setCloudOpacity(const std::string & id, double opacity)
 {
 	double lastOpacity;
@@ -3273,6 +3233,12 @@ void CloudViewer::setCloudOpacity(const std::string & id, double opacity)
 #endif
 }
 
+int CloudViewer::getCloudPointSize(const std::string & id) const
+{
+	double size = 1.0;
+	_visualizer->getPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, size, id);
+	return (int)size;
+}
 void CloudViewer::setCloudPointSize(const std::string & id, int size)
 {
 	double lastSize;
@@ -3564,8 +3530,32 @@ void CloudViewer::setIntensityMax(float value)
 	}
 	else
 	{
-		UERROR("Cannot set normals scale < 0, value=%f", value);
+		UERROR("Cannot set intensity < 0, value=%f", value);
 	}
+}
+float CloudViewer::getCloudColorRangeMin() const
+{
+	return _cloudColorRangeMin;
+}
+float CloudViewer::getCloudColorRangeMax() const
+{
+	return _cloudColorRangeMax;
+}
+bool CloudViewer::isCloudColorRangeInverted() const
+{
+	return _aCloudColorRangeInverted->isChecked();
+}
+void CloudViewer::setCloudColorRangeMin(float value)
+{
+	_cloudColorRangeMin = value;
+}
+void CloudViewer::setCloudColorRangeMax(float value)
+{
+	_cloudColorRangeMax = value;
+}
+void CloudViewer::setCloudColorRangeInverted(bool enabled)
+{
+	_aCloudColorRangeInverted->setChecked(enabled);
 }
 
 void CloudViewer::buildPickingLocator(bool enable)
@@ -3937,6 +3927,30 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		this->setIntensityRainbowColormap(_aSetIntensityRainbowColormap->isChecked());
 	}
+	else if(a == _aSetCloudColorRangeMin)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set minimum axis color range"), tr("Range (0=auto)"), _cloudColorRangeMin, -99999, 99999, 2, &ok);
+		if(ok)
+		{
+			this->setCloudColorRangeMin(value);
+		}
+	}
+	else if(a == _aSetCloudColorRangeMax)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set maximum axis color range"), tr("Range (0=auto)"), _cloudColorRangeMax, -99999, 99999, 2, &ok);
+		if(ok)
+		{
+			this->setCloudColorRangeMax(value);
+		}
+	}
+	else if(a == _aClearCloudColorRanges)
+	{
+		_cloudColorRangeMin = 0.0f;
+		_cloudColorRangeMax = 0.0f;
+		_aCloudColorRangeInverted->setChecked(false);
+	}
 	else if(a == _aSetBackgroundColor)
 	{
 		QColor color = this->getDefaultBackgroundColor();
@@ -3982,6 +3996,10 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aSetEdgeVisibility)
 	{
 		this->setEdgeVisibility(_aSetEdgeVisibility->isChecked());
+	}
+	else if(a == _aSetScalarVisibility)
+	{
+		this->setScalarVisibility(_aSetScalarVisibility->isChecked());
 	}
 	else if(a == _aBackfaceCulling)
 	{

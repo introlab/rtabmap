@@ -73,6 +73,52 @@ LaserScan RTABMAP_CORE_EXPORT rangeFiltering(
 		float rangeMin,
 		float rangeMax);
 
+pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax);
+pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax);
+pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax);
+pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float rangeMin,
+		float rangeMax);
+
+void RTABMAP_CORE_EXPORT rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range, 
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices);
+void RTABMAP_CORE_EXPORT rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices);
+void RTABMAP_CORE_EXPORT rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices);
+void RTABMAP_CORE_EXPORT rangeSplitFiltering(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float range,
+		pcl::IndicesPtr & closeIndices,
+		pcl::IndicesPtr & farIndices);
+
 LaserScan RTABMAP_CORE_EXPORT downsample(
 		const LaserScan & cloud,
 		int step);

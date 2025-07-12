@@ -33,11 +33,12 @@ void setupCallbacksNative(const void *object, void * classPtr,
                                                    int,
                                                    float, float, float, float,
                                                    int, int,
-                                                   float, float, float, float, float, float))
+                                                   float, float, float, float, float, float),
+                          void(*cameraInfoEventCallback)(void *, int, const char*, const char*))
 {
     if(object)
     {
-        native(object)->setupSwiftCallbacks(classPtr, progressCallback, initCallback, statsUpdatedCallback);
+        native(object)->setupSwiftCallbacks(classPtr, progressCallback, initCallback, statsUpdatedCallback, cameraInfoEventCallback);
     }
     else
     {
@@ -149,11 +150,12 @@ bool exportMeshNative(
             int optimizedMinClusterSize,
             float optimizedMaxTextureDistance,
             int optimizedMinTextureClusterSize,
+            int textureVertexColorPolicy,
             bool blockRendering)
 {
     if(object)
     {
-        return native(object)->exportMesh(cloudVoxelSize, regenerateCloud, meshing, textureSize, textureCount, normalK, optimized, optimizedVoxelSize, optimizedDepth, optimizedMaxPolygons, optimizedColorRadius, optimizedCleanWhitePolygons, optimizedMinClusterSize, optimizedMaxTextureDistance, optimizedMinTextureClusterSize, blockRendering);
+        return native(object)->exportMesh(cloudVoxelSize, regenerateCloud, meshing, textureSize, textureCount, normalK, optimized, optimizedVoxelSize, optimizedDepth, optimizedMaxPolygons, optimizedColorRadius, optimizedCleanWhitePolygons, optimizedMinClusterSize, optimizedMaxTextureDistance, optimizedMinTextureClusterSize, textureVertexColorPolicy, blockRendering);
     }
     else
     {
@@ -283,20 +285,6 @@ void setCameraNative(const void *object, int type) {
     }
 }
 
-void postCameraPoseEventNative(const void *object,
-        float x, float y, float z, float qx, float qy, float qz, float qw, double stamp)
-{
-    if(object)
-    {
-        native(object)->postCameraPoseEvent(x,y,z,qx,qy,qz,qw,stamp);
-    }
-    else
-    {
-        UERROR("object is null!");
-        return;
-    }
-}
-
 void postOdometryEventNative(const void *object,
         float x, float y, float z, float qx, float qy, float qz, float qw,
         float fx, float fy, float cx, float cy,
@@ -312,7 +300,7 @@ void postOdometryEventNative(const void *object,
     if(object)
     {
         native(object)->postOdometryEvent(
-                rtabmap::Transform(x,y,z,qx,qy,qz,qw),
+                (qx==0.0f && qy==0.0f && qz==0.0f && qw==0.0f)?rtabmap::Transform():rtabmap::Transform(x,y,z,qx,qy,qz,qw),
                 fx,fy,cx,cy, 0,0,0,0,
                 rtabmap::Transform(), rtabmap::Transform(),
                 stamp, 0,
@@ -447,10 +435,24 @@ void setWireframeNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
+void setTextureColorSeamsHiddenNative(const void *object, bool hidden)
+{
+    if(object)
+        native(object)->setTextureColorSeamsHidden(hidden);
+    else
+        UERROR("object is null!");
+}
 void setLocalizationModeNative(const void *object, bool enabled)
 {
     if(object)
         native(object)->setLocalizationMode(enabled);
+    else
+        UERROR("object is null!");
+}
+void setDataRecorderModeNative(const void *object, bool enabled)
+{
+    if(object)
+        native(object)->setDataRecorderMode(enabled);
     else
         UERROR("object is null!");
 }
@@ -503,10 +505,24 @@ void setSmoothingNative(const void *object, bool enabled)
     else
         UERROR("object is null!");
 }
+void setDepthBleedingErrorNative(const void *object, float value)
+{
+    if(object)
+        native(object)->setDepthBleedingError(value);
+    else
+        UERROR("object is null!");
+}
 void setAppendModeNative(const void *object, bool enabled)
 {
     if(object)
         native(object)->setAppendMode(enabled);
+    else
+        UERROR("object is null!");
+}
+void setUpstreamRelocalizationAccThrNative(const void * object, float value)
+{
+    if(object)
+        native(object)->setUpstreamRelocalizationAccThr(value);
     else
         UERROR("object is null!");
 }
@@ -587,6 +603,15 @@ void setDepthConfidenceNative(const void *object, int value)
     else
         UERROR("object is null!");
 }
+
+void setExportPointCloudFormatNative(const void *object, const char * format)
+{
+    if(object)
+        native(object)->setExportPointCloudFormat(format);
+    else
+        UERROR("object is null!");
+}
+
 int setMappingParameterNative(const void *object, const char * key, const char * value)
 {
     if(object)
@@ -609,6 +634,56 @@ void addEnvSensorNative(const void *object, int type, float value)
 {
     if(object)
         return native(object)->addEnvSensor(type, value);
+    else
+        UERROR("object is null!");
+}
+
+void removeMeasureNative(const void *object)
+{
+    if(object)
+        return native(object)->removeMeasure();
+    else
+        UERROR("object is null!");
+}
+void addMeasureNative(const void *object)
+{
+    if(object)
+        return native(object)->addMeasureButtonClicked();
+    else
+        UERROR("object is null!");
+}
+void teleportNative(const void *object)
+{
+    if(object)
+        return native(object)->teleportButtonClicked();
+    else
+        UERROR("object is null!");
+}
+void setMeasuringModeNative(const void *object, int mode)
+{
+    if(object)
+        return native(object)->setMeasuringMode(mode);
+    else
+        UERROR("object is null!");
+}
+void setMetricSystemNative(const void *object, bool enabled)
+{
+    if(object)
+        return native(object)->setMetricSystem(enabled);
+    else
+        UERROR("object is null!");
+}
+void setMeasuringTextSizeNative(const void *object, float size)
+{
+    if(object)
+        return native(object)->setMeasuringTextSize(size);
+    else
+        UERROR("object is null!");
+}
+void clearMeasuresNative(const void *object)
+{
+    if(object)
+        return native(object)->clearMeasures();
     else
         UERROR("object is null!");
 }

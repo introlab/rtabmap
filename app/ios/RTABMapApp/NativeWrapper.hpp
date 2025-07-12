@@ -29,7 +29,8 @@ void setupCallbacksNative(const void *object, void * classPtr,
                                                    int,
                                                    float, float, float, float,
                                                    int, int,
-                                                   float, float, float, float, float, float));
+                                                   float, float, float, float, float, float),
+                          void(*cameraInfoEventCallback)(void *, int, const char*, const char*));
 void destroyNativeApplication(const void *object);
 void setScreenRotationNative(const void *object, int displayRotation);
 int openDatabaseNative(const void *object, const char * databasePath, bool databaseInMemory, bool optimize, bool clearDatabase);
@@ -54,6 +55,7 @@ bool exportMeshNative(
             int optimizedMinClusterSize,
             float optimizedMaxTextureDistance,
             int optimizedMinTextureClusterSize,
+            int textureVertexColorPolicy,
             bool blockRendering);
 bool postExportationNative(const void *object, bool visualize);
 bool writeExportedMeshNative(const void *object, const char * directory, const char * name);
@@ -66,8 +68,6 @@ int renderNative(const void *object);
 bool startCameraNative(const void *object);
 void stopCameraNative(const void *object);
 void setCameraNative(const void *object, int type);
-void postCameraPoseEventNative(const void *object,
-                         float x, float y, float z, float qx, float qy, float qz, float qw, double stamp);
 void postOdometryEventNative(const void *object,
                        float x, float y, float z, float qx, float qy, float qz, float qw,
                        float fx, float fy, float cx, float cy,
@@ -91,7 +91,9 @@ void setGridRotationNative(const void *object, float value);
 void setLightingNative(const void *object, bool enabled);
 void setBackfaceCullingNative(const void *object, bool enabled);
 void setWireframeNative(const void *object, bool enabled);
+void setTextureColorSeamsHiddenNative(const void *object, bool hidden);
 void setLocalizationModeNative(const void *object, bool enabled);
+void setDataRecorderModeNative(const void *object, bool enabled);
 void setTrajectoryModeNative(const void *object, bool enabled);
 void setGraphOptimizationNative(const void *object, bool enabled);
 void setNodesFilteringNative(const void *object, bool enabled);
@@ -99,7 +101,9 @@ void setGraphVisibleNative(const void *object, bool visible);
 void setGridVisibleNative(const void *object, bool visible);
 void setFullResolutionNative(const void *object, bool enabled);
 void setSmoothingNative(const void *object, bool enabled);
+void setDepthBleedingErrorNative(const void *object, float value);
 void setAppendModeNative(const void *object, bool enabled);
+void setUpstreamRelocalizationAccThrNative(const void *object, float value);
 void setMaxCloudDepthNative(const void *object, float value);
 void setMinCloudDepthNative(const void *object, float value);
 void setCloudDensityLevelNative(const void *object, int value);
@@ -111,7 +115,16 @@ void setMaxGainRadiusNative(const void *object, float value);
 void setRenderingTextureDecimationNative(const void *object, int value);
 void setBackgroundColorNative(const void *object, float gray);
 void setDepthConfidenceNative(const void *object, int value);
+void setExportPointCloudFormatNative(const void *object, const char * format);
 int setMappingParameterNative(const void *object, const char * key, const char * value);
+
+void removeMeasureNative(const void *object);
+void addMeasureNative(const void *object);
+void teleportNative(const void *object);
+void setMeasuringModeNative(const void *object, int mode);
+void setMetricSystemNative(const void *object, bool enabled);
+void setMeasuringTextSizeNative(const void *object, float size);
+void clearMeasuresNative(const void *object);
 
 typedef struct ImageNative
 {

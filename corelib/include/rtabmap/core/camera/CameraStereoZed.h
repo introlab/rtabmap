@@ -49,7 +49,7 @@ public:
 public:
 	CameraStereoZed(
 			int deviceId,
-			int resolution = 6, // 0=HD2K, 1=HD1080, 2=HD1200, 3=HD720, 4=SVGA, 5=VGA, 6=AUTO
+			int resolution = -1, // -1 = AUTO, 0=HD4K 1=HD2K 2=HD1080 3=HD1200 4=HD720 5=SVGA 6=VGA
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
 			int sensingMode = 0,// 0=STANDARD, 1=FILL
 			int confidenceThr = 100,
@@ -79,6 +79,7 @@ public:
 	virtual bool getPose(double stamp, Transform & pose, cv::Mat & covariance, double maxWaitTime = 0.0);
 
 	void postInterIMUPublic(const IMU & imu, double stamp);
+	void setRightGrayScale(bool enabled = true);
 
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -100,6 +101,7 @@ private:
 	bool computeOdometry_;
 	bool lost_;
 	bool force3DoF_;
+	bool rightGrayScale_;
 	ZedIMUThread * imuPublishingThread_;
 #endif
 };

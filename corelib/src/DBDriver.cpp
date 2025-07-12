@@ -512,12 +512,13 @@ void DBDriver::updateCalibration(int nodeId, const std::vector<CameraModel> & mo
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image)
+void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image, const std::string & format)
 {
 	_dbSafeAccessMutex.lock();
 	this->updateDepthImageQuery(
 			nodeId,
-			image);
+			image,
+			format);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -922,6 +923,45 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool igno
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::getAllOdomPoses(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const
+{
+	// look in the trash
+	_trashesMutex.lock();
+	if(_trashSignatures.size())
+	{
+		for(std::map<int, Signature*>::const_iterator sIter = _trashSignatures.begin(); sIter!=_trashSignatures.end(); ++sIter)
+		{
+			bool hasNeighbors = !ignoreChildren;
+			if(ignoreChildren)
+			{
+				for(std::map<int, Link>::const_iterator nIter = sIter->second->getLinks().begin();
+						nIter!=sIter->second->getLinks().end();
+						++nIter)
+				{
+					if(nIter->second.type() == Link::kNeighbor ||
+					   nIter->second.type() == Link::kNeighborMerged)
+					{
+						hasNeighbors = true;
+						break;
+					}
+				}
+			}
+			if(hasNeighbors && (!ignoreIntermediateNodes || sIter->second->getWeight() != -1))
+			{
+				poses.insert(std::make_pair(sIter->first, sIter->second->getPose()));
+			}
+		}
+
+		std::vector<int> keys = uKeys(_trashSignatures);
+
+	}
+	_trashesMutex.unlock();
+
+	_dbSafeAccessMutex.lock();
+	this->getAllOdomPosesQuery(poses, ignoreChildren, ignoreIntermediateNodes);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks, bool withLandmarks) const
 {
 	_dbSafeAccessMutex.lock();
@@ -1139,7 +1179,7 @@ void DBDriver::addInfoAfterRun(
 					  << processMemUsed << ","
 					  << databaseMemUsed << ","
 					  << dictionarySize << ","
-					  "\"" << param.c_str() << "\");";
+					  "'" << param.c_str() << "');";
 			}
 			else
 			{
@@ -1149,7 +1189,7 @@ void DBDriver::addInfoAfterRun(
 					  << processMemUsed << ","
 					  << databaseMemUsed << ","
 					  << dictionarySize << ","
-					  "\"" << param.c_str() << "\");";
+					  "'" << param.c_str() << "');";
 			}
 		}
 		else

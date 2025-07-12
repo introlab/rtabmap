@@ -97,6 +97,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromDepth(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromDepth(
+		const cv::Mat & imageDepth,
+		const cv::Mat & imageDepthConfidence,
+		const CameraModel & model,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
+		unsigned char confidenceThr = 0,
+		std::vector<int> * validIndices = 0);
 
 // Use cloudFromDepthRGB with CameraModel interface.
 RTABMAP_DEPRECATED pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudFromDepthRGB(
@@ -116,6 +125,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudFromDepthRGB(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudFromDepthRGB(
+	const cv::Mat & imageRgb,
+	const cv::Mat & imageDepth,
+	const cv::Mat & imageDepthConfidence,
+	const CameraModel & model,
+	int decimation = 1,
+	float maxDepth = 0.0f,
+	float minDepth = 0.0f,
+	unsigned char confidenceThr = 0, // 0=low, 100=high
+	std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromDisparity(
 		const cv::Mat & imageDisparity,
@@ -164,7 +183,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> RTABMAP_CORE_EXPORT cloudsFromS
 		float minDepth = 0.0f,
 		std::vector<pcl::IndicesPtr> * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                            // ignored for stereo
 
 /**
  * Create a XYZ cloud from the images contained in SensorData. If there is only one camera,
@@ -188,7 +208,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cloudFromSensorData(
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                                // ignored for stereo
 
 /**
  * Create an RGB cloud from the images contained in SensorData, one for each camera
@@ -210,7 +231,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> RTABMAP_CORE_EXPORT cloudsRG
 		float minDepth = 0.0f,
 		std::vector<pcl::IndicesPtr > * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                            // ignored for stereo
 
 /**
  * Create an RGB cloud from the images contained in SensorData. If there is only one camera,
@@ -234,7 +256,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cloudRGBFromSensorDat
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
 		const ParametersMap & stereoParameters = ParametersMap(),
-		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
+		const std::vector<float> & roiRatios = std::vector<float>(), // ignored for stereo
+		unsigned char confidenceThr = 0);                            // ignored for stereo
 
 /**
  * Simulate a laser scan rotating counterclockwise, using middle line of the depth image.
@@ -365,6 +388,22 @@ void RTABMAP_CORE_EXPORT fillProjectedCloudHoles(
 		bool fillToBorder);
 
 /**
+ * @brief Remove values below a floor threshold in a depth image.
+ * 
+ * @param depth the depth image to filter (can be a multi-camera depth image).
+ * @param cameraModels corresponding camera model(s) to depth image, with valid 
+ *                     local transform between base frame to camera frame.
+ * @param threshold height from base frame at which pixels below it are set to 0.
+ * @param depthBelow depth image of the pixels below the floor theshold.
+ * @return cv::Mat depth image of the pixels above the floor theshold.
+ */
+cv::Mat RTABMAP_CORE_EXPORT filterFloor(
+	const cv::Mat & depth,
+	const std::vector<CameraModel> & cameraModels,
+	float threshold,
+	cv::Mat * depthBelow = 0);
+
+/**
  * For each point, return pixel of the best camera (NodeID->CameraIndex)
  * looking at it based on the policy and parameters
  */
@@ -374,6 +413,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_CORE_EXPORT 
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance = 0.0f,
 		float maxAngle = 0.0f,
+		float maxDepthError = 0.0f,
 		const std::vector<float> & roiRatios = std::vector<float>(),
 		const cv::Mat & projMask = cv::Mat(),
 		bool distanceToCamPolicy = false,
@@ -388,6 +428,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_CORE_EXPORT 
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance = 0.0f,
 		float maxAngle = 0.0f,
+		float maxDepthError = 0.0f,
 		const std::vector<float> & roiRatios = std::vector<float>(),
 		const cv::Mat & projMask = cv::Mat(),
 		bool distanceToCamPolicy = false,

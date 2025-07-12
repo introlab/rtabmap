@@ -75,13 +75,23 @@ void showUsage()
 			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
 			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
 			"                 of a single session).\n"
+			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recompting odometry.\n"
+			"     -odom_lin_var #.#   Override computed odometry linear covariance."
+			"     -odom_ang_var #.#   Override computed odometry angular covariance."
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
 			"     -stop_s #   Last map session to process.\n"
 			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
 			"                 then next databases are reprocessed on top of the first one.\n"
-			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data.\n"
+			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data. Can also be multiple \n"
+			"                 indices split by spaces in a string like \"0 2\" to stream cameras 0 and 2 only.\n"
+			"     -cam_tf \"x y z roll pitch yaw\" Camera local transform override(s) without optical rotation. For multi-cameras, \n"
+			"                                      use a \";\" between each transform.\n"
+			"     -cam_tf_lens_offset #.#          Override camera local transform with an y-axis offset before optical rotation. \n"
+			"                                      If -cam_tf is also used, it is combined before optical rotation. For multi-cameras,\n"
+			"                                      -cam_tf should be also used, and explicitly enumerate offsets if they are different, \n"
+			"                                      e.g., \"0.05 0.075\" for two cameras setup.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
@@ -225,6 +235,15 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
+	// override help from Parameters to show the whole thing
+	for(int i=1; i<argc; ++i)
+	{
+		if(strcmp(argv[i], "--help") == 0)
+		{
+			showUsage();
+		}
+	}
+
 	ParametersMap customParameters = Parameters::parseArguments(argc, argv);
 
 	if(argc < 3)
@@ -240,12 +259,17 @@ int main(int argc, char * argv[])
 	bool useDatabaseRate = false;
 	bool useDefaultParameters = false;
 	bool recomputeOdometry = false;
+	bool useInputOdometryAsGuess = false;
+	double odomLinVarOverride = 0.0;
+	double odomAngVarOverride = 0.0;
 	int startId = 0;
 	int stopId = 0;
 	int startMapId = 0;
 	int stopMapId = -1;
 	bool appendMode = false;
-	int cameraIndex = -1;
+	std::vector<unsigned int> cameraIndices;
+	std::vector<Transform> cameraLocalTransformOverrides;
+	std::vector<float> cameraLocalTransformOffsetOverrides;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool ignorePriors = false;
@@ -294,6 +318,38 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "-odom") == 0 || strcmp(argv[i], "--odom") == 0)
 		{
 			recomputeOdometry = true;
+		}
+		else if(strcmp(argv[i], "-odom_input_guess") == 0 || strcmp(argv[i], "--odom_input_guess") == 0)
+		{
+			useInputOdometryAsGuess = true;
+		}
+		else if (strcmp(argv[i], "-odom_lin_var") == 0 || strcmp(argv[i], "--odom_lin_var") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				odomLinVarOverride = uStr2Double(argv[i]);
+				printf("Odometry linear variance overriden to = %f.\n", odomLinVarOverride);
+			}
+			else
+			{
+				printf("-odom_lin_var option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-odom_ang_var") == 0 || strcmp(argv[i], "--odom_ang_var") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				odomAngVarOverride = uStr2Double(argv[i]);
+				printf("Odometry angular variance overriden to = %f.\n", odomAngVarOverride);
+			}
+			else
+			{
+				printf("-odom_ang_var option requires a value\n");
+				showUsage();
+			}
 		}
 		else if (strcmp(argv[i], "-start") == 0 || strcmp(argv[i], "--start") == 0)
 		{
@@ -361,8 +417,48 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc - 2)
 			{
-				cameraIndex = atoi(argv[i]);
-				printf("Camera index = %d.\n", cameraIndex);
+				std::list<std::string> indicesStr = uSplit(argv[i], ' ');
+				for(std::list<std::string>::iterator iter=indicesStr.begin(); iter!=indicesStr.end(); ++iter)
+				{
+					cameraIndices.push_back(uStr2Int(*iter));
+					printf("Camera index = %d.\n", cameraIndices.back());
+				}
+			}
+			else
+			{
+				printf("-cam option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-cam_tf") == 0 || strcmp(argv[i], "--cam_tf") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				std::list<std::string> tfStr = uSplit(argv[i], ';');
+				for(std::list<std::string>::iterator iter=tfStr.begin(); iter!=tfStr.end(); ++iter)
+				{
+					cameraLocalTransformOverrides.push_back(Transform::fromString(*iter));
+					printf("Camera transform = %s\n", cameraLocalTransformOverrides.back().prettyPrint().c_str());
+				}
+			}
+			else
+			{
+				printf("-cam option requires a value\n");
+				showUsage();
+			}
+		}
+		else if (strcmp(argv[i], "-cam_tf_lens_offset") == 0 || strcmp(argv[i], "--cam_tf_lens_offset") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				std::list<std::string> offsetStr = uSplit(argv[i], ' ');
+				for(std::list<std::string>::iterator iter=offsetStr.begin(); iter!=offsetStr.end(); ++iter)
+				{
+					cameraLocalTransformOffsetOverrides.push_back(uStr2Float(*iter));
+					printf("Camera offset = %f\n", cameraLocalTransformOffsetOverrides.back());
+				}
 			}
 			else
 			{
@@ -552,6 +648,10 @@ int main(int argc, char * argv[])
 		if (!UFile::exists(*iter))
 		{
 			printf("Input database \"%s\" doesn't exist!\n", iter->c_str());
+			if(uStrContains(inputDatabasePath,":"))
+			{
+				printf("Did you mean \"%s\"?\n", uReplaceChar(inputDatabasePath, ':', ";").c_str());
+			}
 			return -1;
 		}
 
@@ -724,11 +824,6 @@ int main(int argc, char * argv[])
 	delete dbDriver;
 	dbDriver = 0;
 
-	if(framesToSkip)
-	{
-		totalIds/=framesToSkip+1;
-	}
-
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
 	if(!targetVersion.empty())
@@ -761,6 +856,35 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
 
+	if(!cameraLocalTransformOffsetOverrides.empty())
+	{
+		if(!cameraLocalTransformOverrides.empty() && cameraLocalTransformOffsetOverrides.size() > 1 && cameraLocalTransformOffsetOverrides.size() != cameraLocalTransformOverrides.size())
+		{
+			printf("Error: -cam_tf_lens_offset size (%ld) is not equal to -cam_tf argument (%ld). "
+				   "-cam_tf_lens_offset should be one to affect all cameras or same size than -cam_tf argument.\n",
+				   cameraLocalTransformOffsetOverrides.size(), cameraLocalTransformOverrides.size());
+			showUsage();
+			return 1;
+		}
+		if(cameraLocalTransformOverrides.empty())
+		{
+			if(cameraLocalTransformOffsetOverrides.size() > 1)
+			{
+				printf("Error: -cam_tf_lens_offset size (%ld) should be one if -cam_tf is not set.\n",
+				   cameraLocalTransformOffsetOverrides.size());
+				showUsage();
+				return 1;
+			}
+			cameraLocalTransformOverrides.push_back(Transform::getIdentity());
+		}
+		for(size_t i=0; i<cameraLocalTransformOverrides.size(); ++i)
+		{
+			float offset = cameraLocalTransformOffsetOverrides.size()==1?cameraLocalTransformOffsetOverrides[0]:cameraLocalTransformOffsetOverrides[i];
+			cameraLocalTransformOverrides[i] *= Transform(0, offset, 0);
+			printf("Overriding camera's local transform %ld to %s (offset=%f)\n", i, cameraLocalTransformOverrides[i].prettyPrint().c_str(), offset);
+		}
+	}
+
 	DBReader * dbReader = new DBReader(
 			inputDatabasePath,
 			useDatabaseRate?-1:0,
@@ -768,14 +892,15 @@ int main(int argc, char * argv[])
 			false,
 			false,
 			startId,
-			cameraIndex,
+			cameraIndices,
 			stopId,
 			!intermediateNodes,
 			ignoreLandmarks,
 			!useOdomFeatures,
 			startMapId,
 			stopMapId,
-			ignorePriors);
+			ignorePriors,
+			cameraLocalTransformOverrides);
 
 	dbReader->init();
 
@@ -826,22 +951,49 @@ int main(int argc, char * argv[])
 	}
 	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
+	Transform previousOdomPose = info.odomPose;
+	cv::Mat odomCovariance;
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
 		if(recomputeOdometry)
 		{
 			OdometryInfo odomInfo;
-			Transform pose = odometry->process(data, &odomInfo);
-			printf("Processed %d/%d frames (visual=%d/%d lidar=%f lost=%s)... odometry = %dms\n",
+			Transform pose = odometry->process(data, useInputOdometryAsGuess && !info.odomPose.isNull()?previousOdomPose.inverse() * info.odomPose:Transform(), &odomInfo);
+			previousOdomPose = info.odomPose;
+			if(odomInfo.reg.covariance.total() == 36)
+			{
+				if(odomLinVarOverride > 0.0)
+				{
+					odomInfo.reg.covariance.at<double>(0,0) = odomLinVarOverride;
+					odomInfo.reg.covariance.at<double>(1,1) = odomLinVarOverride;
+					odomInfo.reg.covariance.at<double>(2,2) = odomLinVarOverride;
+				}
+				if(odomAngVarOverride > 0.0)
+				{
+					odomInfo.reg.covariance.at<double>(3,3) = odomAngVarOverride;
+					odomInfo.reg.covariance.at<double>(4,4) = odomAngVarOverride;
+					odomInfo.reg.covariance.at<double>(5,5) = odomAngVarOverride;
+				}
+				if(uIsFinite(odomInfo.reg.covariance.at<double>(0,0)) &&
+					odomInfo.reg.covariance.at<double>(0,0) != 1.0 &&
+					odomInfo.reg.covariance.at<double>(0,0)>0.0)
+				{
+					// Use largest covariance error (to be independent of the odometry frame rate)
+					if(odomCovariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > odomCovariance.at<double>(0,0))
+					{
+						odomCovariance = odomInfo.reg.covariance;
+					}
+				}
+			}
+			printf("Processed %d/%d frames (visual=%s lidar=%s lost=%s)... odometry = %dms\n",
 					processed+1,
 					totalIds,
-					odomInfo.reg.inliers,
-					odomInfo.reg.matches,
-					odomInfo.reg.icpInliersRatio,
+					odomInfo.reg.matches!=0?uFormat("%d/%d", odomInfo.reg.inliers, odomInfo.reg.matches).c_str():"NA",
+					odomInfo.reg.icpInliersRatio!=0.0?uNumber2Str(odomInfo.reg.icpInliersRatio).c_str():"NA",
 					odomInfo.lost?"true":"false",
 					int(odomInfo.timeEstimation * 1000));
-			if(lastUpdateStamp > 0.0 && data.stamp() < lastUpdateStamp + rtabmapUpdateRate)
+			if(lastUpdateStamp > 0.0 && (data.stamp() < lastUpdateStamp + rtabmapUpdateRate || framesToSkip>0))
 			{
 				if(framesToSkip>0)
 				{
@@ -863,13 +1015,16 @@ int main(int argc, char * argv[])
 				continue;
 			}
 			info.odomPose = pose;
-			info.odomCovariance = odomInfo.reg.covariance;
+			info.odomCovariance = odomCovariance;
+			odomCovariance = cv::Mat();
 			lastUpdateStamp = data.stamp();
+
+			uInsert(globalMapStats, odomInfo.statistics(pose));
 		}
 
 		UTimer iterationTime;
 		std::string status;
-		if(!odometryIgnored && info.odomPose.isNull())
+		if(!odometryIgnored && info.odomPose.isNull() && incrementalMemory)
 		{
 			printf("Skipping node %d as it doesn't have odometry pose set.\n", data.id());
 		}
@@ -1023,8 +1178,9 @@ int main(int argc, char * argv[])
 
 		const rtabmap::Statistics & stats = rtabmap.getStatistics();
 		int refId = stats.refImageId();
+		bool rejected = uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f) != 0.0f;
 		int loopId = stats.loopClosureId() > 0? stats.loopClosureId(): stats.proximityDetectionId() > 0?stats.proximityDetectionId() :0;
-		int landmarkId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
+		int landmarkId = rejected?0:(int)uValue(stats.data(), rtabmap::Statistics::kLoopLandmark_detected(), 0.0f);
 		int refMapId = stats.refImageMapId();
 		++totalFrames;
 
@@ -1079,15 +1235,22 @@ int main(int argc, char * argv[])
 				localizationAngleVariations.push_back(stats.data().at(Statistics::kLoopOdom_correction_angle()));
 			}
 
-			if(exportPoses && !info.odomPose.isNull())
+			if(exportPoses)
 			{
-				if(!odomTrajectoryPoses.empty())
+				if(!info.odomPose.isNull())
 				{
-					int previousId = odomTrajectoryPoses.rbegin()->first;
-					odomTrajectoryLinks.insert(std::make_pair(previousId, Link(previousId, refId, Link::kNeighbor, odomTrajectoryPoses.rbegin()->second.inverse()*info.odomPose, info.odomCovariance)));
+					if(!odomTrajectoryPoses.empty())
+					{
+						int previousId = odomTrajectoryPoses.rbegin()->first;
+						odomTrajectoryLinks.insert(std::make_pair(previousId, Link(previousId, refId, Link::kNeighbor, odomTrajectoryPoses.rbegin()->second.inverse()*info.odomPose, info.odomCovariance)));
+					}
+					odomTrajectoryPoses.insert(std::make_pair(refId, info.odomPose));
+					localizationPoses.insert(std::make_pair(refId, stats.mapCorrection()*info.odomPose));
 				}
-				odomTrajectoryPoses.insert(std::make_pair(refId, info.odomPose));
-				localizationPoses.insert(std::make_pair(refId, stats.mapCorrection()*info.odomPose));
+				else
+				{
+					localizationPoses.insert(std::make_pair(refId, rtabmap.getLastLocalizationPose()));
+				}
 			}
 		}
 
@@ -1126,7 +1289,7 @@ int main(int argc, char * argv[])
 		   !info.odomPose.isNull())
 		{
 			float distance = odomPose.getDistance(info.odomPose);
-			float angle = (odomPose.inverse()*info.odomPose).getAngle();
+			float angle = odomPose.getAngle(info.odomPose);
 			odomDistances.push_back(distance);
 			if(distance < linearUpdate && angle <= angularUpdate)
 			{

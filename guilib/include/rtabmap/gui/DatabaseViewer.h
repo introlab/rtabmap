@@ -52,6 +52,7 @@ class QGraphicsView;
 class QLabel;
 class QToolButton;
 class QDialog;
+class QSpinBox;
 
 namespace rtabmap
 {
@@ -64,6 +65,8 @@ class ExportCloudsDialog;
 class EditDepthArea;
 class EditMapArea;
 class LinkRefiningDialog;
+class Registration;
+class RegistrationIcp;
 
 class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
 {
@@ -161,7 +164,7 @@ private:
 
 	void updateIds();
 	void update(int value,
-				QLabel * labelIndex,
+				QSpinBox * spinBoxIndex,
 				QLabel * labelParents,
 				QLabel * labelChildren,
 				QLabel * weight,
@@ -197,11 +200,12 @@ private:
 			int to);
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
+	void updateNeighborsSlider(int from = 0, int to = 0);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
 	void updateCovariances(const QList<Link> & links);
 	void refineLinks(const QList<Link> & links);
-	void refineConstraint(int from, int to,  bool silent);
-	bool addConstraint(int from, int to, bool silent, bool silentlyUseOptimizedGraphAsGuess = false);
+	void refineConstraint(int from, int to, Registration * reg, RegistrationIcp * regIcp, bool silent);
+	bool addConstraint(int from, int to, Registration * reg, bool silent, bool silentlyUseOptimizedGraphAsGuess = false);
 	void exportPoses(int format);
 	void exportGPS(int format);
 

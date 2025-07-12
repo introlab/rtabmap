@@ -92,7 +92,7 @@ public:
 	}
 	virtual ~NodeItem() {}
 
-	void setColor(const QColor & color)
+	void setColor(const QColor & color, const QString & valueName = QString(), float value = 0.0f)
 	{
 		QPen p = this->pen();
 		p.setColor(color);
@@ -104,6 +104,13 @@ public:
 		QPen pen = _line->pen();
 		pen.setColor(QColor(255-color.red(), 255-color.green(), 255-color.blue()));
 		_line->setPen(pen);
+
+		_valueName = valueName;
+		_value = value;
+	}
+
+	void setToolTipInfo(const QString & info) {
+		_info = info;
 	}
 
 	void setRadius(float radius)
@@ -144,14 +151,26 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
+		QString msg;
 		if(_weight>=0)
 		{
-			this->setToolTip(QString("%1 [map=%2, w=%3] %4").arg(_id).arg(_mapId).arg(_weight).arg(_pose.prettyPrint().c_str()));
+			msg = QString("%1 [map=%2, w=%3]\n%4").arg(_id).arg(_mapId).arg(_weight).arg(_pose.prettyPrint().c_str());
 		}
 		else
 		{
-			this->setToolTip(QString("%1 [map=%2] %3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str()));
+			msg = QString("%1 [map=%2]\n%3").arg(_id).arg(_mapId).arg(_pose.prettyPrint().c_str());
 		}
+		if(!_valueName.isEmpty())
+		{
+			msg += QString("\n%1=%2").arg(_valueName).arg(_value);
+		}
+		if(!_info.isEmpty())
+		{
+			msg += QString("\n%1").arg(_info);
+		}
+
+		this->setToolTip(msg);
+		
 		this->setScale(2);
 		QGraphicsEllipseItem::hoverEnterEvent(event);
 	}
@@ -168,6 +187,9 @@ private:
 	int _weight;
 	Transform _pose;
 	QGraphicsLineItem * _line;
+	QString _valueName;
+	float _value;
+	QString _info;
 };
 
 class NodeGPSItem: public NodeItem
@@ -463,6 +485,10 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
 	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
 
+	// Match by default scan colors from DatabaseViewer
+	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::yellow, nullptr));
+	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
+
 	this->restoreDefaults();
 
 	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
@@ -505,6 +531,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		}
 		iter.value()->hide();
 		iter.value()->setColor(color); // reset color
+		iter.value()->setToolTipInfo(QString());
 		iter.value()->setZValue(iter.key()<0?21:20);
 	}
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
@@ -541,7 +568,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				item->setZValue(iter->first<0?21:20);
 				item->setColor(color);
 				item->setParentItem(_graphRoot);
-				item->setVisible(_nodeVisible);
+				item->show();
 				_nodeItems.insert(iter->first, item);
 			}
 		}
@@ -550,32 +577,39 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	for(std::multimap<int, Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 	{
 		// make the first id the smallest one
-		int idFrom = iter->first<iter->second.to()?iter->first:iter->second.to();
-		int idTo = iter->first<iter->second.to()?iter->second.to():iter->first;
+		int idFrom = iter->second.from() < iter->second.to() ? iter->second.from() : iter->second.to();
+		int idTo = iter->second.from() < iter->second.to() ? iter->second.to() : iter->second.from();
+
+		if(idFrom == idTo) {
+			continue;
+		}
 
 		std::map<int, Transform>::const_iterator jterA = poses.find(idFrom);
 		std::map<int, Transform>::const_iterator jterB = poses.find(idTo);
 		LinkItem * linkItem = 0;
 		if(jterA != poses.end() && jterB != poses.end() &&
-		   _nodeItems.contains(iter->first) && _nodeItems.contains(idTo))
+		   _nodeItems.contains(idFrom) && _nodeItems.contains(idTo))
 		{
 			const Transform & poseA = jterA->second;
 			const Transform & poseB = jterB->second;
 
 			QMultiMap<int, LinkItem*>::iterator itemIter = _linkItems.end();
+
 			if(_linkItems.contains(idFrom))
 			{
-				itemIter = _linkItems.find(iter->first);
-				while(itemIter.key() == idFrom && itemIter != _linkItems.end())
+				itemIter = _linkItems.find(idFrom);
+				bool alreadyAdded = false;
+				while(itemIter != _linkItems.end() && itemIter.key() == idFrom)
 				{
-					if(itemIter.value()->to() == idTo && itemIter.value()->type() == iter->second.type())
+					if(itemIter.value()->to() == idTo && itemIter.value()->isVisible())
 					{
-						itemIter.value()->setPoses(poseA, poseB, _viewPlane);
-						itemIter.value()->show();
-						linkItem = itemIter.value();
+						alreadyAdded = true;
 						break;
 					}
 					++itemIter;
+				}
+				if(alreadyAdded){
+					continue;
 				}
 			}
 
@@ -702,11 +736,20 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		if(!iter.value()->isVisible())
 		{
+			for(int i=0; i<_highlightedNodes.size(); ++i)
+			{
+				if(_highlightedNodes[i].second && _highlightedNodes[i].second == iter.value())
+				{
+					_highlightedNodes[i].second = nullptr;
+				}
+			}
+
 			delete iter.value();
 			iter = _nodeItems.erase(iter);
 		}
 		else
 		{
+			iter.value()->setVisible(_nodeVisible);
 			++iter;
 		}
 	}
@@ -1060,10 +1103,15 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 
 void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float max, int zValueOffset)
 {
+	updateNodeColorByValue("Posterior Prob", posterior, max, false, zValueOffset);
+}
+
+void GraphViewer::updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float max, bool invertedColorScale, int zValueOffset)
+{
 	//find max
 	if(max <= 0.0f)
 	{
-		for(std::map<int, float>::const_iterator iter = posterior.begin(); iter!=posterior.end(); ++iter)
+		for(std::map<int, float>::const_iterator iter = values.begin(); iter!=values.end(); ++iter)
 		{
 			if(iter->first > 0 && iter->second>max)
 			{
@@ -1075,11 +1123,11 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float 
 	{
 		for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 		{
-			std::map<int,float>::const_iterator jter = posterior.find(iter.key());
-			if(jter != posterior.end())
+			std::map<int,float>::const_iterator jter = values.find(iter.key());
+			if(jter != values.end())
 			{
 				float v = jter->second>max?max:jter->second;
-				iter.value()->setColor(QColor::fromHsvF((1-v/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
+				iter.value()->setColor(QColor::fromHsvF(( invertedColorScale ? v/max : 1-v/max )*240.0f/360.0f, 1, 1, 1), valueName.c_str(), jter->second); //0=red 240=blue
 				iter.value()->setZValue(iter.value()->zValue()+zValueOffset);
 			}
 		}
@@ -1133,6 +1181,19 @@ void GraphViewer::setCurrentGoalID(int id, const Transform & pose)
 		{
 			iter.value()->setPoses(t*iter.value()->getPoseA(), t*iter.value()->getPoseB(), _viewPlane);
 		}
+	}
+}
+
+void GraphViewer::setNodeInfo(int id, const QString & info)
+{
+	NodeItem * node = _nodeItems.value(id, 0);
+	if(node)
+	{
+		node->setToolTipInfo(info);
+	}
+	else
+	{
+		UWARN("Node %d not found in the graph", id);
 	}
 }
 
@@ -1208,6 +1269,33 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 	_localPathRoot->setVisible(wasVisible);
 }
 
+
+void GraphViewer::highlightNode(int nodeId, int highlightIndex)
+{
+	if(highlightIndex<0 || highlightIndex>_highlightedNodes.size())
+	{
+		UERROR("Unsupported highlight color index %d", highlightIndex);
+		return;
+	}
+	for(int i=0; i<_highlightedNodes.size(); ++i)
+	{
+		if(_highlightedNodes[i].second &&
+		   (_highlightedNodes[i].second->id() == nodeId || i == highlightIndex))
+		{
+			// reset to normal color
+			_highlightedNodes[i].second->setColor(_nodeColor);
+			_highlightedNodes[i].second = nullptr;
+		}
+	}
+
+	QMap<int, NodeItem*>::iterator iter = _nodeItems.find(nodeId);
+	if(iter != _nodeItems.end())
+	{
+		iter.value()->setColor(_highlightedNodes[highlightIndex].first);
+		_highlightedNodes[highlightIndex].second = iter.value();
+	}
+}
+
 void GraphViewer::clearGraph()
 {
 	qDeleteAll(_nodeItems);
@@ -1227,6 +1315,11 @@ void GraphViewer::clearGraph()
 	qDeleteAll(_gpsLinkItems);
 	_gpsLinkItems.clear();
 
+	for(int i=0; i<_highlightedNodes.size(); ++i)
+	{
+		_highlightedNodes[i].second=nullptr;
+	}
+
 	_root->resetTransform();
 	_worldMapRotation = 0.0f;
 	_referential->resetTransform();
@@ -1242,6 +1335,11 @@ void GraphViewer::clearMap()
 }
 
 void GraphViewer::clearPosterior()
+{
+	clearNodeColorByValue();
+}
+
+void GraphViewer::clearNodeColorByValue()
 {
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
@@ -1266,6 +1364,10 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("node_color", this->getNodeColor());
 	settings.setValue("node_odom_cache_color", this->getNodeOdomCacheColor());
 	settings.setValue("current_goal_color", this->getCurrentGoalColor());
+	for(int i=0; i<_highlightedNodes.size(); ++i)
+	{
+		settings.setValue(QString("highlighting_color_%1").arg(i), _highlightedNodes[i].first);
+	}
 	settings.setValue("neighbor_color", this->getNeighborColor());
 	settings.setValue("global_color", this->getGlobalLoopClosureColor());
 	settings.setValue("local_color", this->getLocalLoopClosureColor());
@@ -1312,6 +1414,10 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setNodeColor(settings.value("node_color", this->getNodeColor()).value<QColor>());
 	this->setNodeOdomCacheColor(settings.value("node_odom_cache_color", this->getNodeOdomCacheColor()).value<QColor>());
 	this->setCurrentGoalColor(settings.value("current_goal_color", this->getCurrentGoalColor()).value<QColor>());
+	for(int i=0; i<_highlightedNodes.size(); ++i)
+	{
+		this->setHighlightColor(settings.value(QString("highlighting_color_%1").arg(i), _highlightedNodes[i].first).value<QColor>(), i);
+	}
 	this->setNeighborColor(settings.value("neighbor_color", this->getNeighborColor()).value<QColor>());
 	this->setGlobalLoopClosureColor(settings.value("global_color", this->getGlobalLoopClosureColor()).value<QColor>());
 	this->setLocalLoopClosureColor(settings.value("local_color", this->getLocalLoopClosureColor()).value<QColor>());
@@ -1596,6 +1702,20 @@ void GraphViewer::setGPSColor(const QColor & color)
 		iter.value()->setColor(_gpsPathColor);
 	}
 }
+void GraphViewer::setHighlightColor(const QColor & color, int index)
+{
+	if(index<0 || index > _highlightedNodes.size())
+	{
+		UERROR("Unsupported highlight color index %d", index);
+		return;
+	}
+	_highlightedNodes[index].first = color;
+	NodeItem * node = _highlightedNodes[index].second;
+	if(node != nullptr)
+	{
+		node->setColor(color);
+	}
+}
 void GraphViewer::setIntraSessionLoopColor(const QColor & color)
 {
 	_loopIntraSessionColor = color;
@@ -1765,13 +1885,25 @@ void GraphViewer::restoreDefaults()
 	setNodeRadius(0.01f);
 	setLinkWidth(0.0f);
 	setNodeColor(Qt::blue);
+	setNodeOdomCacheColor(Qt::darkGreen);
+	setCurrentGoalColor(Qt::darkMagenta);
+	setHighlightColor(Qt::yellow, 0);
+	setHighlightColor(Qt::magenta, 1);
 	setNeighborColor(Qt::blue);
 	setGlobalLoopClosureColor(Qt::red);
 	setLocalLoopClosureColor(Qt::yellow);
 	setUserLoopClosureColor(Qt::red);
 	setVirtualLoopClosureColor(Qt::magenta);
 	setNeighborMergedColor(QColor(255,170,0));
+	setRejectedLoopClosureColor(Qt::black);
 	setLandmarkColor(Qt::darkGreen);
+	setLocalPathColor(Qt::cyan);
+	setGlobalPathColor(Qt::darkMagenta);
+	setGTColor(Qt::gray);
+	setGPSColor(Qt::darkCyan);
+	setIntraSessionLoopColor(Qt::red);
+	setInterSessionLoopColor(Qt::green);
+	setIntraInterSessionColorsEnabled(false);
 	setGridMapVisible(true);
 	setGraphVisible(true);
 	setGlobalPathVisible(true);
@@ -1806,10 +1938,26 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	{
 		QToolTip::hideText();
 	}
+	if (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier) && event->buttons() & Qt::LeftButton) {
+		// same modifiers than 3D view, change zoom
+		if(_previousMousePos.y()!=0) {
+			if(event->pos().y() - _previousMousePos.y() > 0)
+			{
+				this->scale(0.98, 0.98);
+			}
+			else
+			{
+				this->scale(1.02, 1.02);
+			}
+		}
+		_previousMousePos = event->pos();
+		return;
+	}
+	_previousMousePos.setY(0);
 	QGraphicsView::mouseMoveEvent(event);
 }
 
-void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
+void GraphViewer::mousePressEvent(QMouseEvent * event)
 {
 	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
 	if(item)
@@ -1826,12 +1974,12 @@ void GraphViewer::mouseDoubleClickEvent(QMouseEvent * event)
 		}
 		else
 		{
-			QGraphicsView::mouseDoubleClickEvent(event);
+			QGraphicsView::mousePressEvent(event);
 		}
 	}
 	else
 	{
-		QGraphicsView::mouseDoubleClickEvent(event);
+		QGraphicsView::mousePressEvent(event);
 	}
 }
 
@@ -1853,6 +2001,12 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
 	QAction * aChangeNodeOdomCacheColor = menu.addAction(createIcon(_nodeOdomCacheColor), tr("Set node odom cache color..."));
 	QAction * aChangeCurrentGoalColor = menu.addAction(createIcon(_currentGoalColor), tr("Set current goal color..."));
+	QMenu * menuChangeHighlightingColors = menu.addMenu(tr("Set node highlighting colors..."));
+	QVector<QAction*> aChangeHighlightingColors(_highlightedNodes.size());
+	for(int i=0; i<_highlightedNodes.size(); ++i) {
+		aChangeHighlightingColors[i] = menuChangeHighlightingColors->addAction(createIcon(_highlightedNodes[i].first), tr("Color %1...").arg(i+1));
+		aChangeHighlightingColors[i]->setIconVisibleInMenu(true);
+	}
 	aChangeNodeColor->setIconVisibleInMenu(true);
 	aChangeNodeOdomCacheColor->setIconVisibleInMenu(true);
 	aChangeCurrentGoalColor->setIconVisibleInMenu(true);
@@ -2050,6 +2204,13 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
 
 	QAction * r = menu.exec(event->globalPos());
+	int aChangeHighlightingColorIndex = 0;
+	for(int i=1; i<aChangeHighlightingColors.size(); ++i)
+	{
+		if(r == aChangeHighlightingColors[i]) {
+			aChangeHighlightingColorIndex = i;
+		}
+	}
 	if(r == aScreenShot)
 	{
 		if(_root)
@@ -2217,6 +2378,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aChangeNodeColor ||
 			r == aChangeNodeOdomCacheColor ||
 			r == aChangeCurrentGoalColor ||
+			r == aChangeHighlightingColors[aChangeHighlightingColorIndex] ||
 			r == aChangeNeighborColor ||
 			r == aChangeGlobalLoopColor ||
 			r == aChangeLocalLoopColor ||
@@ -2243,6 +2405,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		else if(r == aChangeCurrentGoalColor)
 		{
 			color = _currentGoalColor;
+		}
+		else if(r == aChangeHighlightingColors[aChangeHighlightingColorIndex])
+		{
+			color = _highlightedNodes[aChangeHighlightingColorIndex].first;
 		}
 		else if(r == aChangeGlobalLoopColor)
 		{
@@ -2315,6 +2481,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			else if(r == aChangeCurrentGoalColor)
 			{
 				this->setCurrentGoalColor(color);
+			}
+			else if(r == aChangeHighlightingColors[aChangeHighlightingColorIndex])
+			{
+				this->setHighlightColor(color, aChangeHighlightingColorIndex);
 			}
 			else if(r == aChangeGlobalLoopColor)
 			{
