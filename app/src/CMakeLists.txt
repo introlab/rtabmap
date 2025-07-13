@@ -110,6 +110,16 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	ENDIF(WIN32)
   ENDIF(k4a_FOUND)
   
+  IF(ZED_FOUND)
+	# Install needed zlibwapi.dll
+    IF(WIN32)
+		file(TO_CMAKE_PATH "$ENV{ZED_SDK_ROOT_DIR}" ENV_ZED_SDK_ROOT_DIR)
+		INSTALL(FILES "${ENV_ZED_SDK_ROOT_DIR}/bin/zlibwapi.dll" 
+          DESTINATION ${thirdparty_dest_dir} 
+          COMPONENT runtime)
+	ENDIF(WIN32)
+  ENDIF(ZED_FOUND)
+  
   IF(Torch_FOUND)
 	# Install needed cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll
 	# TODO: should be a more general way to include them if version is different
