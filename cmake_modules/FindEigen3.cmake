@@ -27,10 +27,10 @@
 
 if(NOT Eigen3_FIND_VERSION)
   if(NOT Eigen3_FIND_VERSION_MAJOR)
-    set(Eigen3_FIND_VERSION_MAJOR 2)
+    set(Eigen3_FIND_VERSION_MAJOR 3)
   endif()
   if(NOT Eigen3_FIND_VERSION_MINOR)
-    set(Eigen3_FIND_VERSION_MINOR 91)
+    set(Eigen3_FIND_VERSION_MINOR 0)
   endif()
   if(NOT Eigen3_FIND_VERSION_PATCH)
     set(Eigen3_FIND_VERSION_PATCH 0)
