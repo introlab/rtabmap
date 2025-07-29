@@ -371,7 +371,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 
 	std::vector<float> coeffs = calibHandler.getDistortionCoefficients(cameraId);
 	if(calibHandler.getDistortionModel(cameraId) == dai::CameraModel::Perspective)
-		distCoeffs = (cv::Mat_<double>(1,8) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7]);
+		distCoeffs = (cv::Mat_<double>(1,14) << coeffs[0], coeffs[1], coeffs[2], coeffs[3], coeffs[4], coeffs[5], coeffs[6], coeffs[7], coeffs[8], coeffs[9], coeffs[10], coeffs[11], coeffs[12], coeffs[13]);
 
 	if(alphaScaling_>-1.0f)
 		newCameraMatrix = cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, targetSize_, alphaScaling_);
