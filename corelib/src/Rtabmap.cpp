@@ -2395,24 +2395,22 @@ bool Rtabmap::process(
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
 
-				if(distanceSoFar <= _localRadius)
+				if(_memory->getSignature(_path[i].first) != 0)
 				{
-					if(_memory->getSignature(_path[i].first) != 0)
+					if(immunizedLocations.insert(_path[i].first).second)
 					{
-						if(immunizedLocations.insert(_path[i].first).second)
-						{
-							++immunizedLocally;
-						}
-						UDEBUG("Path immunization: node %d (dist=%fm)", _path[i].first, distanceSoFar);
+						++immunizedLocally;
 					}
-					else if(retrievalLocalIds.size() < _maxLocalRetrieved)
-					{
-						UINFO("retrieval of node %d on path (dist=%fm)", _path[i].first, distanceSoFar);
-						retrievalLocalIds.push_back(_path[i].first);
-						// retrieved locations are automatically immunized
-					}
+					UDEBUG("Path immunization: node %d (dist=%fm)", _path[i].first, distanceSoFar);
 				}
-				else
+				else if(retrievalLocalIds.size() < _maxLocalRetrieved)
+				{
+					UINFO("retrieval of node %d on path (dist=%fm)", _path[i].first, distanceSoFar);
+					retrievalLocalIds.push_back(_path[i].first);
+					// retrieved locations are automatically immunized
+				}
+				
+				if(distanceSoFar > _localRadius)
 				{
 					UDEBUG("Stop on node %d (dist=%fm > %fm)",
 							_path[i].first, distanceSoFar, _localRadius);
@@ -3158,17 +3156,7 @@ bool Rtabmap::process(
 			UASSERT(uContains(_optimizedPoses, signature->id()));
 			UASSERT_MSG(uContains(_optimizedPoses, _path[_pathCurrentIndex].first), uFormat("id=%d", _path[_pathCurrentIndex].first).c_str());
 			Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex].first);
-
-			if(_localRadius == 0.0f || virtualLoop.getNorm() < _localRadius)
-			{
-				_memory->addLink(Link(signature->id(), _path[_pathCurrentIndex].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // set high variance
-			}
-			else
-			{
-				UERROR("Virtual link larger than local radius (%fm > %fm). Aborting the plan!",
-						virtualLoop.getNorm(), _localRadius);
-				this->clearPath(-1);
-			}
+			_memory->addLink(Link(signature->id(), _path[_pathCurrentIndex].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // set high variance
 		}
 	}
 
@@ -6927,24 +6915,24 @@ void Rtabmap::updateGoalIndex()
 				{
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
-				if(distanceSoFar <= _localRadius)
+				
+				if(_path[i].first != _path[i-1].first)
 				{
-					if(_path[i].first != _path[i-1].first)
+					const Signature * s = _memory->getSignature(_path[i].first);
+					if(s)
 					{
-						const Signature * s = _memory->getSignature(_path[i].first);
-						if(s)
+						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
 						{
-							if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
-							{
-								Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-								_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
-								UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
-							}
+							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
+							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
+							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 						}
 					}
 				}
-				else
+
+				if(distanceSoFar > _localRadius)
 				{
+					UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
 					break;
 				}
 			}
@@ -7004,11 +6992,8 @@ void Rtabmap::updateGoalIndex()
 					if((goalIndex == _pathCurrentIndex && i == _path.size()-1) ||
 					   _pathUnreachableNodes.find(i) == _pathUnreachableNodes.end())
 					{
-						if(distanceFromCurrentNode <= _localRadius)
-						{
-							goalIndex = i;
-						}
-						else
+						goalIndex = i;
+						if(distanceFromCurrentNode > _localRadius)
 						{
 							break;
 						}
