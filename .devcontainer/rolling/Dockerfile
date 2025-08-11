@@ -73,5 +73,7 @@ RUN set -ex && \
     echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
 
+RUN mkdir -p /home/${USERNAME}/Documents/RTAB-Map && chown -R ${USERNAME} /home/${USERNAME}
+
 RUN echo "source /usr/share/bash-completion/completions/git" >> /home/${USERNAME}/.bashrc
 

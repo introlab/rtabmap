@@ -1,6 +1,9 @@
 {
     "build": {
-      "dockerfile": "Dockerfile"
+      "dockerfile": "Dockerfile",
+      "args": {
+        "ROS_DISTRO": "jazzy"
+      }
     },
     "customizations": {
         "vscode": {
