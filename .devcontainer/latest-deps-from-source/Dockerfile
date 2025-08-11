@@ -2,10 +2,16 @@ ARG ROS_DISTRO=noble
 
 FROM osrf/ros:${ROS_DISTRO}-desktop
 
-# Install build dependencies
+# Install build dependencies with Qt6 (issue: rtabmap has black window)
+#RUN apt-get update && \
+#    apt-get install -y git software-properties-common ros-${ROS_DISTRO}-rtabmap-ros libqt6* qt6* qml6* && \
+#    apt-get remove -y ros-${ROS_DISTRO}-rtabmap* ros-${ROS_DISTRO}-gtsam ros-${ROS_DISTRO}-libg2o libpcl* libqt5* qt5* libvtk* libopencv* && \
+#    apt-get clean && rm -rf /var/lib/apt/lists/
+
+# Install build dependencies with Qt5
 RUN apt-get update && \
-    apt-get install -y git software-properties-common ros-${ROS_DISTRO}-rtabmap-ros libqt6* qt6* qml6* && \
-    apt-get remove -y ros-${ROS_DISTRO}-rtabmap* ros-${ROS_DISTRO}-gtsam ros-${ROS_DISTRO}-libg2o libpcl* libqt5* qt5* libvtk* libopencv* && \
+    apt-get install -y git software-properties-common ros-${ROS_DISTRO}-rtabmap-ros && \
+    apt-get remove -y ros-${ROS_DISTRO}-rtabmap* ros-${ROS_DISTRO}-gtsam ros-${ROS_DISTRO}-libg2o libpcl* libvtk* libopencv* && \
     apt-get clean && rm -rf /var/lib/apt/lists/
 
 # remove ubuntu user
@@ -65,7 +71,7 @@ RUN git clone https://github.com/opencv/opencv_contrib.git
 RUN cd opencv && \
     mkdir build && \
     cd build && \
-    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
+    cmake -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules .. && \
     make -j$(nproc) && \
     make install && \
     make clean
