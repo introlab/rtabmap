@@ -1,4 +1,4 @@
-ARG ROS_DISTRO=noble
+ARG ROS_DISTRO=jazzy
 
 FROM osrf/ros:${ROS_DISTRO}-desktop
 
