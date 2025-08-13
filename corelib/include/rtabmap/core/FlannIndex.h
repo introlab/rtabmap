@@ -29,8 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CORELIB_SRC_FLANNINDEX_H_
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+#include <filesystem>
 #include <list>
 #include <opencv2/opencv.hpp>
+#include <fstream>
 
 namespace rtabmap {
 
@@ -40,11 +42,19 @@ public:
 	FlannIndex();
 	virtual ~FlannIndex();
 
+	//  serialize and save methods
+	void save(const std::filesystem::path& path);
+	void serialize(const std::filesystem::path& filename);
+	
+	// deserialize and load methods
+  void load(const std::filesystem::path& dir);
+  void deserialize(const std::filesystem::path& file);
+
 	void release();
-	size_t indexedFeatures() const;
+	[[nodiscard]] size_t indexedFeatures() const;
 
 	// return Bytes
-	size_t memoryUsed() const;
+	[[nodiscard]] size_t memoryUsed() const;
 
 	// Note that useDistanceL1 doesn't have any effect if LSH is used
 	void buildLinearIndex(
@@ -71,8 +81,8 @@ public:
 
 	bool isBuilt();
 
-	int featuresType() const {return featuresType_;}
-	int featuresDim() const {return featuresDim_;}
+	[[nodiscard]] int featuresType() const {return featuresType_;}
+	[[nodiscard]] int featuresDim() const {return featuresDim_;}
 
 	std::vector<unsigned int> addPoints(const cv::Mat & features);
 
