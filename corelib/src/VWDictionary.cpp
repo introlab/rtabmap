@@ -484,7 +484,10 @@ void VWDictionary::update()
 
 	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
 	{
-		if(_incrementalFlann &&
+		bool firstUpdate = _removedIndexedWords.empty() && _visualWords.size() != _notIndexedWords.size();
+
+		if(!firstUpdate &&
+			_incrementalFlann &&
 		   _strategy < kNNBruteForce &&
 		   _visualWords.size())
 		{
