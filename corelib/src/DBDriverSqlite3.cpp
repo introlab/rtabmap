@@ -3151,7 +3151,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			// create the node
 			if(id)
 			{
-				ULOGGER_DEBUG("Creating %d (map=%d, pose=%s)", *iter, mapId, pose.prettyPrint().c_str());
+				//ULOGGER_DEBUG("Creating %d (map=%d, pose=%s)", *iter, mapId, pose.prettyPrint().c_str());
 				Signature * s = new Signature(
 						id,
 						mapId,
@@ -3343,7 +3343,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					visualWords3.clear();
 				}
 				(*iter)->setWords(visualWords, visualWordsKpts, visualWords3, descriptors);
-				ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
+				//ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
 			}
 
 			//reset
@@ -3355,10 +3355,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+		ULOGGER_DEBUG("Time adding keypoints/descriptors/points=%fs", timer.ticks());
 
 		this->loadLinksQuery(nodes);
-		ULOGGER_DEBUG("Time load links=%fs", timer.ticks());
+		ULOGGER_DEBUG("Time loading links=%fs", timer.ticks());
 
 		for(std::list<Signature*>::iterator iter = nodes.begin(); iter!=nodes.end(); ++iter)
 		{
@@ -3747,7 +3747,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary, bool lastStateOnly) c
 
 			if(++count % 5000 == 0)
 			{
-				ULOGGER_DEBUG("Loaded %d words...", count);
+				//ULOGGER_DEBUG("Loaded %d words...", count);
 			}
 			rc = sqlite3_step(ppStmt); // next result...
 		}
@@ -3760,7 +3760,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary, bool lastStateOnly) c
 		getLastWordId(id);
 		dictionary->setLastWordId(id);
 
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+		ULOGGER_DEBUG("Loaded %d words... time=%fs", count, timer.ticks());
 	}
 }
 
@@ -4174,7 +4174,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 			//reset
 			rc = sqlite3_reset(ppStmt);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			UDEBUG("time=%fs, node=%d, links.size=%d", timer.ticks(), (*iter)->id(), links.size());
+			//UDEBUG("time=%fs, node=%d, links.size=%d", timer.ticks(), (*iter)->id(), links.size());
 		}
 
 		// Finalize (delete) the statement
@@ -5118,7 +5118,7 @@ std::map<int, Transform> DBDriverSqlite3::loadOptimizedPosesQuery(Transform * la
 							serializedPoses.at<float>(i*12+4), serializedPoses.at<float>(i*12+5), serializedPoses.at<float>(i*12+6), serializedPoses.at<float>(i*12+7),
 							serializedPoses.at<float>(i*12+8), serializedPoses.at<float>(i*12+9), serializedPoses.at<float>(i*12+10), serializedPoses.at<float>(i*12+11));
 					poses.insert(std::make_pair(serializedIds.at<int>(i), t));
-					UDEBUG("Optimized pose %d: %s", serializedIds.at<int>(i), t.prettyPrint().c_str());
+					//UDEBUG("Optimized pose %d: %s", serializedIds.at<int>(i), t.prettyPrint().c_str());
 				}
 			}
 

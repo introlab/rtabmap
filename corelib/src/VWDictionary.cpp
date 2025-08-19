@@ -484,7 +484,9 @@ void VWDictionary::update()
 
 	if(_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
 	{
-		bool firstUpdate = _removedIndexedWords.empty() && _visualWords.size() != _notIndexedWords.size();
+		bool firstUpdate = _removedIndexedWords.empty() && _visualWords.size() == _notIndexedWords.size();
+		UDEBUG("firstUpdate=%s (_removedIndexedWords=%ld, _visualWords=%ld, _notIndexedWords=%ld)", 
+			firstUpdate?"true":"false", _removedIndexedWords.size(), _visualWords.size(), _notIndexedWords.size());
 
 		if(!firstUpdate &&
 			_incrementalFlann &&
@@ -504,7 +506,9 @@ void VWDictionary::update()
 
 			if(_notIndexedWords.size())
 			{
-				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size());
+				UTimer timer;
+				timer.start();
+				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size(), _byteToFloat?"true":"false");
 				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 				{
 					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
@@ -531,7 +535,8 @@ void VWDictionary::update()
 					int index = 0;
 					if(!_flannIndex->isBuilt())
 					{
-						UDEBUG("Building FLANN index...");
+						UDEBUG("Building FLANN index... (strategy=%s, byteToFloat=%s, useDistanceL1=%s, rebalancingFactor=%f)",
+							nnStrategyName(_strategy).c_str(), _byteToFloat?"true":"false", useDistanceL1_?"true":"false", _rebalancingFactor);
 						switch(_strategy)
 						{
 						case kNNFlannNaive:
@@ -564,7 +569,7 @@ void VWDictionary::update()
 					inserted = _mapIdIndex.insert(std::pair<int, int>(w->id(), index));
 					UASSERT(inserted.second);
 				}
-				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words... done!", (int)_notIndexedWords.size());
+				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words... done! (in %f s)", (int)_notIndexedWords.size(), timer.ticks());
 			}
 		}
 		else if(_strategy >= kNNBruteForce &&
@@ -1397,15 +1402,15 @@ void VWDictionary::addWord(VisualWord * vw)
 {
 	if(vw)
 	{
-		_visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
-		_notIndexedWords.insert(vw->id());
+		_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
+		_notIndexedWords.insert(_notIndexedWords.end(), vw->id());
 		if(vw->getReferences().size())
 		{
 			_totalActiveReferences += uSum(uValues(vw->getReferences()));
 		}
 		else
 		{
-			_unusedWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+			_unusedWords.insert(_unusedWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
 		}
 		if(_lastWordId < vw->id())
 		{

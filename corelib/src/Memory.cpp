@@ -431,6 +431,8 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
+		UDEBUG("Adding word references...");
+		UTimer timer;
 		// Enable loaded signatures
 		const std::map<int, Signature *> & signatures = this->getSignatures();
 		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
@@ -441,7 +443,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			const std::multimap<int, int> & words = s->getWords();
 			if(words.size())
 			{
-				UDEBUG("node=%d, word references=%d", s->id(), words.size());
+				//UDEBUG("node=%d, word references=%d", s->id(), words.size());
 				for(std::multimap<int, int>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
 				{
 					if(iter->first > 0)
@@ -458,7 +460,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		{
 			UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
 		}
-		UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+		UDEBUG("Total word references added = %d (in %f s)", _vwd->getTotalActiveReferences(), timer.ticks());
 
 		if(_lastSignature == 0)
 		{
@@ -1841,7 +1843,7 @@ void Memory::clear()
 	{
 		if(i->second)
 		{
-			UDEBUG("deleting from the working and the short-term memory: %d", i->first);
+			//UDEBUG("deleting from the working and the short-term memory: %d", i->first);
 			this->moveToTrash(i->second);
 		}
 	}
@@ -2428,7 +2430,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
  */
 void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> * deletedWords)
 {
-	UDEBUG("id=%d", s?s->id():0);
+	//UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
 		// Cleanup landmark indexes
@@ -3590,7 +3592,7 @@ void Memory::removeAllVirtualLinks()
 
 void Memory::removeVirtualLinks(int signatureId)
 {
-	UDEBUG("");
+	//UDEBUG("");
 	Signature * s = this->_getSignature(signatureId);
 	if(s)
 	{
@@ -6330,7 +6332,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 void Memory::disableWordsRef(int signatureId)
 {
-	UDEBUG("id=%d", signatureId);
+	//UDEBUG("id=%d", signatureId);
 
 	Signature * ss = this->_getSignature(signatureId);
 	if(ss && ss->isEnabled())
@@ -6346,7 +6348,7 @@ void Memory::disableWordsRef(int signatureId)
 
 		count -= _vwd->getTotalActiveReferences();
 		ss->setEnabled(false);
-		UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
+		//UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
 	}
 }
 

@@ -49,7 +49,7 @@ FlannIndex::~FlannIndex()
 
 void FlannIndex::release()
 {
-	UDEBUG("");
+	UDEBUG("Clearing flann index...");
 	if(index_)
 	{
 		if(featuresType_ == CV_8UC1)
@@ -77,7 +77,7 @@ void FlannIndex::release()
 	isLSH_ = false;
 	addedDescriptors_.clear();
 	removedIndexes_.clear();
-	UDEBUG("");
+	UDEBUG("Clearing flann index... done!");
 }
 
 size_t FlannIndex::indexedFeatures() const
