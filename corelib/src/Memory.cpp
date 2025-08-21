@@ -84,7 +84,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_depthCompressionFormat(Parameters::defaultMemDepthCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
-	_flannIndexSaved(Parameters::defaultMemFlannIndexSaved()),
+	_flannIndexSaved(Parameters::defaultKpFlannIndexSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -507,7 +507,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 			if(uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.0") >= 0) {
 				if(_flannIndexSaved && !_incrementalMemory) {
 					if(_vwd->isModified()) {
-						UINFO("Saving flann index to database... (%s=true)", Parameters::kMemFlannIndexSaved().c_str());
+						UINFO("Saving flann index to database... (%s=true)", Parameters::kKpFlannIndexSaved().c_str());
 						if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database..."));
 						_dbDriver->saveFlannIndex(_vwd->serializeIndex());
 						if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database, done!"));
@@ -525,7 +525,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 			else if(_flannIndexSaved)
 			{
 				UWARN("Parameter %s is enabled, but database version is too old (%s < 0.23). Flann index cannot be saved.",
-					Parameters::kMemFlannIndexSaved().c_str(),
+					Parameters::kKpFlannIndexSaved().c_str(),
 					_dbDriver->getDatabaseVersion().c_str());
 			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
@@ -647,7 +647,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
-	Parameters::parse(params, Parameters::kMemFlannIndexSaved(), _flannIndexSaved);
+	Parameters::parse(params, Parameters::kKpFlannIndexSaved(), _flannIndexSaved);
 
 	if(_markerAngVariance>=9999)
 	{
