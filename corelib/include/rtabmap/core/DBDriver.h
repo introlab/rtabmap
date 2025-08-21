@@ -129,6 +129,7 @@ public:
 			std::vector<std::vector<Eigen::Vector2f> > * texCoords = 0,
 #endif
 			cv::Mat * textures = 0) const;
+	void saveFlannIndex(const std::vector<unsigned char> & indexData) const;
 
 public:
 	// Mutex-protected methods of abstract versions below
@@ -161,19 +162,20 @@ public:
 	void executeNoResult(const std::string & sql) const;
 
 	// Load objects
-	void load(VWDictionary * dictionary, bool lastStateOnly = true) const;
-	void loadLastNodes(std::list<Signature *> & signatures) const; // returned signatures must be freed after usage
+	void load(VWDictionary & dictionary, bool lastStateOnly = true) const;
+	void loadLastNodes(std::list<Signature *> & signatures, bool loadWordIdsOnly = false) const; // returned signatures must be freed after usage
 	Signature * loadSignature(int id, bool * loadedFromTrash = 0); // returned signature must be freed after usage, call loadSignatures() instead if more than one signature should be loaded
-	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0); // returned signatures must be freed after usage
+	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0, bool loadWordIdsOnly = false); // returned signatures must be freed after usage
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws); // returned words must be freed after usage
 
 	// Specific queries...
-	void loadNodeData(Signature * signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
+	void loadNodeData(Signature & signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	void loadNodeData(std::list<Signature *> & signatures, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	void getNodeData(int signatureId, SensorData & data, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	bool getCalibration(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const;
 	bool getLaserScanInfo(int signatureId, LaserScan & info) const;
 	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
+	void getLocalFeatures(int signatureId, std::multimap<int, int> & words, std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & points, cv::Mat & descriptors) const;
 	void loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getLastNodeIds(std::set<int> & ids) const;
@@ -274,11 +276,12 @@ protected:
 				std::vector<std::vector<Eigen::Vector2f> > * texCoords,
 #endif
 				cv::Mat * textures) const = 0;
+	virtual void saveFlannIndexQuery(const std::vector<unsigned char> & indexData) const = 0;
 
 	// Load objects
-	virtual void loadQuery(VWDictionary * dictionary, bool lastStateOnly = true) const = 0;
-	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
-	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
+	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true) const = 0;
+	virtual void loadLastNodesQuery(std::list<Signature *> & signatures, bool loadWordIdsOnly) const = 0;
+	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool loadWordIdsOnly) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
 	virtual void loadLinksQuery(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
 
@@ -286,6 +289,7 @@ protected:
 	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const = 0;
 	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const = 0;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const = 0;
+	virtual void getLocalFeaturesQuery(int signatureId, std::multimap<int, int> & words, std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & points, cv::Mat & descriptors) const = 0;
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const = 0;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const = 0;
 	virtual void getAllOdomPosesQuery(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const = 0;

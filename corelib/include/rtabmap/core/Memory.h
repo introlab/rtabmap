@@ -299,6 +299,7 @@ private:
 	float _similarityThreshold;
 	bool _binDataKept;
 	bool _rawDescriptorsKept;
+	bool _loadVisualLocalFeaturesOnInit;
 	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _saveIntermediateNodeData;
@@ -306,6 +307,7 @@ private:
 	std::string _depthCompressionFormat;
 	bool _incrementalMemory;
 	bool _localizationDataSaved;
+	bool _flannIndexSaved;
 	bool _reduceGraph;
 	int _maxStMemSize;
 	float _recentWmRatio;

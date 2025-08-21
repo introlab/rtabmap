@@ -76,6 +76,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_binDataKept(Parameters::defaultMemBinDataKept()),
 	_rawDescriptorsKept(Parameters::defaultMemRawDescriptorsKept()),
+	_loadVisualLocalFeaturesOnInit(Parameters::defaultMemLoadVisualLocalFeaturesOnInit()),
 	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
@@ -83,6 +84,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_depthCompressionFormat(Parameters::defaultMemDepthCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
+	_flannIndexSaved(Parameters::defaultMemFlannIndexSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -245,13 +247,13 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 			std::set<int> ids;
 			_dbDriver->getAllNodeIds(ids, true);
-			_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
+			_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures, 0, !_loadVisualLocalFeaturesOnInit);
 		}
 		else
 		{
 			// load previous session working memory
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
-			_dbDriver->loadLastNodes(dbSignatures);
+			_dbDriver->loadLastNodes(dbSignatures, !_loadVisualLocalFeaturesOnInit);
 		}
 		for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 		{
@@ -417,14 +419,14 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			}
 			else
 			{
-				_dbDriver->load(_vwd, false);
+				_dbDriver->load(*_vwd, false);
 			}
 		}
 		else
 		{
 			UDEBUG("load words");
 			// load the last dictionary
-			_dbDriver->load(_vwd, _vwd->isIncremental());
+			_dbDriver->load(*_vwd, _vwd->isIncremental());
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
@@ -502,6 +504,30 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
+			if(uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.0") >= 0) {
+				if(_flannIndexSaved && !_incrementalMemory) {
+					if(_vwd->isModified()) {
+						UINFO("Saving flann index to database... (%s=true)", Parameters::kMemFlannIndexSaved().c_str());
+						if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database..."));
+						_dbDriver->saveFlannIndex(_vwd->serializeIndex());
+						if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database, done!"));
+					}
+					else
+					{
+						UDEBUG("The dictionary didn't change since loaded, do not need to save again to database.");
+					}
+				}
+				else {
+					// clear if exists
+					_dbDriver->saveFlannIndex(std::vector<unsigned char>());
+				}
+			}
+			else if(_flannIndexSaved)
+			{
+				UWARN("Parameter %s is enabled, but database version is too old (%s < 0.23). Flann index cannot be saved.",
+					Parameters::kMemFlannIndexSaved().c_str(),
+					_dbDriver->getDatabaseVersion().c_str());
+			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection(false, ouputDatabasePath);
 			delete _dbDriver;
@@ -567,6 +593,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(params, Parameters::kMemBinDataKept(), _binDataKept);
 	Parameters::parse(params, Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
+	Parameters::parse(params, Parameters::kMemLoadVisualLocalFeaturesOnInit(), _loadVisualLocalFeaturesOnInit);
 	Parameters::parse(params, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
 	Parameters::parse(params, Parameters::kMemReduceGraph(), _reduceGraph);
 	Parameters::parse(params, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
@@ -620,6 +647,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
+	Parameters::parse(params, Parameters::kMemFlannIndexSaved(), _flannIndexSaved);
 
 	if(_markerAngVariance>=9999)
 	{
@@ -656,10 +684,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 
 	// Keypoint stuff
-	if(_vwd)
-	{
-		_vwd->parseParameters(params);
-	}
+	_vwd->parseParameters(params);
 
 	Parameters::parse(params, Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
 	Parameters::parse(params, Parameters::kKpParallelized(), _parallelized);
@@ -858,7 +883,7 @@ void Memory::preUpdate()
 	{
 		this->cleanUnusedWords();
 	}
-	if(_vwd && !_parallelized)
+	if(!_parallelized)
 	{
 		//When parallelized, it is done in CreateSignature
 		_vwd->update();
@@ -1116,10 +1141,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 		}
 		++_signaturesAdded;
 
-		if(_vwd)
-		{
-			UDEBUG("%d words ref for the signature %d (weight=%d)", signature->getWords().size(), signature->id(), signature->getWeight());
-		}
+		UDEBUG("%d words ref for the signature %d (weight=%d)", signature->getWords().size(), signature->id(), signature->getWeight());
 		if(signature->getWords().size())
 		{
 			signature->setEnabled(true);
@@ -1838,13 +1860,24 @@ void Memory::clear()
 	UDEBUG("");
 
 	//Get the tree root (parents)
-	std::map<int, Signature*> mem = _signatures;
-	for(std::map<int, Signature *>::iterator i=mem.begin(); i!=mem.end(); ++i)
-	{
-		if(i->second)
+	if(!_dbDriver) {
+		// We are not saving to database anyway, just delete now.
+		for(std::map<int, Signature *>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
 		{
-			//UDEBUG("deleting from the working and the short-term memory: %d", i->first);
-			this->moveToTrash(i->second);
+			delete iter->second;
+		}
+		_workingMem.clear();
+		_signatures.clear();
+	}
+	else {
+		std::map<int, Signature*> mem = _signatures;
+		for(std::map<int, Signature *>::iterator i=mem.begin(); i!=mem.end(); ++i)
+		{
+			if(i->second)
+			{
+				//UDEBUG("deleting from the working and the short-term memory: %d", i->first);
+				this->moveToTrash(i->second);
+			}
 		}
 	}
 
@@ -1868,6 +1901,7 @@ void Memory::clear()
 	UDEBUG("");
 	_lastSignature = 0;
 	_lastGlobalLoopClosureId = 0;
+	_signaturesAdded = 0;
 	_idCount = kIdStart;
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
@@ -1888,14 +1922,7 @@ void Memory::clear()
 		cleanUnusedWords();
 		_dbDriver->emptyTrashes();
 	}
-	else
-	{
-		cleanUnusedWords();
-	}
-	if(_vwd)
-	{
-		_vwd->clear();
-	}
+	_vwd->clear(_dbDriver!=NULL);
 	UDEBUG("");
 }
 
@@ -2923,6 +2950,37 @@ Transform Memory::computeTransform(
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 
+	// Load word descriptors and keypoints on-demand if necessary
+	if( !_reextractLoopClosureFeatures &&
+		(_registrationPipeline->isImageRequired() || guess.isNull()) &&
+		!fromS.getWords().empty() && fromS.getWordsKpts().empty() &&
+		_dbDriver)
+	{
+		// We assume "toS" has already features in RAM, so just lookup "fromS"
+		UDEBUG("Loading local visual features for signature %d", fromS.id());
+		std::multimap<int, int> words;
+		std::vector<cv::KeyPoint> keypoints;
+		std::vector<cv::Point3f> points;
+		cv::Mat descriptors;
+		UTimer timer;
+		_dbDriver->getLocalFeatures(fromS.id(), words, keypoints, points, descriptors);
+		if(!words.empty() && !keypoints.empty()) {
+			UASSERT(words.size() == fromS.getWords().size());
+			std::map<int, int> wordsChanged = fromS.getWordsChanged();
+			bool wasEnabled = fromS.isEnabled();
+			fromS.setWords(words, keypoints, points, descriptors);
+			for(const auto & iter: wordsChanged) {
+				fromS.changeWordsRef(iter.first, iter.second);
+			}
+			fromS.setEnabled(wasEnabled);
+			UDEBUG("Loaded %ld local visual features for signature %d! (in %f s)", words.size(), fromS.id(), timer.ticks());
+		}
+		else
+		{
+			UDEBUG("Failed to load local visual features for signature %d.", fromS.id());
+		}
+		
+	}
 
 	// compute transform fromId -> toId
 	std::vector<int> inliersV;
@@ -2982,8 +3040,10 @@ Transform Memory::computeTransform(
 			   !_invertedReg &&
 			   !tmpTo.getWordsDescriptors().empty() &&
 			   !tmpTo.getWords().empty() &&
+			   !tmpTo.getWordsKpts().empty() &&
 			   !tmpFrom.getWordsDescriptors().empty() &&
 			   !tmpFrom.getWords().empty() &&
+			   !tmpFrom.getWordsKpts().empty() &&
 			   !tmpFrom.getWords3().empty() &&
 			   fromS.hasLink(0, Link::kNeighbor)) // If doesn't have neighbors, skip bundle
 		{
@@ -3017,8 +3077,12 @@ Transform Memory::computeTransform(
 				if(id != fromS.id() && iter->second.type() == Link::kNeighbor) // assemble only neighbors for the local feature map
 				{
 					const Signature * s = this->getSignature(id);
-					if(s && !s->getWords3().empty())
+					if(s)
 					{
+						if(s->getWordsKpts().empty() && s->getWords3().empty() && s->getWordsDescriptors().empty()) {
+							UDEBUG("Signature %d doesn't have features set. Cannot be added in the local feature map.", s->id());
+							continue;
+						}
 						const std::map<int, int> & wordsTo = uMultimapToMapUnique(s->getWords());
 						for(std::map<int, int>::const_iterator jter=wordsTo.begin(); jter!=wordsTo.end(); ++jter)
 						{
@@ -3117,6 +3181,11 @@ Transform Memory::computeTransform(
 								bundlePoses.insert(std::make_pair(id, iter->second.transform()));
 							}
 
+							if(s->getWordsKpts().empty())
+							{
+								UDEBUG("Signature %d doesn't have features set. Keypoints won't be added in local bundle adjustment.", s->id());
+								continue;
+							}
 							const std::map<int,int> & words = uMultimapToMapUnique(s->getWords());
 							for(std::map<int, int>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
 							{
@@ -3631,10 +3700,7 @@ void Memory::dumpMemory(std::string directory) const
 
 void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
 {
-	if(_vwd)
-	{
-		_vwd->exportDictionary(fileNameRef, fileNameDesc);
-	}
+	_vwd->exportDictionary(fileNameRef, fileNameDesc);
 }
 
 void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
@@ -3755,10 +3821,7 @@ unsigned long Memory::getMemoryUsed() const
 	{
 		memoryUsage += iter->second->getMemoryUsed(true);
 	}
-	if(_vwd)
-	{
-		memoryUsage += _vwd->getMemoryUsed();
-	}
+	memoryUsage += _vwd->getMemoryUsed();
 	memoryUsage += _stMem.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	memoryUsage += _workingMem.size() * (sizeof(int)+sizeof(double)+sizeof(std::map<int, double>::iterator)) + sizeof(std::map<int, double>);
 	memoryUsage += _groundTruths.size() * (sizeof(int)+sizeof(Transform)+12*sizeof(float) + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
@@ -4222,6 +4285,11 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 				delete signatures.front();
 			}
 		}
+	}
+	if(!words.empty() && wordsKpts.empty() && _dbDriver)
+	{
+		std::multimap<int, int> tmpWords;
+		_dbDriver->getLocalFeatures(nodeId, tmpWords, wordsKpts, words3, wordsDescriptors);
 	}
 }
 
@@ -6411,7 +6479,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 
 	UDEBUG("oldWordIds.size()=%d, getOldIds time=%fs", oldWordIds.size(), timer.ticks());
 
-	// the words were deleted, so try to math it with an active word
+	// the words were deleted, so try to match it with an active word
 	std::list<VisualWord *> vws;
 	if(oldWordIds.size() && _dbDriver)
 	{

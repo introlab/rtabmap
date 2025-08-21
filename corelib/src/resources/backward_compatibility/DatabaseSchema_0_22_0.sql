@@ -131,9 +131,7 @@ CREATE TABLE Admin (
 	opt_map BLOB,            -- compressed CV_8SC1 occupancy grid
 	opt_map_x_min FLOAT,
 	opt_map_y_min FLOAT, 
-	opt_map_resolution FLOAT,
-
-	dictionary_index BLOB,   -- serialized dictionary index
+	opt_map_resolution FLOAT, 
 
 	time_enter DATE
 );
@@ -181,5 +179,5 @@ CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
 -- *******************************************************************
 -- VERSION
 -- *******************************************************************
-INSERT INTO Admin(version) VALUES('@PROJECT_VERSION@');
+INSERT INTO Admin(version) VALUES('0.22.0');
 

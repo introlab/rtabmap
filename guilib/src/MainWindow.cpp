@@ -2394,13 +2394,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			// do it after scaling
 			std::multimap<int, cv::KeyPoint> wordsA;
 			std::multimap<int, cv::KeyPoint> wordsB;
-			for(std::map<int, int>::const_iterator iter=signature.getWords().begin(); iter!=signature.getWords().end(); ++iter)
+			if(signature.getWords().size() == signature.getWordsKpts().size())
 			{
-				wordsA.insert(wordsA.end(), std::make_pair(iter->first, signature.getWordsKpts()[iter->second]));
+				for(std::map<int, int>::const_iterator iter=signature.getWords().begin(); iter!=signature.getWords().end(); ++iter)
+				{
+					wordsA.insert(wordsA.end(), std::make_pair(iter->first, signature.getWordsKpts()[iter->second]));
+				}
 			}
-			for(std::map<int, int>::const_iterator iter=loopSignature.getWords().begin(); iter!=loopSignature.getWords().end(); ++iter)
+			if(loopSignature.getWords().size() == loopSignature.getWordsKpts().size())
 			{
-				wordsB.insert(wordsB.end(), std::make_pair(iter->first, loopSignature.getWordsKpts()[iter->second]));
+				for(std::map<int, int>::const_iterator iter=loopSignature.getWords().begin(); iter!=loopSignature.getWords().end(); ++iter)
+				{
+					wordsB.insert(wordsB.end(), std::make_pair(iter->first, loopSignature.getWordsKpts()[iter->second]));
+				}
 			}
 			this->drawKeypoints(wordsA, wordsB);
 
@@ -4363,7 +4369,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
 		float maxDepth = _preferencesDialog->getCloudMaxDepth(0);
 		UDEBUG("rgb.channels()=%d");
-		if(!iter->getWords3().empty() && !iter->getWordsKpts().empty())
+		if(!iter->getWords3().empty() && iter->getWords3().size() == iter->getWordsKpts().size())
 		{
 			Transform invLocalTransform = Transform::getIdentity();
 			if(iter.value().sensorData().cameraModels().size() == 1 &&

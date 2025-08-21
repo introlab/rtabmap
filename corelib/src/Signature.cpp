@@ -318,7 +318,7 @@ void Signature::setWords(const std::multimap<int, int> & words,
 	UASSERT_MSG(descriptors.empty() || descriptors.rows == (int)words.size(), uFormat("words=%d, descriptors=%d", (int)words.size(), descriptors.rows).c_str());
 	UASSERT_MSG(points.empty() || points.size() == words.size(),  uFormat("words=%d, points=%d", (int)words.size(), (int)points.size()).c_str());
 	UASSERT_MSG(keypoints.empty() || keypoints.size() == words.size(),  uFormat("words=%d, descriptors=%d", (int)words.size(), (int)keypoints.size()).c_str());
-	UASSERT(words.empty() || !keypoints.empty() || !points.empty() || !descriptors.empty());
+	//UASSERT(words.empty() || !keypoints.empty() || !points.empty() || !descriptors.empty());
 
 	_invalidWordsCount = 0;
 	for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
@@ -328,7 +328,7 @@ void Signature::setWords(const std::multimap<int, int> & words,
 			++_invalidWordsCount;
 		}
 		// make sure indexes are all valid!
-		UASSERT_MSG(iter->second >=0 && iter->second < (int)words.size(), uFormat("iter->second=%d words.size()=%d", iter->second, (int)words.size()).c_str());
+		UASSERT_MSG(iter->second<0 || iter->second < (int)words.size(), uFormat("iter->second=%d words.size()=%d", iter->second, (int)words.size()).c_str());
 	}
 
 	_enabled = false;
