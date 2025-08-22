@@ -383,7 +383,7 @@ void DBDriver::asyncSave(Signature * s)
 {
 	if(s)
 	{
-		UDEBUG("s=%d", s->id());
+		//UDEBUG("s=%d", s->id());
 		_trashesMutex.lock();
 		{
 			_trashSignatures.insert(std::pair<int, Signature*>(s->id(), s));

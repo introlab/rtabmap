@@ -548,7 +548,7 @@ void SensorData::setOccupancyGrid(
 			float cellSize,
 			const cv::Point3f & viewPoint)
 {
-	UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
+	//UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
 	if((!ground.empty() && (!_groundCellsCompressed.empty() || !_groundCellsRaw.empty())) ||
 	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())) ||
 	   (!empty.empty() && (!_emptyCellsCompressed.empty() || !_emptyCellsRaw.empty())))

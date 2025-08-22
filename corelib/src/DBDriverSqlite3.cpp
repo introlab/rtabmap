@@ -1298,8 +1298,8 @@ std::map<int, std::vector<int> > DBDriverSqlite3::getAllStatisticsWmStatesQuery(
 
 void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
-	UDEBUG("load data for %d signatures images=%d scan=%d userData=%d, grid=%d",
-			(int)signatures.size(), images?1:0, scan?1:0, userData?1:0, occupancyGrid?1:0);
+	//UDEBUG("load data for %d signatures images=%d scan=%d userData=%d, grid=%d",
+	//		(int)signatures.size(), images?1:0, scan?1:0, userData?1:0, occupancyGrid?1:0);
 
 	if(!images && !scan && !userData && !occupancyGrid)
 	{
@@ -1447,7 +1447,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 		{
 			UASSERT(*iter != 0);
 
-			ULOGGER_DEBUG("Loading data for %d...", (*iter)->id());
+			//ULOGGER_DEBUG("Loading data for %d...", (*iter)->id());
 			// bind id
 			rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -1876,7 +1876,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+		//ULOGGER_DEBUG("Time=%fs", timer.ticks());
 	}
 }
 
@@ -6797,7 +6797,7 @@ void DBDriverSqlite3::stepLink(
 	{
 		UFATAL("");
 	}
-	UDEBUG("Save link from %d to %d, type=%d", link.from(), link.to(), link.type());
+	//UDEBUG("Save link from %d to %d, type=%d", link.from(), link.to(), link.type());
 
 	// Don't save virtual links
 	if(link.type()==Link::kVirtualClosure)
