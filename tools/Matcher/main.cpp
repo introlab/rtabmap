@@ -400,10 +400,12 @@ int main(int argc, char * argv[])
 				std::map<int, int> wordsTo = uMultimapToMapUnique(dataTo.getWords());
 				std::map<int, cv::KeyPoint> kptsFrom;
 				std::map<int, cv::KeyPoint> kptsTo;
+				UASSERT(dataFrom.getWords().size() == dataFrom.getWordsKpts().size());
 				for(std::map<int, int>::iterator iter=wordsFrom.begin(); iter!=wordsFrom.end(); ++iter)
 				{
 					kptsFrom.insert(std::make_pair(iter->first, dataFrom.getWordsKpts()[iter->second]));
 				}
+				UASSERT(dataTo.getWords().size() == dataTo.getWordsKpts().size());
 				for(std::map<int, int>::iterator iter=wordsTo.begin(); iter!=wordsTo.end(); ++iter)
 				{
 					kptsTo.insert(std::make_pair(iter->first, dataTo.getWordsKpts()[iter->second]));

@@ -608,8 +608,8 @@ void Optimizer::computeBACorrespondences(
 					}
 				}
 
-				if(sFrom.getWords().size() &&
-					sTo.getWords().size() &&
+				if(sFrom.getWordsKpts().size() &&
+					sTo.getWordsKpts().size() &&
 					sFrom.getWords3().size())
 				{
 					if(!rematchFeatures)

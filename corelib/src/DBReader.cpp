@@ -260,7 +260,7 @@ bool DBReader::init(
 			else
 			{
 				Signature * s = _dbDriver->loadSignature(*_ids.begin());
-				_dbDriver->loadNodeData(s);
+				_dbDriver->loadNodeData(*s);
 				if( s->sensorData().imageCompressed().empty() &&
 					s->getWords().empty() &&
 					!s->sensorData().laserScanCompressed().empty())

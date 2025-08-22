@@ -1005,6 +1005,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_rgbCompressionFormat->setObjectName(Parameters::kMemImageCompressionFormat().c_str());
 	_ui->lineEdit_depthCompressionFormat->setObjectName(Parameters::kMemDepthCompressionFormat().c_str());
 	_ui->general_checkBox_keepDescriptors->setObjectName(Parameters::kMemRawDescriptorsKept().c_str());
+	_ui->general_checkBox_loadVisualLocalFeaturesOnInit->setObjectName(Parameters::kMemLoadVisualLocalFeaturesOnInit().c_str());
 	_ui->general_checkBox_saveDepth16bits->setObjectName(Parameters::kMemSaveDepth16Format().c_str());
 	_ui->general_checkBox_compressionParallelized->setObjectName(Parameters::kMemCompressionParallelized().c_str());
 	_ui->general_checkBox_reduceGraph->setObjectName(Parameters::kMemReduceGraph().c_str());
@@ -1079,6 +1080,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_dictionaryPath->setObjectName(Parameters::kKpDictionaryPath().c_str());
 	connect(_ui->toolButton_dictionaryPath, SIGNAL(clicked()), this, SLOT(changeDictionaryPath()));
 	_ui->checkBox_kp_newWordsComparedTogether->setObjectName(Parameters::kKpNewWordsComparedTogether().c_str());
+	_ui->checkBox_kp_flannIndexSaved->setObjectName(Parameters::kKpFlannIndexSaved().c_str());
+	_ui->checkBox_kp_serializeWithChecksum->setObjectName(Parameters::kKpSerializeWithChecksum().c_str());
 	_ui->subpix_winSize_kp->setObjectName(Parameters::kKpSubPixWinSize().c_str());
 	_ui->subpix_iterations_kp->setObjectName(Parameters::kKpSubPixIterations().c_str());
 	_ui->subpix_eps_kp->setObjectName(Parameters::kKpSubPixEps().c_str());

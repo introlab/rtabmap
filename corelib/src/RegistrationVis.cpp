@@ -376,14 +376,20 @@ Transform RegistrationVis::computeTransformationImpl(
 		UDEBUG("");
 		// just some checks to make sure that input data are ok
 		UASSERT(fromSignature.getWords().empty() ||
+				fromSignature.getWordsKpts().empty() ||
+				(fromSignature.getWords().size() == fromSignature.getWordsKpts().size()));
+		UASSERT(fromSignature.getWords().empty() ||
 				fromSignature.getWords3().empty() ||
 				(fromSignature.getWords().size() == fromSignature.getWords3().size()));
 		UASSERT((int)fromSignature.sensorData().keypoints().size() == fromSignature.sensorData().descriptors().rows ||
 				(int)fromSignature.getWords().size() == fromSignature.getWordsDescriptors().rows ||
 				fromSignature.sensorData().descriptors().empty() ||
 				fromSignature.getWordsDescriptors().empty() == 0);
-		UASSERT((toSignature.getWords().empty() && toSignature.getWords3().empty())||
-				(toSignature.getWords().size() && toSignature.getWords3().empty())||
+		UASSERT(toSignature.getWords().empty() ||
+				toSignature.getWordsKpts().empty() ||
+				(toSignature.getWords().size() == toSignature.getWordsKpts().size()));
+		UASSERT(toSignature.getWords().empty() ||
+				toSignature.getWords3().empty() ||
 				(toSignature.getWords().size() == toSignature.getWords3().size()));
 		UASSERT((int)toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
 				(int)toSignature.getWords().size() == toSignature.getWordsDescriptors().rows ||

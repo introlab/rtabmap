@@ -204,6 +204,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, ImageKept,                   bool, false,    "Keep raw images in RAM.");
     RTABMAP_PARAM(Mem, BinDataKept,                 bool, true,     "Keep binary data in db.");
     RTABMAP_PARAM(Mem, RawDescriptorsKept,          bool, true,     "Raw descriptors kept in memory.");
+    RTABMAP_PARAM(Mem, LoadVisualLocalFeaturesOnInit, bool, true,   "Load all local visual features (keypoints, descriptors and 3D points) in RAM when loading an existing database. This can add significant time to initialize the memory but the features will be already loaded before computing loop closure transforms. If false, the features are loaded on-demand from the database when a loop closure transformation should be estimated.");
     RTABMAP_PARAM(Mem, MapLabelsAdded,              bool, true,     "Create map labels. The first node of a map will be labeled as \"map#\" where # is the map ID.");
     RTABMAP_PARAM(Mem, SaveDepth16Format,           bool, false,    "Save depth image into 16 bits format to reduce memory used. Warning: values over ~65 meters are ignored (maximum 65535 millimeters).");
     RTABMAP_PARAM(Mem, NotLinkedNodesKept,          bool, true,     "Keep not linked nodes in db (rehearsed nodes and deleted nodes).");
@@ -260,6 +261,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM_STR(Kp, RoiRatios,       "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
     RTABMAP_PARAM_STR(Kp, DictionaryPath,       "",           "Path of the pre-computed dictionary");
     RTABMAP_PARAM(Kp, NewWordsComparedTogether, bool, true,   "When adding new words to dictionary, they are compared also with each other (to detect same words in the same signature).");
+    RTABMAP_PARAM(Kp, FlannIndexSaved,          bool, false,  uFormat("Save FLANN index during localization session (when %s=false). The FLANN index will be saved to database after the first time localization mode is used, then on next sessions, the index is reloaded from the database instead of being rebuilt again. This can save significant loading time when the visual word dictionary is big (>1M words). Note that if the dictionary is modified (parameters or data), the index will be rebuilt and saved again on the next session.", kMemIncrementalMemory().c_str()).c_str());
+    RTABMAP_PARAM(Kp, SerializeWithChecksum,    bool, true,   "On serialization of the FLANN index, compute checksum of the data used by the FLANN index. This adds a slight overhead on serialization/deserialization to make sure that the dictionary data correspond to same data used when the index was built.");
     RTABMAP_PARAM(Kp, SubPixWinSize,            int, 3,       "See cv::cornerSubPix().");
     RTABMAP_PARAM(Kp, SubPixIterations,         int, 0,       "See cv::cornerSubPix(). 0 disables sub pixel refining.");
     RTABMAP_PARAM(Kp, SubPixEps,                double, 0.02, "See cv::cornerSubPix().");

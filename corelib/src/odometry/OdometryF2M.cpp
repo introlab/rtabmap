@@ -793,6 +793,7 @@ Transform OdometryF2M::computeTransform(
 
 					if(!lastFrameModels.empty())
 					{
+						UASSERT(lastFrame_->getWordsKpts().size() == lastFrame_->getWords().size());
 						for(std::multimap<int, int>::const_iterator iter = lastFrame_->getWords().begin(); iter!=lastFrame_->getWords().end(); ++iter)
 						{
 							const cv::Point3f & pt = lastFrame_->getWords3()[iter->second];

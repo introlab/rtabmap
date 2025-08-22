@@ -176,6 +176,8 @@ Transform OdometryF2F::computeTransform(
 		if(info && this->isInfoDataFilled())
 		{
 			std::list<std::pair<int, std::pair<int, int> > > pairs;
+			UASSERT(tmpRefFrame.getWords().size() == tmpRefFrame.getWordsKpts().size());
+			UASSERT(newFrame.getWords().size() == newFrame.getWordsKpts().size());
 			EpipolarGeometry::findPairsUnique(tmpRefFrame.getWords(), newFrame.getWords(), pairs);
 			info->refCorners.resize(pairs.size());
 			info->newCorners.resize(pairs.size());

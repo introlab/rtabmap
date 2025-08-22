@@ -57,7 +57,7 @@ void VisualWord::addRef(int signatureId)
 	}
 	else
 	{
-		_references.insert(std::pair<int, int>(signatureId, 1));
+		_references.insert(_references.end(), std::pair<int, int>(signatureId, 1));
 	}
 	++_totalReferences;
 }
