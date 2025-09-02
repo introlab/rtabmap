@@ -88,6 +88,9 @@ void FlannIndex::release()
 std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) const {
 	if(index_ && !addedDescriptors_.empty())
 	{
+#ifdef WIN32
+		UERROR("FLANN index serialization is not yet implemented on Windows. Parameter \"%s\" cannot be used.", Parameters::kKpFlannIndexSaved().c_str());
+#else
 		const int headerSizeBytes = sizeof(int)*FLANN_INDEX_HEADER_SIZE;
 		std::vector<unsigned char> indexData(1024*1024*100 + headerSizeBytes); // Max 100 MB
         FILE* indexDataPtr = fmemopen(indexData.data()+headerSizeBytes, indexData.size() - headerSizeBytes, "wb");
@@ -201,6 +204,7 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 		else {
 			UERROR("Target buffer too small to serialize index, aborting.");
 		}
+#endif
 	}
 	return std::vector<unsigned char>();
 }
