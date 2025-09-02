@@ -382,6 +382,11 @@ bool FlannIndex::loadIndex(
 		return false;
 	}
 
+#ifdef WIN32
+	UERROR("FLANN index deserialization is not yet implemented on Windows. Index cannot be loaded from memory buffer.");
+	return false;
+#else
+
 	// Check if the features match the expected data from the index
 	size_t headerSizeBytes = sizeof(int)*FLANN_INDEX_HEADER_SIZE;
 	if(indexDataSize < headerSizeBytes) {
@@ -558,6 +563,7 @@ bool FlannIndex::loadIndex(
 		nextIndex_ += features.rows;
 	}
 	return true;
+#endif
 }
 
 bool FlannIndex::isBuilt()
