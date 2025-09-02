@@ -31,6 +31,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Version.h>
+#ifdef WIN32
+#include <rtabmap/core/Parameters.h>
+#endif
 
 #include "rtflann/flann.hpp"
 #include <boost/crc.hpp>
