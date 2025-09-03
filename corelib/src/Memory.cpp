@@ -486,6 +486,37 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 	UDEBUG("map ids start with %d", _idMapCount);
 }
 
+void Memory::saveFlannIndex(bool postInitClosingEvents)
+{
+	if(!_dbDriver) {
+		return;
+	}
+	if(uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.0") >= 0) {
+		if(_flannIndexSaved && !_incrementalMemory) {
+			if(_vwd->isModified()) {
+				UINFO("Saving flann index to database... (%s=true)", Parameters::kKpFlannIndexSaved().c_str());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database..."));
+				_dbDriver->saveFlannIndex(_vwd->serializeIndex());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database, done!"));
+			}
+			else
+			{
+				UDEBUG("The dictionary didn't change since loaded, do not need to save again to database.");
+			}
+		}
+		else {
+			// clear if exists
+			_dbDriver->saveFlannIndex(std::vector<unsigned char>());
+		}
+	}
+	else if(_flannIndexSaved)
+	{
+		UWARN("Parameter %s is enabled, but database version is too old (%s < 0.23). Flann index cannot be saved.",
+			Parameters::kKpFlannIndexSaved().c_str(),
+			_dbDriver->getDatabaseVersion().c_str());
+	}
+}
+
 void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::string & ouputDatabasePath)
 {
 	UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
@@ -506,30 +537,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
-			if(uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.0") >= 0) {
-				if(_flannIndexSaved && !_incrementalMemory) {
-					if(_vwd->isModified()) {
-						UINFO("Saving flann index to database... (%s=true)", Parameters::kKpFlannIndexSaved().c_str());
-						if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database..."));
-						_dbDriver->saveFlannIndex(_vwd->serializeIndex());
-						if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database, done!"));
-					}
-					else
-					{
-						UDEBUG("The dictionary didn't change since loaded, do not need to save again to database.");
-					}
-				}
-				else {
-					// clear if exists
-					_dbDriver->saveFlannIndex(std::vector<unsigned char>());
-				}
-			}
-			else if(_flannIndexSaved)
-			{
-				UWARN("Parameter %s is enabled, but database version is too old (%s < 0.23). Flann index cannot be saved.",
-					Parameters::kKpFlannIndexSaved().c_str(),
-					_dbDriver->getDatabaseVersion().c_str());
-			}
+			saveFlannIndex(postInitClosingEvents);
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection(false, ouputDatabasePath);
 			delete _dbDriver;
@@ -544,11 +552,15 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 	{
 		UINFO("Saving memory...");
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
-		if(!_memoryChanged && _linksChanged && _dbDriver)
+		if(!_memoryChanged && _dbDriver)
 		{
-			// don't update the time stamps!
-			UDEBUG("");
-			_dbDriver->setTimestampUpdateEnabled(false);
+			saveFlannIndex(postInitClosingEvents);
+
+			if(_linksChanged) {
+				// don't update the time stamps!
+				UDEBUG("");
+				_dbDriver->setTimestampUpdateEnabled(false);
+			}
 		}
 		this->clear();
 		if(_dbDriver)

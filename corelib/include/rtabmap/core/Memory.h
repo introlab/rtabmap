@@ -264,6 +264,7 @@ private:
 	void addSignatureToStm(Signature * signature, const cv::Mat & covariance);
 	void clear();
 	void loadDataFromDb(bool postInitClosingEvents);
+	void saveFlannIndex(bool postInitClosingEvents);
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
 	void moveSignatureToWMFromSTM(int id, int * reducedTo = 0);
