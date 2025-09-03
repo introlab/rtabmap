@@ -497,6 +497,8 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		databaseNameChanged = ouputDatabasePath.size() && _dbDriver->getUrl().size() && _dbDriver->getUrl().compare(ouputDatabasePath) != 0?true:false;
 	}
 
+	UDEBUG("_memoryChanged=%d _linksChanged=%d databaseNameChanged=%d", _memoryChanged?1:0, _linksChanged?1:0, databaseNameChanged?1:0);
+
 	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged))
 	{
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
