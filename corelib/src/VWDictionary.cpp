@@ -1166,7 +1166,6 @@ std::list<int> VWDictionary::addNewWords(
 				newWordsId.push_back(vw->id());
 				wordIds.push_back(vw->id());
 				UASSERT(vw->id()>0);
-				_modified=true;
 			}
 			else
 			{
@@ -1544,7 +1543,6 @@ void VWDictionary::addWord(VisualWord * vw)
 		{
 			_lastWordId = vw->id();
 		}
-		_modified = true;
 	}
 }
 
@@ -1580,7 +1578,6 @@ void VWDictionary::removeWords(const std::vector<VisualWord*> & words)
 			_removedIndexedWords.insert(words[i]->id());
 		}
 	}
-	_modified |= !words.empty();
 }
 
 void VWDictionary::deleteUnusedWords()
