@@ -264,6 +264,7 @@ private:
 	void addSignatureToStm(Signature * signature, const cv::Mat & covariance);
 	void clear();
 	void loadDataFromDb(bool postInitClosingEvents);
+	void saveFlannIndex(bool postInitClosingEvents);
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
 	void moveSignatureToWMFromSTM(int id, int * reducedTo = 0);
@@ -299,6 +300,7 @@ private:
 	float _similarityThreshold;
 	bool _binDataKept;
 	bool _rawDescriptorsKept;
+	bool _loadVisualLocalFeaturesOnInit;
 	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _saveIntermediateNodeData;
@@ -306,6 +308,7 @@ private:
 	std::string _depthCompressionFormat;
 	bool _incrementalMemory;
 	bool _localizationDataSaved;
+	bool _flannIndexSaved;
 	bool _reduceGraph;
 	int _maxStMemSize;
 	float _recentWmRatio;

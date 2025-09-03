@@ -107,7 +107,11 @@ public:
 	bool isIncrementalFlann() const {return _incrementalFlann;}
 	void setIncrementalDictionary();
 	void setFixedDictionary(const std::string & dictionaryPath);
+	bool isModified() const;
 
+	std::vector<unsigned char> serializeIndex() const;
+	void deserializeIndex(const std::vector<unsigned char> & data);
+	void deserializeIndex(const unsigned char * data, size_t size);
 	void exportDictionary(const char * fileNameReferences, const char * fileNameDescriptors) const;
 
 	void clear(bool printWarningsIfNotEmpty = true);
@@ -137,10 +141,12 @@ private:
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt or .db)
 	std::string _newDictionaryPath; // a pre-computed dictionary (.txt or .db)
 	bool _newWordsComparedTogether;
+	bool _serializeWithChecksum;
 	int _lastWordId;
 	bool useDistanceL1_;
 	FlannIndex * _flannIndex;
 	cv::Mat _dataTree;
+	bool _modified;
 	NNStrategy _strategy;
 	std::map<int ,int> _mapIndexId;
 	std::map<int ,int> _mapIdIndex;

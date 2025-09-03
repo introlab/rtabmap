@@ -53,6 +53,7 @@ public:
 public:
 	virtual ~GlobalMap();
 
+	bool fullUpdateNeeded(const std::map<int, Transform> & poses) const;
 	bool update(const std::map<int, Transform> & poses); // return true if map has changed
 
 	virtual void clear();

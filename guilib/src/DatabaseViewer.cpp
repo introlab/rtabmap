@@ -8361,7 +8361,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 		}
 
 		Transform toPoseInv = filteredScanPoses.at(currentLink.to()).inverse();
-		dbDriver_->loadNodeData(fromS, !silent, true, !silent, !silent);
+		dbDriver_->loadNodeData(*fromS, !silent, true, !silent, !silent);
 		fromS->sensorData().uncompressData();
 		LaserScan fromScan = fromS->sensorData().laserScanRaw();
 		int maxPoints = fromScan.size();
@@ -8507,8 +8507,8 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 			reextractVisualFeatures ||
 			!silent)
 		{
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 		
 			if(!silent)
 			{
@@ -8796,9 +8796,9 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 			!silent)
 		{
 			// Add sensor data to generate features
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			fromS->sensorData().uncompressData();
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{

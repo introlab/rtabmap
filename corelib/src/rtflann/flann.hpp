@@ -103,7 +103,6 @@ public:
     {
         flann_algorithm_t index_type = get_param<flann_algorithm_t>(params,"algorithm");
         loaded_ = false;
-
         if (index_type == FLANN_INDEX_SAVED) {
             nnIndex_ = load_saved_index(features, get_param<std::string>(params,"filename"), distance);
             loaded_ = true;
@@ -180,8 +179,18 @@ public:
         if (fout == NULL) {
             throw FLANNException("Cannot open file");
         }
-        nnIndex_->saveIndex(fout);
+        save(fout);
         fclose(fout);
+    }
+
+    /**
+     * Save index to file stream.
+     * Caller has to open file stream with "wb" and close it afterwards.
+     * @param filename
+     */
+    void save(FILE * stream)
+    {
+        nnIndex_->saveIndex(stream);
     }
 
     /**
@@ -375,6 +384,26 @@ public:
                               const SearchParams& params) const
     {
     	return nnIndex_->radiusSearch(queries, indices, dists, radius, params);
+    }
+
+    void load_saved_index(FILE* fin)
+    {
+        if(loaded_) {
+            throw FLANNException("Index already loaded!");
+        }
+        if(nnIndex_->sizeAtBuild() != 0) {
+            throw FLANNException("Index must not be already built to load data.");
+        }
+        if (fin == NULL) {
+            throw FLANNException("File pointer must be valid!");
+        }
+        IndexHeader header = load_header(fin);
+        if (header.h.data_type != flann_datatype_value<ElementType>::value) {
+            throw FLANNException("Datatype of saved index is different than of the one to be loaded.");
+        }
+        rewind(fin);
+        nnIndex_->loadIndex(fin);
+        loaded_ = true;
     }
 
 private:

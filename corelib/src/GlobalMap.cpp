@@ -99,15 +99,12 @@ unsigned long GlobalMap::getMemoryUsed() const
 	return memoryUsage;
 }
 
-bool GlobalMap::update(const std::map<int, Transform> & poses)
+bool GlobalMap::fullUpdateNeeded(const std::map<int, Transform> & poses) const
 {
-	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)poses.size(), (int)addedNodes_.size());
-
-	// First, check of the graph has changed. If so, re-create the octree by moving all occupied nodes.
 	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
 	bool graphChanged = addedNodes_.size()>0; // If the new map doesn't have any node from the previous map
 	float updateErrorSqrd = updateError_*updateError_;
-	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
+	for(std::map<int, Transform>::const_iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
 	{
 		std::map<int, Transform>::const_iterator jter = poses.find(iter->first);
 		if(jter != poses.end())
@@ -125,7 +122,15 @@ bool GlobalMap::update(const std::map<int, Transform> & poses)
 		}
 	}
 
-	if(graphOptimized || graphChanged)
+	return graphOptimized || graphChanged;
+}
+
+bool GlobalMap::update(const std::map<int, Transform> & poses)
+{
+	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)poses.size(), (int)addedNodes_.size());
+
+	// First, check of the graph has changed. If so, re-create the octree by moving all occupied nodes.
+	if(fullUpdateNeeded(poses))
 	{
 		// clear all but keep cache
 		clear();
