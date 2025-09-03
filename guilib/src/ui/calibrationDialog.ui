@@ -360,7 +360,7 @@
                  <bool>false</bool>
                 </property>
                 <property name="minimum">
-                 <number>2</number>
+                 <number>3</number>
                 </property>
                 <property name="value">
                  <number>8</number>
@@ -373,7 +373,7 @@
                  <bool>false</bool>
                 </property>
                 <property name="minimum">
-                 <number>2</number>
+                 <number>3</number>
                 </property>
                 <property name="value">
                  <number>6</number>
