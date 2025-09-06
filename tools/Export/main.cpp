@@ -32,8 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_surface.h>
 #include <rtabmap/core/util2d.h>
+#include <rtabmap/core/util3d_mapping.h>
 #include <rtabmap/core/optimizer/OptimizerG2O.h>
 #include <rtabmap/core/Graph.h>
+#include <rtabmap/core/global_map/OccupancyGrid.h>
+#ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/global_map/OctoMap.h>
+#endif
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
@@ -125,6 +130,9 @@ void showUsage()
 			"                              1=KML (Google Earth)\n"
 			"    --images              Export images with stamp as file name.\n"
 			"    --images_id           Export images with node id as file name.\n"
+			"    --map                 Export 2D occupancy grid. Note that with \"--opt 2\", the already optimized \n"
+			"                              map saved in database (if exists) is exported.\n"
+			"    --octomap             Export 3D OctoMap.\n"
 			"    --ba                  Do global bundle adjustment before assembling the clouds.\n"
 			"    --gain          #     Gain compensation value (default 1, set 0 to disable).\n"
 			"    --gain_gray           Do gain estimation compensation on gray channel only (default RGB channels).\n"
@@ -164,7 +172,7 @@ void showUsage()
 			"    --random_samples #    Number of output samples using a random filter (default 0, 0=disabled).\n"
 			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
 			"    --scan                Use laser scan for the point cloud.\n"
-			"    --save_in_db          Save resulting assembled point cloud or mesh in the database.\n"
+			"    --save_in_db          Save resulting optimized poses, assembled point cloud, mesh or 2D occupancy grid in the database.\n"
 			"    --xmin #              Minimum range on X axis to keep nodes to export.\n"
 			"    --xmax #              Maximum range on X axis to keep nodes to export.\n"
 			"    --ymin #              Minimum range on Y axis to keep nodes to export.\n"
@@ -190,6 +198,37 @@ class ConsoleProgessState : public ProgressState
 		return true;
 	}
 };
+
+void saveMap(
+	const std::string & outputDirectory,
+	const std::string & baseName,
+	const cv::Mat & map,
+	float xMin,
+	float yMin,
+	float cellSize,
+	const ParametersMap & parameters)
+{
+	cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map, true);
+	std::string path=outputDirectory+"/"+baseName+".pgm";
+
+	cv::imwrite(path, map8U);
+
+	std::string yaml = outputDirectory+"/"+baseName+".yaml";
+
+	float occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+	Parameters::parse(parameters, Parameters::kGridGlobalOccupancyThr(), occupancyThr);
+
+	std::ofstream file;
+	file.open (yaml);
+	file << "image: " << baseName << ".pgm" << std::endl;
+	file << "resolution: " << cellSize << std::endl;
+	file << "origin: [" << xMin << ", " << yMin << ", 0.0]" << std::endl;
+	file << "negate: 0" << std::endl;
+	file << "occupied_thresh: " << occupancyThr << std::endl;
+	file << "free_thresh: 0.196" << std::endl;
+	file << std::endl;
+	file.close();
+}
 
 int main(int argc, char * argv[])
 {
@@ -264,6 +303,8 @@ int main(int argc, char * argv[])
 	int exportGps = -1;
 	bool exportImages = false;
 	bool exportImagesId = false;
+	bool export2DMap = false;
+	bool exportOctomap = false;
 	int optimizationApproach = 0;
 	std::string outputName;
 	std::string outputDir;
@@ -570,6 +611,18 @@ int main(int argc, char * argv[])
 		{
 			exportImages = true;
 			exportImagesId = true;
+		}
+		else if(std::strcmp(argv[i], "--map") == 0)
+		{
+			export2DMap = true;
+		}
+		else if(std::strcmp(argv[i], "--octomap") == 0)
+		{
+#ifdef RTABMAP_OCTOMAP
+			exportOctomap = true;
+#else
+			printf("Option --octomap cannot be used, rtabmap is not built with OctoMap support.\n");
+#endif
 		}
 		else if(std::strcmp(argv[i], "--ba") == 0)
 		{
@@ -1117,7 +1170,9 @@ int main(int argc, char * argv[])
 		 exportPosesGt ||
 		 exportPosesGps ||
 		 exportGps>=0 ||
-		 texture))
+		 texture ||
+		 export2DMap ||
+		 exportOctomap))
 	{
 		printf("Launching the tool without any required option(s) is deprecated. We will add --cloud to keep compatibilty with old behavior.\n");
 		exportCloud = true;
@@ -1172,12 +1227,19 @@ int main(int argc, char * argv[])
 	}
 	printf("Opening database \"%s\"... done (%fs).\n", dbPath.c_str(), timer.ticks());
 
+	std::string outputDirectory = outputDir.empty()?UDirectory::getDir(dbPath):outputDir;
+	if(!UDirectory::exists(outputDirectory))
+	{
+		UDirectory::makeDir(outputDirectory);
+	}
+	std::string baseName = outputName.empty()?uSplit(UFile::getName(dbPath), '.').front():outputName;
+
 	std::map<int, Transform> optimizedPoses;
 	std::map<int, Transform> odomPoses;
 	std::multimap<int, Link> links;
 	dbDriver->getAllOdomPoses(odomPoses, true);
 	dbDriver->getAllLinks(links, true, true);
-	if(optimizationApproach == 3 || !(exportCloud || exportMesh || exportPoses || exportPosesCamera || exportPosesScan || exportPosesLandmarks))
+	if(optimizationApproach == 3 || !(exportCloud || exportMesh || exportPoses || exportPosesCamera || exportPosesScan || exportPosesLandmarks || export2DMap || exportOctomap))
 	{
 		// Just use odometry poses when exporting only images
 		optimizedPoses = odomPoses;
@@ -1200,6 +1262,22 @@ int main(int argc, char * argv[])
 			else
 			{
 				printf("Loading optimized poses from database... done (%d optimized poses loaded).\n", (int)optimizedPoses.size());
+				if(export2DMap)
+				{
+					printf("Loading optimized 2D occupancy grid from database...\n");
+					float xMin, yMin, cellSize;
+					cv::Mat map = dbDriver->load2DMap(xMin, yMin, cellSize);
+					if(map.empty()) {
+						printf("Optimized 2D occupancy grid in the database is empty, it will be regenerated.\n");
+					}
+					else{
+						saveMap(outputDirectory, baseName, map, xMin, yMin, cellSize, parameters);
+						printf("Loading optimized 2D occupancy grid from database... done! Saved to \"%s\" and \"%s\"\n",
+							(baseName+".pgm").c_str(), (baseName+".yaml").c_str());
+
+						export2DMap = false;
+					}
+				}
 			}
 		}
 		if(optimizationApproach <= 1)
@@ -1361,13 +1439,6 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	std::string outputDirectory = outputDir.empty()?UDirectory::getDir(dbPath):outputDir;
-	if(!UDirectory::exists(outputDirectory))
-	{
-		UDirectory::makeDir(outputDirectory);
-	}
-	std::string baseName = outputName.empty()?uSplit(UFile::getName(dbPath), '.').front():outputName;
-
 	// Construct the cloud
 	if(exportCloud || exportMesh)
 	{
@@ -1377,6 +1448,11 @@ int main(int argc, char * argv[])
 	{
 		printf("Export images...\n");
 	}
+	else if(export2DMap || exportOctomap)
+	{
+		printf("Assemble global occupancy grid...\n");
+	}
+	
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::PointCloud<pcl::PointXYZI>::Ptr assembledCloudI(new pcl::PointCloud<pcl::PointXYZI>);
 	std::map<int, rtabmap::Transform> robotPoses;
@@ -1399,6 +1475,12 @@ int main(int argc, char * argv[])
 	std::vector<int> rawViewpointIndices;
 	std::map<int, Transform> rawViewpoints;
 	std::map<int, Transform> densityPoses;
+	LocalGridCache localGridCache;
+	OccupancyGrid grid(&localGridCache, parameters);
+#ifdef RTABMAP_OCTOMAP
+	OctoMap octomap(&localGridCache, parameters);
+#endif
+	std::map<int, Transform> addedPosesToMap;
 	if(densityRadius && (exportCloud || exportMesh))
 	{
 		densityPoses = graph::radiusPosesFiltering(optimizedPoses, densityRadius, densityAngle*CV_PI/180.0f);
@@ -1436,7 +1518,7 @@ int main(int argc, char * argv[])
 		SensorData data;
 		bool loadImages = ((exportCloud || exportMesh) && (!cloudFromScan || texture || camProjection)) || exportImages;
 		bool loadScan = ((exportCloud || exportMesh) && cloudFromScan) || exportPosesScan;
-		if(loadImages || loadScan)
+		if(loadImages || loadScan || export2DMap || exportOctomap)
 		{
 			dbDriver->getNodeData(
 				iter->first, 
@@ -1444,7 +1526,7 @@ int main(int argc, char * argv[])
 				loadImages, 
 				loadScan,
 				false,
-				false);
+				export2DMap || exportOctomap);
 		}
 
 		// uncompress data
@@ -1756,6 +1838,29 @@ int main(int argc, char * argv[])
 			gtStamps.insert(std::make_pair(iter->first, stamp));
 		}
 
+		if(weight != -1 && (export2DMap || exportOctomap)) {
+			cv::Mat ground;
+			cv::Mat obstacles;
+			cv::Mat empty;
+			data.uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
+			if(ground.empty() && obstacles.empty() && empty.empty()) {
+				printf("Node %d doesn't have local occupancy grid, ignored!\n", iter->first);
+			}
+			else {
+				addedPosesToMap.insert(*iter);
+				localGridCache.add(iter->first, ground, obstacles, empty, data.gridCellSize(), data.gridViewPoint());
+				if(export2DMap && !grid.update(addedPosesToMap)) {
+					printf("Failed to assemble local grid %d to global occupancy grid!\n", iter->first);
+				}
+#ifdef RTABMAP_OCTOMAP
+				if(exportOctomap && !octomap.update(addedPosesToMap)) {
+					printf("Failed to assemble local grid %d to OctoMap!\n", iter->first);
+				}
+#endif
+				localGridCache.clear();
+			}
+		}
+
 		if(optimizedPoses.size() >= 500)
 		{
 			++processedNodes;
@@ -1774,15 +1879,54 @@ int main(int argc, char * argv[])
 	{
 		printf("Create and assemble the clouds... done (%fs, %d points).\n", timer.ticks(), !assembledCloud->empty()?(int)assembledCloud->size():(int)assembledCloudI->size());
 	}
+	else if(export2DMap || exportOctomap)
+	{
+		printf("Assemble global occupancy grid... done (%fs).\n", timer.ticks());
+	}
 
 	if(exportImages || exportImagesId)
 	{
 		printf("%d images exported!\n", imagesExported);
-		if(!(exportCloud || exportMesh || exportPoses || exportPosesCamera || exportPosesScan)) {
+		if(!(exportCloud || exportMesh || exportPoses || exportPosesCamera || exportPosesScan || export2DMap || exportOctomap)) {
 			//images exported, early exit.
 			return 0;
 		}
 	}
+
+	if(export2DMap)
+	{
+		if(grid.addedNodes().empty())
+		{
+			printf( "Option --map and/or --prob_map is enabled, but no local occupancy grids have been "
+					"assembled to the 2D occupancy grid. Use rtabmap-databaseViewer to regenerate them.\n");
+		}
+		else {
+			printf("Saving 2D occupancy grid...\n");
+			float xMin, yMin;
+			cv::Mat map = grid.getMap(xMin, yMin);
+			saveMap(outputDirectory, baseName, map, xMin, yMin, grid.getCellSize(), parameters);
+			printf("Saving 2D occupancy grid... done (%fs)! Saved to \"%s\" and \"%s\"\n", timer.ticks(),
+				(baseName+".pgm").c_str(), (baseName+".yaml").c_str());
+		}
+	}
+#ifdef RTABMAP_OCTOMAP
+	if(exportOctomap)
+	{
+		if(octomap.addedNodes().empty())
+		{
+			printf( "Option --octomap is enabled, but no local occupancy grids have been "
+					"assembled in the Octomap. Use rtabmap-databaseViewer to regenerate them.\n");
+		}
+		else {
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap.createCloud();
+			pcl::io::savePLYFile(outputDirectory+"/"+baseName+"_octomap.ply",*cloud);
+			printf("Saving 3D OctoMap...\n");
+			octomap.writeBinary(outputDirectory+"/"+baseName+"_octomap.bt");
+			printf("Saving 3D OctoMap... done (%fs)! Saved to \"%s\".\n", timer.ticks(),
+				(baseName+"_octomap.bt").c_str());
+		}
+	}
+#endif
 
 	ConsoleProgessState progressState;
 
@@ -1793,7 +1937,15 @@ int main(int argc, char * argv[])
 		Transform lastlocalizationPose;
 		driver->loadOptimizedPoses(&lastlocalizationPose);
 		//optimized poses have changed, reset 2d map
-		driver->save2DMap(cv::Mat(), 0, 0, 0);
+		if(export2DMap && grid.addedNodes().size() != 0) {
+			printf("Saved optimized 2D occupancy grid back to database!\n");
+			float xMin, yMin;
+			cv::Mat map = grid.getMap(xMin, yMin);
+			driver->save2DMap(map, xMin, yMin, grid.getCellSize());
+		}
+		else {
+			driver->save2DMap(cv::Mat(), 0, 0, 0);
+		}
 		driver->saveOptimizedPoses(robotPoses, lastlocalizationPose);
 		cv::Vec3f vmin, vmax;
 		graph::computeMinMax(robotPoses, vmin, vmax);
