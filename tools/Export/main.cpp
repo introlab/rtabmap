@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/common.h>
 #include <pcl/surface/poisson.h>
 #include <stdio.h>
+#include <fstream>
 
 #ifdef RTABMAP_PDAL
 #include <rtabmap/core/PDALWriter.h>
