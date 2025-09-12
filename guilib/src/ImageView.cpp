@@ -1382,6 +1382,16 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 			// convert the depth values in height values
 			cv::Mat depthInBaseFrame = _imageDepthCv.clone();
 			int subImageWidth = _imageDepthCv.cols / _models.size();
+			std::vector<CameraModel> models; // scale model to size of depth image if needed
+			for(const auto & model: _models) {
+				UASSERT(subImageWidth <= model.imageWidth());
+				if(subImageWidth < model.imageWidth()) {
+					models.push_back(model.scaled(float(subImageWidth)/float(model.imageWidth())));
+				}
+				else {
+					models.push_back(model);
+				}
+			}
 			if(depthInBaseFrame.type() == CV_16UC1) {
 				for(int v=0; v<depthInBaseFrame.rows; ++v){
 					unsigned short * rowPtr = depthInBaseFrame.ptr<unsigned short>(v);
@@ -1390,9 +1400,9 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 						if(val > 0) {
 							cv::Point3f pt;
 							int cameraIndex = u/subImageWidth;
-							UASSERT(cameraIndex>=0 && cameraIndex < (int)_models.size() && subImageWidth == _models[cameraIndex].imageWidth());
-							_models[cameraIndex].project(u,v,float(val)/1000.0f, pt.x, pt.y, pt.z);
-							pt = util3d::transformPoint(pt, _models[cameraIndex].localTransform());
+							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
+							models[cameraIndex].project(u,v,float(val)/1000.0f, pt.x, pt.y, pt.z);
+							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
 							val = (unsigned short)(pt.z*1000.0f);
 						}
 					}
@@ -1406,9 +1416,9 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 						if(val > 0) {
 							cv::Point3f pt;
 							int cameraIndex = u/subImageWidth;
-							UASSERT(cameraIndex>=0 && cameraIndex < (int)_models.size() && subImageWidth == _models[cameraIndex].imageWidth());
-							_models[cameraIndex].project(u,v,val, pt.x, pt.y, pt.z);
-							pt = util3d::transformPoint(pt, _models[cameraIndex].localTransform());
+							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
+							models[cameraIndex].project(u,v,val, pt.x, pt.y, pt.z);
+							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
 							val = pt.z;
 						}
 					}
