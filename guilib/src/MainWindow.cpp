@@ -1725,7 +1725,6 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
 				odom.info().type == (int)Odometry::kTypeORBSLAM ||
 				odom.info().type == (int)Odometry::kTypeMSCKF ||
-				odom.info().type == (int)Odometry::kTypeVINS ||
 				odom.info().type == (int)Odometry::kTypeOpenVINS)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
@@ -1742,6 +1741,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			}
 			if((odom.info().type == (int)Odometry::kTypeF2F ||
 				odom.info().type == (int)Odometry::kTypeViso2 ||
+				odom.info().type == (int)Odometry::kTypeVINS ||
 				odom.info().type == (int)Odometry::kTypeFovis) && odom.info().refCorners.size())
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())

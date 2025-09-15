@@ -55,6 +55,7 @@ private:
 	Transform previousPose_;
 	Transform previousLocalTransform_;
 	IMU lastImu_;
+	double lastImuStamp_;
 #endif
 };
 
