@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryFLOAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
-#include "rtabmap/core/odometry/OdometryVINS.h"
+#include "rtabmap/core/odometry/OdometryVINSFusion.h"
 #include "rtabmap/core/odometry/OdometryOpenVINS.h"
 #include "rtabmap/core/odometry/OdometryOpen3D.h"
 #include "rtabmap/core/OdometryInfo.h"
@@ -103,8 +103,8 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	case Odometry::kTypeMSCKF:
 		odometry = new OdometryMSCKF(parameters);
 		break;
-	case Odometry::kTypeVINS:
-		odometry = new OdometryVINS(parameters);
+	case Odometry::kTypeVINSFusion:
+		odometry = new OdometryVINSFusion(parameters);
 		break;
 	case Odometry::kTypeOpenVINS:
 		odometry = new OdometryOpenVINS(parameters);

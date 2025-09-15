@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "rtabmap/core/odometry/OdometryVINS.h"
+#include "rtabmap/core/odometry/OdometryVINSFusion.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include <opencv2/imgproc/types_c.h>
 
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 #include <estimator/estimator.h>
 #include <estimator/parameters.h>
 #include <camodocal/camera_models/PinholeCamera.h>
@@ -45,11 +45,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-#ifdef RTABMAP_VINS
-class VinsEstimator: public Estimator
+#ifdef RTABMAP_VINS_FUSION
+class VinsFusionEstimator: public Estimator
 {
 public:
-	VinsEstimator(
+	VinsFusionEstimator(
 			const Transform & imuLocalTransform,
 			const StereoCameraModel & model,
 			bool rectified) : Estimator()
@@ -251,43 +251,43 @@ public:
 };
 #endif
 
-OdometryVINS::OdometryVINS(const ParametersMap & parameters) :
+OdometryVINSFusion::OdometryVINSFusion(const ParametersMap & parameters) :
 	Odometry(parameters)
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
     ,
 	vinsEstimator_(0),
 	initGravity_(false),
 	previousPose_(Transform::getIdentity())
 #endif
 {
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 	// intialize
 	std::string configFilename;
-	Parameters::parse(parameters, Parameters::kOdomVINSConfigPath(), configFilename);
+	Parameters::parse(parameters, Parameters::kOdomVINSFusionConfigPath(), configFilename);
 	if(configFilename.empty())
 	{
-		UERROR("VINS config file is empty (%s=%s)!",
-				Parameters::kOdomVINSConfigPath().c_str(),
-				Parameters::kOdomVINSConfigPath().c_str());
+		UERROR("VINS config file is empty (%s)!",
+				Parameters::kOdomVINSFusionConfigPath().c_str());
 	}
 	else
 	{
+		UINFO("Using config file %s", configFilename.c_str());
 		readParameters(uReplaceChar(configFilename, '~', UDirectory::homeDir()));
 	}
 #endif
 }
 
-OdometryVINS::~OdometryVINS()
+OdometryVINSFusion::~OdometryVINSFusion()
 {
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 	delete vinsEstimator_;
 #endif
 }
 
-void OdometryVINS::reset(const Transform & initialPose)
+void OdometryVINSFusion::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 	if(!initGravity_)
 	{
 		delete vinsEstimator_;
@@ -301,13 +301,13 @@ void OdometryVINS::reset(const Transform & initialPose)
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryVINS::computeTransform(
+Transform OdometryVINSFusion::computeTransform(
 		SensorData & data,
 		const Transform & guess,
 		OdometryInfo * info)
 {
 	Transform t;
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 	UTimer timer;
 
 	bool hasImage = !data.imageRaw().empty() && !data.rightRaw().empty() && data.stereoCameraModels().size() == 1 && data.stereoCameraModels()[0].isValidForProjection();
@@ -350,7 +350,7 @@ Transform OdometryVINS::computeTransform(
 		{
 			// intialize
 			UINFO("Initializing with image %f", data.stamp());
-			vinsEstimator_ = new VinsEstimator(
+			vinsEstimator_ = new VinsFusionEstimator(
 					lastImu_.localTransform().isNull()?Transform::getIdentity():lastImu_.localTransform(),
 					data.stereoCameraModels()[0],
 					this->imagesAlreadyRectified());
@@ -486,7 +486,7 @@ Transform OdometryVINS::computeTransform(
 		}
 		else
 		{
-			UWARN("VINS not yet initialized... needing more data.");
+			UWARN("VINS-Fusion not yet initialized... needing more data.");
 		}
 	}
 	else if(!data.imageRaw().empty() && !data.depthRaw().empty())

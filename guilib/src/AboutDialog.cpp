@@ -281,7 +281,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_msckf_license->setEnabled(false);
 #endif
 
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 	_ui->label_vins_fusion->setText("Yes");
 	_ui->label_vins_fusion_license->setEnabled(true);
 #else

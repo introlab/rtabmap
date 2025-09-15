@@ -53,7 +53,7 @@ public:
 		kTypeOkvis = 6,
 		kTypeLOAM = 7,
 		kTypeMSCKF = 8,
-		kTypeVINS = 9,
+		kTypeVINSFusion = 9,
 		kTypeOpenVINS = 10,
 		kTypeFLOAM = 11,
 		kTypeOpen3D = 12
