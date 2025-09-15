@@ -98,7 +98,7 @@ SET(SRC_FILES
     odometry/OdometryLOAM.cpp
     odometry/OdometryFLOAM.cpp
     odometry/OdometryMSCKF.cpp
-    odometry/OdometryVINS.cpp
+    odometry/OdometryVINSFusion.cpp
     odometry/OdometryOpenVINS.cpp
     odometry/OdometryOpen3D.cpp
     

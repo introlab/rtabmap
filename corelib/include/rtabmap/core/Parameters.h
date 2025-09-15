@@ -606,8 +606,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomMSCKF, InitCovExTrans,  double,  0.000025,  "");
     RTABMAP_PARAM(OdomMSCKF, MaxCamStateSize,  int,  20,  "");
 
-    // Odometry VINS
-    RTABMAP_PARAM_STR(OdomVINS, ConfigPath,     "",  "Path of VINS config file.");
+    // Odometry VINS-Fusion
+    RTABMAP_PARAM_STR(OdomVINSFusion, ConfigPath,     "",  "Path of VINS-Fusion config file.");
 
     // Odometry OpenVINS
     RTABMAP_PARAM(OdomOpenVINS, UseStereo,                 bool,   true,   "If we have more than 1 camera, if we should try to track stereo constraints between pairs");

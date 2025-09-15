@@ -236,6 +236,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.23.1
+		removedParameters_.insert(std::make_pair("OdomVINS/ConfigPath",    std::make_pair(true, Parameters::kOdomVINSFusionConfigPath())));
+
 		// 0.21.13
 		removedParameters_.insert(std::make_pair("Vis/ForwardEstOnly",    std::make_pair(false, "")));
 
@@ -936,7 +939,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
 				str = "With VINS-Fusion:";
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

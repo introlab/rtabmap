@@ -226,7 +226,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_MSCKF_VIO
 	_ui->odom_strategy->setItemData(8, 0, Qt::UserRole - 1);
 #endif
-#ifndef RTABMAP_VINS
+#ifndef RTABMAP_VINS_FUSION
 	_ui->odom_strategy->setItemData(9, 0, Qt::UserRole - 1);
 #endif
 #ifndef RTABMAP_OPENVINS
@@ -1556,8 +1556,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->OdomMSCKFInitCovExTrans->setObjectName(Parameters::kOdomMSCKFInitCovExTrans().c_str());
 
 	// Odometry VINS
-	_ui->lineEdit_OdomVinsPath->setObjectName(Parameters::kOdomVINSConfigPath().c_str());
-	connect(_ui->toolButton_OdomVinsPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSConfigPath()));
+	_ui->lineEdit_OdomVinsFusionPath->setObjectName(Parameters::kOdomVINSFusionConfigPath().c_str());
+	connect(_ui->toolButton_OdomVinsFusionPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSFusionConfigPath()));
 
 	// Odometry OpenVINS
 	_ui->checkBox_OdomOpenVINSUseStereo->setObjectName(Parameters::kOdomOpenVINSUseStereo().c_str());
@@ -5476,7 +5476,7 @@ void PreferencesDialog::updateOdometryStackedIndex(int index)
 	_ui->groupBox_odomOKVIS->setVisible(index==6);
 	_ui->groupBox_odomLOAM->setVisible(index==7);
 	_ui->groupBox_odomMSCKF->setVisible(index==8);
-	_ui->groupBox_odomVINS->setVisible(index==9);
+	_ui->groupBox_odomVINSFusion->setVisible(index==9);
 	_ui->groupBox_odomOpenVINS->setVisible(index==10);
 	_ui->groupBox_odomOpen3D->setVisible(index==12);
 }
@@ -5567,20 +5567,20 @@ void PreferencesDialog::changeOdometryOKVISConfigPath()
 	}
 }
 
-void PreferencesDialog::changeOdometryVINSConfigPath()
+void PreferencesDialog::changeOdometryVINSFusionConfigPath()
 {
 	QString path;
-	if(_ui->lineEdit_OdomVinsPath->text().isEmpty())
+	if(_ui->lineEdit_OdomVinsFusionPath->text().isEmpty())
 	{
 		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), this->getWorkingDirectory(), tr("VINS-Fusion config (*.yaml)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), _ui->lineEdit_OdomVinsPath->text(), tr("VINS-Fusion config (*.yaml)"));
+		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), _ui->lineEdit_OdomVinsFusionPath->text(), tr("VINS-Fusion config (*.yaml)"));
 	}
 	if(!path.isEmpty())
 	{
-		_ui->lineEdit_OdomVinsPath->setText(path);
+		_ui->lineEdit_OdomVinsFusionPath->setText(path);
 	}
 }
 
