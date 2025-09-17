@@ -298,16 +298,19 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     
     // Create configuration using Isaac ROS pattern
     CUVSLAM_Pose cuvslam_imu_pose;
-    if (!data.imu().empty()) {
-        // Get IMU pose relative to camera (base frame)
-        // data.imu().localTransform() gives us camera_pose_imu (camera in IMU frame)
-        // We need imu_pose_camera (IMU in camera frame) for cuVSLAM
-        Transform imu_pose_camera = data.imu().localTransform().inverse();
-        cuvslam_imu_pose = convertCameraPoseToCuVSLAM(imu_pose_camera);
-    } else {
-        // Set identity pose if no IMU
-        cuvslam_imu_pose = convertCameraPoseToCuVSLAM(Transform::getIdentity());
-    }
+    // if (!data.imu().empty()) {
+    //     // Get IMU pose relative to camera (base frame)
+    //     // data.imu().localTransform() gives us camera_pose_imu (camera in IMU frame)
+    //     // We need imu_pose_camera (IMU in camera frame) for cuVSLAM
+    //     Transform imu_pose_camera = data.imu().localTransform().inverse();
+    //     cuvslam_imu_pose = convertCameraPoseToCuVSLAM(imu_pose_camera);
+    // } else {
+    //     // Set identity pose if no IMU
+    //     cuvslam_imu_pose = convertCameraPoseToCuVSLAM(Transform::getIdentity());
+    // }
+    
+    // No IMU for now, use identity pose
+    cuvslam_imu_pose = convertCameraPoseToCuVSLAM(Transform::getIdentity());
     
     CUVSLAM_Configuration configuration_ = CreateConfiguration(cuvslam_imu_pose);
     
@@ -435,6 +438,7 @@ tf2::Transform rtabmapToTf2(const Transform & rtabmap_transform) {
 }
 
 // Helper function that converts transform into CUVSLAM_Pose
+// Taken directly from isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp
 CUVSLAM_Pose TocuVSLAMPose(const tf2::Transform & tf_mat)
 {
   CUVSLAM_Pose cuvslamPose;
