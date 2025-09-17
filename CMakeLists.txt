@@ -220,6 +220,7 @@ option(WITH_OKVIS         "Include OKVIS support"                OFF)
 option(WITH_MSCKF_VIO     "Include MSCKF_VIO support"            OFF)
 option(WITH_VINS_FUSION   "Include VINS-Fusion support"          OFF)
 option(WITH_OPENVINS      "Include OpenVINS support"             OFF)
+option(WITH_CUVSLAM       "Include cuVSLAM support"              OFF)
 option(WITH_MADGWICK      "Include Madgwick IMU filtering support" ON)
 option(WITH_FASTCV        "Include FastCV support"               ON)
 option(WITH_OPENMP        "Include OpenMP support"               ON)
@@ -848,6 +849,42 @@ IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
        MESSAGE(STATUS "Found ORB_SLAM${ORB_SLAM_VERSION}: ${ORB_SLAM_INCLUDE_DIRS}")
     ENDIF(ORB_SLAM_FOUND)
 ENDIF(WITH_ORB_SLAM AND NOT G2O_FOUND)
+
+)))))))))))))))))))))))))))) TODO check this block below
+
+IF(WITH_CUVSLAM)
+    FIND_PACKAGE(cuvslam QUIET)
+    IF(cuvslam_FOUND)
+        MESSAGE(STATUS "Found cuVSLAM: ${cuvslam_INCLUDE_DIRS}")
+        SET(RTABMAP_CUVSLAM TRUE)
+    ELSE()
+        MESSAGE(STATUS "cuVSLAM not found, trying to find cuvslam headers...")
+        FIND_PATH(CUVSLAM_INCLUDE_DIR cuvslam/cuvslam.h
+            PATHS
+            /usr/include
+            /usr/local/include
+            /opt/cuvslam/include
+            $ENV{CUVSLAM_ROOT}/include
+            $ENV{CUVSLAM_ROOT_DIR}/include
+        )
+        FIND_LIBRARY(CUVSLAM_LIBRARY cuvslam
+            PATHS
+            /usr/lib
+            /usr/local/lib
+            /opt/cuvslam/lib
+            $ENV{CUVSLAM_ROOT}/lib
+            $ENV{CUVSLAM_ROOT_DIR}/lib
+        )
+        IF(CUVSLAM_INCLUDE_DIR AND CUVSLAM_LIBRARY)
+            SET(cuvslam_FOUND TRUE)
+            SET(cuvslam_INCLUDE_DIRS ${CUVSLAM_INCLUDE_DIR})
+            SET(cuvslam_LIBRARIES ${CUVSLAM_LIBRARY})
+            SET(RTABMAP_CUVSLAM TRUE)
+            MESSAGE(STATUS "Found cuVSLAM: ${cuvslam_INCLUDE_DIRS}")
+        ENDIF()
+    ENDIF()
+ENDIF(WITH_CUVSLAM)
+))))))))))))))))))))))))))))
 
 SET(DISABLE_NEW_DTAGS_FLAG "--disable-new-dtags")
 IF(NOT (APPLE OR WIN32) AND BUILD_WITH_RPATH_NOT_RUNPATH)
@@ -1826,6 +1863,14 @@ ELSEIF(G2O_FOUND)
 MESSAGE(STATUS "  With ORB_SLAM             = NO (WITH_G2O should be OFF as ORB_SLAM uses its own g2o version)")
 ELSE()
 MESSAGE(STATUS "  With ORB_SLAM             = NO (ORB_SLAM2 and ORB_SLAM3 not found, make sure environment variable ORB_SLAM_ROOT_DIR is set)")
+ENDIF()
+
+IF(RTABMAP_CUVSLAM)
+MESSAGE(STATUS "  With cuVSLAM              = YES (NVIDIA cuVSLAM)")
+ELSEIF(NOT WITH_CUVSLAM)
+MESSAGE(STATUS "  With cuVSLAM              = NO (WITH_CUVSLAM=OFF)")
+ELSE()
+MESSAGE(STATUS "  With cuVSLAM              = NO (cuVSLAM not found, make sure cuVSLAM is installed)")
 ENDIF()
 
 MESSAGE(STATUS "Show all options with: cmake -LA | grep WITH_")

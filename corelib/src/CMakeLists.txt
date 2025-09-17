@@ -101,6 +101,7 @@ SET(SRC_FILES
     odometry/OdometryVINSFusion.cpp
     odometry/OdometryOpenVINS.cpp
     odometry/OdometryOpen3D.cpp
+	odometry/OdometryCuVSLAM.cpp
     
     IMU.cpp
     IMUThread.cpp
