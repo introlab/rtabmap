@@ -54,14 +54,6 @@ private:
 	struct CUVSLAM_Pose;
 	struct CUVSLAM_Image;
 	
-	// Private implementation methods
-	bool initializeCuVSLAM(const SensorData & data);
-	bool prepareImages(const SensorData & data, std::vector<CUVSLAM_Image> & cuvslam_images);
-	Transform convertCuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose);
-	cv::Mat convertCuVSLAMCovariance(float covariance[36]);
-	CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu);
-	CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
-	
 	// cuVSLAM handles and data structures
 	CUVSLAM_TrackerHandle cuvslam_handle_;
 	std::vector<CUVSLAM_Camera> cuvslam_cameras_;
