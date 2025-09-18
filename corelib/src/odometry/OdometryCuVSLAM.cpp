@@ -39,14 +39,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Vector3.h>
 
+// ============================================================================
+// cuVSLAM Constants and Enums
+// ============================================================================
+
 // cuVSLAM Image Encoding enum (based on Isaac ROS implementation)
 enum CUVSLAM_ImageEncoding {
     MONO8 = 0,
     RGB8 = 1
 };
 
-// Coordinate system transformation constants (based on Isaac ROS implementation)
-// Source: isaac_ros_visual_slam/isaac_ros_visual_slam/include/isaac_ros_visual_slam/impl/cuvslam_ros_conversion.hpp
+// ============================================================================
+// Coordinate System Transformation Constants
+// Based on Isaac ROS implementation:
+// Source: isaac_ros_visual_slam/include/isaac_ros_visual_slam/impl/cuvslam_ros_conversion.hpp
+// ============================================================================
 
 // Transformation converting from
 // Canonical ROS Frame (x-forward, y-left, z-up) to
@@ -85,6 +92,10 @@ const tf2::Transform optical_pose_cuvslam(cuvslam_pose_optical.inverse());
 #endif
 
 namespace rtabmap {
+
+// ============================================================================
+// OdometryCuVSLAM Class Implementation
+// ============================================================================
 
 OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     Odometry(parameters),
@@ -209,6 +220,10 @@ Transform OdometryCuVSLAM::computeTransform(
 }
 
 #ifdef RTABMAP_CUVSLAM
+
+// ============================================================================
+// cuVSLAM Initialization and Configuration
+// ============================================================================
 
 bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
 {
@@ -336,6 +351,61 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     return true;
 }
 
+/*
+Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfiguration()
+Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
+https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
+*/
+CUVSLAM_Configuration OdometryCuVSLAM::CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu)
+{
+    
+    CUVSLAM_Configuration configuration;
+    CUVSLAM_InitDefaultConfiguration(&configuration);
+    
+    // Set basic configuration parameters (VO-only mode)
+    configuration.multicam_mode = cuvslam_cameras_.size() > 1 ? 1 : 0;
+    configuration.use_motion_model = 1;
+    configuration.use_denoising = 0;  // Disable denoising by default
+    configuration.horizontal_stereo_camera = cuvslam_cameras_.size() == 2 ? 1 : 0;
+    
+    // VO-only: Disable all SLAM-related features
+    configuration.enable_observations_export = 0;  
+    configuration.enable_landmarks_export = 0; 
+    configuration.enable_localization_n_mapping = 0; 
+    configuration.enable_reading_slam_internals = 0; 
+    configuration.slam_sync_mode = 0;
+    configuration.planar_constraints = 0;    
+    configuration.slam_throttling_time_ms = 0; 
+    configuration.slam_max_map_size = 0; 
+    
+    // IMU and timing settings
+    configuration.enable_imu_fusion = 0;  // Will be set based on IMU availability
+    configuration.debug_imu_mode = 0;  // Disable by default
+    configuration.max_frame_delta_ms = 100;  // Default 100ms
+    
+    // Set IMU calibration (only if IMU is available)
+    // CUVSLAM_ImuCalibration imu_calibration;
+    // imu_calibration.rig_from_imu = cv_base_link_pose_cv_imu;
+    
+    // Use reasonable defaults for IMU noise parameters
+    // TODO: Find a better way to get these params without hardcoding
+    // imu_calibration.gyroscope_noise_density = 0.0002f;    
+    // imu_calibration.gyroscope_random_walk = 0.00003f;      
+    // imu_calibration.accelerometer_noise_density = 0.01f;   
+    // imu_calibration.accelerometer_random_walk = 0.001f;    
+    // imu_calibration.frequency = 200.0f; 
+    // configuration.imu_calibration = imu_calibration;
+    
+    // VO-only: Skip localization settings (not needed for VO)
+    // localization_settings are only used for SLAM mode
+    
+    return configuration;
+}
+
+// ============================================================================
+// Image Processing and Preparation
+// ============================================================================
+
 bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM_Image> & cuvslam_images)
 {
     cuvslam_images.clear();
@@ -419,6 +489,10 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
     return true;
 }
 
+// ============================================================================
+// Coordinate System and Transform Conversion Functions
+// ============================================================================
+
 // Convert RTAB-Map Transform to tf2::Transform (same coordinate system!)
 tf2::Transform rtabmapToTf2(const Transform & rtabmap_transform) {
     // https://docs.ros.org/en/jade/api/rtabmap/html/classrtabmap_1_1Transform.html
@@ -483,61 +557,13 @@ CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) {
 }
 
 
-/*
-Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfiguration()
-Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
-https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
-*/
-CUVSLAM_Configuration OdometryCuVSLAM::CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu)
-{
-    
-    CUVSLAM_Configuration configuration;
-    CUVSLAM_InitDefaultConfiguration(&configuration);
-    
-    // Set basic configuration parameters (VO-only mode)
-    configuration.multicam_mode = cuvslam_cameras_.size() > 1 ? 1 : 0;
-    configuration.use_motion_model = 1;
-    configuration.use_denoising = 0;  // Disable denoising by default
-    configuration.horizontal_stereo_camera = cuvslam_cameras_.size() == 2 ? 1 : 0;
-    
-    // VO-only: Disable all SLAM-related features
-    configuration.enable_observations_export = 0;  
-    configuration.enable_landmarks_export = 0; 
-    configuration.enable_localization_n_mapping = 0; 
-    configuration.enable_reading_slam_internals = 0; 
-    configuration.slam_sync_mode = 0;
-    configuration.planar_constraints = 0;    
-    configuration.slam_throttling_time_ms = 0; 
-    configuration.slam_max_map_size = 0; 
-    
-    // IMU and timing settings
-    configuration.enable_imu_fusion = 0;  // Will be set based on IMU availability
-    configuration.debug_imu_mode = 0;  // Disable by default
-    configuration.max_frame_delta_ms = 100;  // Default 100ms
-    
-    // Set IMU calibration (only if IMU is available)
-    // CUVSLAM_ImuCalibration imu_calibration;
-    // imu_calibration.rig_from_imu = cv_base_link_pose_cv_imu;
-    
-    // Use reasonable defaults for IMU noise parameters
-    // TODO: Find a better way to get these params without hardcoding
-    // imu_calibration.gyroscope_noise_density = 0.0002f;    
-    // imu_calibration.gyroscope_random_walk = 0.00003f;      
-    // imu_calibration.accelerometer_noise_density = 0.01f;   
-    // imu_calibration.accelerometer_random_walk = 0.001f;    
-    // imu_calibration.frequency = 200.0f; 
-    // configuration.imu_calibration = imu_calibration;
-    
-    // VO-only: Skip localization settings (not needed for VO)
-    // localization_settings are only used for SLAM mode
-    
-    return configuration;
-}
 
-Transform OdometryCuVSLAM::convertCuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
+/*
+Convert cuVSLAM pose to RTAB-Map Transform.
+CuVSLAM uses column-major rotation matrix, RTAB-Map uses row-major
+*/
+Transform OdometryCuVSLAM::convertCuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose) 
 {
-    // Convert cuVSLAM pose to RTAB-Map Transform
-    // cuVSLAM uses column-major rotation matrix, RTAB-Map uses row-major
     Transform rtabmap_transform;
     
     // Set rotation matrix (convert from column-major to row-major)
@@ -558,6 +584,7 @@ Transform OdometryCuVSLAM::convertCuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
     
     return rtabmap_transform;
 }
+
 
 #endif // RTABMAP_CUVSLAM
 
