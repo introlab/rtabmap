@@ -850,41 +850,12 @@ IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
     ENDIF(ORB_SLAM_FOUND)
 ENDIF(WITH_ORB_SLAM AND NOT G2O_FOUND)
 
-)))))))))))))))))))))))))))) TODO check this block below
-
 IF(WITH_CUVSLAM)
-    FIND_PACKAGE(cuvslam QUIET)
-    IF(cuvslam_FOUND)
-        MESSAGE(STATUS "Found cuVSLAM: ${cuvslam_INCLUDE_DIRS}")
-        SET(RTABMAP_CUVSLAM TRUE)
-    ELSE()
-        MESSAGE(STATUS "cuVSLAM not found, trying to find cuvslam headers...")
-        FIND_PATH(CUVSLAM_INCLUDE_DIR cuvslam/cuvslam.h
-            PATHS
-            /usr/include
-            /usr/local/include
-            /opt/cuvslam/include
-            $ENV{CUVSLAM_ROOT}/include
-            $ENV{CUVSLAM_ROOT_DIR}/include
-        )
-        FIND_LIBRARY(CUVSLAM_LIBRARY cuvslam
-            PATHS
-            /usr/lib
-            /usr/local/lib
-            /opt/cuvslam/lib
-            $ENV{CUVSLAM_ROOT}/lib
-            $ENV{CUVSLAM_ROOT_DIR}/lib
-        )
-        IF(CUVSLAM_INCLUDE_DIR AND CUVSLAM_LIBRARY)
-            SET(cuvslam_FOUND TRUE)
-            SET(cuvslam_INCLUDE_DIRS ${CUVSLAM_INCLUDE_DIR})
-            SET(cuvslam_LIBRARIES ${CUVSLAM_LIBRARY})
-            SET(RTABMAP_CUVSLAM TRUE)
-            MESSAGE(STATUS "Found cuVSLAM: ${cuvslam_INCLUDE_DIRS}")
-        ENDIF()
+    FIND_PACKAGE(CUVSLAM QUIET)
+    IF(CUVSLAM_FOUND)
+        MESSAGE(STATUS "Found cuVSLAM: ${CUVSLAM_INCLUDE_DIRS}")
     ENDIF()
 ENDIF(WITH_CUVSLAM)
-))))))))))))))))))))))))))))
 
 SET(DISABLE_NEW_DTAGS_FLAG "--disable-new-dtags")
 IF(NOT (APPLE OR WIN32) AND BUILD_WITH_RPATH_NOT_RUNPATH)
@@ -1865,7 +1836,7 @@ ELSE()
 MESSAGE(STATUS "  With ORB_SLAM             = NO (ORB_SLAM2 and ORB_SLAM3 not found, make sure environment variable ORB_SLAM_ROOT_DIR is set)")
 ENDIF()
 
-IF(RTABMAP_CUVSLAM)
+IF(CUVSLAM_FOUND)
 MESSAGE(STATUS "  With cuVSLAM              = YES (NVIDIA cuVSLAM)")
 ELSEIF(NOT WITH_CUVSLAM)
 MESSAGE(STATUS "  With cuVSLAM              = NO (WITH_CUVSLAM=OFF)")

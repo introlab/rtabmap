@@ -417,11 +417,11 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     // No IMU for now, use identity pose
     cuvslam_imu_pose = convertCameraPoseToCuVSLAM(Transform::getIdentity());
     
-    CUVSLAM_Configuration configuration_ = CreateConfiguration(cuvslam_imu_pose);
+    configuration_ = CreateConfiguration(cuvslam_imu_pose);
     
     // Enable IMU fusion if we have IMU data
     if (!data.imu().empty()) {
-        configuration.enable_imu_fusion = 1;
+        configuration_.enable_imu_fusion = 1;
     }
     
     // Create tracker
