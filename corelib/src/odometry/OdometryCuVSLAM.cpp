@@ -232,7 +232,7 @@ Transform OdometryCuVSLAM::computeTransform(
         // For now, we'll skip IMU processing as it's not implemented yet
         UDEBUG("IMU data available but processing not implemented yet");
     }
-    
+
     // Call cuVSLAM tracking
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
@@ -448,37 +448,25 @@ https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9c
 */
 CUVSLAM_Configuration OdometryCuVSLAM::CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu)
 {
-    
     CUVSLAM_Configuration configuration;
     CUVSLAM_InitDefaultConfiguration(&configuration);
     
-    // Set basic configuration parameters (VO-only mode)
-    configuration.multicam_mode = cuvslam_cameras_.size() > 1 ? 1 : 0;
-    configuration.use_motion_model = 1;
-    configuration.use_denoising = 0;  // Disable denoising by default
-    configuration.horizontal_stereo_camera = cuvslam_cameras_.size() == 2 ? 1 : 0;
+    // Core Visual Odometry Settings 
+    configuration.multicam_mode = 0;                    // Single camera setup
+    configuration.use_motion_model = 1;                 // Enable motion model for better tracking
+    configuration.use_denoising = 0;                    // Disable denoising by default
+    configuration.use_gpu = 1;                          // Use GPU acceleration
+    configuration.horizontal_stereo_camera = 1;         // Stereo camera configuration
     
-    // VO-only: Disable all SLAM-related features
-    configuration.enable_observations_export = 0;  
-    configuration.enable_landmarks_export = 0; 
-    configuration.enable_localization_n_mapping = 0; 
-    configuration.enable_reading_slam_internals = 0; 
-    configuration.slam_sync_mode = 0;
-    configuration.planar_constraints = 0;    
-    configuration.slam_throttling_time_ms = 0; 
-    configuration.slam_max_map_size = 0; 
+    // SLAM Disabled (VO-only mode) 
+    configuration.enable_localization_n_mapping = 0;    // Disable SLAM - VO only
+    configuration.enable_observations_export = 0;       // Not needed for VO
+    configuration.enable_landmarks_export = 0;          // Not needed for VO
+    configuration.enable_reading_slam_internals = 0;    // Not needed for VO
     
-    // IMU and timing settings
-    configuration.enable_imu_fusion = 0;  // Will be set based on IMU availability
-    configuration.debug_imu_mode = 0;  // Disable by default
-    configuration.max_frame_delta_ms = 100;  // Default 100ms
-    
-    // Set IMU calibration (only if IMU is available)
-    // CUVSLAM_ImuCalibration imu_calibration;
-    // imu_calibration.rig_from_imu = cv_base_link_pose_cv_imu;
-    
-    // Use reasonable defaults for IMU noise parameters
-    // TODO: Find a better way to get these params without hardcoding
+    // IMU Configuration 
+    configuration.enable_imu_fusion = 0;                // No IMU for now
+    configuration.debug_imu_mode = 0;                   // Disable IMU debug mode
     // imu_calibration.gyroscope_noise_density = 0.0002f;    
     // imu_calibration.gyroscope_random_walk = 0.00003f;      
     // imu_calibration.accelerometer_noise_density = 0.01f;   
@@ -486,8 +474,14 @@ CUVSLAM_Configuration OdometryCuVSLAM::CreateConfiguration(const CUVSLAM_Pose & 
     // imu_calibration.frequency = 200.0f; 
     // configuration.imu_calibration = imu_calibration;
     
-    // VO-only: Skip localization settings (not needed for VO)
-    // localization_settings are only used for SLAM mode
+    // Timing and Performance 
+    configuration.max_frame_delta_ms = 100;             // Maximum frame interval (100ms default)
+    
+    // SLAM-specific parameters (ignored when enable_localization_n_mapping = 0) 
+    // These are set to 0 but won't be used since SLAM is disabled
+    configuration.planar_constraints = 0;               // No planar constraints
+    configuration.slam_throttling_time_ms = 0;          // No SLAM throttling
+    configuration.slam_max_map_size = 0;                // No SLAM map size limit
     
     return configuration;
 }

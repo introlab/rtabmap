@@ -27,10 +27,6 @@ class RTABMAP_CORE_EXPORT OdometryCuVSLAM : public Odometry
         Transform convertCuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose);
         CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data);
         
-        CUVSLAM_TrackerHandle cuvslam_handle_;
-        CUVSLAM_CameraRig camera_rig_;
-        std::vector<CUVSLAM_Camera> cuvslam_cameras_;
-        CUVSLAM_Configuration configuration_;
         bool initialized_;
         bool lost_;
         Transform previous_pose_;
