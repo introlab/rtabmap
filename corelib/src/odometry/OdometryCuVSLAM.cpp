@@ -121,15 +121,11 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         cuvslam_handle_ = nullptr;
     }
     
-    // Clean up parameter arrays from camera structures
-    for(CUVSLAM_Camera& camera : cuvslam_cameras_)
-    {
-        if(camera.parameters)
-        {
-            delete[] const_cast<float*>(camera.parameters);
-            camera.parameters = nullptr;
-        }
-    }
+    // No cleanup needed - camera parameters are now stack-allocated
+    
+    // Clear camera rig pointer to avoid dangling pointer
+    camera_rig_.cameras = nullptr;
+    camera_rig_.num_cameras = 0;
 #endif
 }
 
@@ -138,24 +134,17 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     Odometry::reset(initialPose);
     
 #ifdef RTABMAP_CUVSLAM
-    // Clean up existing parameter arrays from camera structures
-    for(CUVSLAM_Camera& camera : cuvslam_cameras_)
-    {
-        if(camera.parameters)
-        {
-            delete[] const_cast<float*>(camera.parameters);
-            camera.parameters = nullptr;
-        }
-    }
-    
-    // Destroy existing tracker if it exists
+    // Destroy existing tracker first (before cleaning up parameters it might be using)
     if(cuvslam_handle_)
     {
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
-    
+        
     // Reset member variables to initial state
+    // Clear camera rig pointer before clearing the vector to avoid dangling pointer
+    camera_rig_.cameras = nullptr;
+    camera_rig_.num_cameras = 0;
     cuvslam_cameras_.clear();
     initialized_ = false;
     lost_ = false;
@@ -318,10 +307,7 @@ Transform OdometryCuVSLAM::computeTransform(
 bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
 {
     cuvslam_cameras_.clear();
-    
-    // Local vector to track parameter pointers for cleanup
-    std::vector<float*> local_camera_parameters;
-    
+        
     // cuVSLAM only supports stereo cameras
     if(data.stereoCameraModels().size() == 0)
     {
@@ -350,19 +336,13 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         left_camera.width = leftModel.imageWidth();
         left_camera.height = leftModel.imageHeight();
         
-        // Allocate parameters array for pinhole model (rectified images)
-        float * left_params = new float[4];
+        // Allocate parameters array for pinhole model (rectified images) - stack allocation
+        float left_params[4] = {leftModel.cx(), leftModel.cy(), leftModel.fx(), leftModel.fy()};
         left_camera.parameters = left_params;
-        local_camera_parameters.push_back(left_params);  // Store for cleanup
         
         // Set pinhole model with zero distortion (rectified images)
         left_camera.distortion_model = CUVSLAM_DISTORTION_MODEL_PINHOLE;
         left_camera.num_parameters = 4;
-        // Pinhole: [cx, cy, fx, fy]
-        left_params[0] = leftModel.cx();
-        left_params[1] = leftModel.cy();
-        left_params[2] = leftModel.fx();
-        left_params[3] = leftModel.fy();
         
         // Set camera pose (extrinsics) from localTransform with proper coordinate system conversion
         Transform left_pose = leftModel.localTransform();
@@ -375,19 +355,13 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         right_camera.width = rightModel.imageWidth();
         right_camera.height = rightModel.imageHeight();
         
-        // Allocate parameters array for pinhole model (rectified images)
-        float * right_params = new float[4];
+        // Allocate parameters array for pinhole model (rectified images) - stack allocation
+        float right_params[4] = {rightModel.cx(), rightModel.cy(), rightModel.fx(), rightModel.fy()};
         right_camera.parameters = right_params;
-        local_camera_parameters.push_back(right_params);  // Store for cleanup
         
         // Set pinhole model with zero distortion (rectified images)
         right_camera.distortion_model = CUVSLAM_DISTORTION_MODEL_PINHOLE;
         right_camera.num_parameters = 4;
-        // Pinhole: [cx, cy, fx, fy]
-        right_params[0] = rightModel.cx();
-        right_params[1] = rightModel.cy();
-        right_params[2] = rightModel.fx();
-        right_params[3] = rightModel.fy();
         
         // Set right camera pose relative to left with proper coordinate system conversion
         Transform right_pose = rightModel.localTransform();
@@ -429,11 +403,6 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     if(status != CUVSLAM_SUCCESS)
     {
         UERROR("Failed to create cuVSLAM tracker: %d", status);
-        // Clean up any allocated parameters before returning
-        for(float* params : local_camera_parameters)
-        {
-            delete[] params;
-        }
         return false;
     }
     
