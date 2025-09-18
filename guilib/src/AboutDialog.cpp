@@ -297,6 +297,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_openvins_license->setEnabled(false);
 #endif
 
+#ifdef RTABMAP_CUVSLAM
+	_ui->label_cuvslam->setText("Yes");
+	_ui->label_cuvslam_license->setEnabled(true);
+#else
+	_ui->label_cuvslam->setText("No");
+	_ui->label_cuvslam_license->setEnabled(false);
+#endif
+
 }
 
 AboutDialog::~AboutDialog()
