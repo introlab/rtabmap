@@ -3,6 +3,7 @@
 
 #include <rtabmap/core/Odometry.h>
 #include <cuvslam/cuvslam.h>
+#include <opencv2/opencv.hpp>
 
 namespace rtabmap {
 

@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tf2/LinearMath/Transform.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Vector3.h>
+#include <eigen3/Eigen/Dense>
 
 // ============================================================================
 // cuVSLAM Constants and Enums
@@ -173,42 +174,131 @@ Transform OdometryCuVSLAM::computeTransform(
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
     
-
+    // Check if we have valid image data
+    if(data.imageRaw().empty() || data.rightRaw().empty())
+    {
+        UERROR("cuVSLAM odometry requires both left and right images! Left: %s, Right: %s", 
+               data.imageRaw().empty() ? "empty" : "ok", 
+               data.rightRaw().empty() ? "empty" : "ok");
+        return transform;
+    }
+    
+    // Check if we have valid stereo camera models
+    if(data.stereoCameraModels().size() == 0)
+    {
+        UERROR("cuVSLAM odometry requires stereo camera models!");
+        return transform;
+    }
+    
+    // Initialize cuVSLAM tracker on first frame
+    if(!initialized_)
+    {
+        UINFO("Initializing cuVSLAM tracker with first image (stamp: %f)", data.stamp());
+        if(!initializeCuVSLAM(data))
+        {
+            UERROR("Failed to initialize cuVSLAM tracker");
+            return transform;
+        }
+        initialized_ = true;
+        
+        // For first frame, return identity transform with high covariance
+        transform = Transform::getIdentity();
+        if(info)
+        {
+            info->type = 0; // Initialization
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
+            info->timeEstimation = timer.ticks();
+        }
+        
+        previous_pose_ = transform;
+        last_timestamp_ = data.stamp();
+        
+        UDEBUG("cuVSLAM initialization completed in %f ms", timer.ticks());
+        return transform;
+    }
+    
+    // Prepare images for cuVSLAM
+    std::vector<CUVSLAM_Image> cuvslam_images;
+    if(!prepareImages(data, cuvslam_images))
+    {
+        UERROR("Failed to prepare images for cuVSLAM");
+        return transform;
+    }
+    
+    // Process IMU data if available
+    if(!data.imu().empty())
+    {
+        // TODO: Implement IMU processing
+        // For now, we'll skip IMU processing as it's not implemented yet
+        UDEBUG("IMU data available but processing not implemented yet");
+    }
+    
+    // Call cuVSLAM tracking
     CUVSLAM_PoseEstimate vo_pose_estimate;
-    
-    const CUVSLAM_Status vo_status =
-        CUVSLAM_TrackGpuMem(
-        cuvslam_handle_, cuvslam_images.data(), cuvslam_images.size(), nullptr,
+    const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
+        cuvslam_handle_, 
+        cuvslam_images.data(), 
+        cuvslam_images.size(), 
+        nullptr,
         &vo_pose_estimate);
+    
+    // Convert cuVSLAM covariance to RTAB-Map format
+    
+    // Handle tracking status and odom info
+    if(vo_status == CUVSLAM_TRACKING_LOST)
+    {
+        UDEBUG("cuVSLAM tracking lost");
+        lost_ = true;
+        if(info)
+        {
+            info->type = 1; // Tracking lost
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
+            info->timeEstimation = timer.ticks();
+        }
+        return transform;
+    }
+    else if(vo_status != CUVSLAM_SUCCESS)
+    {
+        UERROR("cuVSLAM tracking error: %d", vo_status);
+        if(info)
+        {
+            info->type = 1; // Error
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
+            info->timeEstimation = timer.ticks();
+        }
+        return transform;
+    }
+    else
+    {
+        // TODO: Get covariance from cuVSLAM
+        UDEBUG("cuVSLAM tracking success");
+        if(info)
+        {
+            cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
 
-    // TODO: Check if we have valid image data
-    // Hint: Check data.imageRaw() and data.image()
+            info->type = 0;  // Success
+            info->reg.covariance = covMat;
+            info->timeEstimation = timer.ticks();
+        }
+    }
     
-    // TODO: Initialize cuVSLAM tracker on first frame
-    // Hint: Call initializeCuVSLAM() if not initialized
+    // Convert cuVSLAM pose to RTAB-Map Transform
+    Transform current_pose = convertCuVSLAMPose(vo_pose_estimate.pose);
     
-    // TODO: Prepare images for cuVSLAM
-    // Hint: Call prepareImages() to convert SensorData to CUVSLAM_Image format
+    // Calculate incremental transform
+    if(!previous_pose_.isNull())
+    {
+        transform = previous_pose_.inverse() * current_pose;
+    }
+    else
+    {
+        transform = current_pose;
+    }
     
-    // TODO: Process IMU data if available
-    // Hint: Call processIMUData() if data.imu() is not empty
-    
-    // TODO: Call cuVSLAM tracking (this is the core VO step you highlighted!)
-    // Hint: Use CUVSLAM_TrackGpuMem() with the prepared images
-    // This is where the magic happens - cuVSLAM processes the images and returns a pose estimate
-    
-    // TODO: Handle tracking status
-    // Hint: Check for CUVSLAM_TRACKING_LOST and CUVSLAM_SUCCESS
-    
-    // TODO: Convert cuVSLAM pose to RTAB-Map Transform
-    // Hint: Call convertCuVSLAMPose() to convert the pose format
-    
-    // TODO: Update tracking state
-    // - Set lost_ flag
-    // - Update previous_pose_ and last_timestamp_
-    
-    // TODO: Fill OdometryInfo if provided
-    // Hint: Set info->type, info->reg.covariance, info->timeEstimation
+    // Update tracking state
+    lost_ = false;
+    previous_pose_ = current_pose;
+    last_timestamp_ = data.stamp();
     
     UDEBUG("cuVSLAM odometry computed in %f ms", timer.ticks());
     
@@ -583,6 +673,56 @@ Transform OdometryCuVSLAM::convertCuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
     rtabmap_transform(2,3) = cuvslam_pose.t[2];  // tz
     
     return rtabmap_transform;
+}
+
+/*
+Convert cuVSLAM covariance to RTAB-Map format.
+Based on Isaac ROS implementation: FromcuVSLAMCovariance()
+Source: isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp:275-299
+*/
+cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(float covariance[36])
+{
+    // Create transformation matrix for coordinate system conversion
+    // cuVSLAM frame (x-right, y-up, z-backward) to RTAB-Map frame (x-forward, y-left, z-up)
+    tf2::Quaternion quat = canonical_pose_cuvslam.getRotation();
+    
+    // Convert tf2::Quaternion to Eigen for matrix operations
+    Eigen::Quaternion<float> q(quat.w(), quat.x(), quat.y(), quat.z());
+    Eigen::Matrix<float, 3, 3> canonical_pose_cuvslam_mat = q.matrix();
+    
+    // Create 6x6 block diagonal transformation matrix
+    Eigen::Matrix<float, 6, 6> block_canonical_pose_cuvslam = Eigen::Matrix<float, 6, 6>::Zero();
+    block_canonical_pose_cuvslam.block<3, 3>(0, 0) = canonical_pose_cuvslam_mat;
+    block_canonical_pose_cuvslam.block<3, 3>(3, 3) = canonical_pose_cuvslam_mat;
+    
+    // Map cuVSLAM covariance array to Eigen matrix
+    Eigen::Matrix<float, 6, 6> covariance_mat = 
+        Eigen::Map<Eigen::Matrix<float, 6, 6, Eigen::StorageOptions::AutoAlign>>(covariance);
+    
+    // Reorder covariance matrix elements
+    // cuVSLAM order: (rotation about X, rotation about Y, rotation about Z, x, y, z)
+    // RTAB-Map order: (x, y, z, rotation about X, rotation about Y, rotation about Z)
+    Eigen::Matrix<float, 6, 6> rtabmap_covariance_mat = Eigen::Matrix<float, 6, 6>::Zero();
+    rtabmap_covariance_mat.block<3, 3>(0, 0) = covariance_mat.block<3, 3>(3, 3);  // translation-translation
+    rtabmap_covariance_mat.block<3, 3>(0, 3) = covariance_mat.block<3, 3>(3, 0);  // translation-rotation
+    rtabmap_covariance_mat.block<3, 3>(3, 0) = covariance_mat.block<3, 3>(0, 3);  // rotation-translation
+    rtabmap_covariance_mat.block<3, 3>(3, 3) = covariance_mat.block<3, 3>(0, 0);  // rotation-rotation
+    
+    // Apply coordinate system transformation
+    Eigen::Matrix<float, 6, 6> covariance_mat_change_basis = 
+        block_canonical_pose_cuvslam * rtabmap_covariance_mat * block_canonical_pose_cuvslam.transpose();
+    
+    // Convert Eigen matrix to OpenCV Mat
+    cv::Mat cv_covariance(6, 6, CV_64FC1);
+    for(int i = 0; i < 6; i++)
+    {
+        for(int j = 0; j < 6; j++)
+        {
+            cv_covariance.at<double>(i, j) = static_cast<double>(covariance_mat_change_basis(i, j));
+        }
+    }
+    
+    return cv_covariance;
 }
 
 
