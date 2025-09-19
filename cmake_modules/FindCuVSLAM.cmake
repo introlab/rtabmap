@@ -7,17 +7,16 @@
 #  CUVSLAM_INCLUDE_DIRS  - The cuVSLAM include directory.
 #  CUVSLAM_LIBRARIES     - The cuVSLAM library to link against.
 
-# First try to find cuVSLAM using its own CMake config (if available)
-find_package(CUVSLAM QUIET)
-
-if(NOT CUVSLAM_FOUND)
+# Always do manual search
+if(TRUE)
     # Fallback to manual search if no CMake config is provided
     find_path(CUVSLAM_INCLUDE_DIRS 
-        NAMES cuvslam/cuvslam.h
+        NAMES cuvslam.h
         PATHS
             /usr/include
             /usr/local/include
             /opt/cuvslam/include
+            /opt/ros/humble/share/isaac_ros_nitros/cuvslam/include
             $ENV{CUVSLAM_ROOT}/include
             $ENV{CUVSLAM_ROOT_DIR}/include
     )
@@ -28,6 +27,7 @@ if(NOT CUVSLAM_FOUND)
             /usr/lib
             /usr/local/lib
             /opt/cuvslam/lib
+            /opt/ros/humble/share/isaac_ros_nitros/cuvslam/lib
             $ENV{CUVSLAM_ROOT}/lib
             $ENV{CUVSLAM_ROOT_DIR}/lib
     )
@@ -43,6 +43,7 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(CUVSLAM
     FOUND_VAR CUVSLAM_FOUND
     REQUIRED_VARS CUVSLAM_LIBRARIES CUVSLAM_INCLUDE_DIRS
+    HANDLE_COMPONENTS
 )
 
 if(CUVSLAM_FOUND)

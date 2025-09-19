@@ -29,6 +29,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYCUVSLAM_H_
 
 #include <rtabmap/core/Odometry.h>
+#include <memory>
+
+namespace cv {
+    class Mat;
+}
 
 namespace rtabmap {
 
@@ -44,21 +49,23 @@ public:
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
+	// Helper functions for cuVSLAM integration (internal implementation details)
+	bool initializeCuVSLAM(const SensorData & data);
+	bool prepareImages(const SensorData & data, std::vector<void*> & cuvslam_images);
+	Transform convertCuVSLAMPose(const void* cuvslam_pose);
+	cv::Mat convertCuVSLAMCovariance(const void* cuvslam_covariance);
+	void* CreateConfiguration(const void* cv_base_link_pose_cv_imu);
+	void* convertCameraPoseToCuVSLAM(const Transform & transform);
+	void* rtabmapTransformToCuVSLAMPose(const Transform & transform);
+
 private:
 #ifdef RTABMAP_CUVSLAM
-	// Forward declarations for cuVSLAM types
-	struct CUVSLAM_TrackerHandle;
-	struct CUVSLAM_Camera;
-	struct CUVSLAM_CameraRig;
-	struct CUVSLAM_Configuration;
-	struct CUVSLAM_Pose;
-	struct CUVSLAM_Image;
-	
-	// cuVSLAM handles and data structures
-	CUVSLAM_TrackerHandle cuvslam_handle_;
-	std::vector<CUVSLAM_Camera> cuvslam_cameras_;
-	CUVSLAM_CameraRig camera_rig_;
-	CUVSLAM_Configuration configuration_;
+	// cuVSLAM handles and data structures (using opaque pointers to avoid including cuvslam.h)
+	// CUVSLAM_TrackerHandle is typedef struct CUVSLAM_Tracker* - using void* to avoid header dependency
+	void * cuvslam_handle_;
+	std::vector<void*> cuvslam_cameras_;
+	void * camera_rig_;
+	void * configuration_;
 	
 	// State tracking
 	bool initialized_;
