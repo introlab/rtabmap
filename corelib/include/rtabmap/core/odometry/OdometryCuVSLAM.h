@@ -73,6 +73,8 @@ private:
 	// cuVSLAM handles and data structures (using forward-declared types for type safety)
 	CUVSLAM_Tracker * cuvslam_handle_;
 	std::vector<CUVSLAM_Camera*> cuvslam_cameras_;
+	std::vector<CUVSLAM_Camera>* cuvslam_camera_objects_; // Pointer to vector of camera objects for cuVSLAM API
+	std::vector<CUVSLAM_Image>* cuvslam_image_objects_; // Pointer to vector of image objects for cuVSLAM API
 	CUVSLAM_CameraRig * camera_rig_;
 	CUVSLAM_Configuration * configuration_;
 	

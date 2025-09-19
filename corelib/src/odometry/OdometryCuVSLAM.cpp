@@ -96,6 +96,8 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     Odometry(parameters),
 #ifdef RTABMAP_CUVSLAM
     cuvslam_handle_(nullptr),
+    cuvslam_camera_objects_(nullptr),
+    cuvslam_image_objects_(nullptr),
     camera_rig_(nullptr),
     configuration_(nullptr),
     initialized_(false),
@@ -132,6 +134,18 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         delete camera;
     }
     cuvslam_cameras_.clear();
+    
+    // Clean up camera objects vector
+    if(cuvslam_camera_objects_) {
+        delete cuvslam_camera_objects_;
+        cuvslam_camera_objects_ = nullptr;
+    }
+    
+    // Clean up image objects vector
+    if(cuvslam_image_objects_) {
+        delete cuvslam_image_objects_;
+        cuvslam_image_objects_ = nullptr;
+    }
 #endif
 }
 
@@ -162,6 +176,18 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         delete camera;
     }
     cuvslam_cameras_.clear();
+    
+    // Clean up camera objects vector
+    if(cuvslam_camera_objects_) {
+        delete cuvslam_camera_objects_;
+        cuvslam_camera_objects_ = nullptr;
+    }
+    
+    // Clean up image objects vector
+    if(cuvslam_image_objects_) {
+        delete cuvslam_image_objects_;
+        cuvslam_image_objects_ = nullptr;
+    }
     initialized_ = false;
     lost_ = false;
     previous_pose_ = initialPose;
@@ -243,17 +269,21 @@ Transform OdometryCuVSLAM::computeTransform(
     }
 
     
-    // Create temporary array of image objects for cuVSLAM API
-    std::vector<CUVSLAM_Image> image_objects;
+    // Create persistent array of image objects for cuVSLAM API
+    if (!cuvslam_image_objects_) {
+        cuvslam_image_objects_ = new std::vector<CUVSLAM_Image>();
+    } else {
+        cuvslam_image_objects_->clear();
+    }
     for(CUVSLAM_Image* img_ptr : cuvslam_images) {
-        image_objects.push_back(*img_ptr);
+        cuvslam_image_objects_->push_back(*img_ptr);
     }
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
-        image_objects.data(), 
-        image_objects.size(), 
+        cuvslam_image_objects_->data(), 
+        cuvslam_image_objects_->size(), 
         nullptr, 
         &vo_pose_estimate);
     
@@ -416,14 +446,17 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     }
     
     // Set up camera rig
-    CUVSLAM_CameraRig* camera_rig = new CUVSLAM_CameraRig();
-    // Create temporary array of camera objects for cuVSLAM API
-    std::vector<CUVSLAM_Camera> camera_objects;
-    for(CUVSLAM_Camera* cam_ptr : cuvslam_cameras_) {
-        camera_objects.push_back(*cam_ptr);
+    CUVSLAM_CameraRig * camera_rig = new CUVSLAM_CameraRig();
+    // Create persistent array of camera objects for cuVSLAM API
+    if (!cuvslam_camera_objects_) {
+        cuvslam_camera_objects_ = new std::vector<CUVSLAM_Camera>();
     }
-    camera_rig->cameras = camera_objects.data();
-    camera_rig->num_cameras = cuvslam_cameras_.size();
+    cuvslam_camera_objects_->clear();
+    for(CUVSLAM_Camera* cam_ptr : cuvslam_cameras_) {
+        cuvslam_camera_objects_->push_back(*cam_ptr);
+    }
+    camera_rig->cameras = cuvslam_camera_objects_->data();
+    camera_rig->num_cameras = cuvslam_camera_objects_->size();
     camera_rig_ = camera_rig;
     
     // Create configuration using Isaac ROS pattern
