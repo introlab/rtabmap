@@ -44,8 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // cuVSLAM Constants and Enums
 // ============================================================================
 
-// cuVSLAM Image Encoding enum is already defined in cuvslam.h
-
 // ============================================================================
 // Coordinate System Transformation Constants
 // Based on Isaac ROS implementation:
@@ -115,23 +113,23 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
     // Clean up cuVSLAM tracker
     if(cuvslam_handle_)
     {
-        CUVSLAM_DestroyTracker(static_cast<CUVSLAM_TrackerHandle>(cuvslam_handle_));
+        CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
     
     // Clean up camera rig and configuration
     if(camera_rig_) {
-        delete static_cast<CUVSLAM_CameraRig*>(camera_rig_);
+        delete camera_rig_;
         camera_rig_ = nullptr;
     }
     if(configuration_) {
-        delete static_cast<CUVSLAM_Configuration*>(configuration_);
+        delete configuration_;
         configuration_ = nullptr;
     }
     
     // Clean up camera objects
-    for(void* camera : cuvslam_cameras_) {
-        delete static_cast<CUVSLAM_Camera*>(camera);
+    for(CUVSLAM_Camera * camera : cuvslam_cameras_) {
+        delete camera;
     }
     cuvslam_cameras_.clear();
 #endif
@@ -145,23 +143,23 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     // Destroy existing tracker first (before cleaning up parameters it might be using)
     if(cuvslam_handle_)
     {
-        CUVSLAM_DestroyTracker(static_cast<CUVSLAM_TrackerHandle>(cuvslam_handle_));
+        CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
         
     // Reset member variables to initial state
     // Clean up camera rig and configuration
     if(camera_rig_) {
-        delete static_cast<CUVSLAM_CameraRig*>(camera_rig_);
+        delete camera_rig_;
         camera_rig_ = nullptr;
     }
     if(configuration_) {
-        delete static_cast<CUVSLAM_Configuration*>(configuration_);
+        delete configuration_;
         configuration_ = nullptr;
     }
     // Clean up camera objects
-    for(void* camera : cuvslam_cameras_) {
-        delete static_cast<CUVSLAM_Camera*>(camera);
+    for(CUVSLAM_Camera* camera : cuvslam_cameras_) {
+        delete camera;
     }
     cuvslam_cameras_.clear();
     initialized_ = false;
@@ -225,10 +223,14 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     
     // Prepare images for cuVSLAM
-    std::vector<void*> cuvslam_images;
+    std::vector<CUVSLAM_Image*> cuvslam_images;
     if(!this->prepareImages(data, cuvslam_images))
     {
         UERROR("Failed to prepare images for cuVSLAM");
+        // Clean up any images that were created before the failure
+        for(CUVSLAM_Image* img : cuvslam_images) {
+            delete img;
+        }
         return transform;
     }
     
@@ -240,18 +242,24 @@ Transform OdometryCuVSLAM::computeTransform(
         UDEBUG("IMU data available but processing not implemented yet");
     }
 
-    // Call cuVSLAM tracking
+    
+    // Create temporary array of image objects for cuVSLAM API
+    std::vector<CUVSLAM_Image> image_objects;
+    for(CUVSLAM_Image* img_ptr : cuvslam_images) {
+        image_objects.push_back(*img_ptr);
+    }
+    
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
-        static_cast<CUVSLAM_TrackerHandle>(cuvslam_handle_), 
-        reinterpret_cast<const CUVSLAM_Image*>(cuvslam_images.data()), 
-        cuvslam_images.size(), 
+        cuvslam_handle_, 
+        image_objects.data(), 
+        image_objects.size(), 
         nullptr, 
         &vo_pose_estimate);
     
     // Clean up CUVSLAM_Image objects
-    for(void* image : cuvslam_images) {
-        delete static_cast<CUVSLAM_Image*>(image);
+    for(CUVSLAM_Image* image : cuvslam_images) {
+        delete image;
     }
     cuvslam_images.clear();
     
@@ -375,7 +383,7 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         
         // Set camera pose (extrinsics) from localTransform with proper coordinate system conversion
         Transform left_pose = leftModel.localTransform();
-        CUVSLAM_Pose * cuvslam_pose = static_cast<CUVSLAM_Pose*>(this->rtabmapTransformToCuVSLAMPose(left_pose));
+        CUVSLAM_Pose * cuvslam_pose = this->rtabmapTransformToCuVSLAMPose(left_pose);
         left_camera.pose = *cuvslam_pose;
         delete cuvslam_pose;
     
@@ -400,7 +408,7 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         
         // Set right camera pose relative to left with proper coordinate system conversion
         Transform right_pose = rightModel.localTransform();
-        CUVSLAM_Pose * right_cuvslam_pose = static_cast<CUVSLAM_Pose*>(this->rtabmapTransformToCuVSLAMPose(right_pose));
+        CUVSLAM_Pose * right_cuvslam_pose = this->rtabmapTransformToCuVSLAMPose(right_pose);
         right_camera.pose = *right_cuvslam_pose;
         delete right_cuvslam_pose;
         
@@ -409,7 +417,12 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     
     // Set up camera rig
     CUVSLAM_CameraRig* camera_rig = new CUVSLAM_CameraRig();
-    camera_rig->cameras = reinterpret_cast<CUVSLAM_Camera*>(cuvslam_cameras_.data());
+    // Create temporary array of camera objects for cuVSLAM API
+    std::vector<CUVSLAM_Camera> camera_objects;
+    for(CUVSLAM_Camera* cam_ptr : cuvslam_cameras_) {
+        camera_objects.push_back(*cam_ptr);
+    }
+    camera_rig->cameras = camera_objects.data();
     camera_rig->num_cameras = cuvslam_cameras_.size();
     camera_rig_ = camera_rig;
     
@@ -427,7 +440,7 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     // }
     
     // No IMU for now, use identity pose
-    CUVSLAM_Pose * imu_pose = static_cast<CUVSLAM_Pose*>(this->rtabmapTransformToCuVSLAMPose(Transform::getIdentity()));
+    CUVSLAM_Pose * imu_pose = this->rtabmapTransformToCuVSLAMPose(Transform::getIdentity());
     cuvslam_imu_pose = *imu_pose;
     delete imu_pose;
     
@@ -435,12 +448,12 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     
     // Enable IMU fusion if we have IMU data
     if (!data.imu().empty()) {
-        static_cast<CUVSLAM_Configuration*>(configuration_)->enable_imu_fusion = 1;
+        configuration_->enable_imu_fusion = 1;
     }
     
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
-    CUVSLAM_Status status = CUVSLAM_CreateTracker(&tracker_handle, static_cast<CUVSLAM_CameraRig*>(camera_rig_), static_cast<CUVSLAM_Configuration*>(configuration_));
+    CUVSLAM_Status status = CUVSLAM_CreateTracker(&tracker_handle, camera_rig_, configuration_);
     cuvslam_handle_ = tracker_handle;
     if(status != CUVSLAM_SUCCESS)
     {
@@ -457,7 +470,7 @@ Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfigur
 Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
 */
-void * OdometryCuVSLAM::CreateConfiguration(const void * cv_base_link_pose_cv_imu)
+CUVSLAM_Configuration * OdometryCuVSLAM::CreateConfiguration(const CUVSLAM_Pose* cv_base_link_pose_cv_imu)
 {
     // Note: cv_base_link_pose_cv_imu parameter is not used in current implementation
     // but kept for future IMU integration
@@ -497,14 +510,14 @@ void * OdometryCuVSLAM::CreateConfiguration(const void * cv_base_link_pose_cv_im
     configuration->slam_throttling_time_ms = 0;          // No SLAM throttling
     configuration->slam_max_map_size = 0;                // No SLAM map size limit
     
-    return static_cast<void*>(configuration);
+    return configuration;
 }
 
 // ============================================================================
 // Image Processing and Preparation
 // ============================================================================
 
-bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<void*> & cuvslam_images)
+bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM_Image*> & cuvslam_images)
 {
     cuvslam_images.clear();
     
@@ -532,7 +545,7 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<void*> 
         }
         
         // Create CUVSLAM_Image for left camera
-        CUVSLAM_Image* left_cuvslam_image = new CUVSLAM_Image();
+        CUVSLAM_Image * left_cuvslam_image = new CUVSLAM_Image();
         left_cuvslam_image->width = left_image.cols;
         left_cuvslam_image->height = left_image.rows;
         left_cuvslam_image->pixels = left_image.data;
@@ -542,7 +555,7 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<void*> 
         left_cuvslam_image->image_encoding = (left_image.channels() == 1) ? 
             CUVSLAM_ImageEncoding::MONO8 : CUVSLAM_ImageEncoding::RGB8;
         
-        cuvslam_images.push_back(static_cast<void*>(left_cuvslam_image));
+        cuvslam_images.push_back(left_cuvslam_image);
     }
     else
     {
@@ -563,7 +576,7 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<void*> 
         }
         
         // Create CUVSLAM_Image for right camera
-        CUVSLAM_Image* right_cuvslam_image = new CUVSLAM_Image();
+        CUVSLAM_Image * right_cuvslam_image = new CUVSLAM_Image();
         right_cuvslam_image->width = right_image.cols;
         right_cuvslam_image->height = right_image.rows;
         right_cuvslam_image->pixels = right_image.data;
@@ -573,7 +586,7 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<void*> 
         right_cuvslam_image->image_encoding = (right_image.channels() == 1) ? 
             CUVSLAM_ImageEncoding::MONO8 : CUVSLAM_ImageEncoding::RGB8;
         
-        cuvslam_images.push_back(static_cast<void*>(right_cuvslam_image));
+        cuvslam_images.push_back(right_cuvslam_image);
     } 
     else 
     {
@@ -634,15 +647,15 @@ CUVSLAM_Pose TocuVSLAMPose(const tf2::Transform & tf_mat)
   return cuvslamPose;
 }
 
-void * OdometryCuVSLAM::rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform) {
+CUVSLAM_Pose * OdometryCuVSLAM::rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform) {
     tf2::Transform tf2_transform = rtabmapToTf2(rtabmap_transform);
     CUVSLAM_Pose* pose = new CUVSLAM_Pose(TocuVSLAMPose(tf2_transform));
-    return static_cast<void*>(pose);
+    return pose;
 }
 
 // Helper function to convert camera pose from RTABMap to cuVSLAM coordinate system
 // Based on Isaac ROS FillExtrinsics implementation
-void * OdometryCuVSLAM::convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) {
+CUVSLAM_Pose * OdometryCuVSLAM::convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) {
     // Convert RTABMap Transform to tf2::Transform
     tf2::Transform tf2_camera_pose = rtabmapToTf2(rtabmap_camera_pose);
     
@@ -653,7 +666,7 @@ void * OdometryCuVSLAM::convertCameraPoseToCuVSLAM(const Transform & rtabmap_cam
         cuvslam_pose_canonical * tf2_camera_pose * optical_pose_cuvslam;
     
     CUVSLAM_Pose * pose = new CUVSLAM_Pose(TocuVSLAMPose(cuvslam_robot_pose_cuvslam_camera));
-    return static_cast<void*>(pose);
+    return pose;
 }
 
 
@@ -662,10 +675,10 @@ void * OdometryCuVSLAM::convertCameraPoseToCuVSLAM(const Transform & rtabmap_cam
 Convert cuVSLAM pose to RTAB-Map Transform.
 CuVSLAM uses column-major rotation matrix, RTAB-Map uses row-major
 */
-Transform OdometryCuVSLAM::convertCuVSLAMPose(const void * cuvslam_pose) 
+Transform OdometryCuVSLAM::convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose) 
 {
     Transform rtabmap_transform;
-    const CUVSLAM_Pose* pose = static_cast<const CUVSLAM_Pose*>(cuvslam_pose);
+    const CUVSLAM_Pose * pose = cuvslam_pose;
     
     // Set rotation matrix (convert from column-major to row-major)
     rtabmap_transform(0,0) = pose->r[0];  // r11
@@ -691,9 +704,9 @@ Convert cuVSLAM covariance to RTAB-Map format.
 Based on Isaac ROS implementation: FromcuVSLAMCovariance()
 Source: isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp:275-299
 */
-cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const void * cuvslam_covariance)
+cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covariance)
 {
-    const float* covariance = static_cast<const float*>(cuvslam_covariance);
+    const float * covariance = cuvslam_covariance;
     
     // Create transformation matrix for coordinate system conversion
     // cuVSLAM frame (x-right, y-up, z-backward) to RTAB-Map frame (x-forward, y-left, z-up)

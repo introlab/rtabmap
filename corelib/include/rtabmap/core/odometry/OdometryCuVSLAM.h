@@ -35,6 +35,16 @@ namespace cv {
     class Mat;
 }
 
+// Forward declarations for cuVSLAM types to avoid including cuvslam.h
+#ifdef RTABMAP_CUVSLAM
+struct CUVSLAM_Tracker;
+struct CUVSLAM_Camera;
+struct CUVSLAM_CameraRig;
+struct CUVSLAM_Configuration;
+struct CUVSLAM_Pose;
+struct CUVSLAM_Image;
+#endif
+
 namespace rtabmap {
 
 class RTABMAP_CORE_EXPORT OdometryCuVSLAM : public Odometry
@@ -51,21 +61,20 @@ private:
 
 	// Helper functions for cuVSLAM integration (internal implementation details)
 	bool initializeCuVSLAM(const SensorData & data);
-	bool prepareImages(const SensorData & data, std::vector<void*> & cuvslam_images);
-	Transform convertCuVSLAMPose(const void* cuvslam_pose);
-	cv::Mat convertCuVSLAMCovariance(const void* cuvslam_covariance);
-	void* CreateConfiguration(const void* cv_base_link_pose_cv_imu);
-	void* convertCameraPoseToCuVSLAM(const Transform & transform);
-	void* rtabmapTransformToCuVSLAMPose(const Transform & transform);
+	bool prepareImages(const SensorData & data, std::vector<CUVSLAM_Image*> & cuvslam_images);
+	Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
+	cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
+	CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
+	CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & transform);
+	CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & transform);
 
 private:
 #ifdef RTABMAP_CUVSLAM
-	// cuVSLAM handles and data structures (using opaque pointers to avoid including cuvslam.h)
-	// CUVSLAM_TrackerHandle is typedef struct CUVSLAM_Tracker* - using void* to avoid header dependency
-	void * cuvslam_handle_;
-	std::vector<void*> cuvslam_cameras_;
-	void * camera_rig_;
-	void * configuration_;
+	// cuVSLAM handles and data structures (using forward-declared types for type safety)
+	CUVSLAM_Tracker * cuvslam_handle_;
+	std::vector<CUVSLAM_Camera*> cuvslam_cameras_;
+	CUVSLAM_CameraRig * camera_rig_;
+	CUVSLAM_Configuration * configuration_;
 	
 	// State tracking
 	bool initialized_;
