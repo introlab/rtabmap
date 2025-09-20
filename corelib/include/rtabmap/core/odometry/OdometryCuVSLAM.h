@@ -83,6 +83,18 @@ private:
 	bool lost_;
 	Transform previous_pose_;
 	double last_timestamp_;
+	
+	// Processed images storage (to keep them in scope)
+	cv::Mat processed_left_image_;
+	cv::Mat processed_right_image_;
+	
+	// Camera parameter storage (to keep them in scope)
+	float left_camera_params_[4];
+	float right_camera_params_[4];
+	
+	// Distortion model strings (to keep them in scope)
+	const char * left_distortion_model_;
+	const char * right_distortion_model_;
 #endif
 };
 
