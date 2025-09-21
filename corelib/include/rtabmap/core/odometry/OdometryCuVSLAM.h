@@ -67,6 +67,11 @@ private:
 	CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
 	CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & transform);
 	CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & transform);
+	
+	// GPU memory management helper functions
+	bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size);
+	bool copyToGpuAsync(const cv::Mat& cpu_image, uint8_t * gpu_ptr, size_t size);
+	bool synchronizeGpuOperations();
 
 private:
 #ifdef RTABMAP_CUVSLAM
@@ -95,6 +100,13 @@ private:
 	// Distortion model strings (to keep them in scope)
 	const char * left_distortion_model_;
 	const char * right_distortion_model_;
+	
+	// GPU memory management
+	uint8_t * gpu_left_image_data_;
+	uint8_t * gpu_right_image_data_;
+	size_t gpu_left_image_size_;
+	size_t gpu_right_image_size_;
+	void * cuda_stream_;  // Store as void* to avoid including CUDA headers in header
 #endif
 };
 

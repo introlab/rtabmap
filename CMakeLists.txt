@@ -854,6 +854,13 @@ IF(WITH_CUVSLAM)
     FIND_PACKAGE(CuVSLAM QUIET)
     IF(CUVSLAM_FOUND)
         MESSAGE(STATUS "Found cuVSLAM: ${CUVSLAM_INCLUDE_DIRS}")
+        # cuVSLAM requires CUDA runtime
+        find_package(CUDA REQUIRED)
+        IF(CUDA_FOUND)
+            MESSAGE(STATUS "Found CUDA for cuVSLAM: ${CUDA_INCLUDE_DIRS}")
+        ELSE()
+            MESSAGE(FATAL_ERROR "CUDA is required to build with cuVSLAM! Set -DWITH_CUVSLAM=OFF if you don't have CUDA.")
+        ENDIF()
     ENDIF()
 ENDIF(WITH_CUVSLAM)
 

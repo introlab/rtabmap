@@ -108,7 +108,8 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     gpu_left_image_data_(nullptr),
     gpu_right_image_data_(nullptr),
     gpu_left_image_size_(0),
-    gpu_right_image_size_(0)
+    gpu_right_image_size_(0),
+    cuda_stream_(nullptr)
 #endif
 {
     UINFO("OdometryCuVSLAM created");
@@ -161,6 +162,13 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         cudaFree(gpu_right_image_data_);
         gpu_right_image_data_ = nullptr;
     }
+    
+    // Clean up CUDA stream
+    if(cuda_stream_) {
+        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
+        cudaStreamDestroy(stream);
+        cuda_stream_ = nullptr;
+    }
 #endif
 }
 
@@ -212,6 +220,13 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     if(gpu_right_image_data_) {
         cudaFree(gpu_right_image_data_);
         gpu_right_image_data_ = nullptr;
+    }
+    
+    // Clean up CUDA stream
+    if(cuda_stream_) {
+        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
+        cudaStreamDestroy(stream);
+        cuda_stream_ = nullptr;
     }
     
     initialized_ = false;
@@ -717,6 +732,69 @@ CUVSLAM_Configuration * OdometryCuVSLAM::CreateConfiguration(const CUVSLAM_Pose*
 }
 
 // ============================================================================
+// GPU Memory Management
+// ============================================================================
+
+bool OdometryCuVSLAM::allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size)
+{
+    if(*current_size != size) {
+        // Reallocate GPU memory if size changed
+        if(*gpu_ptr) {
+            cudaFree(*gpu_ptr);
+            *gpu_ptr = nullptr;
+        }
+        cudaError_t cuda_err = cudaMalloc(gpu_ptr, size);
+        if(cuda_err != cudaSuccess) {
+            UERROR("Failed to allocate GPU memory: %s", cudaGetErrorString(cuda_err));
+            return false;
+        }
+        *current_size = size;
+        UDEBUG("Allocated GPU memory: %zu bytes", size);
+    }
+    return true;
+}
+
+bool OdometryCuVSLAM::copyToGpuAsync(const cv::Mat& cpu_image, uint8_t * gpu_ptr, size_t size)
+{
+    // Initialize CUDA stream if not already done
+    if(cuda_stream_ == nullptr) {
+        cudaStream_t stream;
+        cudaError_t stream_err = cudaStreamCreate(&stream);
+        if(stream_err != cudaSuccess) {
+            UERROR("Failed to create CUDA stream: %s", cudaGetErrorString(stream_err));
+            return false;
+        }
+        cuda_stream_ = static_cast<void*>(stream);
+    }
+    
+    // Cast void * back to cudaStream_t for CUDA API calls
+    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
+    
+    // Copy CPU data to GPU memory with async operation for better performance
+    cudaError_t cuda_err = cudaMemcpyAsync(gpu_ptr, cpu_image.data, size, 
+                                          cudaMemcpyHostToDevice, stream);
+    if(cuda_err != cudaSuccess) {
+        UERROR("Failed to copy image to GPU: %s", cudaGetErrorString(cuda_err));
+        return false;
+    }
+    
+    return true;
+}
+
+bool OdometryCuVSLAM::synchronizeGpuOperations()
+{
+    if(cuda_stream_) {
+        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
+        cudaError_t cuda_err = cudaStreamSynchronize(stream);
+        if(cuda_err != cudaSuccess) {
+            UERROR("Failed to synchronize GPU operations: %s", cudaGetErrorString(cuda_err));
+            return false;
+        }
+    }
+    return true;
+}
+
+// ============================================================================
 // Image Processing and Preparation
 // ============================================================================
 
@@ -770,6 +848,7 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
         }
         
         // Convert to RGB format for cuVSLAM (cuVSLAM expects RGB8 for stereo)
+        // TODO: Are these necessary and correct?
         if(left_image.channels() == 1) {
             // Convert grayscale to RGB
             cv::cvtColor(left_image, processed_left_image_, cv::COLOR_GRAY2RGB);
@@ -797,26 +876,13 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
             return false;
         }
         
-        // Allocate GPU memory for left image
+        // Efficient GPU memory allocation and async copy
         size_t left_image_size = processed_left_image_.total() * processed_left_image_.elemSize();
-        if(gpu_left_image_size_ != left_image_size) {
-            // Reallocate GPU memory if size changed
-            if(gpu_left_image_data_) {
-                cudaFree(gpu_left_image_data_);
-            }
-            cudaError_t cuda_err = cudaMalloc(&gpu_left_image_data_, left_image_size);
-            if(cuda_err != cudaSuccess) {
-                UERROR("Failed to allocate GPU memory for left image: %s", cudaGetErrorString(cuda_err));
-                return false;
-            }
-            gpu_left_image_size_ = left_image_size;
-            UWARN("Allocated GPU memory for left image: %zu bytes", left_image_size);
+        if(!allocateGpuMemory(left_image_size, &gpu_left_image_data_, &gpu_left_image_size_)) {
+            return false;
         }
         
-        // Copy CPU data to GPU memory
-        cudaError_t cuda_err = cudaMemcpy(gpu_left_image_data_, processed_left_image_.data, left_image_size, cudaMemcpyHostToDevice);
-        if(cuda_err != cudaSuccess) {
-            UERROR("Failed to copy left image to GPU: %s", cudaGetErrorString(cuda_err));
+        if(!copyToGpuAsync(processed_left_image_, gpu_left_image_data_, left_image_size)) {
             return false;
         }
         
@@ -883,26 +949,13 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
             return false;
         }
         
-        // Allocate GPU memory for right image
+        // Efficient GPU memory allocation and async copy
         size_t right_image_size = processed_right_image_.total() * processed_right_image_.elemSize();
-        if(gpu_right_image_size_ != right_image_size) {
-            // Reallocate GPU memory if size changed
-            if(gpu_right_image_data_) {
-                cudaFree(gpu_right_image_data_);
-            }
-            cudaError_t cuda_err = cudaMalloc(&gpu_right_image_data_, right_image_size);
-            if(cuda_err != cudaSuccess) {
-                UERROR("Failed to allocate GPU memory for right image: %s", cudaGetErrorString(cuda_err));
-                return false;
-            }
-            gpu_right_image_size_ = right_image_size;
-            UWARN("Allocated GPU memory for right image: %zu bytes", right_image_size);
+        if(!allocateGpuMemory(right_image_size, &gpu_right_image_data_, &gpu_right_image_size_)) {
+            return false;
         }
         
-        // Copy CPU data to GPU memory
-        cudaError_t cuda_err = cudaMemcpy(gpu_right_image_data_, processed_right_image_.data, right_image_size, cudaMemcpyHostToDevice);
-        if(cuda_err != cudaSuccess) {
-            UERROR("Failed to copy right image to GPU: %s", cudaGetErrorString(cuda_err));
+        if(!copyToGpuAsync(processed_right_image_, gpu_right_image_data_, right_image_size)) {
             return false;
         }
         
@@ -954,6 +1007,11 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
             UERROR("ERROR: Prepared image %d has invalid camera index %d (max: %d)", 
                    static_cast<int>(i), img->camera_index, static_cast<int>(cuvslam_cameras_.size()-1));
         }
+    }
+    
+    // Synchronize all async GPU operations before returning
+    if(!synchronizeGpuOperations()) {
+        return false;
     }
     
     return true;
@@ -1065,6 +1123,14 @@ Source: isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp:275-299
 */
 cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covariance)
 {
+    // Handle null covariance pointer
+    if(cuvslam_covariance == nullptr)
+    {
+        UWARN("cuVSLAM returned null covariance matrix, using infinite cov matrix values");
+        cv::Mat default_infinite_covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+        return default_infinite_covariance;
+    }
+    
     const float * covariance = cuvslam_covariance;
     
     // Create transformation matrix for coordinate system conversion
@@ -1104,6 +1170,17 @@ cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covarian
         for(int j = 0; j < 6; j++)
         {
             cv_covariance.at<double>(i, j) = static_cast<double>(covariance_mat_change_basis(i, j));
+        }
+    }
+    
+    // Ensure diagonal elements are positive and finite (RTAB-Map requirement)
+    for(int i = 0; i < 6; i++)
+    {
+        double diag_val = cv_covariance.at<double>(i, i);
+        if(!std::isfinite(diag_val) || diag_val <= 0.0)
+        {
+            UWARN("Invalid covariance diagonal[%d]=%.6f, setting to high uncertainty", i, diag_val);
+            cv_covariance.at<double>(i, i) = 9999.0;  // High uncertainty
         }
     }
     
