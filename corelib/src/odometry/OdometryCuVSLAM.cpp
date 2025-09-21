@@ -1021,6 +1021,8 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
 // Coordinate System and Transform Conversion Functions
 // ============================================================================
 
+// TODO: Go back through these transformations and clean them up!
+
 // Convert RTAB-Map Transform to tf2::Transform (same coordinate system!)
 tf2::Transform rtabmapToTf2(const Transform & rtabmap_transform) {
     // https://docs.ros.org/en/jade/api/rtabmap/html/classrtabmap_1_1Transform.html
@@ -1064,6 +1066,26 @@ CUVSLAM_Pose TocuVSLAMPose(const tf2::Transform & tf_mat)
   return cuvslamPose;
 }
 
+// Helper function to convert cuVSLAM pose to tf2::Transform
+// Taken directly from isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp
+tf2::Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
+{
+  const auto & r = cuvslam_pose.r;
+  // tf2::Matrix3x3 is row major and cuVSLAM rotation mat is column major.
+  const tf2::Matrix3x3 rotation(r[0], r[3], r[6], r[1], r[4], r[7], r[2], r[5], r[8]);
+  const tf2::Vector3 translation(cuvslam_pose.t[0], cuvslam_pose.t[1], cuvslam_pose.t[2]);
+
+  return tf2::Transform(rotation, translation);
+}
+
+// Helper function to change basis from frame source to frame target
+// Taken directly from isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp
+tf2::Transform ChangeBasis(
+  const tf2::Transform & target_pose_source, const tf2::Transform & source_pose_source)
+{
+  return target_pose_source * source_pose_source * target_pose_source.inverse();
+}
+
 CUVSLAM_Pose * OdometryCuVSLAM::rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform) {
     tf2::Transform tf2_transform = rtabmapToTf2(rtabmap_transform);
     CUVSLAM_Pose* pose = new CUVSLAM_Pose(TocuVSLAMPose(tf2_transform));
@@ -1090,28 +1112,28 @@ CUVSLAM_Pose * OdometryCuVSLAM::convertCameraPoseToCuVSLAM(const Transform & rta
 
 /*
 Convert cuVSLAM pose to RTAB-Map Transform.
-CuVSLAM uses column-major rotation matrix, RTAB-Map uses row-major
+CuVSLAM uses column-major rotation matrix, RTAB-Map uses row-major.
+Applies coordinate system transformation from cuVSLAM frame to RTAB-Map frame.
 */
 Transform OdometryCuVSLAM::convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose) 
 {
-    Transform rtabmap_transform;
-    const CUVSLAM_Pose * pose = cuvslam_pose;
+    // Convert cuVSLAM pose to tf2::Transform (cuVSLAM coordinate system)
+    tf2::Transform cv_odom_pose_cv_base_link = FromcuVSLAMPose(*cuvslam_pose);
     
-    // Set rotation matrix (convert from column-major to row-major)
-    rtabmap_transform(0,0) = pose->r[0];  // r11
-    rtabmap_transform(0,1) = pose->r[3];  // r12
-    rtabmap_transform(0,2) = pose->r[6];  // r13
-    rtabmap_transform(1,0) = pose->r[1];  // r21
-    rtabmap_transform(1,1) = pose->r[4];  // r22
-    rtabmap_transform(1,2) = pose->r[7];  // r23
-    rtabmap_transform(2,0) = pose->r[2];  // r31
-    rtabmap_transform(2,1) = pose->r[5];  // r32
-    rtabmap_transform(2,2) = pose->r[8];  // r33
+    // Apply coordinate system transformation from cuVSLAM to RTAB-Map
+    // Following Isaac ROS pattern exactly: ChangeBasis(canonical_pose_cuvslam, cv_odom_pose_cv_base_link)
+    tf2::Transform rtabmap_tf2_transform = ChangeBasis(canonical_pose_cuvslam, cv_odom_pose_cv_base_link);
     
-    // Set translation
-    rtabmap_transform(0,3) = pose->t[0];  // tx
-    rtabmap_transform(1,3) = pose->t[1];  // ty
-    rtabmap_transform(2,3) = pose->t[2];  // tz
+    // Convert tf2::Transform to RTAB-Map Transform using the proper constructor
+    const tf2::Matrix3x3 & rtabmap_rotation = rtabmap_tf2_transform.getBasis();
+    const tf2::Vector3 & rtabmap_translation = rtabmap_tf2_transform.getOrigin();
+    
+    // Use RTAB-Map Transform constructor with rotation matrix and translation
+    Transform rtabmap_transform(
+        rtabmap_rotation[0][0], rtabmap_rotation[0][1], rtabmap_rotation[0][2], rtabmap_translation.x(),  // r11, r12, r13, tx
+        rtabmap_rotation[1][0], rtabmap_rotation[1][1], rtabmap_rotation[1][2], rtabmap_translation.y(),  // r21, r22, r23, ty
+        rtabmap_rotation[2][0], rtabmap_rotation[2][1], rtabmap_rotation[2][2], rtabmap_translation.z()   // r31, r32, r33, tz
+    );
     
     return rtabmap_transform;
 }
