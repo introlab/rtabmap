@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1145</y>
+            <y>0</y>
             <width>713</width>
             <height>4705</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3227,7 +3227,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <item row="2" column="1">
                            <widget class="QLabel" name="label_42">
                             <property name="text">
-                             <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats. If odometry sensor is enabled, it is the transform to odometry sensor.</string>
+                             <string>Local transform from /base_link to /camera_link (without optical transform). Mouse over the box to show formats. If odometry sensor is enabled, it is the transform to odometry sensor.</string>
                             </property>
                             <property name="wordWrap">
                              <bool>true</bool>
@@ -7437,6 +7437,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 <string>RGBD-SLAM + ID</string>
                                </property>
                               </item>
+                              <item>
+                               <property name="text">
+                                <string>rgbd_bonn</string>
+                               </property>
+                              </item>
                              </widget>
                             </item>
                             <item row="11" column="0">
@@ -7580,6 +7585,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <item>
                                <property name="text">
                                 <string>RGBD-SLAM + ID</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>rgbd_bonn</string>
                                </property>
                               </item>
                              </widget>

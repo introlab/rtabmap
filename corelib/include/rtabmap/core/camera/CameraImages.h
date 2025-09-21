@@ -94,14 +94,14 @@ public:
 		_depthFromScanFillHolesFromBorder = fillHolesFromBorder;
 	}
 
-	// Format: 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
+	// 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
 	void setOdometryPath(const std::string & filePath, int format = 0)
 	{
 		_odometryPath = filePath;
 		_odometryFormat = format;
 	}
 
-	// Format: 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
+	// 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
 	void setGroundTruthPath(const std::string & filePath, int format = 0)
 	{
 		_groundTruthPath = filePath;

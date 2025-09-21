@@ -58,6 +58,7 @@ void showUsage()
 			"  --output           Output directory. By default, results are saved in \"path\".\n"
 			"  --output_name      Output database name (default \"rtabmap\").\n"
 			"  --skip #           Skip X frames.\n"
+			"  --max_time_diff #.#  Maximum time difference with frame to attribute a valid ground truth pose (default 0.02 s).\n"
 			"  --quiet            Don't show log messages and iteration updates.\n"
 			"%s\n"
 			"Example:\n\n"
@@ -92,6 +93,7 @@ int main(int argc, char * argv[])
 	std::string output;
 	std::string outputName = "rtabmap";
 	int skipFrames = 0;
+	float maxTimeDiff = 0.02f;
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -113,6 +115,11 @@ int main(int argc, char * argv[])
 			{
 				skipFrames = atoi(argv[++i]);
 				UASSERT(skipFrames > 0);
+			}
+			else if(std::strcmp(argv[i], "--max_time_diff") == 0)
+			{
+				maxTimeDiff = atof(argv[++i]);
+				UASSERT(maxTimeDiff > 0.0f);
 			}
 			else if(std::strcmp(argv[i], "--quiet") == 0)
 			{
@@ -158,14 +165,16 @@ int main(int argc, char * argv[])
 			"   Depth path:      %s\n"
 			"   Output:          %s\n"
 			"   Output name:     %s\n"
-			"   Skip frames:     %d\n",
+			"   Skip frames:     %d\n"
+			"   Max time diff:   %f\n",
 			seq.c_str(),
 			path.c_str(),
 			pathRgbImages.c_str(),
 			pathDepthImages.c_str(),
 			output.c_str(),
 			outputName.c_str(),
-			skipFrames);
+			skipFrames,
+			maxTimeDiff);
 	if(!pathGt.empty())
 	{
 		printf("   groundtruth.txt: %s\n", pathGt.c_str());
@@ -185,6 +194,7 @@ int main(int argc, char * argv[])
 	std::string sequenceName = UFile(path).getName();
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	float depthFactor = 5.0f;
+	int gtPoseFormat = 1;
 	if(sequenceName.find("freiburg1") != std::string::npos)
 	{
 		model = CameraModel(outputName+"_calib", 517.3, 516.5, 318.6, 255.3, opticalRotation, 0, cv::Size(640,480));
@@ -193,9 +203,29 @@ int main(int argc, char * argv[])
 	{
 		model = CameraModel(outputName+"_calib", 520.9, 521.0, 325.1, 249.7, opticalRotation, 0, cv::Size(640,480));
 	}
-	else //if(sequenceName.find("freiburg3") != std::string::npos)
+	else if(sequenceName.find("freiburg3") != std::string::npos)
 	{
 		model = CameraModel(outputName+"_calib", 535.4, 539.2, 320.1, 247.6, opticalRotation, 0, cv::Size(640,480));
+	}
+	else if(sequenceName.find("rgbd_bonn") != std::string::npos)
+	{
+		cv::Mat K = cv::Mat::eye(3,3,CV_64FC1);
+		K.at<double>(0,0) = 542.822841; // fx
+		K.at<double>(1,1) = 542.576870; // fy
+		K.at<double>(0,2) = 315.593520; // cx
+		K.at<double>(1,2) = 237.756098; // cy
+		cv::Mat D = cv::Mat::eye(1,5,CV_64FC1);
+		D.at<double>(0,0) = 0.039903;
+		D.at<double>(0,1) = -0.099343;
+		D.at<double>(0,2) = -0.000730;
+		D.at<double>(0,3) = -0.000144;
+		D.at<double>(0,4) = 0.000000;
+
+		model = CameraModel(outputName+"_calib", cv::Size(640,480), K, D, cv::Mat(), cv::Mat(), opticalRotation);
+		gtPoseFormat = 12;
+	}
+	else {
+		printf("ERROR: Dataset %s is not supported. Update rgbd_dataset tool to include the right calibration parameter for this dataset!\n", sequenceName.c_str());
 	}
 	//parameters.insert(ParametersPair(Parameters::kg2oBaseline(), uNumber2Str(40.0f/model.fx())));
 	model.save(path);
@@ -209,7 +239,8 @@ int main(int argc, char * argv[])
 	((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(!pathGt.empty())
 	{
-		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 1);
+		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, gtPoseFormat);
+		((CameraRGBDImages*)cameraThread.camera())->setMaxPoseTimeDiff(maxTimeDiff);
 	}
 
 	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();

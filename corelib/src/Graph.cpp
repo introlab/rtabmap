@@ -196,7 +196,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1 and 9
@@ -440,7 +440,7 @@ bool importPoses(
 					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y, found %d)", str.c_str(), (int)strList.size());
 				}
 			}
-			else if(format == 1 || format==10 || format==11) // rgbd-slam format
+			else if(format == 1 || format==10 || format==11 || format==12) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
 				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
@@ -480,6 +480,20 @@ bool importPoses(
 										   0, -1, 0, 0,
 										   1, 0, 0, 0);
 							pose = t*pose;
+						}
+						else if(format == 12)
+						{
+							// See https://www.ipb.uni-bonn.de/data/rgbd-dynamic-dataset/index.html
+							Transform T_ros(-1, 0, 0, 0,
+											 0, 0, 1, 0,
+											 0, 1, 0, 0);
+							Transform T_m(
+										1.0157,    0.1828,   -0.2389,    0.0113,
+										0.0009,   -0.8431,   -0.6413,   -0.00980,
+										-0.3009,    0.6147,   -0.8085,    0.0111);
+
+							// we remove the optical rotation
+							pose = T_ros*pose*T_ros*T_m*CameraModel::opticalRotation().inverse();
 						}
 						poses.insert(std::make_pair(id, pose));
 					}

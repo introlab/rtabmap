@@ -56,7 +56,7 @@ bool RTABMAP_CORE_EXPORT exportPoses(
 
 bool RTABMAP_CORE_EXPORT importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
 		std::map<int, double> * stamps = 0); // optional for format 1 and 9
