@@ -109,10 +109,11 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     gpu_right_image_data_(nullptr),
     gpu_left_image_size_(0),
     gpu_right_image_size_(0),
-    cuda_stream_(nullptr)
+    cuda_stream_(nullptr),
+    left_distortion_model_(nullptr),
+    right_distortion_model_(nullptr)
 #endif
 {
-    UINFO("OdometryCuVSLAM created");
 }
 
 OdometryCuVSLAM::~OdometryCuVSLAM()
@@ -267,7 +268,6 @@ Transform OdometryCuVSLAM::computeTransform(
     // Initialize cuVSLAM tracker on first frame
     if(!initialized_)
     {
-        UWARN("Initializing cuVSLAM tracker with first image (stamp: %f)", data.stamp());
         if(!initializeCuVSLAM(data))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
@@ -287,7 +287,6 @@ Transform OdometryCuVSLAM::computeTransform(
         previous_pose_ = transform;
         last_timestamp_ = data.stamp();
         
-        UDEBUG("cuVSLAM initialization completed in %f ms", timer.ticks());
         return transform;
     }
     
@@ -328,63 +327,34 @@ Transform OdometryCuVSLAM::computeTransform(
         return transform;
     }
     
-    UWARN("Calling CUVSLAM_TrackGpuMem with %d images", static_cast<int>(cuvslam_image_objects_->size()));
-    UWARN("Camera rig has %d cameras", static_cast<int>(cuvslam_cameras_.size()));
-    
-    // Log camera rig configuration
-    if(camera_rig_) {
-        UWARN("Camera rig: %d cameras configured", camera_rig_->num_cameras);
-        for(int i = 0; i < camera_rig_->num_cameras; ++i) {
-            const auto & cam = camera_rig_->cameras[i];
-            UWARN("Camera %d: %dx%d, fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f, distortion_model=%s, num_params=%d", 
-                   i, cam.width, cam.height, 
-                   cam.parameters[2], cam.parameters[3],  // fx, fy
-                   cam.parameters[0], cam.parameters[1],  // cx, cy
-                   cam.distortion_model ? cam.distortion_model : "NULL", cam.num_parameters);
-        }
-    } else {
+    // Validate camera rig and configuration
+    if(!camera_rig_) {
         UERROR("Camera rig is null!");
+        return transform;
     }
-    
-    // Log cuVSLAM configuration
-    if(configuration_) {
-        UWARN("cuVSLAM config: multicam_mode=%d, use_motion_model=%d, horizontal_stereo_camera=%d", 
-               configuration_->multicam_mode, configuration_->use_motion_model, 
-               configuration_->horizontal_stereo_camera);
-    } else {
+    if(!configuration_) {
         UERROR("cuVSLAM configuration is null!");
+        return transform;
     }
     
+    // Validate image properties
     for(size_t i = 0; i < cuvslam_image_objects_->size(); ++i) {
         const auto& img = (*cuvslam_image_objects_)[i];
-        UWARN("Image %d: %dx%d, encoding=%d, camera_index=%d, timestamp=%ld", 
-               static_cast<int>(i), img.width, img.height, img.image_encoding, 
-               img.camera_index, img.timestamp_ns);
-        
-        // Validate image properties
         if(img.width <= 0 || img.height <= 0) {
             UERROR("Invalid image dimensions: %dx%d", img.width, img.height);
+            return transform;
         }
         if(img.pixels == nullptr) {
             UERROR("Image %d has null pixel data", static_cast<int>(i));
+            return transform;
         }
         if(img.camera_index < 0 || img.camera_index >= static_cast<int>(cuvslam_cameras_.size())) {
             UERROR("Invalid camera index %d (max: %d)", img.camera_index, static_cast<int>(cuvslam_cameras_.size()-1));
-        }
-        
-        // Check for timestamp consistency
-        if(i > 0) {
-            int64_t time_diff = img.timestamp_ns - (*cuvslam_image_objects_)[0].timestamp_ns;
-            if(time_diff != 0) {
-                UWARN("Image %d timestamp differs from image 0 by %ld ns", static_cast<int>(i), time_diff);
-            }
+            return transform;
         }
     }
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
-    
-    // Use CUVSLAM_TrackGpuMem with proper GPU memory allocation
-    UWARN("=== Using CUVSLAM_TrackGpuMem with GPU memory ===");
     
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
@@ -393,38 +363,13 @@ Transform OdometryCuVSLAM::computeTransform(
         nullptr, 
         &vo_pose_estimate);
     
-    // ============================================================================
-    // POST-TRACKING VALIDATION LOGS
-    // ============================================================================
-    UWARN("=== POST-TRACKING VALIDATION ===");
-    UWARN("cuVSLAM tracking status: %d", vo_status);
-    UWARN("vo_pose_estimate.pose.t=[%.6f, %.6f, %.6f]", 
-           vo_pose_estimate.pose.t[0], vo_pose_estimate.pose.t[1], vo_pose_estimate.pose.t[2]);
-    UWARN("vo_pose_estimate.pose.r=[%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]", 
-           vo_pose_estimate.pose.r[0], vo_pose_estimate.pose.r[1], vo_pose_estimate.pose.r[2],
-           vo_pose_estimate.pose.r[3], vo_pose_estimate.pose.r[4], vo_pose_estimate.pose.r[5],
-           vo_pose_estimate.pose.r[6], vo_pose_estimate.pose.r[7], vo_pose_estimate.pose.r[8]);
-    
     // Check if pose estimate is reasonable
     double translation_magnitude = sqrt(vo_pose_estimate.pose.t[0]*vo_pose_estimate.pose.t[0] + 
                                        vo_pose_estimate.pose.t[1]*vo_pose_estimate.pose.t[1] + 
                                        vo_pose_estimate.pose.t[2]*vo_pose_estimate.pose.t[2]);
-    UWARN("Translation magnitude: %.6f meters", translation_magnitude);
     
     if(translation_magnitude > 10.0) {
-        UWARN("WARNING: Large translation detected (%.6f m) - possible tracking error", translation_magnitude);
-    }
-    
-    // Check covariance
-    if(vo_pose_estimate.covariance) {
-        UWARN("Covariance matrix available: %p", vo_pose_estimate.covariance);
-        // Log first few covariance values
-        UWARN("Covariance[0-5]: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f]", 
-               vo_pose_estimate.covariance[0], vo_pose_estimate.covariance[1], 
-               vo_pose_estimate.covariance[2], vo_pose_estimate.covariance[3],
-               vo_pose_estimate.covariance[4], vo_pose_estimate.covariance[5]);
-    } else {
-        UWARN("WARNING: No covariance matrix provided by cuVSLAM");
+        UWARN("Large translation detected (%.6f m) - possible tracking error", translation_magnitude);
     }
     
     // Clean up CUVSLAM_Image objects
@@ -438,7 +383,7 @@ Transform OdometryCuVSLAM::computeTransform(
     // Handle tracking status and odom info
     if(vo_status == CUVSLAM_TRACKING_LOST)
     {
-        UDEBUG("cuVSLAM tracking lost");
+        UWARN("cuVSLAM tracking lost");
         lost_ = true;
         if(info)
         {
@@ -461,7 +406,6 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         
         UERROR("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
-        UERROR("This usually indicates invalid image format, camera configuration, or GPU memory issues");
         
         if(info)
         {
@@ -473,12 +417,9 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     else
     {
-        // TODO: Get covariance from cuVSLAM
-        UDEBUG("cuVSLAM tracking success");
         if(info)
         {
             cv::Mat covMat = this->convertCuVSLAMCovariance(vo_pose_estimate.covariance);
-
             info->type = 0;  // Success
             info->reg.covariance = covMat;
             info->timeEstimation = timer.ticks();
@@ -502,8 +443,6 @@ Transform OdometryCuVSLAM::computeTransform(
     lost_ = false;
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
-    
-    UDEBUG("cuVSLAM odometry computed in %f ms", timer.ticks());
     
 #else
     UERROR("cuVSLAM support not compiled in RTAB-Map");
@@ -557,9 +496,6 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         left_camera_params_[3] = static_cast<float>(leftModel.fy());   // fy
         left_camera.parameters = left_camera_params_;
         
-        UWARN("Left camera model: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-               leftModel.fx(), leftModel.fy(), leftModel.cx(), leftModel.cy());
-        
         // Set pinhole model with zero distortion (rectified images)
         left_distortion_model_ = "pinhole";
         left_camera.distortion_model = left_distortion_model_;
@@ -584,9 +520,6 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         right_camera_params_[3] = static_cast<float>(rightModel.fy());   // fy
         right_camera.parameters = right_camera_params_;
         
-        UWARN("Right camera model: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-               rightModel.fx(), rightModel.fy(), rightModel.cx(), rightModel.cy());
-        
         // Set pinhole model with zero distortion (rectified images)
         right_distortion_model_ = "pinhole";
         right_camera.distortion_model = right_distortion_model_;
@@ -606,21 +539,6 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         delete right_cuvslam_pose;
         
         cuvslam_cameras_.push_back(new CUVSLAM_Camera(right_camera));
-        
-        // Debug logging after camera poses are set
-        UWARN("Left camera model: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-               leftModel.fx(), leftModel.fy(), leftModel.cx(), leftModel.cy());
-        UWARN("Right camera model: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-               rightModel.fx(), rightModel.fy(), rightModel.cx(), rightModel.cy());
-        UWARN("Stereo baseline: %.3f meters", baseline);
-        UWARN("Left camera RTAB-Map transform: tx=%.3f, ty=%.3f, tz=%.3f", 
-               left_pose.x(), left_pose.y(), left_pose.z());
-        UWARN("Right camera computed transform: tx=%.3f, ty=%.3f, tz=%.3f", 
-               right_pose.x(), right_pose.y(), right_pose.z());
-        UWARN("Left camera cuVSLAM pose (after coord conversion): tx=%.3f, ty=%.3f, tz=%.3f", 
-               left_camera.pose.t[0], left_camera.pose.t[1], left_camera.pose.t[2]);
-        UWARN("Right camera cuVSLAM pose (after coord conversion): tx=%.3f, ty=%.3f, tz=%.3f", 
-               right_camera.pose.t[0], right_camera.pose.t[1], right_camera.pose.t[2]);
     }
     
     // Set up camera rig
@@ -636,13 +554,6 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
     camera_rig->cameras = cuvslam_camera_objects_->data();
     camera_rig->num_cameras = cuvslam_camera_objects_->size();
     camera_rig_ = camera_rig;
-    
-    UWARN("Camera rig created with %d cameras", camera_rig->num_cameras);
-    for(int i = 0; i < camera_rig->num_cameras; ++i) {
-        const auto& cam = camera_rig->cameras[i];
-        UWARN("Camera rig camera %d: distortion_model=%s, parameters=%p", 
-               i, cam.distortion_model ? cam.distortion_model : "NULL", cam.parameters);
-    }
     
     // Create configuration using Isaac ROS pattern
     CUVSLAM_Pose cuvslam_imu_pose;
@@ -679,7 +590,6 @@ bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
         return false;
     }
     
-    UWARN("cuVSLAM tracker initialized with %d cameras", cuvslam_cameras_.size());
     return true;
 }
 
@@ -749,7 +659,6 @@ bool OdometryCuVSLAM::allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t 
             return false;
         }
         *current_size = size;
-        UDEBUG("Allocated GPU memory: %zu bytes", size);
     }
     return true;
 }
@@ -805,27 +714,6 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
     // Convert timestamp to nanoseconds (cuVSLAM expects nanoseconds)
     int64_t timestamp_ns = static_cast<int64_t>(data.stamp() * 1000000000.0);
     
-    // ============================================================================
-    // IMAGE PREPARATION VALIDATION LOGS
-    // ============================================================================
-    UWARN("=== IMAGE PREPARATION VALIDATION ===");
-    UWARN("Input timestamp: %.6f -> %ld ns", data.stamp(), timestamp_ns);
-    UWARN("Left image empty: %s", data.imageRaw().empty() ? "YES" : "NO");
-    UWARN("Right image empty: %s", data.rightRaw().empty() ? "YES" : "NO");
-    
-    if(!data.imageRaw().empty()) {
-        UWARN("Left image: %dx%d, %d channels, type=%d", 
-               data.imageRaw().cols, data.imageRaw().rows, 
-               data.imageRaw().channels(), data.imageRaw().type());
-        UWARN("Left image data pointer: %p", data.imageRaw().data);
-    }
-    
-    if(!data.rightRaw().empty()) {
-        UWARN("Right image: %dx%d, %d channels, type=%d", 
-               data.rightRaw().cols, data.rightRaw().rows, 
-               data.rightRaw().channels(), data.rightRaw().type());
-        UWARN("Right image data pointer: %p", data.rightRaw().data);
-    }
     
     // cuVSLAM only supports stereo cameras
     if(data.stereoCameraModels().size() == 0)
@@ -848,19 +736,12 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
         }
         
         // Convert to RGB format for cuVSLAM (cuVSLAM expects RGB8 for stereo)
-        // TODO: Are these necessary and correct?
         if(left_image.channels() == 1) {
             // Convert grayscale to RGB
             cv::cvtColor(left_image, processed_left_image_, cv::COLOR_GRAY2RGB);
-            UWARN("Left image converted: %dx%d, %d channels -> %dx%d, %d channels", 
-                   left_image.cols, left_image.rows, left_image.channels(),
-                   processed_left_image_.cols, processed_left_image_.rows, processed_left_image_.channels());
         } else if(left_image.channels() == 3) {
             // Convert BGR to RGB
             cv::cvtColor(left_image, processed_left_image_, cv::COLOR_BGR2RGB);
-            UWARN("Left image converted: %dx%d, %d channels -> %dx%d, %d channels", 
-                   left_image.cols, left_image.rows, left_image.channels(),
-                   processed_left_image_.cols, processed_left_image_.rows, processed_left_image_.channels());
         } else {
             UERROR("Unsupported left image format: %d channels", left_image.channels());
             return false;
@@ -896,11 +777,6 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
         left_cuvslam_image->pitch = processed_left_image_.step;
         left_cuvslam_image->image_encoding = CUVSLAM_ImageEncoding::RGB8; // Always RGB8 for cuVSLAM
         
-        UWARN("Left cuVSLAM image: %dx%d, encoding=%d (RGB8=%d), pitch=%d, pixels=%p (GPU)", 
-               left_cuvslam_image->width, left_cuvslam_image->height, 
-               left_cuvslam_image->image_encoding, CUVSLAM_ImageEncoding::RGB8,
-               left_cuvslam_image->pitch, left_cuvslam_image->pixels);
-        
         cuvslam_images.push_back(left_cuvslam_image);
     }
     else
@@ -925,15 +801,9 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
         if(right_image.channels() == 1) {
             // Convert grayscale to RGB
             cv::cvtColor(right_image, processed_right_image_, cv::COLOR_GRAY2RGB);
-            UWARN("Right image converted: %dx%d, %d channels -> %dx%d, %d channels", 
-                   right_image.cols, right_image.rows, right_image.channels(),
-                   processed_right_image_.cols, processed_right_image_.rows, processed_right_image_.channels());
         } else if(right_image.channels() == 3) {
             // Convert BGR to RGB
             cv::cvtColor(right_image, processed_right_image_, cv::COLOR_BGR2RGB);
-            UWARN("Right image converted: %dx%d, %d channels -> %dx%d, %d channels", 
-                   right_image.cols, right_image.rows, right_image.channels(),
-                   processed_right_image_.cols, processed_right_image_.rows, processed_right_image_.channels());
         } else {
             UERROR("Unsupported right image format: %d channels", right_image.channels());
             return false;
@@ -969,11 +839,6 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
         right_cuvslam_image->pitch = processed_right_image_.step;
         right_cuvslam_image->image_encoding = CUVSLAM_ImageEncoding::RGB8; // Always RGB8 for cuVSLAM
         
-        UWARN("Right cuVSLAM image: %dx%d, encoding=%d (RGB8=%d), pitch=%d, pixels=%p (GPU)", 
-               right_cuvslam_image->width, right_cuvslam_image->height, 
-               right_cuvslam_image->image_encoding, CUVSLAM_ImageEncoding::RGB8,
-               right_cuvslam_image->pitch, right_cuvslam_image->pixels);
-        
         cuvslam_images.push_back(right_cuvslam_image);
     } 
     else 
@@ -982,30 +847,22 @@ bool OdometryCuVSLAM::prepareImages(const SensorData & data, std::vector<CUVSLAM
         return false;
     }
     
-    // ============================================================================
-    // FINAL IMAGE PREPARATION VALIDATION
-    // ============================================================================
-    UWARN("=== FINAL IMAGE PREPARATION VALIDATION ===");
-    UWARN("Prepared %d images for cuVSLAM (timestamp: %ld ns)", 
-           static_cast<int>(cuvslam_images.size()), timestamp_ns);
-    
+    // Validate prepared images
     for(size_t i = 0; i < cuvslam_images.size(); ++i) {
         const auto& img = cuvslam_images[i];
-        UWARN("Prepared image %d: %dx%d, encoding=%d, camera_index=%d, pixels=%p, pitch=%d", 
-               static_cast<int>(i), img->width, img->height, img->image_encoding, 
-               img->camera_index, img->pixels, img->pitch);
-        
-        // Validate image properties
         if(img->width <= 0 || img->height <= 0) {
-            UERROR("ERROR: Prepared image %d has invalid dimensions: %dx%d", 
+            UERROR("Prepared image %d has invalid dimensions: %dx%d", 
                    static_cast<int>(i), img->width, img->height);
+            return false;
         }
         if(img->pixels == nullptr) {
-            UERROR("ERROR: Prepared image %d has null pixel data!", static_cast<int>(i));
+            UERROR("Prepared image %d has null pixel data!", static_cast<int>(i));
+            return false;
         }
         if(img->camera_index < 0 || img->camera_index >= static_cast<int>(cuvslam_cameras_.size())) {
-            UERROR("ERROR: Prepared image %d has invalid camera index %d (max: %d)", 
+            UERROR("Prepared image %d has invalid camera index %d (max: %d)", 
                    static_cast<int>(i), img->camera_index, static_cast<int>(cuvslam_cameras_.size()-1));
+            return false;
         }
     }
     
@@ -1148,7 +1005,6 @@ cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covarian
     // Handle null covariance pointer
     if(cuvslam_covariance == nullptr)
     {
-        UWARN("cuVSLAM returned null covariance matrix, using infinite cov matrix values");
         cv::Mat default_infinite_covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
         return default_infinite_covariance;
     }
@@ -1201,7 +1057,6 @@ cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covarian
         double diag_val = cv_covariance.at<double>(i, i);
         if(!std::isfinite(diag_val) || diag_val <= 0.0)
         {
-            UWARN("Invalid covariance diagonal[%d]=%.6f, setting to high uncertainty", i, diag_val);
             cv_covariance.at<double>(i, i) = 9999.0;  // High uncertainty
         }
     }
