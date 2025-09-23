@@ -571,7 +571,7 @@ bool initializeCuVSLAM(const SensorData & data,
     // }
     
     // No IMU for now, use identity pose
-    CUVSLAM_Pose cuvslam_imu_pose = convertImuPoseToCuVSLAM(Transform::getIdentity());
+    cuvslam_imu_pose = convertImuPoseToCuVSLAM(Transform::getIdentity());
 
     
     configuration = CreateConfiguration(&cuvslam_imu_pose);
