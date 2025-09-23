@@ -30,10 +30,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
-#include "rtabmap/core/CameraModel.h"
-#include "rtabmap/core/StereoCameraModel.h"
 
 #ifdef RTABMAP_CUVSLAM
+#include "rtabmap/core/CameraModel.h"
+#include "rtabmap/core/StereoCameraModel.h"
+#include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/Transform.h"
 #include <cuvslam.h>
 #include <opencv2/opencv.hpp>
 #include <tf2/LinearMath/Transform.h>
@@ -41,6 +43,45 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tf2/LinearMath/Vector3.h>
 #include <eigen3/Eigen/Dense>
 #include <cuda_runtime.h>
+
+
+namespace rtabmap {
+
+    // Forward declarations for helper functions
+    bool initializeCuVSLAM(const SensorData & data, 
+                           std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
+                           std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
+                           CUVSLAM_CameraRig * & camera_rig,
+                           CUVSLAM_Configuration * & configuration,
+                           CUVSLAM_Tracker * & cuvslam_handle_,
+                           float left_camera_params_[4],
+                           float right_camera_params_[4],
+                           const char * & left_distortion_model_,
+                           const char * & right_distortion_model_);
+    
+    CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
+    
+    bool prepareImages(const SensorData & data, 
+                       std::vector<CUVSLAM_Image*> & cuvslam_images,
+                       const std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
+                       cv::Mat & processed_left_image_,
+                       cv::Mat & processed_right_image_,
+                       uint8_t * & gpu_left_image_data_,
+                       uint8_t * & gpu_right_image_data_,
+                       size_t & gpu_left_image_size_,
+                       size_t & gpu_right_image_size_,
+                       void * & cuda_stream_);
+    
+    CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform);
+    CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
+    Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
+    cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
+} // namespace rtabmap
+
+// ============================================================================
+// Forward Declarations
+// ============================================================================
+
 
 // ============================================================================
 // cuVSLAM Constants and Enums
@@ -87,60 +128,13 @@ const tf2::Transform cuvslam_pose_optical(tf2::Matrix3x3(
 // Optical Frame    (x-right, y-down, z-forward)
 const tf2::Transform optical_pose_cuvslam(cuvslam_pose_optical.inverse());
 
-// ============================================================================
-// Function Headers for Refactoring (to be converted from member functions)
-// ============================================================================
-
-// cuVSLAM Initialization and Configuration
-bool initializeCuVSLAM(const SensorData & data, 
-                       std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
-                       std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
-                       CUVSLAM_CameraRig * & camera_rig,
-                       CUVSLAM_Configuration * & configuration,
-                       CUVSLAM_Tracker * & cuvslam_handle_,
-                       float left_camera_params_[4],
-                       float right_camera_params_[4],
-                       const char * & left_distortion_model_,
-                       const char * & right_distortion_model_);
-
-CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
-
-// GPU Memory Management
-bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size);
-bool copyToGpuAsync(const cv::Mat& cpu_image, uint8_t * gpu_ptr, size_t size, void * & cuda_stream_);
-bool synchronizeGpuOperations(void * cuda_stream_);
-
-// Image Processing and Preparation
-bool prepareImages(const SensorData & data, 
-                   std::vector<CUVSLAM_Image*> & cuvslam_images,
-                   const std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
-                   cv::Mat & processed_left_image_,
-                   cv::Mat & processed_right_image_,
-                   uint8_t * & gpu_left_image_data_,
-                   uint8_t * & gpu_right_image_data_,
-                   size_t & gpu_left_image_size_,
-                   size_t & gpu_right_image_size_,
-                   void * & cuda_stream_);
-
-// Coordinate System and Transform Conversion Functions
-CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform);
-CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
-Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
-cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
-
-// Helper functions for coordinate transformations
-tf2::Transform rtabmapToTf2(const Transform & rtabmap_transform);
-CUVSLAM_Pose TocuVSLAMPose(const tf2::Transform & tf_mat);
-tf2::Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose);
-tf2::Transform ChangeBasis(const tf2::Transform & target_pose_source, const tf2::Transform & source_pose_source);
-
 #endif
-
-namespace rtabmap {
 
 // ============================================================================
 // OdometryCuVSLAM Class Implementation
 // ============================================================================
+
+namespace rtabmap {
 
 OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     Odometry(parameters),
@@ -154,13 +148,15 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     lost_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
+    left_camera_params_{0.0f, 0.0f, 0.0f, 0.0f},
+    right_camera_params_{0.0f, 0.0f, 0.0f, 0.0f},
+    left_distortion_model_(nullptr),
+    right_distortion_model_(nullptr),
     gpu_left_image_data_(nullptr),
     gpu_right_image_data_(nullptr),
     gpu_left_image_size_(0),
     gpu_right_image_size_(0),
-    cuda_stream_(nullptr),
-    left_distortion_model_(nullptr),
-    right_distortion_model_(nullptr)
+    cuda_stream_(nullptr)
 #endif
 {
 }
@@ -450,6 +446,7 @@ Transform OdometryCuVSLAM::computeTransform(
     lost_ = false;
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
+    
     
 #else
     UERROR("cuVSLAM support not compiled in RTAB-Map");
@@ -785,7 +782,7 @@ bool prepareImages(const SensorData & data,
             return false;
         }
         
-        if(!copyToGpuAsync(processed_left_image_, gpu_left_image_data_, left_image_size)) {
+        if(!copyToGpuAsync(processed_left_image_, gpu_left_image_data_, left_image_size, cuda_stream_)) {
             return false;
         }
         
@@ -847,7 +844,7 @@ bool prepareImages(const SensorData & data,
             return false;
         }
         
-        if(!copyToGpuAsync(processed_right_image_, gpu_right_image_data_, right_image_size)) {
+        if(!copyToGpuAsync(processed_right_image_, gpu_right_image_data_, right_image_size, cuda_stream_)) {
             return false;
         }
         
@@ -1088,7 +1085,7 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     return cv_covariance;
 }
 
-
 #endif // RTABMAP_CUVSLAM
 
 } // namespace rtabmap
+
