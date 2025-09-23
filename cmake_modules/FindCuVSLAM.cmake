@@ -34,7 +34,9 @@ find_library(CUVSLAM_LIBRARY
 
 if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
     set(CUVSLAM_FOUND TRUE)
-    set(CUVSLAM_LIBRARIES ${CUVSLAM_LIBRARY})
+    # Include CUDA dependencies in cuVSLAM variables
+    set(CUVSLAM_LIBRARIES ${CUVSLAM_LIBRARY} ${CUDA_LIBRARIES})
+    set(CUVSLAM_INCLUDE_DIRS ${CUVSLAM_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 endif()
 
 # Handle the QUIET and REQUIRED arguments
@@ -50,8 +52,9 @@ if(CUVSLAM_FOUND)
     if(NOT TARGET cuvslam::cuvslam)
         add_library(cuvslam::cuvslam UNKNOWN IMPORTED)
         set_target_properties(cuvslam::cuvslam PROPERTIES
-            IMPORTED_LOCATION "${CUVSLAM_LIBRARIES}"
-            INTERFACE_INCLUDE_DIRECTORIES "${CUVSLAM_INCLUDE_DIRS}"
+            IMPORTED_LOCATION "${CUVSLAM_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CUVSLAM_INCLUDE_DIRS};${CUDA_INCLUDE_DIRS}"
+            INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES}"
         )
     endif()
     
