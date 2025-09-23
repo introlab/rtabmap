@@ -126,44 +126,20 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
-    
-    // Clean up camera rig and configuration
-    if(camera_rig_) {
-        delete camera_rig_;
-        camera_rig_ = nullptr;
-    }
-    if(configuration_) {
-        delete configuration_;
-        configuration_ = nullptr;
-    }
-    
-    // Clean up camera objects
+        
     for(CUVSLAM_Camera * camera : cuvslam_cameras_) {
         delete camera;
     }
     cuvslam_cameras_.clear();
     
-    // Clean up camera objects vector
-    if(cuvslam_camera_objects_) {
-        delete cuvslam_camera_objects_;
-        cuvslam_camera_objects_ = nullptr;
-    }
-    
-    // Clean up image objects vector
-    if(cuvslam_image_objects_) {
-        delete cuvslam_image_objects_;
-        cuvslam_image_objects_ = nullptr;
-    }
+    delete camera_rig_;
+    delete configuration_;
+    delete cuvslam_camera_objects_;
+    delete cuvslam_image_objects_;
     
     // Clean up GPU memory
-    if(gpu_left_image_data_) {
-        cudaFree(gpu_left_image_data_);
-        gpu_left_image_data_ = nullptr;
-    }
-    if(gpu_right_image_data_) {
-        cudaFree(gpu_right_image_data_);
-        gpu_right_image_data_ = nullptr;
-    }
+    cudaFree(gpu_left_image_data_);
+    cudaFree(gpu_right_image_data_);
     
     // Clean up CUDA stream
     if(cuda_stream_) {
@@ -188,14 +164,8 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         
     // Reset member variables to initial state
     // Clean up camera rig and configuration
-    if(camera_rig_) {
-        delete camera_rig_;
-        camera_rig_ = nullptr;
-    }
-    if(configuration_) {
-        delete configuration_;
-        configuration_ = nullptr;
-    }
+    delete camera_rig_;
+    delete configuration_;
     // Clean up camera objects
     for(CUVSLAM_Camera* camera : cuvslam_cameras_) {
         delete camera;
@@ -203,26 +173,14 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     cuvslam_cameras_.clear();
     
     // Clean up camera objects vector
-    if(cuvslam_camera_objects_) {
-        delete cuvslam_camera_objects_;
-        cuvslam_camera_objects_ = nullptr;
-    }
+    delete cuvslam_camera_objects_;
     
     // Clean up image objects vector
-    if(cuvslam_image_objects_) {
-        delete cuvslam_image_objects_;
-        cuvslam_image_objects_ = nullptr;
-    }
+    delete cuvslam_image_objects_;
     
     // Clean up GPU memory
-    if(gpu_left_image_data_) {
-        cudaFree(gpu_left_image_data_);
-        gpu_left_image_data_ = nullptr;
-    }
-    if(gpu_right_image_data_) {
-        cudaFree(gpu_right_image_data_);
-        gpu_right_image_data_ = nullptr;
-    }
+    cudaFree(gpu_left_image_data_);
+    cudaFree(gpu_right_image_data_);
     
     // Clean up CUDA stream
     if(cuda_stream_) {
@@ -362,24 +320,14 @@ Transform OdometryCuVSLAM::computeTransform(
         cuvslam_image_objects_->data(), 
         cuvslam_image_objects_->size(), 
         nullptr, 
-        &vo_pose_estimate);
-    
-    // Check if pose estimate is reasonable
-    double translation_magnitude = sqrt(vo_pose_estimate.pose.t[0]*vo_pose_estimate.pose.t[0] + 
-                                       vo_pose_estimate.pose.t[1]*vo_pose_estimate.pose.t[1] + 
-                                       vo_pose_estimate.pose.t[2]*vo_pose_estimate.pose.t[2]);
-    
-    if(translation_magnitude > 10.0) {
-        UWARN("Large translation detected (%.6f m) - possible tracking error", translation_magnitude);
-    }
+        &vo_pose_estimate
+    );
     
     // Clean up CUVSLAM_Image objects
-    for(CUVSLAM_Image* image : cuvslam_images) {
+    for(CUVSLAM_Image * image : cuvslam_images) {
         delete image;
     }
     cuvslam_images.clear();
-    
-    // Convert cuVSLAM covariance to RTAB-Map format
     
     // Handle tracking status and odom info
     if(vo_status == CUVSLAM_TRACKING_LOST)
@@ -650,10 +598,7 @@ bool OdometryCuVSLAM::allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t 
 {
     if(*current_size != size) {
         // Reallocate GPU memory if size changed
-        if(*gpu_ptr) {
-            cudaFree(*gpu_ptr);
-            *gpu_ptr = nullptr;
-        }
+        cudaFree(*gpu_ptr);
         cudaError_t cuda_err = cudaMalloc(gpu_ptr, size);
         if(cuda_err != cudaSuccess) {
             UERROR("Failed to allocate GPU memory: %s", cudaGetErrorString(cuda_err));

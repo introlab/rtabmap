@@ -44,7 +44,7 @@ struct CUVSLAM_CameraRig;
 struct CUVSLAM_Configuration;
 struct CUVSLAM_Pose;
 struct CUVSLAM_Image;
-struct cudaStream_t;
+#endif
 
 namespace rtabmap {
 
@@ -107,7 +107,7 @@ private:
 	uint8_t * gpu_right_image_data_;
 	size_t gpu_left_image_size_;
 	size_t gpu_right_image_size_;
-	cudaStream_t * cuda_stream_;
+	void * cuda_stream_;
 #endif
 };
 
