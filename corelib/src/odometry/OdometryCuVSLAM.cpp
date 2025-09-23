@@ -312,8 +312,6 @@ Transform OdometryCuVSLAM::computeTransform(
         data,
         cuvslam_images,
         cuvslam_cameras_,
-        processed_left_image_,
-        processed_right_image_,
         gpu_left_image_data_,
         gpu_right_image_data_,
         gpu_left_image_size_,
@@ -662,7 +660,7 @@ bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size)
     return true;
 }
 
-bool copyToGpuAsync(const cv::Mat& cpu_image, uint8_t * gpu_ptr, size_t size, void * & cuda_stream_)
+bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, void * & cuda_stream_)
 {
     // Initialize CUDA stream if not already done
     if(cuda_stream_ == nullptr) {
@@ -709,8 +707,6 @@ bool synchronizeGpuOperations(void * cuda_stream_)
 bool prepareImages(const SensorData & data, 
                    std::vector<CUVSLAM_Image*> & cuvslam_images,
                    const std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
-                   cv::Mat & processed_left_image_,
-                   cv::Mat & processed_right_image_,
                    uint8_t * & gpu_left_image_data_,
                    uint8_t * & gpu_right_image_data_,
                    size_t & gpu_left_image_size_,
@@ -736,14 +732,15 @@ bool prepareImages(const SensorData & data,
         }
         
         // Convert image format for cuVSLAM
+        cv::Mat processed_left_image;
         CUVSLAM_ImageEncoding left_encoding;
         if(left_image.channels() == 1) {
             // Keep grayscale as MONO8
-            processed_left_image_ = left_image.clone();
+            processed_left_image = left_image.clone();
             left_encoding = CUVSLAM_ImageEncoding::MONO8;
         } else if(left_image.channels() == 3) {
             // Convert BGR to RGB
-            cv::cvtColor(left_image, processed_left_image_, cv::COLOR_BGR2RGB);
+            cv::cvtColor(left_image, processed_left_image, cv::COLOR_BGR2RGB);
             left_encoding = CUVSLAM_ImageEncoding::RGB8;
         } else {
             UERROR("Unsupported left image format: %d channels", left_image.channels());
@@ -752,33 +749,33 @@ bool prepareImages(const SensorData & data,
         
         // Validate converted image
         int expected_channels = (left_encoding == CUVSLAM_ImageEncoding::MONO8) ? 1 : 3;
-        if(processed_left_image_.channels() != expected_channels) {
-            UERROR("ERROR: Left image conversion failed - expected %d channels, got %d", expected_channels, processed_left_image_.channels());
+        if(processed_left_image.channels() != expected_channels) {
+            UERROR("ERROR: Left image conversion failed - expected %d channels, got %d", expected_channels, processed_left_image.channels());
             return false;
         }
-        if(processed_left_image_.data == nullptr) {
+        if(processed_left_image.data == nullptr) {
             UERROR("ERROR: Left processed image has null data pointer!");
             return false;
         }
         
         // Efficient GPU memory allocation and async copy
-        size_t left_image_size = processed_left_image_.total() * processed_left_image_.elemSize();
+        size_t left_image_size = processed_left_image.total() * processed_left_image.elemSize();
         if(!allocateGpuMemory(left_image_size, &gpu_left_image_data_, &gpu_left_image_size_)) {
             return false;
         }
         
-        if(!copyToGpuAsync(processed_left_image_, gpu_left_image_data_, left_image_size, cuda_stream_)) {
+        if(!copyToGpuAsync(processed_left_image, gpu_left_image_data_, left_image_size, cuda_stream_)) {
             return false;
         }
         
         // Create CUVSLAM_Image for left camera with GPU memory
         CUVSLAM_Image * left_cuvslam_image = new CUVSLAM_Image();
-        left_cuvslam_image->width = processed_left_image_.cols;
-        left_cuvslam_image->height = processed_left_image_.rows;
+        left_cuvslam_image->width = processed_left_image.cols;
+        left_cuvslam_image->height = processed_left_image.rows;
         left_cuvslam_image->pixels = gpu_left_image_data_;  // GPU memory pointer
         left_cuvslam_image->timestamp_ns = timestamp_ns;
         left_cuvslam_image->camera_index = 0;
-        left_cuvslam_image->pitch = processed_left_image_.step;
+        left_cuvslam_image->pitch = processed_left_image.step;
         left_cuvslam_image->image_encoding = left_encoding;
         
         cuvslam_images.push_back(left_cuvslam_image);
@@ -802,14 +799,15 @@ bool prepareImages(const SensorData & data,
         }
         
         // Convert image format for cuVSLAM
+        cv::Mat processed_right_image;
         CUVSLAM_ImageEncoding right_encoding;
         if(right_image.channels() == 1) {
             // Keep grayscale as MONO8
-            processed_right_image_ = right_image.clone();
+            processed_right_image = right_image.clone();
             right_encoding = CUVSLAM_ImageEncoding::MONO8;
         } else if(right_image.channels() == 3) {
             // Convert BGR to RGB
-            cv::cvtColor(right_image, processed_right_image_, cv::COLOR_BGR2RGB);
+            cv::cvtColor(right_image, processed_right_image, cv::COLOR_BGR2RGB);
             right_encoding = CUVSLAM_ImageEncoding::RGB8;
         } else {
             UERROR("Unsupported right image format: %d channels", right_image.channels());
@@ -818,33 +816,33 @@ bool prepareImages(const SensorData & data,
         
         // Validate converted image
         int expected_channels = (right_encoding == CUVSLAM_ImageEncoding::MONO8) ? 1 : 3;
-        if(processed_right_image_.channels() != expected_channels) {
-            UERROR("ERROR: Right image conversion failed - expected %d channels, got %d", expected_channels, processed_right_image_.channels());
+        if(processed_right_image.channels() != expected_channels) {
+            UERROR("ERROR: Right image conversion failed - expected %d channels, got %d", expected_channels, processed_right_image.channels());
             return false;
         }
-        if(processed_right_image_.data == nullptr) {
+        if(processed_right_image.data == nullptr) {
             UERROR("ERROR: Right processed image has null data pointer!");
             return false;
         }
         
         // Efficient GPU memory allocation and async copy
-        size_t right_image_size = processed_right_image_.total() * processed_right_image_.elemSize();
+        size_t right_image_size = processed_right_image.total() * processed_right_image.elemSize();
         if(!allocateGpuMemory(right_image_size, &gpu_right_image_data_, &gpu_right_image_size_)) {
             return false;
         }
         
-        if(!copyToGpuAsync(processed_right_image_, gpu_right_image_data_, right_image_size, cuda_stream_)) {
+        if(!copyToGpuAsync(processed_right_image, gpu_right_image_data_, right_image_size, cuda_stream_)) {
             return false;
         }
         
         // Create CUVSLAM_Image for right camera with GPU memory
         CUVSLAM_Image * right_cuvslam_image = new CUVSLAM_Image();
-        right_cuvslam_image->width = processed_right_image_.cols;
-        right_cuvslam_image->height = processed_right_image_.rows;
+        right_cuvslam_image->width = processed_right_image.cols;
+        right_cuvslam_image->height = processed_right_image.rows;
         right_cuvslam_image->pixels = gpu_right_image_data_;  // GPU memory pointer
         right_cuvslam_image->timestamp_ns = timestamp_ns;
         right_cuvslam_image->camera_index = 1;  // Right camera index
-        right_cuvslam_image->pitch = processed_right_image_.step;
+        right_cuvslam_image->pitch = processed_right_image.step;
         right_cuvslam_image->image_encoding = right_encoding;
         
         cuvslam_images.push_back(right_cuvslam_image);
