@@ -7,35 +7,31 @@
 #  CUVSLAM_INCLUDE_DIRS  - The cuVSLAM include directory.
 #  CUVSLAM_LIBRARIES     - The cuVSLAM library to link against.
 
-# Always do manual search
-if(TRUE)
-    # Fallback to manual search if no CMake config is provided
-    find_path(CUVSLAM_INCLUDE_DIRS 
-        NAMES cuvslam.h
-        PATHS
-            /usr/include
-            /usr/local/include
-            /opt/cuvslam/include
-            /opt/ros/humble/share/isaac_ros_nitros/cuvslam/include
-            $ENV{CUVSLAM_ROOT}/include
-            $ENV{CUVSLAM_ROOT_DIR}/include
-    )
-    
-    find_library(CUVSLAM_LIBRARY 
-        NAMES cuvslam
-        PATHS
-            /usr/lib
-            /usr/local/lib
-            /opt/cuvslam/lib
-            /opt/ros/humble/share/isaac_ros_nitros/cuvslam/lib
-            $ENV{CUVSLAM_ROOT}/lib
-            $ENV{CUVSLAM_ROOT_DIR}/lib
-    )
-    
-    if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
-        set(CUVSLAM_FOUND TRUE)
-        set(CUVSLAM_LIBRARIES ${CUVSLAM_LIBRARY})
-    endif()
+find_path(CUVSLAM_INCLUDE_DIRS 
+    NAMES cuvslam.h
+    PATHS
+        /usr/include
+        /usr/local/include
+        /opt/cuvslam/include
+        /opt/ros/humble/share/isaac_ros_nitros/cuvslam/include
+        $ENV{CUVSLAM_ROOT}/include
+        $ENV{CUVSLAM_ROOT_DIR}/include
+)
+
+find_library(CUVSLAM_LIBRARY 
+    NAMES cuvslam
+    PATHS
+        /usr/lib
+        /usr/local/lib
+        /opt/cuvslam/lib
+        /opt/ros/humble/share/isaac_ros_nitros/cuvslam/lib
+        $ENV{CUVSLAM_ROOT}/lib
+        $ENV{CUVSLAM_ROOT_DIR}/lib
+)
+
+if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
+    set(CUVSLAM_FOUND TRUE)
+    set(CUVSLAM_LIBRARIES ${CUVSLAM_LIBRARY})
 endif()
 
 # Handle the QUIET and REQUIRED arguments
