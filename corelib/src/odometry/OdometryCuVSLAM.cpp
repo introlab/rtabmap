@@ -48,16 +48,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
     // Forward declarations for helper functions
-    bool initializeCuVSLAM(const SensorData & data, 
-                           std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
-                           std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
-                           CUVSLAM_CameraRig * & camera_rig,
-                           CUVSLAM_Configuration * & configuration,
-                           CUVSLAM_Tracker * & cuvslam_handle_,
-                           float left_camera_params_[4],
-                           float right_camera_params_[4],
-                           const char * & left_distortion_model_,
-                           const char * & right_distortion_model_);
+bool initializeCuVSLAM(const SensorData & data, 
+                       std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
+                       std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
+                       CUVSLAM_CameraRig * & camera_rig,
+                       CUVSLAM_Configuration * & configuration,
+                       CUVSLAM_Tracker * & cuvslam_handle,
+                       float left_camera_params[4],
+                       float right_camera_params[4],
+                       const char * & left_distortion_model,
+                       const char * & right_distortion_model);
     
     CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
     
@@ -467,11 +467,11 @@ bool initializeCuVSLAM(const SensorData & data,
                        std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
                        CUVSLAM_CameraRig * & camera_rig,
                        CUVSLAM_Configuration * & configuration,
-                       CUVSLAM_Tracker * & cuvslam_handle_,
-                       float left_camera_params_[4],
-                       float right_camera_params_[4],
-                       const char * & left_distortion_model_,
-                       const char * & right_distortion_model_)
+                       CUVSLAM_Tracker * & cuvslam_handle,
+                       float left_camera_params[4],
+                       float right_camera_params[4],
+                       const char * & left_distortion_model,
+                       const char * & right_distortion_model)
 {    
     // Validate stereo camera models
     for(size_t i = 0; i < data.stereoCameraModels().size(); ++i)
@@ -495,15 +495,15 @@ bool initializeCuVSLAM(const SensorData & data,
         left_camera.height = leftModel.imageHeight();
         
         // Set parameters for pinhole model (rectified images) - use member variable
-        left_camera_params_[0] = static_cast<float>(leftModel.cx());   // cx
-        left_camera_params_[1] = static_cast<float>(leftModel.cy());   // cy
-        left_camera_params_[2] = static_cast<float>(leftModel.fx());   // fx
-        left_camera_params_[3] = static_cast<float>(leftModel.fy());   // fy
-        left_camera.parameters = left_camera_params_;
+        left_camera_params[0] = static_cast<float>(leftModel.cx());   // cx
+        left_camera_params[1] = static_cast<float>(leftModel.cy());   // cy
+        left_camera_params[2] = static_cast<float>(leftModel.fx());   // fx
+        left_camera_params[3] = static_cast<float>(leftModel.fy());   // fy
+        left_camera.parameters = left_camera_params;
         
         // Set pinhole model with zero distortion (rectified images)
-        left_distortion_model_ = "pinhole";
-        left_camera.distortion_model = left_distortion_model_;
+        left_distortion_model = "pinhole";
+        left_camera.distortion_model = left_distortion_model;
         left_camera.num_parameters = 4;
         
         // Set camera pose (extrinsics) from localTransform with proper coordinate system conversion
@@ -517,15 +517,15 @@ bool initializeCuVSLAM(const SensorData & data,
         right_camera.height = rightModel.imageHeight();
         
         // Set parameters for pinhole model (rectified images) - use member variable
-        right_camera_params_[0] = static_cast<float>(rightModel.cx());   // cx
-        right_camera_params_[1] = static_cast<float>(rightModel.cy());   // cy
-        right_camera_params_[2] = static_cast<float>(rightModel.fx());   // fx
-        right_camera_params_[3] = static_cast<float>(rightModel.fy());   // fy
-        right_camera.parameters = right_camera_params_;
+        right_camera_params[0] = static_cast<float>(rightModel.cx());   // cx
+        right_camera_params[1] = static_cast<float>(rightModel.cy());   // cy
+        right_camera_params[2] = static_cast<float>(rightModel.fx());   // fx
+        right_camera_params[3] = static_cast<float>(rightModel.fy());   // fy
+        right_camera.parameters = right_camera_params;
         
         // Set pinhole model with zero distortion (rectified images)
-        right_distortion_model_ = "pinhole";
-        right_camera.distortion_model = right_distortion_model_;
+        right_distortion_model = "pinhole";
+        right_camera.distortion_model = right_distortion_model;
         right_camera.num_parameters = 4;
         
         // Set right camera pose using stereo baseline (proper stereo configuration)
@@ -582,7 +582,7 @@ bool initializeCuVSLAM(const SensorData & data,
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
     CUVSLAM_Status status = CUVSLAM_CreateTracker(&tracker_handle, camera_rig, configuration);
-    cuvslam_handle_ = tracker_handle;
+    cuvslam_handle = tracker_handle;
     if(status != CUVSLAM_SUCCESS)
     {
         UERROR("Failed to create cuVSLAM tracker: %d", status);
