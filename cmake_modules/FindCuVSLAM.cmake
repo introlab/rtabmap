@@ -7,6 +7,9 @@
 #  CUVSLAM_INCLUDE_DIRS  - The cuVSLAM include directory.
 #  CUVSLAM_LIBRARIES     - The cuVSLAM library to link against.
 
+# cuVSLAM requires CUDA runtime
+find_package(CUDA REQUIRED)
+
 find_path(CUVSLAM_INCLUDE_DIRS 
     NAMES cuvslam.h
     PATHS
