@@ -49,23 +49,22 @@ namespace rtabmap {
 
     // Forward declarations for helper functions
 bool initializeCuVSLAM(const SensorData & data, 
-                       std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
                        CUVSLAM_Tracker * & cuvslam_handle);
     
-    CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
-    
-    bool prepareImages(const SensorData & data, 
-                       std::vector<CUVSLAM_Image*> & cuvslam_images,
-                       uint8_t * & gpu_left_image_data_,
-                       uint8_t * & gpu_right_image_data_,
-                       size_t & gpu_left_image_size_,
-                       size_t & gpu_right_image_size_,
-                       void * & cuda_stream_);
-    
-    CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
-    CUVSLAM_Pose convertImuPoseToCuVSLAM(const Transform & rtabmap_imu_pose);
-    Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
-    cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
+CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
+
+bool prepareImages(const SensorData & data, 
+                    std::vector<CUVSLAM_Image> & cuvslam_images,
+                    uint8_t * & gpu_left_image_data,
+                    uint8_t * & gpu_right_image_data,
+                    size_t & gpu_left_image_size,
+                    size_t & gpu_right_image_size,
+                    cudaStream_t & cuda_stream);
+
+CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
+CUVSLAM_Pose convertImuPoseToCuVSLAM(const Transform & rtabmap_imu_pose);
+Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
+cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
 
 } // namespace rtabmap
 
@@ -122,8 +121,6 @@ namespace rtabmap {
 OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     Odometry(parameters),
 #ifdef RTABMAP_CUVSLAM
-    cuvslam_camera_objects_(nullptr),
-    cuvslam_image_objects_(nullptr),
     cuvslam_handle_(nullptr),
     initialized_(false),
     lost_(false),
@@ -132,8 +129,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     gpu_left_image_data_(nullptr),
     gpu_right_image_data_(nullptr),
     gpu_left_image_size_(0),
-    gpu_right_image_size_(0),
-    cuda_stream_(nullptr)
+    gpu_right_image_size_(0)
 #endif
 {
 }
@@ -147,24 +143,13 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
-        
-    
-    delete cuvslam_camera_objects_;
-    cuvslam_camera_objects_ = nullptr;
-    delete cuvslam_image_objects_;
-    cuvslam_image_objects_ = nullptr;
     
     // Clean up GPU memory
-    cudaFree(gpu_left_image_data_);
-    gpu_left_image_data_ = nullptr;
-    cudaFree(gpu_right_image_data_);
-    gpu_right_image_data_ = nullptr;
-    
-    // Clean up CUDA stream
-    if(cuda_stream_) {
-        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
-        cudaStreamDestroy(stream);
-        cuda_stream_ = nullptr;
+    if(gpu_left_image_data_) {
+        cudaFree(gpu_left_image_data_);
+    }
+    if(gpu_right_image_data_) {
+        cudaFree(gpu_right_image_data_);
     }
 #endif
 }
@@ -181,28 +166,14 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         cuvslam_handle_ = nullptr;
     }
         
-    // Reset member variables to initial state
-    // Clean up camera rig and configuration
-
-    // Clean up camera objects
-    
-    delete cuvslam_camera_objects_;
-    cuvslam_camera_objects_ = nullptr;
-    
-    delete cuvslam_image_objects_;
-    cuvslam_image_objects_ = nullptr;
-    
     // Clean up GPU memory
-    cudaFree(gpu_left_image_data_);
-    gpu_left_image_data_ = nullptr;
-    cudaFree(gpu_right_image_data_);
-    gpu_right_image_data_ = nullptr;
-    
-    // Clean up CUDA stream
-    if(cuda_stream_) {
-        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
-        cudaStreamDestroy(stream);
-        cuda_stream_ = nullptr;
+    if(gpu_left_image_data_) {
+        cudaFree(gpu_left_image_data_);
+        gpu_left_image_data_ = nullptr;
+    }
+    if(gpu_right_image_data_) {
+        cudaFree(gpu_right_image_data_);
+        gpu_right_image_data_ = nullptr;
     }
     
     initialized_ = false;
@@ -244,7 +215,6 @@ Transform OdometryCuVSLAM::computeTransform(
     {
         if(!initializeCuVSLAM(
             data, 
-            cuvslam_camera_objects_,
             cuvslam_handle_))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
@@ -268,20 +238,22 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     
     // Prepare images for cuVSLAM
-    std::vector<CUVSLAM_Image*> cuvslam_images;
+    std::vector<CUVSLAM_Image> cuvslam_image_objects;
+    cudaStream_t cuda_stream = nullptr;
+
     if(!prepareImages(
         data,
-        cuvslam_images,
+        cuvslam_image_objects,
         gpu_left_image_data_,
         gpu_right_image_data_,
         gpu_left_image_size_,
         gpu_right_image_size_,
-        cuda_stream_))
+        cuda_stream))
     {
         UERROR("Failed to prepare images for cuVSLAM");
-        // Clean up any images that were created before the failure
-        for(CUVSLAM_Image* img : cuvslam_images) {
-            delete img;
+        // Clean up CUDA stream if allocation failed
+        if(cuda_stream) {
+            cudaStreamDestroy(cuda_stream);
         }
         return transform;
     }
@@ -293,20 +265,9 @@ Transform OdometryCuVSLAM::computeTransform(
         // For now, we'll skip IMU processing as it's not implemented yet
         UWARN("IMU data available but processing not implemented yet");
     }
-
-    
-    // Create persistent array of image objects for cuVSLAM API
-    if (!cuvslam_image_objects_) {
-        cuvslam_image_objects_ = new std::vector<CUVSLAM_Image>();
-    } else {
-        cuvslam_image_objects_->clear();
-    }
-    for(CUVSLAM_Image* img_ptr : cuvslam_images) {
-        cuvslam_image_objects_->push_back(*img_ptr);
-    }
     
     // Validate inputs before calling cuVSLAM
-    if(cuvslam_image_objects_->empty()) {
+    if(cuvslam_image_objects.empty()) {
         UERROR("No images prepared for cuVSLAM tracking");
         return transform;
     }
@@ -322,18 +283,17 @@ Transform OdometryCuVSLAM::computeTransform(
     
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
-        cuvslam_image_objects_->data(), 
-        cuvslam_image_objects_->size(), 
+        cuvslam_image_objects.data(), 
+        cuvslam_image_objects.size(), 
         nullptr, 
         &vo_pose_estimate
     );
     
-    // Clean up CUVSLAM_Image objects
-    for(CUVSLAM_Image * image : cuvslam_images) {
-        delete image;
+    // Clean up CUDA stream
+    if(cuda_stream) {
+        cudaStreamDestroy(cuda_stream);
     }
-    cuvslam_images.clear();
-    
+
     // Handle tracking status and odom info
     if(vo_status == CUVSLAM_TRACKING_LOST)
     {
@@ -419,7 +379,6 @@ Transform OdometryCuVSLAM::computeTransform(
 // ============================================================================
 
 bool initializeCuVSLAM(const SensorData & data, 
-                       std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
                        CUVSLAM_Tracker * & cuvslam_handle)
 {    
     // Local camera parameters
@@ -430,11 +389,8 @@ bool initializeCuVSLAM(const SensorData & data,
     const char * left_distortion_model = "pinhole";
     const char * right_distortion_model = "pinhole";
     
-    if (!cuvslam_camera_objects) {
-        cuvslam_camera_objects = new std::vector<CUVSLAM_Camera>();
-    }else {
-        cuvslam_camera_objects->clear();
-    }
+    // Create local camera objects vector
+    std::vector<CUVSLAM_Camera> cuvslam_camera_objects;
     
     // Validate stereo camera models
     for(size_t i = 0; i < data.stereoCameraModels().size(); ++i)
@@ -472,7 +428,7 @@ bool initializeCuVSLAM(const SensorData & data,
         Transform left_pose = leftModel.localTransform();
         left_camera.pose = convertCameraPoseToCuVSLAM(left_pose);
     
-        cuvslam_camera_objects->push_back(left_camera);
+        cuvslam_camera_objects.push_back(left_camera);
         
         CUVSLAM_Camera right_camera;
         right_camera.width = rightModel.imageWidth();
@@ -500,13 +456,13 @@ bool initializeCuVSLAM(const SensorData & data,
         Transform right_pose = left_pose * baseline_transform;
         right_camera.pose = convertCameraPoseToCuVSLAM(right_pose);
         
-        cuvslam_camera_objects->push_back(right_camera);
+        cuvslam_camera_objects.push_back(right_camera);
     }
     
     // Set up camera rig
     CUVSLAM_CameraRig * camera_rig = new CUVSLAM_CameraRig();
-    camera_rig->cameras = cuvslam_camera_objects->data();
-    camera_rig->num_cameras = cuvslam_camera_objects->size();
+    camera_rig->cameras = cuvslam_camera_objects.data();
+    camera_rig->num_cameras = cuvslam_camera_objects.size();
     
     // Create configuration using Isaac ROS pattern
     CUVSLAM_Pose cuvslam_imu_pose;
@@ -605,7 +561,9 @@ bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size)
 {
     if(*current_size != size) {
         // Reallocate GPU memory if size changed
-        cudaFree(*gpu_ptr);
+        if(*gpu_ptr != nullptr) {
+            cudaFree(*gpu_ptr);
+        }
         *gpu_ptr = nullptr;
         cudaError_t cuda_err = cudaMalloc(gpu_ptr, size);
         if(cuda_err != cudaSuccess) {
@@ -617,25 +575,20 @@ bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size)
     return true;
 }
 
-bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, void * & cuda_stream_)
+bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, cudaStream_t & cuda_stream)
 {
     // Initialize CUDA stream if not already done
-    if(cuda_stream_ == nullptr) {
-        cudaStream_t stream;
-        cudaError_t stream_err = cudaStreamCreate(&stream);
+    if(cuda_stream == nullptr) {
+        cudaError_t stream_err = cudaStreamCreate(&cuda_stream);
         if(stream_err != cudaSuccess) {
             UERROR("Failed to create CUDA stream: %s", cudaGetErrorString(stream_err));
             return false;
         }
-        cuda_stream_ = static_cast<void*>(stream);
     }
-    
-    // Cast void * back to cudaStream_t for CUDA API calls
-    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
     
     // Copy CPU data to GPU memory with async operation for better performance
     cudaError_t cuda_err = cudaMemcpyAsync(gpu_ptr, cpu_image.data, size, 
-                                          cudaMemcpyHostToDevice, stream);
+                                          cudaMemcpyHostToDevice, cuda_stream);
     if(cuda_err != cudaSuccess) {
         UERROR("Failed to copy image to GPU: %s", cudaGetErrorString(cuda_err));
         return false;
@@ -644,11 +597,10 @@ bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, v
     return true;
 }
 
-bool synchronizeGpuOperations(void * cuda_stream_)
+bool synchronizeGpuOperations(cudaStream_t cuda_stream)
 {
-    if(cuda_stream_) {
-        cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_);
-        cudaError_t cuda_err = cudaStreamSynchronize(stream);
+    if(cuda_stream) {
+        cudaError_t cuda_err = cudaStreamSynchronize(cuda_stream);
         if(cuda_err != cudaSuccess) {
             UERROR("Failed to synchronize GPU operations: %s", cudaGetErrorString(cuda_err));
             return false;
@@ -662,14 +614,13 @@ bool synchronizeGpuOperations(void * cuda_stream_)
 // ============================================================================
 
 bool prepareImages(const SensorData & data, 
-                   std::vector<CUVSLAM_Image*> & cuvslam_images,
-                   uint8_t * & gpu_left_image_data_,
-                   uint8_t * & gpu_right_image_data_,
-                   size_t & gpu_left_image_size_,
-                   size_t & gpu_right_image_size_,
-                   void * & cuda_stream_)
+                   std::vector<CUVSLAM_Image> & cuvslam_images,
+                   uint8_t * & gpu_left_image_data,
+                   uint8_t * & gpu_right_image_data,
+                   size_t & gpu_left_image_size,
+                   size_t & gpu_right_image_size,
+                   cudaStream_t & cuda_stream)
 {
-    cuvslam_images.clear();
     
     // Convert timestamp to nanoseconds (cuVSLAM expects nanoseconds)
     int64_t timestamp_ns = static_cast<int64_t>(data.stamp() * 1000000000.0);
@@ -716,23 +667,23 @@ bool prepareImages(const SensorData & data,
         
         // Efficient GPU memory allocation and async copy
         size_t left_image_size = processed_left_image.total() * processed_left_image.elemSize();
-        if(!allocateGpuMemory(left_image_size, &gpu_left_image_data_, &gpu_left_image_size_)) {
+        if(!allocateGpuMemory(left_image_size, &gpu_left_image_data, &gpu_left_image_size)) {
             return false;
         }
         
-        if(!copyToGpuAsync(processed_left_image, gpu_left_image_data_, left_image_size, cuda_stream_)) {
+        if(!copyToGpuAsync(processed_left_image, gpu_left_image_data, left_image_size, cuda_stream)) {
             return false;
         }
         
         // Create CUVSLAM_Image for left camera with GPU memory
-        CUVSLAM_Image * left_cuvslam_image = new CUVSLAM_Image();
-        left_cuvslam_image->width = processed_left_image.cols;
-        left_cuvslam_image->height = processed_left_image.rows;
-        left_cuvslam_image->pixels = gpu_left_image_data_;  // GPU memory pointer
-        left_cuvslam_image->timestamp_ns = timestamp_ns;
-        left_cuvslam_image->camera_index = 0;
-        left_cuvslam_image->pitch = processed_left_image.step;
-        left_cuvslam_image->image_encoding = left_encoding;
+        CUVSLAM_Image left_cuvslam_image;
+        left_cuvslam_image.width = processed_left_image.cols;
+        left_cuvslam_image.height = processed_left_image.rows;
+        left_cuvslam_image.pixels = gpu_left_image_data;  // GPU memory pointer
+        left_cuvslam_image.timestamp_ns = timestamp_ns;
+        left_cuvslam_image.camera_index = 0;
+        left_cuvslam_image.pitch = processed_left_image.step;
+        left_cuvslam_image.image_encoding = left_encoding;
         
         cuvslam_images.push_back(left_cuvslam_image);
     }
@@ -783,23 +734,23 @@ bool prepareImages(const SensorData & data,
         
         // Efficient GPU memory allocation and async copy
         size_t right_image_size = processed_right_image.total() * processed_right_image.elemSize();
-        if(!allocateGpuMemory(right_image_size, &gpu_right_image_data_, &gpu_right_image_size_)) {
+        if(!allocateGpuMemory(right_image_size, &gpu_right_image_data, &gpu_right_image_size)) {
             return false;
         }
         
-        if(!copyToGpuAsync(processed_right_image, gpu_right_image_data_, right_image_size, cuda_stream_)) {
+        if(!copyToGpuAsync(processed_right_image, gpu_right_image_data, right_image_size, cuda_stream)) {
             return false;
         }
         
         // Create CUVSLAM_Image for right camera with GPU memory
-        CUVSLAM_Image * right_cuvslam_image = new CUVSLAM_Image();
-        right_cuvslam_image->width = processed_right_image.cols;
-        right_cuvslam_image->height = processed_right_image.rows;
-        right_cuvslam_image->pixels = gpu_right_image_data_;  // GPU memory pointer
-        right_cuvslam_image->timestamp_ns = timestamp_ns;
-        right_cuvslam_image->camera_index = 1;  // Right camera index
-        right_cuvslam_image->pitch = processed_right_image.step;
-        right_cuvslam_image->image_encoding = right_encoding;
+        CUVSLAM_Image right_cuvslam_image;
+        right_cuvslam_image.width = processed_right_image.cols;
+        right_cuvslam_image.height = processed_right_image.rows;
+        right_cuvslam_image.pixels = gpu_right_image_data;  // GPU memory pointer
+        right_cuvslam_image.timestamp_ns = timestamp_ns;
+        right_cuvslam_image.camera_index = 1;  // Right camera index
+        right_cuvslam_image.pitch = processed_right_image.step;
+        right_cuvslam_image.image_encoding = right_encoding;
         
         cuvslam_images.push_back(right_cuvslam_image);
     } 
@@ -811,7 +762,7 @@ bool prepareImages(const SensorData & data,
     
     
     // Synchronize all async GPU operations before returning
-    if(!synchronizeGpuOperations(cuda_stream_)) {
+    if(!synchronizeGpuOperations(cuda_stream)) {
         return false;
     }
     

@@ -62,8 +62,6 @@ private:
 private:
 #ifdef RTABMAP_CUVSLAM
 	// cuVSLAM handles and data structures (using forward-declared types for type safety)
-	std::vector<CUVSLAM_Camera> * cuvslam_camera_objects_;
-	std::vector<CUVSLAM_Image> * cuvslam_image_objects_;
 	CUVSLAM_Tracker * cuvslam_handle_;
 	
 	// State tracking
@@ -72,13 +70,11 @@ private:
 	Transform previous_pose_;
 	double last_timestamp_;
 	
-	
 	// GPU memory management
 	uint8_t * gpu_left_image_data_;
 	uint8_t * gpu_right_image_data_;
 	size_t gpu_left_image_size_;
 	size_t gpu_right_image_size_;
-	void * cuda_stream_;
 #endif
 };
 
