@@ -133,13 +133,19 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
     cuvslam_cameras_.clear();
     
     delete camera_rig_;
+    camera_rig_ = nullptr;
     delete configuration_;
+    configuration_ = nullptr;
     delete cuvslam_camera_objects_;
+    cuvslam_camera_objects_ = nullptr;
     delete cuvslam_image_objects_;
+    cuvslam_image_objects_ = nullptr;
     
     // Clean up GPU memory
     cudaFree(gpu_left_image_data_);
+    gpu_left_image_data_ = nullptr;
     cudaFree(gpu_right_image_data_);
+    gpu_right_image_data_ = nullptr;
     
     // Clean up CUDA stream
     if(cuda_stream_) {
@@ -174,13 +180,17 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     
     // Clean up camera objects vector
     delete cuvslam_camera_objects_;
+    cuvslam_camera_objects_ = nullptr;
     
     // Clean up image objects vector
     delete cuvslam_image_objects_;
+    cuvslam_image_objects_ = nullptr;
     
     // Clean up GPU memory
     cudaFree(gpu_left_image_data_);
+    gpu_left_image_data_ = nullptr;
     cudaFree(gpu_right_image_data_);
+    gpu_right_image_data_ = nullptr;
     
     // Clean up CUDA stream
     if(cuda_stream_) {
@@ -599,6 +609,7 @@ bool OdometryCuVSLAM::allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t 
     if(*current_size != size) {
         // Reallocate GPU memory if size changed
         cudaFree(*gpu_ptr);
+        *gpu_ptr = nullptr;
         cudaError_t cuda_err = cudaMalloc(gpu_ptr, size);
         if(cuda_err != cudaSuccess) {
             UERROR("Failed to allocate GPU memory: %s", cudaGetErrorString(cuda_err));
@@ -951,6 +962,7 @@ cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covarian
     // Handle null covariance pointer
     if(cuvslam_covariance == nullptr)
     {
+        UWARN("Covariance was recieved as a nullptr, proceeding with default infinite covariance");
         cv::Mat default_infinite_covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
         return default_infinite_covariance;
     }
@@ -1003,6 +1015,7 @@ cv::Mat OdometryCuVSLAM::convertCuVSLAMCovariance(const float * cuvslam_covarian
         double diag_val = cv_covariance.at<double>(i, i);
         if(!std::isfinite(diag_val) || diag_val <= 0.0)
         {
+            UWARN("Diagonal element of covariance is not finite or positive, proceeding with default infinite covariance");
             cv_covariance.at<double>(i, i) = 9999.0;  // High uncertainty
         }
     }
