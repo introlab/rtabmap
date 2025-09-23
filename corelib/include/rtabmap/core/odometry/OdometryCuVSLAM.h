@@ -42,7 +42,6 @@ struct CUVSLAM_Tracker;
 struct CUVSLAM_Camera;
 struct CUVSLAM_CameraRig;
 struct CUVSLAM_Configuration;
-struct CUVSLAM_Pose;
 struct CUVSLAM_Image;
 #endif
 

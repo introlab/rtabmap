@@ -72,20 +72,13 @@ namespace rtabmap {
                        size_t & gpu_right_image_size_,
                        void * & cuda_stream_);
     
-    CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform);
-    CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
+    CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
+    CUVSLAM_Pose convertImuPoseToCuVSLAM(const Transform & rtabmap_imu_pose);
     Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
     cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
+
 } // namespace rtabmap
 
-// ============================================================================
-// Forward Declarations
-// ============================================================================
-
-
-// ============================================================================
-// cuVSLAM Constants and Enums
-// ============================================================================
 
 // ============================================================================
 // Coordinate System Transformation Constants
@@ -215,18 +208,19 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     // Reset member variables to initial state
     // Clean up camera rig and configuration
     delete camera_rig_;
+    camera_rig_ = nullptr;
     delete configuration_;
+    configuration_ = nullptr;
+
     // Clean up camera objects
     for(CUVSLAM_Camera* camera : cuvslam_cameras_) {
         delete camera;
     }
     cuvslam_cameras_.clear();
     
-    // Clean up camera objects vector
     delete cuvslam_camera_objects_;
     cuvslam_camera_objects_ = nullptr;
     
-    // Clean up image objects vector
     delete cuvslam_image_objects_;
     cuvslam_image_objects_ = nullptr;
     
@@ -277,11 +271,20 @@ Transform OdometryCuVSLAM::computeTransform(
         UERROR("cuVSLAM odometry requires stereo camera models!");
         return transform;
     }
-    
     // Initialize cuVSLAM tracker on first frame
     if(!initialized_)
     {
-        if(!initializeCuVSLAM(data, cuvslam_cameras_, cuvslam_camera_objects_, camera_rig_, configuration_, cuvslam_handle_, left_camera_params_, right_camera_params_, left_distortion_model_, right_distortion_model_))
+        if(!initializeCuVSLAM(
+            data, 
+            cuvslam_cameras_, 
+            cuvslam_camera_objects_,
+            camera_rig_,
+            configuration_,
+            cuvslam_handle_,
+            left_camera_params_,
+            right_camera_params_,
+            left_distortion_model_,
+            right_distortion_model_))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
             return transform;
@@ -292,7 +295,7 @@ Transform OdometryCuVSLAM::computeTransform(
         transform = Transform::getIdentity();
         if(info)
         {
-            info->type = 0; // Initialization
+            info->type = 0; // Success: Initialization successful
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
             info->timeEstimation = timer.ticks();
         }
@@ -305,7 +308,17 @@ Transform OdometryCuVSLAM::computeTransform(
     
     // Prepare images for cuVSLAM
     std::vector<CUVSLAM_Image*> cuvslam_images;
-    if(!prepareImages(data, cuvslam_images, cuvslam_cameras_, processed_left_image_, processed_right_image_, gpu_left_image_data_, gpu_right_image_data_, gpu_left_image_size_, gpu_right_image_size_, cuda_stream_))
+    if(!prepareImages(
+        data,
+        cuvslam_images,
+        cuvslam_cameras_,
+        processed_left_image_,
+        processed_right_image_,
+        gpu_left_image_data_,
+        gpu_right_image_data_,
+        gpu_left_image_size_,
+        gpu_right_image_size_,
+        cuda_stream_))
     {
         UERROR("Failed to prepare images for cuVSLAM");
         // Clean up any images that were created before the failure
@@ -350,22 +363,6 @@ Transform OdometryCuVSLAM::computeTransform(
         return transform;
     }
     
-    // Validate image properties
-    for(size_t i = 0; i < cuvslam_image_objects_->size(); ++i) {
-        const auto& img = (*cuvslam_image_objects_)[i];
-        if(img.width <= 0 || img.height <= 0) {
-            UERROR("Invalid image dimensions: %dx%d", img.width, img.height);
-            return transform;
-        }
-        if(img.pixels == nullptr) {
-            UERROR("Image %d has null pixel data", static_cast<int>(i));
-            return transform;
-        }
-        if(img.camera_index < 0 || img.camera_index >= static_cast<int>(cuvslam_cameras_.size())) {
-            UERROR("Invalid camera index %d (max: %d)", img.camera_index, static_cast<int>(cuvslam_cameras_.size()-1));
-            return transform;
-        }
-    }
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
     
@@ -441,7 +438,13 @@ Transform OdometryCuVSLAM::computeTransform(
     {
         transform = current_pose;
     }
-    
+
+    // Log time between odom publishing
+    const double time_between_odom_publishing = data.stamp() - last_timestamp_;
+    UWARN("Time between odom publishing: %fs", time_between_odom_publishing);
+    const double odom_publishing_frequency = 1.0 / time_between_odom_publishing;
+    UWARN("Odom publishing frequency: %fHz", odom_publishing_frequency);
+
     // Update tracking state
     lost_ = false;
     previous_pose_ = current_pose;
@@ -471,16 +474,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        float right_camera_params_[4],
                        const char * & left_distortion_model_,
                        const char * & right_distortion_model_)
-{
-    cuvslam_cameras.clear();
-        
-    // cuVSLAM only supports stereo cameras
-    if(data.stereoCameraModels().size() == 0)
-    {
-        UERROR("cuVSLAM odometry requires stereo camera models! Monocular cameras are not supported.");
-        return false;
-    }
-    
+{    
     // Validate stereo camera models
     for(size_t i = 0; i < data.stereoCameraModels().size(); ++i)
     {
@@ -516,9 +510,7 @@ bool initializeCuVSLAM(const SensorData & data,
         
         // Set camera pose (extrinsics) from localTransform with proper coordinate system conversion
         Transform left_pose = leftModel.localTransform();
-        CUVSLAM_Pose * cuvslam_pose = convertCameraPoseToCuVSLAM(left_pose);
-        left_camera.pose = *cuvslam_pose;
-        delete cuvslam_pose;
+        left_camera.pose = convertCameraPoseToCuVSLAM(left_pose);
     
         cuvslam_cameras.push_back(new CUVSLAM_Camera(left_camera));
         
@@ -547,9 +539,7 @@ bool initializeCuVSLAM(const SensorData & data,
                                      0, 1, 0, 0,
                                      0, 0, 1, 0);
         Transform right_pose = left_pose * baseline_transform;
-        CUVSLAM_Pose * right_cuvslam_pose = convertCameraPoseToCuVSLAM(right_pose);
-        right_camera.pose = *right_cuvslam_pose;
-        delete right_cuvslam_pose;
+        right_camera.pose = convertCameraPoseToCuVSLAM(right_pose);
         
         cuvslam_cameras.push_back(new CUVSLAM_Camera(right_camera));
     }
@@ -581,9 +571,8 @@ bool initializeCuVSLAM(const SensorData & data,
     // }
     
     // No IMU for now, use identity pose
-    CUVSLAM_Pose * imu_pose = rtabmapTransformToCuVSLAMPose(Transform::getIdentity());
-    cuvslam_imu_pose = *imu_pose;
-    delete imu_pose;
+    CUVSLAM_Pose cuvslam_imu_pose = convertImuPoseToCuVSLAM(Transform::getIdentity());
+
     
     configuration = CreateConfiguration(&cuvslam_imu_pose);
     
@@ -733,16 +722,8 @@ bool prepareImages(const SensorData & data,
     // Convert timestamp to nanoseconds (cuVSLAM expects nanoseconds)
     int64_t timestamp_ns = static_cast<int64_t>(data.stamp() * 1000000000.0);
     
-    
-    // cuVSLAM only supports stereo cameras
-    if(data.stereoCameraModels().size() == 0)
-    {
-        UERROR("cuVSLAM odometry requires stereo camera models! Monocular cameras are not supported.");
-        return false;
-    }
-    
     // Process all stereo pairs, assume one camera pair
-    // TODO: H
+    // TODO: Handle multiple camera pairs
     if(!data.imageRaw().empty())
     {
         cv::Mat left_image = data.imageRaw();
@@ -754,21 +735,25 @@ bool prepareImages(const SensorData & data,
             return false;
         }
         
-        // Convert to RGB format for cuVSLAM (cuVSLAM expects RGB8 for stereo)
+        // Convert image format for cuVSLAM
+        CUVSLAM_ImageEncoding left_encoding;
         if(left_image.channels() == 1) {
-            // Convert grayscale to RGB
-            cv::cvtColor(left_image, processed_left_image_, cv::COLOR_GRAY2RGB);
+            // Keep grayscale as MONO8
+            processed_left_image_ = left_image.clone();
+            left_encoding = CUVSLAM_ImageEncoding::MONO8;
         } else if(left_image.channels() == 3) {
             // Convert BGR to RGB
             cv::cvtColor(left_image, processed_left_image_, cv::COLOR_BGR2RGB);
+            left_encoding = CUVSLAM_ImageEncoding::RGB8;
         } else {
             UERROR("Unsupported left image format: %d channels", left_image.channels());
             return false;
         }
         
         // Validate converted image
-        if(processed_left_image_.channels() != 3) {
-            UERROR("ERROR: Left image conversion failed - expected 3 channels, got %d", processed_left_image_.channels());
+        int expected_channels = (left_encoding == CUVSLAM_ImageEncoding::MONO8) ? 1 : 3;
+        if(processed_left_image_.channels() != expected_channels) {
+            UERROR("ERROR: Left image conversion failed - expected %d channels, got %d", expected_channels, processed_left_image_.channels());
             return false;
         }
         if(processed_left_image_.data == nullptr) {
@@ -794,7 +779,7 @@ bool prepareImages(const SensorData & data,
         left_cuvslam_image->timestamp_ns = timestamp_ns;
         left_cuvslam_image->camera_index = 0;
         left_cuvslam_image->pitch = processed_left_image_.step;
-        left_cuvslam_image->image_encoding = CUVSLAM_ImageEncoding::RGB8; // Always RGB8 for cuVSLAM
+        left_cuvslam_image->image_encoding = left_encoding;
         
         cuvslam_images.push_back(left_cuvslam_image);
     }
@@ -816,21 +801,25 @@ bool prepareImages(const SensorData & data,
             return false;
         }
         
-        // Convert to RGB format for cuVSLAM (cuVSLAM expects RGB8 for stereo)
+        // Convert image format for cuVSLAM
+        CUVSLAM_ImageEncoding right_encoding;
         if(right_image.channels() == 1) {
-            // Convert grayscale to RGB
-            cv::cvtColor(right_image, processed_right_image_, cv::COLOR_GRAY2RGB);
+            // Keep grayscale as MONO8
+            processed_right_image_ = right_image.clone();
+            right_encoding = CUVSLAM_ImageEncoding::MONO8;
         } else if(right_image.channels() == 3) {
             // Convert BGR to RGB
             cv::cvtColor(right_image, processed_right_image_, cv::COLOR_BGR2RGB);
+            right_encoding = CUVSLAM_ImageEncoding::RGB8;
         } else {
             UERROR("Unsupported right image format: %d channels", right_image.channels());
             return false;
         }
         
         // Validate converted image
-        if(processed_right_image_.channels() != 3) {
-            UERROR("ERROR: Right image conversion failed - expected 3 channels, got %d", processed_right_image_.channels());
+        int expected_channels = (right_encoding == CUVSLAM_ImageEncoding::MONO8) ? 1 : 3;
+        if(processed_right_image_.channels() != expected_channels) {
+            UERROR("ERROR: Right image conversion failed - expected %d channels, got %d", expected_channels, processed_right_image_.channels());
             return false;
         }
         if(processed_right_image_.data == nullptr) {
@@ -856,7 +845,7 @@ bool prepareImages(const SensorData & data,
         right_cuvslam_image->timestamp_ns = timestamp_ns;
         right_cuvslam_image->camera_index = 1;  // Right camera index
         right_cuvslam_image->pitch = processed_right_image_.step;
-        right_cuvslam_image->image_encoding = CUVSLAM_ImageEncoding::RGB8; // Always RGB8 for cuVSLAM
+        right_cuvslam_image->image_encoding = right_encoding;
         
         cuvslam_images.push_back(right_cuvslam_image);
     } 
@@ -896,8 +885,6 @@ bool prepareImages(const SensorData & data,
 // ============================================================================
 // Coordinate System and Transform Conversion Functions
 // ============================================================================
-
-// TODO: Go back through these transformations and clean them up!
 
 // Convert RTAB-Map Transform to tf2::Transform (same coordinate system!)
 tf2::Transform rtabmapToTf2(const Transform & rtabmap_transform) {
@@ -947,9 +934,10 @@ CUVSLAM_Pose TocuVSLAMPose(const tf2::Transform & tf_mat)
 tf2::Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
 {
   const auto & r = cuvslam_pose.r;
+  const auto & t = cuvslam_pose.t;
   // tf2::Matrix3x3 is row major and cuVSLAM rotation mat is column major.
   const tf2::Matrix3x3 rotation(r[0], r[3], r[6], r[1], r[4], r[7], r[2], r[5], r[8]);
-  const tf2::Vector3 translation(cuvslam_pose.t[0], cuvslam_pose.t[1], cuvslam_pose.t[2]);
+  const tf2::Vector3 translation(t[0], t[1], t[2]);
 
   return tf2::Transform(rotation, translation);
 }
@@ -962,29 +950,35 @@ tf2::Transform ChangeBasis(
   return target_pose_source * source_pose_source * target_pose_source.inverse();
 }
 
-CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & rtabmap_transform) {
-    tf2::Transform tf2_transform = rtabmapToTf2(rtabmap_transform);
-    CUVSLAM_Pose* pose = new CUVSLAM_Pose(TocuVSLAMPose(tf2_transform));
-    return pose;
-}
 
 // Helper function to convert camera pose from RTABMap to cuVSLAM coordinate system
 // Based on Isaac ROS FillExtrinsics implementation
-CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) {
+CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) {
     // Convert RTABMap Transform to tf2::Transform
     tf2::Transform tf2_camera_pose = rtabmapToTf2(rtabmap_camera_pose);
     
     // Apply coordinate system transformation:
     // RTABMap robot frame -> cuVSLAM robot frame -> cuVSLAM camera frame
     // This follows the same pattern as Isaac ROS FillExtrinsics
-    const tf2::Transform cuvslam_robot_pose_cuvslam_camera = 
+    const tf2::Transform tf2_camera_pose_cuvslam = 
         cuvslam_pose_canonical * tf2_camera_pose * optical_pose_cuvslam;
     
-    CUVSLAM_Pose * pose = new CUVSLAM_Pose(TocuVSLAMPose(cuvslam_robot_pose_cuvslam_camera));
-    return pose;
+    return TocuVSLAMPose(tf2_camera_pose_cuvslam);
 }
 
-
+// Helper function to convert IMU pose from RTABMap to cuVSLAM coordinate system
+// Based on Isaac ROS IMU handling - does NOT apply optical transform
+CUVSLAM_Pose convertImuPoseToCuVSLAM(const Transform & rtabmap_imu_pose) {
+    // Convert RTABMap Transform to tf2::Transform
+    tf2::Transform tf2_imu_pose = rtabmapToTf2(rtabmap_imu_pose);
+    
+    // Apply coordinate system transformation:
+    // RTABMap robot frame -> cuVSLAM robot frame
+    // This follows the same pattern as Isaac ROS IMU handling
+    const tf2::Transform tf2_imu_pose_cuvslam = cuvslam_pose_canonical * tf2_imu_pose;
+    
+    return TocuVSLAMPose(tf2_imu_pose_cuvslam);
+}
 
 /*
 Convert cuVSLAM pose to RTAB-Map Transform.
@@ -994,11 +988,11 @@ Applies coordinate system transformation from cuVSLAM frame to RTAB-Map frame.
 Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose) 
 {
     // Convert cuVSLAM pose to tf2::Transform (cuVSLAM coordinate system)
-    tf2::Transform cv_odom_pose_cv_base_link = FromcuVSLAMPose(*cuvslam_pose);
+    tf2::Transform tf2_odom_pose_cuvslam = FromcuVSLAMPose(*cuvslam_pose);
     
-    // Apply coordinate system transformation from cuVSLAM to RTAB-Map
-    // Following Isaac ROS pattern exactly: ChangeBasis(canonical_pose_cuvslam, cv_odom_pose_cv_base_link)
-    tf2::Transform rtabmap_tf2_transform = ChangeBasis(canonical_pose_cuvslam, cv_odom_pose_cv_base_link);
+    // Apply coordinate system transformation from cuVSLAM to RTAB-Map (ROS conventions)
+    // Following Isaac ROS pattern exactly
+    tf2::Transform rtabmap_tf2_transform = ChangeBasis(canonical_pose_cuvslam, tf2_odom_pose_cuvslam);
     
     // Convert tf2::Transform to RTAB-Map Transform using the proper constructor
     const tf2::Matrix3x3 & rtabmap_rotation = rtabmap_tf2_transform.getBasis();
