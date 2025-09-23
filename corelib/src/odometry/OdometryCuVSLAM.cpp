@@ -1,4 +1,5 @@
 /*
+Copyright (c) 2025 Felix Toft
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -457,7 +458,7 @@ Transform OdometryCuVSLAM::computeTransform(
 // cuVSLAM Initialization and Configuration
 // ============================================================================
 
-bool OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
+bool  OdometryCuVSLAM::initializeCuVSLAM(const SensorData & data)
 {
     cuvslam_cameras_.clear();
         
