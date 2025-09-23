@@ -60,20 +60,6 @@ public:
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
-	// Helper functions for cuVSLAM integration (internal implementation details)
-	bool initializeCuVSLAM(const SensorData & data);
-	bool prepareImages(const SensorData & data, std::vector<CUVSLAM_Image*> & cuvslam_images);
-	Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
-	cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
-	CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
-	CUVSLAM_Pose * convertCameraPoseToCuVSLAM(const Transform & transform);
-	CUVSLAM_Pose * rtabmapTransformToCuVSLAMPose(const Transform & transform);
-	
-	// GPU memory management helper functions
-	bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size);
-	bool copyToGpuAsync(const cv::Mat& cpu_image, uint8_t * gpu_ptr, size_t size);
-	bool synchronizeGpuOperations();
-
 private:
 #ifdef RTABMAP_CUVSLAM
 	// cuVSLAM handles and data structures (using forward-declared types for type safety)
