@@ -62,12 +62,9 @@ private:
 private:
 #ifdef RTABMAP_CUVSLAM
 	// cuVSLAM handles and data structures (using forward-declared types for type safety)
-	CUVSLAM_Tracker * cuvslam_handle_;
-	std::vector<CUVSLAM_Camera*> cuvslam_cameras_;
 	std::vector<CUVSLAM_Camera> * cuvslam_camera_objects_;
 	std::vector<CUVSLAM_Image> * cuvslam_image_objects_;
-	CUVSLAM_CameraRig * camera_rig_;
-	CUVSLAM_Configuration * configuration_;
+	CUVSLAM_Tracker * cuvslam_handle_;
 	
 	// State tracking
 	bool initialized_;
@@ -75,13 +72,6 @@ private:
 	Transform previous_pose_;
 	double last_timestamp_;
 	
-	// Camera parameter storage (to keep them in scope)
-	float left_camera_params_[4];
-	float right_camera_params_[4];
-	
-	// Distortion model strings (to keep them in scope)
-	const char * left_distortion_model_;
-	const char * right_distortion_model_;
 	
 	// GPU memory management
 	uint8_t * gpu_left_image_data_;

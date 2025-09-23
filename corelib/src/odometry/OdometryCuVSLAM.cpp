@@ -49,23 +49,13 @@ namespace rtabmap {
 
     // Forward declarations for helper functions
 bool initializeCuVSLAM(const SensorData & data, 
-                       std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
                        std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
-                       CUVSLAM_CameraRig * & camera_rig,
-                       CUVSLAM_Configuration * & configuration,
-                       CUVSLAM_Tracker * & cuvslam_handle,
-                       float left_camera_params[4],
-                       float right_camera_params[4],
-                       const char * & left_distortion_model,
-                       const char * & right_distortion_model);
+                       CUVSLAM_Tracker * & cuvslam_handle);
     
     CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
     
     bool prepareImages(const SensorData & data, 
                        std::vector<CUVSLAM_Image*> & cuvslam_images,
-                       const std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
-                       cv::Mat & processed_left_image_,
-                       cv::Mat & processed_right_image_,
                        uint8_t * & gpu_left_image_data_,
                        uint8_t * & gpu_right_image_data_,
                        size_t & gpu_left_image_size_,
@@ -132,19 +122,13 @@ namespace rtabmap {
 OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     Odometry(parameters),
 #ifdef RTABMAP_CUVSLAM
-    cuvslam_handle_(nullptr),
     cuvslam_camera_objects_(nullptr),
     cuvslam_image_objects_(nullptr),
-    camera_rig_(nullptr),
-    configuration_(nullptr),
+    cuvslam_handle_(nullptr),
     initialized_(false),
     lost_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
-    left_camera_params_{0.0f, 0.0f, 0.0f, 0.0f},
-    right_camera_params_{0.0f, 0.0f, 0.0f, 0.0f},
-    left_distortion_model_(nullptr),
-    right_distortion_model_(nullptr),
     gpu_left_image_data_(nullptr),
     gpu_right_image_data_(nullptr),
     gpu_left_image_size_(0),
@@ -164,15 +148,7 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         cuvslam_handle_ = nullptr;
     }
         
-    for(CUVSLAM_Camera * camera : cuvslam_cameras_) {
-        delete camera;
-    }
-    cuvslam_cameras_.clear();
     
-    delete camera_rig_;
-    camera_rig_ = nullptr;
-    delete configuration_;
-    configuration_ = nullptr;
     delete cuvslam_camera_objects_;
     cuvslam_camera_objects_ = nullptr;
     delete cuvslam_image_objects_;
@@ -207,16 +183,8 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         
     // Reset member variables to initial state
     // Clean up camera rig and configuration
-    delete camera_rig_;
-    camera_rig_ = nullptr;
-    delete configuration_;
-    configuration_ = nullptr;
 
     // Clean up camera objects
-    for(CUVSLAM_Camera* camera : cuvslam_cameras_) {
-        delete camera;
-    }
-    cuvslam_cameras_.clear();
     
     delete cuvslam_camera_objects_;
     cuvslam_camera_objects_ = nullptr;
@@ -276,15 +244,8 @@ Transform OdometryCuVSLAM::computeTransform(
     {
         if(!initializeCuVSLAM(
             data, 
-            cuvslam_cameras_, 
             cuvslam_camera_objects_,
-            camera_rig_,
-            configuration_,
-            cuvslam_handle_,
-            left_camera_params_,
-            right_camera_params_,
-            left_distortion_model_,
-            right_distortion_model_))
+            cuvslam_handle_))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
             return transform;
@@ -311,7 +272,6 @@ Transform OdometryCuVSLAM::computeTransform(
     if(!prepareImages(
         data,
         cuvslam_images,
-        cuvslam_cameras_,
         gpu_left_image_data_,
         gpu_right_image_data_,
         gpu_left_image_size_,
@@ -351,13 +311,9 @@ Transform OdometryCuVSLAM::computeTransform(
         return transform;
     }
     
-    // Validate camera rig and configuration
-    if(!camera_rig_) {
-        UERROR("Camera rig is null!");
-        return transform;
-    }
-    if(!configuration_) {
-        UERROR("cuVSLAM configuration is null!");
+    // Validate cuVSLAM tracker
+    if(!cuvslam_handle_) {
+        UERROR("cuVSLAM tracker is null!");
         return transform;
     }
     
@@ -463,16 +419,23 @@ Transform OdometryCuVSLAM::computeTransform(
 // ============================================================================
 
 bool initializeCuVSLAM(const SensorData & data, 
-                       std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
                        std::vector<CUVSLAM_Camera> * & cuvslam_camera_objects,
-                       CUVSLAM_CameraRig * & camera_rig,
-                       CUVSLAM_Configuration * & configuration,
-                       CUVSLAM_Tracker * & cuvslam_handle,
-                       float left_camera_params[4],
-                       float right_camera_params[4],
-                       const char * & left_distortion_model,
-                       const char * & right_distortion_model)
+                       CUVSLAM_Tracker * & cuvslam_handle)
 {    
+    // Local camera parameters
+    float left_camera_params[4];
+    float right_camera_params[4];
+    
+    // Local distortion model strings
+    const char * left_distortion_model = "pinhole";
+    const char * right_distortion_model = "pinhole";
+    
+    if (!cuvslam_camera_objects) {
+        cuvslam_camera_objects = new std::vector<CUVSLAM_Camera>();
+    }else {
+        cuvslam_camera_objects->clear();
+    }
+    
     // Validate stereo camera models
     for(size_t i = 0; i < data.stereoCameraModels().size(); ++i)
     {
@@ -502,7 +465,6 @@ bool initializeCuVSLAM(const SensorData & data,
         left_camera.parameters = left_camera_params;
         
         // Set pinhole model with zero distortion (rectified images)
-        left_distortion_model = "pinhole";
         left_camera.distortion_model = left_distortion_model;
         left_camera.num_parameters = 4;
         
@@ -510,7 +472,7 @@ bool initializeCuVSLAM(const SensorData & data,
         Transform left_pose = leftModel.localTransform();
         left_camera.pose = convertCameraPoseToCuVSLAM(left_pose);
     
-        cuvslam_cameras.push_back(new CUVSLAM_Camera(left_camera));
+        cuvslam_camera_objects->push_back(left_camera);
         
         CUVSLAM_Camera right_camera;
         right_camera.width = rightModel.imageWidth();
@@ -524,7 +486,6 @@ bool initializeCuVSLAM(const SensorData & data,
         right_camera.parameters = right_camera_params;
         
         // Set pinhole model with zero distortion (rectified images)
-        right_distortion_model = "pinhole";
         right_camera.distortion_model = right_distortion_model;
         right_camera.num_parameters = 4;
         
@@ -539,19 +500,11 @@ bool initializeCuVSLAM(const SensorData & data,
         Transform right_pose = left_pose * baseline_transform;
         right_camera.pose = convertCameraPoseToCuVSLAM(right_pose);
         
-        cuvslam_cameras.push_back(new CUVSLAM_Camera(right_camera));
+        cuvslam_camera_objects->push_back(right_camera);
     }
     
     // Set up camera rig
-    camera_rig = new CUVSLAM_CameraRig();
-    // Create persistent array of camera objects for cuVSLAM API
-    if (!cuvslam_camera_objects) {
-        cuvslam_camera_objects = new std::vector<CUVSLAM_Camera>();
-    }
-    cuvslam_camera_objects->clear();
-    for(CUVSLAM_Camera* cam_ptr : cuvslam_cameras) {
-        cuvslam_camera_objects->push_back(*cam_ptr);
-    }
+    CUVSLAM_CameraRig * camera_rig = new CUVSLAM_CameraRig();
     camera_rig->cameras = cuvslam_camera_objects->data();
     camera_rig->num_cameras = cuvslam_camera_objects->size();
     
@@ -572,7 +525,7 @@ bool initializeCuVSLAM(const SensorData & data,
     cuvslam_imu_pose = convertImuPoseToCuVSLAM(Transform::getIdentity());
 
     
-    configuration = CreateConfiguration(&cuvslam_imu_pose);
+    CUVSLAM_Configuration * configuration = CreateConfiguration(&cuvslam_imu_pose);
     
     // Enable IMU fusion if we have IMU data
     if (!data.imu().empty()) {
@@ -583,6 +536,10 @@ bool initializeCuVSLAM(const SensorData & data,
     CUVSLAM_TrackerHandle tracker_handle;
     CUVSLAM_Status status = CUVSLAM_CreateTracker(&tracker_handle, camera_rig, configuration);
     cuvslam_handle = tracker_handle;
+
+    delete configuration;
+    delete camera_rig;
+
     if(status != CUVSLAM_SUCCESS)
     {
         UERROR("Failed to create cuVSLAM tracker: %d", status);
@@ -706,7 +663,6 @@ bool synchronizeGpuOperations(void * cuda_stream_)
 
 bool prepareImages(const SensorData & data, 
                    std::vector<CUVSLAM_Image*> & cuvslam_images,
-                   const std::vector<CUVSLAM_Camera*> & cuvslam_cameras,
                    uint8_t * & gpu_left_image_data_,
                    uint8_t * & gpu_right_image_data_,
                    size_t & gpu_left_image_size_,
@@ -853,24 +809,6 @@ bool prepareImages(const SensorData & data,
         return false;
     }
     
-    // Validate prepared images
-    for(size_t i = 0; i < cuvslam_images.size(); ++i) {
-        const auto& img = cuvslam_images[i];
-        if(img->width <= 0 || img->height <= 0) {
-            UERROR("Prepared image %d has invalid dimensions: %dx%d", 
-                   static_cast<int>(i), img->width, img->height);
-            return false;
-        }
-        if(img->pixels == nullptr) {
-            UERROR("Prepared image %d has null pixel data!", static_cast<int>(i));
-            return false;
-        }
-        if(img->camera_index < 0 || img->camera_index >= static_cast<int>(cuvslam_cameras.size())) {
-            UERROR("Prepared image %d has invalid camera index %d (max: %d)", 
-                   static_cast<int>(i), img->camera_index, static_cast<int>(cuvslam_cameras.size()-1));
-            return false;
-        }
-    }
     
     // Synchronize all async GPU operations before returning
     if(!synchronizeGpuOperations(cuda_stream_)) {
