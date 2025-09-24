@@ -62,12 +62,7 @@ const rtabmap::Transform cuvslam_pose_canonical(
 // Transformation converting from
 // cuVSLAM Frame       (x-right, y-up, z-backward) to
 // Canonical ROS Frame (x-forward, y-left, z-up)
-// Manually calculated inverse to avoid potential precision issues
-const rtabmap::Transform canonical_pose_cuvslam(
-    0, 0, -1, 0,
-    -1, 0, 0, 0,
-    0, 1, 0, 0
-);
+const rtabmap::Transform canonical_pose_cuvslam = cuvslam_pose_canonical.inverse();
 
 // Transformation converting from
 // Optical Frame    (x-right, y-down, z-forward) to
@@ -85,12 +80,7 @@ const rtabmap::Transform cuvslam_pose_optical(
 // Transformation converting from
 // cuVSLAM Frame    (x-right, y-up, z-backward) to
 // Optical Frame    (x-right, y-down, z-forward)
-// Manually calculated inverse to avoid potential precision issues
-const rtabmap::Transform optical_pose_cuvslam(
-    1, 0, 0, 0,
-    0, -1, 0, 0,
-    0, 0, -1, 0
-);
+const rtabmap::Transform optical_pose_cuvslam = cuvslam_pose_optical.inverse();
 
 
 // ============================================================================
@@ -461,7 +451,7 @@ bool initializeCuVSLAM(const SensorData & data,
         Transform baseline_transform(1, 0, 0, baseline,
                                      0, 1, 0, 0,
                                      0, 0, 1, 0);
-        Transform right_pose = baseline_transform * left_pose;
+        Transform right_pose = left_pose * baseline_transform;
         right_camera.pose = convertCameraPoseToCuVSLAM(right_pose);
         
         cuvslam_camera_objects.push_back(right_camera);
