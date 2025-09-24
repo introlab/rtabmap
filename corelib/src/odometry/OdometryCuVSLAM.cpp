@@ -157,13 +157,12 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     Odometry::reset(initialPose);
     
 #ifdef RTABMAP_CUVSLAM
-    // Destroy existing tracker first (before cleaning up parameters it might be using)
     if(cuvslam_handle_)
     {
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
-        
+    
     // Clean up GPU memory
     if(gpu_left_image_data_) {
         cudaFree(gpu_left_image_data_);
@@ -173,13 +172,12 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         cudaFree(gpu_right_image_data_);
         gpu_right_image_data_ = nullptr;
     }
-    
+    // Only reset our internal state variables
+    gpu_left_image_size_ = 0;
+    gpu_right_image_size_ = 0;
     initialized_ = false;
     lost_ = false;
     previous_pose_ = initialPose;
-    last_timestamp_ = -1.0;
-    gpu_left_image_size_ = 0;
-    gpu_right_image_size_ = 0;
 #endif
 }
 
@@ -303,6 +301,7 @@ Transform OdometryCuVSLAM::computeTransform(
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
             info->timeEstimation = timer.ticks();
         }
+        transform.setNull();
         return transform;
     }
     else if(vo_status != CUVSLAM_SUCCESS)
@@ -897,8 +896,10 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
         Eigen::Map<Eigen::Matrix<float, 6, 6, Eigen::StorageOptions::AutoAlign>>(const_cast<float*>(covariance));
     
     // Reorder covariance matrix elements
-    // cuVSLAM order: (rotation about X, rotation about Y, rotation about Z, x, y, z)
-    // RTAB-Map order: (x, y, z, rotation about X, rotation about Y, rotation about Z)
+    // The covariance matrix from cuVSLAM arranges elements as follows:
+    // (rotation about X axis, rotation about Y axis, rotation about Z axis, x, y, z)
+    // However, in RTAB-Map, the order is:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
     Eigen::Matrix<float, 6, 6> rtabmap_covariance_mat = Eigen::Matrix<float, 6, 6>::Zero();
     rtabmap_covariance_mat.block<3, 3>(0, 0) = covariance_mat.block<3, 3>(3, 3);  // translation-translation
     rtabmap_covariance_mat.block<3, 3>(0, 3) = covariance_mat.block<3, 3>(3, 0);  // translation-rotation
