@@ -38,16 +38,67 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Transform.h"
 #include <cuvslam.h>
 #include <opencv2/opencv.hpp>
-#include <tf2/LinearMath/Transform.h>
-#include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2/LinearMath/Vector3.h>
 #include <eigen3/Eigen/Dense>
 #include <cuda_runtime.h>
 
+// ============================================================================
+// Coordinate System Transformation Constants
+// Based on Isaac ROS implementation:
+// Source: isaac_ros_visual_slam/include/isaac_ros_visual_slam/impl/cuvslam_ros_conversion.hpp
+// ============================================================================
+
+// Transformation converting from
+// Canonical ROS Frame (x-forward, y-left, z-up) to
+// cuVSLAM Frame       (x-right, y-up, z-backward)
+//  x     ->    -z
+//  y     ->    -x
+//  z     ->     y
+const rtabmap::Transform cuvslam_pose_canonical(
+    0, -1, 0, 0,
+    0, 0, 1, 0,
+    -1, 0, 0, 0
+);
+
+// Transformation converting from
+// cuVSLAM Frame       (x-right, y-up, z-backward) to
+// Canonical ROS Frame (x-forward, y-left, z-up)
+// Manually calculated inverse to avoid potential precision issues
+const rtabmap::Transform canonical_pose_cuvslam(
+    0, 0, -1, 0,
+    -1, 0, 0, 0,
+    0, 1, 0, 0
+);
+
+// Transformation converting from
+// Optical Frame    (x-right, y-down, z-forward) to
+// cuVSLAM Frame    (x-right, y-up, z-backward)
+// Optical   ->  cuVSLAM
+//    x      ->     x
+//    y      ->    -y
+//    z      ->    -z
+const rtabmap::Transform cuvslam_pose_optical(
+    1, 0, 0, 0,
+    0, -1, 0, 0,
+    0, 0, -1, 0
+);
+
+// Transformation converting from
+// cuVSLAM Frame    (x-right, y-up, z-backward) to
+// Optical Frame    (x-right, y-down, z-forward)
+// Manually calculated inverse to avoid potential precision issues
+const rtabmap::Transform optical_pose_cuvslam(
+    1, 0, 0, 0,
+    0, -1, 0, 0,
+    0, 0, -1, 0
+);
+
+
+// ============================================================================
+// Forward Declarations
+// ============================================================================
 
 namespace rtabmap {
 
-    // Forward declarations for helper functions
 bool initializeCuVSLAM(const SensorData & data, 
                        CUVSLAM_Tracker * & cuvslam_handle);
     
@@ -66,49 +117,7 @@ CUVSLAM_Pose convertImuPoseToCuVSLAM(const Transform & rtabmap_imu_pose);
 Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose);
 cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
 
-} // namespace rtabmap
-
-
-// ============================================================================
-// Coordinate System Transformation Constants
-// Based on Isaac ROS implementation:
-// Source: isaac_ros_visual_slam/include/isaac_ros_visual_slam/impl/cuvslam_ros_conversion.hpp
-// ============================================================================
-
-// Transformation converting from
-// Canonical ROS Frame (x-forward, y-left, z-up) to
-// cuVSLAM Frame       (x-right, y-up, z-backward)
-//  x     ->    -z
-//  y     ->    -x
-//  z     ->     y
-const tf2::Transform cuvslam_pose_canonical(tf2::Matrix3x3(
-    0, -1, 0,
-    0, 0, 1,
-    -1, 0, 0
-));
-
-// Transformation converting from
-// cuVSLAM Frame       (x-right, y-up, z-backward) to
-// Canonical ROS Frame (x-forward, y-left, z-up)
-const tf2::Transform canonical_pose_cuvslam(cuvslam_pose_canonical.inverse());
-
-// Transformation converting from
-// Optical Frame    (x-right, y-down, z-forward) to
-// cuVSLAM Frame    (x-right, y-up, z-backward)
-// Optical   ->  cuVSLAM
-//    x      ->     x
-//    y      ->    -y
-//    z      ->    -z
-const tf2::Transform cuvslam_pose_optical(tf2::Matrix3x3(
-    1, 0, 0,
-    0, -1, 0,
-    0, 0, -1
-));
-
-// Transformation converting from
-// cuVSLAM Frame    (x-right, y-up, z-backward) to
-// Optical Frame    (x-right, y-down, z-forward)
-const tf2::Transform optical_pose_cuvslam(cuvslam_pose_optical.inverse());
+}
 
 #endif
 
@@ -772,66 +781,50 @@ bool prepareImages(const SensorData & data,
 // Coordinate System and Transform Conversion Functions
 // ============================================================================
 
-// Convert RTAB-Map Transform to tf2::Transform (same coordinate system!)
-tf2::Transform rtabmapToTf2(const Transform & rtabmap_transform) {
-    // https://docs.ros.org/en/jade/api/rtabmap/html/classrtabmap_1_1Transform.html
-    tf2::Matrix3x3 rotation(
-        rtabmap_transform.r11(), rtabmap_transform.r12(), rtabmap_transform.r13(),
-        rtabmap_transform.r21(), rtabmap_transform.r22(), rtabmap_transform.r23(),
-        rtabmap_transform.r31(), rtabmap_transform.r32(), rtabmap_transform.r33()
-    );
-    
-    tf2::Vector3 translation(
-        rtabmap_transform.x(),
-        rtabmap_transform.y(), 
-        rtabmap_transform.z()
-    );
-    
-    return tf2::Transform(rotation, translation);
-}
-
-// Helper function that converts transform into CUVSLAM_Pose
-// Taken directly from isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp
-CUVSLAM_Pose TocuVSLAMPose(const tf2::Transform & tf_mat)
+// Helper function that converts RTAB-Map Transform into CUVSLAM_Pose
+// Based on Isaac ROS implementation but using RTAB-Map Transform directly
+CUVSLAM_Pose TocuVSLAMPose(const Transform & rtabmap_transform)
 {
   CUVSLAM_Pose cuvslamPose;
-  // tf2::Matrix3x3 is row major, but cuvslam is column major
-  const tf2::Matrix3x3 rotation(tf_mat.getRotation());
+  // RTAB-Map Transform is row major, but cuVSLAM is column major
+  // We need to transpose the rotation matrix when converting
   const int32_t kRotationMatCol = 3;
   const int32_t kRotationMatRow = 3;
   int cuvslam_idx = 0;
   for (int col_idx = 0; col_idx < kRotationMatCol; ++col_idx) {
-    const tf2::Vector3 & rot_col = rotation.getColumn(col_idx);
     for (int row_idx = 0; row_idx < kRotationMatRow; ++row_idx) {
-      cuvslamPose.r[cuvslam_idx] = rot_col[row_idx];
+      // Access RTAB-Map Transform as (row, col) but store in column-major order for cuVSLAM
+      cuvslamPose.r[cuvslam_idx] = rtabmap_transform(row_idx, col_idx);
       cuvslam_idx++;
     }
   }
 
-  const tf2::Vector3 & translation = tf_mat.getOrigin();
-  cuvslamPose.t[0] = translation.x();
-  cuvslamPose.t[1] = translation.y();
-  cuvslamPose.t[2] = translation.z();
+  cuvslamPose.t[0] = rtabmap_transform.x();
+  cuvslamPose.t[1] = rtabmap_transform.y();
+  cuvslamPose.t[2] = rtabmap_transform.z();
   return cuvslamPose;
 }
 
-// Helper function to convert cuVSLAM pose to tf2::Transform
-// Taken directly from isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp
-tf2::Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
+// Helper function to convert cuVSLAM pose to RTAB-Map Transform
+// Based on Isaac ROS implementation but using RTAB-Map Transform directly
+Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
 {
   const auto & r = cuvslam_pose.r;
   const auto & t = cuvslam_pose.t;
-  // tf2::Matrix3x3 is row major and cuVSLAM rotation mat is column major.
-  const tf2::Matrix3x3 rotation(r[0], r[3], r[6], r[1], r[4], r[7], r[2], r[5], r[8]);
-  const tf2::Vector3 translation(t[0], t[1], t[2]);
+  // RTAB-Map Transform is row major and cuVSLAM rotation mat is column major.
+  Transform rtabmap_transform(
+    r[0], r[3], r[6], t[0],  // r11, r12, r13, tx
+    r[1], r[4], r[7], t[1],  // r21, r22, r23, ty
+    r[2], r[5], r[8], t[2]   // r31, r32, r33, tz
+  );
 
-  return tf2::Transform(rotation, translation);
+  return rtabmap_transform;
 }
 
 // Helper function to change basis from frame source to frame target
-// Taken directly from isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp
-tf2::Transform ChangeBasis(
-  const tf2::Transform & target_pose_source, const tf2::Transform & source_pose_source)
+// Based on Isaac ROS implementation but using RTAB-Map Transform directly
+Transform ChangeBasis(
+  const Transform & target_pose_source, const Transform & source_pose_source)
 {
   return target_pose_source * source_pose_source * target_pose_source.inverse();
 }
@@ -839,31 +832,26 @@ tf2::Transform ChangeBasis(
 
 // Helper function to convert camera pose from RTABMap to cuVSLAM coordinate system
 // Based on Isaac ROS FillExtrinsics implementation
-CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) {
-    // Convert RTABMap Transform to tf2::Transform
-    tf2::Transform tf2_camera_pose = rtabmapToTf2(rtabmap_camera_pose);
-    
+CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose) 
+{
     // Apply coordinate system transformation:
     // RTABMap robot frame -> cuVSLAM robot frame -> cuVSLAM camera frame
     // This follows the same pattern as Isaac ROS FillExtrinsics
-    const tf2::Transform tf2_camera_pose_cuvslam = 
-        cuvslam_pose_canonical * tf2_camera_pose * optical_pose_cuvslam;
+    const Transform camera_pose_cuvslam = 
+        cuvslam_pose_canonical * rtabmap_camera_pose * optical_pose_cuvslam;
     
-    return TocuVSLAMPose(tf2_camera_pose_cuvslam);
+    return TocuVSLAMPose(camera_pose_cuvslam);
 }
 
 // Helper function to convert IMU pose from RTABMap to cuVSLAM coordinate system
 // Based on Isaac ROS IMU handling - does NOT apply optical transform
 CUVSLAM_Pose convertImuPoseToCuVSLAM(const Transform & rtabmap_imu_pose) {
-    // Convert RTABMap Transform to tf2::Transform
-    tf2::Transform tf2_imu_pose = rtabmapToTf2(rtabmap_imu_pose);
-    
     // Apply coordinate system transformation:
     // RTABMap robot frame -> cuVSLAM robot frame
     // This follows the same pattern as Isaac ROS IMU handling
-    const tf2::Transform tf2_imu_pose_cuvslam = cuvslam_pose_canonical * tf2_imu_pose;
+    const Transform imu_pose_cuvslam = cuvslam_pose_canonical * rtabmap_imu_pose;
     
-    return TocuVSLAMPose(tf2_imu_pose_cuvslam);
+    return TocuVSLAMPose(imu_pose_cuvslam);
 }
 
 /*
@@ -873,23 +861,12 @@ Applies coordinate system transformation from cuVSLAM frame to RTAB-Map frame.
 */
 Transform convertCuVSLAMPose(const CUVSLAM_Pose * cuvslam_pose) 
 {
-    // Convert cuVSLAM pose to tf2::Transform (cuVSLAM coordinate system)
-    tf2::Transform tf2_odom_pose_cuvslam = FromcuVSLAMPose(*cuvslam_pose);
+    // Convert cuVSLAM pose to RTAB-Map Transform (cuVSLAM coordinate system)
+    Transform odom_pose_cuvslam = FromcuVSLAMPose(*cuvslam_pose);
     
     // Apply coordinate system transformation from cuVSLAM to RTAB-Map (ROS conventions)
     // Following Isaac ROS pattern exactly
-    tf2::Transform rtabmap_tf2_transform = ChangeBasis(canonical_pose_cuvslam, tf2_odom_pose_cuvslam);
-    
-    // Convert tf2::Transform to RTAB-Map Transform using the proper constructor
-    const tf2::Matrix3x3 & rtabmap_rotation = rtabmap_tf2_transform.getBasis();
-    const tf2::Vector3 & rtabmap_translation = rtabmap_tf2_transform.getOrigin();
-    
-    // Use RTAB-Map Transform constructor with rotation matrix and translation
-    Transform rtabmap_transform(
-        rtabmap_rotation[0][0], rtabmap_rotation[0][1], rtabmap_rotation[0][2], rtabmap_translation.x(),  // r11, r12, r13, tx
-        rtabmap_rotation[1][0], rtabmap_rotation[1][1], rtabmap_rotation[1][2], rtabmap_translation.y(),  // r21, r22, r23, ty
-        rtabmap_rotation[2][0], rtabmap_rotation[2][1], rtabmap_rotation[2][2], rtabmap_translation.z()   // r31, r32, r33, tz
-    );
+    Transform rtabmap_transform = ChangeBasis(canonical_pose_cuvslam, odom_pose_cuvslam);
     
     return rtabmap_transform;
 }
@@ -913,11 +890,12 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     
     // Create transformation matrix for coordinate system conversion
     // cuVSLAM frame (x-right, y-up, z-backward) to RTAB-Map frame (x-forward, y-left, z-up)
-    tf2::Quaternion quat = canonical_pose_cuvslam.getRotation();
-    
-    // Convert tf2::Quaternion to Eigen for matrix operations
-    Eigen::Quaternion<float> q(quat.w(), quat.x(), quat.y(), quat.z());
-    Eigen::Matrix<float, 3, 3> canonical_pose_cuvslam_mat = q.matrix();
+    // Get rotation matrix from canonical_pose_cuvslam transform
+    Eigen::Matrix<float, 3, 3> canonical_pose_cuvslam_mat;
+    canonical_pose_cuvslam_mat << 
+        canonical_pose_cuvslam.r11(), canonical_pose_cuvslam.r12(), canonical_pose_cuvslam.r13(),
+        canonical_pose_cuvslam.r21(), canonical_pose_cuvslam.r22(), canonical_pose_cuvslam.r23(),
+        canonical_pose_cuvslam.r31(), canonical_pose_cuvslam.r32(), canonical_pose_cuvslam.r33();
     
     // Create 6x6 block diagonal transformation matrix
     Eigen::Matrix<float, 6, 6> block_canonical_pose_cuvslam = Eigen::Matrix<float, 6, 6>::Zero();

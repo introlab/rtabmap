@@ -9,7 +9,6 @@
 
 # cuVSLAM requires CUDA runtime
 find_package(CUDA REQUIRED)
-find_package(tf2 REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 find_path(CUVSLAM_INCLUDE_DIRS 
@@ -36,17 +35,15 @@ find_library(CUVSLAM_LIBRARY
 
 if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
     set(CUVSLAM_FOUND TRUE)
-    # Include CUDA, tf2, and Eigen3 dependencies in cuVSLAM variables
+    # Include CUDA and Eigen3 dependencies in cuVSLAM variables
     set(CUVSLAM_LIBRARIES 
         ${CUVSLAM_LIBRARY} 
-        ${CUDA_LIBRARIES} 
-        ${TF2_LIBRARIES}
+        ${CUDA_LIBRARIES}
         # Eigen3 is header-only, so we don't need to link to it
     )
     set(CUVSLAM_INCLUDE_DIRS 
         ${CUVSLAM_INCLUDE_DIRS} 
         ${CUDA_INCLUDE_DIRS} 
-        ${TF2_INCLUDE_DIRS} 
         ${EIGEN3_INCLUDE_DIR}
     )
 endif()
