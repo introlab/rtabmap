@@ -527,7 +527,7 @@ CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_po
     
     // SLAM Disabled (VO-only mode) 
     configuration->enable_localization_n_mapping = 0;    // Disable SLAM - VO only
-    configuration->enable_observations_export = 0;       // Not needed for VO
+    configuration->enable_observations_export = 0;       // TODO: What does this do?
     configuration->enable_landmarks_export = 0;          // Not needed for VO
     configuration->enable_reading_slam_internals = 0;    // Not needed for VO
     

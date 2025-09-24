@@ -53,7 +53,7 @@ endif()
 
 # Handle the QUIET and REQUIRED arguments
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(CUVSLAM
+find_package_handle_standard_args(CuVSLAM
     FOUND_VAR CUVSLAM_FOUND
     REQUIRED_VARS CUVSLAM_LIBRARIES CUVSLAM_INCLUDE_DIRS
     HANDLE_COMPONENTS
@@ -65,8 +65,8 @@ if(CUVSLAM_FOUND)
         add_library(cuvslam::cuvslam UNKNOWN IMPORTED)
         set_target_properties(cuvslam::cuvslam PROPERTIES
             IMPORTED_LOCATION "${CUVSLAM_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${CUVSLAM_INCLUDE_DIRS};${CUDA_INCLUDE_DIRS};${TF2_INCLUDE_DIRS};${EIGEN3_INCLUDE_DIR}"
-            INTERFACE_LINK_LIBRARIES "${CUDA_LIBRARIES};${TF2_LIBRARIES};Eigen3::Eigen"
+            INTERFACE_INCLUDE_DIRECTORIES "${CUVSLAM_INCLUDE_DIRS}"
+            INTERFACE_LINK_LIBRARIES "${CUVSLAM_LIBRARIES};Eigen3::Eigen"
         )
     endif()
     
