@@ -141,7 +141,6 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
     if(cuvslam_handle_)
     {
         CUVSLAM_DestroyTracker(cuvslam_handle_);
-        cuvslam_handle_ = nullptr;
     }
     
     // Clean up GPU memory
@@ -446,14 +445,14 @@ bool initializeCuVSLAM(const SensorData & data,
         right_camera.num_parameters = 4;
         
         // Set right camera pose using stereo baseline (proper stereo configuration)
-        double baseline = data.stereoCameraModels()[0].baseline();
+        double baseline = stereoModel.baseline();
         
         // Create right camera pose with baseline offset (horizontal stereo)
         // Transform left pose by baseline offset, following OdometryOkvis pattern
         Transform baseline_transform(1, 0, 0, baseline,
                                      0, 1, 0, 0,
                                      0, 0, 1, 0);
-        Transform right_pose = left_pose * baseline_transform;
+        Transform right_pose = baseline_transform * left_pose;
         right_camera.pose = convertCameraPoseToCuVSLAM(right_pose);
         
         cuvslam_camera_objects.push_back(right_camera);

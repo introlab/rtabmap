@@ -61,7 +61,6 @@ private:
 
 private:
 #ifdef RTABMAP_CUVSLAM
-	// cuVSLAM handles and data structures (using forward-declared types for type safety)
 	CUVSLAM_Tracker * cuvslam_handle_;
 	
 	// State tracking
