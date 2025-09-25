@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>8</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -10409,7 +10409,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_retrieved_10">
                         <property name="text">
-                         <string>Reduce graph. Merge nodes when loop closures are added (ignoring those with user data set).</string>
+                         <string>Reduce graph. Merge nodes when loop closures are added (ignoring those with user data). Note that this approach assumes that 100% of the loop closures accepted are good, so it is highly recommended to enable optimization error ratio at the same time.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -13433,7 +13433,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item row="1" column="1">
                      <widget class="QLabel" name="label_258">
                       <property name="text">
-                       <string>Robust graph optimization using Vertigo (only for g2o and GTSAM optimization strategies). This approach can filter wrong loop closure detections.</string>
+                       <string>Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -13468,7 +13468,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item row="2" column="1">
                      <widget class="QLabel" name="label_259">
                       <property name="text">
-                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. It should not be used at the same time than Vertigo above.</string>
+                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. If used with robust graph optimization, the disabled loop closure links will be removed.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>

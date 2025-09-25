@@ -510,22 +510,41 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 					}
 					else
 					{
-						// if localization data saved in database, covariance will be set in a prior link
-						_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
-						if(links.size())
-						{
-							// assume the first is the backward neighbor, take its variance
-							infMatrix = links.begin()->second.infMatrix();
-							_previousInfMatrix = infMatrix;
-						}
-						else
-						{
-							if(_previousInfMatrix.empty())
+						// In case the graph was reduced, look for forward neighbor link from previous id
+						bool covAdded = false;
+						if(_currentId != _ids.begin()) {
+							std::set<int>::iterator previousId = _currentId;
+							--previousId;
+							std::multimap<int, Link> previousLinks;
+							_dbDriver->loadLinks(*previousId, previousLinks, Link::kNeighbor);
+							if(previousLinks.size() && previousLinks.rbegin()->first == *_currentId)
 							{
-								_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+								// assume the last is the forward neighbor pointing to current ID, take its covariance
+								infMatrix = previousLinks.rbegin()->second.infMatrix();
+								_previousInfMatrix = infMatrix;
+								covAdded = true;
 							}
-							// we have a node not linked to map, use last variance
-							infMatrix = _previousInfMatrix;
+						}
+
+						if(!covAdded) {
+							// if localization data saved in database, covariance will be set in a prior link
+							_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
+							if(links.size())
+							{
+								// assume the first is the backward neighbor, take its variance
+								infMatrix = links.begin()->second.infMatrix();
+								_previousInfMatrix = infMatrix;
+							}
+							else
+							{
+								if(_previousInfMatrix.empty())
+								{
+									_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+								}
+								// we have a node not linked to map, use last variance
+								UWARN("The node loaded (%d) doesn't have neighbor, re-using the covariance of the previous link for odometry.", s->id());
+								infMatrix = _previousInfMatrix;
+							}
 						}
 					}
 				}

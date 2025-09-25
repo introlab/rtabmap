@@ -919,14 +919,21 @@ std::list<int> VWDictionary::addNewWords(
 		type = _visualWords.begin()->second->getDescriptor().type();
 		UASSERT(type == CV_32F || type == CV_8U);
 	}
+	static std::string moreInfo = uFormat( 
+		"This could happen if the computer doesn't have access to same "
+		"feature detectors than when the database was created. This could "
+		"also happen if we enabled \"%s\" but the first frame received "
+		"was empty, thus features were re-extracted with a different detector "
+		"than the one used by the odometry.",
+		Parameters::kMemUseOdomFeatures().c_str());
 	if(dim && dim != descriptorsIn.cols)
 	{
-		UERROR("Descriptors (size=%d) are not the same size as already added words in dictionary(size=%d)", descriptorsIn.cols, dim);
+		UERROR("Descriptors (size=%d) are not the same size as already added words in dictionary (size=%d). %s", descriptorsIn.cols, dim, moreInfo.c_str());
 		return wordIds;
 	}
 	if(type>=0 && type != descriptorsIn.type())
 	{
-		UERROR("Descriptors (type=%d) are not the same type as already added words in dictionary(type=%d)", descriptorsIn.type(), type);
+		UERROR("Descriptors (type=%d) are not the same type as already added words in dictionary (type=%d). %s", descriptorsIn.type(), type, moreInfo.c_str());
 		return wordIds;
 	}
 

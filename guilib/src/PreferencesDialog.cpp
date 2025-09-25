@@ -3733,15 +3733,6 @@ bool PreferencesDialog::validateForm()
 		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
 	}
 
-	// verify that Robust and Reject threshold are not set at the same time
-	if(_ui->graphOptimization_robust->isChecked() && _ui->graphOptimization_maxError->value()>0.0)
-	{
-		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("Robust graph optimization and maximum optimization error threshold cannot be "
-				   "both used at the same time. Disabling robust optimization."));
-		_ui->graphOptimization_robust->setChecked(false);
-	}
-
 	//verify binary features and nearest neighbor
 	// BOW dictionary type
 	if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannLSH && _ui->comboBox_detector_strategy->currentIndex() <= 1)

@@ -131,6 +131,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_linksChanged(false),
 	_signaturesAdded(0),
 	_allNodesInWM(true),
+	_receivingOdometryFeatures(false),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
@@ -1262,16 +1263,17 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 				std::multimap<int, Link> linksCopy = links;
 				for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
 				{
-					if(iter->second.type() == Link::kNeighbor ||
-					   iter->second.type() == Link::kNeighborMerged)
+					if(iter->second.type() == Link::kNeighborMerged)
 					{
+						// Removing only merged neighbor links, we keep original neighbor 
+						// links to be able to reprocess databases with correct odometry covariance.
 						s->removeLink(iter->first);
-						if(iter->second.type() == Link::kNeighbor)
+					}
+					if(iter->second.type() == Link::kNeighbor)
+					{
+						if(_lastGlobalLoopClosureId == s->id())
 						{
-							if(_lastGlobalLoopClosureId == s->id())
-							{
-								_lastGlobalLoopClosureId = iter->first;
-							}
+							_lastGlobalLoopClosureId = iter->first;
 						}
 					}
 				}
@@ -1929,6 +1931,7 @@ void Memory::clear()
 	_landmarksIndex.clear();
     _landmarksSize.clear();
 	_allNodesInWM = true;
+	_receivingOdometryFeatures = false;
 
 	if(_dbDriver)
 	{
@@ -4849,6 +4852,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	{
 		meanWordsPerLocation = _vwd->getTotalActiveReferences() / (treeSize-1); // ignore virtual signature
 	}
+	else if(_useOdometryFeatures) {
+		// To not detect first image as bad signature if odometry 
+		// is using less features than feature2D->getMaxFeatures()
+		meanWordsPerLocation = 0;
+	}
 
 	if(_parallelized && !isIntermediateNode)
 	{
@@ -4952,10 +4960,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	SensorData decimatedData;
 	UDEBUG("Received kpts=%d kpts3D=%d, descriptors=%d _useOdometryFeatures=%s",
 			(int)data.keypoints().size(), (int)data.keypoints3D().size(), data.descriptors().rows, _useOdometryFeatures?"true":"false");
+	// TODO: do we still need the third and fouth comparisons?
+	// TODO: there is significant repetitive code between the if and the else, could we combine them?!
 	if(!_useOdometryFeatures ||
-		data.keypoints().empty() ||
+		(!_receivingOdometryFeatures && data.keypoints().empty()) ||
 		(int)data.keypoints().size() != data.descriptors().rows ||
-		(_feature2D->getType() == Feature2D::kFeatureOrbOctree && data.descriptors().empty()))
+		(!_receivingOdometryFeatures && _feature2D->getType() == Feature2D::kFeatureOrbOctree && data.descriptors().empty()))
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
@@ -5292,6 +5302,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 	else if(_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
 	{
+		_receivingOdometryFeatures = true;
 		UINFO("Use odometry features: kpts=%d 3d=%d desc=%d (dim=%d, type=%d)",
 				(int)data.keypoints().size(),
 				(int)data.keypoints3D().size(),

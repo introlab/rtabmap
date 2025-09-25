@@ -356,6 +356,7 @@ private:
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
 	bool _allNodesInWM;
+	bool _receivingOdometryFeatures;
 	GPS _gpsOrigin;
 	std::vector<CameraModel> _rectCameraModels;
 	std::vector<StereoCameraModel> _rectStereoCameraModels;
