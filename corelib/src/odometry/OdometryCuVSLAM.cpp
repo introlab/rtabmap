@@ -118,8 +118,9 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
 namespace rtabmap {
 
 OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
-    Odometry(parameters),
+    Odometry(parameters)
 #ifdef RTABMAP_CUVSLAM
+    ,
     cuvslam_handle_(nullptr),
     initialized_(false),
     lost_(false),
@@ -157,10 +158,20 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     Odometry::reset(initialPose);
     
 #ifdef RTABMAP_CUVSLAM
+    UWARN("RESET: cuvSLAM reset hit _______________________________");
+    UWARN("RESET: cuvslam_handle_ before destroy = %p", cuvslam_handle_);
+    UWARN("RESET: initialized_ before reset = %s", initialized_ ? "true" : "false");
+    
     if(cuvslam_handle_)
     {
+        UWARN("RESET: Destroying cuVSLAM tracker...");
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
+        UWARN("RESET: cuvslam_handle_ set to nullptr");
+    }
+    else
+    {
+        UWARN("RESET: cuvslam_handle_ was already nullptr");
     }
     
     // Clean up GPU memory
@@ -172,14 +183,18 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         cudaFree(gpu_right_image_data_);
         gpu_right_image_data_ = nullptr;
     }
-
+    
     // Reset our internal state variables
     gpu_left_image_size_ = 0;
     gpu_right_image_size_ = 0;
     initialized_ = false;
     lost_ = false;
     previous_pose_ = initialPose;
+    last_timestamp_ = -1.0;
     
+    UWARN("RESET: State variables reset - initialized_ = %s, lost_ = %s", 
+          initialized_ ? "true" : "false", lost_ ? "true" : "false");
+    UWARN("RESET: cuvslam_handle_ after reset = %p", cuvslam_handle_);
     UWARN("RESET: cuVSLAM reset process completed");
 #endif
 }
@@ -214,6 +229,13 @@ Transform OdometryCuVSLAM::computeTransform(
     // Initialize cuVSLAM tracker on first frame
     if(!initialized_)
     {
+        UWARN("=== INITIALIZATION CHECK: initialized_ = false, calling initializeCuVSLAM ===");
+        UWARN("INIT CHECK: cuvslam_handle_ before init = %p", cuvslam_handle_);
+        
+        // Track initialization timing
+        UTimer init_timer;
+        init_timer.start();
+        
         if(!initializeCuVSLAM(
             data, 
             cuvslam_handle_))
@@ -221,7 +243,12 @@ Transform OdometryCuVSLAM::computeTransform(
             UERROR("Failed to initialize cuVSLAM tracker");
             return transform;
         }
+        
+        double init_time = init_timer.ticks();
+        UWARN("INIT CHECK: cuvslam_handle_ after init = %p", cuvslam_handle_);
+        UWARN("INIT CHECK: Initialization took %.3f seconds", init_time);
         initialized_ = true;
+        UWARN("INIT CHECK: initialized_ set to true");
         
         // For first frame after reset, return null transform to avoid reset cascade
         // The identity transform was causing rtabmap to detect another reset
@@ -282,7 +309,6 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
-    
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
         cuvslam_image_objects.data(), 
@@ -299,7 +325,7 @@ Transform OdometryCuVSLAM::computeTransform(
     // Handle tracking status and odom info
     if(vo_status == CUVSLAM_TRACKING_LOST)
     {
-        UWARN("cuVSLAM tracking lost");
+        UWARN("cuVSLAM tracking LOST ___________________________");
         lost_ = true;
         if(info)
         {
@@ -309,7 +335,6 @@ Transform OdometryCuVSLAM::computeTransform(
         }
 
         transform.setNull();
-        previous_pose_.setNull();
         last_timestamp_ = data.stamp();
         
         return transform;
@@ -319,10 +344,10 @@ Transform OdometryCuVSLAM::computeTransform(
         // Provide more specific error information
         const char* error_msg = "Unknown error";
         switch(vo_status) {
-            case 1: error_msg = "CUVSLAM_INVALID_PARAMETER"; break;
-            case 2: error_msg = "CUVSLAM_INVALID_IMAGE_FORMAT or CUVSLAM_INVALID_CAMERA_CONFIG"; break;
-            case 3: error_msg = "CUVSLAM_GPU_MEMORY_ERROR"; break;
-            case 4: error_msg = "CUVSLAM_INITIALIZATION_ERROR"; break;
+            case 2: error_msg = "CUVSLAM_INVALID_PARAMETER"; break;
+            case 3: error_msg = "CUVSLAM_INVALID_IMAGE_FORMAT or CUVSLAM_INVALID_CAMERA_CONFIG"; break;
+            case 4: error_msg = "CUVSLAM_GPU_MEMORY_ERROR"; break;
+            case 5: error_msg = "CUVSLAM_INITIALIZATION_ERROR"; break;
             default: error_msg = "Unknown cuVSLAM error"; break;
         }
         
@@ -336,13 +361,13 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         
         transform.setNull();
-        previous_pose_.setNull();
         last_timestamp_ = data.stamp();
         
         return transform;
     }
     else
     {
+        UWARN("cuVSLAM tracking SUCCESS ___________________________");
         if(info)
         {
             cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
@@ -350,10 +375,61 @@ Transform OdometryCuVSLAM::computeTransform(
             info->reg.covariance = covMat;
             info->timeEstimation = timer.ticks();
         }
+        
+        // On SUCCESS, validate pose values and treat non-finite/huge values as lost
+        bool pose_corrupted = false;
+        std::string corruption_details = "";
+        for(int i = 0; i < 3; i++) {
+            if(!std::isfinite(vo_pose_estimate.pose.t[i]) || std::abs(vo_pose_estimate.pose.t[i]) > 1000.0) {
+                corruption_details += "T[" + std::to_string(i) + "]=" + std::to_string(vo_pose_estimate.pose.t[i]) + " ";
+                pose_corrupted = true;
+            }
+        }
+        for(int i = 0; i < 9; i++) {
+            if(!std::isfinite(vo_pose_estimate.pose.r[i]) || std::abs(vo_pose_estimate.pose.r[i]) > 1000.0) {
+                corruption_details += "R[" + std::to_string(i) + "]=" + std::to_string(vo_pose_estimate.pose.r[i]) + " ";
+                pose_corrupted = true;
+            }
+        }
+        if(pose_corrupted) {
+            UWARN("CORRUPTED POSE DETECTED - Status: %d, Details: %s", vo_status, corruption_details.c_str());
+            UWARN("Full pose - Translation: [%.6f, %.6f, %.6f]", 
+                   vo_pose_estimate.pose.t[0], vo_pose_estimate.pose.t[1], vo_pose_estimate.pose.t[2]);
+            UWARN("Full pose - Rotation: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]",
+                   vo_pose_estimate.pose.r[0], vo_pose_estimate.pose.r[1], vo_pose_estimate.pose.r[2],
+                   vo_pose_estimate.pose.r[3], vo_pose_estimate.pose.r[4], vo_pose_estimate.pose.r[5],
+                   vo_pose_estimate.pose.r[6], vo_pose_estimate.pose.r[7], vo_pose_estimate.pose.r[8]);
+            
+            lost_ = true;
+            if(info)
+            {
+                info->type = 1; // Tracking lost
+                info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
+                info->timeEstimation = timer.ticks();
+            }
+
+            transform.setNull();
+            previous_pose_.setNull();
+            last_timestamp_ = data.stamp();
+            return transform;
+        }
     }
     
     // Convert cuVSLAM pose to RTAB-Map Transform
     Transform current_pose = convertCuVSLAMPose(&vo_pose_estimate.pose);
+    
+    // Log raw cuVSLAM pose and converted pose on SUCCESS
+    UWARN("VO SUCCESS: cuVSLAM raw pose - T: [%.6f, %.6f, %.6f]",
+        vo_pose_estimate.pose.t[0], vo_pose_estimate.pose.t[1], vo_pose_estimate.pose.t[2]);
+    UWARN("VO SUCCESS: cuVSLAM raw pose - R: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]",
+        vo_pose_estimate.pose.r[0], vo_pose_estimate.pose.r[1], vo_pose_estimate.pose.r[2],
+        vo_pose_estimate.pose.r[3], vo_pose_estimate.pose.r[4], vo_pose_estimate.pose.r[5],
+        vo_pose_estimate.pose.r[6], vo_pose_estimate.pose.r[7], vo_pose_estimate.pose.r[8]);
+    UWARN("VO SUCCESS: converted pose - R: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f], T: [%.6f, %.6f, %.6f]",
+        current_pose.r11(), current_pose.r12(), current_pose.r13(),
+        current_pose.r21(), current_pose.r22(), current_pose.r23(),
+        current_pose.r31(), current_pose.r32(), current_pose.r33(),
+        current_pose.x(), current_pose.y(), current_pose.z());
     
     // Calculate incremental transform
     if(!previous_pose_.isNull())
@@ -370,20 +446,27 @@ Transform OdometryCuVSLAM::computeTransform(
     // Check if current pose is identity (which could trigger another reset)
     if(transform.isIdentity())
     {
-        UWARN("Current pose is identity - returning null to avoid reset cascade");
+        UWARN("TRACKING: Current pose is identity - returning null to avoid reset cascade");
         transform.setNull();
     }
 
+    UWARN("VO SUCCESS: incremental transform - R: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f], T: [%.6f, %.6f, %.6f]",
+        transform.r11(), transform.r12(), transform.r13(),
+        transform.r21(), transform.r22(), transform.r23(),
+        transform.r31(), transform.r32(), transform.r33(),
+        transform.x(), transform.y(), transform.z());
+
     // Log time between odom publishing
-    const double time_between_odom_publishing = data.stamp() - last_timestamp_;
-    UWARN("Time between odom publishing: %fs", time_between_odom_publishing);
-    const double odom_publishing_frequency = 1.0 / time_between_odom_publishing;
-    UWARN("Odom publishing frequency: %fHz", odom_publishing_frequency);
+    // const double time_between_odom_publishing = data.stamp() - last_timestamp_;
+    // UWARN("Time between odom publishing: %fs", time_between_odom_publishing);
+    // const double odom_publishing_frequency = 1.0 / time_between_odom_publishing;
+    // UWARN("Odom publishing frequency: %fHz", odom_publishing_frequency);
 
     // Update tracking state and previous pose
     lost_ = false;
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
+    
     
     
 #else
@@ -402,6 +485,25 @@ Transform OdometryCuVSLAM::computeTransform(
 bool initializeCuVSLAM(const SensorData & data, 
                        CUVSLAM_Tracker * & cuvslam_handle)
 {    
+    // Minimal timing logs for initialization
+    UTimer init_timer; init_timer.start();
+    // ============================================================================
+    // INITIALIZATION TRIGGERED LOGGING
+    // ============================================================================
+    UWARN("=== cuVSLAM INITIALIZATION TRIGGERED ===");
+    UWARN("1. INITIALIZATION TRIGGERED: Starting cuVSLAM tracker initialization");
+    
+    // ============================================================================
+    // PRE-STATE LOGGING
+    // ============================================================================
+    UWARN("2. HANDLE STATE BEFORE INIT: cuvslam_handle = %p", cuvslam_handle);
+    UWARN("2. HANDLE STATE BEFORE INIT: cuvslam_handle is %s", 
+          cuvslam_handle ? "NOT NULL" : "NULL");
+    
+    // ============================================================================
+    // INITIALIZATION PROCESSING
+    // ============================================================================
+    
     // Local camera parameters
     float left_camera_params[4];
     float right_camera_params[4];
@@ -433,50 +535,35 @@ bool initializeCuVSLAM(const SensorData & data,
         CUVSLAM_Camera left_camera;
         left_camera.width = leftModel.imageWidth();
         left_camera.height = leftModel.imageHeight();
-        
-        // Set parameters for pinhole model (rectified images) - use member variable
-        left_camera_params[0] = static_cast<float>(leftModel.cx());   // cx
-        left_camera_params[1] = static_cast<float>(leftModel.cy());   // cy
-        left_camera_params[2] = static_cast<float>(leftModel.fx());   // fx
-        left_camera_params[3] = static_cast<float>(leftModel.fy());   // fy
+        left_camera_params[0] = static_cast<float>(leftModel.cx());
+        left_camera_params[1] = static_cast<float>(leftModel.cy());
+        left_camera_params[2] = static_cast<float>(leftModel.fx());
+        left_camera_params[3] = static_cast<float>(leftModel.fy());
         left_camera.parameters = left_camera_params;
-        
-        // Set pinhole model with zero distortion (rectified images)
         left_camera.distortion_model = left_distortion_model;
         left_camera.num_parameters = 4;
-        
-        // Set camera pose (extrinsics) from localTransform with proper coordinate system conversion
         Transform left_pose = leftModel.localTransform();
         left_camera.pose = convertCameraPoseToCuVSLAM(left_pose);
-    
         cuvslam_camera_objects.push_back(left_camera);
         
         CUVSLAM_Camera right_camera;
         right_camera.width = rightModel.imageWidth();
         right_camera.height = rightModel.imageHeight();
-        
-        // Set parameters for pinhole model (rectified images) - use member variable
-        right_camera_params[0] = static_cast<float>(rightModel.cx());   // cx
-        right_camera_params[1] = static_cast<float>(rightModel.cy());   // cy
-        right_camera_params[2] = static_cast<float>(rightModel.fx());   // fx
-        right_camera_params[3] = static_cast<float>(rightModel.fy());   // fy
+        right_camera_params[0] = static_cast<float>(rightModel.cx());
+        right_camera_params[1] = static_cast<float>(rightModel.cy());
+        right_camera_params[2] = static_cast<float>(rightModel.fx());
+        right_camera_params[3] = static_cast<float>(rightModel.fy());
         right_camera.parameters = right_camera_params;
-        
-        // Set pinhole model with zero distortion (rectified images)
         right_camera.distortion_model = right_distortion_model;
         right_camera.num_parameters = 4;
         
         // Set right camera pose using stereo baseline (proper stereo configuration)
         double baseline = stereoModel.baseline();
-        
-        // Create right camera pose with baseline offset (horizontal stereo)
-        // Transform left pose by baseline offset, following OdometryOkvis pattern
         Transform baseline_transform(1, 0, 0, baseline,
                                      0, 1, 0, 0,
                                      0, 0, 1, 0);
         Transform right_pose = left_pose * baseline_transform;
         right_camera.pose = convertCameraPoseToCuVSLAM(right_pose);
-        
         cuvslam_camera_objects.push_back(right_camera);
     }
     
@@ -511,8 +598,77 @@ bool initializeCuVSLAM(const SensorData & data,
     
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
+    UTimer create_timer; create_timer.start();
     CUVSLAM_Status status = CUVSLAM_CreateTracker(&tracker_handle, camera_rig, configuration);
+    double create_time_s = create_timer.ticks();
+    UWARN("TIMING: CUVSLAM_CreateTracker() took %.3f s", create_time_s);
     cuvslam_handle = tracker_handle;
+
+    // ============================================================================
+    // COMPREHENSIVE POST-PROCESSING LOGGING
+    // ============================================================================
+    UWARN("=== cuVSLAM INITIALIZATION DATA PROCESSING COMPLETE ===");
+    
+    // 3. ALL DATA PROCESSED DURING INIT
+    UWARN("3. SENSOR DATA INFO:");
+    UWARN("   - Timestamp: %f", data.stamp());
+    UWARN("   - Left image: %s (channels: %d, size: %dx%d)", 
+          data.imageRaw().empty() ? "EMPTY" : "OK",
+          data.imageRaw().empty() ? 0 : data.imageRaw().channels(),
+          data.imageRaw().empty() ? 0 : data.imageRaw().cols,
+          data.imageRaw().empty() ? 0 : data.imageRaw().rows);
+    UWARN("   - Right image: %s (channels: %d, size: %dx%d)", 
+          data.rightRaw().empty() ? "EMPTY" : "OK",
+          data.rightRaw().empty() ? 0 : data.rightRaw().channels(),
+          data.rightRaw().empty() ? 0 : data.rightRaw().cols,
+          data.rightRaw().empty() ? 0 : data.rightRaw().rows);
+    UWARN("   - Stereo camera models count: %zu", data.stereoCameraModels().size());
+    UWARN("   - IMU data: %s", data.imu().empty() ? "EMPTY" : "AVAILABLE");
+    
+    UWARN("3. CAMERA CONFIGURATION:");
+    UWARN("   - Number of cameras in rig: %zu", cuvslam_camera_objects.size());
+    for(size_t i = 0; i < cuvslam_camera_objects.size(); ++i) {
+        const CUVSLAM_Camera & cam = cuvslam_camera_objects[i];
+        UWARN("   - Camera %zu: %dx%d, distortion: %s, params: [%.2f, %.2f, %.2f, %.2f]",
+              i, cam.width, cam.height, cam.distortion_model,
+              cam.parameters[0], cam.parameters[1], cam.parameters[2], cam.parameters[3]);
+        
+        // Log camera pose (extrinsics)
+        UWARN("   - Camera %zu pose: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]",
+              i, cam.pose.r[0], cam.pose.r[1], cam.pose.r[2], cam.pose.t[0],
+              cam.pose.r[3], cam.pose.r[4], cam.pose.r[5], cam.pose.t[1],
+              cam.pose.r[6], cam.pose.r[7], cam.pose.r[8], cam.pose.t[2]);
+    }
+    
+    // Log stereo baseline information
+    if(data.stereoCameraModels().size() > 0) {
+        const StereoCameraModel & stereoModel = data.stereoCameraModels()[0];
+        UWARN("3. STEREO BASELINE INFO:");
+        UWARN("   - Baseline: %.6f meters", stereoModel.baseline());
+        UWARN("   - Left camera local transform: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]",
+              stereoModel.left().localTransform().r11(), stereoModel.left().localTransform().r12(), stereoModel.left().localTransform().r13(), stereoModel.left().localTransform().x(),
+              stereoModel.left().localTransform().r21(), stereoModel.left().localTransform().r22(), stereoModel.left().localTransform().r23(), stereoModel.left().localTransform().y(),
+              stereoModel.left().localTransform().r31(), stereoModel.left().localTransform().r32(), stereoModel.left().localTransform().r33(), stereoModel.left().localTransform().z());
+        UWARN("   - Right camera local transform: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]",
+              stereoModel.right().localTransform().r11(), stereoModel.right().localTransform().r12(), stereoModel.right().localTransform().r13(), stereoModel.right().localTransform().x(),
+              stereoModel.right().localTransform().r21(), stereoModel.right().localTransform().r22(), stereoModel.right().localTransform().r23(), stereoModel.right().localTransform().y(),
+              stereoModel.right().localTransform().r31(), stereoModel.right().localTransform().r32(), stereoModel.right().localTransform().r33(), stereoModel.right().localTransform().z());
+    }
+    
+    UWARN("3. CONFIGURATION SETTINGS:");
+    UWARN("   - Multicam mode: %d", configuration->multicam_mode);
+    UWARN("   - Use motion model: %d", configuration->use_motion_model);
+    UWARN("   - Use denoising: %d", configuration->use_denoising);
+    UWARN("   - Use GPU: %d", configuration->use_gpu);
+    UWARN("   - Horizontal stereo: %d", configuration->horizontal_stereo_camera);
+    UWARN("   - Enable SLAM: %d", configuration->enable_localization_n_mapping);
+    UWARN("   - Enable IMU fusion: %d", configuration->enable_imu_fusion);
+    UWARN("   - Max frame delta: %f ms", configuration->max_frame_delta_ms);
+    
+    UWARN("3. TRACKER CREATION:");
+    UWARN("   - CUVSLAM_CreateTracker status: %d", status);
+    UWARN("   - Tracker handle created: %p", tracker_handle);
+    UWARN("   - Tracker handle assigned: %p", cuvslam_handle);
 
     delete configuration;
     delete camera_rig;
@@ -520,8 +676,18 @@ bool initializeCuVSLAM(const SensorData & data,
     if(status != CUVSLAM_SUCCESS)
     {
         UERROR("Failed to create cuVSLAM tracker: %d", status);
+        UWARN("=== cuVSLAM INITIALIZATION FAILED ===");
         return false;
     }
+    
+    // 4. STATE OF TRACKER AT THE BOTTOM
+    UWARN("4. FINAL TRACKER STATE:");
+    UWARN("   - cuvslam_handle = %p", cuvslam_handle);
+    UWARN("   - cuvslam_handle is %s", cuvslam_handle ? "NOT NULL" : "NULL");
+    UWARN("   - Initialization SUCCESS: %s", cuvslam_handle ? "TRUE" : "FALSE");
+    double total_time_s = init_timer.ticks();
+    UWARN("TIMING: initializeCuVSLAM() total time %.3f s", total_time_s);
+    UWARN("=== cuVSLAM INITIALIZATION COMPLETED SUCCESSFULLY ===");
     
     return true;
 }
@@ -563,7 +729,7 @@ CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_po
     // configuration.imu_calibration = imu_calibration;
     
     // Timing and Performance 
-    configuration->max_frame_delta_ms = 100;             // Maximum frame interval (100ms default)
+    // configuration->max_frame_delta_ms = 100.0;             // Maximum frame interval (100ms default)
     
     // SLAM-specific parameters (ignored when enable_localization_n_mapping = 0) 
     // These are set to 0 but won't be used since SLAM is disabled
@@ -688,11 +854,14 @@ bool prepareImages(const SensorData & data,
         
         // Efficient GPU memory allocation and async copy
         size_t left_image_size = processed_left_image.total() * processed_left_image.elemSize();
+        
         if(!allocateGpuMemory(left_image_size, &gpu_left_image_data, &gpu_left_image_size)) {
+            UERROR("PREPARE IMAGES: Failed to allocate GPU memory for left image");
             return false;
         }
         
         if(!copyToGpuAsync(processed_left_image, gpu_left_image_data, left_image_size, cuda_stream)) {
+            UERROR("PREPARE IMAGES: Failed to copy left image to GPU");
             return false;
         }
         
