@@ -172,12 +172,15 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         cudaFree(gpu_right_image_data_);
         gpu_right_image_data_ = nullptr;
     }
-    // Only reset our internal state variables
+
+    // Reset our internal state variables
     gpu_left_image_size_ = 0;
     gpu_right_image_size_ = 0;
     initialized_ = false;
     lost_ = false;
     previous_pose_ = initialPose;
+    
+    UWARN("RESET: cuVSLAM reset process completed");
 #endif
 }
 
@@ -197,6 +200,8 @@ Transform OdometryCuVSLAM::computeTransform(
         UERROR("cuVSLAM odometry requires both left and right images! Left: %s, Right: %s", 
                data.imageRaw().empty() ? "empty" : "ok", 
                data.rightRaw().empty() ? "empty" : "ok");
+        
+               transform.setNull();
         return transform;
     }
     
@@ -218,8 +223,9 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         initialized_ = true;
         
-        // For first frame, return identity transform with high covariance
-        transform = Transform::getIdentity();
+        // For first frame after reset, return null transform to avoid reset cascade
+        // The identity transform was causing rtabmap to detect another reset
+        transform.setNull();
         if(info)
         {
             info->type = 0; // Success: Initialization successful
@@ -227,7 +233,8 @@ Transform OdometryCuVSLAM::computeTransform(
             info->timeEstimation = timer.ticks();
         }
         
-        previous_pose_ = transform;
+        
+        // Set previous_pose_ to identity for next frame calculation (not null)
         last_timestamp_ = data.stamp();
         
         return transform;
@@ -270,10 +277,9 @@ Transform OdometryCuVSLAM::computeTransform(
     
     // Validate cuVSLAM tracker
     if(!cuvslam_handle_) {
-        UERROR("cuVSLAM tracker is null!");
+        UERROR("cuVSLAM tracker is null! initialized_: %s", initialized_ ? "true" : "false");
         return transform;
     }
-    
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
     
@@ -301,7 +307,11 @@ Transform OdometryCuVSLAM::computeTransform(
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
             info->timeEstimation = timer.ticks();
         }
+
         transform.setNull();
+        previous_pose_.setNull();
+        last_timestamp_ = data.stamp();
+        
         return transform;
     }
     else if(vo_status != CUVSLAM_SUCCESS)
@@ -324,6 +334,11 @@ Transform OdometryCuVSLAM::computeTransform(
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
             info->timeEstimation = timer.ticks();
         }
+        
+        transform.setNull();
+        previous_pose_.setNull();
+        last_timestamp_ = data.stamp();
+        
         return transform;
     }
     else
@@ -347,7 +362,16 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     else
     {
+        // If previous_pose_ is null (e.g., after tracking was lost), 
+        // return the current pose as absolute transform
         transform = current_pose;
+    }
+
+    // Check if current pose is identity (which could trigger another reset)
+    if(transform.isIdentity())
+    {
+        UWARN("Current pose is identity - returning null to avoid reset cascade");
+        transform.setNull();
     }
 
     // Log time between odom publishing
@@ -356,7 +380,7 @@ Transform OdometryCuVSLAM::computeTransform(
     const double odom_publishing_frequency = 1.0 / time_between_odom_publishing;
     UWARN("Odom publishing frequency: %fHz", odom_publishing_frequency);
 
-    // Update tracking state
+    // Update tracking state and previous pose
     lost_ = false;
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
@@ -926,7 +950,7 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
         double diag_val = cv_covariance.at<double>(i, i);
         if(!std::isfinite(diag_val) || diag_val <= 0.0)
         {
-            UWARN("Diagonal element of covariance is not finite or positive, proceeding with default infinite covariance");
+            UWARN("Diagonal element %d of covariance is not finite or positive (value: %f), proceeding with default infinite covariance", i, diag_val);
             cv_covariance.at<double>(i, i) = 9999.0;  // High uncertainty
         }
     }
