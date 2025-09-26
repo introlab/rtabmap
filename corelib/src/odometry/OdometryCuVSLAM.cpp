@@ -90,16 +90,18 @@ const rtabmap::Transform optical_pose_cuvslam = cuvslam_pose_optical.inverse();
 namespace rtabmap {
 
 bool initializeCuVSLAM(const SensorData & data, 
-                       CUVSLAM_Tracker * & cuvslam_handle);
+                       CUVSLAM_Tracker * & cuvslam_handle,
+                       std::vector<size_t> & gpu_left_image_sizes,
+                       std::vector<size_t> & gpu_right_image_sizes);
     
 CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_pose_cv_imu);
 
 bool prepareImages(const SensorData & data, 
                     std::vector<CUVSLAM_Image> & cuvslam_images,
-                    uint8_t * & gpu_left_image_data,
-                    uint8_t * & gpu_right_image_data,
-                    size_t & gpu_left_image_size,
-                    size_t & gpu_right_image_size,
+                    std::vector<uint8_t *> & gpu_left_image_data,
+                    std::vector<uint8_t *> & gpu_right_image_data,
+                    std::vector<size_t> & gpu_left_image_sizes,
+                    std::vector<size_t> & gpu_right_image_sizes,
                     cudaStream_t & cuda_stream);
 
 CUVSLAM_Pose convertCameraPoseToCuVSLAM(const Transform & rtabmap_camera_pose);
@@ -126,10 +128,10 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     lost_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
-    gpu_left_image_data_(nullptr),
-    gpu_right_image_data_(nullptr),
-    gpu_left_image_size_(0),
-    gpu_right_image_size_(0)
+    gpu_left_image_data_(),
+    gpu_right_image_data_(),
+    gpu_left_image_sizes_(),
+    gpu_right_image_sizes_()
 #endif
 {
 }
@@ -144,11 +146,15 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
     }
     
     // Clean up GPU memory
-    if(gpu_left_image_data_) {
-        cudaFree(gpu_left_image_data_);
+    for(uint8_t * gpu_ptr : gpu_left_image_data_) {
+        if(gpu_ptr) {
+            cudaFree(gpu_ptr);
+        }
     }
-    if(gpu_right_image_data_) {
-        cudaFree(gpu_right_image_data_);
+    for(uint8_t * gpu_ptr : gpu_right_image_data_) {
+        if(gpu_ptr) {
+            cudaFree(gpu_ptr);
+        }
     }
 #endif
 }
@@ -175,18 +181,22 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     }
     
     // Clean up GPU memory
-    if(gpu_left_image_data_) {
-        cudaFree(gpu_left_image_data_);
-        gpu_left_image_data_ = nullptr;
+    for(uint8_t * gpu_ptr : gpu_left_image_data_) {
+        if(gpu_ptr) {
+            cudaFree(gpu_ptr);
+        }
     }
-    if(gpu_right_image_data_) {
-        cudaFree(gpu_right_image_data_);
-        gpu_right_image_data_ = nullptr;
+    gpu_left_image_data_.clear();
+    for(uint8_t * gpu_ptr : gpu_right_image_data_) {
+        if(gpu_ptr) {
+            cudaFree(gpu_ptr);
+        }
     }
+    gpu_right_image_data_.clear();
     
     // Reset our internal state variables
-    gpu_left_image_size_ = 0;
-    gpu_right_image_size_ = 0;
+    gpu_left_image_sizes_.clear();
+    gpu_right_image_sizes_.clear();
     initialized_ = false;
     lost_ = false;
     previous_pose_ = initialPose;
@@ -238,7 +248,9 @@ Transform OdometryCuVSLAM::computeTransform(
         
         if(!initializeCuVSLAM(
             data, 
-            cuvslam_handle_))
+            cuvslam_handle_,
+            gpu_left_image_sizes_,
+            gpu_right_image_sizes_))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
             return transform;
@@ -276,8 +288,8 @@ Transform OdometryCuVSLAM::computeTransform(
         cuvslam_image_objects,
         gpu_left_image_data_,
         gpu_right_image_data_,
-        gpu_left_image_size_,
-        gpu_right_image_size_,
+        gpu_left_image_sizes_,
+        gpu_right_image_sizes_,
         cuda_stream))
     {
         UERROR("Failed to prepare images for cuVSLAM");
@@ -371,6 +383,7 @@ Transform OdometryCuVSLAM::computeTransform(
 
 		// extract 2D VO observations for visualization
 		CUVSLAM_ObservationVector observation_vector{};
+
 		CUVSLAM_Status observation_status = CUVSLAM_GetLastLeftObservations(cuvslam_handle_, &observation_vector);
 		UWARN("GetLastLeftObservations: status=%d, num=%u, max=%u, ptr=%p",
 			observation_status,
@@ -424,6 +437,8 @@ Transform OdometryCuVSLAM::computeTransform(
 				info->newCorners.clear();
 			}
 		}
+
+        // Clean up observation vector
         
         if(info)
         {
@@ -539,28 +554,14 @@ Transform OdometryCuVSLAM::computeTransform(
 // cuVSLAM Initialization and Configuration
 // ============================================================================
 
-bool initializeCuVSLAM(const SensorData & data, 
-                       CUVSLAM_Tracker * & cuvslam_handle)
+bool initializeCuVSLAM(const SensorData & data,
+                       CUVSLAM_Tracker * & cuvslam_handle,
+                       std::vector<size_t> & gpu_left_image_sizes,
+                       std::vector<size_t> & gpu_right_image_sizes)
 {    
     // Minimal timing logs for initialization
-    UTimer init_timer; init_timer.start();
-    // ============================================================================
-    // INITIALIZATION TRIGGERED LOGGING
-    // ============================================================================
-    UWARN("=== cuVSLAM INITIALIZATION TRIGGERED ===");
-    UWARN("1. INITIALIZATION TRIGGERED: Starting cuVSLAM tracker initialization");
-    
-    // ============================================================================
-    // PRE-STATE LOGGING
-    // ============================================================================
-    UWARN("2. HANDLE STATE BEFORE INIT: cuvslam_handle = %p", cuvslam_handle);
-    UWARN("2. HANDLE STATE BEFORE INIT: cuvslam_handle is %s", 
-          cuvslam_handle ? "NOT NULL" : "NULL");
-    
-    // ============================================================================
-    // INITIALIZATION PROCESSING
-    // ============================================================================
-    
+    UTimer init_timer; init_timer.start();    
+
     // Local camera parameters
     float left_camera_params[4];
     float right_camera_params[4];
@@ -649,8 +650,23 @@ bool initializeCuVSLAM(const SensorData & data,
     CUVSLAM_Configuration * configuration = CreateConfiguration(&cuvslam_imu_pose);
     
     // Enable IMU fusion if we have IMU data
-    if (!data.imu().empty()) {
+    if(!data.imu().empty()) 
+    {
         configuration->enable_imu_fusion = 1;
+    }
+
+    // Configure multicam mode
+    gpu_left_image_sizes.resize(data.stereoCameraModels().size(), 0);
+    gpu_right_image_sizes.resize(data.stereoCameraModels().size(), 0);
+
+    if(data.stereoCameraModels().size() > 1)
+    {
+        configuration->multicam_mode = 1;
+        UWARN("MULTI-CAMERA SUPPORT: Detected %zu stereo pairs - enabling multi-camera mode", data.stereoCameraModels().size());
+    }
+    else
+    {
+        UWARN("SINGLE-CAMERA MODE: Using single stereo pair configuration");
     }
     
     // Create tracker
@@ -769,8 +785,10 @@ CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_po
     CUVSLAM_Configuration * configuration = new CUVSLAM_Configuration();
     CUVSLAM_InitDefaultConfiguration(configuration);
     
+    // Will override multicam mode if we have multiple stereo camera models
+    configuration->multicam_mode = 0;
+    
     // Core Visual Odometry Settings 
-    configuration->multicam_mode = 0;                    // Single camera setup
     configuration->use_motion_model = 1;                 // Enable motion model for better tracking
     configuration->use_denoising = 0;                    // Disable denoising by default
     configuration->use_gpu = 1;                          // Use GPU acceleration
@@ -870,162 +888,146 @@ bool synchronizeGpuOperations(cudaStream_t cuda_stream)
 
 bool prepareImages(const SensorData & data, 
                    std::vector<CUVSLAM_Image> & cuvslam_images,
-                   uint8_t * & gpu_left_image_data,
-                   uint8_t * & gpu_right_image_data,
-                   size_t & gpu_left_image_size,
-                   size_t & gpu_right_image_size,
+                   std::vector<uint8_t *> & gpu_left_image_data,
+                   std::vector<uint8_t *> & gpu_right_image_data,
+                   std::vector<size_t> & gpu_left_image_sizes,
+                   std::vector<size_t> & gpu_right_image_sizes,
                    cudaStream_t & cuda_stream)
 {
-    
     // Convert timestamp to nanoseconds (cuVSLAM expects nanoseconds)
     int64_t timestamp_ns = static_cast<int64_t>(data.stamp() * 1000000000.0);
+
+    // Horizontally stithed images recieved by RTAB-Map
+    cv::Mat left_image = data.imageRaw();
+    cv::Mat right_image = data.rightRaw();
+
+    // Validate basic image properties
+    if(left_image.empty() || right_image.empty()) {
+        UERROR("No left or right image available for stereo camera");
+        return false;
+    }
+    if(left_image.channels() != 1 && left_image.channels() != 3) {
+        UERROR("Unsupported left image format: %d channels", left_image.channels());
+        return false;
+    }
+    if(right_image.channels() != 1 && right_image.channels() != 3) {
+        UERROR("Unsupported right image format: %d channels", right_image.channels());
+        return false;
+    }
+
+    // Convert image format for cuVSLAM - mono8 or rgb8
+    cv::Mat processed_left_image;
+    cv::Mat processed_right_image;
+    CUVSLAM_ImageEncoding left_encoding;
+    CUVSLAM_ImageEncoding right_encoding;
     
-    // Process all stereo pairs, assume one camera pair
-    // TODO: Handle multiple camera pairs
-    if(!data.imageRaw().empty())
-    {
-        cv::Mat left_image = data.imageRaw();
+    // process left image
+    if(left_image.channels() == 1) {
+        processed_left_image = left_image.clone();
+        left_encoding = CUVSLAM_ImageEncoding::MONO8;
+    } else if(left_image.channels() == 3) {
+        cv::cvtColor(left_image, processed_left_image, cv::COLOR_BGR2RGB);
+        left_encoding = CUVSLAM_ImageEncoding::RGB8;
+    } else {
+        UERROR("Unsupported left image format: %d channels", left_image.channels());
+        return false;
+    }
+
+    // Process right image
+    if(right_image.channels() == 1) {
+        processed_right_image = right_image.clone();
+        right_encoding = CUVSLAM_ImageEncoding::MONO8;
+    } else if(right_image.channels() == 3) {
+        cv::cvtColor(right_image, processed_right_image, cv::COLOR_BGR2RGB);
+        right_encoding = CUVSLAM_ImageEncoding::RGB8;
+    } else {
+        UERROR("Unsupported right image format: %d channels", right_image.channels());
+        return false;
+    }
+
+    // Resize GPU memory vectors to accommodate all cameras
+    size_t stereo_pairs_count = data.stereoCameraModels().size(); // cameras per stereo pair
+    gpu_left_image_data.resize(stereo_pairs_count, nullptr);
+    gpu_right_image_data.resize(stereo_pairs_count, nullptr);
+    
+    UWARN("MULTI-CAMERA PROCESSING: Processing %zu stereo pairs", 
+          data.stereoCameraModels().size());
+    
+    int camera_index = 0;
+    int stereo_index = 0;
+    for(const StereoCameraModel & model : data.stereoCameraModels()) {
+        // slice out the image for the current stereo pair
+        // Assumes all images have the same width and height
+        int left_image_width = model.left().imageWidth();
+        int right_image_width = model.right().imageWidth();
+        int left_image_height = model.left().imageHeight();
+        int right_image_height = model.right().imageHeight();
+
+        cv::Mat left_image_slice = processed_left_image(cv::Rect(stereo_index * left_image_width, 0, left_image_width, left_image_height));
+        cv::Mat right_image_slice = processed_right_image(cv::Rect(stereo_index * right_image_width, 0, right_image_width, right_image_height));
         
-        // Validate image format
-        if(left_image.channels() != 1 && left_image.channels() != 3)
-        {
-            UERROR("Unsupported left image format: %d channels", left_image.channels());
-            return false;
-        }
-        
-        // Convert image format for cuVSLAM
-        cv::Mat processed_left_image;
-        CUVSLAM_ImageEncoding left_encoding;
-        if(left_image.channels() == 1) {
-            // Keep grayscale as MONO8
-            processed_left_image = left_image.clone();
-            left_encoding = CUVSLAM_ImageEncoding::MONO8;
-        } else if(left_image.channels() == 3) {
-            // Convert BGR to RGB
-            cv::cvtColor(left_image, processed_left_image, cv::COLOR_BGR2RGB);
-            left_encoding = CUVSLAM_ImageEncoding::RGB8;
-        } else {
-            UERROR("Unsupported left image format: %d channels", left_image.channels());
-            return false;
-        }
-        
-        // Validate converted image
-        int expected_channels = (left_encoding == CUVSLAM_ImageEncoding::MONO8) ? 1 : 3;
-        if(processed_left_image.channels() != expected_channels) {
-            UERROR("ERROR: Left image conversion failed - expected %d channels, got %d", expected_channels, processed_left_image.channels());
-            return false;
-        }
-        if(processed_left_image.data == nullptr) {
-            UERROR("ERROR: Left processed image has null data pointer!");
-            return false;
-        }
-        
-        // Efficient GPU memory allocation and async copy
-        size_t left_image_size = processed_left_image.total() * processed_left_image.elemSize();
-        
-        if(!allocateGpuMemory(left_image_size, &gpu_left_image_data, &gpu_left_image_size)) {
+        size_t left_image_size = left_image_slice.total() * left_image_slice.elemSize();
+        size_t right_image_size = right_image_slice.total() * right_image_slice.elemSize();
+
+        // Allocate GPU memory for left camera
+        if(!allocateGpuMemory(left_image_size, &gpu_left_image_data[stereo_index], &gpu_left_image_sizes[stereo_index])) {
             UERROR("PREPARE IMAGES: Failed to allocate GPU memory for left image");
             return false;
         }
-        
-        if(!copyToGpuAsync(processed_left_image, gpu_left_image_data, left_image_size, cuda_stream)) {
+        if(!copyToGpuAsync(left_image_slice, gpu_left_image_data[stereo_index], left_image_size, cuda_stream)) {
             UERROR("PREPARE IMAGES: Failed to copy left image to GPU");
             return false;
         }
-        
+
         // Create CUVSLAM_Image for left camera with GPU memory
         CUVSLAM_Image left_cuvslam_image;
-        left_cuvslam_image.width = processed_left_image.cols;
-        left_cuvslam_image.height = processed_left_image.rows;
-        left_cuvslam_image.pixels = gpu_left_image_data;  // GPU memory pointer
+        left_cuvslam_image.width = left_image_width;
+        left_cuvslam_image.height = left_image_height;
+        left_cuvslam_image.pixels = gpu_left_image_data[stereo_index];  // GPU memory pointer
         left_cuvslam_image.timestamp_ns = timestamp_ns;
-        left_cuvslam_image.camera_index = 0;
-        left_cuvslam_image.pitch = processed_left_image.step;
+        left_cuvslam_image.camera_index = camera_index;
+        left_cuvslam_image.pitch = left_image_slice.step;
         left_cuvslam_image.image_encoding = left_encoding;
         
         cuvslam_images.push_back(left_cuvslam_image);
-    }
-    else
-    {
-        UERROR("No left image available for stereo camera");
-        return false;
-    }
-    
-    // Process right image (first stereo pair only)
-    if(!data.rightRaw().empty())
-    {
-        cv::Mat right_image = data.rightRaw();
-        
-        // Validate image format
-        if(right_image.channels() != 1 && right_image.channels() != 3)
-        {
-            UERROR("Unsupported right image format: %d channels", right_image.channels());
+
+        camera_index++;
+
+        // Allocate GPU memory for right camera
+        if(!allocateGpuMemory(right_image_size, &gpu_right_image_data[stereo_index], &gpu_right_image_sizes[stereo_index])) {
+            UERROR("PREPARE IMAGES: Failed to allocate GPU memory for right image");
             return false;
         }
         
-        // Convert image format for cuVSLAM
-        cv::Mat processed_right_image;
-        CUVSLAM_ImageEncoding right_encoding;
-        if(right_image.channels() == 1) {
-            // Keep grayscale as MONO8
-            processed_right_image = right_image.clone();
-            right_encoding = CUVSLAM_ImageEncoding::MONO8;
-        } else if(right_image.channels() == 3) {
-            // Convert BGR to RGB
-            cv::cvtColor(right_image, processed_right_image, cv::COLOR_BGR2RGB);
-            right_encoding = CUVSLAM_ImageEncoding::RGB8;
-        } else {
-            UERROR("Unsupported right image format: %d channels", right_image.channels());
+        if(!copyToGpuAsync(right_image_slice, gpu_right_image_data[stereo_index], right_image_size, cuda_stream)) {
+            UERROR("PREPARE IMAGES: Failed to copy right image to GPU");
             return false;
         }
-        
-        // Validate converted image
-        int expected_channels = (right_encoding == CUVSLAM_ImageEncoding::MONO8) ? 1 : 3;
-        if(processed_right_image.channels() != expected_channels) {
-            UERROR("ERROR: Right image conversion failed - expected %d channels, got %d", expected_channels, processed_right_image.channels());
-            return false;
-        }
-        if(processed_right_image.data == nullptr) {
-            UERROR("ERROR: Right processed image has null data pointer!");
-            return false;
-        }
-        
-        // Efficient GPU memory allocation and async copy
-        size_t right_image_size = processed_right_image.total() * processed_right_image.elemSize();
-        if(!allocateGpuMemory(right_image_size, &gpu_right_image_data, &gpu_right_image_size)) {
-            return false;
-        }
-        
-        if(!copyToGpuAsync(processed_right_image, gpu_right_image_data, right_image_size, cuda_stream)) {
-            return false;
-        }
-        
-        // Create CUVSLAM_Image for right camera with GPU memory
+
         CUVSLAM_Image right_cuvslam_image;
-        right_cuvslam_image.width = processed_right_image.cols;
-        right_cuvslam_image.height = processed_right_image.rows;
-        right_cuvslam_image.pixels = gpu_right_image_data;  // GPU memory pointer
+        right_cuvslam_image.width = right_image_width;
+        right_cuvslam_image.height = right_image_height;
+        right_cuvslam_image.pixels = gpu_right_image_data[stereo_index];  // GPU memory pointer
         right_cuvslam_image.timestamp_ns = timestamp_ns;
-        right_cuvslam_image.camera_index = 1;  // Right camera index
-        right_cuvslam_image.pitch = processed_right_image.step;
+        right_cuvslam_image.camera_index = camera_index;
+        right_cuvslam_image.pitch = right_image_slice.step;
         right_cuvslam_image.image_encoding = right_encoding;
-        
+
         cuvslam_images.push_back(right_cuvslam_image);
-    } 
-    else 
-    {
-        UERROR("No right image available for stereo camera");
-        return false;
+        
+        stereo_index++;
+        camera_index++;
     }
-    
-    
+
     // Synchronize all async GPU operations before returning
     if(!synchronizeGpuOperations(cuda_stream)) {
+        UERROR("PREPARE IMAGES: Failed to synchronize GPU operations");
         return false;
     }
-    
+
     return true;
 }
+    
 
 // ============================================================================
 // Coordinate System and Transform Conversion Functions

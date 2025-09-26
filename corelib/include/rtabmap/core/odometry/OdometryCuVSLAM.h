@@ -70,10 +70,10 @@ private:
 	double last_timestamp_;
 	
 	// GPU memory management
-	uint8_t * gpu_left_image_data_;
-	uint8_t * gpu_right_image_data_;
-	size_t gpu_left_image_size_;
-	size_t gpu_right_image_size_;
+	std::vector<uint8_t *> gpu_left_image_data_; // pointers to all gpu images
+	std::vector<uint8_t *> gpu_right_image_data_;
+	std::vector<size_t> gpu_left_image_sizes_; // size of one image
+	std::vector<size_t> gpu_right_image_sizes_;
 #endif
 };
 
