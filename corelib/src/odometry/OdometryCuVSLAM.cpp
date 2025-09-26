@@ -368,6 +368,63 @@ Transform OdometryCuVSLAM::computeTransform(
     else
     {
         UWARN("cuVSLAM tracking SUCCESS ___________________________");
+
+		// extract 2D VO observations for visualization
+		CUVSLAM_ObservationVector observation_vector{};
+		CUVSLAM_Status observation_status = CUVSLAM_GetLastLeftObservations(cuvslam_handle_, &observation_vector);
+		UWARN("GetLastLeftObservations: status=%d, num=%u, max=%u, ptr=%p",
+			observation_status,
+			(unsigned)observation_vector.num,
+			(unsigned)observation_vector.max,
+			(void*)observation_vector.observations);
+		
+		if(observation_status != CUVSLAM_SUCCESS) {
+			UWARN("Failed to extract observations from cuVSLAM (status=%d, num=%u, max=%u, ptr=%p)",
+				observation_status,
+				(unsigned)observation_vector.num,
+				(unsigned)observation_vector.max,
+				(void*)observation_vector.observations);
+			if(info)
+			{
+				info->newCorners.clear();
+			}
+		}
+		else
+		{
+			UWARN("Observation extraction success: num=%u, max=%u, ptr=%p",
+				(unsigned)observation_vector.num,
+				(unsigned)observation_vector.max,
+				(void*)observation_vector.observations);
+			
+			if(observation_vector.num > 0 && observation_vector.observations)
+			{
+				std::vector<cv::Point2f> newCorners;
+				newCorners.reserve(observation_vector.num);
+				for(uint32_t i = 0; i < observation_vector.num; ++i)
+				{
+					const CUVSLAM_Observation & observation = observation_vector.observations[i];
+					newCorners.emplace_back(observation.u, observation.v);
+				}
+
+				uint32_t sample_count = observation_vector.num < 5 ? observation_vector.num : 5;
+				for(uint32_t i = 0; i < sample_count; ++i)
+				{
+					const CUVSLAM_Observation & o = observation_vector.observations[i];
+					UWARN("Observation[%u]: id=%d, u=%.2f, v=%.2f", (unsigned)i, o.id, o.u, o.v);
+				}
+
+				if(info)
+				{
+					info->newCorners = std::move(newCorners);
+				}
+			}
+			else if(info)
+			{
+				UWARN("Observation extraction returned empty or null data.");
+				info->newCorners.clear();
+			}
+		}
+        
         if(info)
         {
             cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
@@ -662,6 +719,9 @@ bool initializeCuVSLAM(const SensorData & data,
     UWARN("   - Use GPU: %d", configuration->use_gpu);
     UWARN("   - Horizontal stereo: %d", configuration->horizontal_stereo_camera);
     UWARN("   - Enable SLAM: %d", configuration->enable_localization_n_mapping);
+    UWARN("   - Enable observations export: %d", configuration->enable_observations_export);
+    UWARN("   - Enable landmarks export: %d", configuration->enable_landmarks_export);
+    UWARN("   - Enable reading SLAM internals: %d", configuration->enable_reading_slam_internals);
     UWARN("   - Enable IMU fusion: %d", configuration->enable_imu_fusion);
     UWARN("   - Max frame delta: %f ms", configuration->max_frame_delta_ms);
     
@@ -679,6 +739,10 @@ bool initializeCuVSLAM(const SensorData & data,
         UWARN("=== cuVSLAM INITIALIZATION FAILED ===");
         return false;
     }
+    
+    // Enable cuVSLAM API debug logging
+    CUVSLAM_SetVerbosity(10);  // Set to maximum verbosity level (0=none, 1=errors, 2=warnings, 3=info)
+    UWARN("cuVSLAM verbosity set to level 3 (maximum - informational messages)");
     
     // 4. STATE OF TRACKER AT THE BOTTOM
     UWARN("4. FINAL TRACKER STATE:");
@@ -711,12 +775,14 @@ CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_po
     configuration->use_denoising = 0;                    // Disable denoising by default
     configuration->use_gpu = 1;                          // Use GPU acceleration
     configuration->horizontal_stereo_camera = 1;         // Stereo camera configuration
+
+    configuration->enable_observations_export = 1;       // Export observations for external reading
     
-    // SLAM Disabled (VO-only mode) 
-    configuration->enable_localization_n_mapping = 0;    // Disable SLAM - VO only
-    configuration->enable_observations_export = 0;       // TODO: What does this do?
-    configuration->enable_landmarks_export = 0;          // Not needed for VO
-    configuration->enable_reading_slam_internals = 0;    // Not needed for VO
+    // SLAM Enabled (required for observation buffer allocation) 
+    // TODO: Enable SLAM properly
+    configuration->enable_localization_n_mapping = 1;    // Enable SLAM for observation buffers
+    configuration->enable_landmarks_export = 0;          // SLAM feature (optional)
+    configuration->enable_reading_slam_internals = 0;    // SLAM feature (optional)
     
     // IMU Configuration 
     configuration->enable_imu_fusion = 0;                // No IMU for now
@@ -731,11 +797,13 @@ CUVSLAM_Configuration * CreateConfiguration(const CUVSLAM_Pose * cv_base_link_po
     // Timing and Performance 
     // configuration->max_frame_delta_ms = 100.0;             // Maximum frame interval (100ms default)
     
-    // SLAM-specific parameters (ignored when enable_localization_n_mapping = 0) 
-    // These are set to 0 but won't be used since SLAM is disabled
+    // SLAM-specific parameters (now enabled for observation buffers)
     configuration->planar_constraints = 0;               // No planar constraints
     configuration->slam_throttling_time_ms = 0;          // No SLAM throttling
-    configuration->slam_max_map_size = 0;                // No SLAM map size limit
+    configuration->slam_max_map_size = 0;              // Reasonable map size for real-time
+    configuration->slam_sync_mode = 0;                   // Async SLAM mode (better for real-time)
+
+    // configuration->debug_dump_directory = "/home/felix/Documents/cuvslam_debug";
     
     return configuration;
 }
