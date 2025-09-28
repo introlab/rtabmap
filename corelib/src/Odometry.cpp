@@ -625,6 +625,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	if(!guessIn.isNull())
 	{
 		guess = guessIn;
+		UDEBUG("Using provided guess %s", guessIn.prettyPrint().c_str());
 	}
 	else if(!imus_.empty())
 	{
@@ -641,11 +642,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			{
 				guess = guess.to3DoF();
 			}
+			UDEBUG("Adjusting guess from motion with IMU %s", guess.prettyPrint().c_str());
 		}
 		else if(!imuLastTransform_.isNull())
 		{
 			UWARN("Could not find imu transform at %f", data.stamp());
 		}
+	}
+	else if(!guess.isNull()) {
+		UDEBUG("Using guess from motion %s", guess.prettyPrint().c_str());
 	}
 
 	UTimer time;
@@ -1011,8 +1016,14 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		--_resetCurrentCount;
 		if(_resetCurrentCount == 0)
 		{
-			UWARN("Odometry automatically reset to latest pose!");
-			this->reset(_pose);
+			if(!guess.isNull() && !guessFromMotion_) {
+				UWARN("Odometry automatically reset to latest pose (%s) + guess (%s)!", _pose.prettyPrint().c_str(), guess.prettyPrint().c_str());
+				this->reset(_pose * guess);
+			}
+			else {
+				UWARN("Odometry automatically reset to latest pose (%s)!", _pose.prettyPrint().c_str());
+				this->reset(_pose);
+			}
 			_resetCurrentCount = _resetCountdown;
 			if(info)
 			{

@@ -173,6 +173,7 @@ public:
 	int getOdomRegistrationApproach() const;
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
+	bool isOdomAsGuessEnabled() const;
 	bool isOdomSensorAsGt() const;
 	bool isGroundTruthAligned() const;
 

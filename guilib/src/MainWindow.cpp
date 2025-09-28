@@ -5995,7 +5995,7 @@ void MainWindow::startDetection()
 				_imuThread = 0;
 			}
 
-			if(!_sensorCapture->odomProvided() && !_preferencesDialog->isOdomDisabled())
+			if((!_sensorCapture->odomProvided() || _preferencesDialog->isOdomAsGuessEnabled()) && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)
@@ -6053,7 +6053,7 @@ void MainWindow::startDetection()
 		}
 	}
 
-	if(_dataRecorder && _sensorCapture && _odomThread)
+	if(_dataRecorder && _sensorCapture)
 	{
 		UEventsManager::createPipe(_sensorCapture, _dataRecorder, "SensorEvent");
 	}

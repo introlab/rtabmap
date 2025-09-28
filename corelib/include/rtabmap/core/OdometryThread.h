@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYTHREAD_H_
 
 #include <rtabmap/core/rtabmap_core_export.h>
+#include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
@@ -55,18 +56,19 @@ private:
 	// MAIN LOOP
 	//============================================================
 	virtual void mainLoop();
-	void addData(const SensorData & data);
-	bool getData(SensorData & data);
+	void addData(const SensorEvent & data);
+	bool getData(SensorEvent & data);
 
 private:
 	USemaphore _dataAdded;
 	UMutex _dataMutex;
-	std::list<SensorData> _dataBuffer;
+	std::list<SensorEvent> _dataBuffer;
 	std::list<SensorData> _imuBuffer;
 	Odometry * _odometry;
 	unsigned int _dataBufferMaxSize;
 	bool _resetOdometry;
 	Transform _resetPose;
+	Transform _previousGuessPose;
 	double _oldestAsyncImuStamp;
 	double _newestAsyncImuStamp;
 };
