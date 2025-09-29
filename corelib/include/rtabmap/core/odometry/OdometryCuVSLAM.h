@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 #include <memory>
 
-// Forward declarations for cuVSLAM types to avoid including cuvslam.h
 #ifdef RTABMAP_CUVSLAM
 #include <cuvslam.h>
 #endif
@@ -73,6 +72,7 @@ private:
 	std::vector<uint8_t *> gpu_right_image_data_;
 	std::vector<size_t> gpu_left_image_sizes_; // size of one image
 	std::vector<size_t> gpu_right_image_sizes_;
+	void * cuda_stream_; // Opaque CUDA stream handle stored as void*
 #endif
 };
 

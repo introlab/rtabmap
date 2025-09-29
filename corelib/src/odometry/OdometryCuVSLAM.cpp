@@ -95,7 +95,8 @@ bool initializeCuVSLAM(const SensorData & data,
                        std::vector<size_t> & gpu_left_image_sizes,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
-	                   std::vector<std::array<float, 12>> & intrinsics);
+	                   std::vector<std::array<float, 12>> & intrinsics,
+                       void * & cuda_stream);
     
 CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data);
 
@@ -105,7 +106,7 @@ bool prepareImages(const SensorData & data,
                     std::vector<uint8_t *> & gpu_right_image_data,
                     std::vector<size_t> & gpu_left_image_sizes,
                     std::vector<size_t> & gpu_right_image_sizes,
-                    cudaStream_t & cuda_stream);
+                    void * & cuda_stream);
 
 cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
 
@@ -196,7 +197,8 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     gpu_left_image_data_(),
     gpu_right_image_data_(),
     gpu_left_image_sizes_(),
-    gpu_right_image_sizes_()
+    gpu_right_image_sizes_(),
+    cuda_stream_(nullptr)
 #endif
 {
 }
@@ -220,6 +222,10 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         if(gpu_ptr) {
             cudaFree(gpu_ptr);
         }
+    }
+    if(cuda_stream_) {
+        cudaStreamDestroy(reinterpret_cast<cudaStream_t>(cuda_stream_));
+        cuda_stream_ = nullptr;
     }
 #endif
 }
@@ -258,6 +264,10 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
         }
     }
     gpu_right_image_data_.clear();
+    if(cuda_stream_) {
+        cudaStreamDestroy(reinterpret_cast<cudaStream_t>(cuda_stream_));
+        cuda_stream_ = nullptr;
+    }
     
     // Reset our internal state variables
     gpu_left_image_sizes_.clear();
@@ -311,7 +321,8 @@ Transform OdometryCuVSLAM::computeTransform(
             gpu_left_image_sizes_,
             gpu_right_image_sizes_,
             cuvslam_cameras_,
-	        intrinsics_))
+	        intrinsics_,
+            cuda_stream_))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
             return transform;
@@ -324,7 +335,7 @@ Transform OdometryCuVSLAM::computeTransform(
         transform.setNull();
         if(info)
         {
-            info->type = 0; // Success: Initialization successful
+            info->type = 0; // TODO: Change this to cuvslam type (13)
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
             info->timeEstimation = timer.ticks();
         }
@@ -338,7 +349,6 @@ Transform OdometryCuVSLAM::computeTransform(
     
     // Prepare images for cuVSLAM
     std::vector<CUVSLAM_Image> cuvslam_image_objects;
-    cudaStream_t cuda_stream = nullptr;
 
     if(!prepareImages(
         data,
@@ -347,13 +357,9 @@ Transform OdometryCuVSLAM::computeTransform(
         gpu_right_image_data_,
         gpu_left_image_sizes_,
         gpu_right_image_sizes_,
-        cuda_stream))
+        cuda_stream_))
     {
         UERROR("Failed to prepare images for cuVSLAM");
-        // Clean up CUDA stream if allocation failed
-        if(cuda_stream) {
-            cudaStreamDestroy(cuda_stream);
-        }
         return transform;
     }
     
@@ -385,11 +391,6 @@ Transform OdometryCuVSLAM::computeTransform(
         nullptr, 
         &vo_pose_estimate
     );
-    
-    // Clean up CUDA stream
-    if(cuda_stream) {
-        cudaStreamDestroy(cuda_stream);
-    }
 
     // Handle tracking status and odom info
     if(vo_status == CUVSLAM_TRACKING_LOST)
@@ -476,7 +477,7 @@ Transform OdometryCuVSLAM::computeTransform(
     if(info) {	
 
         if(data.stereoCameraModels().size()==1) {
-            info->type = kTypeF2F;
+            info->type = kTypeF2F; // TOD: Change this to cuvslam type and wire it up to visualize properly
 
             // extract 2D VO observations for visualization
             CUVSLAM_ObservationVector observation_vector;
@@ -581,7 +582,8 @@ bool initializeCuVSLAM(const SensorData & data,
                        std::vector<size_t> & gpu_left_image_sizes,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
-	                   std::vector<std::array<float, 12>> & intrinsics)
+	                   std::vector<std::array<float, 12>> & intrinsics,
+                       void * & cuda_stream)
 {    
     // Minimal timing logs for initialization
     UTimer init_timer; init_timer.start();    
@@ -690,11 +692,11 @@ bool initializeCuVSLAM(const SensorData & data,
         return false;
     }
 
-    // Configure multicam mode
-    gpu_left_image_sizes.resize(data.stereoCameraModels().size(), 0);
-    gpu_right_image_sizes.resize(data.stereoCameraModels().size(), 0);
-
     cuvslam_handle = tracker_handle;
+
+    // intialize gpu data
+    gpu_left_image_sizes.resize(data.stereoCameraModels().size());
+    gpu_right_image_sizes.resize(data.stereoCameraModels().size());
 
     // Enable cuVSLAM API debug logging
     CUVSLAM_SetVerbosity(10);  // Set to maximum verbosity level (0=none, 1=errors, 2=warnings, 3=info)
@@ -715,7 +717,6 @@ CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData
     CUVSLAM_Configuration configuration;
     CUVSLAM_InitDefaultConfiguration(&configuration);
     
-    // Will override multicam mode if we have multiple stereo camera models
     configuration.multicam_mode = data.stereoCameraModels().size()>1?1:0;
     
     // Core Visual Odometry Settings 
@@ -753,10 +754,6 @@ CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData
 
     // configuration.debug_dump_directory = "/home/felix/Documents/cuvslam_debug";
     
-    // Enable IMU fusion if we have IMU data
-    
-    
-
     return configuration;
 }
 
@@ -782,11 +779,11 @@ bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size)
     return true;
 }
 
-bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, cudaStream_t & cuda_stream)
+bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, void * & cuda_stream)
 {
     // Initialize CUDA stream if not already done
     if(cuda_stream == nullptr) {
-        cudaError_t stream_err = cudaStreamCreate(&cuda_stream);
+        cudaError_t stream_err = cudaStreamCreate(reinterpret_cast<cudaStream_t*>(&cuda_stream));
         if(stream_err != cudaSuccess) {
             UERROR("Failed to create CUDA stream: %s", cudaGetErrorString(stream_err));
             return false;
@@ -795,7 +792,7 @@ bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, c
     
     // Copy CPU data to GPU memory with async operation for better performance
     cudaError_t cuda_err = cudaMemcpyAsync(gpu_ptr, cpu_image.data, size, 
-                                          cudaMemcpyHostToDevice, cuda_stream);
+                                          cudaMemcpyHostToDevice, reinterpret_cast<cudaStream_t>(cuda_stream));
     if(cuda_err != cudaSuccess) {
         UERROR("Failed to copy image to GPU: %s", cudaGetErrorString(cuda_err));
         return false;
@@ -804,10 +801,10 @@ bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, c
     return true;
 }
 
-bool synchronizeGpuOperations(cudaStream_t cuda_stream)
+bool synchronizeGpuOperations(void * & cuda_stream)
 {
     if(cuda_stream) {
-        cudaError_t cuda_err = cudaStreamSynchronize(cuda_stream);
+        cudaError_t cuda_err = cudaStreamSynchronize(reinterpret_cast<cudaStream_t>(cuda_stream));
         if(cuda_err != cudaSuccess) {
             UERROR("Failed to synchronize GPU operations: %s", cudaGetErrorString(cuda_err));
             return false;
@@ -826,7 +823,7 @@ bool prepareImages(const SensorData & data,
                    std::vector<uint8_t *> & gpu_right_image_data,
                    std::vector<size_t> & gpu_left_image_sizes,
                    std::vector<size_t> & gpu_right_image_sizes,
-                   cudaStream_t & cuda_stream)
+                   void * & cuda_stream)
 {
     // Convert timestamp to nanoseconds (cuVSLAM expects nanoseconds)
     int64_t timestamp_ns = static_cast<int64_t>(data.stamp() * 1000000000.0);
