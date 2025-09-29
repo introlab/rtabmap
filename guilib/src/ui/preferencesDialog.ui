@@ -15728,6 +15728,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>Open3D</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>CuVSLAM</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="3" column="1">
