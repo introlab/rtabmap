@@ -32,17 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 #include <memory>
 
-namespace cv {
-    class Mat;
-}
-
 // Forward declarations for cuVSLAM types to avoid including cuvslam.h
 #ifdef RTABMAP_CUVSLAM
-struct CUVSLAM_Tracker;
-struct CUVSLAM_Camera;
-struct CUVSLAM_CameraRig;
-struct CUVSLAM_Configuration;
-struct CUVSLAM_Image;
+#include <cuvslam.h>
 #endif
 
 namespace rtabmap {
@@ -61,13 +53,20 @@ private:
 
 private:
 #ifdef RTABMAP_CUVSLAM
-	CUVSLAM_Tracker * cuvslam_handle_;
+	CUVSLAM_TrackerHandle cuvslam_handle_;
+
+	std::vector<CUVSLAM_Camera> cuvslam_cameras_;
+	std::vector<std::array<float, 12>> intrinsics_;
 	
 	// State tracking
 	bool initialized_;
 	bool lost_;
 	Transform previous_pose_;
 	double last_timestamp_;
+
+	//visualization
+	std::vector<CUVSLAM_Observation> observations_;
+	std::vector<CUVSLAM_Landmark> landmarks_;
 	
 	// GPU memory management
 	std::vector<uint8_t *> gpu_left_image_data_; // pointers to all gpu images
