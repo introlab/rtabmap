@@ -616,6 +616,9 @@ bool initializeCuVSLAM(const SensorData & data,
         intrinsics_left[1] = leftModel.cy();
         intrinsics_left[2] = leftModel.fx();
         intrinsics_left[3] = leftModel.fy();
+
+        // Transform sequence:
+        // cuvslam -> optical -> camera extrinsics in optical -> cuvslam
         rtabmap::Transform extrinsics = cuvslam_pose_canonical * stereoModel.localTransform() * optical_pose_cuvslam;
         cam_left.pose = TocuVSLAMPose(extrinsics);
         cam_left.border_top = 0;
@@ -636,6 +639,8 @@ bool initializeCuVSLAM(const SensorData & data,
         Transform baseline_transform(1, 0, 0, stereoModel.baseline(),
                                      0, 1, 0, 0,
                                      0, 0, 1, 0);
+        // Transform sequence:
+        // cuvslam -> optical -> baseline offset in optical -> camera extrinsics in optical -> cuvslam
         extrinsics = cuvslam_pose_canonical * stereoModel.localTransform() * baseline_transform * optical_pose_cuvslam;
         cam_right.pose = TocuVSLAMPose(extrinsics);
         cam_right.border_top = 0;
