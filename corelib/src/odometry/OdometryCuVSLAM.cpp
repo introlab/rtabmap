@@ -94,13 +94,14 @@ namespace rtabmap {
 bool initializeCuVSLAM(const SensorData & data, 
                        CUVSLAM_TrackerHandle & cuvslam_handle,
                        CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
+                       bool planar_constraints,
                        std::vector<size_t> & gpu_left_image_sizes,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        void * & cuda_stream);
     
-CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data);
+CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data, bool planar_constraints);
 
 bool prepareImages(const SensorData & data, 
                     std::vector<CUVSLAM_Image> & cuvslam_images,
@@ -193,6 +194,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     ground_constraint_handle_(nullptr),
     initialized_(false),
     lost_(false),
+    planar_constraints_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
     observations_(5000),
@@ -204,6 +206,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     cuda_stream_(nullptr)
 #endif
 {
+    Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
 }
 
 OdometryCuVSLAM::~OdometryCuVSLAM()
@@ -319,6 +322,7 @@ Transform OdometryCuVSLAM::computeTransform(
             data, 
             cuvslam_handle_,
             ground_constraint_handle_,
+            planar_constraints_,
             gpu_left_image_sizes_,
             gpu_right_image_sizes_,
             cuvslam_cameras_,
@@ -459,15 +463,17 @@ Transform OdometryCuVSLAM::computeTransform(
     }
 
     // Apply ground constraint
-    if (CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
-        UERROR("Failed to add next pose to ground constraint");
-        transform.setNull();
-        return transform;
-    }
-    if (CUVSLAM_GroundConstraintGetPoseOnGround(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
-        UERROR("Failed to get pose on ground");
-        transform.setNull();
-        return transform;
+    if(planar_constraints_) {
+        if (CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
+            UERROR("Failed to add next pose to ground constraint");
+            transform.setNull();
+            return transform;
+        }
+        if (CUVSLAM_GroundConstraintGetPoseOnGround(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
+            UERROR("Failed to get pose on ground");
+            transform.setNull();
+            return transform;
+        }
     }
     
     // Convert cuVSLAM pose to RTAB-Map Transform
@@ -579,6 +585,7 @@ Transform OdometryCuVSLAM::computeTransform(
 bool initializeCuVSLAM(const SensorData & data,
                        CUVSLAM_TrackerHandle & cuvslam_handle,
                        CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
+                       bool planar_constraints,
                        std::vector<size_t> & gpu_left_image_sizes,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
@@ -674,7 +681,7 @@ bool initializeCuVSLAM(const SensorData & data,
     cuvslam_imu_pose = TocuVSLAMPose(Transform::getIdentity());
 
     
-    const CUVSLAM_Configuration configuration = CreateConfiguration(cuvslam_imu_pose, data);
+    const CUVSLAM_Configuration configuration = CreateConfiguration(cuvslam_imu_pose, data, planar_constraints);
     PrintConfiguration(configuration);
 
     // Create tracker
@@ -699,18 +706,22 @@ bool initializeCuVSLAM(const SensorData & data,
     gpu_right_image_sizes.resize(data.stereoCameraModels().size());
 
     // initialize ground constraints
-    CUVSLAM_Pose identity_cuvslam = TocuVSLAMPose(Transform::getIdentity()); // same in both frames
+    if (planar_constraints) 
+    {
+        CUVSLAM_Pose identity_cuvslam = TocuVSLAMPose(Transform::getIdentity()); // same in both frames
     
-    const CUVSLAM_Status ground_status = CUVSLAM_GroundConstraintCreate(
-        &ground_constraint_handle,
-        &identity_cuvslam,
-        &identity_cuvslam,
-        &identity_cuvslam
-    );
-    if(ground_status != CUVSLAM_SUCCESS) {
-        UERROR("Failed to initialize CUVSLAM ground constraint: %d", ground_status);
-        return false;
+        const CUVSLAM_Status ground_status = CUVSLAM_GroundConstraintCreate(
+            &ground_constraint_handle,
+            &identity_cuvslam,
+            &identity_cuvslam,
+            &identity_cuvslam
+        );
+        if(ground_status != CUVSLAM_SUCCESS) {
+            UERROR("Failed to initialize CUVSLAM ground constraint: %d", ground_status);
+            return false;
+        }
     }
+    
     // Enable cuVSLAM API debug logging
     CUVSLAM_SetVerbosity(10);  // Set to maximum verbosity level (0=none, 1=errors, 2=warnings, 3=info)
 
@@ -722,7 +733,7 @@ Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfigur
 Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
 */
-CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData & data)
+CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData & data, bool planar_constraints)
 {
     // Note: cv_base_link_pose_cv_imu parameter is not used in current implementation
     // but kept for future IMU integration
@@ -758,7 +769,7 @@ CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData
     // configuration.max_frame_delta_ms = 100.0;             // Maximum frame interval (100ms default)
     
     // SLAM-specific parameters (disabled)
-    configuration.planar_constraints = 1;
+    configuration.planar_constraints = planar_constraints?1:0;
     configuration.slam_throttling_time_ms = 0;
     configuration.slam_max_map_size = 0;
     configuration.slam_sync_mode = 0;
