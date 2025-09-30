@@ -300,7 +300,7 @@ Transform OdometryCuVSLAM::computeTransform(
     // Check if we have valid image data
     if(data.imageRaw().empty() || data.rightRaw().empty())
     {
-        UERROR("cuVSLAM odometry requires both left and right images! Left: %s, Right: %s", 
+        UERROR("cuVSLAM odometry only works with stereo cameras! It requires both left and right images! Left: %s, Right: %s", 
                data.imageRaw().empty() ? "empty" : "ok", 
                data.rightRaw().empty() ? "empty" : "ok");
         
