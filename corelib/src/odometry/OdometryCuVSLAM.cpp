@@ -206,7 +206,9 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     cuda_stream_(nullptr)
 #endif
 {
+#ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
+#endif
 }
 
 OdometryCuVSLAM::~OdometryCuVSLAM()
