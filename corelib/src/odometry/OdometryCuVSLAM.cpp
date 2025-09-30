@@ -383,13 +383,28 @@ Transform OdometryCuVSLAM::computeTransform(
         UERROR("cuVSLAM tracker is null! initialized_: %s", initialized_ ? "true" : "false");
         return transform;
     }
+
+    // Process wheel odom pose if available
+    UWARN("DEBUG: Wheel odom guess: %s", guess.prettyPrint().c_str());
+    CUVSLAM_Pose * predicted_pose_ptr = nullptr;
+    CUVSLAM_Pose predicted_pose;
+    if(!guess.isNull()) {
+        UWARN("DEBUG: Using guess from wheel odom!");
+        Transform absolute_guess = previous_pose_ * guess;
+        absolute_guess = cuvslam_pose_canonical * absolute_guess * canonical_pose_cuvslam; // convert to cuvslam frame
+        predicted_pose = TocuVSLAMPose(absolute_guess);
+        predicted_pose_ptr = &predicted_pose;
+    }
+    else {
+        UWARN("DEBUG: Didn't recieve guess from wheel odom!");
+    }
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
         cuvslam_image_objects.data(), 
         cuvslam_image_objects.size(), 
-        nullptr, 
+        predicted_pose_ptr,
         &vo_pose_estimate
     );
 
@@ -459,10 +474,9 @@ Transform OdometryCuVSLAM::computeTransform(
     Transform current_pose = FromcuVSLAMPose(vo_pose_estimate.pose);
     current_pose = canonical_pose_cuvslam * current_pose * cuvslam_pose_canonical;
 
-    if(info) {	
-
+    if(info) {
         if(data.stereoCameraModels().size()==1) {
-            info->type = kTypeF2F; // TOD: Change this to cuvslam type and wire it up to visualize properly
+            info->type = kTypeF2F; // TODO: Change this to cuvslam type and wire it up to visualize properly
 
             // extract 2D VO observations for visualization
             CUVSLAM_ObservationVector observation_vector;
