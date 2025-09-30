@@ -728,13 +728,12 @@ CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData
     configuration.enable_observations_export = 1;       // Export observations for external reading
     
     // SLAM Enabled (required for observation buffer allocation) 
-    // TODO: Enable SLAM properly
-    configuration.enable_localization_n_mapping = 1;    // Enable SLAM for observation buffers
+    configuration.enable_localization_n_mapping = 0;    // NO SLAM
     configuration.enable_landmarks_export = 0;          // SLAM feature (optional)
     configuration.enable_reading_slam_internals = 0;    // SLAM feature (optional)
     
     // IMU Configuration 
-    configuration.enable_imu_fusion = 0;//data.imu().empty()?0:1;
+    configuration.enable_imu_fusion = 0;                //data.imu().empty()?0:1;
     configuration.debug_imu_mode = 0;                   // Disable IMU debug mode
     // imu_calibration.gyroscope_noise_density = 0.0002f;    
     // imu_calibration.gyroscope_random_walk = 0.00003f;      
@@ -743,14 +742,13 @@ CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData
     // imu_calibration.frequency = 200.0f; 
     // configuration.imu_calibration = imu_calibration;
     
-    // Timing and Performance 
     // configuration.max_frame_delta_ms = 100.0;             // Maximum frame interval (100ms default)
     
-    // SLAM-specific parameters (now enabled for observation buffers)
-    configuration.planar_constraints = 1;               // No planar constraints
-    configuration.slam_throttling_time_ms = 0;          // No SLAM throttling
-    configuration.slam_max_map_size = 0;              // Reasonable map size for real-time
-    configuration.slam_sync_mode = 0;                   // Async SLAM mode (better for real-time)
+    // SLAM-specific parameters (disabled)
+    configuration.planar_constraints = 1;
+    configuration.slam_throttling_time_ms = 0;
+    configuration.slam_max_map_size = 0;
+    configuration.slam_sync_mode = 0;
 
     // configuration.debug_dump_directory = "/home/felix/Documents/cuvslam_debug";
     
