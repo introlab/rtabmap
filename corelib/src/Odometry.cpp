@@ -1016,7 +1016,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		--_resetCurrentCount;
 		if(_resetCurrentCount == 0)
 		{
-			if(!guess.isNull() && !guessFromMotion_) {
+			if(!guess.isNull() && !guessIn.isNull()) {
 				UWARN("Odometry automatically reset to latest pose (%s) + guess (%s)!", _pose.prettyPrint().c_str(), guess.prettyPrint().c_str());
 				this->reset(_pose * guess);
 			}
@@ -1029,14 +1029,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			{
 				*info = OdometryInfo();
 			}
-			return this->computeTransform(data, Transform(), info);
+			this->computeTransform(data, Transform(), info);
+			return _pose;
 		}
-	}
 
 	previousVelocities_.clear();
 	velocityGuess_.setNull();
 	previousStamp_ = 0;
 
+}
 	return Transform();
 }
 
@@ -1066,6 +1067,7 @@ void Odometry::initKalmanFilter(const Transform & initialPose, float vx, float v
 	    0, 0, 0, 0, 0, 0.17 } };
 	static const boost::array<double, 36> STANDARD_TWIST_COVARIANCE =
 	{ { 0.05, 0, 0, 0, 0, 0,
+	}
 	    0, 0.05, 0, 0, 0, 0,
 	    0, 0, 0.05, 0, 0, 0,
 	    0, 0, 0, 0.09, 0, 0,
