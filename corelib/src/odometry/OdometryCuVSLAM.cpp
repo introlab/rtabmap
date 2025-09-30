@@ -99,7 +99,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
 	                   std::vector<std::array<float, 12>> & intrinsics,
-                       void * & cuda_stream);
+                       cudaStream_t & cuda_stream);
     
 CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data);
 
@@ -109,7 +109,7 @@ bool prepareImages(const SensorData & data,
                     std::vector<uint8_t *> & gpu_right_image_data,
                     std::vector<size_t> & gpu_left_image_sizes,
                     std::vector<size_t> & gpu_right_image_sizes,
-                    void * & cuda_stream);
+                    cudaStream_t & cuda_stream);
 
 cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
 
@@ -233,7 +233,7 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
         }
     }
     if(cuda_stream_) {
-        cudaStreamDestroy(reinterpret_cast<cudaStream_t>(cuda_stream_));
+        cudaStreamDestroy(cuda_stream_);
         cuda_stream_ = nullptr;
     }
 #endif
@@ -268,7 +268,7 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     }
     gpu_right_image_data_.clear();
     if(cuda_stream_) {
-        cudaStreamDestroy(reinterpret_cast<cudaStream_t>(cuda_stream_));
+        cudaStreamDestroy(cuda_stream_);
         cuda_stream_ = nullptr;
     }
     
@@ -590,7 +590,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
 	                   std::vector<std::array<float, 12>> & intrinsics,
-                       void * & cuda_stream)
+                       cudaStream_t & cuda_stream)
 {    
     // Minimal timing logs for initialization
     UTimer init_timer; init_timer.start();    
@@ -801,11 +801,11 @@ bool allocateGpuMemory(size_t size, uint8_t ** gpu_ptr, size_t * current_size)
     return true;
 }
 
-bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, void * & cuda_stream)
+bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, cudaStream_t & cuda_stream)
 {
     // Initialize CUDA stream if not already done
     if(cuda_stream == nullptr) {
-        cudaError_t stream_err = cudaStreamCreate(reinterpret_cast<cudaStream_t*>(&cuda_stream));
+        cudaError_t stream_err = cudaStreamCreate(&cuda_stream);
         if(stream_err != cudaSuccess) {
             UERROR("Failed to create CUDA stream: %s", cudaGetErrorString(stream_err));
             return false;
@@ -814,7 +814,7 @@ bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, v
     
     // Copy CPU data to GPU memory with async operation for better performance
     cudaError_t cuda_err = cudaMemcpyAsync(gpu_ptr, cpu_image.data, size, 
-                                          cudaMemcpyHostToDevice, reinterpret_cast<cudaStream_t>(cuda_stream));
+                                          cudaMemcpyHostToDevice, cuda_stream);
     if(cuda_err != cudaSuccess) {
         UERROR("Failed to copy image to GPU: %s", cudaGetErrorString(cuda_err));
         return false;
@@ -823,10 +823,10 @@ bool copyToGpuAsync(const cv::Mat & cpu_image, uint8_t * gpu_ptr, size_t size, v
     return true;
 }
 
-bool synchronizeGpuOperations(void * & cuda_stream)
+bool synchronizeGpuOperations(cudaStream_t & cuda_stream)
 {
     if(cuda_stream) {
-        cudaError_t cuda_err = cudaStreamSynchronize(reinterpret_cast<cudaStream_t>(cuda_stream));
+        cudaError_t cuda_err = cudaStreamSynchronize(cuda_stream);
         if(cuda_err != cudaSuccess) {
             UERROR("Failed to synchronize GPU operations: %s", cudaGetErrorString(cuda_err));
             return false;
@@ -845,7 +845,7 @@ bool prepareImages(const SensorData & data,
                    std::vector<uint8_t *> & gpu_right_image_data,
                    std::vector<size_t> & gpu_left_image_sizes,
                    std::vector<size_t> & gpu_right_image_sizes,
-                   void * & cuda_stream)
+                   cudaStream_t & cuda_stream)
 {
     // Convert timestamp to nanoseconds (cuVSLAM expects nanoseconds)
     int64_t timestamp_ns = static_cast<int64_t>(data.stamp() * 1000000000.0);
