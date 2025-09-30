@@ -7,7 +7,6 @@
 #  CUVSLAM_INCLUDE_DIRS  - The cuVSLAM include directory.
 #  CUVSLAM_LIBRARIES     - The cuVSLAM library to link against.
 
-# cuVSLAM requires CUDA runtime
 find_package(CUDA REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -35,7 +34,6 @@ find_library(CUVSLAM_LIBRARY
 
 if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
     set(CUVSLAM_FOUND TRUE)
-    # Include CUDA and Eigen3 dependencies in cuVSLAM variables
     set(CUVSLAM_LIBRARIES 
         ${CUVSLAM_LIBRARY} 
         ${CUDA_LIBRARIES}
@@ -78,5 +76,4 @@ else()
     endif()
 endif()
 
-# Mark as advanced
 mark_as_advanced(CUVSLAM_INCLUDE_DIRS CUVSLAM_LIBRARY)
