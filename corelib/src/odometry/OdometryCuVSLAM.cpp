@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include <cuvslam.h>
+#include <ground_constraint.h>
 #include <opencv2/opencv.hpp>
 #include <eigen3/Eigen/Dense>
 #include <cuda_runtime.h>
@@ -92,6 +93,7 @@ namespace rtabmap {
 
 bool initializeCuVSLAM(const SensorData & data, 
                        CUVSLAM_TrackerHandle & cuvslam_handle,
+                       CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
                        std::vector<size_t> & gpu_left_image_sizes,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
@@ -188,6 +190,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 #ifdef RTABMAP_CUVSLAM
     ,
     cuvslam_handle_(nullptr),
+    ground_constraint_handle_(nullptr),
     initialized_(false),
     lost_(false),
     previous_pose_(Transform::getIdentity()),
@@ -210,6 +213,9 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
     if(cuvslam_handle_)
     {
         CUVSLAM_DestroyTracker(cuvslam_handle_);
+    }
+    if(ground_constraint_handle_){
+        CUVSLAM_GroundConstraintDestroy(ground_constraint_handle_);
     }
     
     // Clean up GPU memory
@@ -235,20 +241,14 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     Odometry::reset(initialPose);
     
 #ifdef RTABMAP_CUVSLAM
-    UWARN("RESET: cuvSLAM reset hit _______________________________");
-    UWARN("RESET: cuvslam_handle_ before destroy = %p", cuvslam_handle_);
-    UWARN("RESET: initialized_ before reset = %s", initialized_ ? "true" : "false");
-    
     if(cuvslam_handle_)
     {
-        UWARN("RESET: Destroying cuVSLAM tracker...");
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
-        UWARN("RESET: cuvslam_handle_ set to nullptr");
     }
-    else
-    {
-        UWARN("RESET: cuvslam_handle_ was already nullptr");
+    if(ground_constraint_handle_){
+        CUVSLAM_GroundConstraintDestroy(ground_constraint_handle_);
+        ground_constraint_handle_ = nullptr;
     }
     
     // Clean up GPU memory
@@ -318,6 +318,7 @@ Transform OdometryCuVSLAM::computeTransform(
         if(!initializeCuVSLAM(
             data, 
             cuvslam_handle_,
+            ground_constraint_handle_,
             gpu_left_image_sizes_,
             gpu_right_image_sizes_,
             cuvslam_cameras_,
@@ -433,40 +434,24 @@ Transform OdometryCuVSLAM::computeTransform(
         return transform;
     }
 
+    // Process Successful pose estimation
+
     if(info)
     {
         cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
         info->reg.covariance = covMat;
         info->timeEstimation = timer.ticks();
     }
-    
-    // On SUCCESS, validate pose values and treat non-finite/huge values as lost
-    bool pose_corrupted = false;
-    std::string corruption_details = "";
-    for(int i = 0; i < 3; i++) {
-        if(!std::isfinite(vo_pose_estimate.pose.t[i]) || std::abs(vo_pose_estimate.pose.t[i]) > 1000.0) {
-            corruption_details += "T[" + std::to_string(i) + "]=" + std::to_string(vo_pose_estimate.pose.t[i]) + " ";
-            pose_corrupted = true;
-        }
-    }
-    for(int i = 0; i < 9; i++) {
-        if(!std::isfinite(vo_pose_estimate.pose.r[i]) || std::abs(vo_pose_estimate.pose.r[i]) > 1000.0) {
-            corruption_details += "R[" + std::to_string(i) + "]=" + std::to_string(vo_pose_estimate.pose.r[i]) + " ";
-            pose_corrupted = true;
-        }
-    }
-    if(pose_corrupted) {   
-        UWARN("Pose corrpupted!?");        
-        lost_ = true;
-        if(info)
-        {
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
-            info->timeEstimation = timer.ticks();
-        }
 
+    // Apply ground constraint
+    if (CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
+        UERROR("Failed to add next pose to ground constraint");
         transform.setNull();
-        previous_pose_.setNull();
-        last_timestamp_ = data.stamp();
+        return transform;
+    }
+    if (CUVSLAM_GroundConstraintGetPoseOnGround(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
+        UERROR("Failed to get pose on ground");
+        transform.setNull();
         return transform;
     }
     
@@ -579,6 +564,7 @@ Transform OdometryCuVSLAM::computeTransform(
 
 bool initializeCuVSLAM(const SensorData & data,
                        CUVSLAM_TrackerHandle & cuvslam_handle,
+                       CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
                        std::vector<size_t> & gpu_left_image_sizes,
                        std::vector<size_t> & gpu_right_image_sizes,
                        std::vector<CUVSLAM_Camera> & cuvslam_cameras,
@@ -698,6 +684,19 @@ bool initializeCuVSLAM(const SensorData & data,
     gpu_left_image_sizes.resize(data.stereoCameraModels().size());
     gpu_right_image_sizes.resize(data.stereoCameraModels().size());
 
+    // initialize ground constraints
+    CUVSLAM_Pose identity_cuvslam = TocuVSLAMPose(Transform::getIdentity()); // same in both frames
+    
+    const CUVSLAM_Status ground_status = CUVSLAM_GroundConstraintCreate(
+        &ground_constraint_handle,
+        &identity_cuvslam,
+        &identity_cuvslam,
+        &identity_cuvslam
+    );
+    if(ground_status != CUVSLAM_SUCCESS) {
+        UERROR("Failed to initialize CUVSLAM ground constraint: %d", ground_status);
+        return false;
+    }
     // Enable cuVSLAM API debug logging
     CUVSLAM_SetVerbosity(10);  // Set to maximum verbosity level (0=none, 1=errors, 2=warnings, 3=info)
 

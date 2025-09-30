@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_CUVSLAM
 #include <cuvslam.h>
+#include <ground_constraint.h>
 #endif
 
 namespace rtabmap {
@@ -53,6 +54,7 @@ private:
 private:
 #ifdef RTABMAP_CUVSLAM
 	CUVSLAM_TrackerHandle cuvslam_handle_;
+	CUVSLAM_GroundConstraintHandle ground_constraint_handle_;
 
 	std::vector<CUVSLAM_Camera> cuvslam_cameras_;
 	std::vector<std::array<float, 12>> intrinsics_;
