@@ -101,7 +101,7 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        void * & cuda_stream);
     
-CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data, bool planar_constraints);
+CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose & cv_base_link_pose_cv_imu, const SensorData & data);
 
 bool prepareImages(const SensorData & data, 
                     std::vector<CUVSLAM_Image> & cuvslam_images,
@@ -475,7 +475,7 @@ Transform OdometryCuVSLAM::computeTransform(
             return transform;
         }
     }
-    
+
     // Convert cuVSLAM pose to RTAB-Map Transform
     Transform current_pose = FromcuVSLAMPose(vo_pose_estimate.pose);
     current_pose = canonical_pose_cuvslam * current_pose * cuvslam_pose_canonical;
@@ -681,7 +681,7 @@ bool initializeCuVSLAM(const SensorData & data,
     cuvslam_imu_pose = TocuVSLAMPose(Transform::getIdentity());
 
     
-    const CUVSLAM_Configuration configuration = CreateConfiguration(cuvslam_imu_pose, data, planar_constraints);
+    const CUVSLAM_Configuration configuration = CreateConfiguration(cuvslam_imu_pose, data);
     PrintConfiguration(configuration);
 
     // Create tracker
@@ -733,7 +733,7 @@ Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfigur
 Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
 */
-CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData & data, bool planar_constraints)
+CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData & data)
 {
     // Note: cv_base_link_pose_cv_imu parameter is not used in current implementation
     // but kept for future IMU integration
@@ -769,7 +769,7 @@ CUVSLAM_Configuration CreateConfiguration(const CUVSLAM_Pose &, const SensorData
     // configuration.max_frame_delta_ms = 100.0;             // Maximum frame interval (100ms default)
     
     // SLAM-specific parameters (disabled)
-    configuration.planar_constraints = planar_constraints?1:0;
+    configuration.planar_constraints = 0;
     configuration.slam_throttling_time_ms = 0;
     configuration.slam_max_map_size = 0;
     configuration.slam_sync_mode = 0;
