@@ -282,7 +282,7 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     intrinsics_.clear();
     initialized_ = false;
     lost_ = false;
-    previous_pose_ = initialPose;
+    previous_pose_ = Transform::getIdentity();
     last_timestamp_ = -1.0;
 #endif
 }
@@ -291,9 +291,7 @@ Transform OdometryCuVSLAM::computeTransform(
     SensorData & data,
     const Transform & guess,
     OdometryInfo * info)
-{
-    Transform transform;
-    
+{    
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
     
@@ -302,17 +300,15 @@ Transform OdometryCuVSLAM::computeTransform(
     {
         UERROR("cuVSLAM odometry only works with stereo cameras! It requires both left and right images! Left: %s, Right: %s", 
                data.imageRaw().empty() ? "empty" : "ok", 
-               data.rightRaw().empty() ? "empty" : "ok");
-        
-               transform.setNull();
-        return transform;
+               data.rightRaw().empty() ? "empty" : "ok");       
+        return Transform();
     }
     
     // Check if we have valid stereo camera models
     if(data.stereoCameraModels().size() == 0)
     {
         UERROR("cuVSLAM odometry requires stereo camera models!");
-        return transform;
+        return Transform();
     }
     // Initialize cuVSLAM tracker on first frame
     if(!initialized_)
@@ -331,7 +327,7 @@ Transform OdometryCuVSLAM::computeTransform(
             cuda_stream_))
         {
             UERROR("Failed to initialize cuVSLAM tracker");
-            return transform;
+            return Transform();
         }
         
         initialized_ = true;
@@ -343,8 +339,7 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         last_timestamp_ = data.stamp();
         // For first frame after reset, return null transform to avoid reset cascade
-        transform.setNull();
-        return transform;
+        return Transform();
     }
     
     // Prepare images for cuVSLAM
@@ -360,8 +355,7 @@ Transform OdometryCuVSLAM::computeTransform(
         cuda_stream_))
     {
         UERROR("Failed to prepare images for cuVSLAM");
-        transform.setNull();
-        return transform;
+        return Transform();
     }
     
     // Process IMU data if available
@@ -374,13 +368,13 @@ Transform OdometryCuVSLAM::computeTransform(
     // Validate images
     if(cuvslam_image_objects.empty()) {
         UERROR("No images prepared for cuVSLAM tracking");
-        return transform;
+        return Transform();
     }
     
     // Validate cuVSLAM tracker
     if(!cuvslam_handle_) {
         UERROR("cuVSLAM tracker is null! initialized_: %s", initialized_ ? "true" : "false");
-        return transform;
+        return Transform();
     }
 
     // Process wheel odom pose if available
@@ -413,8 +407,7 @@ Transform OdometryCuVSLAM::computeTransform(
         }
 
         last_timestamp_ = data.stamp();
-        transform.setNull();
-        return transform;
+        return Transform();
     }
     else if(vo_status != CUVSLAM_SUCCESS)
     {
@@ -437,14 +430,30 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     
         last_timestamp_ = data.stamp();    
-        transform.setNull();
-        return transform;
+        return Transform();
+    }
+    
+    // Hanlde covariance conversion and validation
+    cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
+    bool valid_covariance = true;
+    for(int i = 0; i < 6; i++)
+    {
+        double diag_val = covMat.at<double>(i, i);
+        if(!std::isfinite(diag_val) || diag_val <= 0.0)
+        {
+            UWARN("Diagonal element %d of covariance is not finite or positive (value: %f), proceeding with default infinite covariance", i, diag_val);
+            covMat.at<double>(i, i) = 9999.0;  // High uncertainty
+            valid_covariance = false;
+        }
+    }
+    if(!valid_covariance) {
+        UWARN("Invalid covariance, detected, returning null transform");
+        return Transform();
     }
 
     // Process Successful pose estimation
     if(info)
     {
-        cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
         info->reg.covariance = covMat;
         info->timeEstimation = timer.ticks();
     }
@@ -453,13 +462,11 @@ Transform OdometryCuVSLAM::computeTransform(
     if(planar_constraints_) {
         if (CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
             UERROR("Failed to add next pose to ground constraint");
-            transform.setNull();
-            return transform;
+            return Transform();
         }
         if (CUVSLAM_GroundConstraintGetPoseOnGround(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
             UERROR("Failed to get pose on ground");
-            transform.setNull();
-            return transform;
+            return Transform();
         }
     }
 
@@ -527,33 +534,32 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     
     // Calculate incremental transform
-    if(!previous_pose_.isNull())
-    {
-        transform = previous_pose_.inverse() * current_pose;
-    }
-    else
-    {
-        // If previous_pose_ is null (e.g., after tracking was lost), 
-        // return the current pose as absolute transform
-        transform = current_pose;
-    }
-
+    UASSERT(!previous_pose_.isNull());
+    Transform transform = previous_pose_.inverse() * current_pose;
+    
     // Check if current pose is identity (which could trigger another reset)
     if(transform.isIdentity())
     {
         transform.setNull();
     }
 
+    if(previous_pose_.isIdentity()) {
+        UWARN("DEBUG: Previous pose is identity! Setting covariance to 9999.0");
+        if(info) {
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+        }   
+    }
+
     // Update tracking state and previous pose
     lost_ = false;
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
-    
+    return transform;
 #else
-    UERROR("cuVSLAM support not compiled in RTAB-Map");
+    UERROR("cuVSLAM support not compiled in RTAB-Map");\
+    return Transform();
 #endif
     
-    return transform;
 }
 
 #ifdef RTABMAP_CUVSLAM
@@ -996,16 +1002,6 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     }
     
     // Ensure diagonal elements are positive and finite (RTAB-Map requirement)
-    for(int i = 0; i < 6; i++)
-    {
-        double diag_val = cv_covariance.at<double>(i, i);
-        if(!std::isfinite(diag_val) || diag_val <= 0.0)
-        {
-            UWARN("Diagonal element %d of covariance is not finite or positive (value: %f), proceeding with default infinite covariance", i, diag_val);
-            cv_covariance.at<double>(i, i) = 9999.0;  // High uncertainty
-        }
-    }
-    
     return cv_covariance;
 }
 
