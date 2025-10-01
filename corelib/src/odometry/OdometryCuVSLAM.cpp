@@ -384,20 +384,15 @@ Transform OdometryCuVSLAM::computeTransform(
     }
 
     // Process wheel odom pose if available
-    UWARN("DEBUG: Wheel odom guess: %s", guess.prettyPrint().c_str());
     CUVSLAM_Pose * predicted_pose_ptr = nullptr;
     CUVSLAM_Pose predicted_pose;
     if(!guess.isNull()) {
-        UWARN("DEBUG: Using guess from wheel odom!");
         Transform absolute_guess = previous_pose_ * guess;
         absolute_guess = cuvslam_pose_canonical * absolute_guess * canonical_pose_cuvslam;
         predicted_pose = TocuVSLAMPose(absolute_guess);
         predicted_pose_ptr = &predicted_pose;
     }
-    else {
-        UWARN("DEBUG: Didn't recieve guess from wheel odom!");
-    }
- 
+    
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
@@ -837,24 +832,28 @@ bool prepareImages(const SensorData & data,
     CUVSLAM_ImageEncoding left_encoding;
     CUVSLAM_ImageEncoding right_encoding;
     
-    // process left image - makes a copy of the image
+    // process left image - does not copy the image
+    processed_left_image = left_image;
     if(left_image.channels() == 1) {
-        processed_left_image = left_image.clone();
         left_encoding = CUVSLAM_ImageEncoding::MONO8;
     } else if(left_image.channels() == 3) {
-        cv::cvtColor(left_image, processed_left_image, cv::COLOR_BGR2RGB);
+        // convert from BGR to RGB
+        int from_to[] = {0,2, 1,1, 2,0}; // B->R, G->G, R->B
+        cv::mixChannels(&left_image, 1, &processed_left_image, 1, from_to, 3);
         left_encoding = CUVSLAM_ImageEncoding::RGB8;
     } else {
         UERROR("Unsupported left image format: %d channels", left_image.channels());
         return false;
     }
 
-    // Process right image - makes a copy of the image
+    // Process right image - does not copy the image
+    processed_right_image = right_image;
     if(right_image.channels() == 1) {
-        processed_right_image = right_image.clone();
         right_encoding = CUVSLAM_ImageEncoding::MONO8;
     } else if(right_image.channels() == 3) {
-        cv::cvtColor(right_image, processed_right_image, cv::COLOR_BGR2RGB);
+        // convert from BGR to RGB
+        int from_to[] = {0,2, 1,1, 2,0}; // B->R, G->G, R->B
+        cv::mixChannels(&right_image, 1, &processed_right_image, 1, from_to, 3);
         right_encoding = CUVSLAM_ImageEncoding::RGB8;
     } else {
         UERROR("Unsupported right image format: %d channels", right_image.channels());
