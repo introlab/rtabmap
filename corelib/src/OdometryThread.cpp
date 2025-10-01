@@ -131,11 +131,18 @@ void OdometryThread::mainLoop()
 		if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (pose.isNull() && data.imu().empty()))
 		{
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
-			// a null pose notify that odometry could not be computed
-			this->post(new OdometryEvent(data, pose, info));
 			if(!pose.isNull()) {
 				_previousGuessPose = event.info().odomPose;
+				if(!event.info().odomPose.isNull() && info.reg.covariance.at<double>(0,0) >= 9999)
+				{
+					// In case of external guess, keep reporting lost till we
+					// process the second frame with valid covariance. This way it
+					// won't trigger a new map.
+					pose = Transform();
+				}
 			}
+			// a null pose notify that odometry could not be computed
+			this->post(new OdometryEvent(data, pose, info));
 		}
 	}
 }
