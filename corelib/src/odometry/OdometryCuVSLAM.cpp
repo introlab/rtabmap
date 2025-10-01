@@ -432,7 +432,7 @@ Transform OdometryCuVSLAM::computeTransform(
         last_timestamp_ = data.stamp();    
         return Transform();
     }
-    
+    // CUVSLAM SUCCESS CASE
     // Hanlde covariance conversion and validation
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
     bool valid_covariance = true;
@@ -451,7 +451,6 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
 
-    // Process Successful pose estimation
     if(info)
     {
         info->reg.covariance = covMat;
@@ -460,11 +459,11 @@ Transform OdometryCuVSLAM::computeTransform(
 
     // Apply ground constraint
     if(planar_constraints_) {
-        if (CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
+        if(CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
             UERROR("Failed to add next pose to ground constraint");
             return Transform();
         }
-        if (CUVSLAM_GroundConstraintGetPoseOnGround(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
+        if(CUVSLAM_GroundConstraintGetPoseOnGround(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
             UERROR("Failed to get pose on ground");
             return Transform();
         }
