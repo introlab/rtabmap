@@ -197,6 +197,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     ground_constraint_handle_(nullptr),
     initialized_(false),
     lost_(false),
+    tracking_(false),
     planar_constraints_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
@@ -285,6 +286,7 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     intrinsics_.clear();
     initialized_ = false;
     lost_ = false;
+    tracking_ = false;
     previous_pose_ = Transform::getIdentity();
     last_timestamp_ = -1.0;
 #endif
@@ -297,6 +299,9 @@ Transform OdometryCuVSLAM::computeTransform(
 {    
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
+
+    UWARN("\nTracking: %s\nLost: %s", tracking_ ? "true" : "false", lost_ ? "true" : "false");
+
     
     // Check if we have valid image data
     if(data.imageRaw().empty() || data.rightRaw().empty())
@@ -304,6 +309,11 @@ Transform OdometryCuVSLAM::computeTransform(
         UERROR("cuVSLAM odometry only works with stereo cameras! It requires both left and right images! Left: %s, Right: %s", 
                data.imageRaw().empty() ? "empty" : "ok", 
                data.rightRaw().empty() ? "empty" : "ok");       
+        return Transform();
+    }
+
+    if(lost_ && tracking_) {
+        UWARN("cuVSLAM odometry is lost, returning null transform");
         return Transform();
     }
     
@@ -337,7 +347,7 @@ Transform OdometryCuVSLAM::computeTransform(
         if(info)
         {
             info->type = 0;
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
         }
         last_timestamp_ = data.stamp();
@@ -416,7 +426,7 @@ Transform OdometryCuVSLAM::computeTransform(
         
         if(info)
         {
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0; // High uncertainty
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
         }
     
@@ -424,7 +434,6 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
 
-    // CUVSLAM SUCCESS CASE
     // Log raw cuVSLAM covariance
     printRawCuvslamCovariance(vo_pose_estimate.covariance, "Raw cuVSLAM Covariance");
 
@@ -433,43 +442,51 @@ Transform OdometryCuVSLAM::computeTransform(
     for(int i = 0; i < 6; i++)
     {
         float & diag_val = vo_pose_estimate.covariance[i*6+i];
-        if(!std::isfinite(diag_val) || diag_val <= 0.0 || diag_val > 0.1)
+        // We allow 1.0 as a valid value, since cuVSLAM sends identity covariance for the first few frames.
+        if(!std::isfinite(diag_val) || diag_val <= 0.0 || (diag_val > 0.1 && diag_val != 1.0))
         {
-            UWARN("Diagonal element %d of covariance is not finite or positive (value: %f), proceeding with default infinite covariance", i, diag_val);
-            diag_val = 9999.0;  // High uncertainty
+            UWARN("INVALID DIAGONAL ELEMENT: %f. Index: %d", diag_val, i);
+            diag_val = 9999.0;
             valid_covariance = false;
         }
     }
-    if(!valid_covariance) {
-        UWARN("Invalid covariance, detected, returning null transform");
-        return Transform();
-    }
 
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
-    printCovarianceMatrix(covMat, "Converted RTAB-Map Covariance");
 
-
-
-    // Simple check for identity values (1.000) along diagonal elements of the covariance
-    bool is_identity_covariance = true;
-    for(int i = 0; i < 6; ++i)
-    {
-        double val = covMat.at<double>(i, i);
-        if(std::abs(val - 1.0) > 1e-6)
+    if(!valid_covariance) {
+        UWARN("Invalid covariance, detected");
+        double velocity_ms = 9999.0;
+        double angular_velocity_rad_s = 9999.0;
+        if(!guess.isNull()) {
+            double time_s = data.stamp() - last_timestamp_;
+            velocity_ms = guess.getNorm() / time_s;
+            angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_s;
+            UWARN("VELOCITY: %f, ANGULAR VELOCITY: %f", velocity_ms, angular_velocity_rad_s);
+        } else {
+            UWARN("NO GUESS, VELOCITY IS 9999.0");
+        }
+        if(velocity_ms < 0.1 && angular_velocity_rad_s < 0.1 && last_timestamp_ != -1.0) {
+            UWARN("VELOCITY GUARD: Velocity is too low, setting fixed covariance!");
+            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+        }
+        else 
         {
-            is_identity_covariance = false;
-            break;
+            // If we have already begun tracking, now we are lost.
+            if(tracking_) {
+                UWARN("LOST: Velocity is high and covariance is invalid, setting lost to true");
+                lost_ = true;
+            }
+            if(info) {
+                info->reg.covariance = covMat;
+            }
+            return Transform();
         }
     }
-    if(is_identity_covariance)
-    {
-        UERROR("Covariance matrix has identity values (1.000) along the diagonal.");
-        return Transform();
-    }
-
-
-
     
+    if(!tracking_) {
+        UWARN("Tracking success, setting tracking to true");
+    }
+    tracking_ = true;
 
     if(info)
     {
@@ -492,6 +509,10 @@ Transform OdometryCuVSLAM::computeTransform(
     // Convert cuVSLAM pose to RTAB-Map Transform
     Transform current_pose = FromcuVSLAMPose(vo_pose_estimate.pose);
     current_pose = canonical_pose_cuvslam * current_pose * cuvslam_pose_canonical;
+
+    // Calculate incremental transform
+    UASSERT(!previous_pose_.isNull());
+    Transform transform = previous_pose_.inverse() * current_pose;
 
     // Fill info with visualization data
     if(info) {
@@ -527,11 +548,12 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         int image_width = data.imageRaw().cols / data.stereoCameraModels().size();
         if(landmark_status == CUVSLAM_SUCCESS && landmark_vector.num > 0) {
+            Transform absolute_pose = this->getPose() * transform;
             for(uint32_t i = 0; i < landmark_vector.num; ++i)
             {
                 const CUVSLAM_Landmark & landmark = landmark_vector.landmarks[i];
                 cv::Point3f pt = util3d::transformPoint(cv::Point3f(landmark.x, landmark.y, landmark.z), canonical_pose_cuvslam);
-                info->localMap.insert(std::make_pair(landmark.id, util3d::transformPoint(pt, current_pose)));
+                info->localMap.insert(std::make_pair(landmark.id, util3d::transformPoint(pt, absolute_pose)));
                 if(data.stereoCameraModels().size() > 1) {
                     for(size_t i=0; i<data.stereoCameraModels().size(); ++i) {
                         cv::Point3f pt_in_cam = util3d::transformPoint(pt, local_transform_inv[i]);
@@ -552,25 +574,22 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     }
     
-    // Calculate incremental transform
-    UASSERT(!previous_pose_.isNull());
-    Transform transform = previous_pose_.inverse() * current_pose;
+
     
     // Check if current pose is identity (which could trigger another reset)
-    if(transform.isIdentity())
-    {
-        transform.setNull();
-    }
+    // if(transform.isIdentity())
+    // {
+    //     transform.setNull();
+    // }
 
-    if(previous_pose_.isIdentity()) {
-        UWARN("DEBUG: Previous pose is identity! Setting covariance to 9999.0");
-        if(info) {
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
-        }   
-    }
+    // if(previous_pose_.isIdentity()) {
+    //     UWARN("DEBUG: Previous pose is identity! Setting covariance to 9999.0");
+    //     if(info) {
+    //         info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+    //     }   
+    // }
 
     // Update tracking state and previous pose
-    lost_ = false;
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
     return transform;
@@ -1019,7 +1038,7 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     {
         for(int j = 0; j < 6; j++)
         {
-            cv_covariance.at<double>(i, j) = static_cast<double>(covariance_mat_change_basis(i, j)) * scaling_factor;
+            cv_covariance.at<double>(i, j) = static_cast<double>(covariance_mat_change_basis(i, j));
             // for angular values, scale again to make it more realistic
             if(i > 2 || j > 2) {
                 cv_covariance.at<double>(i, j) *= scaling_factor;

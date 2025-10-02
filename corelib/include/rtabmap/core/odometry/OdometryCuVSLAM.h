@@ -63,6 +63,7 @@ private:
 	// State tracking
 	bool initialized_;
 	bool lost_;
+	bool tracking_;
 	bool planar_constraints_;
 	Transform previous_pose_;
 	double last_timestamp_;
