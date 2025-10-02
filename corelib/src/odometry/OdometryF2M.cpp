@@ -1560,6 +1560,10 @@ Transform OdometryF2M::computeTransform(
 		{
 			info->reg = regInfo.copyWithoutData();
 		}
+		if(output.isNull())
+		{
+			info->reg.covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0; // Lost
+		}
 	}
 
 	UINFO("Odom update time = %fs lost=%s features=%d inliers=%d/%d variance:lin=%f, ang=%f local_map=%d local_scan_map=%d",
