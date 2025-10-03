@@ -56,7 +56,8 @@ public:
 		kTypeVINSFusion = 9,
 		kTypeOpenVINS = 10,
 		kTypeFLOAM = 11,
-		kTypeOpen3D = 12
+		kTypeOpen3D = 12,
+		kTypeCuVSLAM = 13
 	};
 
 public:

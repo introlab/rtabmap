@@ -101,6 +101,7 @@ SET(SRC_FILES
     odometry/OdometryVINSFusion.cpp
     odometry/OdometryOpenVINS.cpp
     odometry/OdometryOpen3D.cpp
+	odometry/OdometryCuVSLAM.cpp
     
     IMU.cpp
     IMUThread.cpp
@@ -763,6 +764,13 @@ IF(ORB_SLAM_FOUND)
 		${LIBRARIES}
 	)
 ENDIF(ORB_SLAM_FOUND)
+
+IF(CUVSLAM_FOUND)
+    SET(LIBRARIES
+		${LIBRARIES}
+		cuvslam::cuvslam
+	)
+ENDIF(CUVSLAM_FOUND)
 
 IF(GTSAM_FOUND)
 	# Make sure GTSAM is built with system Eigen, not the included one in its package
