@@ -300,8 +300,11 @@ Transform OdometryCuVSLAM::computeTransform(
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
 
-    UWARN("\nTracking: %s\nLost: %s", tracking_ ? "true" : "false", lost_ ? "true" : "false");
-
+    // If we are lost after tracking has begun, return null transform
+    // We wait until a reset is triggered.
+    if(lost_ && tracking_) {
+        return Transform();
+    }
     
     // Check if we have valid image data
     if(data.imageRaw().empty() || data.rightRaw().empty())
@@ -312,17 +315,13 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
 
-    if(lost_ && tracking_) {
-        UWARN("cuVSLAM odometry is lost, returning null transform");
-        return Transform();
-    }
-    
     // Check if we have valid stereo camera models
     if(data.stereoCameraModels().size() == 0)
     {
         UERROR("cuVSLAM odometry requires stereo camera models!");
         return Transform();
     }
+
     // Initialize cuVSLAM tracker on first frame
     if(!initialized_)
     {   
@@ -351,13 +350,11 @@ Transform OdometryCuVSLAM::computeTransform(
             info->timeEstimation = timer.ticks();
         }
         last_timestamp_ = data.stamp();
-        // For first frame after reset, return null transform to avoid reset cascade
         return Transform();
     }
     
     // Prepare images for cuVSLAM
     std::vector<CUVSLAM_Image> cuvslam_image_objects;
-
     if(!prepareImages(
         data,
         cuvslam_image_objects,
@@ -378,13 +375,11 @@ Transform OdometryCuVSLAM::computeTransform(
         UWARN("IMU data available but processing not implemented yet");
     }
     
-    // Validate images
+    // Validate images and tracker status
     if(cuvslam_image_objects.empty()) {
         UERROR("No images prepared for cuVSLAM tracking");
         return Transform();
     }
-    
-    // Validate cuVSLAM tracker
     if(!cuvslam_handle_) {
         UERROR("cuVSLAM tracker is null! initialized_: %s", initialized_ ? "true" : "false");
         return Transform();
@@ -405,7 +400,7 @@ Transform OdometryCuVSLAM::computeTransform(
         cuvslam_handle_, 
         cuvslam_image_objects.data(), 
         cuvslam_image_objects.size(), 
-        predicted_pose_ptr,
+        predicted_pose_ptr,  // can safely handle nullptr if no guess is provided
         &vo_pose_estimate
     );
 
@@ -434,10 +429,7 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
 
-    // Log raw cuVSLAM covariance
-    printRawCuvslamCovariance(vo_pose_estimate.covariance, "Raw cuVSLAM Covariance");
-
-    // Hanlde covariance conversion and validation
+    // Check if we have invalid covariance values
     bool valid_covariance = true;
     for(int i = 0; i < 6; i++)
     {
@@ -445,37 +437,32 @@ Transform OdometryCuVSLAM::computeTransform(
         // We allow 1.0 as a valid value, since cuVSLAM sends identity covariance for the first few frames.
         if(!std::isfinite(diag_val) || diag_val <= 0.0 || (diag_val > 0.1 && diag_val != 1.0))
         {
-            UWARN("INVALID DIAGONAL ELEMENT: %f. Index: %d", diag_val, i);
-            diag_val = 9999.0;
+            diag_val = 9999.0; // Set to high uncertainty
             valid_covariance = false;
         }
     }
 
+    // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
 
+    // Handle invalid covariance. Protect against low velocity cases.
     if(!valid_covariance) {
-        UWARN("Invalid covariance, detected");
         double velocity_ms = 9999.0;
         double angular_velocity_rad_s = 9999.0;
         if(!guess.isNull()) {
             double time_s = data.stamp() - last_timestamp_;
             velocity_ms = guess.getNorm() / time_s;
             angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_s;
-            UWARN("VELOCITY: %f, ANGULAR VELOCITY: %f", velocity_ms, angular_velocity_rad_s);
-        } else {
-            UWARN("NO GUESS, VELOCITY IS 9999.0");
         }
         if(velocity_ms < 0.1 && angular_velocity_rad_s < 0.1 && last_timestamp_ != -1.0) {
-            UWARN("VELOCITY GUARD: Velocity is too low, setting fixed covariance!");
             covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
-        }
-        else 
-        {
+        } else {
             // If we have already begun tracking, now we are lost.
             if(tracking_) {
                 UWARN("LOST: Velocity is high and covariance is invalid, setting lost to true");
                 lost_ = true;
             }
+            // Still send covariance for debugging
             if(info) {
                 info->reg.covariance = covMat;
             }
@@ -483,9 +470,7 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     }
     
-    if(!tracking_) {
-        UWARN("Tracking success, setting tracking to true");
-    }
+    // Tracking was successful and the covariance is valid, set tracking to true
     tracking_ = true;
 
     if(info)
@@ -573,23 +558,7 @@ Transform OdometryCuVSLAM::computeTransform(
             }
         }
     }
-    
 
-    
-    // Check if current pose is identity (which could trigger another reset)
-    // if(transform.isIdentity())
-    // {
-    //     transform.setNull();
-    // }
-
-    // if(previous_pose_.isIdentity()) {
-    //     UWARN("DEBUG: Previous pose is identity! Setting covariance to 9999.0");
-    //     if(info) {
-    //         info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
-    //     }   
-    // }
-
-    // Update tracking state and previous pose
     previous_pose_ = current_pose;
     last_timestamp_ = data.stamp();
     return transform;
@@ -1048,76 +1017,6 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     
     // Ensure diagonal elements are positive and finite (RTAB-Map requirement)
     return cv_covariance;
-}
-
-// ============================================================================
-// Covariance Logging Functions
-// ============================================================================
-
-void printCovarianceMatrix(const cv::Mat & cov, const std::string & label)
-{
-    if(cov.empty() || cov.rows != 6 || cov.cols != 6) {
-        UWARN("=== %s ===", label.c_str());
-        UWARN("Invalid covariance matrix (empty or not 6x6)");
-        return;
-    }
-    
-    UWARN("=== %s ===", label.c_str());
-    UWARN("Covariance Matrix (6x6):");
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cov.at<double>(0,0), cov.at<double>(0,1), cov.at<double>(0,2), 
-          cov.at<double>(0,3), cov.at<double>(0,4), cov.at<double>(0,5));
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cov.at<double>(1,0), cov.at<double>(1,1), cov.at<double>(1,2), 
-          cov.at<double>(1,3), cov.at<double>(1,4), cov.at<double>(1,5));
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cov.at<double>(2,0), cov.at<double>(2,1), cov.at<double>(2,2), 
-          cov.at<double>(2,3), cov.at<double>(2,4), cov.at<double>(2,5));
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cov.at<double>(3,0), cov.at<double>(3,1), cov.at<double>(3,2), 
-          cov.at<double>(3,3), cov.at<double>(3,4), cov.at<double>(3,5));
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cov.at<double>(4,0), cov.at<double>(4,1), cov.at<double>(4,2), 
-          cov.at<double>(4,3), cov.at<double>(4,4), cov.at<double>(4,5));
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cov.at<double>(5,0), cov.at<double>(5,1), cov.at<double>(5,2), 
-          cov.at<double>(5,3), cov.at<double>(5,4), cov.at<double>(5,5));
-    UWARN("Diagonal elements: [%8.6f, %8.6f, %8.6f, %8.6f, %8.6f, %8.6f]",
-          cov.at<double>(0,0), cov.at<double>(1,1), cov.at<double>(2,2),
-          cov.at<double>(3,3), cov.at<double>(4,4), cov.at<double>(5,5));
-}
-
-void printRawCuvslamCovariance(const float * cuvslam_covariance, const std::string & label)
-{
-    UWARN("=== %s ===", label.c_str());
-    
-    if(cuvslam_covariance == nullptr) {
-        UWARN("Raw cuVSLAM covariance: nullptr");
-        return;
-    }
-    
-    UWARN("Raw cuVSLAM Covariance Matrix (6x6):");
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cuvslam_covariance[0],  cuvslam_covariance[1],  cuvslam_covariance[2], 
-          cuvslam_covariance[3],  cuvslam_covariance[4],  cuvslam_covariance[5]);
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cuvslam_covariance[6],  cuvslam_covariance[7],  cuvslam_covariance[8], 
-          cuvslam_covariance[9],  cuvslam_covariance[10], cuvslam_covariance[11]);
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cuvslam_covariance[12], cuvslam_covariance[13], cuvslam_covariance[14], 
-          cuvslam_covariance[15], cuvslam_covariance[16], cuvslam_covariance[17]);
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cuvslam_covariance[18], cuvslam_covariance[19], cuvslam_covariance[20], 
-          cuvslam_covariance[21], cuvslam_covariance[22], cuvslam_covariance[23]);
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cuvslam_covariance[24], cuvslam_covariance[25], cuvslam_covariance[26], 
-          cuvslam_covariance[27], cuvslam_covariance[28], cuvslam_covariance[29]);
-    UWARN("     [%8.6f %8.6f %8.6f %8.6f %8.6f %8.6f]", 
-          cuvslam_covariance[30], cuvslam_covariance[31], cuvslam_covariance[32], 
-          cuvslam_covariance[33], cuvslam_covariance[34], cuvslam_covariance[35]);
-    UWARN("Diagonal elements: [%8.6f, %8.6f, %8.6f, %8.6f, %8.6f, %8.6f]",
-          cuvslam_covariance[0],  cuvslam_covariance[7],  cuvslam_covariance[14],
-          cuvslam_covariance[21], cuvslam_covariance[28], cuvslam_covariance[35]);
 }
 
 #endif // RTABMAP_CUVSLAM
