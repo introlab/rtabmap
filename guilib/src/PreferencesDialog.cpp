@@ -794,6 +794,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_orbbec_sdk_color_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_orbbec_sdk_depth_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_orbbec_sdk_depth_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_color_rectification, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2257,6 +2258,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_orbbec_sdk_color_height->setValue(600);
 		_ui->spinBox_orbbec_sdk_depth_width->setValue(800);
 		_ui->spinBox_orbbec_sdk_depth_height->setValue(600);
+		_ui->checkBox_orbbec_sdk_color_rectification->setChecked(false);
 		_ui->source_checkBox_useMKVStamps->setChecked(true);
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
@@ -2748,6 +2750,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_orbbec_sdk_color_height->setValue(settings.value("color_height", _ui->spinBox_orbbec_sdk_color_height->value()).toInt());
 	_ui->spinBox_orbbec_sdk_depth_width->setValue(settings.value("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value()).toInt());
 	_ui->spinBox_orbbec_sdk_depth_height->setValue(settings.value("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value()).toInt());
+	_ui->checkBox_orbbec_sdk_color_rectification->setChecked(settings.value("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked()).toBool());
 	settings.endGroup(); // Orbbec SDK
 
 	settings.beginGroup("RealSense");
@@ -3362,6 +3365,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("color_height", _ui->spinBox_orbbec_sdk_color_height->value());
 	settings.setValue("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value());
 	settings.setValue("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value());
+	settings.setValue("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked());
 	settings.endGroup(); // Orbbec SDK
 
 	settings.beginGroup("RealSense");
@@ -6691,6 +6695,7 @@ Camera * PreferencesDialog::createCamera(
 			_ui->spinBox_orbbec_sdk_depth_height->value(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraOrbbecSDK*)camera)->enableColorRectification(_ui->checkBox_orbbec_sdk_color_rectification->isChecked());
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?

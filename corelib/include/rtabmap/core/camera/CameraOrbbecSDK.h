@@ -32,14 +32,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Version.h"
 
 #ifdef RTABMAP_ORBBEC_SDK
-#include <libobsensor/ObSensor.hpp>
-#endif
-
 namespace ob
 {
     class Pipeline;
     class Align;
 }
+#endif
 
 namespace rtabmap
 {
@@ -53,11 +51,11 @@ public:
 public:
     // deviceId can be either an index (e.g., "0"), an UID (e.g, "2-1-2" or "gmsl-1") or a serial ("AAA6454S")
     CameraOrbbecSDK(
-		std::string deviceId = "",
-		int colorWidth = 800,
-		int colorHeight = 600,
-		int depthWidth = 800,
-		int depthHeight = 600,
+        std::string deviceId = "",
+        int colorWidth = 800,
+        int colorHeight = 600,
+        int depthWidth = 800,
+        int depthHeight = 600,
         float imageRate = 0.0f,
         const Transform & localTransform = Transform::getIdentity());
     virtual ~CameraOrbbecSDK();
@@ -66,6 +64,9 @@ public:
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
 
+    // Should be set before initializing
+    void enableColorRectification(bool enabled);
+
 protected:
     virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
@@ -73,10 +74,10 @@ private:
 
 #ifdef RTABMAP_ORBBEC_SDK
     std::string deviceId_;
-	int colorWidth_;
-	int colorHeight_;
-	int depthWidth_;
-	int depthHeight_;
+    int colorWidth_;
+    int colorHeight_;
+    int depthWidth_;
+    int depthHeight_;
     ob::Pipeline * pipeline_;
     ob::Pipeline * imuPipeline_;
     ob::Align * alignFilter_;
@@ -84,6 +85,8 @@ private:
     Transform imuLocalTransform_;
     bool imuLocalTransformInitialized_;
     double lastAccStamp_;
+    bool globalTimestampAvailable_;
+    bool rectifyColor_;
 #endif
 
 };

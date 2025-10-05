@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-529</y>
+            <y>-658</y>
             <width>713</width>
             <height>4779</height>
            </rect>
@@ -5091,98 +5091,131 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_100">
-                                 <layout class="QVBoxLayout" name="verticalLayout_181">
+                                 <layout class="QVBoxLayout" name="verticalLayout_182">
                                   <item>
                                    <widget class="QGroupBox" name="groupBox_orbbec_sdk">
-                                    <property name="sizePolicy">
-                                     <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
-                                      <horstretch>0</horstretch>
-                                      <verstretch>0</verstretch>
-                                     </sizepolicy>
-                                    </property>
                                     <property name="title">
                                      <string>Orbbec SDK</string>
                                     </property>
-                                    <layout class="QGridLayout" name="gridLayout_136" columnstretch="0,0,1">
-                                     <item row="2" column="2">
-                                      <widget class="QLabel" name="label_775">
-                                       <property name="text">
-                                        <string>Depth resolution</string>
+                                    <layout class="QVBoxLayout" name="verticalLayout_181">
+                                     <item>
+                                      <widget class="QGroupBox" name="groupBox_orbbec_res">
+                                       <property name="sizePolicy">
+                                        <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                         <horstretch>0</horstretch>
+                                         <verstretch>0</verstretch>
+                                        </sizepolicy>
                                        </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
+                                       <property name="title">
+                                        <string>Resolution</string>
                                        </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
+                                       <layout class="QGridLayout" name="gridLayout_136" columnstretch="0,0,1">
+                                        <item row="2" column="0">
+                                         <widget class="QSpinBox" name="spinBox_orbbec_sdk_depth_width">
+                                          <property name="maximum">
+                                           <number>9999</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="2" column="1">
+                                         <widget class="QSpinBox" name="spinBox_orbbec_sdk_depth_height">
+                                          <property name="maximum">
+                                           <number>9999</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="2" column="2">
+                                         <widget class="QLabel" name="label_775">
+                                          <property name="text">
+                                           <string>Depth</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="1" column="0">
+                                         <widget class="QSpinBox" name="spinBox_orbbec_sdk_color_width">
+                                          <property name="maximum">
+                                           <number>9999</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="1" column="2">
+                                         <widget class="QLabel" name="label_774">
+                                          <property name="text">
+                                           <string>Color</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="0" column="0">
+                                         <widget class="QLabel" name="label_776">
+                                          <property name="text">
+                                           <string>Width</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="0" column="1">
+                                         <widget class="QLabel" name="label_777">
+                                          <property name="text">
+                                           <string>Height</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="1" column="1">
+                                         <widget class="QSpinBox" name="spinBox_orbbec_sdk_color_height">
+                                          <property name="maximum">
+                                           <number>9999</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                       </layout>
                                       </widget>
                                      </item>
-                                     <item row="1" column="0">
-                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_color_width">
-                                       <property name="maximum">
-                                        <number>9999</number>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="1" column="1">
-                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_color_height">
-                                       <property name="maximum">
-                                        <number>9999</number>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="2" column="1">
-                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_depth_height">
-                                       <property name="maximum">
-                                        <number>9999</number>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="2" column="0">
-                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_depth_width">
-                                       <property name="maximum">
-                                        <number>9999</number>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="1" column="2">
-                                      <widget class="QLabel" name="label_774">
-                                       <property name="text">
-                                        <string>Color resolution</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="0" column="0">
-                                      <widget class="QLabel" name="label_776">
-                                       <property name="text">
-                                        <string>Width</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item row="0" column="1">
-                                      <widget class="QLabel" name="label_777">
-                                       <property name="text">
-                                        <string>Height</string>
-                                       </property>
-                                       <property name="wordWrap">
-                                        <bool>true</bool>
-                                       </property>
-                                       <property name="textInteractionFlags">
-                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                       </property>
-                                      </widget>
+                                     <item>
+                                      <layout class="QGridLayout" name="gridLayout_137" columnstretch="0,1">
+                                       <item row="0" column="0">
+                                        <widget class="QCheckBox" name="checkBox_orbbec_sdk_color_rectification">
+                                         <property name="text">
+                                          <string/>
+                                         </property>
+                                        </widget>
+                                       </item>
+                                       <item row="0" column="1">
+                                        <widget class="QLabel" name="label_778">
+                                         <property name="text">
+                                          <string>Rectify color frames</string>
+                                         </property>
+                                         <property name="wordWrap">
+                                          <bool>true</bool>
+                                         </property>
+                                         <property name="textInteractionFlags">
+                                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                         </property>
+                                        </widget>
+                                       </item>
+                                      </layout>
                                      </item>
                                     </layout>
                                    </widget>
