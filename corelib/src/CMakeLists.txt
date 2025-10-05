@@ -41,6 +41,7 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
 	camera/CameraSeerSense.cpp
+	camera/CameraOrbbecSDK.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -390,6 +391,13 @@ IF(xvsdk_FOUND)
 		${xvsdk_LIBRARIES}
 	)
 ENDIF(xvsdk_FOUND)
+
+IF(OrbbecSDK_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		ob::OrbbecSDK
+	)
+ENDIF(OrbbecSDK_FOUND)
 
 IF(TARGET OpenMP::OpenMP_CXX)
 	SET(LIBRARIES

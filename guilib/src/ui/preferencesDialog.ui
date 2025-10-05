@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-529</y>
             <width>713</width>
             <height>4779</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3469,7 +3469,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_src">
                          <property name="currentIndex">
-                          <number>1</number>
+                          <number>0</number>
                          </property>
                          <widget class="QWidget" name="page_41">
                           <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3565,6 +3565,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <string>Xvisio SeerSense</string>
                                    </property>
                                   </item>
+                                  <item>
+                                   <property name="text">
+                                    <string>Orbbec SDK</string>
+                                   </property>
+                                  </item>
                                  </widget>
                                 </item>
                                 <item row="0" column="1">
@@ -3585,7 +3590,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <item>
                                <widget class="QStackedWidget" name="stackedWidget_rgbd">
                                 <property name="currentIndex">
-                                 <number>11</number>
+                                 <number>12</number>
                                 </property>
                                 <widget class="QWidget" name="page_32">
                                  <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -3631,6 +3636,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_78">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_33">
@@ -3642,8 +3660,8 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="sizeHint" stdset="0">
                                      <size>
-                                      <width>20</width>
-                                      <height>696</height>
+                                      <width>0</width>
+                                      <height>0</height>
                                      </size>
                                     </property>
                                    </spacer>
@@ -3659,7 +3677,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="sizeHint" stdset="0">
                                      <size>
-                                      <width>20</width>
+                                      <width>0</width>
                                       <height>0</height>
                                      </size>
                                     </property>
@@ -3676,7 +3694,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="sizeHint" stdset="0">
                                      <size>
-                                      <width>20</width>
+                                      <width>0</width>
                                       <height>0</height>
                                      </size>
                                     </property>
@@ -3911,6 +3929,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_71">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_37">
@@ -4113,6 +4144,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_68">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_63">
@@ -4283,6 +4327,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_67">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_47">
@@ -4425,10 +4482,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_42">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_72">
-                                 <layout class="QVBoxLayout" name="verticalLayout_127" stretch="1">
+                                 <layout class="QVBoxLayout" name="verticalLayout_127" stretch="0,1">
                                   <item>
                                    <widget class="QGroupBox" name="groupBox_k4w2">
                                     <property name="sizePolicy">
@@ -4479,10 +4549,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_40">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_55">
-                                 <layout class="QVBoxLayout" name="verticalLayout_103" stretch="0">
+                                 <layout class="QVBoxLayout" name="verticalLayout_103" stretch="0,0">
                                   <item>
                                    <widget class="QGroupBox" name="groupBox_realsense2">
                                     <property name="sizePolicy">
@@ -4754,10 +4837,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_34">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_84">
-                                 <layout class="QVBoxLayout" name="verticalLayout_145" stretch="0">
+                                 <layout class="QVBoxLayout" name="verticalLayout_145" stretch="0,0">
                                   <item>
                                    <widget class="QGroupBox" name="groupBox_k4a">
                                     <property name="sizePolicy">
@@ -4962,6 +5058,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </layout>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_33">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </widget>
                                 <widget class="QWidget" name="page_99">
@@ -4973,8 +5082,120 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="sizeHint" stdset="0">
                                      <size>
-                                      <width>20</width>
-                                      <height>40</height>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                 </layout>
+                                </widget>
+                                <widget class="QWidget" name="page_100">
+                                 <layout class="QVBoxLayout" name="verticalLayout_181">
+                                  <item>
+                                   <widget class="QGroupBox" name="groupBox_orbbec_sdk">
+                                    <property name="sizePolicy">
+                                     <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                      <horstretch>0</horstretch>
+                                      <verstretch>0</verstretch>
+                                     </sizepolicy>
+                                    </property>
+                                    <property name="title">
+                                     <string>Orbbec SDK</string>
+                                    </property>
+                                    <layout class="QGridLayout" name="gridLayout_136" columnstretch="0,0,1">
+                                     <item row="2" column="2">
+                                      <widget class="QLabel" name="label_775">
+                                       <property name="text">
+                                        <string>Depth resolution</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="1" column="0">
+                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_color_width">
+                                       <property name="maximum">
+                                        <number>9999</number>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="1" column="1">
+                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_color_height">
+                                       <property name="maximum">
+                                        <number>9999</number>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="2" column="1">
+                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_depth_height">
+                                       <property name="maximum">
+                                        <number>9999</number>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="2" column="0">
+                                      <widget class="QSpinBox" name="spinBox_orbbec_sdk_depth_width">
+                                       <property name="maximum">
+                                        <number>9999</number>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="1" column="2">
+                                      <widget class="QLabel" name="label_774">
+                                       <property name="text">
+                                        <string>Color resolution</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="0" column="0">
+                                      <widget class="QLabel" name="label_776">
+                                       <property name="text">
+                                        <string>Width</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item row="0" column="1">
+                                      <widget class="QLabel" name="label_777">
+                                       <property name="text">
+                                        <string>Height</string>
+                                       </property>
+                                       <property name="wordWrap">
+                                        <bool>true</bool>
+                                       </property>
+                                       <property name="textInteractionFlags">
+                                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                    </layout>
+                                   </widget>
+                                  </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_32">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
                                      </size>
                                     </property>
                                    </spacer>
@@ -6942,19 +7163,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="12" column="1">
-                               <spacer name="verticalSpacer_35">
-                                <property name="orientation">
-                                 <enum>Qt::Vertical</enum>
-                                </property>
-                                <property name="sizeHint" stdset="0">
-                                 <size>
-                                  <width>20</width>
-                                  <height>0</height>
-                                 </size>
-                                </property>
-                               </spacer>
-                              </item>
                               <item row="1" column="0">
                                <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
                                 <property name="text">
@@ -7144,6 +7352,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                              </layout>
                             </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_35">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
                            </item>
                           </layout>
                          </widget>

@@ -66,6 +66,7 @@ void showUsage()
 			"                                     14=ZED Open Capture\n"
 			"                                     15=depthai-core\n"
 			"                                     16=XVSDK     (SeerSense)\n"
+			"                                     17=Orbbec SDK\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
 			"      -device #                      Device ID (number or string)\n"
@@ -87,7 +88,7 @@ void sighandler(int sig)
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setLevel(ULogger::kDebug);
 	//ULogger::setPrintTime(false);
 	//ULogger::setPrintWhere(false);
 
@@ -177,9 +178,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 15)
+			if(driver < 0 || driver > 17)
 			{
-				UERROR("driver should be between 0 and 15.");
+				UERROR("driver should be between 0 and 17.");
 				showUsage();
 			}
 		}
@@ -343,6 +344,15 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new rtabmap::CameraSeerSense();
+	}
+	else if (driver == 17)
+	{
+		if (!rtabmap::CameraOrbbecSDK::available())
+		{
+			UERROR("Not built with Orbbec SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOrbbecSDK();
 	}
 	else
 	{

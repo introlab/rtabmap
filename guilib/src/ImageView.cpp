@@ -1141,14 +1141,14 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 	if(_mouseTracking->isChecked() &&
 		!_graphicsView->scene()->sceneRect().isNull() &&
 		!_image.isNull() &&
-		!_imageDepthCv.empty() &&(_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
+		!_imageDepthCv.empty() && (_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
 	{
 		float scale, offsetX, offsetY;
 		computeScaleOffsets(this->rect(), scale, offsetX, offsetY);
 		float u = (event->pos().x() - offsetX) / scale;
 		float v = (event->pos().y() - offsetY) / scale;
 		float depthScale = 1;
-		if(_image.width() > _imageDepthCv.cols)
+		if(_image.width() != _imageDepthCv.cols)
 		{
 			depthScale = float(_imageDepthCv.cols) / float(_image.width());
 		}
@@ -1448,8 +1448,8 @@ void ImageView::setImageDepth(const QImage & imageDepth, const QImage & imageDep
 	UASSERT(_imageDepth.width() && _imageDepth.height());
 
 	if( _image.width() > 0 &&
-		_image.width() > _imageDepth.width() &&
-		_image.height() > _imageDepth.height())
+		_image.width() != _imageDepth.width() &&
+		_image.height() != _imageDepth.height())
 	{
 		// scale depth to rgb
 		_imageDepth = _imageDepth.scaled(_image.size());

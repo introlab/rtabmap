@@ -239,9 +239,20 @@
        </property>
        <addaction name="actionXvisio_SeerSense"/>
       </widget>
+      <widget class="QMenu" name="menuOrbbec_Astra_2">
+       <property name="title">
+        <string>Orbbec Astra 2</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/astra2.png</normaloff>:/images/astra2.png</iconset>
+       </property>
+       <addaction name="actionOrbbecSDK_astra2"/>
+      </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuOrbbec_Astra"/>
+      <addaction name="menuOrbbec_Astra_2"/>
       <addaction name="menuSense_3D_scanner"/>
       <addaction name="menuKinect_v2"/>
       <addaction name="menuKinect_K4A"/>
@@ -1747,6 +1758,14 @@
    </property>
    <property name="text">
     <string>Xvisio</string>
+   </property>
+  </action>
+  <action name="actionOrbbecSDK_astra2">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Orbbec SDK</string>
    </property>
   </action>
  </widget>

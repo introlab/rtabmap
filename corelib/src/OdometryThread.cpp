@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
 
 namespace rtabmap {
 
@@ -185,16 +186,18 @@ void OdometryThread::addData(const SensorEvent & event)
 				UWARN("Received image/lidar with stamp (%f) older than oldest received imu "
 					"(%f), skipping that frame (imu buffer size=%ld). "
 					"When using async IMU, make sure IMU is published faster "
-					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar).",
-					event.data().stamp(), _oldestAsyncImuStamp, _imuBuffer.size());
+					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar)."
+					"Current camera/lidar delay is %fs.",
+					event.data().stamp(), _oldestAsyncImuStamp, _imuBuffer.size(), UTimer::now() - event.data().stamp());
 				notify = false;
 			}
 			else if(_newestAsyncImuStamp > 0.0 && event.data().stamp()>=_newestAsyncImuStamp) {
 				UWARN("Received image/lidar with stamp (%f) newer than latest received imu "
 					"(%f), skipping that frame (imu buffer size=%ld). "
 					"When using async IMU, make sure IMU is published faster "
-					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar).",
-					event.data().stamp(), _newestAsyncImuStamp, _imuBuffer.size());
+					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar). "
+					"Current camera/lidar delay is %fs.",
+					event.data().stamp(), _newestAsyncImuStamp, _imuBuffer.size(), UTimer::now() - event.data().stamp());
 				notify = false;
 			}
 			else {
