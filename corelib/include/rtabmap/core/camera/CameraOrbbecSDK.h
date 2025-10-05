@@ -84,7 +84,8 @@ private:
     CameraModel model_;
     Transform imuLocalTransform_;
     bool imuLocalTransformInitialized_;
-    double lastAccStamp_;
+    uint64_t lastAccStamp_;
+    uint64_t lastImageStamp_;
     bool globalTimestampAvailable_;
     bool rectifyColor_;
 #endif

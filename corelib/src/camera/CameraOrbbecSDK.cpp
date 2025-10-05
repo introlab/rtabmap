@@ -170,7 +170,8 @@ CameraOrbbecSDK::CameraOrbbecSDK(
             imuPipeline_(nullptr),
             alignFilter_(nullptr),
             imuLocalTransformInitialized_(false),
-            lastAccStamp_(0.0),
+            lastAccStamp_(0),
+            lastImageStamp_(0),
             globalTimestampAvailable_(false),
             rectifyColor_(false)
 #endif
@@ -197,7 +198,8 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
     alignFilter_ = nullptr;
     imuLocalTransform_ = Transform();
     imuLocalTransformInitialized_ = false;
-    lastAccStamp_ = 0.0;
+    lastAccStamp_ = 0;
+    lastImageStamp_ = 0;
     globalTimestampAvailable_ = false;
     model_ = CameraModel();
 
@@ -352,7 +354,7 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
 
                 uint64_t accelStampUs = globalTimestampAvailable_?accel->getGlobalTimeStampUs():accel->getTimeStampUs();
                 uint64_t gyroStampUs = globalTimestampAvailable_?gyro->getGlobalTimeStampUs():gyro->getTimeStampUs();
-            
+ 
                 if(accelStampUs != gyroStampUs)
                 {
                     UWARN("Received accel and gyro frames with different timestamps (%llu vs %llu), skipping.",
@@ -362,10 +364,11 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
                 
                 double accStamp = double(accelStampUs)/1e6;
 
-                if(accStamp <= lastAccStamp_) {
+                if(accelStampUs <= lastAccStamp_) {
                     return;
                 }
-                lastAccStamp_ = accStamp;
+
+                lastAccStamp_ = accelStampUs;
 
                 auto accelValue = accel->getValue();
                 auto gyroValue = gyro->getValue();
@@ -597,15 +600,31 @@ SensorData CameraOrbbecSDK::captureImage(SensorCaptureInfo * info)
             rgb = model_.rectifyImage(rgb);
         }
 
-        double stamp = double(globalTimestampAvailable_?colorFrame->getGlobalTimeStampUs():colorFrame->getTimeStampUs())/1e6;
-        double depthStamp = double(globalTimestampAvailable_?depthFrame->getGlobalTimeStampUs():depthFrame->getTimeStampUs())/1e6;
-        if(fabs(stamp - depthStamp) > 0.017) {
+        uint64_t colorStampUs = globalTimestampAvailable_?colorFrame->getGlobalTimeStampUs():colorFrame->getTimeStampUs();
+        uint64_t depthStampUs = globalTimestampAvailable_?depthFrame->getGlobalTimeStampUs():depthFrame->getTimeStampUs();
+        double colorStamp = double(colorStampUs) / 1e6;
+        double depthStamp = double(depthStampUs) / 1e6;
+        if(fabs(colorStamp - depthStamp) > 0.018) {
             // The difference seems varying between 0 and 17 ms normally
             UWARN("Large timestamp difference (%fs) between color (%f) and depth (%f) frames. "
                 "Depth registration would be wrong on fast motion.", 
-                stamp - depthStamp, stamp, depthStamp);
+                colorStamp - depthStamp, colorStamp, depthStamp);
         }
-        data = SensorData(rgb, depth, model_, this->getNextSeqID(), stamp<depthStamp?stamp:depthStamp);
+
+        uint64_t stampUs = colorStampUs < depthStampUs ? colorStampUs : depthStampUs;
+
+#ifdef WIN32
+        // On Windows, there is an issue that timestamps are not populated by default without following instructions from:
+        // https://github.com/orbbec/OrbbecSDK_v2/blob/main/scripts/env_setup/obsensor_metadata_win10.md
+        // Detect if the consecutive timestamps are identical, then send error!
+        if (stampUs <= lastImageStamp_)
+        {
+            UERROR("We detected non-consecutive timestamps, make sure you applied the fix from https://github.com/orbbec/OrbbecSDK_v2/blob/main/scripts/env_setup/obsensor_metadata_win10.md .");
+        }
+        lastImageStamp_ = stampUs;
+#endif
+
+        data = SensorData(rgb, depth, model_, this->getNextSeqID(), double(stampUs)/1e6);
     }
 
 #else
