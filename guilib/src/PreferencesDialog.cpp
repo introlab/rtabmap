@@ -4298,6 +4298,7 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 	{
 		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
 	}
+	_ui->checkbox_publishInterIMU->setChecked(false);
 	_3dRenderingRoiRatios[0]->setText("0.0 0.0 0.0 0.0");
 	_3dRenderingRoiRatios[1]->setText("0.0 0.0 0.0 0.0");
 
@@ -4318,6 +4319,10 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 			_ui->lineEdit_k4a_mkv->clear();
 			_3dRenderingRoiRatios[0]->setText("0.05 0.05 0.05 0.05");
 			_3dRenderingRoiRatios[1]->setText("0.05 0.05 0.05 0.05");
+		}
+		else if(src == kSrcOrbbecSDK)
+		{
+			_ui->checkbox_publishInterIMU->setChecked(true);
 		}
 		else if (src == kSrcRealSense2)
 		{
