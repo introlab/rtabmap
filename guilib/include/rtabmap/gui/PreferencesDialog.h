@@ -98,6 +98,7 @@ public:
 		kSrcRealSense2     = 9,
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
+		kSrcOrbbecSDK      = 12,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,

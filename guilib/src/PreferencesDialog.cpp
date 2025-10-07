@@ -398,6 +398,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcK4A - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
+	if (!CameraOrbbecSDK::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOrbbecSDK - kSrcRGBD, 0, Qt::UserRole - 1);
+	}
 	if (!CameraRealSense::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense - kSrcRGBD, 0, Qt::UserRole - 1);
@@ -767,19 +771,39 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_hshift, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_vshift, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_depth_decimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_freenect2MinDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_freenect2MaxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->checkBox_freenect2BilateralFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2EdgeAwareFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_freenect2Pipeline, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->comboBox_k4w2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->comboBox_k4a_rgb_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_k4a_framerate, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_k4a_depth_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_k4a_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_k4a_mkv, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_useMKVStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->spinBox_orbbec_sdk_color_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_orbbec_sdk_color_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_orbbec_sdk_depth_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_orbbec_sdk_depth_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_color_rectification, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_imu, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_depth_mm, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseDepthScaledToRGBSize, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsenseRGBSource, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2232,6 +2256,13 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_k4a_depth_resolution->setCurrentIndex(2);
 		_ui->checkbox_k4a_irDepth->setChecked(false);
 		_ui->lineEdit_k4a_mkv->clear();
+		_ui->spinBox_orbbec_sdk_color_width->setValue(800);
+		_ui->spinBox_orbbec_sdk_color_height->setValue(600);
+		_ui->spinBox_orbbec_sdk_depth_width->setValue(800);
+		_ui->spinBox_orbbec_sdk_depth_height->setValue(600);
+		_ui->checkBox_orbbec_sdk_color_rectification->setChecked(false);
+		_ui->checkBox_orbbec_sdk_imu->setChecked(true);
+		_ui->checkBox_orbbec_sdk_depth_mm->setChecked(true);
 		_ui->source_checkBox_useMKVStamps->setChecked(true);
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
@@ -2717,6 +2748,16 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_k4a_mkv->setText(settings.value("mkvPath", _ui->lineEdit_k4a_mkv->text()).toString());
 	_ui->source_checkBox_useMKVStamps->setChecked(settings.value("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked()).toBool());
 	settings.endGroup(); // K4A
+
+	settings.beginGroup("OrbbecSDK");
+	_ui->spinBox_orbbec_sdk_color_width->setValue(settings.value("color_width", _ui->spinBox_orbbec_sdk_color_width->value()).toInt());
+	_ui->spinBox_orbbec_sdk_color_height->setValue(settings.value("color_height", _ui->spinBox_orbbec_sdk_color_height->value()).toInt());
+	_ui->spinBox_orbbec_sdk_depth_width->setValue(settings.value("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value()).toInt());
+	_ui->spinBox_orbbec_sdk_depth_height->setValue(settings.value("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value()).toInt());
+	_ui->checkBox_orbbec_sdk_color_rectification->setChecked(settings.value("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked()).toBool());
+	_ui->checkBox_orbbec_sdk_imu->setChecked(settings.value("enable_imu", _ui->checkBox_orbbec_sdk_imu->isChecked()).toBool());
+	_ui->checkBox_orbbec_sdk_depth_mm->setChecked(settings.value("depth_mm", _ui->checkBox_orbbec_sdk_depth_mm->isChecked()).toBool());
+	settings.endGroup(); // Orbbec SDK
 
 	settings.beginGroup("RealSense");
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
@@ -3324,6 +3365,16 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("mkvPath", _ui->lineEdit_k4a_mkv->text());
 	settings.setValue("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked());
 	settings.endGroup(); // K4A
+
+	settings.beginGroup("OrbbecSDK");
+	settings.setValue("color_width", _ui->spinBox_orbbec_sdk_color_width->value());
+	settings.setValue("color_height", _ui->spinBox_orbbec_sdk_color_height->value());
+	settings.setValue("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value());
+	settings.setValue("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value());
+	settings.setValue("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked());
+	settings.setValue("enable_imu", _ui->checkBox_orbbec_sdk_imu->isChecked());
+	settings.setValue("depth_mm", _ui->checkBox_orbbec_sdk_depth_mm->isChecked());
+	settings.endGroup(); // Orbbec SDK
 
 	settings.beginGroup("RealSense");
 	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
@@ -5729,6 +5780,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
@@ -5738,6 +5790,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
 	_ui->groupBox_k4a->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD);
+	_ui->groupBox_orbbec_sdk->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD);
 	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
 	_ui->groupBox_realsense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
@@ -5807,6 +5860,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB) ||
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect - kSrcRGBD) || //Kinect360
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD) || //K4A
+			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD) || //Orbbec SDK
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD) || //D435i
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense - kSrcRGBD) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
@@ -6638,6 +6692,25 @@ Camera * PreferencesDialog::createCamera(
 		((CameraK4A*)camera)->setPreferences(_ui->comboBox_k4a_rgb_resolution->currentIndex(),
 						     _ui->comboBox_k4a_framerate->currentIndex(),
 						     _ui->comboBox_k4a_depth_resolution->currentIndex());
+	}
+	else if (driver == kSrcOrbbecSDK)
+	{
+		camera = new CameraOrbbecSDK(
+			device.toStdString(),
+			_ui->spinBox_orbbec_sdk_color_width->value(),
+			_ui->spinBox_orbbec_sdk_color_height->value(),
+			_ui->spinBox_orbbec_sdk_depth_width->value(),
+			_ui->spinBox_orbbec_sdk_depth_height->value(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+		((CameraOrbbecSDK*)camera)->enableColorRectification(_ui->checkBox_orbbec_sdk_color_rectification->isChecked());
+		((CameraOrbbecSDK*)camera)->enableImu(_ui->checkBox_orbbec_sdk_imu->isChecked());
+		((CameraOrbbecSDK*)camera)->enableDepthMM(_ui->checkBox_orbbec_sdk_depth_mm->isChecked());
+		
+		camera->setInterIMUPublishing(
+			_ui->checkbox_publishInterIMU->isChecked(),
+			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
 	}
 	else if (driver == kSrcRealSense)
 	{

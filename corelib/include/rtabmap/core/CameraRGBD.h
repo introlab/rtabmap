@@ -38,3 +38,4 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraRGBDImages.h>
 #include <rtabmap/core/camera/CameraK4A.h>
 #include <rtabmap/core/camera/CameraSeerSense.h>
+#include <rtabmap/core/camera/CameraOrbbecSDK.h>

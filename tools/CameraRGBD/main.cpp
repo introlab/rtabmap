@@ -66,13 +66,10 @@ void showUsage()
 			"                                     14=ZED Open Capture\n"
 			"                                     15=depthai-core\n"
 			"                                     16=XVSDK     (SeerSense)\n"
+			"                                     17=Orbbec SDK\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
-			"      -device #                      Device ID (number or string)\n"
-			"      -save_stereo \"path\"            Save stereo images in a folder or a video file (side by side *.avi).\n"
-			"      -fourcc \"XXXX\"               Four characters FourCC code (default is \"MJPG\") used\n"
-			"                                       when saving stereo images to a video file.\n"
-			"                                       See http://www.fourcc.org/codecs.php for more codes.\n");
+			"      -device #                      Device ID (number or string)\n");
 	exit(1);
 }
 
@@ -92,9 +89,7 @@ int main(int argc, char * argv[])
 	//ULogger::setPrintWhere(false);
 
 	int driver = 0;
-	std::string stereoSavePath;
 	float rate = 0.0f;
-	std::string fourcc = "MJPG";
 	std::string deviceId;
 	if(argc < 2)
 	{
@@ -134,37 +129,6 @@ int main(int argc, char * argv[])
 				}
 				continue;
 			}
-			if(strcmp(argv[i], "-save_stereo") == 0)
-			{
-				++i;
-				if(i < argc)
-				{
-					stereoSavePath = argv[i];
-				}
-				else
-				{
-					showUsage();
-				}
-				continue;
-			}
-			if(strcmp(argv[i], "-fourcc") == 0)
-			{
-				++i;
-				if(i < argc)
-				{
-					fourcc = argv[i];
-					if(fourcc.size() != 4)
-					{
-						UERROR("fourcc should be 4 characters.");
-						showUsage();
-					}
-				}
-				else
-				{
-					showUsage();
-				}
-				continue;
-			}
 			if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0)
 			{
 				showUsage();
@@ -177,9 +141,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 15)
+			if(driver < 0 || driver > 17)
 			{
-				UERROR("driver should be between 0 and 15.");
+				UERROR("driver should be between 0 and 17.");
 				showUsage();
 			}
 		}
@@ -187,63 +151,54 @@ int main(int argc, char * argv[])
 	UINFO("Using driver %d (device=%s)", driver, deviceId.empty()?"0": deviceId.c_str());
 
 	rtabmap::Camera * camera = 0;
-	if(driver < 6)
+	if(driver == 0)
 	{
-		if(!stereoSavePath.empty())
+		camera = new rtabmap::CameraOpenni(deviceId);
+	}
+	else if(driver == 1)
+	{
+		if(!rtabmap::CameraOpenNI2::available())
 		{
-			UWARN("-save_stereo option cannot be used with RGB-D drivers.");
-			stereoSavePath.clear();
+			UERROR("Not built with OpenNI2 support...");
+			exit(-1);
 		}
-
-		if(driver == 0)
+		camera = new rtabmap::CameraOpenNI2(deviceId);
+	}
+	else if(driver == 2)
+	{
+		if(!rtabmap::CameraFreenect::available())
 		{
-			camera = new rtabmap::CameraOpenni(deviceId);
+			UERROR("Not built with Freenect support...");
+			exit(-1);
 		}
-		else if(driver == 1)
+		camera = new rtabmap::CameraFreenect(deviceId.empty()?0:uStr2Int(deviceId));
+	}
+	else if(driver == 3)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
 		{
-			if(!rtabmap::CameraOpenNI2::available())
-			{
-				UERROR("Not built with OpenNI2 support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraOpenNI2(deviceId);
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
 		}
-		else if(driver == 2)
+		camera = new rtabmap::CameraOpenNICV(false);
+	}
+	else if(driver == 4)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
 		{
-			if(!rtabmap::CameraFreenect::available())
-			{
-				UERROR("Not built with Freenect support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraFreenect(deviceId.empty()?0:uStr2Int(deviceId));
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
 		}
-		else if(driver == 3)
+		camera = new rtabmap::CameraOpenNICV(true);
+	}
+	else if(driver == 5)
+	{
+		if(!rtabmap::CameraFreenect2::available())
 		{
-			if(!rtabmap::CameraOpenNICV::available())
-			{
-				UERROR("Not built with OpenNI from OpenCV support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraOpenNICV(false);
+			UERROR("Not built with Freenect2 support...");
+			exit(-1);
 		}
-		else if(driver == 4)
-		{
-			if(!rtabmap::CameraOpenNICV::available())
-			{
-				UERROR("Not built with OpenNI from OpenCV support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraOpenNICV(true);
-		}
-		else if(driver == 5)
-		{
-			if(!rtabmap::CameraFreenect2::available())
-			{
-				UERROR("Not built with Freenect2 support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraFreenect2(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraFreenect2::kTypeColor2DepthSD);
-		}
+		camera = new rtabmap::CameraFreenect2(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraFreenect2::kTypeColor2DepthSD);
 	}
 	else if(driver == 6)
 	{
@@ -344,6 +299,15 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraSeerSense();
 	}
+	else if (driver == 17)
+	{
+		if (!rtabmap::CameraOrbbecSDK::available())
+		{
+			UERROR("Not built with Orbbec SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOrbbecSDK();
+	}
 	else
 	{
 		UFATAL("");
@@ -379,54 +343,11 @@ int main(int argc, char * argv[])
 		viewer = new pcl::visualization::CloudViewer("cloud");
 	}
 
-	cv::VideoWriter videoWriter;
-	UDirectory dir;
-	if(!stereoSavePath.empty() &&
-	   !data.imageRaw().empty() &&
-	   !data.rightRaw().empty())
-	{
-		if(UFile::getExtension(stereoSavePath).compare("avi") == 0)
-		{
-			if(data.imageRaw().size() == data.rightRaw().size())
-			{
-				if(rate <= 0)
-				{
-					UERROR("You should set the input rate when saving stereo images to a video file.");
-					showUsage();
-				}
-				cv::Size targetSize = data.imageRaw().size();
-				targetSize.width *= 2;
-				UASSERT(fourcc.size() == 4);
-				videoWriter.open(
-						stereoSavePath,
-						CV_FOURCC(fourcc.at(0), fourcc.at(1), fourcc.at(2), fourcc.at(3)),
-						rate,
-						targetSize,
-						data.imageRaw().channels() == 3);
-			}
-			else
-			{
-				UERROR("Images not the same size, cannot save stereo images to the video file.");
-			}
-		}
-		else if(UDirectory::exists(stereoSavePath))
-		{
-			UDirectory::makeDir(stereoSavePath+"/"+"left");
-			UDirectory::makeDir(stereoSavePath+"/"+"right");
-		}
-		else
-		{
-			UERROR("Directory \"%s\" doesn't exist.", stereoSavePath.c_str());
-			stereoSavePath.clear();
-		}
-	}
-
 	// to catch the ctrl-c
 	signal(SIGABRT, &sighandler);
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	int id=1;
 	while(!data.imageRaw().empty() && (viewer==0 || !viewer->wasStopped()) && running)
 	{
 		cv::Mat rgb = data.imageRaw();
@@ -495,43 +416,6 @@ int main(int argc, char * argv[])
 		if(c == 27)
 			break; // if ESC, break and quit
 
-		if(videoWriter.isOpened())
-		{
-			cv::Mat left = data.imageRaw();
-			cv::Mat right = data.rightRaw();
-			if(left.size() == right.size())
-			{
-				cv::Size targetSize = left.size();
-				targetSize.width *= 2;
-				cv::Mat targetImage(targetSize, left.type());
-				if(right.type() != left.type())
-				{
-					cv::Mat tmp;
-					cv::cvtColor(right, tmp, left.channels()==3?CV_GRAY2BGR:CV_BGR2GRAY);
-					right = tmp;
-				}
-				UASSERT(left.type() == right.type());
-
-				cv::Mat roiA(targetImage, cv::Rect( 0, 0, left.size().width, left.size().height ));
-				left.copyTo(roiA);
-				cv::Mat roiB( targetImage, cvRect( left.size().width, 0, left.size().width, left.size().height ) );
-				right.copyTo(roiB);
-
-				videoWriter.write(targetImage);
-				printf("Saved frame %d to \"%s\"\n", id, stereoSavePath.c_str());
-			}
-			else
-			{
-				UERROR("Left and right images are not the same size!?");
-			}
-		}
-		else if(!stereoSavePath.empty())
-		{
-			cv::imwrite(stereoSavePath+"/"+"left/"+uNumber2Str(id) + ".jpg", data.imageRaw());
-			cv::imwrite(stereoSavePath+"/"+"right/"+uNumber2Str(id) + ".jpg", data.rightRaw());
-			printf("Saved frames %d to \"%s/left\" and \"%s/right\" directories\n", id, stereoSavePath.c_str(), stereoSavePath.c_str());
-		}
-		++id;
 		data = camera->takeData();
 	}
 	printf("Closing...\n");
