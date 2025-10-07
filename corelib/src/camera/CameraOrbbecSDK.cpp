@@ -25,8 +25,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <rtabmap/core/camera/CameraOrbbecSDK.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UThread.h>
 
 #ifdef RTABMAP_ORBBEC_SDK
 #include <libobsensor/ObSensor.hpp>
@@ -173,7 +175,9 @@ CameraOrbbecSDK::CameraOrbbecSDK(
             lastAccStamp_(0),
             lastImageStamp_(0),
             globalTimestampAvailable_(false),
-            rectifyColor_(false)
+            rectifyColor_(false),
+            convertDepthToMM_(true),
+            imuPublished_(true)
 #endif
 {
 }
@@ -181,19 +185,24 @@ CameraOrbbecSDK::CameraOrbbecSDK(
 CameraOrbbecSDK::~CameraOrbbecSDK()
 {
 #ifdef RTABMAP_ORBBEC_SDK
-    delete imuPipeline_;
-    delete pipeline_;
-    delete alignFilter_;
+    this->close();
 #endif
 }
 
-bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::string & cameraName)
+void CameraOrbbecSDK::close()
 {
 #ifdef RTABMAP_ORBBEC_SDK
-    delete imuPipeline_;
-    imuPipeline_=nullptr;
-    delete pipeline_;
-    pipeline_=nullptr;
+    if(imuPipeline_) {
+        imuPipeline_->stop();
+        delete imuPipeline_;
+        imuPipeline_=nullptr;
+    }
+    
+    if(pipeline_) {
+        pipeline_->stop();
+        delete pipeline_;
+        pipeline_=nullptr;
+    }
     delete alignFilter_;
     alignFilter_ = nullptr;
     imuLocalTransform_ = Transform();
@@ -202,6 +211,14 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
     lastImageStamp_ = 0;
     globalTimestampAvailable_ = false;
     model_ = CameraModel();
+    imuBuffer_.clear();
+#endif
+}
+
+bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::string & cameraName)
+{
+#ifdef RTABMAP_ORBBEC_SDK
+    this->close();
 
     std::shared_ptr<ob::Device> device;
 
@@ -327,68 +344,77 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
     }
 
     std::shared_ptr<ob::Config> imuConfig;
-    if(hasGyro && hasAccel)
+    if(imuPublished_)
     {
-        imuPipeline_ = new ob::Pipeline(device);
-        imuConfig = std::make_shared<ob::Config>();
-        imuConfig->enableGyroStream();
-        imuConfig->enableAccelStream();
-        try {
-            UINFO("Starting imu pipeline");
-            imuPipeline_->start(imuConfig, [&](std::shared_ptr<ob::FrameSet> frameSet) {
-                if(frameSet->getCount() != 2)
-                {
-                    return;
-                }
+        if(hasGyro && hasAccel)
+        {
+            imuPipeline_ = new ob::Pipeline(device);
+            imuConfig = std::make_shared<ob::Config>();
+            imuConfig->enableGyroStream();
+            imuConfig->enableAccelStream();
+            try {
+                UINFO("Starting imu pipeline");
+                imuPipeline_->start(imuConfig, [&](std::shared_ptr<ob::FrameSet> frameSet) {
+                    if(frameSet->getCount() != 2)
+                    {
+                        return;
+                    }
 
-                if(!imuLocalTransformInitialized_)
-                {
-                    return;
-                }
+                    if(!imuLocalTransformInitialized_)
+                    {
+                        return;
+                    }
 
-                UASSERT(frameSet->getFrame(OB_FRAME_ACCEL) != nullptr && 
-                        frameSet->getFrame(OB_FRAME_GYRO) != nullptr);
+                    UASSERT(frameSet->getFrame(OB_FRAME_ACCEL) != nullptr && 
+                            frameSet->getFrame(OB_FRAME_GYRO) != nullptr);
 
-                auto accel = frameSet->getFrame(OB_FRAME_ACCEL)->as<const ob::AccelFrame>();
-                auto gyro = frameSet->getFrame(OB_FRAME_GYRO)->as<const ob::GyroFrame>();
+                    auto accel = frameSet->getFrame(OB_FRAME_ACCEL)->as<const ob::AccelFrame>();
+                    auto gyro = frameSet->getFrame(OB_FRAME_GYRO)->as<const ob::GyroFrame>();
 
-                uint64_t accelStampUs = globalTimestampAvailable_?accel->getGlobalTimeStampUs():accel->getTimeStampUs();
-                uint64_t gyroStampUs = globalTimestampAvailable_?gyro->getGlobalTimeStampUs():gyro->getTimeStampUs();
- 
-                if(accelStampUs != gyroStampUs)
-                {
-                    UWARN("Received accel and gyro frames with different timestamps (%llu vs %llu), skipping.",
-                          accelStampUs, gyroStampUs);
-                    return;
-                }
-                
-                double accStamp = double(accelStampUs)/1e6;
+                    uint64_t accelStampUs = globalTimestampAvailable_?accel->getGlobalTimeStampUs():accel->getTimeStampUs();
+                    uint64_t gyroStampUs = globalTimestampAvailable_?gyro->getGlobalTimeStampUs():gyro->getTimeStampUs();
+    
+                    if(accelStampUs != gyroStampUs)
+                    {
+                        UWARN("Received accel and gyro frames with different timestamps (%llu vs %llu), skipping.",
+                            accelStampUs, gyroStampUs);
+                        return;
+                    }
+                    
+                    double accStamp = double(accelStampUs)/1e6;
 
-                if(accelStampUs <= lastAccStamp_) {
-                    return;
-                }
+                    if(accelStampUs <= lastAccStamp_) {
+                        return;
+                    }
 
-                lastAccStamp_ = accelStampUs;
+                    lastAccStamp_ = accelStampUs;
 
-                auto accelValue = accel->getValue();
-                auto gyroValue = gyro->getValue();
-                if(isInterIMUPublishing())
-                {
-                    IMU imu(cv::Vec3f(gyroValue.x, gyroValue.y, gyroValue.z), cv::Mat::eye(3,3,CV_64FC1),
-                            cv::Vec3f(accelValue.x, accelValue.y, accelValue.z), cv::Mat::eye(3,3,CV_64FC1),
-                            imuLocalTransform_);
-                    this->postInterIMU(imu, accStamp);
-                }
-                else
-                {
-                    //UScopeMutex lock(imuMutex_);
-                    //accBuffer_.emplace_hint(accBuffer_.end(), accStamp, cv::Vec3f(accelValue.x, accelValue.y, accelValue.z));
-                    //gyroBuffer_.emplace_hint(gyroBuffer_.end(), gyroStamp, cv::Vec3f(gyroValue.x, gyroValue.y, gyroValue.z));
-                }
-            });
+                    auto accelValue = accel->getValue();
+                    auto gyroValue = gyro->getValue();
+                    if(isInterIMUPublishing())
+                    {
+                        IMU imu(cv::Vec3f(gyroValue.x, gyroValue.y, gyroValue.z), cv::Mat::eye(3,3,CV_64FC1),
+                                cv::Vec3f(accelValue.x, accelValue.y, accelValue.z), cv::Mat::eye(3,3,CV_64FC1),
+                                imuLocalTransform_);
+                        this->postInterIMU(imu, accStamp);
+                    }
+                    else
+                    {
+                        UScopeMutex lock(imuMutex_);
+                        imuBuffer_.emplace_hint(imuBuffer_.end(), accStamp, cv::Vec6f(gyroValue.x, gyroValue.y, gyroValue.z, accelValue.x, accelValue.y, accelValue.z));
+                        if(imuBuffer_.size()>1000) {
+                            imuBuffer_.erase(imuBuffer_.begin());
+                        }
+                    }
+                });
+            }
+            catch(const ob::Error & e) {
+                UERROR("Unexpected error when configuring IMU stream: %s", e.what());
+            }
         }
-        catch(const ob::Error & e) {
-            UERROR("Unexpected error when configuring IMU stream: %s", e.what());
+        else
+        {
+            UWARN("IMU option is enabled but the camera doesn't have an IMU, ignoring.");
         }
     }
 
@@ -535,11 +561,29 @@ void CameraOrbbecSDK::enableColorRectification(bool enabled)
 #endif
 }
 
+void CameraOrbbecSDK::enableImu(bool enabled)
+{
+#ifdef RTABMAP_ORBBEC_SDK
+    imuPublished_ = enabled;
+#endif
+}
+
+void CameraOrbbecSDK::enableDepthMM(bool enabled)
+{
+#ifdef RTABMAP_ORBBEC_SDK
+    convertDepthToMM_ = enabled;
+#endif
+}
+
 SensorData CameraOrbbecSDK::captureImage(SensorCaptureInfo * info)
 {
     SensorData data;
 
 #ifdef RTABMAP_ORBBEC_SDK
+    if(!pipeline_) {
+        UERROR("Camera is not initialized!");
+        return data;
+    }
     auto frameset = pipeline_->waitForFrameset();
     if(frameset == nullptr || frameset->getCount() == 0) {
         UWARN("No frame received!");
@@ -600,6 +644,11 @@ SensorData CameraOrbbecSDK::captureImage(SensorCaptureInfo * info)
             rgb = model_.rectifyImage(rgb);
         }
 
+        if(convertDepthToMM_)
+        {
+            depth = util2d::cvtDepthFromFloat(depth);
+        }
+
         uint64_t colorStampUs = globalTimestampAvailable_?colorFrame->getGlobalTimeStampUs():colorFrame->getTimeStampUs();
         uint64_t depthStampUs = globalTimestampAvailable_?depthFrame->getGlobalTimeStampUs():depthFrame->getTimeStampUs();
         double colorStamp = double(colorStampUs) / 1e6;
@@ -623,8 +672,51 @@ SensorData CameraOrbbecSDK::captureImage(SensorCaptureInfo * info)
         }
         lastImageStamp_ = stampUs;
 #endif
+        double stamp = double(stampUs)/1e6;
 
-        data = SensorData(rgb, depth, model_, this->getNextSeqID(), double(stampUs)/1e6);
+        data = SensorData(rgb, depth, model_, this->getNextSeqID(), stamp);
+
+        if(imuPublished_ && !imuBuffer_.empty() && !this->isInterIMUPublishing())
+        {
+            cv::Vec6f imuVec;
+            std::map<double, cv::Vec6f>::const_iterator iterA, iterB;
+        
+            imuMutex_.lock();
+            int maximumTries = 10;
+            while(imuBuffer_.rbegin()->first < stamp && maximumTries-- > 0)
+            {
+                imuMutex_.unlock();
+                uSleep(1);
+                imuMutex_.lock();
+            }
+
+            if(imuBuffer_.rbegin()->first < stamp)
+            {
+                UWARN("Could not get IMU data at request image stamp %f after waiting 10 ms, latest imu stamp is %f", stamp, imuBuffer_.rbegin()->first);
+                imuMutex_.unlock();
+            }
+            else
+            {
+                // Interpolate imu data on image stamp
+                iterB = imuBuffer_.lower_bound(stamp);
+                iterA = iterB;
+                if(iterA != imuBuffer_.begin())
+                    iterA = --iterA;
+                if(iterA == iterB || stamp == iterB->first)
+                {
+                    imuVec = iterB->second;
+                }
+                else if(stamp > iterA->first && stamp < iterB->first)
+                {
+                    float t = (stamp-iterA->first) / (iterB->first-iterA->first);
+                    imuVec = iterA->second + t*(iterB->second - iterA->second);
+                }
+                imuBuffer_.erase(imuBuffer_.begin(), iterB);
+
+                imuMutex_.unlock();
+                data.setIMU(IMU(cv::Vec3d(imuVec[0], imuVec[1], imuVec[2]), cv::Mat::eye(3, 3, CV_64FC1), cv::Vec3d(imuVec[3], imuVec[4], imuVec[5]), cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
+            }
+        }
     }
 
 #else

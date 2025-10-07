@@ -64,8 +64,13 @@ public:
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
 
+    void close();
+
     // Should be set before initializing
     void enableColorRectification(bool enabled);
+    void enableImu(bool enabled);
+
+    void enableDepthMM(bool enabled);
 
 protected:
     virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -88,6 +93,10 @@ private:
     uint64_t lastImageStamp_;
     bool globalTimestampAvailable_;
     bool rectifyColor_;
+    bool convertDepthToMM_;
+    bool imuPublished_;
+    std::map<double, cv::Vec6f> imuBuffer_;
+    UMutex imuMutex_;
 #endif
 
 };

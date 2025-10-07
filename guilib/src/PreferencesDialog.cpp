@@ -795,6 +795,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_orbbec_sdk_depth_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_orbbec_sdk_depth_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_orbbec_sdk_color_rectification, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_imu, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_depth_mm, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2259,6 +2261,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_orbbec_sdk_depth_width->setValue(800);
 		_ui->spinBox_orbbec_sdk_depth_height->setValue(600);
 		_ui->checkBox_orbbec_sdk_color_rectification->setChecked(false);
+		_ui->checkBox_orbbec_sdk_imu->setChecked(true);
+		_ui->checkBox_orbbec_sdk_depth_mm->setChecked(true);
 		_ui->source_checkBox_useMKVStamps->setChecked(true);
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
@@ -2751,6 +2755,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_orbbec_sdk_depth_width->setValue(settings.value("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value()).toInt());
 	_ui->spinBox_orbbec_sdk_depth_height->setValue(settings.value("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value()).toInt());
 	_ui->checkBox_orbbec_sdk_color_rectification->setChecked(settings.value("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked()).toBool());
+	_ui->checkBox_orbbec_sdk_imu->setChecked(settings.value("enable_imu", _ui->checkBox_orbbec_sdk_imu->isChecked()).toBool());
+	_ui->checkBox_orbbec_sdk_depth_mm->setChecked(settings.value("depth_mm", _ui->checkBox_orbbec_sdk_depth_mm->isChecked()).toBool());
 	settings.endGroup(); // Orbbec SDK
 
 	settings.beginGroup("RealSense");
@@ -3366,6 +3372,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value());
 	settings.setValue("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value());
 	settings.setValue("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked());
+	settings.setValue("enable_imu", _ui->checkBox_orbbec_sdk_imu->isChecked());
+	settings.setValue("depth_mm", _ui->checkBox_orbbec_sdk_depth_mm->isChecked());
 	settings.endGroup(); // Orbbec SDK
 
 	settings.beginGroup("RealSense");
@@ -4298,7 +4306,6 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 	{
 		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
 	}
-	_ui->checkbox_publishInterIMU->setChecked(false);
 	_3dRenderingRoiRatios[0]->setText("0.0 0.0 0.0 0.0");
 	_3dRenderingRoiRatios[1]->setText("0.0 0.0 0.0 0.0");
 
@@ -4319,10 +4326,6 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 			_ui->lineEdit_k4a_mkv->clear();
 			_3dRenderingRoiRatios[0]->setText("0.05 0.05 0.05 0.05");
 			_3dRenderingRoiRatios[1]->setText("0.05 0.05 0.05 0.05");
-		}
-		else if(src == kSrcOrbbecSDK)
-		{
-			_ui->checkbox_publishInterIMU->setChecked(true);
 		}
 		else if (src == kSrcRealSense2)
 		{
@@ -6701,6 +6704,9 @@ Camera * PreferencesDialog::createCamera(
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraOrbbecSDK*)camera)->enableColorRectification(_ui->checkBox_orbbec_sdk_color_rectification->isChecked());
+		((CameraOrbbecSDK*)camera)->enableImu(_ui->checkBox_orbbec_sdk_imu->isChecked());
+		((CameraOrbbecSDK*)camera)->enableDepthMM(_ui->checkBox_orbbec_sdk_depth_mm->isChecked());
+		
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
