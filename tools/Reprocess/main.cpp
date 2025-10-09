@@ -76,8 +76,8 @@ void showUsage()
 			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
 			"                 of a single session).\n"
 			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recompting odometry.\n"
-			"     -odom_lin_var #.#   Override computed odometry linear covariance."
-			"     -odom_ang_var #.#   Override computed odometry angular covariance."
+			"     -odom_lin_var #.#   Override computed odometry linear covariance.\n"
+			"     -odom_ang_var #.#   Override computed odometry angular covariance.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
@@ -321,6 +321,7 @@ int main(int argc, char * argv[])
 		}
 		else if(strcmp(argv[i], "-odom_input_guess") == 0 || strcmp(argv[i], "--odom_input_guess") == 0)
 		{
+			recomputeOdometry = true;
 			useInputOdometryAsGuess = true;
 		}
 		else if (strcmp(argv[i], "-odom_lin_var") == 0 || strcmp(argv[i], "--odom_lin_var") == 0)
