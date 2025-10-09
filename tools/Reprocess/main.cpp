@@ -1299,7 +1299,6 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	int databasesMerged = 0;
 	if(!incrementalMemory)
 	{
 		showLocalizationStats(outputDatabasePath);
@@ -1322,7 +1321,7 @@ int main(int argc, char * argv[])
 					mapIds.insert(id);
 				}
 			}
-			databasesMerged = mapIds.size();
+			printf("Sessions linked to last pose: %ld/%ld\n", mapIds.size(), databases.size());
 		}
 	}
 
