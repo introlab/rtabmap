@@ -134,6 +134,7 @@ void OdometryThread::mainLoop()
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
 			if(!pose.isNull()) {
 				_previousGuessPose = event.info().odomPose;
+				UASSERT(event.info().odomPose.isNull() || !info.reg.covariance.empty());
 				if(!event.info().odomPose.isNull() && info.reg.covariance.at<double>(0,0) >= 9999 &&
 					(pose.x() != 0.0f || pose.y() != 0.0f || pose.z() != 0.0f)) // not the first frame
 				{

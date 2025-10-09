@@ -1502,8 +1502,8 @@ bool Rtabmap::process(
 	float angleToClosestNodeInTheGraph = 0;
 	if(_rgbdSlamMode)
 	{
-		double linVar = odomCovariance.empty()?1.0f:uMax3(odomCovariance.at<double>(0,0), odomCovariance.at<double>(1,1)>=9999?0:odomCovariance.at<double>(1,1), odomCovariance.at<double>(2,2)>=9999?0:odomCovariance.at<double>(2,2));
-		double angVar = odomCovariance.empty()?1.0f:uMax3(odomCovariance.at<double>(3,3)>=9999?0:odomCovariance.at<double>(3,3), odomCovariance.at<double>(4,4)>=9999?0:odomCovariance.at<double>(4,4), odomCovariance.at<double>(5,5));
+		double linVar = odomCovariance.empty()?0.0f:uMax3(odomCovariance.at<double>(0,0), odomCovariance.at<double>(1,1)>=9999?0:odomCovariance.at<double>(1,1), odomCovariance.at<double>(2,2)>=9999?0:odomCovariance.at<double>(2,2));
+		double angVar = odomCovariance.empty()?0.0f:uMax3(odomCovariance.at<double>(3,3)>=9999?0:odomCovariance.at<double>(3,3), odomCovariance.at<double>(4,4)>=9999?0:odomCovariance.at<double>(4,4), odomCovariance.at<double>(5,5));
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), (float)linVar);
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_ang(), (float)angVar);
 
@@ -1607,6 +1607,7 @@ bool Rtabmap::process(
 					Transform t = _memory->computeTransform(oldId, signature->id(), guess, &info);
 					if(!t.isNull())
 					{
+						UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 						UINFO("Odometry refining: update neighbor link (%d->%d, variance:lin=%f, ang=%f) from %s to %s",
 								oldId,
 								signature->id(),
@@ -1614,7 +1615,6 @@ bool Rtabmap::process(
 								info.covariance.at<double>(5,5),
 								guess.prettyPrint().c_str(),
 								t.prettyPrint().c_str());
-						UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 						_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.covariance.inv()));
 
 						if(_optimizeFromGraphEnd)
@@ -1894,7 +1894,7 @@ bool Rtabmap::process(
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+						UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, getInformation(info.covariance))))
 						{
 							++proximityDetectionsInTimeFound;
@@ -2782,7 +2782,7 @@ bool Rtabmap::process(
 											signature->id(),
 											nearestId,
 											transform.prettyPrint().c_str());
-									UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+									UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 
 									//for statistics
 									loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
@@ -2993,7 +2993,7 @@ bool Rtabmap::process(
 										}
 
 										// set Identify covariance for laser scan matching only
-										UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+										UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, getInformation(info.covariance)/_proximityMergedScanCovFactor, scanMatchingIds));
 										loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
@@ -3081,7 +3081,7 @@ bool Rtabmap::process(
 			if(!rejectedLoopClosure)
 			{
 				// Make the new one the parent of the old one
-				UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+				UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 				
 				loopClosureLinearVariance = uMax3(info.covariance.at<double>(0,0), info.covariance.at<double>(1,1)>=9999?0:info.covariance.at<double>(1,1), info.covariance.at<double>(2,2)>=9999?0:info.covariance.at<double>(2,2));
 				loopClosureAngularVariance = uMax3(info.covariance.at<double>(3,3)>=9999?0:info.covariance.at<double>(3,3), info.covariance.at<double>(4,4)>=9999?0:info.covariance.at<double>(4,4), info.covariance.at<double>(5,5));

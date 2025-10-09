@@ -8603,6 +8603,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 
 	if(!transform.isNull())
 	{
+		UASSERT(!info.covariance.empty());
 		if(!transform.isIdentity())
 		{
 			if(info.covariance.at<double>(0,0)<=0.0)

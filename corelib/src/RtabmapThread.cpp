@@ -506,9 +506,10 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 				ignoreFrame = true;
 			}
 		}
+		UASSERT(!odomEvent.info().reg.covariance.empty());
 		if(!lastPose_.isIdentity() &&
-						(odomEvent.pose().isIdentity() ||
-						odomEvent.info().reg.covariance.at<double>(0,0)>=9999))
+			(odomEvent.pose().isIdentity() ||
+			odomEvent.info().reg.covariance.at<double>(0,0)>=9999))
 		{
 			if(odomEvent.pose().isIdentity())
 			{
