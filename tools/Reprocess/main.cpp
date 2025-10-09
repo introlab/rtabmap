@@ -929,7 +929,8 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			printf("Odometry will be recomputed (odom option is set)\n");
+			printf("Odometry will be recomputed (\"odom\" option is set)%s.\n",
+				useInputOdometryAsGuess?" with input odometry guess (\"odom_guess_input\" option is set)":"");
 			Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), rtabmapUpdateRate);
 			if(rtabmapUpdateRate!=0)
 			{
@@ -952,18 +953,28 @@ int main(int argc, char * argv[])
 	}
 	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
-	Transform previousOdomPose = info.odomPose;
+	Transform previousOdomPose;
 	cv::Mat odomCovariance;
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
 		if(recomputeOdometry)
 		{
-			OdometryInfo odomInfo;
-			Transform pose = odometry->process(data, useInputOdometryAsGuess && !info.odomPose.isNull()?previousOdomPose.inverse() * info.odomPose:Transform(), &odomInfo);
-			previousOdomPose = info.odomPose;
-			if(odomInfo.reg.covariance.total() == 36)
+			if(useInputOdometryAsGuess && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0) >= 9999)
 			{
+				if(!odometry->getPose().isIdentity()) {
+					printf("Reset odometry as input odometry triggered new map\n");
+					odometry->reset(odometry->getPose());
+				}
+				previousOdomPose.setNull();
+			}
+			OdometryInfo odomInfo;
+			Transform pose = odometry->process(data, 
+				(useInputOdometryAsGuess && !info.odomPose.isNull() && !previousOdomPose.isNull())?previousOdomPose.inverse() * info.odomPose:Transform(),
+				&odomInfo);
+			if(!pose.isNull() && odomInfo.reg.covariance.total() == 36)
+			{
+				previousOdomPose = info.odomPose;
 				if(odomLinVarOverride > 0.0)
 				{
 					odomInfo.reg.covariance.at<double>(0,0) = odomLinVarOverride;
@@ -980,8 +991,18 @@ int main(int argc, char * argv[])
 					odomInfo.reg.covariance.at<double>(0,0) != 1.0 &&
 					odomInfo.reg.covariance.at<double>(0,0)>0.0)
 				{
+					if( useInputOdometryAsGuess && 
+						odomInfo.reg.covariance.at<double>(0,0) >= 9999 && 
+						!previousOdomPose.isNull() &&
+						(pose.x() != 0.0f || pose.y() != 0.0f || pose.z() != 0.0f)) // not the first frame
+					{
+						// In case of external guess and auto reset, keep reporting lost till we
+						// process the second frame with valid covariance. This way it
+						// won't trigger a new map.
+						pose = Transform();
+					}
 					// Use largest covariance error (to be independent of the odometry frame rate)
-					if(odomCovariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > odomCovariance.at<double>(0,0))
+					else if(odomCovariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > odomCovariance.at<double>(0,0))
 					{
 						odomCovariance = odomInfo.reg.covariance;
 					}

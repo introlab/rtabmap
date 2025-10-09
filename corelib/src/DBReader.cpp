@@ -856,9 +856,10 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				if(info)
 				{
 					info->odomPose = pose;
+					UASSERT(!infMatrix.empty());
 					info->odomCovariance = infMatrix.inv();
 					info->odomVelocity = s->getVelocity();
-					UDEBUG("odom variance = %f/%f", info->odomCovariance.empty()?0:info->odomCovariance.at<double>(0,0), info->odomCovariance.empty()?0:info->odomCovariance.at<double>(5,5));
+					UDEBUG("odom variance = %f/%f", info->odomCovariance.at<double>(0,0), info->odomCovariance.at<double>(5,5));
 				}
 			}
 			delete s;
