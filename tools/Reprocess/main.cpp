@@ -642,7 +642,7 @@ int main(int argc, char * argv[])
 	if (databases.empty())
 	{
 		printf("No input database \"%s\" detected!\n", inputDatabasePath.c_str());
-		return -1;
+		return 1;
 	}
 	for (std::list<std::string>::iterator iter = databases.begin(); iter != databases.end(); ++iter)
 	{
@@ -653,20 +653,20 @@ int main(int argc, char * argv[])
 			{
 				printf("Did you mean \"%s\"?\n", uReplaceChar(inputDatabasePath, ':', ";").c_str());
 			}
-			return -1;
+			return 1;
 		}
 
 		if (UFile::getExtension(*iter).compare("db") != 0)
 		{
 			printf("File \"%s\" is not a database format (*.db)!\n", iter->c_str());
-			return -1;
+			return 1;
 		}
 	}
 
 	if(UFile::getExtension(outputDatabasePath).compare("db") != 0)
 	{
 		printf("File \"%s\" is not a database format (*.db)!\n", outputDatabasePath.c_str());
-		return -1;
+		return 1;
 	}
 
 	if(UFile::exists(outputDatabasePath))
@@ -680,7 +680,7 @@ int main(int argc, char * argv[])
 	{
 		printf("Failed opening input database!\n");
 		delete dbDriver;
-		return -1;
+		return 1;
 	}
 
 	ParametersMap parameters;
@@ -793,7 +793,7 @@ int main(int argc, char * argv[])
 		printf("Input database doesn't have any nodes saved in it.\n");
 		dbDriver->closeConnection(false);
 		delete dbDriver;
-		return -1;
+		return 1;
 	}
 	if(!((!incrementalMemory || appendMode) && databases.size() > 1))
 	{
@@ -815,7 +815,7 @@ int main(int argc, char * argv[])
 		{
 			printf("Failed opening input database!\n");
 			delete dbDriver;
-			return -1;
+			return 1;
 		}
 		ids.clear();
 		dbDriver->getAllNodeIds(ids, false, false, !intermediateNodes);
@@ -1524,5 +1524,5 @@ int main(int argc, char * argv[])
 	}
 #endif
 
-	return databasesMerged;
+	return 0;
 }
