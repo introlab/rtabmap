@@ -988,7 +988,6 @@ int main(int argc, char * argv[])
 					odomInfo.reg.covariance.at<double>(5,5) = odomAngVarOverride;
 				}
 				if(uIsFinite(odomInfo.reg.covariance.at<double>(0,0)) &&
-					odomInfo.reg.covariance.at<double>(0,0) != 1.0 &&
 					odomInfo.reg.covariance.at<double>(0,0)>0.0)
 				{
 					if( useInputOdometryAsGuess && 
