@@ -77,6 +77,14 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     SET(qtconf_dest_dir Resources)
     SET(thirdparty_dest_dir MacOS)
     SET(APPS "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/MacOS/${CMAKE_BUNDLE_NAME}")
+
+    # Add the entitlement file to the target's properties
+    set(MACOS_ENTITLEMENTS_FILE "${CMAKE_CURRENT_SOURCE_DIR}/app.entitlements")
+
+    # Set the entitlement file for the target
+    set_target_properties(rtabmap_app PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${MACOS_ENTITLEMENTS_FILE}"
+    )
   ENDIF(APPLE)
 
   IF(OpenNI2_FOUND)
