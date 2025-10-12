@@ -119,6 +119,23 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           COMPONENT runtime)
 	ENDIF(WIN32)
   ENDIF(ZED_FOUND)
+
+  IF(OrbbecSDK_FOUND)
+	# Install needed "extensions" folder
+    IF(WIN32)
+        find_path(OrbbecSDK_BIN_DIR NAMES OrbbecSDK.dll)
+        IF(NOT OrbbecSDK_BIN_DIR)
+            MESSAGE(FATAL_ERROR "OrbbecSDK.dll not found! Verify your PATH.")
+        ENDIF(NOT OrbbecSDK_BIN_DIR)
+		MESSAGE(FATAL "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
+        INSTALL(DIRECTORY "${OrbbecSDK_BIN_DIR}/extensions" 
+          DESTINATION ${thirdparty_dest_dir} 
+          COMPONENT runtime 
+          FILES_MATCHING
+          PATTERN "*.lib" EXCLUDE
+          PATTERN "*")
+	ENDIF(WIN32)
+  ENDIF(OrbbecSDK_FOUND)
   
   IF(Torch_FOUND)
 	# Install needed cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll
