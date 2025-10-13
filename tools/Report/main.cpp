@@ -62,7 +62,7 @@ void showUsage()
 			"                         and compute error based on the scaled path.\n"
 			"    --poses            Export odometry to [path]_odom.txt, optimized graph to [path]_slam.txt \n"
 			"                         and ground truth to [path]_gt.txt in TUM RGB-D format.\n"
-			"    --poses_raw        Same as --poses, but poses are not aligned to gt."
+			"    --poses_raw        Same as --poses, but poses are not aligned to gt.\n"
 			"    --gt FILE.txt      Use this file as ground truth (TUM RGB-D format). It will\n"
 			"                         override the ground truth set in database if there is one.\n"
 			"                         If extension is *.db, the optimized poses of that database will\n"
