@@ -73,9 +73,8 @@ void showUsage()
 			"     -default    Input database's parameters are ignored, using default ones instead.\n"
 			"     -odom       Recompute odometry. See \"Odom/\" parameters with --params. If -skip option\n"
 			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
-			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
-			"                 of a single session).\n"
-			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recompting odometry.\n"
+			"                 may not be detected correctly if the input covariance between sessions doesn't have 9999.\n"
+			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recomputing odometry.\n"
 			"     -odom_lin_var #.#   Override computed odometry linear covariance.\n"
 			"     -odom_ang_var #.#   Override computed odometry angular covariance.\n"
 			"     -start #    Start from this node ID.\n"
@@ -1026,19 +1025,27 @@ int main(int argc, char * argv[])
 					}
 				}
 
-				data = dbReader->takeData(&info);
-				if(scanFromDepth)
+				if(framesToSkip==0 && intermediateNodes)
 				{
-					data.setLaserScan(LaserScan());
+					data.setId(-1); // intermediate node
 				}
-				camThread.postUpdate(&data, &info);
-				++processed;
-				continue;
+				else
+				{
+					data = dbReader->takeData(&info);
+					if(scanFromDepth)
+					{
+						data.setLaserScan(LaserScan());
+					}
+					camThread.postUpdate(&data, &info);
+					++processed;
+					continue;
+				}
 			}
 			info.odomPose = pose;
 			info.odomCovariance = odomCovariance;
 			odomCovariance = cv::Mat();
-			lastUpdateStamp = data.stamp();
+			if(data.id() != -1)
+				lastUpdateStamp = data.stamp();
 
 			uInsert(globalMapStats, odomInfo.statistics(pose));
 		}

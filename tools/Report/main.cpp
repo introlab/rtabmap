@@ -53,7 +53,7 @@ void showUsage()
 			"[Not built with Qt, statistics cannot be plotted]\n"
 #endif
 			"  path               Directory containing rtabmap databases or path of a database.\n"
-			"  Options:"
+			"  Options:\n"
 			"    --latex            Print table formatted in LaTeX with results.\n"
 			"    --kitti            Compute error based on KITTI benchmark.\n"
 			"    --relative         Compute relative motion error between poses.\n"
