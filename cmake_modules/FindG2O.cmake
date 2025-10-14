@@ -26,6 +26,10 @@ FIND_FILE(G2O_FACTORY_FILE g2o/core/factory.h
   PATHS ${G2O_INCLUDE_DIR}
   NO_DEFAULT_PATH)
 
+FIND_FILE(G2O_SBA_UTILS_FILE g2o/types/sba/sba_utils.h
+  PATHS ${G2O_INCLUDE_DIR}
+  NO_DEFAULT_PATH)
+
 #ifdef G2O_NUMBER_FORMAT_STR
 #define G2O_CPP11 // we assume that if G2O_NUMBER_FORMAT_STR is defined, this is the new g2o code with c++11 interface
 #endif
@@ -118,22 +122,29 @@ IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_CONFIG_FIL
 	  ${CHOLMOD_LIB})
   ENDIF(G2O_SOLVER_CHOLMOD)
 
-  FILE(READ ${G2O_CONFIG_FILE} TMPTXT)
-  STRING(FIND "${TMPTXT}" "G2O_NUMBER_FORMAT_STR" matchres)
+  FILE(READ ${G2O_FACTORY_FILE} TMPTXT)
+  STRING(FIND "${TMPTXT}" "shared_ptr" matchres)
   IF(${matchres} EQUAL -1)
-    MESSAGE(STATUS "Old g2o version detected with c++03 interface (config file: ${G2O_CONFIG_FILE}).")
-    SET(G2O_CPP11 0)
-  ELSE()
-    MESSAGE(WARNING "Latest g2o version detected with c++11 interface (config file: ${G2O_CONFIG_FILE}). Make sure g2o is built with \"-DBUILD_WITH_MARCH_NATIVE=OFF\" to avoid segmentation faults caused by Eigen.")
-    FILE(READ ${G2O_FACTORY_FILE} TMPTXT)
-    STRING(FIND "${TMPTXT}" "shared_ptr" matchres)
+    FILE(READ ${G2O_CONFIG_FILE} TMPTXT)
+    STRING(FIND "${TMPTXT}" "G2O_NUMBER_FORMAT_STR" matchres)
     IF(${matchres} EQUAL -1)
+      MESSAGE(STATUS "Old g2o version detected with c++03 interface (config file: ${G2O_CONFIG_FILE}).")
+      SET(G2O_CPP11 0)
+    ELSE()
+      MESSAGE(WARNING "Latest g2o version detected with c++11 interface (config file: ${G2O_CONFIG_FILE}). Make sure g2o is built with \"-DBUILD_WITH_MARCH_NATIVE=OFF\" to avoid segmentation faults caused by Eigen.")
       MESSAGE(STATUS "Old g2o factory version detected without shared ptr (factory file: ${G2O_FACTORY_FILE}).")
       SET(G2O_CPP11 2)
-    ELSE()
-      MESSAGE(STATUS "Latest g2o factory version detected with shared ptr (factory file: ${G2O_FACTORY_FILE}).")
-      SET(G2O_CPP11 1)
     ENDIF()
+  ELSE()
+    MESSAGE(WARNING "Latest g2o version detected with c++11 interface (config file: ${G2O_CONFIG_FILE}). Make sure g2o is built with \"-DBUILD_WITH_MARCH_NATIVE=OFF\" to avoid segmentation faults caused by Eigen.")
+    MESSAGE(STATUS "Latest g2o factory version detected with shared ptr (factory file: ${G2O_FACTORY_FILE}).")
+    SET(G2O_CPP11 1)
+  ENDIF()
+
+  IF(G2O_SBA_UTILS_FILE)
+    SET(G2O_WITH_SBA_UTILS 1)
+  ELSE()
+    SET(G2O_WITH_SBA_UTILS 0)
   ENDIF()
 
   SET(G2O_FOUND "YES")
