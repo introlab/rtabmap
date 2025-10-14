@@ -26,6 +26,10 @@ FIND_FILE(G2O_FACTORY_FILE g2o/core/factory.h
   PATHS ${G2O_INCLUDE_DIR}
   NO_DEFAULT_PATH)
 
+FIND_FILE(G2O_SBA_UTILS_FILE g2o/types/sba/sba_utils.h
+  PATHS ${G2O_INCLUDE_DIR}
+  NO_DEFAULT_PATH)
+
 #ifdef G2O_NUMBER_FORMAT_STR
 #define G2O_CPP11 // we assume that if G2O_NUMBER_FORMAT_STR is defined, this is the new g2o code with c++11 interface
 #endif
@@ -134,6 +138,12 @@ IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_CONFIG_FIL
       MESSAGE(STATUS "Latest g2o factory version detected with shared ptr (factory file: ${G2O_FACTORY_FILE}).")
       SET(G2O_CPP11 1)
     ENDIF()
+  ENDIF()
+
+  IF(G2O_SBA_UTILS_FILE)
+    SET(G2O_WITH_SBA_UTILS 1)
+  ELSE()
+    SET(G2O_WITH_SBA_UTILS 0)
   ENDIF()
 
   SET(G2O_FOUND "YES")
