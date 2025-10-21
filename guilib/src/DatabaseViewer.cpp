@@ -9346,14 +9346,18 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		if(findIter!=linksRefined_.end())
 		{
 			links.insert(*findIter); // add the refined link
-			links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
+			if(findIter->second.from() != findIter->second.to()) {
+				links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
+			}
 			UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
 			continue;
 		}
 
 		UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
-		links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
+		if(iter->second.from() != iter->second.to()) {
+			links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
+		}
 	}
 
 	return links;
