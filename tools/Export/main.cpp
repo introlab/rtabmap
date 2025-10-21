@@ -171,7 +171,7 @@ void showUsage()
 			"    --prop_radius_factor #  Proportional radius filter factor (default 0, 0=disabled). Start tuning from 0.01.\n"
 			"    --prop_radius_scale  #  Proportional radius filter neighbor scale (default 2).\n"
 			"    --random_samples #    Number of output samples using a random filter (default 0, 0=disabled).\n"
-			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color.\n"
+			"    --color_radius  #     Radius used to colorize polygons (default 0.05 m, 0 m with --scan). Set 0 for nearest color, -1 to disable.\n"
 			"    --scan                Use laser scan for the point cloud.\n"
 			"    --save_in_db          Save resulting optimized poses, assembled point cloud, mesh or 2D occupancy grid in the database.\n"
 			"    --xmin #              Minimum range on X axis to keep nodes to export.\n"
@@ -284,7 +284,7 @@ int main(int argc, char * argv[])
 	double multibandBestScoreThr = 0.1;
 	double multibandAngleHardthr = 90;
 	bool multibandForceVisible = false;
-	float colorRadius = -1.0f;
+	float colorRadius = -100.0f;
 	int textureVertexColorPolicy = 0;
 	bool cloudFromScan = false;
 	bool saveInDb = false;
@@ -1142,7 +1142,7 @@ int main(int argc, char * argv[])
 	{
 		voxelSize = cloudFromScan?0:0.01f;
 	}
-	if(colorRadius < 0.0f)
+	if(colorRadius < -1.0f)
 	{
 		colorRadius = cloudFromScan?0:0.05f;
 	}
