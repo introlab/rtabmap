@@ -29,6 +29,9 @@ def init(cuda):
     
     # This class runs the SuperPoint network and processes its outputs.
     global superpoint
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    weights_path = os.path.join(script_dir, 'weights', 'superpoint_v6_from_tf.pth')
     superpoint = SuperPointFrontend(weights_path="superpoint_v1.pth",
                           nms_dist=4,
                           conf_thresh=0.015,
