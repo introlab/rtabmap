@@ -6,18 +6,14 @@
 #
 import numpy as np
 import os
+import torch
+from superpoint_pytorch import SuperPoint
 
-# Defer importing Pytorch to work around the GIL issue
-torch = None
-superpoint = None
+superpoint = []
 device = 'cpu'
 
 def init(cuda):
-    global torch, superpoint, device
-
-    # GIL is now initialized
-    import torch
-    from superpoint_pytorch import SuperPoint
+    global superpoint, device
 
     superpoint = SuperPoint().eval()
 
@@ -44,12 +40,19 @@ def init(cuda):
     superpoint.eval()
 
 def detect(imageBuffer):
-    global superpoint
-    global device
+    global superpoint, device
     
     image = np.asarray(imageBuffer)
     image = (image.astype('float32') / 255.)
-    image_tensor = torch.from_numpy(image[None, None]).float().to(device)
+    
+    # image_tensor = torch.from_numpy(image[None, None]).float().to(device)
+    try:
+        image_with_dims = image[None, None]  # Add batch and channel dims
+        image_tensor = torch.from_numpy(image_with_dims).float()
+        image_tensor = image_tensor.to(device)
+    except Exception as e:
+        print(f"Error creating tensor: {e}")
+        raise
     # Result: (1, 1, H, W) - PyTorch tensor on correct device (CPU or GPU).
     
     with torch.no_grad():
@@ -64,22 +67,7 @@ def detect(imageBuffer):
     descriptors = pred['descriptors'][0].cpu().numpy()  
     # Result: (N, descriptor_dim)    
 
-    print("keypoints shape: ", keypoints_with_response.shape)
-    print("descriptors shape: ", descriptors.shape)
     desc = np.float32(descriptors).copy()
     pts = np.float32(keypoints_with_response).copy()
-    print("pts shape: ", pts.shape)
-    print("desc shape: ", desc.shape)
 
-    # Debug output
-    print(f"DEBUG: Image shape: {image.shape}")
-    print(f"DEBUG: Found {len(keypoints_with_response)} keypoints")
-    if len(keypoints_with_response) > 0:
-        print(f"DEBUG: First keypoint: {keypoints_with_response[0]}")
-        print(f"DEBUG: Keypoint range: x=[{keypoints_with_response[:, 0].min():.2f}, {keypoints_with_response[:, 0].max():.2f}], y=[{keypoints_with_response[:, 1].min():.2f}, {keypoints_with_response[:, 1].max():.2f}]")
-        print(f"DEBUG: Response range: [{keypoints_with_response[:, 2].min():.4f}, {keypoints_with_response[:, 2].max():.4f}]")
-    print(f"DEBUG: Descriptor shape: {descriptors.shape}")
-    print(f"DEBUG: Descriptor range: [{descriptors.min():.4f}, {descriptors.max():.4f}]")
-    print(f"DEBUG: Descriptor norms: min={np.linalg.norm(descriptors, axis=1).min():.4f}, max={np.linalg.norm(descriptors, axis=1).max():.4f}")
-    
     return pts, desc
