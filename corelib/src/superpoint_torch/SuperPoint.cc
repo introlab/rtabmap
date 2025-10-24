@@ -239,7 +239,7 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 		grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / (w*s - s/2 - 0.5) - 1;  // x
 		grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / (h*s - s/2 - 0.5) - 1;  // y
 
-		auto desc = torch::grid_sampler(desc_, grid, 0, 0, true);  // [1, 256, 1, n_keypoints]
+		auto desc = torch::grid_sampler(desc_, grid, 0, 0, false);  // [1, 256, 1, n_keypoints]
 
 		// normalize to 1
 		desc = torch::nn::functional::normalize(desc.reshape({desc_.size(1), -1}), torch::nn::functional::NormalizeFuncOptions().dim(0)); //[256, n_keypoints]
