@@ -136,8 +136,9 @@ SPDetectorRpautrat::SPDetectorRpautrat(const std::string & modelPath, float thre
 		minDistance_(minDistance),
 		detected_(false)
 {
-	UDEBUG("modelPath=%s thr=%f nms=%d cuda=%d", modelPath.c_str(), threshold, nms?1:0, cuda?1:0);
+	UDEBUG("modelPath=%s thr=%f nms=%d minDistance=%d cuda=%d", modelPath.c_str(), threshold, nms?1:0, minDistance, cuda?1:0);
 	UWARN("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
+	UWARN("SuperPoint Rpautrat parameters: threshold=%.3f, nms=%s, minDistance=%d", threshold, nms?"true":"false", minDistance);
 	if(modelPath.empty())
 	{
 		UERROR("Model's path is empty!");
@@ -177,38 +178,45 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 	{
 		return cv::Mat();
 	}
-	
 
-    // Our TorchScript model already provides sampled descriptors [N, 256]
-    // But we need to filter them to match the input keypoints
-    
-    UWARN("SuperPoint compute - Input keypoints: %ld, Descriptor tensor shape: [%ld, %ld]", 
-          keypoints.size(), desc_.size(0), desc_.size(1));
-    
-    // Filter descriptors to match input keypoints
-    // Find descriptors that correspond to the input keypoints by matching coordinates
+    // RTAB-Map may have applied additional filtering (like top-K) to the keypoints
+    // We need to match the input keypoints to our stored descriptors
     torch::Tensor filtered_descriptors = torch::zeros({(long int)keypoints.size(), 256}, desc_.options());
     
-    // Get the original keypoints from the model output (stored during detect())
-    auto original_keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
+    UWARN("COMPUTE: Input keypoints: %ld, Stored desc tensor: [%ld, %ld]", 
+          keypoints.size(), desc_.size(0), desc_.size(1));
+    
+    // Get the stored keypoints for matching
+    auto stored_keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
+    
+    int num_stored_keypoints = stored_keypoints_cpu.size(0);
+    UWARN("COMPUTE: Stored keypoints: %d", num_stored_keypoints);
+    
+    // Pre-extract all coordinates for efficient matching
+    float * kp_data = stored_keypoints_cpu.data_ptr<float>();
     
     for(size_t i = 0; i < keypoints.size(); i++) {
         float x = keypoints[i].pt.x;
         float y = keypoints[i].pt.y;
         
         // Find matching descriptor by coordinate
-        for(int j = 0; j < original_keypoints_cpu.size(0); j++) {
-            float orig_x = original_keypoints_cpu[j][1].item<float>();
-            float orig_y = original_keypoints_cpu[j][0].item<float>();
+        for(int j = 0; j < num_stored_keypoints; j++) {
+            float stored_x = kp_data[j * 2 + 0];   // x coordinate
+            float stored_y = kp_data[j * 2 + 1];   // y coordinate
             
-            // Check if coordinates match (within NMS tolerance)
-            float dist = std::sqrt(std::pow(x - orig_x, 2) + std::pow(y - orig_y, 2));
-            if(dist < minDistance_) {
+            // Match by coordinates only
+            float dx = x - stored_x;
+            float dy = y - stored_y;
+            float distSq = dx * dx + dy * dy;
+            
+            // Use tight tolerance for coordinates
+            if(distSq < 1.0f) {
                 filtered_descriptors[i] = desc_[j];
                 break;
             }
         }
     }
+
     
     auto normalized = filtered_descriptors;
     
@@ -218,36 +226,30 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
     
     // Convert to OpenCV Mat
     cv::Mat desc_mat(cv::Size(normalized.size(1), normalized.size(0)), CV_32FC1, normalized.data_ptr<float>());
+    UWARN("COMPUTE: Final output descriptor mat: %d rows x %d cols", desc_mat.rows, desc_mat.cols);
     
     return desc_mat.clone();
 }
 
 std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
 {
-    UWARN("SuperPoint Rpautrat detector is being used");
-    
     torch::NoGradGuard no_grad_guard;
     auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);
     x = x.to(torch::kFloat) / 255;
-    
-    UWARN("SuperPoint input image dimensions: %dx%d (HxW)", img.rows, img.cols);
 
     torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
     x = x.set_requires_grad(false).to(device);
-    
-    // Ensure model is on the correct device
     model_.to(device);
     
     // run the model
     auto outputs = model_.forward({x}).toTuple();
     keypoints_tensor_ = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
-    auto scores_tensor = outputs->elements()[1].toTensor();     // [N] keypoint scores
-    desc_ = outputs->elements()[2].toTensor();                 // [N, 256] descriptors
+    auto scores_tensor = outputs->elements()[1].toTensor();    // [N] keypoint scores
+    desc_ = outputs->elements()[2].toTensor();              // [N, 256] descriptors
     
-    UWARN("SuperPoint model outputs - Keypoints: [%ld, %ld], Scores: [%ld], Descriptors: [%ld, %ld]", 
+    UWARN("DETECT: Model output - Keypoints: [%ld, %ld], Scores: [%ld], Descriptors: [%ld, %ld]", 
           keypoints_tensor_.size(0), keypoints_tensor_.size(1),
-          scores_tensor.size(0),
-          desc_.size(0), desc_.size(1));
+          scores_tensor.size(0), desc_.size(0), desc_.size(1));
     
     // Convert to CPU for processing
     auto keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
@@ -267,34 +269,63 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
             }
         }
     }
+    UWARN("DETECT: After threshold (%.3f) filtering: %ld keypoints", threshold_, keypoints.size());
     
-    // Apply NMS if enabled (simplified version)
+    // Apply NMS if enabled - use simple 1D NMS for keypoint arrays
     if(nms_ && keypoints.size() > 1) {
+        // Convert minDistance from int to float
+        float minDistNms = (float)minDistance_;
+        
         // Simple NMS: remove keypoints that are too close to each other
-        std::vector<cv::KeyPoint> filtered_keypoints;
+        // Keep track of which keypoints to keep
+        std::vector<bool> keep_mask(keypoints.size(), true);
+        
         for(size_t i = 0; i < keypoints.size(); i++) {
-            bool keep = true;
-            for(size_t j = 0; j < filtered_keypoints.size(); j++) {
-                float dist = std::sqrt(std::pow(keypoints[i].pt.x - filtered_keypoints[j].pt.x, 2) + 
-                                      std::pow(keypoints[i].pt.y - filtered_keypoints[j].pt.y, 2));
-                if(dist < minDistance_) {
-                    // Keep the one with higher response
-                    if(keypoints[i].response > filtered_keypoints[j].response) {
-                        filtered_keypoints[j] = keypoints[i];
+            if(!keep_mask[i]) continue; // Already suppressed
+            
+            for(size_t j = i + 1; j < keypoints.size(); j++) {
+                if(!keep_mask[j]) continue; // Already suppressed
+                
+                float dist = std::sqrt(std::pow(keypoints[i].pt.x - keypoints[j].pt.x, 2) + 
+                                      std::pow(keypoints[i].pt.y - keypoints[j].pt.y, 2));
+                if(dist < minDistNms) {
+                    // Keep the one with higher response, suppress the other
+                    if(keypoints[i].response > keypoints[j].response) {
+                        keep_mask[j] = false;
+                    } else {
+                        keep_mask[i] = false;
+                        break; // Current keypoint is suppressed, move to next
                     }
-                    keep = false;
-                    break;
                 }
             }
-            if(keep) {
+        }
+        
+        // Filter keypoints and corresponding descriptors
+        std::vector<cv::KeyPoint> filtered_keypoints;
+        long int num_kept_keypoints = std::count(keep_mask.begin(), keep_mask.end(), true);
+        torch::Tensor filtered_keypoints_tensor = torch::zeros({num_kept_keypoints, 2}, keypoints_tensor_.options());
+        torch::Tensor filtered_descriptors = torch::zeros({num_kept_keypoints, 256}, desc_.options());
+        
+        int filtered_idx = 0;
+        for(size_t i = 0; i < keypoints.size(); i++) {
+            if(keep_mask[i]) {
                 filtered_keypoints.push_back(keypoints[i]);
+                filtered_keypoints_tensor[filtered_idx] = keypoints_tensor_[i];
+                filtered_descriptors[filtered_idx] = desc_[i];
+                filtered_idx++;
             }
         }
+        
+        // Update the stored tensors to maintain correspondence
         keypoints = filtered_keypoints;
+        keypoints_tensor_ = filtered_keypoints_tensor;
+        desc_ = filtered_descriptors;
+        
+        UWARN("DETECT: After 1D NMS (minDist=%.1f): %ld keypoints", minDistNms, keypoints.size());
     }
 
     detected_ = true;
-    UWARN("SuperPoint Rpautrat detected %d keypoints", (int)keypoints.size());
+    UWARN("DETECT: Final keypoint count: %ld", keypoints.size());
     return keypoints;
 }
 } // namespace rtabmap

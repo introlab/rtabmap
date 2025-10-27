@@ -14,7 +14,10 @@ from superpoint_pytorch import SuperPoint
 
 
 def wrap_model(model: nn.Module):
-    """Simple wrapper to fix SuperPoint input format for TorchScript."""
+    """
+    Simple wrapper to fix SuperPoint input format for TorchScript.
+    Easier to call from C++ code since the input isn't a dictionary.
+    """
     class Wrapper(nn.Module):
         def __init__(self, net: nn.Module):
             super().__init__()
@@ -63,7 +66,7 @@ def main():
     model.load_state_dict(weights, strict=False)
     
     wrapped = wrap_model(model)
-    dummy = torch.randn(1, 1, 288, 1920)  # Default grayscale input
+    dummy = torch.randn(1, 1, 288, 1920, device="cuda")  # Dummy input, grayscale, using cuda.
     
     # Convert to TorchScript using trace (SuperPoint has dynamic behavior that scripting can't handle)
     print("Using torch.jit.trace (SuperPoint has dynamic behavior)...")
