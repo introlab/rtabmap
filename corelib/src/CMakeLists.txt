@@ -214,10 +214,12 @@ IF(TORCH_FOUND)
 	SET(SRC_FILES
 		${SRC_FILES}
 		superpoint_torch/SuperPoint.cc
+		superpoint_rpautrat/SuperpointRpautrat.cpp
 	)
 	 SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}
 	    ${CMAKE_CURRENT_SOURCE_DIR}/superpoint_torch
+	    ${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat
 		${INCLUDE_DIRS}
 	)
 ENDIF(TORCH_FOUND)

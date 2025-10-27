@@ -9,6 +9,7 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <torch/torch.h>
+#include <torch/script.h>
 #include <opencv2/opencv.hpp>
 #include <algorithm>
 #include <cmath>
@@ -16,7 +17,7 @@
 namespace rtabmap
 {
 
-SuperPoint::SuperPoint()
+SuperPointRpautratModel::SuperPointRpautratModel()
     : conv1a(torch::nn::Conv2dOptions(1, 64, 3).stride(1).padding(1)),
         bn1a(torch::nn::BatchNorm2dOptions(64).eps(0.001)),
         conv1b(torch::nn::Conv2dOptions(64, 64, 3).stride(1).padding(1)),
@@ -80,7 +81,7 @@ SuperPoint::SuperPoint()
 
 }
 
-std::vector<torch::Tensor> SuperPoint::forward(torch::Tensor input)
+std::vector<torch::Tensor> SuperPointRpautratModel::forward(torch::Tensor input)
 {
     // 3 Backbone layers conv -> batchnorm -> relu activation -> max pool
     input = torch::relu(bn1a(conv1a(input)));
@@ -129,13 +130,14 @@ std::vector<torch::Tensor> SuperPoint::forward(torch::Tensor input)
     return ret;
 }
 
-SPDetector::SPDetector(const std::string & modelPath, float threshold, bool nms, int minDistance, bool cuda) :
+SPDetectorRpautrat::SPDetectorRpautrat(const std::string & modelPath, float threshold, bool nms, int minDistance, bool cuda) :
 		threshold_(threshold),
 		nms_(nms),
 		minDistance_(minDistance),
 		detected_(false)
 {
 	UDEBUG("modelPath=%s thr=%f nms=%d cuda=%d", modelPath.c_str(), threshold, nms?1:0, cuda?1:0);
+	UWARN("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
 	if(modelPath.empty())
 	{
 		UERROR("Model's path is empty!");
@@ -147,8 +149,9 @@ SPDetector::SPDetector(const std::string & modelPath, float threshold, bool nms,
 		UERROR("Model's path \"%s\" doesn't exist!", path.c_str());
 		return;
 	}
-	model_ = std::make_shared<SuperPoint>();
-	torch::load(model_, uReplaceChar(path, '~', UDirectory::homeDir()));
+	// Load TorchScript model
+	model_ = torch::jit::load(uReplaceChar(path, '~', UDirectory::homeDir()));
+	model_.eval();
 
 	if(cuda && !torch::cuda::is_available())
 	{
@@ -156,10 +159,14 @@ SPDetector::SPDetector(const std::string & modelPath, float threshold, bool nms,
 	}
 	cuda_ = cuda && torch::cuda::is_available();
 	torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
-	model_->to(device);
+	model_.to(device);
 }
 
-cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
+SPDetectorRpautrat::~SPDetectorRpautrat()
+{
+}
+
+cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 {
 	if(!detected_)
 	{
@@ -170,39 +177,40 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
 	{
 		return cv::Mat();
 	}
+	
 
-    // Get dimensions
-    auto b = desc_.size(0);  // batch size (should be 1)
-    auto c = desc_.size(1);  // channels (256 for SuperPoint)
-    auto h = desc_.size(2);  // height/8
-    auto w = desc_.size(3);  // width/8
+    // Our TorchScript model already provides sampled descriptors [N, 256]
+    // But we need to filter them to match the input keypoints
     
-    float s = 8;
-    cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);
-    for (size_t i = 0; i < keypoints.size(); i++) {
-        kpt_mat.at<float>(i, 0) = keypoints[i].pt.y - s/2 + 0.5;  // y
-        kpt_mat.at<float>(i, 1) = keypoints[i].pt.x - s/2 + 0.5;  // x
+    UWARN("SuperPoint compute - Input keypoints: %ld, Descriptor tensor shape: [%ld, %ld]", 
+          keypoints.size(), desc_.size(0), desc_.size(1));
+    
+    // Filter descriptors to match input keypoints
+    // Find descriptors that correspond to the input keypoints by matching coordinates
+    torch::Tensor filtered_descriptors = torch::zeros({(long int)keypoints.size(), 256}, desc_.options());
+    
+    // Get the original keypoints from the model output (stored during detect())
+    auto original_keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
+    
+    for(size_t i = 0; i < keypoints.size(); i++) {
+        float x = keypoints[i].pt.x;
+        float y = keypoints[i].pt.y;
+        
+        // Find matching descriptor by coordinate
+        for(int j = 0; j < original_keypoints_cpu.size(0); j++) {
+            float orig_x = original_keypoints_cpu[j][1].item<float>();
+            float orig_y = original_keypoints_cpu[j][0].item<float>();
+            
+            // Check if coordinates match (within NMS tolerance)
+            float dist = std::sqrt(std::pow(x - orig_x, 2) + std::pow(y - orig_y, 2));
+            if(dist < minDistance_) {
+                filtered_descriptors[i] = desc_[j];
+                break;
+            }
+        }
     }
     
-    // Convert to torch tensor
-    auto fkpts = torch::from_blob(kpt_mat.data, {(long int)keypoints.size(), 2}, torch::kFloat);
-    
-    // Create grid for grid_sampler (matching SuperPoint.cc approach)
-    auto grid = torch::zeros({1, 1, fkpts.size(0), 2}).to(desc_.device());
-    grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / (w*s - s/2 - 0.5) - 1;  // x
-    grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / (h*s - s/2 - 0.5) - 1;  // y
-    
-    // Grid sample (bilinear interpolation) - match Python: align_corners=False
-    auto sampled = torch::grid_sampler(desc_, grid, 0, 0, false);
-    
-    // Normalize descriptors (L2 normalization)
-    auto normalized = torch::nn::functional::normalize(
-        sampled.reshape({desc_.size(1), -1}), 
-        torch::nn::functional::NormalizeFuncOptions().dim(0)
-    );
-    
-    // Transpose to [n_keypoints, 256]
-    normalized = normalized.transpose(0, 1).contiguous();
+    auto normalized = filtered_descriptors;
     
     // Move to CPU if needed
     if(cuda_)
@@ -214,59 +222,79 @@ cv::Mat SPDetector::compute(const std::vector<cv::KeyPoint> &keypoints)
     return desc_mat.clone();
 }
 
-std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat & mask)
+std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
 {
+    UWARN("SuperPoint Rpautrat detector is being used");
+    
     torch::NoGradGuard no_grad_guard;
     auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);
     x = x.to(torch::kFloat) / 255;
+    
+    UWARN("SuperPoint input image dimensions: %dx%d (HxW)", img.rows, img.cols);
 
     torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
-    x = x.set_requires_grad(false);
+    x = x.set_requires_grad(false).to(device);
+    
+    // Ensure model is on the correct device
+    model_.to(device);
     
     // run the model
-    auto out = model_->forward(x.to(device));
-    auto scores = out[0];
-    desc_ = out[1];
-
-    if(nms_)
-    {
-        auto options = torch::nn::functional::MaxPool2dFuncOptions(minDistance_*2+1).stride(1).padding(minDistance_);
-        auto options_r1 = torch::nn::functional::MaxPool2dFuncOptions(3).stride(1).padding(1);
-
-        auto zeros = torch::zeros_like(scores);
-        auto max_mask = scores == torch::nn::functional::max_pool2d(scores, options);
-        auto max_mask_r1 = scores == torch::nn::functional::max_pool2d(scores, options_r1);
-        for(size_t i=0; i<2; i++)
-        {
-            auto supp_mask = torch::nn::functional::max_pool2d(max_mask.to(torch::kF32), options) > 0;
-            auto supp_scores = torch::where(supp_mask, zeros, scores);
-            auto new_max_mask = supp_scores == torch::nn::functional::max_pool2d(supp_scores, options);
-            max_mask = max_mask | (new_max_mask & (~supp_mask) & max_mask_r1);
-        }
-        prob_ = torch::where(max_mask, scores, zeros).squeeze(0);
-    }
-    else
-    {
-        prob_ = scores.squeeze(0);
-    }
-
-    auto kpts = (prob_ > threshold_);
-    kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
-
-    auto kpts_cpu = kpts.to(torch::kCPU);
-    auto prob_cpu = prob_.to(torch::kCPU);
-
+    auto outputs = model_.forward({x}).toTuple();
+    keypoints_tensor_ = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
+    auto scores_tensor = outputs->elements()[1].toTensor();     // [N] keypoint scores
+    desc_ = outputs->elements()[2].toTensor();                 // [N, 256] descriptors
+    
+    UWARN("SuperPoint model outputs - Keypoints: [%ld, %ld], Scores: [%ld], Descriptors: [%ld, %ld]", 
+          keypoints_tensor_.size(0), keypoints_tensor_.size(1),
+          scores_tensor.size(0),
+          desc_.size(0), desc_.size(1));
+    
+    // Convert to CPU for processing
+    auto keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
+    auto scores_cpu = scores_tensor.to(torch::kCPU);
+    
+    // Apply threshold filtering
     std::vector<cv::KeyPoint> keypoints;
-    for(int i=0; i<kpts_cpu.size(0); i++)
-    {
-        if(mask.empty() || mask.at<unsigned char>(kpts_cpu[i][0].item<int>(), kpts_cpu[i][1].item<int>()) != 0)
-        {
-            float response = prob_cpu[kpts_cpu[i][0]][kpts_cpu[i][1]].item<float>();
-            keypoints.emplace_back(cv::KeyPoint(kpts_cpu[i][1].item<float>(), kpts_cpu[i][0].item<float>(), 8, -1, response));
+    for(int i = 0; i < keypoints_cpu.size(0); i++) {
+        float score = scores_cpu[i].item<float>();
+        if(score > threshold_) {
+            float x = keypoints_cpu[i][0].item<float>();  // x coordinate
+            float y = keypoints_cpu[i][1].item<float>();  // y coordinate
+            
+            // Check mask if provided
+            if(mask.empty() || mask.at<unsigned char>((int)y, (int)x) != 0) {
+                keypoints.emplace_back(cv::KeyPoint(x, y, 8, -1, score));
+            }
         }
+    }
+    
+    // Apply NMS if enabled (simplified version)
+    if(nms_ && keypoints.size() > 1) {
+        // Simple NMS: remove keypoints that are too close to each other
+        std::vector<cv::KeyPoint> filtered_keypoints;
+        for(size_t i = 0; i < keypoints.size(); i++) {
+            bool keep = true;
+            for(size_t j = 0; j < filtered_keypoints.size(); j++) {
+                float dist = std::sqrt(std::pow(keypoints[i].pt.x - filtered_keypoints[j].pt.x, 2) + 
+                                      std::pow(keypoints[i].pt.y - filtered_keypoints[j].pt.y, 2));
+                if(dist < minDistance_) {
+                    // Keep the one with higher response
+                    if(keypoints[i].response > filtered_keypoints[j].response) {
+                        filtered_keypoints[j] = keypoints[i];
+                    }
+                    keep = false;
+                    break;
+                }
+            }
+            if(keep) {
+                filtered_keypoints.push_back(keypoints[i]);
+            }
+        }
+        keypoints = filtered_keypoints;
     }
 
     detected_ = true;
+    UWARN("SuperPoint Rpautrat detected %d keypoints", (int)keypoints.size());
     return keypoints;
 }
 } // namespace rtabmap

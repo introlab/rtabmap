@@ -14,19 +14,8 @@
 namespace rtabmap
 {
 
-// Configuration structure for SuperPoint (only configurable parameters)
-struct SuperPointConfig {
-    float detection_threshold = 0.005f;  // Detection threshold
-    int max_num_keypoints = -1;           // -1 means no limit
-    int nms_radius = 4;                  // NMS radius
-    int remove_borders = 4;               // Remove keypoints near borders
-    bool cuda = false;                    // Use CUDA if available
-    
-    SuperPointConfig() = default;
-};
-
-struct SuperPoint : torch::nn::Module {
-    SuperPoint();
+struct SuperPointRpautratModel : torch::nn::Module {
+    SuperPointRpautratModel();
     
     std::vector<torch::Tensor> forward(torch::Tensor x);
 
@@ -68,23 +57,22 @@ struct SuperPoint : torch::nn::Module {
     torch::nn::BatchNorm2d bnDescriptorB;
 };
 
-class SPDetector {
+class SPDetectorRpautrat {
     public:
-        SPDetector(const std::string & modelPath, float threshold = 0.005f, bool nms = true, int nmsRadius = 4, bool cuda = false);
-        virtual ~SPDetector();
+        SPDetectorRpautrat(const std::string & modelPath, float threshold = 0.005f, bool nms = true, int nmsRadius = 4, bool cuda = false);
+        virtual ~SPDetectorRpautrat();
         std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
         cv::Mat compute(const std::vector<cv::KeyPoint> &keypoints);
     
         void setThreshold(float threshold) {threshold_ = threshold;}
         void setNMS(bool enabled) {nms_ = enabled;}
-        void setNMSRadius(int radius) {nmsRadius_ = radius;}
-        void setMaxKeypoints(int max_kpts) {maxKeypoints_ = max_kpts;}
-        void setRemoveBorders(int borders) {removeBorders_ = borders;}
+        void setMinDistance(int minDistance) {minDistance_ = minDistance;}
     
     private:
-        std::shared_ptr<SuperPoint> model_;
+        torch::jit::script::Module model_;
         torch::Tensor prob_;
         torch::Tensor desc_;
+        torch::Tensor keypoints_tensor_;  // Store original keypoints from model
         
         float threshold_;
         bool nms_;
