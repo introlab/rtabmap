@@ -56,7 +56,7 @@ def main():
         pass
 
     # Load SuperPoint model and weights
-    model = SuperPoint().eval()
+    model = SuperPoint().eval().to("cuda")
     
     # Load weights without forcing CPU location to allow CUDA usage
     weights = torch.load(args.weights, map_location=None)
