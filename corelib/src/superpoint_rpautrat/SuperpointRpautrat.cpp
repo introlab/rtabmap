@@ -13,7 +13,6 @@
 #include <opencv2/opencv.hpp>
 #include <algorithm>
 #include <cmath>
-#include <chrono>
 
 namespace rtabmap
 {
@@ -59,7 +58,6 @@ SPDetectorRpautrat::~SPDetectorRpautrat()
 
 cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 {
-    auto start_compute = std::chrono::high_resolution_clock::now();
     
 	if(!detected_)
 	{
@@ -114,17 +112,12 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
     // Convert to OpenCV Mat
     cv::Mat desc_mat(cv::Size(normalized.size(1), normalized.size(0)), CV_32FC1, normalized.data_ptr<float>());
     
-    auto end_compute = std::chrono::high_resolution_clock::now();
-    auto compute_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_compute - start_compute).count() / 1000.0;
-    
-    UWARN("SuperPoint descriptor computation: %.2f ms", compute_ms);
     
     return desc_mat.clone();
 }
 
 std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
 {
-    auto start_total = std::chrono::high_resolution_clock::now();
     
     torch::NoGradGuard no_grad_guard;
     auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);
@@ -134,95 +127,42 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     x = x.set_requires_grad(false).to(device);
     model_.to(device);
     
-    // Time inference
-    auto start_inference = std::chrono::high_resolution_clock::now();
     auto outputs = model_.forward({x}).toTuple();
-    auto end_inference = std::chrono::high_resolution_clock::now();
-    auto inference_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_inference - start_inference).count() / 1000.0;
     keypoints_tensor_ = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
     auto scores_tensor = outputs->elements()[1].toTensor();    // [N] keypoint scores
-    desc_ = outputs->elements()[2].toTensor();              // [N, 256] descriptors
-    
+    desc_ = outputs->elements()[2].toTensor();              // [N, 256] descriptors    
+
     // Convert to CPU for processing
     auto keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
     auto scores_cpu = scores_tensor.to(torch::kCPU);
+
+    std::vector<cv::KeyPoint> filtered_keypoints;
+    std::vector<int64_t> keep_indices_vec;
     
-    // Apply threshold filtering
-    std::vector<cv::KeyPoint> keypoints;
+    // Apply mask filtering
     for(int i = 0; i < keypoints_cpu.size(0); i++) {
         float score = scores_cpu[i].item<float>();
-        if(score > threshold_) {
-            float x = keypoints_cpu[i][0].item<float>();  // x coordinate
-            float y = keypoints_cpu[i][1].item<float>();  // y coordinate
+        float x = keypoints_cpu[i][0].item<float>();  // x coordinate
+        float y = keypoints_cpu[i][1].item<float>();  // y coordinate
             
-            // Check mask if provided
-            if(mask.empty() || mask.at<unsigned char>((int)y, (int)x) != 0) {
-                keypoints.emplace_back(cv::KeyPoint(x, y, 8, -1, score));
-            }
+        // Check mask if provided
+        if(mask.empty() || mask.at<unsigned char>((int)y, (int)x) != 0) {
+            keep_indices_vec.push_back(i);
+            filtered_keypoints.emplace_back(cv::KeyPoint(x, y, 8, -1, score));
         }
     }
     
-    // Apply NMS if enabled - use simple 1D NMS for keypoint arrays
-    auto start_nms = std::chrono::high_resolution_clock::now();
-    if(nms_ && keypoints.size() > 1) {
-        // Convert minDistance from int to float
-        float minDistNms = (float)minDistance_;
-        
-        // Simple NMS: remove keypoints that are too close to each other
-        // Keep track of which keypoints to keep
-        std::vector<bool> keep_mask(keypoints.size(), true);
-        
-        for(size_t i = 0; i < keypoints.size(); i++) {
-            if(!keep_mask[i]) continue; // Already suppressed
-            
-            for(size_t j = i + 1; j < keypoints.size(); j++) {
-                if(!keep_mask[j]) continue; // Already suppressed
-                
-                float dist = std::sqrt(std::pow(keypoints[i].pt.x - keypoints[j].pt.x, 2) + 
-                                      std::pow(keypoints[i].pt.y - keypoints[j].pt.y, 2));
-                if(dist < minDistNms) {
-                    // Keep the one with higher response, suppress the other
-                    if(keypoints[i].response > keypoints[j].response) {
-                        keep_mask[j] = false;
-                    } else {
-                        keep_mask[i] = false;
-                        break; // Current keypoint is suppressed, move to next
-                    }
-                }
-            }
-        }
-        
-        // Filter keypoints and corresponding descriptors
-        std::vector<cv::KeyPoint> filtered_keypoints;
-        std::vector<int64_t> keep_indices_vec;
-        for(size_t i = 0; i < keypoints.size(); i++) {
-            if(keep_mask[i]) {
-                keep_indices_vec.push_back(i);
-                filtered_keypoints.push_back(keypoints[i]);
-            }
-        }
-        
-        // Batch tensor operations using indexing
-        auto keep_indices = torch::from_blob(keep_indices_vec.data(), {(long int)keep_indices_vec.size()}, torch::kLong);
-        keep_indices = keep_indices.to(keypoints_tensor_.device());
-        auto filtered_keypoints_tensor = keypoints_tensor_.index_select(0, keep_indices);
-        auto filtered_descriptors = desc_.index_select(0, keep_indices);
-        
-        // Update the stored tensors to maintain correspondence
-        keypoints = filtered_keypoints;
-        keypoints_tensor_ = filtered_keypoints_tensor;
-        desc_ = filtered_descriptors;
-    }
-    auto end_nms = std::chrono::high_resolution_clock::now();
-    auto nms_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_nms - start_nms).count() / 1000.0;
-
-    auto end_total = std::chrono::high_resolution_clock::now();
-    auto total_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_total - start_total).count() / 1000.0;
+    // Update the stored tensors to maintain correspondence
+    // This way if keypoints are re-ordered, we can still match kpts->descs in the compute step
+    auto keep_indices = torch::from_blob(keep_indices_vec.data(), {(long int)keep_indices_vec.size()}, torch::kLong);
+    keep_indices = keep_indices.to(keypoints_tensor_.device());
+    auto filtered_keypoints_tensor = keypoints_tensor_.index_select(0, keep_indices);
+    auto filtered_descriptors = desc_.index_select(0, keep_indices);
     
-    UWARN("SuperPoint timing - Inference: %.2f ms, NMS: %.2f ms, Total: %.2f ms", 
-          inference_ms, nms_ms, total_ms);
+    keypoints_tensor_ = filtered_keypoints_tensor;
+    desc_ = filtered_descriptors;
 
     detected_ = true;
-    return keypoints;
+    return filtered_keypoints;
 }
 } // namespace rtabmap
