@@ -16,120 +16,6 @@
 
 namespace rtabmap
 {
-
-SuperPointRpautratModel::SuperPointRpautratModel()
-    : conv1a(torch::nn::Conv2dOptions(1, 64, 3).stride(1).padding(1)),
-        bn1a(torch::nn::BatchNorm2dOptions(64).eps(0.001)),
-        conv1b(torch::nn::Conv2dOptions(64, 64, 3).stride(1).padding(1)),
-        bn1b(torch::nn::BatchNorm2dOptions(64).eps(0.001)),
-
-        conv2a(torch::nn::Conv2dOptions(64, 64, 3).stride(1).padding(1)),
-        bn2a(torch::nn::BatchNorm2dOptions(64).eps(0.001)),
-        conv2b(torch::nn::Conv2dOptions(64, 64, 3).stride(1).padding(1)),
-        bn2b(torch::nn::BatchNorm2dOptions(64).eps(0.001)),
-
-        conv3a(torch::nn::Conv2dOptions(64, 128, 3).stride(1).padding(1)),
-        bn3a(torch::nn::BatchNorm2dOptions(128).eps(0.001)),
-        conv3b(torch::nn::Conv2dOptions(128, 128, 3).stride(1).padding(1)),
-        bn3b(torch::nn::BatchNorm2dOptions(128).eps(0.001)),
-
-        conv4a(torch::nn::Conv2dOptions(128, 128, 3).stride(1).padding(1)),
-        bn4a(torch::nn::BatchNorm2dOptions(128).eps(0.001)),
-        conv4b(torch::nn::Conv2dOptions(128, 128, 3).stride(1).padding(1)),
-        bn4b(torch::nn::BatchNorm2dOptions(128).eps(0.001)),
-
-        convDetectorA(torch::nn::Conv2dOptions(128, 256, 3).stride(1).padding(1)),
-        bnDetectorA(torch::nn::BatchNorm2dOptions(256).eps(0.001)),
-        convDetectorB(torch::nn::Conv2dOptions(256, 65, 1).stride(1).padding(0)),
-        bnDetectorB(torch::nn::BatchNorm2dOptions(65).eps(0.001)),
-
-        convDescriptorA(torch::nn::Conv2dOptions(128, 256, 3).stride(1).padding(1)),
-        bnDescriptorA(torch::nn::BatchNorm2dOptions(256).eps(0.001)),
-        convDescriptorB(torch::nn::Conv2dOptions(256, 256, 1).stride(1).padding(0)),
-        bnDescriptorB(torch::nn::BatchNorm2dOptions(256).eps(0.001))
-{
-
-    register_module("conv1a", conv1a);
-    register_module("bn1a", bn1a);
-    register_module("conv1b", conv1b);
-    register_module("bn1b", bn1b);
-
-    register_module("conv2a", conv2a);
-    register_module("bn2a", bn2a);
-    register_module("conv2b", conv2b);
-    register_module("bn2b", bn2b);
-
-    register_module("conv3a", conv3a);
-    register_module("bn3a", bn3a);
-    register_module("conv3b", conv3b);
-    register_module("bn3b", bn3b);
-
-    register_module("conv4a", conv4a);
-    register_module("bn4a", bn4a);
-    register_module("conv4b", conv4b);
-    register_module("bn4b", bn4b);
-
-    register_module("convDetectorA", convDetectorA);
-    register_module("bnDetectorA", bnDetectorA);
-    register_module("convDetectorB", convDetectorB);
-    register_module("bnDetectorB", bnDetectorB);
-
-    register_module("convDescriptorA", convDescriptorA);
-    register_module("bnDescriptorA", bnDescriptorA);
-    register_module("convDescriptorB", convDescriptorB);
-    register_module("bnDescriptorB", bnDescriptorB);
-
-}
-
-std::vector<torch::Tensor> SuperPointRpautratModel::forward(torch::Tensor input)
-{
-    // 3 Backbone layers conv -> batchnorm -> relu activation -> max pool
-    input = torch::relu(bn1a(conv1a(input)));
-    input = torch::relu(bn1b(conv1b(input)));
-    input = torch::max_pool2d(input, 2, 2);
-
-    input = torch::relu(bn2a(conv2a(input)));
-    input = torch::relu(bn2b(conv2b(input)));
-    input = torch::max_pool2d(input, 2, 2);
-
-    input = torch::relu(bn3a(conv3a(input)));
-    input = torch::relu(bn3b(conv3b(input)));
-    input = torch::max_pool2d(input, 2, 2);
-
-    input = torch::relu(bn4a(conv4a(input)));
-    input = torch::relu(bn4b(conv4b(input)));
-
-    auto features = input;
-
-    // Detector Head
-    auto cDetectorA = torch::relu(bnDetectorA(convDetectorA(features)));
-    auto scores = convDetectorB(cDetectorA);  // [B, 65, H/8, W/8]
-    
-    // Process detection scores
-    scores = torch::softmax(scores, 1);
-    scores = scores.slice(1, 0, 64);  // Remove "no keypoint" channel -> [B, 64, H/8, W/8]
-    
-    int b = scores.size(0);
-    int h = scores.size(2);  // H/8
-    int w = scores.size(3);  // W/8
-    
-    // Reshape to full resolution
-    scores = scores.permute({0, 2, 3, 1});  // [B, H/8, W/8, 64]
-    scores = scores.contiguous().view({b, h, w, 8, 8});  // [B, H/8, W/8, 8, 8]
-    scores = scores.permute({0, 1, 3, 2, 4});  // [B, H/8, 8, W/8, 8]
-    scores = scores.contiguous().view({b, h * 8, w * 8});  // [B, H, W]
-            
-    // Descriptor Head  
-    auto cDescriptorA = torch::relu(bnDescriptorA(convDescriptorA(features)));
-    auto desc = convDescriptorB(cDescriptorA);  // [B, 256, H/8, W/8]
-
-    std::vector<torch::Tensor> ret;
-    ret.push_back(scores);
-    ret.push_back(desc);
-
-    return ret;
-}
-
 SPDetectorRpautrat::SPDetectorRpautrat(const std::string & modelPath, float threshold, bool nms, int minDistance, bool cuda) :
 		threshold_(threshold),
 		nms_(nms),
@@ -183,14 +69,10 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
     // We need to match the input keypoints to our stored descriptors
     torch::Tensor filtered_descriptors = torch::zeros({(long int)keypoints.size(), 256}, desc_.options());
     
-    UWARN("COMPUTE: Input keypoints: %ld, Stored desc tensor: [%ld, %ld]", 
-          keypoints.size(), desc_.size(0), desc_.size(1));
-    
     // Get the stored keypoints for matching
     auto stored_keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
     
     int num_stored_keypoints = stored_keypoints_cpu.size(0);
-    UWARN("COMPUTE: Stored keypoints: %d", num_stored_keypoints);
     
     // Pre-extract all coordinates for efficient matching
     float * kp_data = stored_keypoints_cpu.data_ptr<float>();
@@ -216,7 +98,6 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
             }
         }
     }
-
     
     auto normalized = filtered_descriptors;
     
@@ -226,7 +107,6 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
     
     // Convert to OpenCV Mat
     cv::Mat desc_mat(cv::Size(normalized.size(1), normalized.size(0)), CV_32FC1, normalized.data_ptr<float>());
-    UWARN("COMPUTE: Final output descriptor mat: %d rows x %d cols", desc_mat.rows, desc_mat.cols);
     
     return desc_mat.clone();
 }
@@ -247,10 +127,6 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     auto scores_tensor = outputs->elements()[1].toTensor();    // [N] keypoint scores
     desc_ = outputs->elements()[2].toTensor();              // [N, 256] descriptors
     
-    UWARN("DETECT: Model output - Keypoints: [%ld, %ld], Scores: [%ld], Descriptors: [%ld, %ld]", 
-          keypoints_tensor_.size(0), keypoints_tensor_.size(1),
-          scores_tensor.size(0), desc_.size(0), desc_.size(1));
-    
     // Convert to CPU for processing
     auto keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
     auto scores_cpu = scores_tensor.to(torch::kCPU);
@@ -269,7 +145,6 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
             }
         }
     }
-    UWARN("DETECT: After threshold (%.3f) filtering: %ld keypoints", threshold_, keypoints.size());
     
     // Apply NMS if enabled - use simple 1D NMS for keypoint arrays
     if(nms_ && keypoints.size() > 1) {
@@ -302,30 +177,27 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
         
         // Filter keypoints and corresponding descriptors
         std::vector<cv::KeyPoint> filtered_keypoints;
-        long int num_kept_keypoints = std::count(keep_mask.begin(), keep_mask.end(), true);
-        torch::Tensor filtered_keypoints_tensor = torch::zeros({num_kept_keypoints, 2}, keypoints_tensor_.options());
-        torch::Tensor filtered_descriptors = torch::zeros({num_kept_keypoints, 256}, desc_.options());
-        
-        int filtered_idx = 0;
+        std::vector<int64_t> keep_indices_vec;
         for(size_t i = 0; i < keypoints.size(); i++) {
             if(keep_mask[i]) {
+                keep_indices_vec.push_back(i);
                 filtered_keypoints.push_back(keypoints[i]);
-                filtered_keypoints_tensor[filtered_idx] = keypoints_tensor_[i];
-                filtered_descriptors[filtered_idx] = desc_[i];
-                filtered_idx++;
             }
         }
+        
+        // Batch tensor operations using indexing
+        auto keep_indices = torch::from_blob(keep_indices_vec.data(), {(long int)keep_indices_vec.size()}, torch::kLong);
+        keep_indices = keep_indices.to(keypoints_tensor_.device());
+        auto filtered_keypoints_tensor = keypoints_tensor_.index_select(0, keep_indices);
+        auto filtered_descriptors = desc_.index_select(0, keep_indices);
         
         // Update the stored tensors to maintain correspondence
         keypoints = filtered_keypoints;
         keypoints_tensor_ = filtered_keypoints_tensor;
         desc_ = filtered_descriptors;
-        
-        UWARN("DETECT: After 1D NMS (minDist=%.1f): %ld keypoints", minDistNms, keypoints.size());
     }
 
     detected_ = true;
-    UWARN("DETECT: Final keypoint count: %ld", keypoints.size());
     return keypoints;
 }
 } // namespace rtabmap
