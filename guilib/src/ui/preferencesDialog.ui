@@ -33,6 +33,9 @@
       <layout class="QVBoxLayout" name="verticalLayout_18">
        <item>
         <widget class="QTreeView" name="treeView">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
          <property name="minimumSize">
           <size>
            <width>160</width>
@@ -63,7 +66,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-641</y>
+            <y>0</y>
             <width>713</width>
             <height>4779</height>
            </rect>
@@ -95,7 +98,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>9</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -11232,6 +11235,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <string>PyDetector</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>Superpoint Rpautrat</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="15" column="1">
@@ -16341,7 +16349,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>13</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -23491,6 +23499,11 @@ Lower the ratio -&gt; higher the precision.</string>
                              <string>PyDetector</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>SuperPoint Rpautrat</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="1" column="1">
@@ -24377,7 +24390,7 @@ Lower the ratio -&gt; higher the precision.</string>
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_icpStrategy">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_90">
                        <layout class="QVBoxLayout" name="verticalLayout_156">
@@ -27855,6 +27868,147 @@ Lower the ratio -&gt; higher the precision.</string>
                     <size>
                      <width>20</width>
                      <height>3128</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_101">
+                <layout class="QVBoxLayout" name="verticalLayout_183">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_42">
+                   <property name="title">
+                    <string>SuperPoint Rpautrat</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_184">
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_139" columnstretch="0,0,1">
+                      <item row="0" column="0">
+                       <widget class="QToolButton" name="toolButton_sprpautrat_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLineEdit" name="lineEdit_sprpautrat_path"/>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_768">
+                        <property name="text">
+                         <string>[Required] Path to pre-trained weights Torch file of SuperPoint.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_sprpautrat_threshold">
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000100000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.001000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="label_769">
+                        <property name="text">
+                         <string>Detector response threshold to accept keypoint.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QCheckBox" name="checkBox_sprpautrat_nms">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="2">
+                       <widget class="QLabel" name="label_771">
+                        <property name="text">
+                         <string>If true, non-maximum suppression is applied to detected keypoints.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QCheckBox" name="checkBox_sprpautrat_cuda">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="2">
+                       <widget class="QLabel" name="label_772">
+                        <property name="text">
+                         <string>Use Cuda device for Torch, otherwise CPU device is used by default.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="2">
+                       <widget class="QLabel" name="label_773">
+                        <property name="text">
+                         <string>Minimum distance (pixels) between keypoints (when non-maximum suppression is enabled).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QSpinBox" name="spinBox_sprpautrat_minDistance"/>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_91">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>4561</height>
                     </size>
                    </property>
                   </spacer>

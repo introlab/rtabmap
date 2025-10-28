@@ -168,6 +168,7 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRISK") == 0 ||
 			group.compare("KAZE") == 0 ||
 			group.compare("SuperPoint") == 0 ||
+			group.compare("SuperPointRpautrat") == 0 ||
 			group.compare("PyDetector") == 0;
 }
 
