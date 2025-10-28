@@ -43,6 +43,9 @@ def main():
     parser = argparse.ArgumentParser(description="Convert SuperPoint weights to TorchScript")
     parser.add_argument("--weights", required=True, help="Path to weights file")
     parser.add_argument("--output", required=True, help="Output TorchScript file")
+    parser.add_argument("--cuda", action="store_true", help="Use CUDA")
+    parser.add_argument("--width", type=int, default=1920, help="Width of the input image")
+    parser.add_argument("--height", type=int, default=288, help="Height of the input image")
     args = parser.parse_args()
 
     # Check if weights are already TorchScript
@@ -55,8 +58,10 @@ def main():
     except:
         pass
 
+    device = "cuda" if args.cuda else "cpu"
+
     # Load SuperPoint model and weights
-    model = SuperPoint().eval().to("cuda")
+    model = SuperPoint().eval().to(device)
     
     # Load weights without forcing CPU location to allow CUDA usage
     weights = torch.load(args.weights, map_location=None)
@@ -66,7 +71,7 @@ def main():
     model.load_state_dict(weights, strict=False)
     
     wrapped = wrap_model(model)
-    dummy = torch.randn(1, 1, 288, 1920, device="cuda")  # Dummy input, grayscale, using cuda.
+    dummy = torch.randn(1, 1, args.height, args.width, device=device)  # Dummy input, grayscale, using cuda.
     
     # Convert to TorchScript using trace (SuperPoint has dynamic behavior that scripting can't handle)
     print("Using torch.jit.trace (SuperPoint has dynamic behavior)...")
