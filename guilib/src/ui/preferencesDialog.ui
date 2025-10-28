@@ -33,9 +33,6 @@
       <layout class="QVBoxLayout" name="verticalLayout_18">
        <item>
         <widget class="QTreeView" name="treeView">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
          <property name="minimumSize">
           <size>
            <width>160</width>
@@ -66,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-671</y>
             <width>713</width>
-            <height>4942</height>
+            <height>4779</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -98,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>38</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -16349,7 +16346,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>13</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -24390,7 +24387,7 @@ Lower the ratio -&gt; higher the precision.</string>
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_icpStrategy">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_90">
                        <layout class="QVBoxLayout" name="verticalLayout_156">
