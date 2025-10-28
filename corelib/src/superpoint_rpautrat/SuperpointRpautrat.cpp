@@ -38,6 +38,9 @@ SPDetectorRpautrat::SPDetectorRpautrat(const std::string & modelPath, float thre
 		return;
 	}
 	// Load TorchScript model
+
+    // TODO: load the model on the first frame if it isn't already instead of in the constructor
+    // this way if odom already has features we don't need to load the model at all, slight optimization
 	model_ = torch::jit::load(uReplaceChar(path, '~', UDirectory::homeDir()));
 	model_.eval();
 
@@ -158,26 +161,24 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
             }
         }
     }
-
+    
     // Apply NMS if enabled - use simple 1D NMS for keypoint arrays
-    size_t num_kpts_before_nms = keypoints.size();
     auto start_nms = std::chrono::high_resolution_clock::now();
     if(nms_ && keypoints.size() > 1) {
         // Convert minDistance from int to float
         float minDistNms = (float)minDistance_;
-        UWARN("SuperPoint NMS: before NMS = %zu, minDistance (NMS radius) = %.2f", num_kpts_before_nms, minDistNms);
-
+        
         // Simple NMS: remove keypoints that are too close to each other
         // Keep track of which keypoints to keep
         std::vector<bool> keep_mask(keypoints.size(), true);
-
+        
         for(size_t i = 0; i < keypoints.size(); i++) {
             if(!keep_mask[i]) continue; // Already suppressed
             
             for(size_t j = i + 1; j < keypoints.size(); j++) {
                 if(!keep_mask[j]) continue; // Already suppressed
-
-                float dist = std::sqrt(std::pow(keypoints[i].pt.x - keypoints[j].pt.x, 2) +
+                
+                float dist = std::sqrt(std::pow(keypoints[i].pt.x - keypoints[j].pt.x, 2) + 
                                       std::pow(keypoints[i].pt.y - keypoints[j].pt.y, 2));
                 if(dist < minDistNms) {
                     // Keep the one with higher response, suppress the other
@@ -190,7 +191,7 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
                 }
             }
         }
-
+        
         // Filter keypoints and corresponding descriptors
         std::vector<cv::KeyPoint> filtered_keypoints;
         std::vector<int64_t> keep_indices_vec;
@@ -200,15 +201,13 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
                 filtered_keypoints.push_back(keypoints[i]);
             }
         }
-
-        UWARN("SuperPoint NMS: after NMS = %zu (filtered out %zu keypoints)", filtered_keypoints.size(), num_kpts_before_nms - filtered_keypoints.size());
-
+        
         // Batch tensor operations using indexing
         auto keep_indices = torch::from_blob(keep_indices_vec.data(), {(long int)keep_indices_vec.size()}, torch::kLong);
         keep_indices = keep_indices.to(keypoints_tensor_.device());
         auto filtered_keypoints_tensor = keypoints_tensor_.index_select(0, keep_indices);
         auto filtered_descriptors = desc_.index_select(0, keep_indices);
-
+        
         // Update the stored tensors to maintain correspondence
         keypoints = filtered_keypoints;
         keypoints_tensor_ = filtered_keypoints_tensor;
