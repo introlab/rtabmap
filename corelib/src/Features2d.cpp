@@ -2623,7 +2623,7 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 //SuperPointRpautrat
 //////////////////////////
 SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
-		path_(Parameters::defaultSuperPointRpautratModelPath()),
+		// path_(Parameters::defaultSuperPointRpautratModelPath()),
 		threshold_(Parameters::defaultSuperPointRpautratThreshold()),
 		nms_(Parameters::defaultSuperPointRpautratNMS()),
 		minDistance_(Parameters::defaultSuperPointRpautratNMSRadius()),
@@ -2655,7 +2655,7 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 #ifdef RTABMAP_TORCH
 	if(superPoint_.get() == 0 || path_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
-		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(path_, threshold_, nms_, minDistance_, cuda_));
+		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(threshold_, nms_, minDistance_, cuda_));
 	}
 	else
 	{

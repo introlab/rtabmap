@@ -16,7 +16,7 @@ namespace rtabmap
 
 class SPDetectorRpautrat {
     public:
-        SPDetectorRpautrat(const std::string & modelPath, float threshold = 0.005f, bool nms = true, int nmsRadius = 4, bool cuda = false);
+        SPDetectorRpautrat(float threshold = 0.005f, bool nms = true, int nmsRadius = 4, bool cuda = false);
         virtual ~SPDetectorRpautrat();
         std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
         cv::Mat compute(const std::vector<cv::KeyPoint> &keypoints);
