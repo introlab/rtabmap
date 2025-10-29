@@ -1197,7 +1197,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSuperPointCuda().c_str());
 
 	// SuperPoint Rpautrat
-	_ui->lineEdit_sprpautrat_path->setObjectName(Parameters::kSuperPointRpautratModelPath().c_str());
+	_ui->lineEdit_sprpautrat_path->setObjectName(Parameters::kSuperPointRpautratDir().c_str());
 	connect(_ui->toolButton_sprpautrat_path, SIGNAL(clicked()), this, SLOT(changeSuperPointRpautratModelPath()));
 	_ui->doubleSpinBox_sprpautrat_threshold->setObjectName(Parameters::kSuperPointRpautratThreshold().c_str());
 	_ui->checkBox_sprpautrat_nms->setObjectName(Parameters::kSuperPointRpautratNMS().c_str());
@@ -5713,11 +5713,11 @@ void PreferencesDialog::changeSuperPointRpautratModelPath()
 	QString path;
 	if(_ui->lineEdit_sprpautrat_path->text().isEmpty())
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("SuperPoint Rpautrat weights (*.pt *.pth)"));
+		path = QFileDialog::getExistingDirectory(this, tr("Select SuperPoint directory"), this->getWorkingDirectory());
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_sprpautrat_path->text(), tr("SuperPoint Rpautrat weights (*.pt *.pth)"));
+		path = QFileDialog::getExistingDirectory(this, tr("Select SuperPoint directory"), _ui->lineEdit_sprpautrat_path->text());
 	}
 	if(!path.isEmpty())
 	{

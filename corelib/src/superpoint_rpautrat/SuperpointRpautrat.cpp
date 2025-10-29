@@ -19,10 +19,13 @@
 namespace rtabmap
 {
 
+// Run the python script to export the SuperPoint model file with the desired parameters
 static std::string exportSuperPointTorchScript(
     const std::string & superpointDir,
-    const int & nms_radius,
+    const int & width,
+    const int & height,
     const float & threshold,
+    const int & nms_radius,
     const int & max_keypoints,
     const bool & cuda)
 {
@@ -35,7 +38,7 @@ static std::string exportSuperPointTorchScript(
     
     // Sanity checks
     if(!UFile::exists(srcScript)) {
-        UERROR("Source script not found: %s", srcScript.c_str());
+        UERROR("Torchscript conversion script not found: %s", srcScript.c_str());
         return "";
     }
     if(!UFile::exists(weights)) {
@@ -57,6 +60,8 @@ static std::string exportSuperPointTorchScript(
     std::stringstream cmd;
     cmd << "PYTHONPATH=\"" << superpointDir << "\" "
         << "python3 \"" << dstScript << "\""
+        << " --width " << width
+        << " --height " << height
         << " --weights \"" << weights << "\""
         << " --output \"" << output << "\""
         << " --threshold " << threshold
@@ -70,57 +75,29 @@ static std::string exportSuperPointTorchScript(
         UERROR("superpoint_to_torchscript.py failed (exit=%d)", code);
         return "";
     }
+    
+    // clean up the temporary script
 	UFile::erase(dstScript);
+
 	return output;
 }
 
-SPDetectorRpautrat::SPDetectorRpautrat(float threshold, bool nms, int minDistance, bool cuda) :
-		threshold_(threshold),
+SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointDir, float threshold, bool nms, int minDistance, bool cuda) :
+		superpointDir_(superpointDir),
+        threshold_(threshold),
 		nms_(nms),
 		minDistance_(minDistance),
 		detected_(false)
 {
-    
-    // Try calling python ops with the global python interface
-    pybind11::gil_scoped_acquire acquire; // required before any Python C-API calls
-    PyRun_SimpleString("import sys");
-    std::string superpointDir = uReplaceChar("~/SuperPoint", '~', UDirectory::homeDir());
-    std::string cmd_add_path = "sys.path.insert(0, \"" + superpointDir + "\")";
-    PyRun_SimpleString(cmd_add_path.c_str());
-
-    std::string modelPath = exportSuperPointTorchScript(superpointDir, 4, 0.005, 1000, cuda);
-    if(modelPath.empty()) {
-        UERROR("Failed to export SuperPoint TorchScript model!");
-    }
-    
-    // load the model at the returned path
-    UDEBUG("modelPath=%s thr=%f nms=%d minDistance=%d cuda=%d", modelPath.c_str(), threshold, nms?1:0, minDistance, cuda?1:0);
-    UWARN("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
-    UWARN("SuperPoint Rpautrat parameters: threshold=%.3f, nms=%s, minDistance=%d", threshold, nms?"true":"false", minDistance);
-    if(modelPath.empty())
-    {
-        UERROR("Model's path is empty!");
-        return;
-    }
-    if(!UFile::exists(modelPath))
-    {
-        UERROR("Model's path \"%s\" doesn't exist!", modelPath.c_str());
-        return;
-    }
-
-	// Load TorchScript model
-    // TODO: load the model on the first frame if it isn't already instead of in the constructor
-    // this way if odom already has features we don't need to load the model at all, slight optimization
-	model_ = torch::jit::load(modelPath);
-	model_.eval();
-
 	if(cuda && !torch::cuda::is_available())
 	{
 		UWARN("Cuda option is enabled but torch doesn't have cuda support on this platform, using CPU instead.");
 	}
 	cuda_ = cuda && torch::cuda::is_available();
-	torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
-	model_.to(device);
+    
+    if(!UFile::exists(superpointDir_)) {
+        UERROR("Superpoint directory not found: %s", superpointDir_.c_str());
+    }
 }
 
 SPDetectorRpautrat::~SPDetectorRpautrat()
@@ -183,12 +160,55 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
     // Convert to OpenCV Mat
     cv::Mat desc_mat(cv::Size(normalized.size(1), normalized.size(0)), CV_32FC1, normalized.data_ptr<float>());
     
-    
     return desc_mat.clone();
 }
 
 std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
 {
+    if(!detected_)
+    {
+        UWARN("DEBUG: first call to detect(), initailizing model...");
+
+        pybind11::gil_scoped_acquire acquire; // required before any Python C-API calls
+        PyRun_SimpleString("import sys");
+        std::string cmd_add_path = "sys.path.insert(0, \"" + superpointDir_ + "\")";
+        PyRun_SimpleString(cmd_add_path.c_str());
+        
+        // effectively disable nms if it is not enabled by setting radius to 0
+        int nms_radius = nms_ ? minDistance_ : 0;
+
+        std::string modelPath = exportSuperPointTorchScript(
+            superpointDir_,
+            img.cols,
+            img.rows,
+            nms_radius, 
+            threshold_, 
+            1000, 
+            cuda_
+        );
+
+        UDEBUG("modelPath=%s thr=%f nms=%d minDistance=%d cuda=%d", modelPath.c_str(), threshold_, nms_?1:0, minDistance_, cuda_?1:0);
+        UWARN("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
+        UWARN("SuperPoint Rpautrat parameters: threshold=%.3f, nms=%s, minDistance=%d", threshold_, nms_?"true":"false", minDistance_);
+        if(modelPath.empty())
+        {
+            UERROR("Model's path is empty! The model was not exported correctly.");
+            return std::vector<cv::KeyPoint>();
+        }
+        if(!UFile::exists(modelPath))
+        {
+            UERROR("Model's path \"%s\" doesn't exist!", modelPath.c_str());
+            return std::vector<cv::KeyPoint>();
+        }
+
+        // Load TorchScript model
+        model_ = torch::jit::load(modelPath);
+        model_.eval();
+
+        // Move the model to the appropriate device
+        torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
+	    model_.to(device);
+    }
     
     torch::NoGradGuard no_grad_guard;
     auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);

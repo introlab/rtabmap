@@ -646,7 +646,7 @@ private:
 
 	cv::Ptr<SPDetectorRpautrat> superPoint_;
 
-	std::string path_;
+	std::string superpointDir_;
 	float threshold_;
 	bool nms_;
 	int minDistance_;

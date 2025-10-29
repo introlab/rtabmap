@@ -16,11 +16,12 @@ namespace rtabmap
 
 class SPDetectorRpautrat {
     public:
-        SPDetectorRpautrat(float threshold = 0.005f, bool nms = true, int nmsRadius = 4, bool cuda = false);
+        SPDetectorRpautrat(std::string superpointDir, float threshold = 0.005f, bool nms = true, int nmsRadius = 4, bool cuda = false);
         virtual ~SPDetectorRpautrat();
         std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
         cv::Mat compute(const std::vector<cv::KeyPoint> &keypoints);
     
+        void setSuperpointDir(std::string superpointDir) {superpointDir_ = superpointDir;}
         void setThreshold(float threshold) {threshold_ = threshold;}
         void setNMS(bool enabled) {nms_ = enabled;}
         void setMinDistance(int minDistance) {minDistance_ = minDistance;}
@@ -30,10 +31,12 @@ class SPDetectorRpautrat {
         torch::Tensor desc_;
         torch::Tensor keypoints_tensor_;
         
+        std::string superpointDir_;
         float threshold_;
         bool nms_;
         int minDistance_;
         bool cuda_;
+        
         
         bool detected_;
     };    
