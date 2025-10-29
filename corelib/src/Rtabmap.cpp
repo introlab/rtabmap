@@ -6315,6 +6315,7 @@ bool Rtabmap::addLink(const Link & link)
 		std::map<int, Transform> poses = _odomCachePoses;
 		std::multimap<int, Link> constraints = _odomCacheConstraints;
 		constraints.insert(std::make_pair(link.from(), link));
+		cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
 		for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 		{
 			std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
@@ -6322,7 +6323,7 @@ bool Rtabmap::addLink(const Link & link)
 			{
 				poses.insert(*iterPose);
 				// make the poses in the map fixed
-				constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, cv::Mat::eye(6,6, CV_64FC1)*999999)));
+				constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
 			}
 		}
 
