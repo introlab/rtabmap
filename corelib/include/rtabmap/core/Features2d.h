@@ -131,7 +131,7 @@ public:
 		kFeatureGfttDaisy=13, //new 0.20.6
 		kFeatureSurfDaisy=14,  //new 0.20.6
 		kFeaturePyDetector=15, //new 0.20.8
-		kFeatureSuperPointRpautrat=16};
+		kFeatureSuperPointRpautrat=16}; // new 0.23.3
 
 	static std::string typeName(Type type)
 	{
