@@ -45,7 +45,6 @@ def detect(imageBuffer):
     image = np.asarray(imageBuffer)
     image = (image.astype('float32') / 255.)
     
-    # image_tensor = torch.from_numpy(image[None, None]).float().to(device)
     try:
         image_with_dims = image[None, None]  # Add batch and channel dims
         image_tensor = torch.from_numpy(image_with_dims).float()
