@@ -37,7 +37,6 @@ class SPDetectorRpautrat {
         int minDistance_;
         bool cuda_;
         
-        
         bool detected_;
     };    
 }

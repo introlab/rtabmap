@@ -26,7 +26,6 @@ static std::string exportSuperPointTorchScript(
     const int & height,
     const float & threshold,
     const int & nms_radius,
-    const int & max_keypoints,
     const bool & cuda)
 {
     // Resolve paths
@@ -65,8 +64,7 @@ static std::string exportSuperPointTorchScript(
         << " --weights \"" << weights << "\""
         << " --output \"" << output << "\""
         << " --threshold " << threshold
-        << " --nms_radius " << nms_radius
-        << " --max_keypoints " << max_keypoints << " "
+        << " --nms_radius " << nms_radius << " "
         << cuda_flag;
         
     UINFO("Executing: %s", cmd.str().c_str());
@@ -106,7 +104,6 @@ SPDetectorRpautrat::~SPDetectorRpautrat()
 
 cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 {
-    
 	if(!detected_)
 	{
 		UERROR("SPDetector has been reset before extracting the descriptors! detect() should be called before compute().");
@@ -165,28 +162,30 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 
 std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
 {
+    torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
+    
+    // On first frame, run a trace of the model with the desired parameters and load the model file
     if(!detected_)
     {
         UWARN("DEBUG: first call to detect(), initailizing model...");
-
-        pybind11::gil_scoped_acquire acquire; // required before any Python C-API calls
+        
+        pybind11::gil_scoped_acquire acquire;
         PyRun_SimpleString("import sys");
         std::string cmd_add_path = "sys.path.insert(0, \"" + superpointDir_ + "\")";
         PyRun_SimpleString(cmd_add_path.c_str());
         
         // effectively disable nms if it is not enabled by setting radius to 0
         int nms_radius = nms_ ? minDistance_ : 0;
-
+        
         std::string modelPath = exportSuperPointTorchScript(
             superpointDir_,
             img.cols,
             img.rows,
-            nms_radius, 
-            threshold_, 
-            1000, 
+            threshold_,
+            nms_radius,
             cuda_
         );
-
+        
         UDEBUG("modelPath=%s thr=%f nms=%d minDistance=%d cuda=%d", modelPath.c_str(), threshold_, nms_?1:0, minDistance_, cuda_?1:0);
         UWARN("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
         UWARN("SuperPoint Rpautrat parameters: threshold=%.3f, nms=%s, minDistance=%d", threshold_, nms_?"true":"false", minDistance_);
@@ -200,27 +199,22 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
             UERROR("Model's path \"%s\" doesn't exist!", modelPath.c_str());
             return std::vector<cv::KeyPoint>();
         }
-
+        
         // Load TorchScript model
         model_ = torch::jit::load(modelPath);
-        model_.eval();
-
-        // Move the model to the appropriate device
-        torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
-	    model_.to(device);
+        model_.eval(); // put in evaluation mode
+        model_.to(device);
     }
     
+    // format the input tensor for the model
     torch::NoGradGuard no_grad_guard;
     auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);
     x = x.to(torch::kFloat) / 255;
-
-    torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
     x = x.set_requires_grad(false).to(device);
-    model_.to(device);
     
     auto outputs = model_.forward({x}).toTuple();
     keypoints_tensor_ = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
-    auto scores_tensor = outputs->elements()[1].toTensor();    // [N] keypoint scores
+    auto scores_tensor = outputs->elements()[1].toTensor(); // [N] keypoint scores
     desc_ = outputs->elements()[2].toTensor();              // [N, 256] descriptors    
 
     // Convert to CPU for processing
@@ -260,4 +254,5 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     detected_ = true;
     return filtered_keypoints;
 }
+
 } // namespace rtabmap
