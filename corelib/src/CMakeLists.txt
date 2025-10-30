@@ -838,6 +838,7 @@ SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_2.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_1.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_0.sql
+	${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat/superpoint_to_torchscript.py
 )
 
 foreach(arg ${RESOURCES})

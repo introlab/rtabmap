@@ -7,10 +7,15 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <pybind11/embed.h>
 #include <torch/torch.h>
 #include <torch/script.h>
 #include <opencv2/opencv.hpp>
+
+#include <fstream>
+#include <sstream>
+#include "superpoint_to_torchscript_py.h"
 
 namespace rtabmap
 {
@@ -24,30 +29,33 @@ static std::string exportSuperPointTorchScript(
     const int & nms_radius,
     const bool & cuda)
 {
-    // Resolve paths
-    const std::string srcDir = UDirectory::getDir(__FILE__); // folder of this .cpp at build time
-    const std::string srcScript = srcDir + "/superpoint_to_torchscript.py";
-    const std::string dstScript = superpointDir + "/superpoint_to_torchscript.py";
-    const std::string weights   = superpointDir + "/weights/superpoint_v6_from_tf.pth";
-    const std::string output    = srcDir + "/model_file/superpoint_v6_generated.pt";
+	// Resolve paths (no dependency on source tree)
+	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
+	const std::string dstScript = std::string("/tmp/superpoint_to_torchscript.py");
+	const std::string weights   = superpointDir + "/weights/superpoint_v6_from_tf.pth";
+	const std::string output    = std::string("/tmp/superpoint_v6_generated.pt");
     
-    // Sanity checks
-    if(!UFile::exists(srcScript)) {
-        UERROR("Torchscript conversion script not found: %s", srcScript.c_str());
-        return "";
-    }
+	// Sanity checks
     if(!UFile::exists(weights)) {
         UERROR("Weights not found: %s", weights.c_str());
         return "";
     }
-    
-    // Copy script over (overwrite unconditionally)
-    try {
-        UFile::copy(srcScript, dstScript);
-    } catch(const std::exception &e) {
-        UERROR("Copy failed: %s -> %s (%s)", srcScript.c_str(), dstScript.c_str(), e.what());
-        return "";
-    }
+
+	// Generate the temporary script, overwrite if it already exists
+	{
+		std::ofstream ofs(dstScript.c_str(), std::ios::out | std::ios::trunc);
+		if(!ofs.is_open())
+		{
+			UERROR("Failed to open destination script for writing: %s", dstScript.c_str());
+			return "";
+		}
+		ofs << file_content;
+		if(!ofs.good())
+		{
+			UERROR("Failed to write embedded script to: %s", dstScript.c_str());
+			return "";
+		}
+	}
 
     std::string cuda_flag = cuda ? "--cuda" : "";
 
