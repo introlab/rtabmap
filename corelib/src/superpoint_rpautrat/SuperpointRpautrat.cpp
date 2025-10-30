@@ -56,25 +56,45 @@ static std::string exportSuperPointTorchScript(
 			return "";
 		}
 	}
+    
+    // Execute the script inside the embedded Python interpreter (cross-platform, safer)
+    try
+    {
+        pybind11::gil_scoped_acquire acquire;
 
-    std::string cuda_flag = cuda ? "--cuda" : "";
-
-    // Build CLI command (set PYTHONPATH so imports resolve)
-    std::stringstream cmd;
-    cmd << "PYTHONPATH=\"" << superpointDir << "\" "
-        << "python3 \"" << dstScript << "\""
-        << " --width " << width
-        << " --height " << height
-        << " --weights \"" << weights << "\""
-        << " --output \"" << output << "\""
-        << " --threshold " << threshold
-        << " --nms_radius " << nms_radius << " "
-        << cuda_flag;
+        // Ensure imports from the SuperPoint repo resolve
+        auto sys = pybind11::module_::import("sys");
+        sys.attr("path").cast<pybind11::list>().append(superpointDir);
         
-    UINFO("Executing: %s", cmd.str().c_str());
-    const int code = std::system(cmd.str().c_str());
-    if(code != 0) {
-        UERROR("superpoint_to_torchscript.py failed (exit=%d)", code);
+        // Build sys.argv for the script
+        pybind11::list argv;
+        argv.append(dstScript);
+        argv.append("--width");       
+        argv.append(std::to_string(width));
+        argv.append("--height");      
+        argv.append(std::to_string(height));
+        argv.append("--weights");     
+        argv.append(weights);
+        argv.append("--output");      
+        argv.append(output);
+        argv.append("--threshold");   
+        argv.append(std::to_string(threshold));
+        argv.append("--nms_radius");  
+        argv.append(std::to_string(nms_radius));
+        if(cuda) { 
+            argv.append("--cuda"); 
+        }
+        sys.attr("argv") = argv;
+
+        // Run the script as __main__
+        auto runpy = pybind11::module_::import("runpy");
+        runpy.attr("run_path")(dstScript, pybind11::arg("run_name") = "__main__");
+    }
+    // pybind11 throws std::exception for RuntimeError
+    catch (const std::exception &e)
+    {
+        UERROR("Python export failed: %s", e.what());
+        UFile::erase(dstScript);
         return "";
     }
     
@@ -168,11 +188,6 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     // On first frame, run a trace of the model with the desired parameters and load the model file
     if(!detected_)
     {        
-        pybind11::gil_scoped_acquire acquire;
-        PyRun_SimpleString("import sys");
-        std::string cmd_add_path = "sys.path.insert(0, \"" + superpointDir_ + "\")";
-        PyRun_SimpleString(cmd_add_path.c_str());
-        
         // effectively disable nms if it is not enabled by setting radius to 0
         int nms_radius = nms_ ? minDistance_ : 0;
         
@@ -244,9 +259,6 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     
     keypoints_tensor_ = filtered_keypoints_tensor;
     desc_ = filtered_descriptors;
-
-    // Log counts
-    int total_before_mask = keypoints_cpu.size(0);
 
     detected_ = true;
     return filtered_keypoints;
