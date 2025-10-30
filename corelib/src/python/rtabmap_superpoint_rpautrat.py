@@ -68,5 +68,4 @@ def detect(imageBuffer):
 
     desc = np.float32(descriptors).copy()
     pts = np.float32(keypoints_with_response).copy()
-
     return pts, desc

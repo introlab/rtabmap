@@ -2627,7 +2627,7 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 //SuperPointRpautrat
 //////////////////////////
 SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
-		superpointDir_(Parameters::defaultSuperPointRpautratDir()),
+		superpointWeightsPath_(Parameters::defaultSuperPointRpautratWeightsPath()),
 		threshold_(Parameters::defaultSuperPointRpautratThreshold()),
 		nms_(Parameters::defaultSuperPointRpautratNMS()),
 		minDistance_(Parameters::defaultSuperPointRpautratNMSRadius()),
@@ -2644,12 +2644,12 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
 
-	std::string previousPath = superpointDir_;
+	std::string previousPath = superpointWeightsPath_;
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	bool previousCuda = cuda_;
 #endif
 	
-	Parameters::parse(parameters, Parameters::kSuperPointRpautratDir(), superpointDir_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratWeightsPath(), superpointWeightsPath_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratThreshold(), threshold_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMS(), nms_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMSRadius(), minDistance_);
@@ -2657,13 +2657,13 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 	
 
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
-	if(superPoint_.get() == 0 || superpointDir_.compare(previousPath) != 0 || previousCuda != cuda_)
+	if(superPoint_.get() == 0 || superpointWeightsPath_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
-		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointDir_, threshold_, nms_, minDistance_, cuda_));
+		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, threshold_, nms_, minDistance_, cuda_));
 	}
 	else
 	{
-		superPoint_->setSuperpointDir(superpointDir_);
+		superPoint_->setSuperpointWeightsPath(superpointWeightsPath_);
 		superPoint_->setThreshold(threshold_);
 		superPoint_->setNMS(nms_);
 		superPoint_->setMinDistance(minDistance_);

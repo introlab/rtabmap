@@ -22,7 +22,7 @@ namespace rtabmap
 
 // Run the python script to export the SuperPoint model file with the desired parameters
 static std::string exportSuperPointTorchScript(
-    const std::string & superpointDir,
+    const std::string & superpointWeightsPath,
     const int & width,
     const int & height,
     const float & threshold,
@@ -32,12 +32,12 @@ static std::string exportSuperPointTorchScript(
 	// Resolve paths (no dependency on source tree)
 	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
 	const std::string dstScript = std::string("/tmp/superpoint_to_torchscript.py");
-	const std::string weights   = superpointDir + "/weights/superpoint_v6_from_tf.pth";
+	const std::string weightsPath   = superpointWeightsPath;
 	const std::string output    = std::string("/tmp/superpoint_v6_generated.pt");
     
 	// Sanity checks
-    if(!UFile::exists(weights)) {
-        UERROR("Weights not found: %s", weights.c_str());
+    if(!UFile::exists(weightsPath)) {
+        UERROR("Weights not found: %s", weightsPath.c_str());
         return "";
     }
 
@@ -62,9 +62,14 @@ static std::string exportSuperPointTorchScript(
     {
         pybind11::gil_scoped_acquire acquire;
 
-        // Ensure imports from the SuperPoint repo resolve
+        // Add both the weights directory and its parent (repo root) to sys.path
+        // This assumes a certain direcotry structure: /SuperPoint/weights/superpoint_v6_from_tf.pth
+        std::string weightsDir = UDirectory::getDir(weightsPath);
+        std::string repoRoot = UDirectory::getDir(weightsDir);
         auto sys = pybind11::module_::import("sys");
-        sys.attr("path").cast<pybind11::list>().append(superpointDir);
+        auto sysPath = sys.attr("path").cast<pybind11::list>();
+        sysPath.append(repoRoot);
+        sysPath.append(weightsDir);
         
         // Build sys.argv for the script
         pybind11::list argv;
@@ -74,7 +79,7 @@ static std::string exportSuperPointTorchScript(
         argv.append("--height");      
         argv.append(std::to_string(height));
         argv.append("--weights");     
-        argv.append(weights);
+        argv.append(weightsPath);
         argv.append("--output");      
         argv.append(output);
         argv.append("--threshold");   
@@ -104,9 +109,9 @@ static std::string exportSuperPointTorchScript(
 	return output;
 }
 
-SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointDir, float threshold, bool nms, int minDistance, bool cuda) :
+SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, float threshold, bool nms, int minDistance, bool cuda) :
 		device_(torch::kCPU),
-		superpointDir_(superpointDir),
+		superpointWeightsPath_(superpointWeightsPath),
         threshold_(threshold),
 		nms_(nms),
 		minDistance_(minDistance),
@@ -118,8 +123,8 @@ SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointDir, float threshol
 	}
 	cuda_ = cuda && torch::cuda::is_available();
     
-    if(!UFile::exists(superpointDir_)) {
-        UERROR("Superpoint directory not found: %s", superpointDir_.c_str());
+    if(!UFile::exists(superpointWeightsPath_)) {
+        UERROR("Superpoint weights not found: %s", superpointWeightsPath_.c_str());
     }
 
     // Update device based on cuda availability
@@ -192,7 +197,7 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
         int nms_radius = nms_ ? minDistance_ : 0;
         
         std::string modelPath = exportSuperPointTorchScript(
-            superpointDir_,
+            superpointWeightsPath_,
             img.cols,
             img.rows,
             threshold_,
