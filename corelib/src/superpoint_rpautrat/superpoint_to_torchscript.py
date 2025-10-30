@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 Convert PyTorch weights to TorchScript format for C++ usage.
-
-Copy and run this script in "~/Superpoint" to expor
 """
 
 import argparse

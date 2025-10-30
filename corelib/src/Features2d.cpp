@@ -44,8 +44,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opencv/ORBextractor.h"
 #endif
 
-#ifdef RTABMAP_TORCH
+#if defined(RTABMAP_TORCH)
 #include "superpoint_torch/SuperPoint.h"
+#endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 #include "superpoint_rpautrat/SuperpointRpautrat.h"
 #endif
 
@@ -731,12 +733,14 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 		feature2D = new ORBOctree(parameters);
 		break;
 #ifdef RTABMAP_TORCH
-	case Feature2D::kFeatureSuperPointTorch:
-		feature2D = new SuperPointTorch(parameters);
-		break;
-	case Feature2D::kFeatureSuperPointRpautrat:
-		feature2D = new SuperPointRpautrat(parameters);
-		break;
+case Feature2D::kFeatureSuperPointTorch:
+    feature2D = new SuperPointTorch(parameters);
+    break;
+#endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+case Feature2D::kFeatureSuperPointRpautrat:
+    feature2D = new SuperPointRpautrat(parameters);
+    break;
 #endif
 	case Feature2D::kFeatureSurfFreak:
 		feature2D = new SURF_FREAK(parameters);
@@ -2641,7 +2645,7 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 	Feature2D::parseParameters(parameters);
 
 	std::string previousPath = superpointDir_;
-#ifdef RTABMAP_TORCH
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	bool previousCuda = cuda_;
 #endif
 	
@@ -2652,7 +2656,7 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratCuda(), cuda_);
 	
 
-#ifdef RTABMAP_TORCH
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	if(superPoint_.get() == 0 || superpointDir_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
 		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointDir_, threshold_, nms_, minDistance_, cuda_));
@@ -2671,7 +2675,7 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 
 std::vector<cv::KeyPoint> SuperPointRpautrat::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
-#ifdef RTABMAP_TORCH
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	if(roi.x!=0 || roi.y !=0)
 	{
@@ -2694,7 +2698,7 @@ std::vector<cv::KeyPoint> SuperPointRpautrat::generateKeypointsImpl(const cv::Ma
 
 cv::Mat SuperPointRpautrat::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-#ifdef RTABMAP_TORCH
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	return superPoint_->compute(keypoints);
 #else
