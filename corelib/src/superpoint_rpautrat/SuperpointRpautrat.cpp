@@ -29,7 +29,7 @@ static std::string exportSuperPointTorchScript(
     const std::string srcScript = srcDir + "/superpoint_to_torchscript.py";
     const std::string dstScript = superpointDir + "/superpoint_to_torchscript.py";
     const std::string weights   = superpointDir + "/weights/superpoint_v6_from_tf.pth";
-    const std::string output    = superpointDir + "/weights/superpoint_v6_generated.pt";
+    const std::string output    = srcDir + "/model_file/superpoint_v6_generated.pt";
     
     // Sanity checks
     if(!UFile::exists(srcScript)) {
@@ -159,9 +159,7 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
 {    
     // On first frame, run a trace of the model with the desired parameters and load the model file
     if(!detected_)
-    {
-        UWARN("DEBUG: first call to detect(), initailizing model...");
-        
+    {        
         pybind11::gil_scoped_acquire acquire;
         PyRun_SimpleString("import sys");
         std::string cmd_add_path = "sys.path.insert(0, \"" + superpointDir_ + "\")";
@@ -179,9 +177,8 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
             cuda_
         );
         
+        UDEBUG("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
         UDEBUG("modelPath=%s thr=%f nms=%d minDistance=%d cuda=%d", modelPath.c_str(), threshold_, nms_?1:0, minDistance_, cuda_?1:0);
-        UWARN("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
-        UWARN("SuperPoint Rpautrat parameters: threshold=%.3f, nms=%s, minDistance=%d", threshold_, nms_?"true":"false", minDistance_);
         if(modelPath.empty())
         {
             UERROR("Model's path is empty! The model was not exported correctly.");
@@ -242,7 +239,6 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
 
     // Log counts
     int total_before_mask = keypoints_cpu.size(0);
-    UWARN("SuperPoint Rpautrat: keypoints before mask=%d, after mask=%zu", total_before_mask, filtered_keypoints.size());
 
     detected_ = true;
     return filtered_keypoints;
