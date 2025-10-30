@@ -7,14 +7,10 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/PythonInterface.h>
 #include <pybind11/embed.h>
 #include <torch/torch.h>
 #include <torch/script.h>
 #include <opencv2/opencv.hpp>
-#include <algorithm>
-#include <cmath>
 
 namespace rtabmap
 {
@@ -81,6 +77,7 @@ static std::string exportSuperPointTorchScript(
 }
 
 SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointDir, float threshold, bool nms, int minDistance, bool cuda) :
+		device_(torch::kCPU),
 		superpointDir_(superpointDir),
         threshold_(threshold),
 		nms_(nms),
@@ -96,6 +93,9 @@ SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointDir, float threshol
     if(!UFile::exists(superpointDir_)) {
         UERROR("Superpoint directory not found: %s", superpointDir_.c_str());
     }
+
+    // Update device based on cuda availability
+    device_ = torch::Device(cuda_ ? torch::kCUDA : torch::kCPU);
 }
 
 SPDetectorRpautrat::~SPDetectorRpautrat()
@@ -120,10 +120,7 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
     
     // Get the stored keypoints for matching
     auto stored_keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
-    
     int num_stored_keypoints = stored_keypoints_cpu.size(0);
-    
-    // Pre-extract all coordinates for efficient matching
     float * kp_data = stored_keypoints_cpu.data_ptr<float>();
     
     for(size_t i = 0; i < keypoints.size(); i++) {
@@ -132,15 +129,13 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
         
         // Find matching descriptor by coordinate
         for(int j = 0; j < num_stored_keypoints; j++) {
-            float stored_x = kp_data[j * 2 + 0];   // x coordinate
-            float stored_y = kp_data[j * 2 + 1];   // y coordinate
-            
-            // Match by coordinates only
+            float stored_x = kp_data[j * 2 + 0];
+            float stored_y = kp_data[j * 2 + 1];
+
             float dx = x - stored_x;
             float dy = y - stored_y;
             float distSq = dx * dx + dy * dy;
             
-            // Use tight tolerance for coordinates
             if(distSq < 1.0f) {
                 filtered_descriptors[i] = desc_[j];
                 break;
@@ -161,9 +156,7 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 }
 
 std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
-{
-    torch::Device device(cuda_?torch::kCUDA:torch::kCPU);
-    
+{    
     // On first frame, run a trace of the model with the desired parameters and load the model file
     if(!detected_)
     {
@@ -203,14 +196,14 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
         // Load TorchScript model
         model_ = torch::jit::load(modelPath);
         model_.eval(); // put in evaluation mode
-        model_.to(device);
+        model_.to(device_);
     }
     
     // format the input tensor for the model
     torch::NoGradGuard no_grad_guard;
     auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);
     x = x.to(torch::kFloat) / 255;
-    x = x.set_requires_grad(false).to(device);
+    x = x.set_requires_grad(false).to(device_);
     
     auto outputs = model_.forward({x}).toTuple();
     keypoints_tensor_ = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
@@ -220,7 +213,6 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     // Convert to CPU for processing
     auto keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
     auto scores_cpu = scores_tensor.to(torch::kCPU);
-    int total_before_mask = keypoints_cpu.size(0);
 
     std::vector<cv::KeyPoint> filtered_keypoints;
     std::vector<int64_t> keep_indices_vec;
@@ -249,7 +241,8 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     desc_ = filtered_descriptors;
 
     // Log counts
-    UINFO("SuperPoint Rpautrat: keypoints before mask=%d, after mask=%zu", total_before_mask, filtered_keypoints.size());
+    int total_before_mask = keypoints_cpu.size(0);
+    UWARN("SuperPoint Rpautrat: keypoints before mask=%d, after mask=%zu", total_before_mask, filtered_keypoints.size());
 
     detected_ = true;
     return filtered_keypoints;

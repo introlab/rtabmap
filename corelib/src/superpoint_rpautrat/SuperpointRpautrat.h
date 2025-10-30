@@ -28,6 +28,7 @@ class SPDetectorRpautrat {
     
     private:
         torch::jit::script::Module model_;
+        torch::Device device_;
         torch::Tensor desc_;
         torch::Tensor keypoints_tensor_;
         
