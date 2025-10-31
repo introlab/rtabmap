@@ -46,7 +46,7 @@ static std::string exportSuperPointTorchScript(
 	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
 	const std::string weightsPath = superpointWeightsPath;
 	const std::string output = std::string(outputDir + "/superpoint_v6_from_tf.pt");
-	const std::string dstScript = std::string("/tmp/superpoint_to_torchscript.py");
+	const std::string dstScript = std::string(outputDir + "/superpoint_to_torchscript.py");
     
 	// Sanity checks
     if(!UFile::exists(weightsPath)) {
