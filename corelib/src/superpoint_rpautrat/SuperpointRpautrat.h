@@ -21,12 +21,6 @@ class SPDetectorRpautrat {
         std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
         cv::Mat compute(const std::vector<cv::KeyPoint> &keypoints);
     
-        void setSuperpointWeightsPath(std::string superpointWeightsPath) {superpointWeightsPath_ = superpointWeightsPath;}
-        void setOutputDir(std::string outputDir) {outputDir_ = outputDir;}
-        void setThreshold(float threshold) {threshold_ = threshold;}
-        void setNMS(bool enabled) {nms_ = enabled;}
-        void setMinDistance(int minDistance) {minDistance_ = minDistance;}
-    
     private:
         torch::jit::script::Module model_;
         torch::Device device_;
