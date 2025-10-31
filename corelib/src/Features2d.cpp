@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opencv/ORBextractor.h"
 #endif
 
-#if defined(RTABMAP_TORCH)
+#ifdef RTABMAP_TORCH
 #include "superpoint_torch/SuperPoint.h"
 #endif
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
