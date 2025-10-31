@@ -45,7 +45,7 @@ static std::string exportSuperPointTorchScript(
     // Resolve paths (no dependency on source tree)
 	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
 	const std::string weightsPath = superpointWeightsPath;
-	const std::string output = std::string(outputDir + "/superpoint_v6_generated.pt");
+	const std::string output = std::string(outputDir + "/superpoint_v6_from_tf.pt");
 	const std::string dstScript = std::string("/tmp/superpoint_to_torchscript.py");
     
 	// Sanity checks
