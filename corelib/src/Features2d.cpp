@@ -2628,6 +2628,7 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 //////////////////////////
 SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
 		superpointWeightsPath_(Parameters::defaultSuperPointRpautratWeightsPath()),
+		outputDir_(""),
 		threshold_(Parameters::defaultSuperPointRpautratThreshold()),
 		nms_(Parameters::defaultSuperPointRpautratNMS()),
 		minDistance_(Parameters::defaultSuperPointRpautratNMSRadius()),
@@ -2654,16 +2655,23 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMS(), nms_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMSRadius(), minDistance_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratCuda(), cuda_);
+	Parameters::parse(parameters, Parameters::kRtabmapWorkingDirectory(), outputDir_);
 	
+	// If working directory is not set, use the default
+	if(outputDir_.empty())
+	{
+		outputDir_ = Parameters::createDefaultWorkingDirectory();
+	}
 
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	if(superPoint_.get() == 0 || superpointWeightsPath_.compare(previousPath) != 0 || previousCuda != cuda_)
 	{
-		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, threshold_, nms_, minDistance_, cuda_));
+		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, outputDir_, threshold_, nms_, minDistance_, cuda_));
 	}
 	else
 	{
 		superPoint_->setSuperpointWeightsPath(superpointWeightsPath_);
+		superPoint_->setOutputDir(outputDir_);
 		superPoint_->setThreshold(threshold_);
 		superPoint_->setNMS(nms_);
 		superPoint_->setMinDistance(minDistance_);

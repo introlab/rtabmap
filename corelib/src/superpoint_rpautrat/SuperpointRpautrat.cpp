@@ -23,17 +23,30 @@ namespace rtabmap
 // Run the python script to export the SuperPoint model file with the desired parameters
 static std::string exportSuperPointTorchScript(
     const std::string & superpointWeightsPath,
+    const std::string & outputDir,
     const int & width,
     const int & height,
     const float & threshold,
     const int & nms_radius,
     const bool & cuda)
 {
-	// Resolve paths (no dependency on source tree)
+    // Validate output directory is explicitly set and exists
+    if(outputDir.empty())
+	{
+        UERROR("Output directory is not set.");
+		return std::string("");
+	}
+	if(!UDirectory::exists(outputDir))
+	{
+		UERROR("Output directory does not exist: %s", outputDir.c_str());
+		return std::string("");
+	}
+
+    // Resolve paths (no dependency on source tree)
 	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
+	const std::string weightsPath = superpointWeightsPath;
+	const std::string output = std::string(outputDir + "/superpoint_v6_generated.pt");
 	const std::string dstScript = std::string("/tmp/superpoint_to_torchscript.py");
-	const std::string weightsPath   = superpointWeightsPath;
-	const std::string output    = std::string("/tmp/superpoint_v6_generated.pt");
     
 	// Sanity checks
     if(!UFile::exists(weightsPath)) {
@@ -109,9 +122,10 @@ static std::string exportSuperPointTorchScript(
 	return output;
 }
 
-SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, float threshold, bool nms, int minDistance, bool cuda) :
+SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, std::string outputDir, float threshold, bool nms, int minDistance, bool cuda) :
 		device_(torch::kCPU),
 		superpointWeightsPath_(superpointWeightsPath),
+        outputDir_(outputDir),
         threshold_(threshold),
 		nms_(nms),
 		minDistance_(minDistance),
@@ -198,6 +212,7 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
         
         std::string modelPath = exportSuperPointTorchScript(
             superpointWeightsPath_,
+            outputDir_,
             img.cols,
             img.rows,
             threshold_,
