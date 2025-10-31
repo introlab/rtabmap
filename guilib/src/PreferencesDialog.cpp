@@ -290,6 +290,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_TORCH
 	_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
+#endif
+#if !defined(RTABMAP_TORCH) || !defined(RTABMAP_PYTHON)
 	_ui->comboBox_detector_strategy->setItemData(16, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(16, 0, Qt::UserRole - 1);
 #endif
