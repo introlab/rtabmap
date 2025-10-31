@@ -168,6 +168,7 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRISK") == 0 ||
 			group.compare("KAZE") == 0 ||
 			group.compare("SuperPoint") == 0 ||
+			group.compare("SuperPointRpautrat") == 0 ||
 			group.compare("PyDetector") == 0;
 }
 
@@ -661,6 +662,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With SuperPoint Rpautrat:"; 
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON) 
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl; 
+#else 
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl; 
 #endif
 				str = "With Python3:";
 #ifdef RTABMAP_PYTHON
