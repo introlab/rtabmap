@@ -5868,7 +5868,6 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo) || // MYNT EYE S
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoDepthAI - kSrcStereo));
-	_ui->frame_imu_filtering->setVisible(getIMUFilteringStrategy() > 0); // Not None
 	_ui->stackedWidget_imuFilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() > 0);
 	_ui->groupBox_madgwickfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 1);
 	_ui->groupBox_complementaryfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 2);
@@ -6706,7 +6705,7 @@ Camera * PreferencesDialog::createCamera(
 		((CameraOrbbecSDK*)camera)->enableColorRectification(_ui->checkBox_orbbec_sdk_color_rectification->isChecked());
 		((CameraOrbbecSDK*)camera)->enableImu(_ui->checkBox_orbbec_sdk_imu->isChecked());
 		((CameraOrbbecSDK*)camera)->enableDepthMM(_ui->checkBox_orbbec_sdk_depth_mm->isChecked());
-		
+
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?

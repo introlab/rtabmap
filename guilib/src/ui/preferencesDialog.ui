@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-2651</y>
             <width>713</width>
             <height>4779</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -8283,7 +8283,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </widget>
                              </item>
                              <item row="0" column="1">
-                              <widget class="QLabel" name="label_621">
+                              <widget class="QLabel" name="label_imuFilter_baseFrameConversion">
                                <property name="text">
                                 <string>Convert IMU in base frame before filtering. This can help to initialize correctly the yaw.</string>
                                </property>

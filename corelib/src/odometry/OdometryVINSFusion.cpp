@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <estimator/estimator.h>
 #include <estimator/parameters.h>
 #include <camodocal/camera_models/PinholeCamera.h>
-#include <camodocal/camera_models/EquidistantCamera.h>
+#include <camodocal/camera_models/PinholeFullCamera.h>
 #include <utility/visualization.h>
 #endif
 
@@ -49,10 +49,12 @@ namespace rtabmap {
 class VinsFusionEstimator: public Estimator
 {
 public:
-	VinsFusionEstimator(
-			const Transform & imuLocalTransform,
+	VinsFusionEstimator() : Estimator()
+	{}
+
+	bool init(const Transform & imuLocalTransform,
 			const StereoCameraModel & model,
-			bool rectified) : Estimator()
+			bool rectified)
 	{
 		MULTIPLE_THREAD = 0;
 		setParameter();
@@ -63,71 +65,133 @@ public:
 		//overwrite camera calibration only if received model is radtan, otherwise use config
 		UASSERT(NUM_OF_CAM >= 1 && NUM_OF_CAM <=2);
 
-		if( (NUM_OF_CAM == 2 && model.left().D_raw().cols == 4 && model.right().D_raw().cols == 4) ||
-			(NUM_OF_CAM == 1 && model.left().D_raw().cols == 4))
+		if( (NUM_OF_CAM == 2 && (rectified || (model.left().D_raw().cols >= 4 && model.right().D_raw().cols >= 4))) ||
+			(NUM_OF_CAM == 1 && (rectified || model.left().D_raw().cols >= 4)))
 		{
-			UWARN("Overwriting VINS camera calibration config with received pinhole model... rectified=%d", rectified?1:0);
+			UINFO("Setting up VINS camera calibration config with received pinhole model... rectified=%d distortion coefficients=%d",
+				rectified?1:0, model.left().D_raw().cols);
 			featureTracker.m_camera.clear();
 
-			camodocal::PinholeCameraPtr camera( new camodocal::PinholeCamera );
-			camodocal::PinholeCamera::Parameters params(
-					model.name(),
-					model.left().imageWidth(), model.left().imageHeight(),
-					rectified?0:model.left().D_raw().at<double>(0,0),
-					rectified?0:model.left().D_raw().at<double>(0,1),
-					rectified?0:model.left().D_raw().at<double>(0,2),
-					rectified?0:model.left().D_raw().at<double>(0,3),
-					rectified?model.left().fx():model.left().K_raw().at<double>(0,0),
-					rectified?model.left().fy():model.left().K_raw().at<double>(1,1),
-					rectified?model.left().cx():model.left().K_raw().at<double>(0,2),
-					rectified?model.left().cy():model.left().K_raw().at<double>(1,2));
-			camera->setParameters(params);
-			featureTracker.m_camera.push_back(camera);
+			double fx = 0.0;
+			if(!rectified && model.left().D_raw().cols >= 8)
+			{
+				if(model.left().D_raw().cols > 8)
+				{
+					UWARN("Received %d distortion coefficients, but only the first 8 are supported, ignoring the last coefficents.",
+						model.left().D_raw().cols);
+				}
+				camodocal::PinholeFullCameraPtr camera( new camodocal::PinholeFullCamera );
+				camodocal::PinholeFullCamera::Parameters params(
+						model.name(),
+						model.left().imageWidth(), model.left().imageHeight(),
+						model.left().D_raw().at<double>(0,0), // k1
+						model.left().D_raw().at<double>(0,1), // k1
+						model.left().D_raw().at<double>(0,4), // k3
+						model.left().D_raw().at<double>(0,5), // k4
+						model.left().D_raw().at<double>(0,6), // k5
+						model.left().D_raw().at<double>(0,7), // k6
+						model.left().D_raw().at<double>(0,2), // p1
+						model.left().D_raw().at<double>(0,3), // p1
+						model.left().K_raw().at<double>(0,0), // fx
+						model.left().K_raw().at<double>(1,1), // fy
+						model.left().K_raw().at<double>(0,2), // cx
+						model.left().K_raw().at<double>(1,2)); // cy
+				camera->setParameters(params);
+				featureTracker.m_camera.push_back(camera);
+				fx = params.fx();
+				if(NUM_OF_CAM == 2)
+				{
+					UASSERT(model.left().D_raw().cols == model.right().D_raw().cols);
+					camodocal::PinholeFullCameraPtr camera2( new camodocal::PinholeFullCamera );
+					camodocal::PinholeFullCamera::Parameters params2(
+							model.name(),
+							model.right().imageWidth(), model.right().imageHeight(),
+							model.right().D_raw().at<double>(0,0), // k1
+							model.right().D_raw().at<double>(0,1), // k2
+							model.right().D_raw().at<double>(0,4), // k3
+							model.right().D_raw().at<double>(0,5), // k4
+							model.right().D_raw().at<double>(0,6), // k5
+							model.right().D_raw().at<double>(0,7), // k6
+							model.right().D_raw().at<double>(0,2), // p1
+							model.right().D_raw().at<double>(0,3), // p2
+							model.right().K_raw().at<double>(0,0), // fx
+							model.right().K_raw().at<double>(1,1), // fy
+							model.right().K_raw().at<double>(0,2), // cx
+							model.right().K_raw().at<double>(1,2)); // cy
+					camera2->setParameters(params2);
+					featureTracker.m_camera.push_back(camera2);
+				}
+			}
+			else
+			{
+				if(!rectified)
+				{
+					if(model.left().D_raw().cols == 6) {
+						UERROR("Fisheye camera model support not implemented! Provide rectified images instead (see %s).",
+							Parameters::kRtabmapImagesAlreadyRectified().c_str());
+						return false;
+					}
+					if(model.left().D_raw().cols > 4)
+					{
+						UWARN("Received %d distortion coefficients, but only 4 or 8 are supported, ignoring the last coefficents.",
+								model.left().D_raw().cols);
+					}
+				}
+
+				camodocal::PinholeCameraPtr camera( new camodocal::PinholeCamera );
+				camodocal::PinholeCamera::Parameters params(
+						model.name(),
+						model.left().imageWidth(), model.left().imageHeight(),
+						rectified?0:model.left().D_raw().at<double>(0,0), // k1
+						rectified?0:model.left().D_raw().at<double>(0,1), // k2
+						rectified?0:model.left().D_raw().at<double>(0,2), // p1
+						rectified?0:model.left().D_raw().at<double>(0,3), // p2
+						rectified?model.left().fx():model.left().K_raw().at<double>(0,0),
+						rectified?model.left().fy():model.left().K_raw().at<double>(1,1),
+						rectified?model.left().cx():model.left().K_raw().at<double>(0,2),
+						rectified?model.left().cy():model.left().K_raw().at<double>(1,2));
+				camera->setParameters(params);
+				featureTracker.m_camera.push_back(camera);
+				fx = params.fx();
+				if(NUM_OF_CAM == 2)
+				{
+					UASSERT(model.left().D_raw().cols == model.right().D_raw().cols);
+					camodocal::PinholeCameraPtr camera2( new camodocal::PinholeCamera );
+					camodocal::PinholeCamera::Parameters params2(
+							model.name(),
+							model.right().imageWidth(), model.right().imageHeight(),
+							rectified?0:model.right().D_raw().at<double>(0,0), // k1
+							rectified?0:model.right().D_raw().at<double>(0,1), // k2
+							rectified?0:model.right().D_raw().at<double>(0,2), // p1
+							rectified?0:model.right().D_raw().at<double>(0,3), // p2
+							rectified?model.right().fx():model.right().K_raw().at<double>(0,0),
+							rectified?model.right().fy():model.right().K_raw().at<double>(1,1),
+							rectified?model.right().cx():model.right().K_raw().at<double>(0,2),
+							rectified?model.right().cy():model.right().K_raw().at<double>(1,2));
+					camera2->setParameters(params2);
+					featureTracker.m_camera.push_back(camera2);
+				}
+			}
 
 			double originalParalax = MIN_PARALLAX * FOCAL_LENGTH;
-			// If you have compiler error about FOCAL_LENGTH being const, make sure to use the following patch:
+			// If you have compiler error about FOCAL_LENGTH being const, make sure to use the following patch for ROS1:
 			// https://gist.github.com/matlabbe/795ab37067367dca58bbadd8201d986c#file-vins-fusion_pull136-patch
-			FOCAL_LENGTH = params.fx();
+			// Use this patch for ROS2: https://gist.github.com/matlabbe/ebbb343cd744da9d6d6d6ded2e1557fd
+			FOCAL_LENGTH = fx;
 			MIN_PARALLAX = originalParalax / FOCAL_LENGTH;
 			ProjectionTwoFrameOneCamFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
 			ProjectionTwoFrameTwoCamFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
 			ProjectionOneFrameTwoCamFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
-
-			if(NUM_OF_CAM == 2)
-			{
-				camodocal::PinholeCameraPtr camera( new camodocal::PinholeCamera );
-				camodocal::PinholeCamera::Parameters params(
-						model.name(),
-						model.right().imageWidth(), model.right().imageHeight(),
-						rectified?0:model.right().D_raw().at<double>(0,0),
-						rectified?0:model.right().D_raw().at<double>(0,1),
-						rectified?0:model.right().D_raw().at<double>(0,2),
-						rectified?0:model.right().D_raw().at<double>(0,3),
-						rectified?model.right().fx():model.right().K_raw().at<double>(0,0),
-						rectified?model.right().fy():model.right().K_raw().at<double>(1,1),
-						rectified?model.right().cx():model.right().K_raw().at<double>(0,2),
-						rectified?model.right().cy():model.right().K_raw().at<double>(1,2));
-				camera->setParameters(params);
-				featureTracker.m_camera.push_back(camera);
-			}
 		}
-		else if(rectified)
+		else
 		{
-			UWARN("Images are rectified but received calibration cannot be "
-					"used, make sure calibration in config file doesn't have "
-					"distortion or send raw images to VINS odometry.");
-			if(!featureTracker.m_camera.empty())
-			{
-				if(featureTracker.m_camera.front()->imageWidth() != model.left().imageWidth() ||
-				   featureTracker.m_camera.front()->imageHeight() != model.left().imageHeight())
-				{
-					UERROR("Received images don't have same size (%dx%d) than in the config file (%dx%d)!",
-							model.left().imageWidth(),
-							model.left().imageHeight(),
-							featureTracker.m_camera.front()->imageWidth(),
-							featureTracker.m_camera.front()->imageHeight());
-				}
+			UERROR("Received stereo camera model is not compatible with VINS-Fusion.");
+			if(!rectified && model.left().D_raw().cols != 4) {
+				UERROR("When raw images are provided (%s=false), we expect 4 distortion coefficients (k1,k2,p1,p2), received %d",
+					Parameters::kRtabmapImagesAlreadyRectified().c_str(),
+					model.left().D_raw().cols);
 			}
+			return false;
 		}
 
 		Transform imuCam0 = imuLocalTransform.inverse() * model.localTransform();
@@ -165,6 +229,7 @@ public:
 			cout << " new intrinsic cam " << i << endl  << featureTracker.m_camera[i]->parametersToString() << endl;
 		}
 		f_manager.setRic(ric);
+		return true;
 	}
 
 	// Copy of original inputImage() so that overridden processMeasurements() is used and threading is disabled.
@@ -350,10 +415,16 @@ Transform OdometryVINSFusion::computeTransform(
 		{
 			// intialize
 			UINFO("Initializing with image %f", data.stamp());
-			vinsEstimator_ = new VinsFusionEstimator(
-					lastImu_.localTransform().isNull()?Transform::getIdentity():lastImu_.localTransform(),
-					data.stereoCameraModels()[0],
-					this->imagesAlreadyRectified());
+			vinsEstimator_ = new VinsFusionEstimator();
+			if(!vinsEstimator_->init(
+				lastImu_.localTransform().isNull()?Transform::getIdentity():lastImu_.localTransform(),
+				data.stereoCameraModels()[0],
+				this->imagesAlreadyRectified()))
+			{
+				delete vinsEstimator_;
+				vinsEstimator_ = 0;
+				return Transform();
+			}
 
 			if(USE_IMU) {
 				double dx = lastImu_.linearAcceleration().val[0];
