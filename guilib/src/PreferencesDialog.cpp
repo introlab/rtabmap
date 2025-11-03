@@ -238,6 +238,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_OPEN3D
 	_ui->odom_strategy->setItemData(12, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_CUVSLAM
+	_ui->odom_strategy->setItemData(13, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
