@@ -2646,14 +2646,13 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
 
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	std::string previousWeightsPath = superpointWeightsPath_;
 	std::string previousModelPath = superpointModelPath_;
-#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	bool previousCuda = cuda_;
 	float previousThreshold = threshold_;
 	bool previousNms = nms_;
 	int previousMinDistance = minDistance_;
-#endif
 	
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratWeightsPath(), superpointWeightsPath_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratModelPath(), superpointModelPath_);
@@ -2669,7 +2668,6 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 		outputDir_ = Parameters::createDefaultWorkingDirectory();
 	}
 
-#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	// Delete the detector to force re-initialization on next frame if any parameter changed
 	if(superPoint_.get() == 0 || 
 	   superpointWeightsPath_.compare(previousWeightsPath) != 0 || 

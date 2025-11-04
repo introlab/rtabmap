@@ -71,7 +71,7 @@ static std::string exportSuperPointTorchScript(
         
         // Build sys.argv for the script
         pybind11::list argv;
-        argv.append(UFile::getName(modelPath));  // Use the model filename as script name
+        argv.append("superpoint_to_torchscript.py");  // Use the model filename as script name
         argv.append("--width");       
         argv.append(std::to_string(width));
         argv.append("--height");      
