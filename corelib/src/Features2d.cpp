@@ -2628,6 +2628,7 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 //////////////////////////
 SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
 		superpointWeightsPath_(Parameters::defaultSuperPointRpautratWeightsPath()),
+		superpointModelPath_(Parameters::defaultSuperPointRpautratModelPath()),
 		outputDir_(""),
 		threshold_(Parameters::defaultSuperPointRpautratThreshold()),
 		nms_(Parameters::defaultSuperPointRpautratNMS()),
@@ -2645,7 +2646,8 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
 
-	std::string previousPath = superpointWeightsPath_;
+	std::string previousWeightsPath = superpointWeightsPath_;
+	std::string previousModelPath = superpointModelPath_;
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	bool previousCuda = cuda_;
 	float previousThreshold = threshold_;
@@ -2654,6 +2656,7 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 #endif
 	
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratWeightsPath(), superpointWeightsPath_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratModelPath(), superpointModelPath_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratThreshold(), threshold_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMS(), nms_);
 	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMSRadius(), minDistance_);
@@ -2669,13 +2672,14 @@ void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	// Delete the detector to force re-initialization on next frame if any parameter changed
 	if(superPoint_.get() == 0 || 
-	   superpointWeightsPath_.compare(previousPath) != 0 || 
+	   superpointWeightsPath_.compare(previousWeightsPath) != 0 || 
+	   superpointModelPath_.compare(previousModelPath) != 0 ||
 	   previousCuda != cuda_ ||
 	   previousThreshold != threshold_ ||
 	   previousNms != nms_ ||
 	   previousMinDistance != minDistance_)
 	{
-		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, outputDir_, threshold_, nms_, minDistance_, cuda_));
+		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, superpointModelPath_, outputDir_, threshold_, nms_, minDistance_, cuda_));
 	}
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");

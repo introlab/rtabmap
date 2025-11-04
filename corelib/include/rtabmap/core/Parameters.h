@@ -346,7 +346,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SuperPoint, NMSRadius,     int,  4,      uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSuperPointNMS().c_str()));
     RTABMAP_PARAM(SuperPoint, Cuda,          bool, true,   "Use Cuda device for Torch, otherwise CPU device is used by default.");
 
-    RTABMAP_PARAM_STR(SuperPointRpautrat, WeightsPath, "",           "[Required] SuperPoint root directory containing scripts and weights.");
+    RTABMAP_PARAM_STR(SuperPointRpautrat, WeightsPath, "",           "[Required] SuperPoint weights file (*.pth).");
+    RTABMAP_PARAM_STR(SuperPointRpautrat, ModelPath, "",           "[Required] SuperPoint python model file (superpoint_pytorch.py).");
     RTABMAP_PARAM(SuperPointRpautrat, Threshold,     float, 0.005, "Detector response threshold to accept keypoint.");
     RTABMAP_PARAM(SuperPointRpautrat, NMS,           bool,  true,  "If true, non-maximum suppression is applied to detected keypoints.");
     RTABMAP_PARAM(SuperPointRpautrat, NMSRadius,     int,  4,      uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSuperPointRpautratNMS().c_str()));

@@ -27900,20 +27900,23 @@ p, li { white-space: pre-wrap; }
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_139" columnstretch="0,0,1">
-                      <item row="0" column="0">
-                       <widget class="QToolButton" name="toolButton_sprpautrat_path">
+                      <item row="5" column="1">
+                       <widget class="QCheckBox" name="checkBox_sprpautrat_cuda">
                         <property name="text">
-                         <string>...</string>
+                         <string/>
                         </property>
                        </widget>
                       </item>
                       <item row="0" column="1">
-                       <widget class="QLineEdit" name="lineEdit_sprpautrat_path"/>
+                       <widget class="QLineEdit" name="lineEdit_sprpautrat_weights_path"/>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QSpinBox" name="spinBox_sprpautrat_minDistance"/>
                       </item>
                       <item row="0" column="2">
                        <widget class="QLabel" name="label_768">
                         <property name="text">
-                         <string>[Required] Path to the SuperPoint repo</string>
+                         <string>[Required] SuperPoint weights file (*.pth).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -27923,7 +27926,40 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="2" column="2">
+                       <widget class="QLabel" name="label_769">
+                        <property name="text">
+                         <string>Detector response threshold to accept keypoint.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="2">
+                       <widget class="QLabel" name="label_772">
+                        <property name="text">
+                         <string>Use Cuda device for Torch, otherwise CPU device is used by default.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QToolButton" name="toolButton_sprpautrat_weights_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_sprpautrat_threshold">
                         <property name="decimals">
                          <number>4</number>
@@ -27942,27 +27978,7 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="2">
-                       <widget class="QLabel" name="label_769">
-                        <property name="text">
-                         <string>Detector response threshold to accept keypoint.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QCheckBox" name="checkBox_sprpautrat_nms">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="2">
+                      <item row="3" column="2">
                        <widget class="QLabel" name="label_771">
                         <property name="text">
                          <string>If true, non-maximum suppression is applied to detected keypoints.</string>
@@ -27975,27 +27991,14 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
-                       <widget class="QCheckBox" name="checkBox_sprpautrat_cuda">
+                      <item row="3" column="1">
+                       <widget class="QCheckBox" name="checkBox_sprpautrat_nms">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
                       <item row="4" column="2">
-                       <widget class="QLabel" name="label_772">
-                        <property name="text">
-                         <string>Use Cuda device for Torch, otherwise CPU device is used by default.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="2">
                        <widget class="QLabel" name="label_773">
                         <property name="text">
                          <string>Minimum distance (pixels) between keypoints (when non-maximum suppression is enabled).</string>
@@ -28008,8 +28011,22 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
-                       <widget class="QSpinBox" name="spinBox_sprpautrat_minDistance"/>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="label_781">
+                        <property name="text">
+                         <string>[Required] SuperPoint python model file (superpoint_pytorch.py).</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLineEdit" name="lineEdit_sprpautrat_model_path"/>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QToolButton" name="toolButton_sprpautrat_model_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
                       </item>
                      </layout>
                     </item>

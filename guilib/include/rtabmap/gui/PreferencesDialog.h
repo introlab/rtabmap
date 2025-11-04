@@ -375,6 +375,7 @@ private Q_SLOTS:
 	void changeIcpPMConfigPath();
 	void changeSuperPointModelPath();
 	void changeSuperPointRpautratWeightsPath();
+	void changeSuperPointRpautratModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
 	void changePyDescriptorPath();

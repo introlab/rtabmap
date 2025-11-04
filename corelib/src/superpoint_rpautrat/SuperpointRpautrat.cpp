@@ -23,6 +23,7 @@ namespace rtabmap
 // Run the python script to export the SuperPoint model file with the desired parameters
 static std::string exportSuperPointTorchScript(
     const std::string & superpointWeightsPath,
+    const std::string & superpointModelPath,
     const std::string & outputDir,
     const int & width,
     const int & height,
@@ -43,8 +44,9 @@ static std::string exportSuperPointTorchScript(
 	}
 
     // Resolve paths (no dependency on source tree)
-	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
 	const std::string weightsPath = superpointWeightsPath;
+    const std::string modelPath = superpointModelPath;
+	const std::string file_content = uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY);
 	const std::string output = std::string(outputDir + "/superpoint_v6_from_tf.pt");
 	const std::string dstScript = std::string(outputDir + "/superpoint_to_torchscript.py");
     
@@ -53,7 +55,10 @@ static std::string exportSuperPointTorchScript(
         UERROR("Weights not found: %s", weightsPath.c_str());
         return "";
     }
-
+    if(!UFile::exists(modelPath)) {
+        UERROR("Model not found: %s", modelPath.c_str());
+        return "";
+    }
 	// Generate the temporary script, overwrite if it already exists
 	{
 		std::ofstream ofs(dstScript.c_str(), std::ios::out | std::ios::trunc);
@@ -75,12 +80,11 @@ static std::string exportSuperPointTorchScript(
     {
         pybind11::gil_scoped_acquire acquire;
 
-        // Add the repo root to sys.path so superpoint is imported properly
-        // This assumes a certain direcotry structure: /SuperPoint/weights/PROVIDED_WEIGHTS_FILE.pth
-        std::string repoRoot = UDirectory::getDir(UDirectory::getDir(weightsPath));
+        // set sys.path to the location of the model path so it can be imported
+        std::string modelDir = UDirectory::getDir(modelPath);
         auto sys = pybind11::module_::import("sys");
         auto sysPath = sys.attr("path").cast<pybind11::list>();
-        sysPath.append(repoRoot);
+        sysPath.append(modelDir);
         
         // Build sys.argv for the script
         pybind11::list argv;
@@ -120,9 +124,10 @@ static std::string exportSuperPointTorchScript(
 	return output;
 }
 
-SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, std::string outputDir, float threshold, bool nms, int minDistance, bool cuda) :
+SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, std::string superpointModelPath, std::string outputDir, float threshold, bool nms, int minDistance, bool cuda) :
 		device_(torch::kCPU),
 		superpointWeightsPath_(superpointWeightsPath),
+        superpointModelPath_(superpointModelPath),
         outputDir_(outputDir),
         threshold_(threshold),
 		nms_(nms),
@@ -210,6 +215,7 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
         
         std::string modelPath = exportSuperPointTorchScript(
             superpointWeightsPath_,
+            superpointModelPath_,
             outputDir_,
             img.cols,
             img.rows,
@@ -217,7 +223,7 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
             nms_radius,
             cuda_
         );
-        
+                
         UDEBUG("Initializing SuperPoint Rpautrat detector with model: %s", modelPath.c_str());
         UDEBUG("modelPath=%s thr=%f nms=%d minDistance=%d cuda=%d", modelPath.c_str(), threshold_, nms_?1:0, minDistance_, cuda_?1:0);
         if(modelPath.empty())

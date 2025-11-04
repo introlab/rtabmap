@@ -1199,8 +1199,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSuperPointCuda().c_str());
 
 	// SuperPoint Rpautrat
-	_ui->lineEdit_sprpautrat_path->setObjectName(Parameters::kSuperPointRpautratWeightsPath().c_str());
-	connect(_ui->toolButton_sprpautrat_path, SIGNAL(clicked()), this, SLOT(changeSuperPointRpautratWeightsPath()));
+	_ui->lineEdit_sprpautrat_weights_path->setObjectName(Parameters::kSuperPointRpautratWeightsPath().c_str());
+	connect(_ui->toolButton_sprpautrat_weights_path, SIGNAL(clicked()), this, SLOT(changeSuperPointRpautratWeightsPath()));
+	_ui->lineEdit_sprpautrat_model_path->setObjectName(Parameters::kSuperPointRpautratModelPath().c_str());
+	connect(_ui->toolButton_sprpautrat_model_path, SIGNAL(clicked()), this, SLOT(changeSuperPointRpautratModelPath()));
 	_ui->doubleSpinBox_sprpautrat_threshold->setObjectName(Parameters::kSuperPointRpautratThreshold().c_str());
 	_ui->checkBox_sprpautrat_nms->setObjectName(Parameters::kSuperPointRpautratNMS().c_str());
 	_ui->spinBox_sprpautrat_minDistance->setObjectName(Parameters::kSuperPointRpautratNMSRadius().c_str());
@@ -5713,19 +5715,37 @@ void PreferencesDialog::changeSuperPointModelPath()
 void PreferencesDialog::changeSuperPointRpautratWeightsPath()
 {
 	QString path;
-	if(_ui->lineEdit_sprpautrat_path->text().isEmpty())
+	if(_ui->lineEdit_sprpautrat_weights_path->text().isEmpty())
 	{
 		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint weights"), this->getWorkingDirectory(), tr("SuperPoint weights (*.pth)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint weights"), _ui->lineEdit_sprpautrat_path->text(), tr("SuperPoint weights (*.pth)"));
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint weights"), _ui->lineEdit_sprpautrat_weights_path->text(), tr("SuperPoint weights (*.pth)"));
 	}
 	if(!path.isEmpty())
 	{
-		_ui->lineEdit_sprpautrat_path->setText(path);
+		_ui->lineEdit_sprpautrat_weights_path->setText(path);
 	}
 }
+
+void PreferencesDialog::changeSuperPointRpautratModelPath()
+{
+	QString path;
+	if(_ui->lineEdit_sprpautrat_model_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint Python Model"), this->getWorkingDirectory(), tr("SuperPoint Python Model (*.py)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint Python Model"), _ui->lineEdit_sprpautrat_model_path->text(), tr("SuperPoint Python Model (*.py)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_sprpautrat_model_path->setText(path);
+	}
+}
+
 
 void PreferencesDialog::changePyMatcherPath()
 {
