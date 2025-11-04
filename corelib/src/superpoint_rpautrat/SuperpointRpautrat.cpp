@@ -75,14 +75,12 @@ static std::string exportSuperPointTorchScript(
     {
         pybind11::gil_scoped_acquire acquire;
 
-        // Add both the weights directory and its parent (repo root) to sys.path
-        // This assumes a certain direcotry structure: /SuperPoint/weights/superpoint_v6_from_tf.pth
-        std::string weightsDir = UDirectory::getDir(weightsPath);
-        std::string repoRoot = UDirectory::getDir(weightsDir);
+        // Add the repo root to sys.path so superpoint is imported properly
+        // This assumes a certain direcotry structure: /SuperPoint/weights/PROVIDED_WEIGHTS_FILE.pth
+        std::string repoRoot = UDirectory::getDir(UDirectory::getDir(weightsPath));
         auto sys = pybind11::module_::import("sys");
         auto sysPath = sys.attr("path").cast<pybind11::list>();
         sysPath.append(repoRoot);
-        sysPath.append(weightsDir);
         
         // Build sys.argv for the script
         pybind11::list argv;
