@@ -908,7 +908,16 @@ int main(int argc, char * argv[])
 					{
 						std::map<int, Transform> posesOut;
 						std::multimap<int, Link> linksOut;
+						// Find first valid id
 						int firstId = *ids.begin();
+						for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+						{
+							if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
+							{
+								firstId = iter->first;
+								break;
+							}
+						}
 						rtabmap::Optimizer * optimizer = rtabmap::Optimizer::create(params);
 						bool useOdomGravity = Parameters::defaultMemUseOdomGravity();
 						Parameters::parse(params, Parameters::kMemUseOdomGravity(), useOdomGravity);
