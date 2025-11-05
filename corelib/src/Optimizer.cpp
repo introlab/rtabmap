@@ -196,13 +196,13 @@ LinkIdKey(int id, Link::Type type) :
 		// landmark, sort by smallest to largest landmark id, after normal links
 		if(id_ < 0 && k.id_ < 0)
 		{
-			return k.id_ > id_;
+			return id_ > k.id_;
 		}
 		else if(id_ < 0) {
-			return true;
+			return false;
 		}
 		else if(k.id_ < 0) {
-			return false;
+			return true;
 		}
 
 		// normal link, sort by smallest to largest id
