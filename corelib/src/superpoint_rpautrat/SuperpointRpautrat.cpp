@@ -147,7 +147,7 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 	}
 
     // These should have the same size
-    UASSERT(desc_.size(0) == keypoints.size());
+    UASSERT(static_cast<size_t>(desc_.size(0)) == keypoints.size());
 
     // Move to CPU and return descriptors computed in the forward pass
     torch::Tensor desc_cpu = desc_.to(torch::kCPU);

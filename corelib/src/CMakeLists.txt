@@ -846,8 +846,14 @@ SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_2.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_1.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_0.sql
-	${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat/superpoint_to_torchscript.py
 )
+
+IF(TORCH_FOUND AND WIHT_PYTHON AND Python3_FOUND)
+	SET(RESOURCES
+		${RESOURCES}
+		${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat/superpoint_to_torchscript.py
+	)
+ENDIF()
 
 foreach(arg ${RESOURCES})
    get_filename_component(filename ${arg} NAME)
