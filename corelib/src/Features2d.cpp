@@ -839,7 +839,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> subKeypoints;
 			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
-			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector && this->getType() != Feature2D::Type::kFeatureSuperPointRpautrat)
 			{
 				limitKeypoints(subKeypoints, maxFeatures, roi.size(), this->getSSC());
 			}

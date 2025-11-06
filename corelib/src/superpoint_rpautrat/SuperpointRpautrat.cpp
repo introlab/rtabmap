@@ -146,44 +146,12 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 		return cv::Mat();
 	}
 
-    // RTAB-Map may have applied additional filtering (like top-K) to the keypoints
-    // We need to match the input keypoints to our stored descriptors
-    torch::Tensor filtered_descriptors = torch::zeros({(long int)keypoints.size(), 256}, desc_.options());
-    
-    // Get the stored keypoints for matching
-    auto stored_keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
-    int num_stored_keypoints = stored_keypoints_cpu.size(0);
-    float * kp_data = stored_keypoints_cpu.data_ptr<float>();
-    
-    for(size_t i = 0; i < keypoints.size(); i++) {
-        float x = keypoints[i].pt.x;
-        float y = keypoints[i].pt.y;
-        
-        // Find matching descriptor by coordinate
-        for(int j = 0; j < num_stored_keypoints; j++) {
-            float stored_x = kp_data[j * 2 + 0];
-            float stored_y = kp_data[j * 2 + 1];
+    // These should have the same size
+    UASSERT(desc_.size(0) == keypoints.size());
 
-            float dx = x - stored_x;
-            float dy = y - stored_y;
-            float distSq = dx * dx + dy * dy;
-            
-            if(distSq < 1.0f) {
-                filtered_descriptors[i] = desc_[j];
-                break;
-            }
-        }
-    }
-    
-    auto normalized = filtered_descriptors;
-    
-    // Move to CPU if needed
-    if(cuda_)
-        normalized = normalized.to(torch::kCPU);
-    
-    // Convert to OpenCV Mat
-    cv::Mat desc_mat(cv::Size(normalized.size(1), normalized.size(0)), CV_32FC1, normalized.data_ptr<float>());
-    
+    // Move to CPU and return descriptors computed in the forward pass
+    torch::Tensor desc_cpu = desc_.to(torch::kCPU);
+    cv::Mat desc_mat(cv::Size(desc_cpu.size(1), desc_cpu.size(0)), CV_32FC1, desc_cpu.data_ptr<float>());
     return desc_mat.clone();
 }
 
