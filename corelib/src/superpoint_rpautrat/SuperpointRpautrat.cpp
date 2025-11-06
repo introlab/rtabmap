@@ -62,39 +62,28 @@ static std::string exportSuperPointTorchScript(
     try
     {
         pybind11::gil_scoped_acquire acquire;
-
-        // set sys.path to the location of the model definition so it can be imported
-        std::string modelDir = UDirectory::getDir(modelPath);
-        auto sys = pybind11::module_::import("sys");
-        auto sysPath = sys.attr("path").cast<pybind11::list>();
-        sysPath.append(modelDir);
+        pybind11::dict scope;
+        scope["__builtins__"] = pybind11::module_::import("builtins");
         
-        // Build sys.argv for the script
-        pybind11::list argv;
-        argv.append("superpoint_to_torchscript.py");  // Use the model filename as script name
-        argv.append("--width");       
-        argv.append(std::to_string(width));
-        argv.append("--height");      
-        argv.append(std::to_string(height));
-        argv.append("--weights");     
-        argv.append(weightsPath);
-        argv.append("--output");      
-        argv.append(output);
-        argv.append("--threshold");   
-        argv.append(std::to_string(threshold));
-        argv.append("--nms_radius");  
-        argv.append(std::to_string(nms_radius));
-        if(cuda) { 
-            argv.append("--cuda"); 
+        // set sys.path to the location of the model definition so it can be imported
+        std::string model_dir = UDirectory::getDir(modelPath);
+        auto sys = pybind11::module_::import("sys");
+        pybind11::list sys_path = sys.attr("path");
+        sys_path.attr("insert")(0, model_dir);
+        
+        try {
+            // execute the script to generate the model
+            pybind11::exec(uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY), scope, scope);
+            pybind11::function generate_model = scope["generate_model"].cast<pybind11::function>();
+            pybind11::object result = generate_model(weightsPath, output, cuda, nms_radius, threshold, width, height);
+            sys_path.attr("remove")(model_dir);
         }
-        sys.attr("argv") = argv;
+        catch(...) {
+            // Ensure sys.path cleanup on any exception
+            sys_path.attr("remove")(model_dir);
+            throw;
+        }
 
-        // Run the script
-        auto main_module = pybind11::module_::import("__main__");
-        main_module.attr("__name__") = "__main__";
-
-        pybind11::exec(uHex2Str(SUPERPOINT_TO_TORCHSCRIPT_PY));
-        pybind11::exec("main()");
     }
     // pybind11 throws std::exception for RuntimeError
     catch (const std::exception &e)
