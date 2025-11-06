@@ -369,8 +369,8 @@ class RTABMAP_CORE_EXPORT Parameters
 
     // RGB-D SLAM
     RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "Activate metric SLAM. If set to false, classic RTAB-Map loop closure detection is done using only images and without any metric information.");
-    RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement (m) to update the map. Rehearsal is done prior to this, so weights are still updated.");
-    RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement (rad) to update the map. Rehearsal is done prior to this, so weights are still updated.");
+    RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  uFormat("Minimum linear displacement (m) to update the map. Rehearsal is done prior to this, so weights are still updated. To update the map when not moving, both %s and %s should be set to 0.", Parameters::kRGBDLinearUpdate().c_str(), Parameters::kRGBDAngularUpdate().c_str()));
+    RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  uFormat("Minimum angular displacement (rad) to update the map. Rehearsal is done prior to this, so weights are still updated. To update the map when not moving, both %s and %s should be set to 0.", Parameters::kRGBDLinearUpdate().c_str(), Parameters::kRGBDAngularUpdate().c_str()));
     RTABMAP_PARAM(RGBD, LinearSpeedUpdate,        float, 0.0,  "Maximum linear speed (m/s) to update the map (0 means not limit).");
     RTABMAP_PARAM(RGBD, AngularSpeedUpdate,       float, 0.0,  "Maximum angular speed (rad/s) to update the map (0 means not limit).");
     RTABMAP_PARAM(RGBD, AggressiveLoopThr,        float, 0.05, uFormat("Loop closure threshold used (overriding %s) when a new mapping session is not yet linked to a map of the highest loop closure hypothesis. In localization mode, this threshold is used when there are no loop closure constraints with any map in the cache (%s). In all cases, the goal is to aggressively loop on a previous map in the database. Only used when %s is enabled. Set 1 to disable.", kRtabmapLoopThr().c_str(), kRGBDMaxOdomCacheSize().c_str(), kRGBDEnabled().c_str()));

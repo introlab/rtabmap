@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-641</y>
+            <y>-2651</y>
             <width>713</width>
             <height>4779</height>
            </rect>
@@ -8283,7 +8283,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </widget>
                              </item>
                              <item row="0" column="1">
-                              <widget class="QLabel" name="label_621">
+                              <widget class="QLabel" name="label_imuFilter_baseFrameConversion">
                                <property name="text">
                                 <string>Convert IMU in base frame before filtering. This can help to initialize correctly the yaw.</string>
                                </property>
@@ -13146,7 +13146,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_153">
                          <property name="text">
-                          <string>Linear update: Minimum linear displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                          <string>Linear update: Minimum linear displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated. To update the map when not moving, both linear and angular update parameters should be 0.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -13236,7 +13236,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="1" column="1">
                         <widget class="QLabel" name="label_152">
                          <property name="text">
-                          <string>Angular update: Minimum angular displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated.</string>
+                          <string>Angular update: Minimum angular displacement to update the map. Note that Weight Update is done prior to this, so weights are still updated. To update the map when not moving, both linear and angular update parameters should be 0.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -13308,7 +13308,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_432">
                          <property name="text">
-                          <string>Maximum linear speed to update the map (0 means not limit).</string>
+                          <string>Maximum linear speed to update the map (0 means not limit). </string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

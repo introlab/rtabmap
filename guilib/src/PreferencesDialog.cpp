@@ -238,6 +238,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_OPEN3D
 	_ui->odom_strategy->setItemData(12, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_CUVSLAM
+	_ui->odom_strategy->setItemData(13, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -5917,7 +5920,6 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo) || // MYNT EYE S
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoDepthAI - kSrcStereo));
-	_ui->frame_imu_filtering->setVisible(getIMUFilteringStrategy() > 0); // Not None
 	_ui->stackedWidget_imuFilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() > 0);
 	_ui->groupBox_madgwickfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 1);
 	_ui->groupBox_complementaryfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 2);
@@ -6755,7 +6757,7 @@ Camera * PreferencesDialog::createCamera(
 		((CameraOrbbecSDK*)camera)->enableColorRectification(_ui->checkBox_orbbec_sdk_color_rectification->isChecked());
 		((CameraOrbbecSDK*)camera)->enableImu(_ui->checkBox_orbbec_sdk_imu->isChecked());
 		((CameraOrbbecSDK*)camera)->enableDepthMM(_ui->checkBox_orbbec_sdk_depth_mm->isChecked());
-		
+
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
