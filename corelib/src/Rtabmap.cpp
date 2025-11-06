@@ -631,8 +631,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
 	double localizationPriorError = Parameters::defaultRGBDLocalizationPriorError();
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
-	UASSERT(localizationPriorError>0.0);
-	_localizationPriorInf = 1.0/(localizationPriorError*localizationPriorError);
+	UASSERT(localizationPriorError>=0.0);
+	_localizationPriorInf = localizationPriorError>0?1.0/(localizationPriorError*localizationPriorError):0.0;
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSecondTryWithoutProximityLinks(), _localizationSecondTryWithoutProximityLinks);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
@@ -3257,25 +3257,41 @@ bool Rtabmap::process(
 				{
 					constraints.insert(std::make_pair(iter->second.from(), iter->second));
 				}
-				cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
-				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+				if(ULogger::level() <= ULogger::kDebug || _localizationPriorInf>0)
 				{
-					std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
-					if(iterPose != _optimizedPoses.end() && poses.find(iterPose->first) == poses.end())
+					cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
+					std::list<int> addedPriors;
+					for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 					{
-						poses.insert(*iterPose);
-						// make the poses in the map fixed
-						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
-						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
+						if(_localizationPriorInf > 0)
+						{
+							std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
+							if(iterPose != _optimizedPoses.end() && poses.find(iterPose->first) == poses.end())
+							{
+								poses.insert(*iterPose);
+								// make the poses in the map fixed
+								constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
+								UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
+								addedPriors.push_back(iterPose->first);
+							}
+						}
+						UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
 					}
-					UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
+					if(addedPriors.size() == 1) {
+						// When there is only one map node, remove the prior to use fixed constraint in g2o (https://github.com/introlab/rtabmap_ros/issues/1371)
+						UDEBUG("Currently localizing on a single map node, removing prior on %d", addedPriors.front());
+						constraints.erase(graph::findLink(constraints, addedPriors.front(), addedPriors.front(), false, Link::kPosePrior));
+					}
 				}
 
 				std::map<int, Transform> posesOut;
 				std::multimap<int, Link> edgeConstraintsOut;
 				bool priorsIgnored = _graphOptimizer->priorsIgnored();
-				UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
-				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
+				if(_localizationPriorInf > 0)
+				{
+					UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
+					_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
+				}
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
 				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
 				if(ULogger::level() == ULogger::kDebug)
