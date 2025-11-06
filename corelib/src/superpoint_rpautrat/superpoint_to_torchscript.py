@@ -95,47 +95,6 @@ if __name__ == "__main__":
     parser.add_argument("--threshold", type=float, default=0.005, help="Confidence threshold")
     args = parser.parse_args()
     print(f"Generating model from weights: {args.weights} to output: {args.output}")
-
-
-    
-    # INSERT_YOUR_CODE
-    print("============================================================")
-    print(" superpoint_to_torchscript.py - MAIN ENTRYPOINT")
-    print("============================================================")
-    print(" Arguments received for model generation:")
-    print("  --weights:    ", args.weights)
-    print("  --output:     ", args.output)
-    print("  --cuda:       ", args.cuda)
-    print("  --width:      ", args.width)
-    print("  --height:     ", args.height)
-    print("  --nms_radius: ", args.nms_radius)
-    print("  --threshold:  ", args.threshold)
-    print("------------------------------------------------------------")
-    print("   Did you mean to run this as a standalone script?")
-    print("   If you see this, then the script is being used!")
-    print("   (This block intentionally verbose for debugging.)")
-    print("------------------------------------------------------------")
-    print(" Python version:", __import__("sys").version)
-    try:
-        import torch
-        print(" Torch version:", torch.__version__)
-        print("   CUDA available:", torch.cuda.is_available())
-        print("   CUDA devices:  ", torch.cuda.device_count() if torch.cuda.is_available() else 0)
-    except Exception as e:
-        print(" ERROR: Unable to import torch: ", e)
-    try:
-        import os
-        print(" Current working dir:", os.getcwd())
-    except Exception as e:
-        print(" ERROR: Unable to import os: ", e)
-    print("------------------------------------------------------------")
-    print(" WARNING: This script may be called programmatically by RTAB-Map!")
-    print("   If you see this output in your logs, model export should work.")
-    print("============================================================")
-    import time
-    time.sleep(0.5)
-
-
     
     generate_model(
         weights_path=args.weights,
