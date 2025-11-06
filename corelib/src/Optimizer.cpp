@@ -205,19 +205,23 @@ LinkIdKey(int id, Link::Type type) :
 			return true;
 		}
 
-		// normal link, sort by smallest to largest id
-		if(type_ == k.type_) {
-			return id_ < k.id_;
-		}
 		if(type_ == Link::kNeighbor && k.type_ != Link::kNeighbor)
 		{
 			return true;
+		}
+		else if(type_ != Link::kNeighbor && k.type_ == Link::kNeighbor)
+		{
+			return false;
 		}
 		else if(type_ == Link::kNeighborMerged && k.type_ != Link::kNeighbor && k.type_ != Link::kNeighborMerged)
 		{
 			return true;
 		}
-		return false;
+		else
+		{
+			// normal link, sort by smallest to largest id
+			return id_ < k.id_;
+		}
 	}
 	int id_;
 	Link::Type type_;
@@ -257,7 +261,6 @@ void Optimizer::getConnectedGraph(
 		// Fill up all nodes before landmarks
 		// For nodes, fill up all neightbor nodes before loop closure ones
 		int currentId = nextPoses.begin()->first.id_; 
-		Link::Type currentType = nextPoses.begin()->first.type_;
 		Transform currentPose = nextPoses.begin()->second;
 		nextPoses.erase(nextPoses.begin());
 

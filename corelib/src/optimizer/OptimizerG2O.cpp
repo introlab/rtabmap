@@ -1001,8 +1001,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						g2o::EdgeSE3 * e = new g2o::EdgeSE3();
 						g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 						g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-						UASSERT(v1 != 0);
-						UASSERT(v2 != 0);
+						UASSERT_MSG(v1 != 0, uFormat("v1=%d v2=%d", id1, id2).c_str());
+						UASSERT_MSG(v2 != 0, uFormat("v1=%d v2=%d", id1, id2).c_str());
 						e->setVertex(0, v1);
 						e->setVertex(1, v2);
 						e->setMeasurement(constraint);
