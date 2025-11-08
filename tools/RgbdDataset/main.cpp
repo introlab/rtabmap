@@ -66,6 +66,7 @@ void showUsage()
 			"       --Rtabmap/PublishRAMUsage true\\\n"
 			"       --Rtabmap/DetectionRate 2\\\n"
 			"       --RGBD/LinearUpdate 0\\\n"
+			"       --RGBD/AngularUpdate 0\\\n"
 			"       --Mem/STMSize 30\\\n"
 			"       ~/rgbd_dataset_freiburg3_long_office_household\n\n", rtabmap::Parameters::showUsage());
 	exit(1);

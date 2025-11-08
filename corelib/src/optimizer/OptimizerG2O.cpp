@@ -216,7 +216,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
 	std::map<int, Transform> optimizedPoses;
 #ifdef RTABMAP_G2O
-	UDEBUG("Optimizing graph...");
+	UDEBUG("Optimizing graph... (rootId=%d)", rootId);
 
 #ifndef RTABMAP_VERTIGO
 	if(this->isRobust())
@@ -348,6 +348,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
 					{
+						if(rootId!=0) {
+							UDEBUG("Removed rootId=%d because there are priors.");
+						}
 						rootId = 0;
 						break;
 					}

@@ -104,6 +104,7 @@ namespace rtabmap {
 
 class ORBextractor;
 class SPDetector;
+class SPDetectorRpautrat;
 
 class Stereo;
 #if CV_MAJOR_VERSION < 3
@@ -129,7 +130,8 @@ public:
 		kFeatureSurfFreak=12, //new 0.20.4
 		kFeatureGfttDaisy=13, //new 0.20.6
 		kFeatureSurfDaisy=14,  //new 0.20.6
-		kFeaturePyDetector=15}; //new 0.20.8
+		kFeaturePyDetector=15, //new 0.20.8
+		kFeatureSuperPointRpautrat=16}; // new 0.23.3
 
 	static std::string typeName(Type type)
 	{
@@ -164,6 +166,8 @@ public:
 			return "GFTT+Daisy";
 		case kFeatureSurfDaisy:
 			return "SURF+Daisy";
+		case kFeatureSuperPointRpautrat:
+			return "SUPERPOINT-RPAUTRAT";
 		default:
 			return "Unknown";
 		}
@@ -620,6 +624,31 @@ private:
 	cv::Ptr<SPDetector> superPoint_;
 
 	std::string path_;
+	float threshold_;
+	bool nms_;
+	int minDistance_;
+	bool cuda_;
+};
+
+//SuperPointRpautrat
+class RTABMAP_CORE_EXPORT SuperPointRpautrat : public Feature2D
+{
+public:
+	SuperPointRpautrat(const ParametersMap & parameters = ParametersMap());
+	virtual ~SuperPointRpautrat();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const { return kFeatureSuperPointRpautrat; }
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+	cv::Ptr<SPDetectorRpautrat> superPoint_;
+
+	std::string superpointWeightsPath_;
+	std::string superpointModelPath_;
+	std::string outputDir_;
 	float threshold_;
 	bool nms_;
 	int minDistance_;
