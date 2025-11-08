@@ -286,6 +286,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpGridCols(), parameters.at(Parameters::kVisGridCols())));
 	}
+	if(uContains(parameters, Parameters::kRtabmapWorkingDirectory()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), parameters.at(Parameters::kRtabmapWorkingDirectory())));
+	}
 
 	delete _detectorFrom;
 	delete _detectorTo;

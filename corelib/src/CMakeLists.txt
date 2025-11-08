@@ -215,11 +215,21 @@ IF(TORCH_FOUND)
 		${SRC_FILES}
 		superpoint_torch/SuperPoint.cc
 	)
-	 SET(INCLUDE_DIRS
+	SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}
 	    ${CMAKE_CURRENT_SOURCE_DIR}/superpoint_torch
 		${INCLUDE_DIRS}
 	)
+	IF(WITH_PYTHON AND Python3_FOUND)
+		SET(SRC_FILES
+			${SRC_FILES}
+			superpoint_rpautrat/SuperpointRpautrat.cpp
+		)
+		SET(INCLUDE_DIRS
+	    	${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat
+			${INCLUDE_DIRS}
+		)
+	ENDIF(WITH_PYTHON AND Python3_FOUND)
 ENDIF(TORCH_FOUND)
 
 IF(WITH_PYTHON AND Python3_FOUND)
@@ -837,6 +847,13 @@ SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_1.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_0.sql
 )
+
+IF(TORCH_FOUND AND WITH_PYTHON AND Python3_FOUND)
+	SET(RESOURCES
+		${RESOURCES}
+		${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat/superpoint_to_torchscript.py
+	)
+ENDIF()
 
 foreach(arg ${RESOURCES})
    get_filename_component(filename ${arg} NAME)
