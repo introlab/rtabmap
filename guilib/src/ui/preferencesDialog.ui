@@ -12888,7 +12888,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="21" column="1">
                         <widget class="QLabel" name="label_space2_19">
                          <property name="text">
-                          <string>Localization prior error. Used only in localization mode. The corresponding variance (error x error) set to priors of the map's poses during localization.</string>
+                          <string>Localization prior error. Used only in localization mode. The corresponding variance (error x error) set to priors of the map's poses during localization. Set to 0 to only fix the first map's pose linked in odometry cache (i.e., other map's poses will be allowed to move during the optimization).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
