@@ -240,7 +240,7 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model1, const rtabmap::
 		//# IMU Parameters TODO: hard-coded, not used
 		//#--------------------------------------------------------------------------------------------
 		//  Transformation from camera 0 to body-frame (imu)
-		rtabmap::Transform camImuT = model1.localTransform()*imuLocalTransform_;
+		rtabmap::Transform camImuT = imuLocalTransform_.inverse()*model1.localTransform();
 		ofs << "IMU.T_b_c1: !!opencv-matrix" << std::endl;
 		ofs << "   rows: 4" << std::endl;
 		ofs << "   cols: 4" << std::endl;
@@ -340,14 +340,16 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model1, const rtabmap::
 
 	ofs.close();
 
+	ORB_SLAM3::System::eSensor sensor = 
+		stereo?(withIMU?ORB_SLAM3::System::IMU_STEREO:ORB_SLAM3::System::STEREO):
+			   (withIMU?ORB_SLAM3::System::IMU_RGBD:ORB_SLAM3::System::RGBD);
+	UINFO("Initializing ORB_SLAM3 system with sensor %d...", (int)sensor);
 	orbslam_ = new ORB_SLAM3::System(
 			vocabularyPath,
 			configPath,
-			stereo && withIMU?ORB_SLAM3::System::IMU_STEREO:
-			stereo?ORB_SLAM3::System::STEREO:
-			withIMU?ORB_SLAM3::System::IMU_RGBD:
-					ORB_SLAM3::System::RGBD,
+			sensor,
 			false);
+	UINFO("Initializing ORB_SLAM3 system with sensor %d... done!", (int)sensor);
 	return true;
 #else
 	UERROR("RTAB-Map is not built with ORB_SLAM support! Select another visual odometry approach.");
@@ -373,6 +375,7 @@ Transform OdometryORBSLAM3::computeTransform(
 		{
 			if(lastImuStamp_ == 0.0 || lastImuStamp_ < data.stamp())
 			{
+				UDEBUG("Adding IMU %f", data.stamp());
 				orbslamImus_.push_back(ORB_SLAM3::IMU::Point(
 						data.imu().linearAcceleration().val[0],
 						data.imu().linearAcceleration().val[1],
@@ -432,6 +435,7 @@ Transform OdometryORBSLAM3::computeTransform(
 		if(lastImageStamp_ == 0.0)
 		{
 			lastImageStamp_ = data.stamp();
+			UDEBUG("Waiting for another image to initialize...");
 			return t;
 		}
 
@@ -457,6 +461,7 @@ Transform OdometryORBSLAM3::computeTransform(
 			rightMono = cv::Mat();
 			cv::cvtColor(data.imageRaw(), rightMono, CV_BGR2GRAY);
 		}
+		UDEBUG("Adding Stereo Frame %f", data.stamp());
 		Tcw = orbslam_->TrackStereo(leftMono, rightMono, data.stamp(), orbslamImus_);
 		orbslamImus_.clear();
 	}
@@ -472,6 +477,7 @@ Transform OdometryORBSLAM3::computeTransform(
 		{
 			depth = util2d::cvtDepthToFloat(data.depthRaw());
 		}
+		UDEBUG("Adding RGBD Frame %f", data.stamp());
 		Tcw = orbslam_->TrackRGBD(data.imageRaw(), depth, data.stamp(), orbslamImus_);
 		orbslamImus_.clear();
 	}
@@ -481,6 +487,12 @@ Transform OdometryORBSLAM3::computeTransform(
 	if(orbslam_->isLost() || mapPoints.empty())
 	{
 		covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0f;
+		if(!imuLocalTransform_.isNull()) {
+			UWARN("ORBSLAM lost tracking! If it is on initialization, try moving the sensor in a circle for a couple of seconds.");
+		}
+		else {
+			UWARN("ORBSLAM lost tracking!");
+		}
 	}
 	else
 	{
@@ -490,14 +502,16 @@ Transform OdometryORBSLAM3::computeTransform(
 
 		if(!p.isNull())
 		{
-			if(!localTransform.isNull())
+			if(!imuLocalTransform_.isNull())
 			{
-				if(originLocalTransform_.isNull())
-				{
-					originLocalTransform_ = localTransform;
-				}
-				// transform in base frame
-				p = originLocalTransform_ * p.inverse() * localTransform.inverse();
+				// Transform p from optical-imu system (x->left, y->back and z->up) to ros system, then remove camera local transform
+				p = Transform(0,0,0,0,0,-M_PI/2) * p.inverse() * localTransform.inverse();
+			}
+			else
+			{				
+				UASSERT(!localTransform.isNull());
+				// Transform p from optical system (x->right, y->down and z->forward) to ros system, then remove camera local transform
+				p = CameraModel::opticalRotation() * p.inverse() * localTransform.inverse();
 			}
 			t = previousPoseInv*p;
 		}
@@ -574,7 +588,15 @@ Transform OdometryORBSLAM3::computeTransform(
 			info->reg.inliers = oi;
 			info->reg.matches = oi;
 
-			Eigen::Affine3f fixRot = (this->getPose()*previousPoseInv*originLocalTransform_).toEigen3f();
+			Eigen::Affine3f fixRot;
+			if(!imuLocalTransform_.isNull())
+			{
+				fixRot = (this->getPose()*previousPoseInv*Transform(0,0,0,0,0,-M_PI/2)).toEigen3f();
+			}
+			else
+			{
+				fixRot = (this->getPose()*previousPoseInv*CameraModel::opticalRotation()).toEigen3f();
+			}
 			for (unsigned int i = 0; i < mapPoints.size(); ++i)
 			{
 				if(mapPoints[i])

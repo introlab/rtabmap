@@ -6761,7 +6761,8 @@ Camera * PreferencesDialog::createCamera(
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+					getIMUFilteringBaseFrameConversion());
 	}
 	else if (driver == kSrcRealSense)
 	{
@@ -6803,7 +6804,8 @@ Camera * PreferencesDialog::createCamera(
 			camera->setInterIMUPublishing(
 					_ui->checkbox_publishInterIMU->isChecked(),
 					_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-							IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+							IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+							getIMUFilteringBaseFrameConversion());
 			if(driver == kSrcStereoRealSense2)
 			{
 				((CameraRealSense2*)camera)->setImagesRectified((_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages);
@@ -7021,7 +7023,8 @@ Camera * PreferencesDialog::createCamera(
 		camera->setInterIMUPublishing(
 				_ui->checkbox_publishInterIMU->isChecked(),
 				_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-						IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+						IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+						getIMUFilteringBaseFrameConversion());
 		((CameraStereoZed*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoZedOC)
@@ -7070,7 +7073,8 @@ Camera * PreferencesDialog::createCamera(
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+					getIMUFilteringBaseFrameConversion());
 	}
 	else if(driver == kSrcUsbDevice)
 	{
