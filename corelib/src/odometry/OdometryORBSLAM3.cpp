@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UFile.h"
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/types_c.h>
 #include <rtabmap/core/odometry/OdometryORBSLAM3.h>
@@ -116,6 +117,13 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model1, const rtabmap::
 	}
 	//Load ORB Vocabulary
 	vocabularyPath = uReplaceChar(vocabularyPath, '~', UDirectory::homeDir());
+	if(!UFile::exists(vocabularyPath))
+	{
+		UERROR("ORB_SLAM vocabulary path \"%s\" doesn't exist! (Parameter name=\"%s\")",
+			vocabularyPath.c_str(),
+			rtabmap::Parameters::kOdomORBSLAMVocPath().c_str());
+		return false;
+	}
 	UWARN("Loading ORB Vocabulary: \"%s\". This could take a while...", vocabularyPath.c_str());
 
 	// Create configuration file
