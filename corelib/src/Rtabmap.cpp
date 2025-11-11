@@ -631,8 +631,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
 	double localizationPriorError = Parameters::defaultRGBDLocalizationPriorError();
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
-	UASSERT(localizationPriorError>=0.0);
-	_localizationPriorInf = localizationPriorError>0?1.0/(localizationPriorError*localizationPriorError):0.0;
+	UASSERT(localizationPriorError>0.0);
+	_localizationPriorInf = 1.0/(localizationPriorError*localizationPriorError);
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSecondTryWithoutProximityLinks(), _localizationSecondTryWithoutProximityLinks);
 	Parameters::parse(parameters, Parameters::kRGBDProximityGlobalScanMap(), _createGlobalScanMap);
 
@@ -3267,13 +3267,11 @@ bool Rtabmap::process(
 					if(iterPose != _optimizedPoses.end() && poses.find(iterPose->first) == poses.end())
 					{
 						poses.insert(*iterPose);
-						if(_localizationPriorInf > 0)
-						{
-							// make the poses in the map fixed
-							constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
-							UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
-							addedPriors.push_back(iterPose->first);
-						}
+
+						// make the poses in the map fixed
+						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
+						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
+						addedPriors.push_back(iterPose->first);
 					}
 					UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
 				}
@@ -3285,12 +3283,11 @@ bool Rtabmap::process(
 
 				std::map<int, Transform> posesOut;
 				std::multimap<int, Link> edgeConstraintsOut;
+
 				bool priorsIgnored = _graphOptimizer->priorsIgnored();
-				if(_localizationPriorInf > 0)
-				{
-					UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
-					_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
-				}
+				UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
+				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
+
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
 				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
 				if(ULogger::level() == ULogger::kDebug)
