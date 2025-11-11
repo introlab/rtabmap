@@ -491,8 +491,8 @@ Transform OdometryORBSLAM3::computeTransform(
 	}
 
 	Transform previousPoseInv = previousPose_.inverse();
-	std::vector<ORB_SLAM3::MapPoint*> mapPoints = orbslam_->GetTrackedMapPoints();
-	if(orbslam_->isLost() || mapPoints.empty())
+	std::vector<ORB_SLAM3::MapPoint*> trackedMapPoints = orbslam_->GetTrackedMapPoints();
+	if(orbslam_->isLost() || trackedMapPoints.empty())
 	{
 		covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0f;
 		if(!imuLocalTransform_.isNull()) {
@@ -556,12 +556,14 @@ Transform OdometryORBSLAM3::computeTransform(
 		}
 	}
 
+	size_t mapPointsSize = 0;
 	if(info)
 	{
 		info->lost = t.isNull();
 		info->type = (int)kTypeORBSLAM;
 		info->reg.covariance = covariance;
-		info->localMapSize = mapPoints.size();
+		std::vector<ORB_SLAM3::MapPoint*> mapPoints = orbslam_->GetAllMapPoints();
+		info->localMapSize = mapPointsSize = mapPoints.size();
 		info->localKeyFrames = 0;
 
 		if(this->isInfoDataFilled())
@@ -571,20 +573,20 @@ Transform OdometryORBSLAM3::computeTransform(
 			info->reg.inliersIDs.resize(kpts.size());
 			int oi = 0;
 
-			UASSERT(mapPoints.size() == kpts.size());
+			UASSERT(trackedMapPoints.size() == kpts.size());
 			for (unsigned int i = 0; i < kpts.size(); ++i)
 			{
 				int wordId;
-				if(mapPoints[i] != 0)
+				if(trackedMapPoints[i] != 0)
 				{
-					wordId = mapPoints[i]->mnId;
+					wordId = trackedMapPoints[i]->mnId;
 				}
 				else
 				{
 					wordId = -(i+1);
 				}
 				info->words.insert(std::make_pair(wordId, kpts[i]));
-				if(mapPoints[i] != 0)
+				if(trackedMapPoints[i] != 0)
 				{
 					info->reg.matchesIDs[oi] = wordId;
 					info->reg.inliersIDs[oi] = wordId;
@@ -617,7 +619,8 @@ Transform OdometryORBSLAM3::computeTransform(
 		}
 	}
 
-	UINFO("Odom update time = %fs, map points=%ld, lost=%s", timer.elapsed(), mapPoints.size(), t.isNull()?"true":"false");
+	UINFO("Odom update time = %fs, tracked points=%ld, map points=%ld, lost=%s",
+		timer.elapsed(), trackedMapPoints.size(), mapPointsSize, t.isNull()?"true":"false");
 
 #else
 	UERROR("RTAB-Map is not built with ORB_SLAM support! Select another visual odometry approach.");
