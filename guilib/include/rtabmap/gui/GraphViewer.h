@@ -77,6 +77,7 @@ public:
 	// Use updateNodeColorByValue() instead with valueName="Posterior".
 	RTABMAP_DEPRECATED void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
 	void updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float fixedMax = 0.0f, bool invertedColorScale = false, int zValueOffset = 0);
+	void updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float fixedMin, float fixedMax, bool invertedColorScale = false, unsigned short hueMin=0, unsigned short hueMax=180, int zValueOffset = 0);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
