@@ -23,7 +23,9 @@ class SPDetectorRpautrat {
             float threshold = 0.005f, 
             bool nms = true, 
             int nmsRadius = 4, 
-            bool cuda = false
+            bool cuda = false,
+            int maxFeatures = 1000,
+            bool ssc = false
         );
         virtual ~SPDetectorRpautrat();
         std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
@@ -32,8 +34,7 @@ class SPDetectorRpautrat {
     private:
         torch::jit::script::Module model_;
         torch::Device device_;
-        torch::Tensor desc_;
-        torch::Tensor keypoints_tensor_;
+        cv::Mat desc_;
         
         std::string superpointWeightsPath_;
         std::string superpointModelPath_;
@@ -42,6 +43,8 @@ class SPDetectorRpautrat {
         bool nms_;
         int minDistance_;
         bool cuda_;
+        int maxFeatures_;
+        bool ssc_;
         
         bool detected_;
     };    

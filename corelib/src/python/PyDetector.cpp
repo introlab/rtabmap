@@ -218,6 +218,9 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		Py_DECREF(pImageBuffer);
 	}
 
+	// Apply limitKeypoints to enforce maxFeatures and SSC
+	this->limitKeypoints(keypoints, descriptors_, this->getMaxFeatures(), image.size(), this->getSSC());
+
 	return keypoints;
 }
 

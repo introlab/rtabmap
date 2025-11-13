@@ -4,6 +4,7 @@
  */
 
 #include "SuperpointRpautrat.h"
+#include <rtabmap/core/Features2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
@@ -95,7 +96,7 @@ static std::string exportSuperPointTorchScript(
 	return output;
 }
 
-SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, std::string superpointModelPath, std::string outputDir, float threshold, bool nms, int minDistance, bool cuda) :
+SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, std::string superpointModelPath, std::string outputDir, float threshold, bool nms, int minDistance, bool cuda, int maxFeatures, bool ssc) :
 		device_(torch::kCPU),
 		superpointWeightsPath_(superpointWeightsPath),
         superpointModelPath_(superpointModelPath),
@@ -103,6 +104,8 @@ SPDetectorRpautrat::SPDetectorRpautrat(std::string superpointWeightsPath, std::s
         threshold_(threshold),
 		nms_(nms),
 		minDistance_(minDistance),
+        maxFeatures_(maxFeatures),
+        ssc_(ssc),
 		detected_(false)
 {
 	if(cuda && !torch::cuda::is_available())
@@ -136,12 +139,10 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 	}
 
     // These should have the same size
-    UASSERT(static_cast<size_t>(desc_.size(0)) == keypoints.size());
+    UASSERT(static_cast<size_t>(desc_.rows) == keypoints.size());
 
     // Move to CPU and return descriptors computed in the forward pass
-    torch::Tensor desc_cpu = desc_.to(torch::kCPU);
-    cv::Mat desc_mat(cv::Size(desc_cpu.size(1), desc_cpu.size(0)), CV_32FC1, desc_cpu.data_ptr<float>());
-    return desc_mat.clone();
+    return desc_;
 }
 
 std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const cv::Mat & mask)
@@ -189,12 +190,12 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
     x = x.set_requires_grad(false).to(device_);
     
     auto outputs = model_.forward({x}).toTuple();
-    keypoints_tensor_ = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
-    auto scores_tensor = outputs->elements()[1].toTensor(); // [N] keypoint scores
-    desc_ = outputs->elements()[2].toTensor();              // [N, 256] descriptors    
+    auto kpts_tensor = outputs->elements()[0].toTensor();  // [N, 2] keypoint coordinates
+    auto scores_tensor = outputs->elements()[1].toTensor();  // [N] keypoint scores
+    torch::Tensor desc_tensor = outputs->elements()[2].toTensor();  // [N, 256] descriptors    
 
     // Convert to CPU for processing
-    auto keypoints_cpu = keypoints_tensor_.to(torch::kCPU);
+    auto keypoints_cpu = kpts_tensor.to(torch::kCPU);
     auto scores_cpu = scores_tensor.to(torch::kCPU);
 
     std::vector<cv::KeyPoint> filtered_keypoints;
@@ -213,16 +214,20 @@ std::vector<cv::KeyPoint> SPDetectorRpautrat::detect(const cv::Mat &img, const c
         }
     }
     
-    // Update the stored tensors to maintain correspondence
-    // This way if keypoints are re-ordered, we can still match kpts->descs in the compute step
+    // Filter descriptors based on mask
     auto keep_indices = torch::from_blob(keep_indices_vec.data(), {(long int)keep_indices_vec.size()}, torch::kLong);
-    keep_indices = keep_indices.to(keypoints_tensor_.device());
-    auto filtered_keypoints_tensor = keypoints_tensor_.index_select(0, keep_indices);
-    auto filtered_descriptors = desc_.index_select(0, keep_indices);
+    keep_indices = keep_indices.to(desc_tensor.device());
+    auto filtered_descriptors = desc_tensor.index_select(0, keep_indices);
     
-    keypoints_tensor_ = filtered_keypoints_tensor;
-    desc_ = filtered_descriptors;
-
+    // Convert descriptors to cv::Mat
+    auto filtered_descriptors_cpu = filtered_descriptors.to(torch::kCPU);
+    cv::Mat descriptors_mat(filtered_descriptors_cpu.size(0), filtered_descriptors_cpu.size(1), CV_32FC1, filtered_descriptors_cpu.data_ptr<float>());
+    cv::Mat descriptors_clone = descriptors_mat.clone(); // Clone to own the memory
+    
+    // Apply limitKeypoints to enforce maxFeatures and SSC
+    Feature2D::limitKeypoints(filtered_keypoints, descriptors_clone, maxFeatures_, cv::Size(img.cols, img.rows), ssc_);
+        
+    desc_ = descriptors_clone;
     detected_ = true;
     return filtered_keypoints;
 }
