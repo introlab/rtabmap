@@ -161,12 +161,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 
 		UDEBUG("Preparing data time = %fs", timer.ticks());
 
-		// Pass SuperPointRpautrat default parameters: threshold=0.005, nms_radius=4
-		PyObject* pThreshold = PyFloat_FromDouble(0.005);
-		PyObject* pNMSRadius = PyLong_FromLong(4);
-		PyObject *pReturn = PyObject_CallFunctionObjArgs(pFunc_, pImageBuffer, pThreshold, pNMSRadius, NULL);
-		Py_DECREF(pThreshold);
-		Py_DECREF(pNMSRadius);
+		PyObject *pReturn = PyObject_CallFunctionObjArgs(pFunc_, pImageBuffer, NULL);
 		if(pReturn == NULL)
 		{
 			UERROR("Failed to call match() function!");
