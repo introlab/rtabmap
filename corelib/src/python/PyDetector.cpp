@@ -161,7 +161,12 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 
 		UDEBUG("Preparing data time = %fs", timer.ticks());
 
-		PyObject *pReturn = PyObject_CallFunctionObjArgs(pFunc_, pImageBuffer, NULL);
+		// Pass SuperPointRpautrat default parameters: threshold=0.005, nms_radius=4
+		PyObject* pThreshold = PyFloat_FromDouble(0.005);
+		PyObject* pNMSRadius = PyLong_FromLong(4);
+		PyObject *pReturn = PyObject_CallFunctionObjArgs(pFunc_, pImageBuffer, pThreshold, pNMSRadius, NULL);
+		Py_DECREF(pThreshold);
+		Py_DECREF(pNMSRadius);
 		if(pReturn == NULL)
 		{
 			UERROR("Failed to call match() function!");
@@ -219,8 +224,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 	}
 
 	// Apply limitKeypoints to enforce maxFeatures and SSC
-	// Use imgRoi.size() since keypoints are relative to the ROI, not the full image
-	this->limitKeypoints(keypoints, descriptors_, this->getMaxFeatures(), imgRoi.size(), this->getSSC());
+	this->limitKeypoints(keypoints, descriptors_, this->getMaxFeatures(), image.size(), this->getSSC());
 
 	return keypoints;
 }
