@@ -30,6 +30,10 @@ class SPDetectorRpautrat {
         virtual ~SPDetectorRpautrat();
         std::vector<cv::KeyPoint> detect(const cv::Mat &img, const cv::Mat & mask = cv::Mat());
         cv::Mat compute(const std::vector<cv::KeyPoint> &keypoints);
+        
+        // Setters for post-processing parameters that don't require model reinitialization
+        void setMaxFeatures(int maxFeatures) { maxFeatures_ = maxFeatures; }
+        void setSSC(bool ssc) { ssc_ = ssc; }
     
     private:
         torch::jit::script::Module model_;

@@ -653,8 +653,6 @@ private:
 	bool nms_;
 	int minDistance_;
 	bool cuda_;
-	int maxFeatures_;
-	bool ssc_;
 };
 
 //GFTT_DAISY
