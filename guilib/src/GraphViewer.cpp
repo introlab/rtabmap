@@ -337,7 +337,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_gridCellSize(0.0f),
 		_localRadius(0),
 		_loopClosureOutlierThr(0),
-		_maxLinkLength(0.02f),
+		_minLinkLength(0.02f),
 		_orientationENU(false),
 		_mouseTracking(false),
 		_viewPlane(XY),
@@ -510,9 +510,13 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::map<int, int> & weights,
 				 const std::set<int> & odomCacheIds)
 {
+	if(!_graphRoot->isVisible())
+	{
+		UDEBUG("Ignoring updating graph, the graph root is not visible.");
+		return;
+	}
+
 	UTimer timer;
-	bool wasVisible = _graphRoot->isVisible();
-	_graphRoot->show();
 
 	bool wasEmpty = _nodeItems.size() == 0 && _linkItems.size() == 0;
 	UDEBUG("poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
@@ -539,37 +543,40 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		iter.value()->hide();
 	}
 
-	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	if(_nodeVisible)
 	{
-		if(!iter->second.isNull())
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
-			if(itemIter != _nodeItems.end())
+			if(!iter->second.isNull())
 			{
-				itemIter.value()->setPose(iter->second, _viewPlane);
-				itemIter.value()->show();
-			}
-			else
-			{
-				// create node item
-				QColor color = _nodeColor;
-				bool isOdomCache = odomCacheIds.find(iter->first) != odomCacheIds.end();
-				if(iter->first<0)
+				QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
+				if(itemIter != _nodeItems.end())
 				{
-					color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+					itemIter.value()->setPose(iter->second, _viewPlane);
+					itemIter.value()->show();
 				}
-				else if(isOdomCache)
+				else
 				{
-					color = _nodeOdomCacheColor;
+					// create node item
+					QColor color = _nodeColor;
+					bool isOdomCache = odomCacheIds.find(iter->first) != odomCacheIds.end();
+					if(iter->first<0)
+					{
+						color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+					}
+					else if(isOdomCache)
+					{
+						color = _nodeOdomCacheColor;
+					}
+					const Transform & pose = iter->second;
+					NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane, _linkWidth);
+					this->scene()->addItem(item);
+					item->setZValue(iter->first<0?21:20);
+					item->setColor(color);
+					item->setParentItem(_graphRoot);
+					item->show();
+					_nodeItems.insert(iter->first, item);
 				}
-				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane, _linkWidth);
-				this->scene()->addItem(item);
-				item->setZValue(iter->first<0?21:20);
-				item->setColor(color);
-				item->setParentItem(_graphRoot);
-				item->show();
-				_nodeItems.insert(iter->first, item);
 			}
 		}
 	}
@@ -587,8 +594,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		std::map<int, Transform>::const_iterator jterA = poses.find(idFrom);
 		std::map<int, Transform>::const_iterator jterB = poses.find(idTo);
 		LinkItem * linkItem = 0;
-		if(jterA != poses.end() && jterB != poses.end() &&
-		   _nodeItems.contains(idFrom) && _nodeItems.contains(idTo))
+		if(jterA != poses.end() && jterB != poses.end())
 		{
 			const Transform & poseA = jterA->second;
 			const Transform & poseB = jterB->second;
@@ -625,11 +631,15 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 			if(isLinkedToOdomCachePoses)
 			{
-				_nodeItems.value(idFrom)->setZValue(odomCacheIds.find(idFrom)!=odomCacheIds.end()?24:23);
-				_nodeItems.value(idTo)->setZValue(odomCacheIds.find(idTo)!=odomCacheIds.end()?24:23);
+				if(_nodeItems.contains(idFrom)) {
+					_nodeItems.value(idFrom)->setZValue(odomCacheIds.find(idFrom)!=odomCacheIds.end()?24:23);
+				}
+				if(_nodeItems.contains(idTo)) {
+					_nodeItems.value(idTo)->setZValue(odomCacheIds.find(idTo)!=odomCacheIds.end()?24:23);
+				}
 			}
 
-			if(poseA.getDistance(poseB) > _maxLinkLength)
+			if(poseA.getDistance(poseB) > _minLinkLength)
 			{
 				if(linkItem == 0)
 				{
@@ -784,16 +794,18 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 	}
 
-	_graphRoot->setVisible(wasVisible);
-
 	UDEBUG("_nodeItems=%d, _linkItems=%d, timer=%fs", _nodeItems.size(), _linkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 {
+	if(!_gtGraphRoot->isVisible())
+	{
+		UDEBUG("Ignoring updating gt graph, the graph root is not visible.");
+		return;
+	}
+
 	UTimer timer;
-	bool wasVisible = _gtGraphRoot->isVisible();
-	_gtGraphRoot->show();
 	bool wasEmpty = _gtNodeItems.size() == 0 && _gtLinkItems.size() == 0;
 	UDEBUG("poses=%d", (int)poses.size());
 	//Hide nodes and links
@@ -811,23 +823,26 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 	{
 		if(!iter->second.isNull())
 		{
-			QMap<int, NodeItem*>::iterator itemIter = _gtNodeItems.find(iter->first);
-			if(itemIter != _gtNodeItems.end())
+			if(_nodeVisible)
 			{
-				itemIter.value()->setPose(iter->second, _viewPlane);
-				itemIter.value()->show();
-			}
-			else
-			{
-				// create node item
-				const Transform & pose = iter->second;
-				NodeItem * item = new NodeItem(iter->first, -1, pose, _nodeRadius, -1, _viewPlane, _linkWidth);
-				this->scene()->addItem(item);
-				item->setZValue(20);
-				item->setColor(_gtPathColor);
-				item->setParentItem(_gtGraphRoot);
-				item->setVisible(_nodeVisible);
-				_gtNodeItems.insert(iter->first, item);
+				QMap<int, NodeItem*>::iterator itemIter = _gtNodeItems.find(iter->first);
+				if(itemIter != _gtNodeItems.end())
+				{
+					itemIter.value()->setPose(iter->second, _viewPlane);
+					itemIter.value()->show();
+				}
+				else
+				{
+					// create node item
+					const Transform & pose = iter->second;
+					NodeItem * item = new NodeItem(iter->first, -1, pose, _nodeRadius, -1, _viewPlane, _linkWidth);
+					this->scene()->addItem(item);
+					item->setZValue(20);
+					item->setColor(_gtPathColor);
+					item->setParentItem(_gtGraphRoot);
+					item->setVisible(_nodeVisible);
+					_gtNodeItems.insert(iter->first, item);
+				}
 			}
 
 			if(iter!=poses.begin())
@@ -925,8 +940,6 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 		}
 	}
 
-	_gtGraphRoot->setVisible(wasVisible);
-
 	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", _gtNodeItems.size(), _gtLinkItems.size(), timer.ticks());
 }
 
@@ -934,9 +947,11 @@ void GraphViewer::updateGPSGraph(
 		const std::map<int, Transform> & poses,
 		const std::map<int, GPS> & gpsValues)
 {
+	if(!_gpsGraphRoot->isVisible()) {
+		UDEBUG("Ignoring updating gps graph, the graph root is not visible.");
+		return;
+	}
 	UTimer timer;
-	bool wasVisible = _gpsGraphRoot->isVisible();
-	_gpsGraphRoot->show();
 	bool wasEmpty = _gpsNodeItems.size() == 0 && _gpsNodeItems.size() == 0;
 	UDEBUG("poses=%d", (int)poses.size());
 	//Hide nodes and links
@@ -954,24 +969,27 @@ void GraphViewer::updateGPSGraph(
 	{
 		if(!iter->second.isNull())
 		{
-			QMap<int, NodeItem*>::iterator itemIter = _gpsNodeItems.find(iter->first);
-			if(itemIter != _gpsNodeItems.end())
+			if(_nodeVisible)
 			{
-				itemIter.value()->setPose(iter->second, _viewPlane);
-				itemIter.value()->show();
-			}
-			else
-			{
-				// create node item
-				const Transform & pose = iter->second;
-				UASSERT(gpsValues.find(iter->first) != gpsValues.end());
-				NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first), _viewPlane, _linkWidth);
-				this->scene()->addItem(item);
-				item->setZValue(20);
-				item->setColor(_gpsPathColor);
-				item->setParentItem(_gpsGraphRoot);
-				item->setVisible(_nodeVisible);
-				_gpsNodeItems.insert(iter->first, item);
+				QMap<int, NodeItem*>::iterator itemIter = _gpsNodeItems.find(iter->first);
+				if(itemIter != _gpsNodeItems.end())
+				{
+					itemIter.value()->setPose(iter->second, _viewPlane);
+					itemIter.value()->show();
+				}
+				else
+				{
+					// create node item
+					const Transform & pose = iter->second;
+					UASSERT(gpsValues.find(iter->first) != gpsValues.end());
+					NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first), _viewPlane, _linkWidth);
+					this->scene()->addItem(item);
+					item->setZValue(20);
+					item->setColor(_gpsPathColor);
+					item->setParentItem(_gpsGraphRoot);
+					item->setVisible(_nodeVisible);
+					_gpsNodeItems.insert(iter->first, item);
+				}
 			}
 
 			if(iter!=poses.begin())
@@ -1054,8 +1072,6 @@ void GraphViewer::updateGPSGraph(
 			this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 		}
 	}
-
-	_gpsGraphRoot->setVisible(wasVisible);
 
 	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", _gpsNodeItems.size(), _gpsLinkItems.size(), timer.ticks());
 }
@@ -1795,9 +1811,9 @@ void GraphViewer::setLoopClosureOutlierThr(float value)
 {
 	_loopClosureOutlierThr = value;
 }
-void GraphViewer::setMaxLinkLength(float value)
+void GraphViewer::setMinLinkLength(float value)
 {
-	_maxLinkLength = value;
+	_minLinkLength = value;
 }
 void GraphViewer::setGraphVisible(bool visible)
 {
@@ -2181,12 +2197,12 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aMouseTracking->setCheckable(true);
 	aMouseTracking->setChecked(_mouseTracking);
 	aMouseTracking->setEnabled(_viewPlane == XY);
-	aShowHideGraph->setEnabled(_nodeItems.size() && _viewPlane == XY);
-	aShowHideGraphNodes->setEnabled(_nodeItems.size() && _graphRoot->isVisible());
+	aShowHideGraph->setEnabled(_viewPlane == XY);
+	aShowHideGraphNodes->setEnabled(_graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
-	aShowHideGtGraph->setEnabled(_gtNodeItems.size());
-	aShowHideGPSGraph->setEnabled(_gpsNodeItems.size());
+	aShowHideGtGraph->setEnabled(_gtGraphRoot->isVisible());
+	aShowHideGPSGraph->setEnabled(_gpsGraphRoot->isVisible());
 	aShowHideOdomCacheOverlay->setEnabled(_odomCacheOverlay->rect().width()>0);
 
 	QMenu * viewPlaneMenu = menu.addMenu("View Plane...");
@@ -2369,7 +2385,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aChangeMaxLinkLength)
 	{
 		bool ok;
-		double value = QInputDialog::getDouble(this, tr("Maximum link length to be shown"), tr("Value (m)"), _maxLinkLength, 0.0, 1000.0, 3, &ok);
+		double value = QInputDialog::getDouble(this, tr("Maximum link length to be shown"), tr("Value (m)"), _minLinkLength, 0.0, 1000.0, 3, &ok);
 		if(ok)
 		{
 			setMaxLinkLength(value);
