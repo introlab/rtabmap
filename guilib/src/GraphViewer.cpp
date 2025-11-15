@@ -520,23 +520,11 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	bool wasEmpty = _nodeItems.size() == 0 && _linkItems.size() == 0;
 	UDEBUG("poses=%d constraints=%d", (int)poses.size(), (int)constraints.size());
+
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
-		QColor color = _nodeColor;
-		bool isOdomCache = odomCacheIds.find(iter.key()) != odomCacheIds.end();
-		if(iter.key()<0)
-		{
-			color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
-		}
-		else if(isOdomCache)
-		{
-			color = _nodeOdomCacheColor;
-		}
 		iter.value()->hide();
-		iter.value()->setColor(color); // reset color
-		iter.value()->setToolTipInfo(QString());
-		iter.value()->setZValue(iter.key()<0?21:20);
 	}
 	UDEBUG("hidden %d nodes", _nodeItems.size());
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
@@ -544,6 +532,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		iter.value()->hide();
 	}
 	UDEBUG("hidden %d links", _linkItems.size());
+
 	int created = 0;
 	int reused = 0;
 	if(_nodeVisible)
@@ -552,9 +541,23 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		{
 			if(!iter->second.isNull())
 			{
+				QColor color = _nodeColor;
+				bool isOdomCache = odomCacheIds.find(iter->first) != odomCacheIds.end();
+				if(iter->first<0)
+				{
+					color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
+				}
+				else if(isOdomCache)
+				{
+					color = _nodeOdomCacheColor;
+				}
+
 				QMap<int, NodeItem*>::iterator itemIter = _nodeItems.find(iter->first);
 				if(itemIter != _nodeItems.end())
 				{
+					itemIter.value()->setColor(color); // reset color
+					itemIter.value()->setToolTipInfo(QString());
+					itemIter.value()->setZValue(iter->first<0?21:20);
 					itemIter.value()->setPose(iter->second, _viewPlane);
 					itemIter.value()->show();
 					++reused;
@@ -562,16 +565,6 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				else
 				{
 					// create node item
-					QColor color = _nodeColor;
-					bool isOdomCache = odomCacheIds.find(iter->first) != odomCacheIds.end();
-					if(iter->first<0)
-					{
-						color = QColor(255-color.red(), 255-color.green(), 255-color.blue());
-					}
-					else if(isOdomCache)
-					{
-						color = _nodeOdomCacheColor;
-					}
 					const Transform & pose = iter->second;
 					NodeItem * item = new NodeItem(iter->first, uContains(mapIds, iter->first)?mapIds.at(iter->first):-1, pose, _nodeRadius, uContains(weights, iter->first)?weights.at(iter->first):-1, _viewPlane, _linkWidth);
 					this->scene()->addItem(item);
