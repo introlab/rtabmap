@@ -121,6 +121,7 @@ public:
 	float getLoopClosureOutlierThr() const {return _loopClosureOutlierThr;}
 	float getMinLinkLength() const {return _minLinkLength;}
 	bool isGraphVisible() const;
+	bool isNodeVisible() const;
 	bool isGlobalPathVisible() const;
 	bool isLocalPathVisible() const;
 	bool isGtGraphVisible() const;
