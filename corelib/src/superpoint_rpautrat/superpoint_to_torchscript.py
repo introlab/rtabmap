@@ -59,7 +59,7 @@ def generate_model(
     # Load SuperPoint model and weights
     model = SuperPoint(
         nms_radius=nms_radius,
-        threshold=threshold,
+        detection_threshold=threshold,
     ).eval().to(device)
     
     # Load weights without forcing CPU location to allow CUDA usage
