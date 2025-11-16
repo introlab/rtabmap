@@ -48,7 +48,7 @@ public:
 	SensorData takeImage(SensorCaptureInfo * info = 0) {return takeData(info);}
 	float getImageRate() const {return getFrameRate();}
 	void setImageRate(float imageRate) {setFrameRate(imageRate);}
-	void setInterIMUPublishing(bool enabled, IMUFilter * filter = 0); // Take ownership of filter
+	void setInterIMUPublishing(bool enabled, IMUFilter * filter = 0, bool baseFrameConversion = false); // Take ownership of filter
 	bool isInterIMUPublishing() const {return publishInterIMU_;}
 
 	bool initFromFile(const std::string & calibrationPath);
@@ -73,6 +73,7 @@ private:
 private:
 	IMUFilter * imuFilter_;
 	bool publishInterIMU_;
+	bool imuBaseFrameConversion_;
 };
 
 

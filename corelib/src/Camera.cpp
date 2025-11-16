@@ -39,7 +39,8 @@ namespace rtabmap
 Camera::Camera(float imageRate, const Transform & localTransform) :
 		SensorCapture(imageRate, localTransform*CameraModel::opticalRotation()),
 		imuFilter_(0),
-		publishInterIMU_(false)
+		publishInterIMU_(false),
+		imuBaseFrameConversion_(false)
 {}
 
 Camera::~Camera()
@@ -52,15 +53,23 @@ bool Camera::initFromFile(const std::string & calibrationPath)
 	return init(UDirectory::getDir(calibrationPath), uSplit(UFile::getName(calibrationPath), '.').front());
 }
 
-void Camera::setInterIMUPublishing(bool enabled, IMUFilter * filter)
+void Camera::setInterIMUPublishing(bool enabled, IMUFilter * filter, bool baseFrameConversion)
 {
 	publishInterIMU_ = enabled;
 	delete imuFilter_;
 	imuFilter_ = filter;
+	imuBaseFrameConversion_ = baseFrameConversion;
 }
 
-void Camera::postInterIMU(const IMU & imu, double stamp)
+void Camera::postInterIMU(const IMU & imu_in, double stamp)
 {
+	IMU imu = imu_in;
+	if(imuBaseFrameConversion_)
+	{
+		UASSERT(!imu.localTransform().isNull());
+		imu.convertToBaseFrame();
+	}
+
 	if(imuFilter_)
 	{
 		imuFilter_->update(

@@ -1119,8 +1119,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#ifndef RTABMAP_ORBSLAM2
-					if(group.compare("OdomORBSLAM2") == 0)
+#ifndef RTABMAP_ORB_SLAM
+					if(group.compare("OdomORBSLAM") == 0)
 					{
 						ignore = true;
 					}

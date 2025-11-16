@@ -451,9 +451,12 @@ bool importPoses(
 					}
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
-					if(format==11)
+					if(strList.size() == 8 && (format==10 || format==11 || format==12))
 					{
-						id = uStr2Int(strList.back());
+						if(format==11)
+						{
+							id = uStr2Int(strList.back());
+						}
 						strList.pop_back();
 					}
 					str = uJoin(strList, " ");

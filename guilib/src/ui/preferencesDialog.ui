@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1009</width>
+    <width>980</width>
     <height>925</height>
    </rect>
   </property>
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-949</y>
-            <width>713</width>
-            <height>4922</height>
+            <y>-1237</y>
+            <width>684</width>
+            <height>5110</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>12</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -8308,7 +8308,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <item row="1" column="1">
                               <widget class="QLabel" name="label_563">
                                <property name="text">
-                                <string>Publish inter IMU messages from the camera. IMU received between images will be published as separate topic. Orientation overridden (if any) if IMU filtering is used.</string>
+                                <string>Publish inter IMU messages from the camera. IMU received between images will be published as separate topic. Orientation overridden (if any) if IMU filtering is used. </string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -16349,7 +16349,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>5</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -18580,23 +18580,39 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <item>
                             <widget class="QGroupBox" name="groupBox_OdomORBSLAMInertial">
                              <property name="title">
-                              <string>Enable IMU. Only supported with ORB_SLAM3.</string>
+                              <string>Enable IMU.</string>
                              </property>
                              <property name="checkable">
                               <bool>true</bool>
                              </property>
                              <layout class="QVBoxLayout" name="verticalLayout_169">
                               <item>
+                               <widget class="QLabel" name="label_621">
+                                <property name="text">
+                                 <string>Only supported with ORB_SLAM3. Inter IMU publishing should be enabled (see Source panel under IMU Filtering section).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item>
                                <layout class="QGridLayout" name="gridLayout_129" columnstretch="0,1">
                                 <item row="0" column="0">
                                  <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMGyroNoise">
                                   <property name="decimals">
-                                   <number>8</number>
+                                   <number>6</number>
                                   </property>
                                   <property name="minimum">
-                                   <double>0.010000000000000</double>
+                                   <double>0.000001000000000</double>
                                   </property>
                                   <property name="maximum">
+                                   <double>1.000000000000000</double>
+                                  </property>
+                                  <property name="singleStep">
                                    <double>0.010000000000000</double>
                                   </property>
                                  </widget>
@@ -18643,12 +18659,15 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 <item row="1" column="0">
                                  <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMAccNoise">
                                   <property name="decimals">
-                                   <number>8</number>
+                                   <number>6</number>
                                   </property>
                                   <property name="minimum">
-                                   <double>0.100000000000000</double>
+                                   <double>0.000001000000000</double>
                                   </property>
                                   <property name="maximum">
+                                   <double>1.000000000000000</double>
+                                  </property>
+                                  <property name="singleStep">
                                    <double>0.100000000000000</double>
                                   </property>
                                  </widget>
@@ -18682,10 +18701,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 <item row="2" column="0">
                                  <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMGyroWalk">
                                   <property name="decimals">
-                                   <number>8</number>
+                                   <number>6</number>
                                   </property>
                                   <property name="minimum">
-                                   <double>0.000000000000000</double>
+                                   <double>0.000001000000000</double>
                                   </property>
                                   <property name="maximum">
                                    <double>1.000000000000000</double>
@@ -18701,10 +18720,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 <item row="3" column="0">
                                  <widget class="QDoubleSpinBox" name="doubleSpinBox_ORBSLAMAccWalk">
                                   <property name="decimals">
-                                   <number>8</number>
+                                   <number>6</number>
                                   </property>
                                   <property name="minimum">
-                                   <double>0.000000000000000</double>
+                                   <double>0.000001000000000</double>
                                   </property>
                                   <property name="maximum">
                                    <double>1.000000000000000</double>
