@@ -454,6 +454,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_alignScansCloudsWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->comboBox_env_sensor_graph_colormap, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
@@ -1129,6 +1130,7 @@ bool DatabaseViewer::closeDatabase()
 		lastWmIds_.clear();
 		mapIds_.clear();
 		weights_.clear();
+		envSensors_.clear();
 		wmStates_.clear();
 		links_.clear();
 		linksAdded_.clear();
@@ -1806,6 +1808,7 @@ void DatabaseViewer::updateIds()
 	idToIndex_.clear();
 	mapIds_.clear();
 	weights_.clear();
+	envSensors_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
 	groundTruthPoses_.clear();
@@ -1912,6 +1915,7 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
+		envSensors_.insert(std::make_pair(ids_[i], sensors));
 		if(w>=0)
 		{
 			for(std::multimap<int, Link>::iterator iter=links.find(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
@@ -7242,7 +7246,46 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGPSGraph(gpsPoses_, gpsValues_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_, weights_);
-		if(ui_->checkBox_wmState->isEnabled() &&
+		if(ui_->comboBox_env_sensor_graph_colormap->currentIndex() != 0)
+		{
+			std::map<int, float> colors;
+			EnvSensor::Type curentType = (EnvSensor::Type)ui_->comboBox_env_sensor_graph_colormap->currentIndex();
+			for(std::map<int, rtabmap::Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				auto jter = envSensors_.find(iter->first);
+				if(jter != envSensors_.end() && jter->second.find(curentType) != jter->second.end())
+				{
+					colors.insert(std::make_pair(iter->first, jter->second.at(curentType).value()));
+				}
+			}
+			std::string legend;
+			bool invertedColor = false;
+			unsigned char hueMax = 240; // blue
+			switch(curentType)
+			{
+				case EnvSensor::kWifiSignalStrength:
+					legend = "Wifi Signal Strength (dBm)";
+					invertedColor = true;
+					hueMax = 120; // green
+					break;
+				case EnvSensor::kAmbientTemperature:
+					legend = "Ambient Temperature (Celcius)";
+					break;
+				case EnvSensor::kAmbientAirPressure:
+					legend = "Ambient Air Pressure (hPa)";
+					break;
+				case EnvSensor::kAmbientLight:
+					legend = "Ambient Light / Illuminance (lx)";
+					break;
+				case EnvSensor::kAmbientRelativeHumidity:
+					legend = "Ambient Relative Humidity (%)";
+					break;
+				default:
+					break;
+			}
+			ui_->graphViewer->updateNodeColorByValue(legend, colors, 0.0f, 0.0f, invertedColor, 0, hueMax, 1);
+		}
+		else if(ui_->checkBox_wmState->isEnabled() &&
 		   ui_->checkBox_wmState->isChecked() &&
 		   !lastWmIds_.empty())
 		{
