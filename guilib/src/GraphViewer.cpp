@@ -1168,6 +1168,66 @@ void GraphViewer::updateNodeColorByValue(const std::string & valueName, const st
 	}
 }
 
+void GraphViewer::updateNodeColorByValue(
+	const std::string & valueName,
+	const std::map<int, float> & values,
+	float min,
+	float max,
+	bool invertedColorScale,
+	unsigned short hueMin,
+	unsigned short hueMax,
+	int zValueOffset)
+{
+	hueMax = hueMax > 360 ? 360 : hueMax;
+
+	//find min/max
+	if(min >= max)
+	{
+		bool firstValueSet = false;
+		for(std::map<int, float>::const_iterator iter = values.begin(); iter!=values.end(); ++iter)
+		{
+			if(iter->first > 0)
+			{
+				if(!firstValueSet) {
+					min = max = iter->second;
+					firstValueSet = true;
+				}
+				else if(iter->second>max)
+				{
+					max = iter->second;
+				}
+				else if(iter->second<min)
+				{
+					min = iter->second;
+				}
+			}
+		}
+	}
+	if(min < max && hueMin < hueMax)
+	{
+		float range = max - min;
+		float hueRange = float(hueMax - hueMin);
+		for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+		{
+			std::map<int,float>::const_iterator jter = values.find(iter.key());
+			if(jter != values.end())
+			{
+				float v = jter->second;
+				v = std::min(v, max);
+				v = std::max(v, min);
+				iter.value()->setColor(QColor::fromHsvF(( invertedColorScale ? (v-min)/range : 1-(v-min)/range )*hueRange/360.0f + hueMin/360.0f, 1, 1, 1), valueName.c_str(), jter->second);
+				iter.value()->setZValue(iter.value()->zValue()+zValueOffset);
+			}
+		}
+	}
+	else if(min < max) {
+		UWARN("min (%f) is not less than max (%f), cannot change color of the graph.", min, max);
+	}
+	else if(hueMin < hueMax) {
+		UWARN("Hue min (%d) is not less than hue max (%d), cannot change color of the graph. The hue values should be set between 0 (red) and 360(pink).", (int)hueMin, (int)hueMax);
+	}
+}
+
 void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath)
 {
 	UDEBUG("Set global path size=%d", (int)globalPath.size());
