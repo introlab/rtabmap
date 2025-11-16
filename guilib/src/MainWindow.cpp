@@ -2394,24 +2394,37 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			UDEBUG("time= %d ms (update detection imageviews)", time.restart());
 
-			// do it after scaling
-			std::multimap<int, cv::KeyPoint> wordsA;
-			std::multimap<int, cv::KeyPoint> wordsB;
-			if(signature.getWords().size() == signature.getWordsKpts().size())
+			if(_ui->imageView_source->isFeaturesShown() || _ui->imageView_loopClosure->isFeaturesShown() || 
+			   (_ui->imageView_source->isLinesShown() && _ui->imageView_loopClosure->isLinesShown()))
 			{
-				for(std::map<int, int>::const_iterator iter=signature.getWords().begin(); iter!=signature.getWords().end(); ++iter)
+				// do it after scaling
+				std::multimap<int, cv::KeyPoint> wordsA;
+				std::multimap<int, cv::KeyPoint> wordsB;
+				if(signature.getWords().size() == signature.getWordsKpts().size() &&
+				   (_ui->imageView_source->isFeaturesShown() || (_ui->imageView_source->isLinesShown() && _ui->imageView_loopClosure->isLinesShown())))
 				{
-					wordsA.insert(wordsA.end(), std::make_pair(iter->first, signature.getWordsKpts()[iter->second]));
+					for(std::map<int, int>::const_iterator iter=signature.getWords().begin(); iter!=signature.getWords().end(); ++iter)
+					{
+						wordsA.insert(wordsA.end(), std::make_pair(iter->first, signature.getWordsKpts()[iter->second]));
+					}
 				}
-			}
-			if(loopSignature.getWords().size() == loopSignature.getWordsKpts().size())
-			{
-				for(std::map<int, int>::const_iterator iter=loopSignature.getWords().begin(); iter!=loopSignature.getWords().end(); ++iter)
+				if(loopSignature.getWords().size() == loopSignature.getWordsKpts().size() && 
+				   (_ui->imageView_loopClosure->isFeaturesShown() || (_ui->imageView_source->isLinesShown() && _ui->imageView_loopClosure->isLinesShown())))
 				{
-					wordsB.insert(wordsB.end(), std::make_pair(iter->first, loopSignature.getWordsKpts()[iter->second]));
+					for(std::map<int, int>::const_iterator iter=loopSignature.getWords().begin(); iter!=loopSignature.getWords().end(); ++iter)
+					{
+						wordsB.insert(wordsB.end(), std::make_pair(iter->first, loopSignature.getWordsKpts()[iter->second]));
+					}
 				}
+				this->drawKeypoints(wordsA, wordsB);
 			}
-			this->drawKeypoints(wordsA, wordsB);
+			else {
+				_ui->imageView_source->clearFeatures();
+				_ui->imageView_loopClosure->clearFeatures();
+				_ui->imageView_source->clearLines();
+				_ui->imageView_loopClosure->clearLines();
+				_lastIds.clear();
+			}
 
 			UDEBUG("time= %d ms (draw keypoints)", time.restart());
 
@@ -5021,10 +5034,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 	timer.start();
 	ULOGGER_DEBUG("refWords.size() = %d", refWords.size());
-	if(refWords.size())
-	{
-		_ui->imageView_source->clearFeatures();
-	}
+	_ui->imageView_source->clearFeatures();
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = refWords.begin(); iter != refWords.end(); ++iter )
 	{
 		int id = iter->first;
@@ -5066,10 +5076,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	timer.start();
 	ULOGGER_DEBUG("loopWords.size() = %d", loopWords.size());
 	QList<QPair<cv::Point2f, cv::Point2f> > uniqueCorrespondences;
-	if(loopWords.size())
-	{
-		_ui->imageView_loopClosure->clearFeatures();
-	}
+	_ui->imageView_loopClosure->clearFeatures();
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = loopWords.begin(); iter != loopWords.end(); ++iter )
 	{
 		int id = iter->first;
@@ -5111,6 +5118,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 	ULOGGER_DEBUG("loop closure time = %f s", timer.ticks());
 
+	_lastIds.clear();
 	if(refWords.size()>0)
 	{
 		if((*refWords.rbegin()).first > _lastId)
@@ -5147,11 +5155,8 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 		deltaX = _ui->imageView_source->width();
 	}
 
-	if(refWords.size() && loopWords.size())
-	{
-		_ui->imageView_source->clearLines();
-		_ui->imageView_loopClosure->clearLines();
-	}
+	_ui->imageView_source->clearLines();
+	_ui->imageView_loopClosure->clearLines();
 
 	for(QList<QPair<cv::Point2f, cv::Point2f> >::iterator iter = uniqueCorrespondences.begin();
 		iter!=uniqueCorrespondences.end();
