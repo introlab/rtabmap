@@ -394,11 +394,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->checkBox_enableForAll, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintButtons()));
 
-	ui_->horizontalSlider_iterations->setTracking(false);
+	ui_->horizontalSlider_iterations->setTracking(true);
 	ui_->horizontalSlider_iterations->setEnabled(false);
 	ui_->spinBox_optimizationsFrom->setEnabled(false);
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
-	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_optimizationFlavor, SIGNAL(activated(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -7104,6 +7103,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 void DatabaseViewer::sliderIterationsValueChanged(int value)
 {
+	UDEBUG("sender=%s value=%d currentValue = %d", sender()?sender()->objectName().toStdString().c_str():"NA", value, ui_->horizontalSlider_iterations->value());
 	if(dbDriver_ && value >=0 && value < (int)graphes_.size())
 	{
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
@@ -7284,6 +7284,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					break;
 			}
 			ui_->graphViewer->updateNodeColorByValue(legend, colors, 0.0f, 0.0f, invertedColor, 0, hueMax, 1);
+			UDEBUG("Updated node color based on env sensor %d", (int)curentType);
 		}
 		else if(ui_->checkBox_wmState->isEnabled() &&
 		   ui_->checkBox_wmState->isChecked() &&
@@ -7306,6 +7307,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			{
 				ui_->graphViewer->updateNodeColorByValue("In WM", colors, 1, false, 1);
 			}
+			UDEBUG("Updated node color based working memory state");
 		}
 		QGraphicsRectItem * rectScaleItem = 0;
 		ui_->graphViewer->clearMap();
@@ -7509,12 +7511,15 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 #endif
 		}
-		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+		
 		if(rectScaleItem != 0)
 		{
 			ui_->graphViewer->fitInView(rectScaleItem, Qt::KeepAspectRatio);
 			ui_->graphViewer->scene()->removeItem(rectScaleItem);
 			delete rectScaleItem;
+		}
+		else {
+			ui_->graphViewer->fitInView(ui_->graphViewer->sceneRect(), Qt::KeepAspectRatio);
 		}
 
 		ui_->graphViewer->update();

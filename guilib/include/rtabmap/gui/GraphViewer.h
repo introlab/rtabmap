@@ -119,8 +119,9 @@ public:
 	bool isReferentialVisible() const;
 	bool isLocalRadiusVisible() const;
 	float getLoopClosureOutlierThr() const {return _loopClosureOutlierThr;}
-	float getMaxLinkLength() const {return _maxLinkLength;}
+	float getMinLinkLength() const {return _minLinkLength;}
 	bool isGraphVisible() const;
+	bool isNodeVisible() const;
 	bool isGlobalPathVisible() const;
 	bool isLocalPathVisible() const;
 	bool isGtGraphVisible() const;
@@ -159,7 +160,7 @@ public:
 	void setReferentialVisible(bool visible);
 	void setLocalRadiusVisible(bool visible);
 	void setLoopClosureOutlierThr(float value);
-	void setMaxLinkLength(float value);
+	void setMinLinkLength(float value);
 	void setGraphVisible(bool visible);
 	void setGlobalPathVisible(bool visible);
 	void setLocalPathVisible(bool visible);
@@ -184,6 +185,9 @@ protected:
 	virtual void mouseMoveEvent(QMouseEvent * event);
 	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
+
+private:
+	void setupGraphicsScene();
 
 private:
 	QString _workingDirectory;
@@ -238,7 +242,7 @@ private:
 	QGraphicsEllipseItem * _localRadius;
 	QGraphicsRectItem * _odomCacheOverlay;
 	float _loopClosureOutlierThr;
-	float _maxLinkLength;
+	float _minLinkLength;
 	bool _orientationENU;
 	bool _mouseTracking;
 	ViewPlane _viewPlane;
