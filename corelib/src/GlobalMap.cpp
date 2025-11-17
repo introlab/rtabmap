@@ -139,14 +139,25 @@ bool GlobalMap::update(const std::map<int, Transform> & poses)
 	std::list<std::pair<int, Transform> > orderedPoses;
 
 	// add old poses that were not in the current map (they were just retrieved from LTM)
+	int nodesNotAssembled = 0;
+	int nodesNotInCache = 0;
 	for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
 	{
 		if(!isNodeAssembled(iter->first))
 		{
-			UDEBUG("Pose %d not found in current added poses, it will be added to map", iter->first);
-			orderedPoses.push_back(*iter);
+			if(uContains(cache(), iter->first))
+			{
+				++nodesNotAssembled;
+				//UDEBUG("Pose %d not found in current added poses, it will be added to map", iter->first);
+				orderedPoses.push_back(*iter);
+			}
+			else
+			{
+				++nodesNotInCache;
+			}
 		}
 	}
+	UDEBUG("%d nodes will be assembled in the map and %d nodes won't (no local grids in cache for them)", nodesNotAssembled, nodesNotInCache);
 
 	// insert zero after
 	if(poses.find(0) != poses.end())
