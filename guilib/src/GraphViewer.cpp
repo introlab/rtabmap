@@ -343,11 +343,31 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_viewPlane(XY),
 		_ensureFrameVisible(true)
 {
-	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
 	_workingDirectory = QDir::homePath();
 
-	this->scene()->clear();
+	setupGraphicsScene();
+
+	// Match by default scan colors from DatabaseViewer
+	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::yellow, nullptr));
+	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
+
+	this->restoreDefaults();
+
+	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
+}
+
+GraphViewer::~GraphViewer()
+{
+}
+
+void GraphViewer::setupGraphicsScene()
+{
+	if(this->scene())
+	{
+		delete this->scene();
+	}
+	this->setScene(new QGraphicsScene(this));
 	_world = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_root->setParentItem(_world);
@@ -485,17 +505,6 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
 	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
 
-	// Match by default scan colors from DatabaseViewer
-	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::yellow, nullptr));
-	_highlightedNodes.push_back(QPair<QColor, NodeItem*>(Qt::magenta, nullptr));
-
-	this->restoreDefaults();
-
-	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
-}
-
-GraphViewer::~GraphViewer()
-{
 }
 
 void GraphViewer::setWorldMapRotation(const float & theta)
@@ -518,7 +527,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	UTimer timer;
 
-	bool wasEmpty = _nodeItems.size() == 0 && _linkItems.size() == 0;
+	bool wasEmpty = _nodeItems.size() == 0 && _linkItems.size() == 0 && _gridMap->pixmap().isNull();
 	UDEBUG("poses=%ld constraints=%ld mapIds=%ld weights=%ld", poses.size(), constraints.size(), mapIds.size(), weights.size());
 	for(QMultiMap<int, LinkItem*>::iterator iter = _linkItems.begin(); iter!=_linkItems.end(); ++iter)
 	{
@@ -813,7 +822,6 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 	}
 
 	UTimer timer;
-	bool wasEmpty = _gtNodeItems.size() == 0 && _gtLinkItems.size() == 0;
 	UDEBUG("poses=%d", (int)poses.size());
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _gtNodeItems.begin(); iter!=_gtNodeItems.end(); ++iter)
@@ -935,16 +943,6 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 			++iter;
 		}
 	}
-
-	if(_gtNodeItems.size() || _gtLinkItems.size())
-	{
-		if(wasEmpty)
-		{
-			QRectF rect = this->sceneRect();
-			this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
-		}
-	}
-
 	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", _gtNodeItems.size(), _gtLinkItems.size(), timer.ticks());
 }
 
@@ -957,7 +955,6 @@ void GraphViewer::updateGPSGraph(
 		return;
 	}
 	UTimer timer;
-	bool wasEmpty = _gpsNodeItems.size() == 0 && _gpsNodeItems.size() == 0;
 	UDEBUG("poses=%d", (int)poses.size());
 	//Hide nodes and links
 	for(QMap<int, NodeItem*>::iterator iter = _gpsNodeItems.begin(); iter!=_gpsNodeItems.end(); ++iter)
@@ -1066,16 +1063,6 @@ void GraphViewer::updateGPSGraph(
 			++iter;
 		}
 	}
-
-	if(_gpsNodeItems.size() || _gpsLinkItems.size())
-	{
-		if(wasEmpty)
-		{
-			QRectF rect = this->sceneRect();
-			this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
-		}
-	}
-
 	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", _gpsNodeItems.size(), _gpsLinkItems.size(), timer.ticks());
 }
 
@@ -1104,6 +1091,7 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 	UASSERT(map8U.empty() || (!map8U.empty() && resolution > 0.0f));
 	if(!map8U.empty())
 	{
+		bool wasEmpty = _nodeItems.size() <= 1 && _linkItems.size() == 0 && _gridMap->pixmap().isNull();
 		_gridCellSize = resolution;
 		QImage image = uCvMat2QImage(map8U, false);
 		_gridMap->resetTransform();
@@ -1111,6 +1099,11 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 		_gridMap->setRotation(90);
 		_gridMap->setPixmap(QPixmap::fromImage(image));
 		_gridMap->setPos(-yMin*100.0f, -xMin*100.0f);
+
+		if(wasEmpty)
+		{
+			this->fitInView(this->scene()->sceneRect(), Qt::KeepAspectRatio);
+		}
 	}
 	else
 	{
@@ -1277,6 +1270,11 @@ void GraphViewer::setNodeInfo(int id, const QString & info)
 void GraphViewer::setLocalRadius(float radius)
 {
 	_localRadius->setRect(-radius*100, -radius*100, radius*200, radius*200);
+	if(_nodeItems.empty() && _linkItems.empty() && _gridMap->pixmap().isNull())
+	{
+		QRectF rect = this->scene()->sceneRect();
+		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
+	}
 }
 
 void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
@@ -1401,8 +1399,6 @@ void GraphViewer::clearGraph()
 	_worldMapRotation = 0.0f;
 	_referential->resetTransform();
 	_localRadius->resetTransform();
-	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-	this->scene()->setSceneRect(QRectF());
 }
 
 void GraphViewer::clearMap()
@@ -1414,8 +1410,6 @@ void GraphViewer::clearMap()
 		return;
 	}
 	_gridMap->setPixmap(QPixmap());
-	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-	this->scene()->setSceneRect(QRectF());
 }
 
 void GraphViewer::clearPosterior()
@@ -1435,6 +1429,14 @@ void GraphViewer::clearAll()
 {
 	clearMap();
 	clearGraph();
+
+	// The only way to re-shrink the dynamic scene rect is to re-create the QGraphicsScene.
+	QSettings tmp;
+	saveSettings(tmp);
+	QRectF localRadiusRectF = _localRadius->rect();
+	setupGraphicsScene(); 
+	loadSettings(tmp); // restore previous state
+	_localRadius->setRect(localRadiusRectF);
 }
 
 void GraphViewer::saveSettings(QSettings & settings, const QString & group) const
@@ -1928,11 +1930,6 @@ void GraphViewer::setOrientationENU(bool enabled)
 	QTransform t;
 	t.rotateRadians(_worldMapRotation);
 	_root->setTransform(t);
-	if(_nodeItems.size() || _linkItems.size())
-	{
-		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-		this->scene()->setSceneRect(QRectF());
-	}
 }
 
 void GraphViewer::setViewPlane(ViewPlane plane)
@@ -1959,12 +1956,6 @@ void GraphViewer::setViewPlane(ViewPlane plane)
 	_referentialXY->setVisible(plane==XY);
 	_referentialXZ->setVisible(plane==XZ);
 	_referentialYZ->setVisible(plane==YZ);
-
-	if(_nodeItems.size() || _linkItems.size())
-	{
-		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-		this->scene()->setSceneRect(QRectF());
-	}
 }
 void GraphViewer::setEnsureFrameVisible(bool visible)
 {
@@ -2395,7 +2386,6 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 
 				//reset scale
 				_root->setScale(1.0f);
-				this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 				this->scene()->setSceneRect(QRectF());
 
 				QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));

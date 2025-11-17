@@ -187,6 +187,9 @@ protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
+	void setupGraphicsScene();
+
+private:
 	QString _workingDirectory;
 	QColor _nodeColor;
 	QColor _nodeOdomCacheColor;
