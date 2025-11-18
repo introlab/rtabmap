@@ -28,7 +28,7 @@ static const float float_colors[] = {
     0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
 
 Axis::Axis() : Line(3.0f, GL_LINES) {
-  // Implement SetShader here, not using the dedault one.
+  // Implement SetShader here, not using the default one.
   shader_program_ =
       util::CreateProgram(shaders::GetColorVertexShader().c_str(),
                           shaders::GetBasicFragmentShader().c_str());
