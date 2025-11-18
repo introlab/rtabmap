@@ -164,19 +164,13 @@ Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
 void PrintConfiguration(const CUVSLAM_Configuration & cfg)
 {
   UINFO("Use use_gpu: %s", cfg.use_gpu ? "true" : "false");
-  UINFO("Enable IMU Fusion: %s", cfg.enable_imu_fusion ? "true" : "false");
-  if (cfg.enable_imu_fusion) {
-    UINFO("gyroscope_noise_density: %f",
-      cfg.imu_calibration.gyroscope_noise_density);
-    UINFO("gyroscope_random_walk: %f",
-      cfg.imu_calibration.gyroscope_random_walk);
-    UINFO("accelerometer_noise_density: %f",
-      cfg.imu_calibration.accelerometer_noise_density);
-    UINFO("accelerometer_random_walk: %f",
-      cfg.imu_calibration.accelerometer_random_walk);
-    UINFO("frequency: %f",
-      cfg.imu_calibration.frequency);
+  const char* odometry_mode_str = "Unknown";
+  switch(cfg.odometry_mode) {
+    case Multicamera: odometry_mode_str = "Multicamera (vision-only)"; break;
+    case Inertial: odometry_mode_str = "Inertial"; break;
+    case RGBD: odometry_mode_str = "RGBD"; break;
   }
+  UINFO("Odometry Mode: %s", odometry_mode_str);
 }
 
 } // namespace rtabmap
@@ -400,6 +394,7 @@ Transform OdometryCuVSLAM::computeTransform(
         cuvslam_handle_, 
         cuvslam_image_objects.data(), 
         cuvslam_image_objects.size(), 
+        nullptr,  // depth_image (not used in this mode)
         predicted_pose_ptr,  // can safely handle nullptr if no guess is provided
         &vo_pose_estimate
     );
@@ -587,6 +582,10 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        cudaStream_t & cuda_stream)
 {
+    // Warm up GPU and create CUDA context before tracker initialization
+    // This is important for cuVSLAM 14.0+ to properly initialize the GPU
+    CUVSLAM_WarmUpGPU();
+    
     // cuVSLAM verbosity level (0=none, 1=errors, 2=warnings, 3=info)
     CUVSLAM_SetVerbosity(0);
 
@@ -627,9 +626,9 @@ bool initializeCuVSLAM(const SensorData & data,
         rtabmap::Transform extrinsics = cuvslam_pose_canonical * stereoModel.localTransform() * optical_pose_cuvslam;
         cam_left.pose = TocuVSLAMPose(extrinsics);
         cam_left.border_top = 0;
-        cam_left.border_bottom = leftModel.imageHeight();
+        cam_left.border_bottom = 0;
         cam_left.border_left = 0;
-        cam_left.border_right = leftModel.imageWidth();
+        cam_left.border_right = 0;
 
         // Right camera
         cam_right.parameters = intrinsics_right.data();
@@ -649,9 +648,9 @@ bool initializeCuVSLAM(const SensorData & data,
         extrinsics = cuvslam_pose_canonical * stereoModel.localTransform() * baseline_transform * optical_pose_cuvslam;
         cam_right.pose = TocuVSLAMPose(extrinsics);
         cam_right.border_top = 0;
-        cam_right.border_bottom = rightModel.imageHeight();
+        cam_right.border_bottom = 0;
         cam_right.border_left = 0;
-        cam_right.border_right = rightModel.imageWidth();
+        cam_right.border_right = 0;
     }
     
     // Set up camera rig
@@ -665,6 +664,7 @@ bool initializeCuVSLAM(const SensorData & data,
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
     UTimer create_timer; create_timer.start();
+    
     const CUVSLAM_Status status_tracker = CUVSLAM_CreateTracker(&tracker_handle, &camera_rig, &configuration);
     
     if (status_tracker != CUVSLAM_SUCCESS) {
@@ -711,7 +711,6 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     CUVSLAM_Configuration configuration;
     CUVSLAM_InitDefaultConfiguration(&configuration);
     
-    configuration.multicam_mode = data.stereoCameraModels().size()>1?1:0;
     
     // Core Visual Odometry Settings 
     configuration.use_motion_model = 1;                 // Enable motion model for better tracking
@@ -726,19 +725,15 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     configuration.enable_landmarks_export = 0;          // SLAM feature (optional)
     configuration.enable_reading_slam_internals = 0;    // SLAM feature (optional)
     
-    // IMU Configuration (If we later implement IMU support)
-    configuration.enable_imu_fusion = 0;                //data.imu().empty()?0:1;
-    configuration.debug_imu_mode = 0;                   // Disable IMU debug mode
-    // imu_calibration.gyroscope_noise_density = 0.0002f;    
-    // imu_calibration.gyroscope_random_walk = 0.00003f;      
-    // imu_calibration.accelerometer_noise_density = 0.01f;   
-    // imu_calibration.accelerometer_random_walk = 0.001f;    
-    // imu_calibration.frequency = 200.0f; 
-    // configuration.imu_calibration = imu_calibration;
+    // Odometry configuration (Vision-only, no IMU)
+    configuration.odometry_mode = CUVSLAM_OdometryMode::Multicamera;
+    configuration.multicam_mode = 1;
+    configuration.debug_imu_mode = 0;
     
-    // configuration.max_frame_delta_ms = 100.0;        // Maximum frame interval (100ms default)
+    // Frame timing
+    configuration.max_frame_delta_s = 0.1f;             // 100ms max frame interval
     
-    // SLAM-specific parameters (disabled)
+    // SLAM parameters (disabled)
     configuration.planar_constraints = 0;
     configuration.slam_throttling_time_ms = 0;
     configuration.slam_max_map_size = 0;
@@ -907,6 +902,11 @@ bool prepareImages(const SensorData & data,
         left_cuvslam_image.camera_index = camera_index;
         left_cuvslam_image.pitch = left_image_slice.step;
         left_cuvslam_image.image_encoding = left_encoding;
+        // Mask fields (not used in this implementation)
+        left_cuvslam_image.input_mask = nullptr;
+        left_cuvslam_image.mask_width = 0;
+        left_cuvslam_image.mask_height = 0;
+        left_cuvslam_image.mask_pitch = 0;
         
         cuvslam_images.push_back(left_cuvslam_image);
 
@@ -931,6 +931,11 @@ bool prepareImages(const SensorData & data,
         right_cuvslam_image.camera_index = camera_index;
         right_cuvslam_image.pitch = right_image_slice.step;
         right_cuvslam_image.image_encoding = right_encoding;
+        // Mask fields (not used in this implementation)
+        right_cuvslam_image.input_mask = nullptr;
+        right_cuvslam_image.mask_width = 0;
+        right_cuvslam_image.mask_height = 0;
+        right_cuvslam_image.mask_pitch = 0;
 
         cuvslam_images.push_back(right_cuvslam_image);
         
