@@ -583,7 +583,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        cudaStream_t & cuda_stream)
 {
     // Warm up GPU and create CUDA context before tracker initialization
-    // This is important for cuVSLAM 14.0+ to properly initialize the GPU
+    // Supposedly this will speed up the tracker initialization
     CUVSLAM_WarmUpGPU();
     
     // cuVSLAM verbosity level (0=none, 1=errors, 2=warnings, 3=info)
