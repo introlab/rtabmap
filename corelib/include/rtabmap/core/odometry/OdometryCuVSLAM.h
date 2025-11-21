@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Odometry.h>
 #include <memory>
+#include <deque>
+#include <array>
 
 #ifdef RTABMAP_CUVSLAM
 #include <cuvslam.h>

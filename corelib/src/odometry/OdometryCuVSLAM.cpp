@@ -30,6 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #ifdef RTABMAP_CUVSLAM
 #include "rtabmap/core/CameraModel.h"
@@ -464,6 +469,7 @@ Transform OdometryCuVSLAM::computeTransform(
     }
 
     // Compute moving average for each diagonal element (6 elements: x, y, z, roll, pitch, yaw)
+    std::array<double, 6> avg_diags = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     for(int i = 0; i < 6; i++)
     {
         double average = 0.0;
@@ -472,38 +478,91 @@ Transform OdometryCuVSLAM::computeTransform(
             average += diag_cov_vals_[j][i];
         }
         average /= diag_cov_vals_.size();
+        avg_diags[i] = average;
         if(average > 0.1) {
             UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
             valid_covariance = false;
         }
     }
 
+    // Print table of all frames in the sliding window
+    UWARN("=== COVARIANCE HISTORY (Last %d Frames, cuVSLAM frame) ===", static_cast<int>(diag_cov_vals_.size()));
+    UWARN("Frame |      rotx       |      roty       |      rotz       |        x        |        y        |        z        |");
+    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
+    
+    for(size_t frame = 0; frame < diag_cov_vals_.size(); frame++)
+    {
+        const auto& frame_diags = diag_cov_vals_[frame];
+        UWARN("  %d   | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
+              static_cast<int>(frame),
+              frame_diags[0], frame_diags[1], frame_diags[2],
+              frame_diags[3], frame_diags[4], frame_diags[5]);
+    }
+    
+    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
+    UWARN(" AVG  | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
+          avg_diags[0], avg_diags[1], avg_diags[2],
+          avg_diags[3], avg_diags[4], avg_diags[5]);
+    UWARN("======|=================|=================|=================|=================|=================|=================|");
+
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
 
+    // Compute velocity for decision making
+    double velocity_ms = 0.0;
+    double angular_velocity_rad_s = 0.0;
+    double time_delta_s = 0.0;
+    if(!guess.isNull() && last_timestamp_ > 0.0) {
+        time_delta_s = data.stamp() - last_timestamp_;
+        velocity_ms = guess.getNorm() / time_delta_s;
+        angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_delta_s;
+    }
+
+    // Log velocity and decision making
+    UWARN("=== VELOCITY & DECISION LOGIC ===");
+    if(!guess.isNull()) {
+        UWARN("  Guess norm: %.6f m", guess.getNorm());
+        UWARN("  Time delta: %.3f s", time_delta_s);
+        UWARN("  Linear velocity: %.6f m/s", velocity_ms);
+        UWARN("  Angular velocity: %.6f rad/s (%.2f deg/s)", 
+              angular_velocity_rad_s, angular_velocity_rad_s * 180.0 / M_PI);
+    } else {
+        UWARN("  No guess available");
+    }
+    UWARN("  Covariance valid: %s", valid_covariance ? "YES" : "NO");
+    UWARN("  Currently tracking: %s", tracking_ ? "YES" : "NO");
+
     // Handle invalid covariance. Protect against low velocity cases.
     if(!valid_covariance) {
-        double velocity_ms = 9999.0;
-        double angular_velocity_rad_s = 9999.0;
-        if(!guess.isNull()) {
-            double time_s = data.stamp() - last_timestamp_;
-            velocity_ms = guess.getNorm() / time_s;
-            angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_s;
-        }
-        if(velocity_ms < 0.1 && angular_velocity_rad_s < 0.1 && last_timestamp_ != -1.0) {
+        UWARN("=== INVALID COVARIANCE DETECTED ===");
+        
+        // Check if robot is stationary (low velocity)
+        bool is_stationary = (velocity_ms < 0.1 && angular_velocity_rad_s < 0.1 && last_timestamp_ > 0.0);
+        
+        if(is_stationary) {
+            UWARN("  DECISION: Robot is stationary (v=%.4f m/s, ω=%.4f rad/s)", velocity_ms, angular_velocity_rad_s);
+            UWARN("  ACTION: Using minimal covariance (0.0001) instead of declaring lost");
             covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
         } else {
+            UWARN("  DECISION: Robot is moving (v=%.4f m/s, ω=%.4f rad/s)", velocity_ms, angular_velocity_rad_s);
+            UWARN("  ACTION: Covariance invalid during motion");
+            
             // If we have already begun tracking, now we are lost.
             if(tracking_) {
-                UWARN("LOST: Velocity is high and covariance is invalid, setting lost to true");
+                UERROR("  *** TRACKING LOST: Invalid covariance while moving ***");
                 lost_ = true;
+            } else {
+                UWARN("  Not yet tracking, waiting for valid covariance");
             }
+            
             // Still send covariance for debugging
             if(info) {
                 info->reg.covariance = covMat;
             }
             return Transform();
         }
+    } else {
+        UWARN("  DECISION: Covariance is valid, proceeding with tracking");
     }
     
     // Tracking was successful and the covariance is valid, set tracking to true
@@ -1014,19 +1073,6 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     }
     
     const float * covariance = cuvslam_covariance;
-    
-    // Print raw received covariance from cuVSLAM (6x6 matrix in cuVSLAM frame: [rotx,roty,rotz,x,y,z])
-    // UWARN("\n=== RAW CUVSLAM COVARIANCE ===");
-    // for(int row = 0; row < 6; row++)
-    // {
-    //     std::stringstream ss;
-    //     for(int col = 0; col < 6; col++)
-    //     {
-    //         ss << "  " << std::setw(12) << std::setprecision(8) << std::fixed << covariance[row * 6 + col] << "  ";
-    //     }
-    //     UWARN("%s", ss.str().c_str());
-    // }
-    // UWARN("=== END RAW COVARIANCE ===\n");
     
     // Create transformation matrix for coordinate system conversion
     // cuVSLAM frame (x-right, y-up, z-backward) to RTAB-Map frame (x-forward, y-left, z-up)
