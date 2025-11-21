@@ -68,6 +68,11 @@ private:
 	Transform previous_pose_;
 	double last_timestamp_;
 
+	// Covariance tracking and validation
+	// We maintain a moving average of 'cov_window_size_' diagonal cov values for each diagonal element.
+	int cov_window_size_ = 10;
+	std::deque<std::array<double, 6>> diag_cov_vals_;
+
 	//visualization
 	std::vector<CUVSLAM_Observation> observations_;
 	std::vector<CUVSLAM_Landmark> landmarks_;

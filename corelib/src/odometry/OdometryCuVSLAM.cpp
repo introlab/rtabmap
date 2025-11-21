@@ -115,9 +115,6 @@ bool prepareImages(const SensorData & data,
 
 cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
 
-void printCovarianceMatrix(const cv::Mat & cov, const std::string & label);
-void printRawCuvslamCovariance(const float * cuvslam_covariance, const std::string & label);
-
 
 // ============================================================================
 // Transform Conversion Functions and Misc Helpers
@@ -195,6 +192,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     planar_constraints_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
+    diag_cov_vals_(),
     observations_(5000),
 	landmarks_(5000),
     gpu_left_image_data_(),
@@ -404,35 +402,78 @@ Transform OdometryCuVSLAM::computeTransform(
         // Provide specific error message
         const char * error_msg = "Unknown error";
         switch(vo_status) {
-            case 1: error_msg = "CUVSLAM_TRACKING_LOST"; break;
-            case 2: error_msg = "CUVSLAM_INVALID_PARAMETER"; break;
-            case 3: error_msg = "CUVSLAM_INVALID_IMAGE_FORMAT or CUVSLAM_INVALID_CAMERA_CONFIG"; break;
-            case 4: error_msg = "CUVSLAM_GPU_MEMORY_ERROR"; break;
-            case 5: error_msg = "CUVSLAM_INITIALIZATION_ERROR"; break;
-            default: error_msg = "Unknown cuVSLAM error"; break;
+            case CUVSLAM_TRACKING_LOST:                 error_msg = "CUVSLAM_TRACKING_LOST"; break;
+            case CUVSLAM_INVALID_ARG:                   error_msg = "CUVSLAM_INVALID_PARAMETER"; break;
+            case CUVSLAM_CAN_NOT_LOCALIZE:              error_msg = "CUVSLAM_CAN_NOT_LOCALIZE"; break;
+            case CUVSLAM_GENERIC_ERROR:                 error_msg = "CUVSLAM_GENERIC_ERROR"; break;
+            case CUVSLAM_UNSUPPORTED_NUMBER_OF_CAMERAS: error_msg = "CUVSLAM_UNSUPPORTED_NUMBER_OF_CAMERAS"; break;
+            case CUVSLAM_SLAM_IS_NOT_INITIALIZED:       error_msg = "CUVSLAM_SLAM_IS_NOT_INITIALIZED"; break;
+            default:                                    error_msg = "Unknown cuVSLAM error"; break;
         }
-        
-        UERROR("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
-        
+
+        // Update timing information even on failure
+        last_timestamp_ = data.stamp();
+
         if(info)
         {
+            // Report very high uncertainty to upstream consumers
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
         }
-    
-        last_timestamp_ = data.stamp();    
+
+        // Rely on cuVSLAM's own lost state reporting
+        if(vo_status == CUVSLAM_TRACKING_LOST)
+        {
+            UERROR("LOST: cuVSLAM reported CUVSLAM_TRACKING_LOST");
+            lost_ = true;
+        }
+        else
+        {
+            UERROR("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
+        }
+
         return Transform();
     }
 
     // Check if we have invalid covariance values
     bool valid_covariance = true;
+    std::array<double, 6> diags = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     for(int i = 0; i < 6; i++)
     {
         float & diag_val = vo_pose_estimate.covariance[i*6+i];
-        // We allow 1.0 as a valid value, since cuVSLAM sends identity covariance for the first few frames.
-        if(!std::isfinite(diag_val) || diag_val <= 0.0 || (diag_val > 0.1 && diag_val != 1.0))
+
+        // TODO: handle identity covariance better
+        diags[i] = diag_val == 1.0 ? 0.00001 : diag_val;
+
+        // conditions for immediate failure and tracking loss
+        if(!std::isfinite(diag_val) || diag_val < 0.0)
         {
             diag_val = 9999.0; // Set to high uncertainty
+            valid_covariance = false;
+        }
+        if(diag_val == 0.0){
+            diag_val = 0.00001;
+        }
+    }
+
+    // Maintain sliding window of diagonal covariance values
+    diag_cov_vals_.push_back(diags);
+    size_t window_size = diag_cov_vals_.size();
+    if(window_size > static_cast<size_t>(cov_window_size_)) {
+        diag_cov_vals_.pop_front();  // Remove oldest when window is full
+    }
+
+    // Compute moving average for each diagonal element (6 elements: x, y, z, roll, pitch, yaw)
+    for(int i = 0; i < 6; i++)
+    {
+        double average = 0.0;
+        for(size_t j = 0; j < diag_cov_vals_.size(); j++)
+        {
+            average += diag_cov_vals_[j][i];
+        }
+        average /= diag_cov_vals_.size();
+        if(average > 0.1) {
+            UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
             valid_covariance = false;
         }
     }
@@ -731,7 +772,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     configuration.debug_imu_mode = 0;
     
     // Frame timing
-    configuration.max_frame_delta_s = 0.1f;             // 100ms max frame interval
+    configuration.max_frame_delta_s = 0.2f;             // 200ms max frame interval (5Hz minimum)
     
     // SLAM parameters (disabled)
     configuration.planar_constraints = 0;
@@ -960,6 +1001,7 @@ Source: isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp:275-299
 */
 cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
 {
+    
     // Scale cuvslam covariance to make it more realistic
     const double scaling_factor = 10.0;
 
@@ -972,6 +1014,19 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     }
     
     const float * covariance = cuvslam_covariance;
+    
+    // Print raw received covariance from cuVSLAM (6x6 matrix in cuVSLAM frame: [rotx,roty,rotz,x,y,z])
+    // UWARN("\n=== RAW CUVSLAM COVARIANCE ===");
+    // for(int row = 0; row < 6; row++)
+    // {
+    //     std::stringstream ss;
+    //     for(int col = 0; col < 6; col++)
+    //     {
+    //         ss << "  " << std::setw(12) << std::setprecision(8) << std::fixed << covariance[row * 6 + col] << "  ";
+    //     }
+    //     UWARN("%s", ss.str().c_str());
+    // }
+    // UWARN("=== END RAW COVARIANCE ===\n");
     
     // Create transformation matrix for coordinate system conversion
     // cuVSLAM frame (x-right, y-up, z-backward) to RTAB-Map frame (x-forward, y-left, z-up)
@@ -987,38 +1042,55 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     block_canonical_pose_cuvslam.block<3, 3>(0, 0) = canonical_pose_cuvslam_mat;
     block_canonical_pose_cuvslam.block<3, 3>(3, 3) = canonical_pose_cuvslam_mat;
     
-    // Map cuVSLAM covariance array to Eigen matrix
-    Eigen::Matrix<float, 6, 6> covariance_mat = 
+    // Map cuVSLAM covariance array to Eigen matrix and convert to double for numerical stability
+    Eigen::Matrix<float, 6, 6> covariance_mat_float = 
         Eigen::Map<Eigen::Matrix<float, 6, 6, Eigen::StorageOptions::AutoAlign>>(const_cast<float*>(covariance));
+    Eigen::Matrix<double, 6, 6> covariance_mat = covariance_mat_float.cast<double>();
     
-    // Reorder covariance matrix elements
+    // Reorder covariance matrix elements (in double precision)
     // The covariance matrix from cuVSLAM arranges elements as follows:
     // (rotation about X axis, rotation about Y axis, rotation about Z axis, x, y, z)
     // However, in RTAB-Map, the order is:
     // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
-    Eigen::Matrix<float, 6, 6> rtabmap_covariance_mat = Eigen::Matrix<float, 6, 6>::Zero();
+    Eigen::Matrix<double, 6, 6> rtabmap_covariance_mat = Eigen::Matrix<double, 6, 6>::Zero();
     rtabmap_covariance_mat.block<3, 3>(0, 0) = covariance_mat.block<3, 3>(3, 3);  // translation-translation
     rtabmap_covariance_mat.block<3, 3>(0, 3) = covariance_mat.block<3, 3>(3, 0);  // translation-rotation
     rtabmap_covariance_mat.block<3, 3>(3, 0) = covariance_mat.block<3, 3>(0, 3);  // rotation-translation
     rtabmap_covariance_mat.block<3, 3>(3, 3) = covariance_mat.block<3, 3>(0, 0);  // rotation-rotation
     
-    // Apply coordinate system transformation
-    Eigen::Matrix<float, 6, 6> covariance_mat_change_basis = 
-        block_canonical_pose_cuvslam * rtabmap_covariance_mat * block_canonical_pose_cuvslam.transpose();
+    // Convert transformation matrix to double for numerical stability in matrix operations
+    Eigen::Matrix<double, 6, 6> block_canonical_pose_cuvslam_double = block_canonical_pose_cuvslam.cast<double>();
     
-    // Convert Eigen matrix to OpenCV Mat
+    // Apply coordinate system transformation (in double precision)
+    Eigen::Matrix<double, 6, 6> covariance_mat_change_basis = 
+        block_canonical_pose_cuvslam_double * rtabmap_covariance_mat * block_canonical_pose_cuvslam_double.transpose();
+    
+    // Convert Eigen matrix to OpenCV Mat (already in double precision)
     cv::Mat cv_covariance(6, 6, CV_64FC1);
     for(int i = 0; i < 6; i++)
     {
         for(int j = 0; j < 6; j++)
         {
-            cv_covariance.at<double>(i, j) = static_cast<double>(covariance_mat_change_basis(i, j));
+            cv_covariance.at<double>(i, j) = covariance_mat_change_basis(i, j);
             // for angular values, scale again to make it more realistic
             if(i > 2 || j > 2) {
                 cv_covariance.at<double>(i, j) *= scaling_factor;
             }
         }
     }
+    
+    // Print transformed covariance matrix in RTAB-Map frame (6x6 matrix: [x,y,z,rotx,roty,rotz])
+    UWARN("\n=== TRANSFORMED RTABMAP COVARIANCE ===");
+    for(int row = 0; row < 6; row++)
+    {
+        std::stringstream ss;
+        for(int col = 0; col < 6; col++)
+        {
+            ss << "  " << std::setw(12) << std::setprecision(8) << std::fixed << cv_covariance.at<double>(row, col) << "  ";
+        }
+        UWARN("%s", ss.str().c_str());
+    }
+    UWARN("=== END TRANSFORMED COVARIANCE ===\n");
     
     // Ensure diagonal elements are positive and finite (RTAB-Map requirement)
     return cv_covariance;
