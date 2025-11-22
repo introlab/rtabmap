@@ -481,30 +481,10 @@ Transform OdometryCuVSLAM::computeTransform(
         average /= diag_cov_vals_.size();
         avg_diags[i] = average;
         if(average > 0.1) {
-            UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
+            UDEBUG("Average covariance for diagonal element %d is too high: %f", i, average);
             valid_covariance = false;
         }
     }
-
-    // Print table of all frames in the sliding window
-    UWARN("=== COVARIANCE HISTORY (Last %d Frames, cuVSLAM frame) ===", static_cast<int>(diag_cov_vals_.size()));
-    UWARN("Frame |      rotx       |      roty       |      rotz       |        x        |        y        |        z        |");
-    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
-    
-    for(size_t frame = 0; frame < diag_cov_vals_.size(); frame++)
-    {
-        const auto& frame_diags = diag_cov_vals_[frame];
-        UWARN("  %d   | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
-              static_cast<int>(frame),
-              frame_diags[0], frame_diags[1], frame_diags[2],
-              frame_diags[3], frame_diags[4], frame_diags[5]);
-    }
-    
-    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
-    UWARN(" AVG  | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
-          avg_diags[0], avg_diags[1], avg_diags[2],
-          avg_diags[3], avg_diags[4], avg_diags[5]);
-    UWARN("======|=================|=================|=================|=================|=================|=================|");
 
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
@@ -532,10 +512,8 @@ Transform OdometryCuVSLAM::computeTransform(
     // Handle invalid covariance while moving
     if(!valid_covariance && !is_stationary) {
         if(tracking_) {
-            UERROR("  *** TRACKING LOST: Invalid covariance while moving ***");
+            UWARN("  *** TRACKING LOST: Invalid covariance while moving ***");
             lost_ = true;
-        } else {
-            UWARN("  Not yet tracking, waiting for valid covariance");
         }
         if(info) {
             info->reg.covariance = covMat;
@@ -571,67 +549,6 @@ Transform OdometryCuVSLAM::computeTransform(
     // Calculate incremental transform
     UASSERT(!previous_pose_.isNull());
     Transform transform = previous_pose_.inverse() * current_pose;
-
-    // Compare wheel odometry guess vs cuVSLAM output
-    if(!guess.isNull() && time_delta_s > 0.0) {
-        UWARN("=== VELOCITY COMPARISON: Wheel Odom vs cuVSLAM ===");
-        
-        // Wheel odometry predictions (already computed earlier)
-        UWARN("  Time delta: %.3f s", time_delta_s);
-        UWARN("");
-        UWARN("  WHEEL ODOM GUESS:");
-        UWARN("    Translation: x=%.6f, y=%.6f, z=%.6f (norm=%.6f m)", 
-              guess.x(), guess.y(), guess.z(), guess.getNorm());
-        UWARN("    Linear velocity: %.6f m/s", velocity_ms);
-        UWARN("    Rotation angle: %.6f rad (%.2f deg)", 
-              guess.getAngle(Transform::getIdentity()),
-              guess.getAngle(Transform::getIdentity()) * 180.0 / M_PI);
-        UWARN("    Angular velocity: %.6f rad/s (%.2f deg/s)", 
-              angular_velocity_rad_s, angular_velocity_rad_s * 180.0 / M_PI);
-        
-        // cuVSLAM actual output
-        double cuvslam_norm = transform.getNorm();
-        double cuvslam_velocity_ms = cuvslam_norm / time_delta_s;
-        double cuvslam_angle = transform.getAngle(Transform::getIdentity());
-        double cuvslam_angular_velocity = cuvslam_angle / time_delta_s;
-        
-        UWARN("");
-        UWARN("  cuVSLAM OUTPUT:");
-        UWARN("    Translation: x=%.6f, y=%.6f, z=%.6f (norm=%.6f m)", 
-              transform.x(), transform.y(), transform.z(), cuvslam_norm);
-        UWARN("    Linear velocity: %.6f m/s", cuvslam_velocity_ms);
-        UWARN("    Rotation angle: %.6f rad (%.2f deg)", 
-              cuvslam_angle, cuvslam_angle * 180.0 / M_PI);
-        UWARN("    Angular velocity: %.6f rad/s (%.2f deg/s)", 
-              cuvslam_angular_velocity, cuvslam_angular_velocity * 180.0 / M_PI);
-        
-        // Compute differences and ratios
-        double linear_diff = cuvslam_velocity_ms - velocity_ms;
-        double linear_ratio = (velocity_ms > 0.001) ? (cuvslam_velocity_ms / velocity_ms) : 0.0;
-        double angular_diff = cuvslam_angular_velocity - angular_velocity_rad_s;
-        double angular_ratio = (std::abs(angular_velocity_rad_s) > 0.001) ? 
-                               (cuvslam_angular_velocity / angular_velocity_rad_s) : 0.0;
-        
-        UWARN("");
-        UWARN("  DIFFERENCE (cuVSLAM - Wheel Odom):");
-        UWARN("    Linear velocity diff: %.6f m/s (%.1f%%)", 
-              linear_diff, 
-              (velocity_ms > 0.001) ? (linear_diff / velocity_ms * 100.0) : 0.0);
-        UWARN("    Linear velocity ratio: %.3f (cuVSLAM/Wheel)", linear_ratio);
-        UWARN("    Angular velocity diff: %.6f rad/s (%.2f deg/s)", 
-              angular_diff, angular_diff * 180.0 / M_PI);
-        UWARN("    Angular velocity ratio: %.3f (cuVSLAM/Wheel)", angular_ratio);
-        
-        // Flag significant discrepancies
-        if(std::abs(linear_ratio - 1.0) > 0.2 && velocity_ms > 0.01) {
-            UWARN("    *** WARNING: Linear velocity differs by >20%% ***");
-        }
-        if(std::abs(angular_ratio - 1.0) > 0.2 && std::abs(angular_velocity_rad_s) > 0.01) {
-            UWARN("    *** WARNING: Angular velocity differs by >20%% ***");
-        }
-        
-        UWARN("=================================================");
-    }
 
     // Fill info with visualization data
     if(info) {
@@ -1163,19 +1080,6 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
             }
         }
     }
-    
-    // Print transformed covariance matrix in RTAB-Map frame (6x6 matrix: [x,y,z,rotx,roty,rotz])
-    UWARN("\n=== TRANSFORMED RTABMAP COVARIANCE ===");
-    for(int row = 0; row < 6; row++)
-    {
-        std::stringstream ss;
-        for(int col = 0; col < 6; col++)
-        {
-            ss << "  " << std::setw(12) << std::setprecision(8) << std::fixed << cv_covariance.at<double>(row, col) << "  ";
-        }
-        UWARN("%s", ss.str().c_str());
-    }
-    UWARN("=== END TRANSFORMED COVARIANCE ===\n");
     
     // Ensure diagonal elements are positive and finite (RTAB-Map requirement)
     return cv_covariance;
