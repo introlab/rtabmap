@@ -282,6 +282,7 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     cuvslam_cameras_.clear();
     intrinsics_.clear();
     initialized_ = false;
+    diag_cov_vals_.clear();
     lost_ = false;
     tracking_ = false;
     previous_pose_ = Transform::getIdentity();
@@ -508,63 +509,38 @@ Transform OdometryCuVSLAM::computeTransform(
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
 
-    // Compute velocity for decision making
+    // Compute velocity and handle stationary case to prevent degenerate covariance
     double velocity_ms = 0.0;
     double angular_velocity_rad_s = 0.0;
     double time_delta_s = 0.0;
+    bool is_stationary = false;
+    
     if(!guess.isNull() && last_timestamp_ > 0.0) {
         time_delta_s = data.stamp() - last_timestamp_;
         velocity_ms = guess.getNorm() / time_delta_s;
         angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_delta_s;
-    }
-
-    // Log velocity and decision making
-    UWARN("=== VELOCITY & DECISION LOGIC ===");
-    if(!guess.isNull()) {
-        UWARN("  Guess norm: %.6f m", guess.getNorm());
-        UWARN("  Time delta: %.3f s", time_delta_s);
-        UWARN("  Linear velocity: %.6f m/s", velocity_ms);
-        UWARN("  Angular velocity: %.6f rad/s (%.2f deg/s)", 
-              angular_velocity_rad_s, angular_velocity_rad_s * 180.0 / M_PI);
-    } else {
-        UWARN("  No guess available");
-    }
-    UWARN("  Covariance valid: %s", valid_covariance ? "YES" : "NO");
-    UWARN("  Currently tracking: %s", tracking_ ? "YES" : "NO");
-
-    // Handle invalid covariance. Protect against low velocity cases.
-    if(!valid_covariance) {
-        UWARN("=== INVALID COVARIANCE DETECTED ===");
-        
-        // Check if robot is stationary (low velocity)
-        bool is_stationary = (velocity_ms < 0.1 && angular_velocity_rad_s < 0.1 && last_timestamp_ > 0.0);
+        is_stationary = (velocity_ms < 0.1 && angular_velocity_rad_s < 0.1);
         
         if(is_stationary) {
-            UWARN("  DECISION: Robot is stationary (v=%.4f m/s, ω=%.4f rad/s)", velocity_ms, angular_velocity_rad_s);
-            UWARN("  ACTION: Using minimal covariance (0.0001) instead of declaring lost");
+            // Override with fixed low covariance and update buffer to prevent degeneracy
             covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
             diag_cov_vals_.pop_back();
             diag_cov_vals_.push_back(std::array<double, 6>{0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001});
-        } else {
-            UWARN("  DECISION: Robot is moving (v=%.4f m/s, ω=%.4f rad/s)", velocity_ms, angular_velocity_rad_s);
-            UWARN("  ACTION: Covariance invalid during motion");
-            
-            // If we have already begun tracking, now we are lost.
-            if(tracking_) {
-                UERROR("  *** TRACKING LOST: Invalid covariance while moving ***");
-                lost_ = true;
-            } else {
-                UWARN("  Not yet tracking, waiting for valid covariance");
-            }
-            
-            // Still send covariance for debugging
-            if(info) {
-                info->reg.covariance = covMat;
-            }
-            return Transform();
         }
-    } else {
-        UWARN("  DECISION: Covariance is valid, proceeding with tracking");
+    }
+
+    // Handle invalid covariance while moving
+    if(!valid_covariance && !is_stationary) {
+        if(tracking_) {
+            UERROR("  *** TRACKING LOST: Invalid covariance while moving ***");
+            lost_ = true;
+        } else {
+            UWARN("  Not yet tracking, waiting for valid covariance");
+        }
+        if(info) {
+            info->reg.covariance = covMat;
+        }
+        return Transform();
     }
     
     // Tracking was successful and the covariance is valid, set tracking to true
