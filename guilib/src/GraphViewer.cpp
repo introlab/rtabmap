@@ -803,10 +803,15 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		(--_nodeItems.end()).value()->setColor(_nodeOdomCacheColor);
 	}
+
+	QRectF rect = this->scene()->sceneRect();
+	if(!odomCacheIds.empty())
+		_odomCacheOverlay->setRect(rect);
+	else
+		_odomCacheOverlay->setRect(0, 0, 0, 0);
 	
 	if(wasEmpty)
 	{
-		QRectF rect = this->scene()->sceneRect();
 		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 	}
 
