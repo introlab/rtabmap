@@ -3260,7 +3260,6 @@ bool Rtabmap::process(
 				}
 
 				cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
-				std::map<int, Transform> addedPriors;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
@@ -3271,7 +3270,6 @@ bool Rtabmap::process(
 						// make the poses in the map fixed
 						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
 						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
-						addedPriors.insert(*iterPose);
 					}
 					UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
 				}
@@ -3286,8 +3284,6 @@ bool Rtabmap::process(
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
 				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
 				
-				// Set back map's poses corresponding to priors so that g2o can converge correctly (https://github.com/introlab/rtabmap_ros/issues/1371)
-				uInsert(posesOut, addedPriors);
 				if(ULogger::level() == ULogger::kDebug)
 				{
 					for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
