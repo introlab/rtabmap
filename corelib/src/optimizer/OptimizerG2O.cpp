@@ -1172,7 +1172,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
 					return optimizedPoses;
 				}
 
@@ -1221,7 +1221,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
 			return optimizedPoses;
 		}
 
