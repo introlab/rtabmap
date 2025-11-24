@@ -4,7 +4,7 @@
 #
 # It sets the following variables:
 #  CUVSLAM_FOUND         - Set to false, or undefined, if cuVSLAM isn't found.
-#  CuVSLAM_VERSION       - The major version of cuVSLAM found (e.g., "14").
+#  CUVSLAM_VERSION       - The version of cuVSLAM found (e.g., "14.0.0").
 #  CUVSLAM_INCLUDE_DIRS  - The cuVSLAM include directory.
 #  CUVSLAM_LIBRARIES     - The cuVSLAM library to link against.
 
@@ -34,15 +34,16 @@ find_library(CUVSLAM_LIBRARY
 )
 
 if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
-    set(CUVSLAM_FOUND TRUE)
-    
     # Extract version from cuvslam.h header
     file(STRINGS "${CUVSLAM_INCLUDE_DIRS}/cuvslam.h" CUVSLAM_VERSION_MAJOR_LINE 
          REGEX "^#define CUVSLAM_API_VERSION_MAJOR")
+    file(STRINGS "${CUVSLAM_INCLUDE_DIRS}/cuvslam.h" CUVSLAM_VERSION_MINOR_LINE 
+         REGEX "^#define CUVSLAM_API_VERSION_MINOR")
     
-    if(CUVSLAM_VERSION_MAJOR_LINE)
+    if(CUVSLAM_VERSION_MAJOR_LINE AND CUVSLAM_VERSION_MINOR_LINE)
         string(REGEX MATCH "[0-9]+" CUVSLAM_VERSION_MAJOR "${CUVSLAM_VERSION_MAJOR_LINE}")
-        set(CUVSLAM_VERSION "${CUVSLAM_VERSION_MAJOR}")
+        string(REGEX MATCH "[0-9]+" CUVSLAM_VERSION_MINOR "${CUVSLAM_VERSION_MINOR_LINE}")
+        set(CUVSLAM_VERSION "${CUVSLAM_VERSION_MAJOR}.${CUVSLAM_VERSION_MINOR}.0")
     endif()
     
     set(CUVSLAM_LIBRARIES 
@@ -57,14 +58,28 @@ if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
     )
 endif()
 
-# Version checking - enforce exact version match for major version
-if(CUVSLAM_FOUND AND CuVSLAM_FIND_VERSION AND CUVSLAM_VERSION)
-    if(NOT CUVSLAM_VERSION VERSION_EQUAL CuVSLAM_FIND_VERSION)
-        message(FATAL_ERROR 
-            "cuVSLAM version mismatch: found version ${CUVSLAM_VERSION} but version ${CuVSLAM_FIND_VERSION} is required.\n"
-            "cuVSLAM does not guarantee backward compatibility between major versions.\n"
-            "Please install cuVSLAM version ${CuVSLAM_FIND_VERSION} or update CMakeLists.txt to request version ${CUVSLAM_VERSION}."
-        )
+# Version compatibility check - cuVSLAM only guarantees API compatibility within the same major version
+if(CuVSLAM_FIND_VERSION AND CUVSLAM_VERSION)
+    string(REGEX MATCH "^[0-9]+" REQUESTED_MAJOR_VERSION "${CuVSLAM_FIND_VERSION}")
+    if(NOT CUVSLAM_VERSION_MAJOR EQUAL REQUESTED_MAJOR_VERSION)
+        if(CuVSLAM_FIND_REQUIRED)
+            message(FATAL_ERROR 
+                "cuVSLAM major version mismatch: found version ${CUVSLAM_VERSION} but version ${CuVSLAM_FIND_VERSION} is required.\n"
+                "cuVSLAM only guarantees API compatibility within the same major version.\n"
+                "Found major version ${CUVSLAM_VERSION_MAJOR} is not compatible with requested major version ${REQUESTED_MAJOR_VERSION}.\n"
+                "Please install cuVSLAM ${REQUESTED_MAJOR_VERSION}.x or update CMakeLists.txt to request version ${CUVSLAM_VERSION_MAJOR}.x."
+            )
+        else()
+            if(NOT CuVSLAM_FIND_QUIETLY)
+                message(WARNING 
+                    "cuVSLAM major version mismatch: found version ${CUVSLAM_VERSION} but version ${CuVSLAM_FIND_VERSION} was requested.\n"
+                    "Major version ${CUVSLAM_VERSION_MAJOR} may not be compatible with requested major version ${REQUESTED_MAJOR_VERSION}."
+                )
+            endif()
+            # Clear the found variables to indicate incompatibility
+            unset(CUVSLAM_LIBRARIES)
+            unset(CUVSLAM_INCLUDE_DIRS)
+        endif()
     endif()
 endif()
 
@@ -86,20 +101,6 @@ if(CUVSLAM_FOUND)
             INTERFACE_INCLUDE_DIRECTORIES "${CUVSLAM_INCLUDE_DIRS}"
             INTERFACE_LINK_LIBRARIES "${CUVSLAM_LIBRARIES};Eigen3::Eigen"
         )
-    endif()
-    
-    # Show which cuVSLAM was found only if not quiet
-    if(NOT CUVSLAM_FIND_QUIETLY)
-        if(CUVSLAM_VERSION)
-            message(STATUS "Found cuVSLAM: ${CUVSLAM_LIBRARIES} (version: ${CUVSLAM_VERSION})")
-        else()
-            message(STATUS "Found cuVSLAM: ${CUVSLAM_LIBRARIES}")
-        endif()
-    endif()
-else()
-    # Fatal error if cuVSLAM is required but not found
-    if(CUVSLAM_FIND_REQUIRED)
-        message(FATAL_ERROR "Could not find cuVSLAM library")
     endif()
 endif()
 
