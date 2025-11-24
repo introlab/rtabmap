@@ -572,11 +572,9 @@ Transform OdometryCuVSLAM::computeTransform(
           tracking_ ? "YES" : "NO");
 
     // Handle invalid covariance: return null if moving OR if we can't determine velocity
-    // The extra guess.isNull() check prevents starting tracking when we have no odometry data
-    // to verify the robot is actually stationary (protects against 0.0/1.0 init covariance)
     if(!valid_covariance && (!is_stationary || guess.isNull())) {
         if(tracking_) {
-            UWARN("Decision: LOST (invalid cov while moving) -> returning NULL");
+            UERROR("Decision: LOST (invalid cov while moving) -> returning NULL");
             lost_ = true;
             if(guess.isNull()) {
                 UWARN("We did not recieve a guess on this frame, tracking may be lost easily when velocity is low.");
@@ -923,7 +921,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     
     // Odometry configuration (Vision-only, no IMU)
     configuration.odometry_mode = CUVSLAM_OdometryMode::Multicamera;
-    configuration.multicam_mode = 1;
+    configuration.multicam_mode = 2;
     configuration.debug_imu_mode = 0;
     
     // Frame timing
