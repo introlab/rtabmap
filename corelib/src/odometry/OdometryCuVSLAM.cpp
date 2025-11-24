@@ -417,6 +417,8 @@ Transform OdometryCuVSLAM::computeTransform(
             default:                                    error_msg = "Unknown cuVSLAM error"; break;
         }
 
+        
+
         // Update timing information even on failure
         last_timestamp_ = data.stamp();
 
@@ -441,6 +443,22 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
 
+    // Log raw covariance matrix from cuVSLAM (6x6, row-major order: rotx, roty, rotz, x, y, z)
+    UWARN("=== RAW COVARIANCE MATRIX (from cuVSLAM) ===");
+    UWARN("         rotx            roty            rotz            x               y               z");
+    for(int row = 0; row < 6; row++) {
+        const char* row_labels[] = {"rotx", "roty", "rotz", "x   ", "y   ", "z   "};
+        UWARN("%s | %15.8e %15.8e %15.8e %15.8e %15.8e %15.8e",
+              row_labels[row],
+              vo_pose_estimate.covariance[row*6 + 0],
+              vo_pose_estimate.covariance[row*6 + 1],
+              vo_pose_estimate.covariance[row*6 + 2],
+              vo_pose_estimate.covariance[row*6 + 3],
+              vo_pose_estimate.covariance[row*6 + 4],
+              vo_pose_estimate.covariance[row*6 + 5]);
+    }
+    UWARN("============================================");
+
     // Check if we have invalid covariance values
     bool valid_covariance = true;
     std::array<double, 6> diags = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -448,18 +466,23 @@ Transform OdometryCuVSLAM::computeTransform(
     {
         float & diag_val = vo_pose_estimate.covariance[i*6+i];
 
-        // TODO: handle identity covariance better
-        diags[i] = diag_val == 1.0 ? 0.00001 : diag_val;
-
         // conditions for immediate failure and tracking loss
         if(!std::isfinite(diag_val) || diag_val < 0.0)
         {
             diag_val = 9999.0; // Set to high uncertainty
             valid_covariance = false;
         }
-        if(diag_val == 0.0){
-            diag_val = 0.00001;
+        // Tracker returns identity covariance and 0.0 values after initialization before motion.
+        if(std::abs(diag_val - 1.0f) < 1e-2f || std::abs(diag_val) < 1e-7f)
+        {
+            UWARN("Diagonal element %d has degenerate covariance: %.8f (treating as 0.0001)", i, diag_val);
+            diag_val = 0.0001;
+            if(!tracking_) {
+                valid_covariance = false;
+            }
         }
+        
+        diags[i] = diag_val;
     }
 
     // Maintain sliding window of diagonal covariance values
@@ -481,10 +504,30 @@ Transform OdometryCuVSLAM::computeTransform(
         average /= diag_cov_vals_.size();
         avg_diags[i] = average;
         if(average > 0.1) {
-            UDEBUG("Average covariance for diagonal element %d is too high: %f", i, average);
+            UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
             valid_covariance = false;
         }
     }
+
+    // Print table of all frames in the sliding window
+    UWARN("=== COVARIANCE HISTORY (Last %d Frames, cuVSLAM frame) ===", static_cast<int>(diag_cov_vals_.size()));
+    UWARN("Frame |      rotx       |      roty       |      rotz       |        x        |        y        |        z        |");
+    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
+    
+    for(size_t frame = 0; frame < diag_cov_vals_.size(); frame++)
+    {
+        const auto& frame_diags = diag_cov_vals_[frame];
+        UWARN("  %d   | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
+              static_cast<int>(frame),
+              frame_diags[0], frame_diags[1], frame_diags[2],
+              frame_diags[3], frame_diags[4], frame_diags[5]);
+    }
+    
+    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
+    UWARN(" AVG  | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
+          avg_diags[0], avg_diags[1], avg_diags[2],
+          avg_diags[3], avg_diags[4], avg_diags[5]);
+    UWARN("======|=================|=================|=================|=================|=================|=================|");
 
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
@@ -509,11 +552,32 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     }
 
-    // Handle invalid covariance while moving
-    if(!valid_covariance && !is_stationary) {
+    // Log decision state
+    UWARN("=== TRACKING DECISION ===");
+    if(!guess.isNull() && last_timestamp_ > 0.0) {
+        UWARN("Guess: norm=%.4fm, v=%.4fm/s, ω=%.4frad/s", 
+              guess.getNorm(), velocity_ms, angular_velocity_rad_s);
+    } else {
+        UWARN("Guess: %s", guess.isNull() ? "NULL (no velocity data)" : "no previous timestamp");
+    }
+    UWARN("State: valid_cov=%s, stationary=%s, tracking=%s", 
+          valid_covariance ? "YES" : "NO",
+          is_stationary ? "YES" : "NO", 
+          tracking_ ? "YES" : "NO");
+
+    // Handle invalid covariance: return null if moving OR if we can't determine velocity
+    // The extra guess.isNull() check prevents starting tracking when we have no odometry data
+    // to verify the robot is actually stationary (protects against 0.0/1.0 init covariance)
+    if(!valid_covariance && (!is_stationary || guess.isNull())) {
         if(tracking_) {
-            UWARN("  *** TRACKING LOST: Invalid covariance while moving ***");
+            UERROR("Decision: LOST (invalid cov while moving) -> returning NULL");
             lost_ = true;
+        } else {
+            if(guess.isNull()) {
+                UWARN("Decision: WAITING (invalid cov + no guess to verify stationary) -> returning NULL");
+            } else {
+                UWARN("Decision: WAITING (invalid cov + moving) -> returning NULL");
+            }
         }
         if(info) {
             info->reg.covariance = covMat;
@@ -522,6 +586,11 @@ Transform OdometryCuVSLAM::computeTransform(
     }
     
     // Tracking was successful and the covariance is valid, set tracking to true
+    if(!tracking_) {
+        UWARN("Decision: START TRACKING (cov valid or stationary) -> returning transform");
+    } else {
+        UWARN("Decision: CONTINUE TRACKING -> returning transform");
+    }
     tracking_ = true;
 
     if(info)
@@ -549,6 +618,67 @@ Transform OdometryCuVSLAM::computeTransform(
     // Calculate incremental transform
     UASSERT(!previous_pose_.isNull());
     Transform transform = previous_pose_.inverse() * current_pose;
+
+    // Compare wheel odometry guess vs cuVSLAM output
+    if(!guess.isNull() && time_delta_s > 0.0) {
+        UWARN("=== VELOCITY COMPARISON: Wheel Odom vs cuVSLAM ===");
+        
+        // Wheel odometry predictions (already computed earlier)
+        UWARN("  Time delta: %.3f s", time_delta_s);
+        UWARN("");
+        UWARN("  WHEEL ODOM GUESS:");
+        UWARN("    Translation: x=%.6f, y=%.6f, z=%.6f (norm=%.6f m)", 
+              guess.x(), guess.y(), guess.z(), guess.getNorm());
+        UWARN("    Linear velocity: %.6f m/s", velocity_ms);
+        UWARN("    Rotation angle: %.6f rad (%.2f deg)", 
+              guess.getAngle(Transform::getIdentity()),
+              guess.getAngle(Transform::getIdentity()) * 180.0 / M_PI);
+        UWARN("    Angular velocity: %.6f rad/s (%.2f deg/s)", 
+              angular_velocity_rad_s, angular_velocity_rad_s * 180.0 / M_PI);
+        
+        // cuVSLAM actual output
+        double cuvslam_norm = transform.getNorm();
+        double cuvslam_velocity_ms = cuvslam_norm / time_delta_s;
+        double cuvslam_angle = transform.getAngle(Transform::getIdentity());
+        double cuvslam_angular_velocity = cuvslam_angle / time_delta_s;
+        
+        UWARN("");
+        UWARN("  cuVSLAM OUTPUT:");
+        UWARN("    Translation: x=%.6f, y=%.6f, z=%.6f (norm=%.6f m)", 
+              transform.x(), transform.y(), transform.z(), cuvslam_norm);
+        UWARN("    Linear velocity: %.6f m/s", cuvslam_velocity_ms);
+        UWARN("    Rotation angle: %.6f rad (%.2f deg)", 
+              cuvslam_angle, cuvslam_angle * 180.0 / M_PI);
+        UWARN("    Angular velocity: %.6f rad/s (%.2f deg/s)", 
+              cuvslam_angular_velocity, cuvslam_angular_velocity * 180.0 / M_PI);
+        
+        // Compute differences and ratios
+        double linear_diff = cuvslam_velocity_ms - velocity_ms;
+        double linear_ratio = (velocity_ms > 0.001) ? (cuvslam_velocity_ms / velocity_ms) : 0.0;
+        double angular_diff = cuvslam_angular_velocity - angular_velocity_rad_s;
+        double angular_ratio = (std::abs(angular_velocity_rad_s) > 0.001) ? 
+                               (cuvslam_angular_velocity / angular_velocity_rad_s) : 0.0;
+        
+        UWARN("");
+        UWARN("  DIFFERENCE (cuVSLAM - Wheel Odom):");
+        UWARN("    Linear velocity diff: %.6f m/s (%.1f%%)", 
+              linear_diff, 
+              (velocity_ms > 0.001) ? (linear_diff / velocity_ms * 100.0) : 0.0);
+        UWARN("    Linear velocity ratio: %.3f (cuVSLAM/Wheel)", linear_ratio);
+        UWARN("    Angular velocity diff: %.6f rad/s (%.2f deg/s)", 
+              angular_diff, angular_diff * 180.0 / M_PI);
+        UWARN("    Angular velocity ratio: %.3f (cuVSLAM/Wheel)", angular_ratio);
+        
+        // Flag significant discrepancies
+        if(std::abs(linear_ratio - 1.0) > 0.2 && velocity_ms > 0.01) {
+            UWARN("    *** WARNING: Linear velocity differs by >20%% ***");
+        }
+        if(std::abs(angular_ratio - 1.0) > 0.2 && std::abs(angular_velocity_rad_s) > 0.01) {
+            UWARN("    *** WARNING: Angular velocity differs by >20%% ***");
+        }
+        
+        UWARN("=================================================");
+    }
 
     // Fill info with visualization data
     if(info) {
@@ -769,7 +899,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     
     
     // Core Visual Odometry Settings 
-    configuration.use_motion_model = 0;                 // Enable motion model for better tracking
+    configuration.use_motion_model = 1;                 // Enable motion model for better tracking
     configuration.use_denoising = 0;                    // Disable denoising by default
     configuration.use_gpu = 1;                          // Use GPU acceleration
     configuration.horizontal_stereo_camera = 1;         // Stereo camera configuration
