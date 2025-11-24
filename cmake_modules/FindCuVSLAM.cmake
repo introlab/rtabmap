@@ -59,9 +59,12 @@ if(CUVSLAM_INCLUDE_DIRS AND CUVSLAM_LIBRARY)
 endif()
 
 # Version compatibility check - cuVSLAM only guarantees API compatibility within the same major version
+set(CUVSLAM_VERSION_MISMATCH_REASON "")
 if(CuVSLAM_FIND_VERSION AND CUVSLAM_VERSION)
     string(REGEX MATCH "^[0-9]+" REQUESTED_MAJOR_VERSION "${CuVSLAM_FIND_VERSION}")
     if(NOT CUVSLAM_VERSION_MAJOR EQUAL REQUESTED_MAJOR_VERSION)
+        set(CUVSLAM_VERSION_MISMATCH_REASON "Major version mismatch: found ${CUVSLAM_VERSION_MAJOR}.x but requested ${REQUESTED_MAJOR_VERSION}.x.\ncuVSLAM only guarantees API compatibility within the same major version.\nPlease install cuVSLAM ${REQUESTED_MAJOR_VERSION}.x or update CMakeLists.txt to request version ${CUVSLAM_VERSION_MAJOR}.0.0")
+        
         if(CuVSLAM_FIND_REQUIRED)
             message(FATAL_ERROR 
                 "cuVSLAM major version mismatch: found version ${CUVSLAM_VERSION} but version ${CuVSLAM_FIND_VERSION} is required.\n"
@@ -70,12 +73,6 @@ if(CuVSLAM_FIND_VERSION AND CUVSLAM_VERSION)
                 "Please install cuVSLAM ${REQUESTED_MAJOR_VERSION}.x or update CMakeLists.txt to request version ${CUVSLAM_VERSION_MAJOR}.x."
             )
         else()
-            if(NOT CuVSLAM_FIND_QUIETLY)
-                message(WARNING 
-                    "cuVSLAM major version mismatch: found version ${CUVSLAM_VERSION} but version ${CuVSLAM_FIND_VERSION} was requested.\n"
-                    "Major version ${CUVSLAM_VERSION_MAJOR} may not be compatible with requested major version ${REQUESTED_MAJOR_VERSION}."
-                )
-            endif()
             # Clear the found variables to indicate incompatibility
             unset(CUVSLAM_LIBRARIES)
             unset(CUVSLAM_INCLUDE_DIRS)
@@ -89,6 +86,7 @@ find_package_handle_standard_args(CuVSLAM
     FOUND_VAR CUVSLAM_FOUND
     REQUIRED_VARS CUVSLAM_LIBRARIES CUVSLAM_INCLUDE_DIRS
     VERSION_VAR CUVSLAM_VERSION
+    REASON_FAILURE_MESSAGE "${CUVSLAM_VERSION_MISMATCH_REASON}"
     HANDLE_COMPONENTS
 )
 
