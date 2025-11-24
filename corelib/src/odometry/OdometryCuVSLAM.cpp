@@ -339,6 +339,12 @@ Transform OdometryCuVSLAM::computeTransform(
             UERROR("Failed to initialize cuVSLAM tracker");
             return Transform();
         }
+
+        if(guess.isNull()) {
+            UWARN("No odometry guess provided to cuVSLAM.");
+            UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
+            UWARN("Without a guess, tracking may be lost easily when velocity is low.");
+        }
         
         initialized_ = true;
         if(info)
@@ -570,8 +576,12 @@ Transform OdometryCuVSLAM::computeTransform(
     // to verify the robot is actually stationary (protects against 0.0/1.0 init covariance)
     if(!valid_covariance && (!is_stationary || guess.isNull())) {
         if(tracking_) {
-            UERROR("Decision: LOST (invalid cov while moving) -> returning NULL");
+            UWARN("Decision: LOST (invalid cov while moving) -> returning NULL");
             lost_ = true;
+            if(guess.isNull()) {
+                UWARN("We did not recieve a guess on this frame, tracking may be lost easily when velocity is low.");
+                UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
+            }
         } else {
             if(guess.isNull()) {
                 UWARN("Decision: WAITING (invalid cov + no guess to verify stationary) -> returning NULL");
