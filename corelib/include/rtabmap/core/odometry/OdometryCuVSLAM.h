@@ -72,7 +72,7 @@ private:
 
 	// Covariance tracking and validation
 	// We maintain a moving average of 'cov_window_size_' diagonal cov values for each diagonal element.
-	int cov_window_size_ = 10;
+	int cov_window_size_ = 5;
 	std::deque<std::array<double, 6>> diag_cov_vals_;
 
 	//visualization
