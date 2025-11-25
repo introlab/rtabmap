@@ -173,6 +173,7 @@ SET(INCLUDE_DIRS
 SET(PUBLIC_INCLUDE_DIRS
  	${OpenCV_INCLUDE_DIRS}
  	${PCL_INCLUDE_DIRS}
+	/usr/include/ni
 )
 
 SET(LIBRARIES
@@ -183,9 +184,23 @@ SET(LIBRARIES
 # which are converted to \$<\$<NOT:\$<CONFIG:DEBUG>> and \$<\$<CONFIG:DEBUG>
 # in RTABMap_coreTargets.cmake (not sure why?!).
 list(REMOVE_ITEM PCL_LIBRARIES "debug" "optimized")
+
+SET(PCL_CORE_LIBS
+	pcl_common
+	pcl_io
+	pcl_kdtree
+	pcl_search
+	pcl_surface
+	pcl_filters
+	pcl_recognition
+	pcl_sample_consensus
+	pcl_segmentation
+	pcl_visualization)
+
 SET(PUBLIC_LIBRARIES
 	${OpenCV_LIBS}
 	${PCL_LIBRARIES}
+	${PCL_CORE_LIBS}
 )
 
 IF(SQLite3_FOUND)
