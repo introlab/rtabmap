@@ -921,7 +921,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     
     // Odometry configuration (Vision-only, no IMU)
     configuration.odometry_mode = CUVSLAM_OdometryMode::Multicamera;
-    configuration.multicam_mode = 0; // moderate (0), performance (1) or precision (2).
+    configuration.multicam_mode = 0;    // moderate (0), performance (1) or precision (2).
     configuration.debug_imu_mode = 0;
     
     // Frame timing
