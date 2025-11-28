@@ -83,14 +83,6 @@ IF(MINGW)
     SET(CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-auto-import")
 ENDIF(MINGW)
 
-# GCC 4 required
-IF(UNIX OR MINGW)
-    EXEC_PROGRAM( gcc ARGS "-dumpversion" OUTPUT_VARIABLE GCC_VERSION )
-    IF(GCC_VERSION VERSION_LESS "4.0.0")
-        MESSAGE(FATAL_ERROR "GCC ${GCC_VERSION} found, but version 4.x.x minimum is required")
-    ENDIF(GCC_VERSION VERSION_LESS "4.0.0")
-ENDIF(UNIX OR MINGW)
-
 #The CDT Error Parser cannot handle error messages that span 
 #more than one line, which is the default gcc behavior. 
 #In order to force gcc to generate single line error messages with no line wrapping
