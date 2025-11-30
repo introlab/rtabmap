@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Odometry.h>
 #include <memory>
+#include <deque>
+#include <array>
 
 #ifdef RTABMAP_CUVSLAM
 #include <cuvslam.h>
@@ -67,6 +69,11 @@ private:
 	bool planar_constraints_;
 	Transform previous_pose_;
 	double last_timestamp_;
+
+	// Covariance tracking and validation
+	// We maintain a moving average of 'cov_window_size_' diagonal cov values for each diagonal element.
+	int cov_window_size_ = 5;
+	std::deque<std::array<double, 6>> diag_cov_vals_;
 
 	//visualization
 	std::vector<CUVSLAM_Observation> observations_;
