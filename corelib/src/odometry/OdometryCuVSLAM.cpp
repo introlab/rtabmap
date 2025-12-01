@@ -32,10 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include <cmath>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 #ifdef RTABMAP_CUVSLAM
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/StereoCameraModel.h"
@@ -367,7 +363,7 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         
         initialized_ = true;
-        UWARN("INIT PATH: initialization complete, returning null (first frame)");
+        
         if(info)
         {
             info->type = 0;
@@ -375,7 +371,20 @@ Transform OdometryCuVSLAM::computeTransform(
             info->timeEstimation = timer.ticks();
         }
         last_timestamp_ = data.stamp();
-        return Transform();
+        
+        // On first frame after init, we don't have a cuVSLAM estimate yet.
+        // If we have a guess (from TF/wheel odom), return it to avoid "lost" state.
+        if(!guess.isNull()) {
+            UWARN("INIT PATH: initialization complete, returning guess transform (first frame)");
+            return guess;
+        }
+        
+        // No guess available - return identity (stationary assumption)
+        UWARN("INIT PATH: initialization complete, no guess available, returning identity (first frame)");
+        if(info) {
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+        }
+        return Transform::getIdentity();
     }
     
     UWARN("TRACKING PATH: initialized_=true, proceeding to track");
