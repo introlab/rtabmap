@@ -882,7 +882,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     
     
     // Core Visual Odometry Settings 
-    configuration.use_motion_model = 1;                 // Enable motion model for better tracking
+    configuration.use_motion_model = 0;                 // Enable motion model for better tracking
     configuration.use_denoising = 0;                    // Disable denoising by default
     configuration.use_gpu = 1;                          // Use GPU acceleration
     configuration.horizontal_stereo_camera = 1;         // Stereo camera configuration
