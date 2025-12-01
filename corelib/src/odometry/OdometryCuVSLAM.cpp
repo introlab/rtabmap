@@ -307,6 +307,23 @@ Transform OdometryCuVSLAM::computeTransform(
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
 
+    // ========================================================================
+    // HIGHLY VISIBLE TRACKING STATUS LOG
+    // ========================================================================
+    if(tracking_) {
+        UWARN("############################################################");
+        UWARN("###                                                      ###");
+        UWARN("###              >>> TRACKING: ACTIVE <<<                ###");
+        UWARN("###                                                      ###");
+        UWARN("############################################################");
+    } else {
+        UWARN("############################################################");
+        UWARN("###                                                      ###");
+        UWARN("###            >>> TRACKING: NOT ACTIVE <<<              ###");
+        UWARN("###                                                      ###");
+        UWARN("############################################################");
+    }
+
     UWARN("=== computeTransform ENTRY === lost_=%s, tracking_=%s, initialized_=%s",
           lost_ ? "true" : "false",
           tracking_ ? "true" : "false",
