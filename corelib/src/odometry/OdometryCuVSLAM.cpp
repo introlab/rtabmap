@@ -378,13 +378,12 @@ Transform OdometryCuVSLAM::computeTransform(
             UWARN("INIT PATH: initialization complete, returning guess transform (first frame)");
             return guess;
         }
-        
         // No guess available - return identity (stationary assumption)
-        UWARN("INIT PATH: initialization complete, no guess available, returning identity (first frame)");
-        if(info) {
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+        else
+        {
+            UWARN("INIT PATH: initialization complete, no guess available, returning identity (first frame)");
+            return Transform::getIdentity();
         }
-        return Transform::getIdentity();
     }
     
     UWARN("TRACKING PATH: initialized_=true, proceeding to track");
@@ -459,8 +458,6 @@ Transform OdometryCuVSLAM::computeTransform(
             default:                                    error_msg = "Unknown cuVSLAM error"; break;
         }
 
-        
-
         // Update timing information even on failure
         last_timestamp_ = data.stamp();
 
@@ -515,7 +512,7 @@ Transform OdometryCuVSLAM::computeTransform(
             valid_covariance = false;
         }
         // Tracker returns identity covariance and 0.0 values after initialization before motion.
-        if(std::abs(diag_val - 1.0f) < 1e-2f || std::abs(diag_val) < 1e-7f)
+        if((std::abs(diag_val - 1.0f) < 1e-2f && !use_raw_covariance_) || std::abs(diag_val) < 1e-7f)
         {
             UWARN("Diagonal element %d has degenerate covariance: %.8f (treating as 0.0001)", i, diag_val);
             diag_val = 0.0001;
@@ -530,6 +527,7 @@ Transform OdometryCuVSLAM::computeTransform(
     // Maintain sliding window of diagonal covariance values
     diag_cov_vals_.push_back(diags);
     size_t window_size = diag_cov_vals_.size();
+    
     if(window_size > static_cast<size_t>(cov_window_size_)) {
         diag_cov_vals_.pop_front();  // Remove oldest when window is full
     }
@@ -588,7 +586,7 @@ Transform OdometryCuVSLAM::computeTransform(
         
         if(is_stationary) {
             // Override with fixed low covariance and update buffer to prevent degeneracy
-            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+            covMat = use_raw_covariance_ ? covMat : cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
             diag_cov_vals_.pop_back();
             diag_cov_vals_.push_back(std::array<double, 6>{0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001});
         }
@@ -610,7 +608,7 @@ Transform OdometryCuVSLAM::computeTransform(
     // Handle invalid covariance: return null if moving OR if we can't determine velocity
     if(!valid_covariance && (!is_stationary || guess.isNull())) {
         if(tracking_) {
-            UERROR("Decision: LOST (invalid cov while moving) -> returning NULL");
+            UWARN("Decision: LOST (invalid cov while moving) -> returning NULL");
             lost_ = true;
             if(guess.isNull()) {
                 UWARN("We did not recieve a guess on this frame, tracking may be lost easily when velocity is low.");
