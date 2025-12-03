@@ -114,7 +114,7 @@ bool prepareImages(const SensorData & data,
                     std::vector<size_t> & gpu_right_image_sizes,
                     cudaStream_t & cuda_stream);
 
-cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
+cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance, bool use_raw_covariance);
 
 
 // ============================================================================
@@ -545,7 +545,10 @@ Transform OdometryCuVSLAM::computeTransform(
         avg_diags[i] = average;
         if(average > 0.1) {
             UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
-            valid_covariance = false;
+            if(!use_raw_covariance_)
+            {
+                valid_covariance = false;
+            }    
         }
     }
 
@@ -570,7 +573,7 @@ Transform OdometryCuVSLAM::computeTransform(
     UWARN("======|=================|=================|=================|=================|=================|=================|");
 
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
-    cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
+    cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance, use_raw_covariance_);
 
     // Compute velocity and handle stationary case to prevent degenerate covariance
     double velocity_ms = 0.0;
@@ -584,9 +587,10 @@ Transform OdometryCuVSLAM::computeTransform(
         angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_delta_s;
         is_stationary = (velocity_ms < 0.1 && angular_velocity_rad_s < 0.1);
         
-        if(is_stationary) {
+        if(is_stationary && !use_raw_covariance_) {
             // Override with fixed low covariance and update buffer to prevent degeneracy
-            covMat = use_raw_covariance_ ? covMat : cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+            // Skip this when use_raw_covariance_ is true to preserve raw values
+            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
             diag_cov_vals_.pop_back();
             diag_cov_vals_.push_back(std::array<double, 6>{0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001});
         }
@@ -597,6 +601,9 @@ Transform OdometryCuVSLAM::computeTransform(
     if(!guess.isNull() && last_timestamp_ > 0.0) {
         UWARN("Guess: norm=%.4fm, v=%.4fm/s, ω=%.4frad/s", 
               guess.getNorm(), velocity_ms, angular_velocity_rad_s);
+              if(velocity_ms > 1.2) {
+                UERROR("High velocity detected: %.4fm/s", velocity_ms);
+              }
     } else {
         UWARN("Guess: %s", guess.isNull() ? "NULL (no velocity data)" : "no previous timestamp");
     }
@@ -607,24 +614,30 @@ Transform OdometryCuVSLAM::computeTransform(
 
     // Handle invalid covariance: return null if moving OR if we can't determine velocity
     if(!valid_covariance && (!is_stationary || guess.isNull())) {
-        if(tracking_) {
-            UWARN("Decision: LOST (invalid cov while moving) -> returning NULL");
-            lost_ = true;
-            if(guess.isNull()) {
-                UWARN("We did not recieve a guess on this frame, tracking may be lost easily when velocity is low.");
-                UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
-            }
+        if(use_raw_covariance_) {
+            // In raw covariance mode, don't report lost on covariance spikes - just warn and continue
+            UERROR("Covariance spike detected in raw_covariance mode (v=%.4fm/s, ω=%.4frad/s) - continuing tracking", 
+                  velocity_ms, angular_velocity_rad_s);
         } else {
-            if(guess.isNull()) {
-                UWARN("Decision: WAITING (invalid cov + no guess to verify stationary) -> returning NULL");
+            if(tracking_) {
+                UWARN("Decision: LOST (invalid cov while moving) -> returning NULL");
+                lost_ = true;
+                if(guess.isNull()) {
+                    UWARN("We did not recieve a guess on this frame, tracking may be lost easily when velocity is low.");
+                    UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
+                }
             } else {
-                UWARN("Decision: WAITING (invalid cov + moving) -> returning NULL");
+                if(guess.isNull()) {
+                    UWARN("Decision: WAITING (invalid cov + no guess to verify stationary) -> returning NULL");
+                } else {
+                    UWARN("Decision: WAITING (invalid cov + moving) -> returning NULL");
+                }
             }
+            if(info) {
+                info->reg.covariance = covMat;
+            }
+            return Transform();
         }
-        if(info) {
-            info->reg.covariance = covMat;
-        }
-        return Transform();
     }
     
     // Tracking was successful and the covariance is valid, set tracking to true
@@ -1125,11 +1138,11 @@ Convert cuVSLAM covariance to RTAB-Map format.
 Based on Isaac ROS implementation: FromcuVSLAMCovariance()
 Source: isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp:275-299
 */
-cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
+cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance, bool use_raw_covariance)
 {
     
     // Scale cuvslam covariance to make it more realistic
-    const double scaling_factor = 10.0;
+    const double scaling_factor = use_raw_covariance ? 1.0 : 10.0;
 
     // Handle null covariance pointer
     if(cuvslam_covariance == nullptr)
