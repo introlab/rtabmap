@@ -356,6 +356,7 @@ Transform OdometryCuVSLAM::computeTransform(
             return Transform();
         }
 
+        // TODO: sometimes this message appears and we get guesses later.
         if(guess.isNull()) {
             UWARN("No odometry guess provided to cuVSLAM.");
             UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
@@ -371,19 +372,8 @@ Transform OdometryCuVSLAM::computeTransform(
             info->timeEstimation = timer.ticks();
         }
         last_timestamp_ = data.stamp();
-        
-        // On first frame after init, we don't have a cuVSLAM estimate yet.
-        // If we have a guess (from TF/wheel odom), return it to avoid "lost" state.
-        if(!guess.isNull()) {
-            UWARN("INIT PATH: initialization complete, returning guess transform (first frame)");
-            return guess;
-        }
-        // No guess available - return identity (stationary assumption)
-        else
-        {
-            UWARN("INIT PATH: initialization complete, no guess available, returning identity (first frame)");
-            return Transform::getIdentity();
-        }
+
+        return Transform::getIdentity();
     }
     
     UWARN("TRACKING PATH: initialized_=true, proceeding to track");
@@ -468,7 +458,8 @@ Transform OdometryCuVSLAM::computeTransform(
             info->timeEstimation = timer.ticks();
         }
 
-        // Rely on cuVSLAM's own lost state reporting
+        // The internal lost state never reports lost in my testing.
+        // Thus we use covariance to detect lost state.
         if(vo_status == CUVSLAM_TRACKING_LOST)
         {
             UERROR("LOST: cuVSLAM reported CUVSLAM_TRACKING_LOST");
@@ -545,10 +536,7 @@ Transform OdometryCuVSLAM::computeTransform(
         avg_diags[i] = average;
         if(average > 0.1) {
             UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
-            if(!use_raw_covariance_)
-            {
-                valid_covariance = false;
-            }    
+            valid_covariance = false;
         }
     }
 
@@ -616,7 +604,7 @@ Transform OdometryCuVSLAM::computeTransform(
     if(!valid_covariance && (!is_stationary || guess.isNull())) {
         if(use_raw_covariance_) {
             // In raw covariance mode, don't report lost on covariance spikes - just warn and continue
-            UERROR("Covariance spike detected in raw_covariance mode (v=%.4fm/s, ω=%.4frad/s) - continuing tracking", 
+            UWARN("Covariance spike detected in raw_covariance mode (v=%.4fm/s, ω=%.4frad/s) - continuing tracking", 
                   velocity_ms, angular_velocity_rad_s);
         } else {
             if(tracking_) {

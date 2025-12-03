@@ -76,7 +76,7 @@ private:
 	std::deque<std::array<double, 6>> diag_cov_vals_;
 	
 	// Configuration
-	bool use_raw_covariance_  = true;
+	bool use_raw_covariance_  = false;
 
 	//visualization
 	std::vector<CUVSLAM_Observation> observations_;
