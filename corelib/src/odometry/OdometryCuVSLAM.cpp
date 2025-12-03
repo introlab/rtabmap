@@ -193,7 +193,6 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     planar_constraints_(false),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
-    diag_cov_vals_(),
     observations_(5000),
 	landmarks_(5000),
     gpu_left_image_data_(),
@@ -285,7 +284,6 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     cuvslam_cameras_.clear();
     intrinsics_.clear();
     initialized_ = false;
-    diag_cov_vals_.clear();
     lost_ = false;
     tracking_ = false;
     previous_pose_ = Transform::getIdentity();
@@ -355,13 +353,6 @@ Transform OdometryCuVSLAM::computeTransform(
             UERROR("Failed to initialize cuVSLAM tracker");
             return Transform();
         }
-
-        // TODO: sometimes this message appears and we get guesses later.
-        if(guess.isNull()) {
-            UWARN("No odometry guess provided to cuVSLAM.");
-            UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
-            UWARN("Without a guess, tracking may be lost easily when velocity is low.");
-        }
         
         initialized_ = true;
         
@@ -375,9 +366,7 @@ Transform OdometryCuVSLAM::computeTransform(
 
         return Transform::getIdentity();
     }
-    
-    UWARN("TRACKING PATH: initialized_=true, proceeding to track");
-    
+        
     // Prepare images for cuVSLAM
     std::vector<CUVSLAM_Image> cuvslam_image_objects;
     if(!prepareImages(
@@ -419,20 +408,16 @@ Transform OdometryCuVSLAM::computeTransform(
         predicted_pose = TocuVSLAMPose(absolute_guess);
         predicted_pose_ptr = &predicted_pose;
     }
-
-    UWARN("TRACKING PATH: calling CUVSLAM_TrackGpuMem with %zu images", cuvslam_image_objects.size());
     
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
         cuvslam_image_objects.data(), 
         cuvslam_image_objects.size(), 
-        nullptr,  // depth_image (not used in this mode)
-        predicted_pose_ptr,  // can safely handle nullptr if no guess is provided
+        nullptr,                        // depth_image (not used in this mode)
+        predicted_pose_ptr,             // can safely handle nullptr if no guess is provided
         &vo_pose_estimate
     );
-
-    UWARN("TRACKING PATH: CUVSLAM_TrackGpuMem returned status=%d", vo_status);
 
     if(vo_status != CUVSLAM_SUCCESS)
     {
@@ -476,22 +461,15 @@ Transform OdometryCuVSLAM::computeTransform(
     // Log raw covariance matrix from cuVSLAM (6x6, row-major order: rotx, roty, rotz, x, y, z)
     UWARN("=== RAW COVARIANCE MATRIX (from cuVSLAM) ===");
     UWARN("         rotx            roty            rotz            x               y               z");
-    for(int row = 0; row < 6; row++) {
-        const char* row_labels[] = {"rotx", "roty", "rotz", "x   ", "y   ", "z   "};
-        UWARN("%s | %15.8e %15.8e %15.8e %15.8e %15.8e %15.8e",
-              row_labels[row],
-              vo_pose_estimate.covariance[row*6 + 0],
-              vo_pose_estimate.covariance[row*6 + 1],
-              vo_pose_estimate.covariance[row*6 + 2],
-              vo_pose_estimate.covariance[row*6 + 3],
-              vo_pose_estimate.covariance[row*6 + 4],
-              vo_pose_estimate.covariance[row*6 + 5]);
+    std::array<double, 6> diag_vals = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    for(int i = 0; i < 6; i++) {
+        diag_vals[i] = vo_pose_estimate.covariance[i*6+i];
     }
+    UWARN("diag_vals: %10.8f, %10.8f, %10.8f, %10.8f, %10.8f, %10.8f", diag_vals[0], diag_vals[1], diag_vals[2], diag_vals[3], diag_vals[4], diag_vals[5]);
     UWARN("============================================");
 
     // Check if we have invalid covariance values
     bool valid_covariance = true;
-    std::array<double, 6> diags = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     for(int i = 0; i < 6; i++)
     {
         float & diag_val = vo_pose_estimate.covariance[i*6+i];
@@ -503,145 +481,41 @@ Transform OdometryCuVSLAM::computeTransform(
             valid_covariance = false;
         }
         // Tracker returns identity covariance and 0.0 values after initialization before motion.
-        if((std::abs(diag_val - 1.0f) < 1e-2f && !use_raw_covariance_) || std::abs(diag_val) < 1e-7f)
+        if(std::abs(diag_val) < 1e-7f)
         {
             UWARN("Diagonal element %d has degenerate covariance: %.8f (treating as 0.0001)", i, diag_val);
             diag_val = 0.0001;
-            if(!tracking_) {
-                valid_covariance = false;
+
+            // TODO: Does this conditional do anything?
+            // if(!tracking_) {
+            //     valid_covariance = false;
+            // }
+        }
+        if(diag_val > 0.1) {
+            UWARN("Diagonal element %d has high covariance: %.8f", i, diag_val);
+            valid_covariance = false;
+            if(guess.isNull()) {
+                UERROR("No guess provided, but covariance is invalid: %.8f", diag_val);
+                UERROR("We cannot use velocity difference to detect lost state without a guess!");
+                UERROR("Without a guess cuVSLAM is prone to getting lost easily!");
+                lost_ = true;
+                if(info) {
+                    info->lost = true;
+                    info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+                    info->timeEstimation = timer.ticks();
+                }
+                return Transform();
             }
         }
-        
-        diags[i] = diag_val;
     }
-
-    // Maintain sliding window of diagonal covariance values
-    diag_cov_vals_.push_back(diags);
-    size_t window_size = diag_cov_vals_.size();
-    
-    if(window_size > static_cast<size_t>(cov_window_size_)) {
-        diag_cov_vals_.pop_front();  // Remove oldest when window is full
-    }
-
-    // Compute moving average for each diagonal element (6 elements: x, y, z, roll, pitch, yaw)
-    std::array<double, 6> avg_diags = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    for(int i = 0; i < 6; i++)
-    {
-        double average = 0.0;
-        for(size_t j = 0; j < diag_cov_vals_.size(); j++)
-        {
-            average += diag_cov_vals_[j][i];
-        }
-        average /= diag_cov_vals_.size();
-        avg_diags[i] = average;
-        if(average > 0.1) {
-            UWARN("Average covariance for diagonal element %d is too high: %f", i, average);
-            valid_covariance = false;
-        }
-    }
-
-    // Print table of all frames in the sliding window
-    UWARN("=== COVARIANCE HISTORY (Last %d Frames, cuVSLAM frame) ===", static_cast<int>(diag_cov_vals_.size()));
-    UWARN("Frame |      rotx       |      roty       |      rotz       |        x        |        y        |        z        |");
-    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
-    
-    for(size_t frame = 0; frame < diag_cov_vals_.size(); frame++)
-    {
-        const auto& frame_diags = diag_cov_vals_[frame];
-        UWARN("  %d   | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
-              static_cast<int>(frame),
-              frame_diags[0], frame_diags[1], frame_diags[2],
-              frame_diags[3], frame_diags[4], frame_diags[5]);
-    }
-    
-    UWARN("------|-----------------|-----------------|-----------------|-----------------|-----------------|-----------------|");
-    UWARN(" AVG  | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f | %15.8f |",
-          avg_diags[0], avg_diags[1], avg_diags[2],
-          avg_diags[3], avg_diags[4], avg_diags[5]);
-    UWARN("======|=================|=================|=================|=================|=================|=================|");
 
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance, use_raw_covariance_);
 
-    // Compute velocity and handle stationary case to prevent degenerate covariance
-    double velocity_ms = 0.0;
-    double angular_velocity_rad_s = 0.0;
-    double time_delta_s = 0.0;
-    bool is_stationary = false;
-    
-    if(!guess.isNull() && last_timestamp_ > 0.0) {
-        time_delta_s = data.stamp() - last_timestamp_;
-        velocity_ms = guess.getNorm() / time_delta_s;
-        angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_delta_s;
-        is_stationary = (velocity_ms < 0.1 && angular_velocity_rad_s < 0.1);
-        
-        if(is_stationary && !use_raw_covariance_) {
-            // Override with fixed low covariance and update buffer to prevent degeneracy
-            // Skip this when use_raw_covariance_ is true to preserve raw values
-            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
-            diag_cov_vals_.pop_back();
-            diag_cov_vals_.push_back(std::array<double, 6>{0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001});
-        }
-    }
-
-    // Log decision state
-    UWARN("=== TRACKING DECISION ===");
-    if(!guess.isNull() && last_timestamp_ > 0.0) {
-        UWARN("Guess: norm=%.4fm, v=%.4fm/s, ω=%.4frad/s", 
-              guess.getNorm(), velocity_ms, angular_velocity_rad_s);
-              if(velocity_ms > 1.2) {
-                UERROR("High velocity detected: %.4fm/s", velocity_ms);
-              }
-    } else {
-        UWARN("Guess: %s", guess.isNull() ? "NULL (no velocity data)" : "no previous timestamp");
-    }
-    UWARN("State: valid_cov=%s, stationary=%s, tracking=%s", 
+    UWARN("State: valid_cov=%s, tracking=%s", 
           valid_covariance ? "YES" : "NO",
-          is_stationary ? "YES" : "NO", 
           tracking_ ? "YES" : "NO");
-
-    // Handle invalid covariance: return null if moving OR if we can't determine velocity
-    if(!valid_covariance && (!is_stationary || guess.isNull())) {
-        if(use_raw_covariance_) {
-            // In raw covariance mode, don't report lost on covariance spikes - just warn and continue
-            UWARN("Covariance spike detected in raw_covariance mode (v=%.4fm/s, ω=%.4frad/s) - continuing tracking", 
-                  velocity_ms, angular_velocity_rad_s);
-        } else {
-            if(tracking_) {
-                UWARN("Decision: LOST (invalid cov while moving) -> returning NULL");
-                lost_ = true;
-                if(guess.isNull()) {
-                    UWARN("We did not recieve a guess on this frame, tracking may be lost easily when velocity is low.");
-                    UWARN("It is highly recommended to provide a guess to protect against low velocity covariance degeneracy.");
-                }
-            } else {
-                if(guess.isNull()) {
-                    UWARN("Decision: WAITING (invalid cov + no guess to verify stationary) -> returning NULL");
-                } else {
-                    UWARN("Decision: WAITING (invalid cov + moving) -> returning NULL");
-                }
-            }
-            if(info) {
-                info->reg.covariance = covMat;
-            }
-            return Transform();
-        }
-    }
     
-    // Tracking was successful and the covariance is valid, set tracking to true
-    if(!tracking_) {
-        UWARN("Decision: START TRACKING (cov valid or stationary) -> returning transform");
-    } else {
-        UWARN("Decision: CONTINUE TRACKING -> returning transform");
-    }
-    tracking_ = true;
-
-    if(info)
-    {
-        info->reg.covariance = covMat;
-        info->timeEstimation = timer.ticks();
-    }
-
     // Apply ground constraint
     if(planar_constraints_) {
         if(CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
@@ -654,13 +528,64 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     }
 
-    // Convert cuVSLAM pose to RTAB-Map Transform
+    // Convert cuVSLAM absolute pose to incremental RTAB-Map Transform
     Transform current_pose = FromcuVSLAMPose(vo_pose_estimate.pose);
     current_pose = canonical_pose_cuvslam * current_pose * cuvslam_pose_canonical;
-
-    // Calculate incremental transform
     UASSERT(!previous_pose_.isNull());
     Transform transform = previous_pose_.inverse() * current_pose;
+
+    // Compute guess and estimated velocity and report lost if velocity ratio is high and covariance is invalid
+    double time_delta_s = 0.0;
+    double guess_velocity_ms = 0.0;
+    // double guess_angular_velocity_rad_s = 0.0;
+    double estimated_velocity_ms = 0.0;
+    // double estimated_angular_velocity_rad_s = 0.0;
+    
+    if(!guess.isNull() && last_timestamp_ > 0.0 && !use_raw_covariance_) {
+        time_delta_s = data.stamp() - last_timestamp_;
+        
+        guess_velocity_ms = guess.getNorm() / time_delta_s;
+        // guess_angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_delta_s;
+        estimated_velocity_ms = transform.getNorm() / time_delta_s;
+        // estimated_angular_velocity_rad_s = trasnform.getAngle(Transform::getIdentity()) / time_delta_s;
+        double velocity_ratio = estimated_velocity_ms / guess_velocity_ms;
+        double velocity_difference = std::abs(estimated_velocity_ms - guess_velocity_ms);
+        
+        UWARN("Guess velocity: %.4fm/s, Estimated velocity: %.4fm/s", guess_velocity_ms, estimated_velocity_ms);
+        UWARN("Velocity ratio: %.4f", velocity_ratio);
+        UWARN("Velocity difference: %.4fm/s", velocity_difference);
+
+        bool invalid_velocity_ratio = velocity_ratio > 1.5 || velocity_ratio < 0.5;
+        bool invalid_velocity_difference = velocity_difference > 0.1;
+        
+        if(invalid_velocity_ratio && invalid_velocity_difference && !valid_covariance) {
+            UWARN("Velocity ratio is high and covariance is invalid: %.4f, returning null transform", velocity_ratio);
+            lost_ = true;
+            if(info) {
+                info->lost = true;
+                info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+                info->timeEstimation = timer.ticks();
+            }
+            return Transform();
+        } else {
+            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+        }
+    }
+
+    // Tracking was successful and the covariance is valid, set tracking to true
+    if(!tracking_) {
+        UWARN("Decision: START TRACKING (cov valid or stationary) -> returning transform");
+    } else {
+        UWARN("Decision: CONTINUE TRACKING -> returning transform");
+    }
+
+    tracking_ = true;
+
+    if(info)
+    {
+        info->reg.covariance = covMat;
+        info->timeEstimation = timer.ticks();
+    }
 
     // Fill info with visualization data
     if(info) {
