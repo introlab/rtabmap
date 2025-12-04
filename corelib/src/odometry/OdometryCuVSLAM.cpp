@@ -355,16 +355,6 @@ Transform OdometryCuVSLAM::computeTransform(
         }
         
         initialized_ = true;
-        
-        if(info)
-        {
-            info->type = 0;
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
-            info->timeEstimation = timer.ticks();
-        }
-        last_timestamp_ = data.stamp();
-
-        return Transform::getIdentity();
     }
         
     // Prepare images for cuVSLAM
