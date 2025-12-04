@@ -53,6 +53,7 @@ public:
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
+	virtual void cleanupCuVSLAMResources();
 
 private:
 #ifdef RTABMAP_CUVSLAM
@@ -72,7 +73,7 @@ private:
 
 	// Forward cuVLSAM covariance directly to RTAB-Map.
 	// When true this disables covariance based lost detection.
-	bool use_raw_covariance_  = false;
+	bool use_raw_covariance_  = true;
 
 	//visualization
 	std::vector<CUVSLAM_Observation> observations_;

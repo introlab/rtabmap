@@ -204,10 +204,6 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
-
-    // Warm up GPU and create CUDA context before tracker initialization
-    // Supposedly this will speed up the tracker initialization
-    CUVSLAM_WarmUpGPU();
 #endif
 }
 
@@ -252,10 +248,16 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     Odometry::reset(initialPose);
     
 #ifdef RTABMAP_CUVSLAM
+    this->cleanupCuVSLAMResources();
+#endif
+}
+
+void OdometryCuVSLAM::cleanupCuVSLAMResources()
+{
+#ifdef RTABMAP_CUVSLAM
     // Clean up cuVSLAM handles
     if(cuvslam_handle_)
     {
-        UWARN("RESET: Destroying cuVSLAM tracker handle");
         CUVSLAM_DestroyTracker(cuvslam_handle_);
         cuvslam_handle_ = nullptr;
     }
@@ -292,12 +294,6 @@ void OdometryCuVSLAM::reset(const Transform & initialPose)
     tracking_ = false;
     previous_pose_ = Transform::getIdentity();
     last_timestamp_ = -1.0;
-    
-    UWARN("RESET: After - lost_=%s, tracking_=%s, initialized_=%s",
-          lost_ ? "true" : "false",
-          tracking_ ? "true" : "false",
-          initialized_ ? "true" : "false");
-    UWARN("=== OdometryCuVSLAM::reset() COMPLETE ===");
 #endif
 }
 
@@ -542,8 +538,10 @@ Transform OdometryCuVSLAM::computeTransform(
 
         bool invalid_velocity_ratio = velocity_ratio > 1.5 || velocity_ratio < 0.5;
         bool invalid_velocity_difference = velocity_difference > 0.1;
+        // In rapid deceleration cases this velocity zeros out faster then the guess but we aren't lost yet
+        bool zero_estimated_velocity = estimated_velocity_ms < 0.00001; 
         
-        if(invalid_velocity_ratio && invalid_velocity_difference) {
+        if(invalid_velocity_ratio && invalid_velocity_difference && !zero_estimated_velocity) {
             UWARN("Velocity ratio is high and covariance is invalid: %.4f, returning null transform", velocity_ratio);
             lost_ = true;
             if(info) {
@@ -645,6 +643,8 @@ Transform OdometryCuVSLAM::computeTransform(
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
         }
+        // Free GPU resources and reset state to allow re-initialization on next frame
+        cleanupCuVSLAMResources();
         lost_ = true;
         tracking_ = false;
         initialized_ = false;
@@ -681,9 +681,12 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        cudaStream_t & cuda_stream)
 {
-    
+    // Warm up GPU and create CUDA context before tracker initialization
+    // Supposedly this will speed up the tracker initialization
+    CUVSLAM_WarmUpGPU();
+
     // cuVSLAM verbosity level (0=none, 1=errors, 2=warnings, 3=info)
-    CUVSLAM_SetVerbosity(0);
+    CUVSLAM_SetVerbosity(3);
 
     // Initialize cuVSLAM cameras and intrinsic vectors
     cuvslam_cameras.resize(data.stereoCameraModels().size()*2);
