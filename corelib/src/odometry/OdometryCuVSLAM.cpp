@@ -204,6 +204,10 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
+
+    // Warm up GPU and create CUDA context before tracker initialization
+    // Supposedly this will speed up the tracker initialization
+    CUVSLAM_WarmUpGPU();
 #endif
 }
 
@@ -524,7 +528,7 @@ Transform OdometryCuVSLAM::computeTransform(
     double guess_velocity_ms = 0.0;
     double estimated_velocity_ms = 0.0;
     
-    if(!guess.isNull() && last_timestamp_ > 0.0 && !use_raw_covariance_) {
+    if(!guess.isNull() && last_timestamp_ > 0.0 && !use_raw_covariance_ && !valid_covariance) {
         time_delta_s = data.stamp() - last_timestamp_;
         
         guess_velocity_ms = guess.getNorm() / time_delta_s;
@@ -539,7 +543,7 @@ Transform OdometryCuVSLAM::computeTransform(
         bool invalid_velocity_ratio = velocity_ratio > 1.5 || velocity_ratio < 0.5;
         bool invalid_velocity_difference = velocity_difference > 0.1;
         
-        if(invalid_velocity_ratio && invalid_velocity_difference && !valid_covariance) {
+        if(invalid_velocity_ratio && invalid_velocity_difference) {
             UWARN("Velocity ratio is high and covariance is invalid: %.4f, returning null transform", velocity_ratio);
             lost_ = true;
             if(info) {
@@ -642,6 +646,8 @@ Transform OdometryCuVSLAM::computeTransform(
             info->timeEstimation = timer.ticks();
         }
         lost_ = true;
+        tracking_ = false;
+        initialized_ = false;
         return Transform();
     } else {
         initialized_ = true;
@@ -675,9 +681,6 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        cudaStream_t & cuda_stream)
 {
-    // Warm up GPU and create CUDA context before tracker initialization
-    // Supposedly this will speed up the tracker initialization
-    CUVSLAM_WarmUpGPU();
     
     // cuVSLAM verbosity level (0=none, 1=errors, 2=warnings, 3=info)
     CUVSLAM_SetVerbosity(0);
