@@ -71,9 +71,16 @@ private:
 	Transform previous_pose_;
 	double last_timestamp_;
 
+	// Configuration Thresholds
+	double velocity_ratio_threshold_high_ = 1.5;			// The maximum velocity ratio of guess / estimated velocity needed to detect lost state.
+	double velocity_ratio_threshold_low_ = 0.5;				// The minimum velocity ratio of guess / estimated velocity needed to detect lost state.
+	double velocity_difference_threshold_ = 0.1;			// The maximum velocity difference between the guess and the estimated velocity needed to detect lost state.
+	double zero_estimated_velocity_threshold_ = 0.00001;	// The minimum cuVSLAM estimated velocity needed to detect lost state.
+	double min_landmarks_threshold_ = 30; 					// The minimum number of landmarks needed to start tracking after an initialization.
+	
 	// Forward cuVLSAM covariance directly to RTAB-Map.
 	// When true this disables covariance based lost detection.
-	bool use_raw_covariance_  = true;
+	bool use_raw_covariance_  = false;
 
 	//visualization
 	std::vector<CUVSLAM_Observation> observations_;

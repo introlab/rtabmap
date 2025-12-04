@@ -204,6 +204,10 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
+
+    // Warm up GPU and create CUDA context before tracker initialization
+    // Supposedly this will speed up the tracker initialization
+    CUVSLAM_WarmUpGPU();
 #endif
 }
 
@@ -305,7 +309,7 @@ Transform OdometryCuVSLAM::computeTransform(
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
 
-    UWARN("=== computeTransform ENTRY === lost_=%s, tracking_=%s, initialized_=%s",
+    UDEBUG("=== computeTransform ENTRY === lost_=%s, tracking_=%s, initialized_=%s",
           lost_ ? "true" : "false",
           tracking_ ? "true" : "false",
           initialized_ ? "true" : "false");
@@ -313,7 +317,7 @@ Transform OdometryCuVSLAM::computeTransform(
     // If we are lost after tracking has begun, return null transform
     // We wait until a reset is triggered.
     if(lost_ && tracking_) {
-        UWARN("EARLY EXIT: lost_ && tracking_ is true, returning null");
+        UDEBUG("EARLY EXIT: lost_ && tracking_ is true, returning null");
         if(info) {
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
@@ -340,7 +344,6 @@ Transform OdometryCuVSLAM::computeTransform(
     // Initialize cuVSLAM tracker on first frame
     if(!initialized_)
     {   
-        UWARN("INIT PATH: initialized_=false, calling initializeCuVSLAM()");
         if(!initializeCuVSLAM(
             data, 
             cuvslam_handle_,
@@ -449,16 +452,6 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
 
-    // Log raw covariance matrix from cuVSLAM (6x6, row-major order: rotx, roty, rotz, x, y, z)
-    UWARN("=== RAW COVARIANCE MATRIX (from cuVSLAM) ===");
-    UWARN("         rotx            roty            rotz            x               y               z");
-    std::array<double, 6> diag_vals = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    for(int i = 0; i < 6; i++) {
-        diag_vals[i] = vo_pose_estimate.covariance[i*6+i];
-    }
-    UWARN("diag_vals: %10.8f, %10.8f, %10.8f, %10.8f, %10.8f, %10.8f", diag_vals[0], diag_vals[1], diag_vals[2], diag_vals[3], diag_vals[4], diag_vals[5]);
-    UWARN("============================================");
-
     // Check if we have invalid covariance values
     bool valid_covariance = true;
     for(int i = 0; i < 6; i++)
@@ -474,16 +467,18 @@ Transform OdometryCuVSLAM::computeTransform(
         // Tracker returns identity covariance and 0.0 values after initialization before motion.
         if(std::abs(diag_val) < 1e-7f)
         {
-            UWARN("Diagonal element %d has degenerate covariance: %.8f (treating as 0.0001)", i, diag_val);
             diag_val = 0.0001;
         }
         if(diag_val > 0.1) {
-            UWARN("Diagonal element %d has high covariance: %.8f", i, diag_val);
             valid_covariance = false;
+
+            // If we don't have a guess, we can't use velocity difference to detect lost state.
+            // Thus at this point, we are lost. Warn the user that cuVSLAM probably needs a guess to work well.
             if(guess.isNull()) {
                 UERROR("No guess provided, but covariance is invalid: %.8f", diag_val);
                 UERROR("We cannot use velocity difference to detect lost state without a guess!");
                 UERROR("Without a guess cuVSLAM is prone to getting lost easily!");
+                UERROR("It is highly recommended to provide a guess to cuVSLAM!");
                 lost_ = true;
                 if(info) {
                     info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
@@ -496,10 +491,6 @@ Transform OdometryCuVSLAM::computeTransform(
 
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
     cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance, use_raw_covariance_);
-
-    UWARN("State: valid_cov=%s, tracking=%s", 
-          valid_covariance ? "YES" : "NO",
-          tracking_ ? "YES" : "NO");
     
     // Apply ground constraint
     if(planar_constraints_) {
@@ -531,15 +522,13 @@ Transform OdometryCuVSLAM::computeTransform(
         estimated_velocity_ms = transform.getNorm() / time_delta_s;
         double velocity_ratio = estimated_velocity_ms / guess_velocity_ms;
         double velocity_difference = std::abs(estimated_velocity_ms - guess_velocity_ms);
-        
-        UWARN("Guess velocity: %.4fm/s, Estimated velocity: %.4fm/s", guess_velocity_ms, estimated_velocity_ms);
-        UWARN("Velocity ratio: %.4f", velocity_ratio);
-        UWARN("Velocity difference: %.4fm/s", velocity_difference);
 
-        bool invalid_velocity_ratio = velocity_ratio > 1.5 || velocity_ratio < 0.5;
-        bool invalid_velocity_difference = velocity_difference > 0.1;
-        // In rapid deceleration cases this velocity zeros out faster then the guess but we aren't lost yet
-        bool zero_estimated_velocity = estimated_velocity_ms < 0.00001; 
+        // Check if the expected and predicted velocities are divergent.
+        // Also ensure estimated velocity is not zero.
+        // In rapid deceleration cases, estimated velocity zeros out faster then the guess but we aren't lost yet. So we need to check for this.
+        bool zero_estimated_velocity = estimated_velocity_ms < zero_estimated_velocity_threshold_; 
+        bool invalid_velocity_ratio = velocity_ratio > velocity_ratio_threshold_high_ || velocity_ratio < velocity_ratio_threshold_low_;
+        bool invalid_velocity_difference = velocity_difference > velocity_difference_threshold_;
         
         if(invalid_velocity_ratio && invalid_velocity_difference && !zero_estimated_velocity) {
             UWARN("Velocity ratio is high and covariance is invalid: %.4f, returning null transform", velocity_ratio);
@@ -554,6 +543,7 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     }
 
+    // At this point we have passed the covariance lost checks, so we are tracking.
     tracking_ = true;
 
     if(info)
@@ -633,17 +623,14 @@ Transform OdometryCuVSLAM::computeTransform(
             landmarks_num = (int)info->words.size();
         }
     }
-
-    UWARN("Landmarks num: %d", landmarks_num);
     
-    // Check if we have enough features to start tracking.
-    if(landmarks_num < 30 && !initialized_) {
-        UWARN("Less then 30 landmarks detected after init");
+    // Check if we have enough features to start tracking. Otherwise we are lost.
+    if(landmarks_num < min_landmarks_threshold_ && !initialized_) {
         if(info) {
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
         }
-        // Free GPU resources and reset state to allow re-initialization on next frame
+        // Free GPU resources and reset state. Prevent memory leaks on init loops.
         cleanupCuVSLAMResources();
         lost_ = true;
         tracking_ = false;
@@ -681,12 +668,8 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        cudaStream_t & cuda_stream)
 {
-    // Warm up GPU and create CUDA context before tracker initialization
-    // Supposedly this will speed up the tracker initialization
-    CUVSLAM_WarmUpGPU();
-
     // cuVSLAM verbosity level (0=none, 1=errors, 2=warnings, 3=info)
-    CUVSLAM_SetVerbosity(3);
+    CUVSLAM_SetVerbosity(0);
 
     // Initialize cuVSLAM cameras and intrinsic vectors
     cuvslam_cameras.resize(data.stereoCameraModels().size()*2);
