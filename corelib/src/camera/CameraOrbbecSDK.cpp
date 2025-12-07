@@ -155,10 +155,10 @@ bool CameraOrbbecSDK::available()
 
 CameraOrbbecSDK::CameraOrbbecSDK(
         std::string deviceId,
-        int colorWidth,
-        int colorHeight,
-        int depthWidth,
-        int depthHeight,
+        unsigned int colorWidth,
+        unsigned int colorHeight,
+        unsigned int depthWidth,
+        unsigned int depthHeight,
         float imageRate,
         const Transform & localTransform) :
             Camera(imageRate, localTransform)
@@ -327,20 +327,34 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
                 UINFO("Resolution: %ldx%ld, FPS: %ld, Format: %d", 
                     profile->getWidth(), profile->getHeight(), profile->getFps(), profile->getFormat(), j==0?" (default)":"");
                 
+                // Get maximum frame rate based on resolution selected
                 if(sensors->getSensorType(i) == OB_SENSOR_DEPTH) {
-                    if(profile->getFps() > maxDepthFps) {
+                    if( profile->getFps() > maxDepthFps &&
+                        depthWidth_ == profile->getWidth() &&
+                        depthHeight_ == profile->getHeight())
+                    {
                         maxDepthFps = profile->getFps();
                     }
                 }
                 else
                 {
-                    if(profile->getFps() > maxColorFps) {
+                    if( profile->getFps() > maxColorFps &&
+                        colorWidth_ == profile->getWidth() &&
+                        colorHeight_ == profile->getHeight())
+                    {
                         maxColorFps = profile->getFps();
                     }
-                }
-                
+                }            
             }
         }
+    }
+
+    // Note that for TOF camera, we want maximum frame rate to better 
+    // sync rgb and depth. For stereo cameras, use the specified frame rate.
+    if(this->getImageRate()!=0.0f && device->getDeviceInfo()->getDeviceType() != OB_TOF_CAMERA)
+    {
+        maxColorFps = maxDepthFps = (unsigned int)this->getImageRate();
+        this->setImageRate(0);
     }
 
     std::shared_ptr<ob::Config> imuConfig;

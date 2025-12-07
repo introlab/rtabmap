@@ -52,10 +52,10 @@ public:
     // deviceId can be either an index (e.g., "0"), an UID (e.g, "2-1-2" or "gmsl-1") or a serial ("AAA6454S")
     CameraOrbbecSDK(
         std::string deviceId = "",
-        int colorWidth = 800,
-        int colorHeight = 600,
-        int depthWidth = 800,
-        int depthHeight = 600,
+        unsigned int colorWidth = 800,
+        unsigned int colorHeight = 600,
+        unsigned int depthWidth = 800,
+        unsigned int depthHeight = 600,
         float imageRate = 0.0f,
         const Transform & localTransform = Transform::getIdentity());
     virtual ~CameraOrbbecSDK();
@@ -79,10 +79,10 @@ private:
 
 #ifdef RTABMAP_ORBBEC_SDK
     std::string deviceId_;
-    int colorWidth_;
-    int colorHeight_;
-    int depthWidth_;
-    int depthHeight_;
+    unsigned int colorWidth_;
+    unsigned int colorHeight_;
+    unsigned int depthWidth_;
+    unsigned int depthHeight_;
     ob::Pipeline * pipeline_;
     ob::Pipeline * imuPipeline_;
     ob::Align * alignFilter_;
