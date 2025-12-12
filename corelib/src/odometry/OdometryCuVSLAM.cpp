@@ -195,12 +195,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 #ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
 	Parameters::parse(parameters, Parameters::kOdomCuVSLAMMulticamMode(), multicam_mode_);
-	if(multicam_mode_ < 0 || multicam_mode_ > 2)
-	{
-		UWARN("%s=%d is invalid, clamping to [0,2].",
-				Parameters::kOdomCuVSLAMMulticamMode().c_str(), multicam_mode_);
-		multicam_mode_ = multicam_mode_ <= 0 ? 0 : 2;
-	}
+    UASSERT(multicam_mode_ >= 0 && multicam_mode_ <= 2);
 	UINFO("%s=%d", Parameters::kOdomCuVSLAMMulticamMode().c_str(), multicam_mode_);
     // Warm up GPU and create CUDA context before tracker initialization
     // Supposedly this will speed up the tracker initialization
