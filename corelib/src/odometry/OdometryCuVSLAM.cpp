@@ -96,6 +96,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        CUVSLAM_TrackerHandle & cuvslam_handle,
                        CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
                        bool planar_constraints,
+                       int multicam_mode,
                        std::vector<uint8_t *> & gpu_left_image_data,
                        std::vector<uint8_t *> & gpu_right_image_data,
                        std::vector<size_t> & gpu_left_image_sizes,
@@ -179,6 +180,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     lost_(false),
     tracking_(false),
     planar_constraints_(false),
+    multicam_mode_(0),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
     observations_(5000),
@@ -338,6 +340,7 @@ Transform OdometryCuVSLAM::computeTransform(
             cuvslam_handle_,
             ground_constraint_handle_,
             planar_constraints_,
+            multicam_mode_,
             gpu_left_image_data_,
             gpu_right_image_data_,
             gpu_left_image_sizes_,
@@ -649,6 +652,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        CUVSLAM_TrackerHandle & cuvslam_handle,
                        CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
                        bool planar_constraints,
+                       int multicam_mode,
                        std::vector<uint8_t *> & gpu_left_image_data,
                        std::vector<uint8_t *> & gpu_right_image_data,
                        std::vector<size_t> & gpu_left_image_sizes,
@@ -729,7 +733,7 @@ bool initializeCuVSLAM(const SensorData & data,
     camera_rig.cameras = cuvslam_cameras.data();
     camera_rig.num_cameras = cuvslam_cameras.size();
 
-    const CUVSLAM_Configuration configuration = CreateConfiguration(data, multicam_mode_);
+    const CUVSLAM_Configuration configuration = CreateConfiguration(data, multicam_mode);
 
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
@@ -799,10 +803,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data, int multicam_
     configuration.odometry_mode = CUVSLAM_OdometryMode::Multicamera;
     configuration.multicam_mode = multicam_mode;    // moderate (0), performance (1) or precision (2).
     configuration.debug_imu_mode = 0;
-    
-    // Frame timing
-    configuration.max_frame_delta_s = 0.2f;             // 200ms max frame interval (5Hz minimum)
-    
+        
     // SLAM parameters (disabled)
     configuration.planar_constraints = 0;
     configuration.slam_throttling_time_ms = 0;
