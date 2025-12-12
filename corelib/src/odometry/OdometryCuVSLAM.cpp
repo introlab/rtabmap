@@ -243,14 +243,8 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
 
 void OdometryCuVSLAM::reset(const Transform & initialPose)
 {
-    UWARN("=== OdometryCuVSLAM::reset() CALLED === initialPose: %s", initialPose.prettyPrint().c_str());
-    UWARN("RESET: Before - lost_=%s, tracking_=%s, initialized_=%s",
-          lost_ ? "true" : "false",
-          tracking_ ? "true" : "false",
-          initialized_ ? "true" : "false");
-    
     Odometry::reset(initialPose);
-    
+   
 #ifdef RTABMAP_CUVSLAM
     this->cleanupCuVSLAMResources();
 #endif
@@ -475,10 +469,10 @@ Transform OdometryCuVSLAM::computeTransform(
             // If we don't have a guess, we can't use velocity difference to detect lost state.
             // Thus at this point, we are lost. Warn the user that cuVSLAM probably needs a guess to work well.
             if(guess.isNull()) {
-                UERROR("No guess provided, but covariance is invalid: %.8f", diag_val);
-                UERROR("We cannot use velocity difference to detect lost state without a guess!");
-                UERROR("Without a guess cuVSLAM is prone to getting lost easily!");
-                UERROR("It is highly recommended to provide a guess to cuVSLAM!");
+                UWARN("No guess provided, but covariance is invalid: %.8f", diag_val);
+                UWARN("We cannot use velocity difference to detect lost state without a guess!");
+                UWARN("Without a guess cuVSLAM is prone to getting lost easily!");
+                UWARN("It is highly recommended to provide a guess to cuVSLAM!");
                 lost_ = true;
                 if(info) {
                     info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
