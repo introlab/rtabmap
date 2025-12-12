@@ -104,7 +104,7 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        cudaStream_t & cuda_stream);
     
-CUVSLAM_Configuration CreateConfiguration(const SensorData & data);
+CUVSLAM_Configuration CreateConfiguration(const SensorData & data, int multicam_mode);
 
 bool prepareImages(const SensorData & data, 
                     std::vector<CUVSLAM_Image> & cuvslam_images,
@@ -159,18 +159,6 @@ Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
   return rtabmap_transform;
 }
 
-void PrintConfiguration(const CUVSLAM_Configuration & cfg)
-{
-  UINFO("Use use_gpu: %s", cfg.use_gpu ? "true" : "false");
-  const char* odometry_mode_str = "Unknown";
-  switch(cfg.odometry_mode) {
-    case Multicamera: odometry_mode_str = "Multicamera (vision-only)"; break;
-    case Inertial: odometry_mode_str = "Inertial"; break;
-    case RGBD: odometry_mode_str = "RGBD"; break;
-  }
-  UINFO("Odometry Mode: %s", odometry_mode_str);
-}
-
 } // namespace rtabmap
 
 #endif
@@ -204,7 +192,14 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
-
+	Parameters::parse(parameters, Parameters::kOdomCuVSLAMMulticamMode(), multicam_mode_);
+	if(multicam_mode_ < 0 || multicam_mode_ > 2)
+	{
+		UWARN("%s=%d is invalid, clamping to [0,2].",
+				Parameters::kOdomCuVSLAMMulticamMode().c_str(), multicam_mode_);
+		multicam_mode_ = multicam_mode_ <= 0 ? 0 : 2;
+	}
+	UINFO("%s=%d", Parameters::kOdomCuVSLAMMulticamMode().c_str(), multicam_mode_);
     // Warm up GPU and create CUDA context before tracker initialization
     // Supposedly this will speed up the tracker initialization
     CUVSLAM_WarmUpGPU();
@@ -734,8 +729,7 @@ bool initializeCuVSLAM(const SensorData & data,
     camera_rig.cameras = cuvslam_cameras.data();
     camera_rig.num_cameras = cuvslam_cameras.size();
 
-    const CUVSLAM_Configuration configuration = CreateConfiguration(data);
-    PrintConfiguration(configuration);
+    const CUVSLAM_Configuration configuration = CreateConfiguration(data, multicam_mode_);
 
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
@@ -782,7 +776,7 @@ Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfigur
 Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
 */
-CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
+CUVSLAM_Configuration CreateConfiguration(const SensorData & data, int multicam_mode)
 {
     CUVSLAM_Configuration configuration;
     CUVSLAM_InitDefaultConfiguration(&configuration);
@@ -803,7 +797,7 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     
     // Odometry configuration (Vision-only, no IMU)
     configuration.odometry_mode = CUVSLAM_OdometryMode::Multicamera;
-    configuration.multicam_mode = 0;    // moderate (0), performance (1) or precision (2).
+    configuration.multicam_mode = multicam_mode;    // moderate (0), performance (1) or precision (2).
     configuration.debug_imu_mode = 0;
     
     // Frame timing

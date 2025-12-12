@@ -68,6 +68,7 @@ private:
 	bool lost_;
 	bool tracking_;
 	bool planar_constraints_;
+	int multicam_mode_ = 0;
 	Transform previous_pose_;
 	double last_timestamp_;
 
