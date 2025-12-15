@@ -428,12 +428,12 @@ Transform OdometryCuVSLAM::computeTransform(
         // Thus we use covariance to detect lost state.
         if(vo_status == CUVSLAM_TRACKING_LOST)
         {
-            UERROR("LOST: cuVSLAM reported CUVSLAM_TRACKING_LOST");
+            UWARN("LOST: cuVSLAM reported CUVSLAM_TRACKING_LOST");
             lost_ = true;
         }
         else
         {
-            UERROR("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
+            UWARN("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
         }
 
         return Transform();
