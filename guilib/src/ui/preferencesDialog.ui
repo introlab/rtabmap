@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1237</y>
+            <y>-603</y>
             <width>684</width>
             <height>5110</height>
            </rect>
@@ -16349,7 +16349,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>5</number>
+                       <number>13</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -21574,6 +21574,87 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <size>
                             <width>20</width>
                             <height>984</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_102">
+                       <layout class="QVBoxLayout" name="verticalLayout_186">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomCuvslam">
+                          <property name="title">
+                           <string>CuVSLAM</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_185" stretch="0,0">
+                           <item>
+                            <widget class="QLabel" name="label_782">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;CuVSLAM: &lt;a href=&quot;https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Working only with stereo cameras with current integration. If Reg/Force3DoF is enabled, planar constraints will be used by CuVSLAM.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_138" columnstretch="0,1">
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_783">
+                               <property name="text">
+                                <string>Multi-camera Mode</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QComboBox" name="odom_cuvslam_multicam_mode">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>Moderate</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Performance</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Precision</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_92">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>2069</height>
                            </size>
                           </property>
                          </spacer>
