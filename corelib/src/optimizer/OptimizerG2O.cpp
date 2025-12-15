@@ -593,7 +593,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							g2o::EdgeSE2Prior * priorEdge = new g2o::EdgeSE2Prior();
 							g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
-							priorEdge->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+							auto pose = g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta());
+							v1->setEstimate(pose); // This will help g2o to converge faster (https://github.com/introlab/rtabmap_ros/issues/1371)
+							priorEdge->setMeasurement(pose);
 							priorEdge->setParameterId(0, PARAM_OFFSET);
 							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
@@ -674,6 +676,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							Eigen::Isometry3d pose;
 							pose = a.linear();
 							pose.translation() = a.translation();
+							v1->setEstimate(pose); // This will help g2o to converge faster (https://github.com/introlab/rtabmap_ros/issues/1371)
 							priorEdge->setMeasurement(pose);
 							priorEdge->setParameterId(0, PARAM_OFFSET);
 							Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
@@ -1172,7 +1175,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
 					return optimizedPoses;
 				}
 
@@ -1221,7 +1224,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
 			return optimizedPoses;
 		}
 

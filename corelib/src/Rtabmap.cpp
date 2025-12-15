@@ -3260,7 +3260,6 @@ bool Rtabmap::process(
 				}
 
 				cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
-				std::list<int> addedPriors;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
@@ -3271,14 +3270,8 @@ bool Rtabmap::process(
 						// make the poses in the map fixed
 						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
 						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
-						addedPriors.push_back(iterPose->first);
 					}
 					UDEBUG("Constraint %d->%d: %s (type=%s, var = %f %f)", iter->second.from(), iter->second.to(), iter->second.transform().prettyPrint().c_str(), iter->second.typeName().c_str(), iter->second.transVariance(), iter->second.rotVariance());
-				}
-				if(addedPriors.size() == 1) {
-					// When there is only one map node, remove the prior to use fixed constraint in g2o (https://github.com/introlab/rtabmap_ros/issues/1371)
-					UDEBUG("Currently localizing on a single map node, removing prior on %d", addedPriors.front());
-					constraints.erase(graph::findLink(constraints, addedPriors.front(), addedPriors.front(), false, Link::kPosePrior));
 				}
 
 				std::map<int, Transform> posesOut;
@@ -3290,6 +3283,7 @@ bool Rtabmap::process(
 
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
 				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+				
 				if(ULogger::level() == ULogger::kDebug)
 				{
 					for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)

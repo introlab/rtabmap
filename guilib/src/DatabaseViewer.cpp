@@ -394,11 +394,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->checkBox_enableForAll, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintButtons()));
 
-	ui_->horizontalSlider_iterations->setTracking(false);
+	ui_->horizontalSlider_iterations->setTracking(true);
 	ui_->horizontalSlider_iterations->setEnabled(false);
 	ui_->spinBox_optimizationsFrom->setEnabled(false);
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
-	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_optimizationFlavor, SIGNAL(activated(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -454,6 +453,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_alignScansCloudsWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->comboBox_env_sensor_graph_colormap, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
@@ -1129,6 +1129,7 @@ bool DatabaseViewer::closeDatabase()
 		lastWmIds_.clear();
 		mapIds_.clear();
 		weights_.clear();
+		envSensors_.clear();
 		wmStates_.clear();
 		links_.clear();
 		linksAdded_.clear();
@@ -1806,6 +1807,7 @@ void DatabaseViewer::updateIds()
 	idToIndex_.clear();
 	mapIds_.clear();
 	weights_.clear();
+	envSensors_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
 	groundTruthPoses_.clear();
@@ -1912,6 +1914,7 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
+		envSensors_.insert(std::make_pair(ids_[i], sensors));
 		if(w>=0)
 		{
 			for(std::multimap<int, Link>::iterator iter=links.find(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
@@ -7100,6 +7103,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 void DatabaseViewer::sliderIterationsValueChanged(int value)
 {
+	UDEBUG("sender=%s value=%d currentValue = %d", sender()?sender()->objectName().toStdString().c_str():"NA", value, ui_->horizontalSlider_iterations->value());
 	if(dbDriver_ && value >=0 && value < (int)graphes_.size())
 	{
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
@@ -7242,7 +7246,47 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGPSGraph(gpsPoses_, gpsValues_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_, weights_);
-		if(ui_->checkBox_wmState->isEnabled() &&
+		if(ui_->comboBox_env_sensor_graph_colormap->currentIndex() != 0)
+		{
+			std::map<int, float> colors;
+			EnvSensor::Type curentType = (EnvSensor::Type)ui_->comboBox_env_sensor_graph_colormap->currentIndex();
+			for(std::map<int, rtabmap::Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				auto jter = envSensors_.find(iter->first);
+				if(jter != envSensors_.end() && jter->second.find(curentType) != jter->second.end())
+				{
+					colors.insert(std::make_pair(iter->first, jter->second.at(curentType).value()));
+				}
+			}
+			std::string legend;
+			bool invertedColor = false;
+			unsigned char hueMax = 240; // blue
+			switch(curentType)
+			{
+				case EnvSensor::kWifiSignalStrength:
+					legend = "Wifi Signal Strength (dBm)";
+					invertedColor = true;
+					hueMax = 120; // green
+					break;
+				case EnvSensor::kAmbientTemperature:
+					legend = "Ambient Temperature (Celcius)";
+					break;
+				case EnvSensor::kAmbientAirPressure:
+					legend = "Ambient Air Pressure (hPa)";
+					break;
+				case EnvSensor::kAmbientLight:
+					legend = "Ambient Light / Illuminance (lx)";
+					break;
+				case EnvSensor::kAmbientRelativeHumidity:
+					legend = "Ambient Relative Humidity (%)";
+					break;
+				default:
+					break;
+			}
+			ui_->graphViewer->updateNodeColorByValue(legend, colors, 0.0f, 0.0f, invertedColor, 0, hueMax, 1);
+			UDEBUG("Updated node color based on env sensor %d", (int)curentType);
+		}
+		else if(ui_->checkBox_wmState->isEnabled() &&
 		   ui_->checkBox_wmState->isChecked() &&
 		   !lastWmIds_.empty())
 		{
@@ -7263,6 +7307,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			{
 				ui_->graphViewer->updateNodeColorByValue("In WM", colors, 1, false, 1);
 			}
+			UDEBUG("Updated node color based working memory state");
 		}
 		QGraphicsRectItem * rectScaleItem = 0;
 		ui_->graphViewer->clearMap();
@@ -7466,12 +7511,15 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 #endif
 		}
-		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+		
 		if(rectScaleItem != 0)
 		{
 			ui_->graphViewer->fitInView(rectScaleItem, Qt::KeepAspectRatio);
 			ui_->graphViewer->scene()->removeItem(rectScaleItem);
 			delete rectScaleItem;
+		}
+		else {
+			ui_->graphViewer->fitInView(ui_->graphViewer->sceneRect(), Qt::KeepAspectRatio);
 		}
 
 		ui_->graphViewer->update();

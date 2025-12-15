@@ -1670,14 +1670,10 @@ Transform RegistrationVis::computeTransformationImpl(
 					UINFO(msg.c_str());
 				}
 			}
-			else if(fromSignature.getWords().size() == 0)
+			else 
 			{
-				msg = uFormat("No enough features (%d)", (int)fromSignature.getWords().size());
-				UWARN(msg.c_str());
-			}
-			else
-			{
-				msg = uFormat("No camera model");
+				msg = uFormat("No enough features < %s=%d (from=%d to=%d)", 
+					Parameters::kVisMinInliers().c_str(), _minInliers, (int)fromSignature.getWords().size(), (int)toSignature.getWords().size());
 				UWARN(msg.c_str());
 			}
 		}

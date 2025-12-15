@@ -954,7 +954,8 @@ pcl::IndicesPtr cropBoxImpl(
 		const Transform & transform,
 		bool negative)
 {
-	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+	UASSERT_MSG(min[0] < max[0] && min[1] < max[1] && min[2] <= max[2], // z can be equal in 2D case
+		uFormat("x=%f->%f y=%f->%f z=%f->%f", min[0], max[0], min[1], max[1], min[2], max[2]).c_str()); 
 
 	pcl::IndicesPtr output(new std::vector<int>);
 	pcl::CropBox<PointT> filter;
@@ -973,7 +974,8 @@ pcl::IndicesPtr cropBoxImpl(
 
 pcl::IndicesPtr cropBox(const pcl::PCLPointCloud2::Ptr & cloud, const pcl::IndicesPtr & indices, const Eigen::Vector4f & min, const Eigen::Vector4f & max, const Transform & transform, bool negative)
 {
-	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+	UASSERT_MSG(min[0] < max[0] && min[1] < max[1] && min[2] <= max[2], // z can be equal in 2D case
+		uFormat("x=%f->%f y=%f->%f z=%f->%f", min[0], max[0], min[1], max[1], min[2], max[2]).c_str());
 
 	pcl::IndicesPtr output(new std::vector<int>);
 	pcl::CropBox<pcl::PCLPointCloud2> filter;
