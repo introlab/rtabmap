@@ -755,7 +755,7 @@ void MainWindow::setupMainLayout(bool vertical)
 
 std::map<int, Transform> MainWindow::currentVisiblePosesMap() const
 {
-	return _ui->widget_mapVisibility->getVisiblePoses();
+	return !_ui->widget_mapVisibility->isEmpty()?_ui->widget_mapVisibility->getVisiblePoses():_currentPosesMap;
 }
 
 void MainWindow::setCloudViewer(rtabmap::CloudViewer * cloudViewer)
@@ -2890,6 +2890,9 @@ void MainWindow::updateMapCloud(
 		}
 		_ui->widget_mapVisibility->setMap(nodePoses, posesMask);
 		UDEBUG("Updated map visibility with %ld poses", nodePoses.size());
+	}
+	else {
+		_ui->widget_mapVisibility->clear();
 	}
 
 	if(groundTruths.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
@@ -8043,7 +8046,7 @@ void MainWindow::exportClouds()
 		return;
 	}
 
-	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+	std::map<int, Transform> poses = !_ui->widget_mapVisibility->isEmpty()?_ui->widget_mapVisibility->getVisiblePoses():_currentPosesMap;
 
 	// Use ground truth poses if current clouds are using them
 	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
@@ -8080,7 +8083,7 @@ void MainWindow::viewClouds()
 		return;
 	}
 
-	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+	std::map<int, Transform> poses = !_ui->widget_mapVisibility->isEmpty()?_ui->widget_mapVisibility->getVisiblePoses():_currentPosesMap;
 
 	// Use ground truth poses if current clouds are using them
 	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
@@ -8156,7 +8159,7 @@ void MainWindow::exportImages()
 		QMessageBox::warning(this, tr("Export images..."), tr("Cannot export images, the cache is empty!"));
 		return;
 	}
-	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+	std::map<int, Transform> poses = !_ui->widget_mapVisibility->isEmpty()?_ui->widget_mapVisibility->getVisiblePoses():_currentPosesMap;
 
 	if(poses.empty())
 	{
@@ -8373,7 +8376,7 @@ void MainWindow::exportBundlerFormat()
 		return;
 	}
 
-	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
+	std::map<int, Transform> posesIn = !_ui->widget_mapVisibility->isEmpty()?_ui->widget_mapVisibility->getVisiblePoses():_currentPosesMap;
 
 	// Use ground truth poses if current clouds are using them
 	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
