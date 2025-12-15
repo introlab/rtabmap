@@ -682,6 +682,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomOpen3D, MaxDepth,         float, 3.0,  "Maximum depth.");
     RTABMAP_PARAM(OdomOpen3D, Method,           int, 0,  "Registration method: 0=PointToPlane, 1=Intensity, 2=Hybrid.");
 
+    // Odometry cuVSLAM
+    RTABMAP_PARAM(OdomCuVSLAM, MulticamMode,        int, 0,  "cuVSLAM multicam_mode setting: 0=moderate, 1=performance, 2=precision.");
+
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");
     RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");

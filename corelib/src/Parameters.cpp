@@ -183,6 +183,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			(stereo && group.compare("Stereo") == 0) ||
 			(icp && group.compare("Icp") == 0) ||
 			(vis && Parameters::isFeatureParameter(iter->first)) ||
+			group.compare("OdomCuVSLAM") == 0 ||
 			group.compare("Reg") == 0 ||
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||

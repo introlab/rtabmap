@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include <cmath>
 
 #ifdef RTABMAP_CUVSLAM
 #include "rtabmap/core/CameraModel.h"
@@ -95,6 +96,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        CUVSLAM_TrackerHandle & cuvslam_handle,
                        CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
                        bool planar_constraints,
+                       int multicam_mode,
                        std::vector<uint8_t *> & gpu_left_image_data,
                        std::vector<uint8_t *> & gpu_right_image_data,
                        std::vector<size_t> & gpu_left_image_sizes,
@@ -103,7 +105,7 @@ bool initializeCuVSLAM(const SensorData & data,
 	                   std::vector<std::array<float, 12>> & intrinsics,
                        cudaStream_t & cuda_stream);
     
-CUVSLAM_Configuration CreateConfiguration(const SensorData & data);
+CUVSLAM_Configuration CreateConfiguration(const SensorData & data, int multicam_mode);
 
 bool prepareImages(const SensorData & data, 
                     std::vector<CUVSLAM_Image> & cuvslam_images,
@@ -113,10 +115,7 @@ bool prepareImages(const SensorData & data,
                     std::vector<size_t> & gpu_right_image_sizes,
                     cudaStream_t & cuda_stream);
 
-cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance);
-
-void printCovarianceMatrix(const cv::Mat & cov, const std::string & label);
-void printRawCuvslamCovariance(const float * cuvslam_covariance, const std::string & label);
+cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance, bool use_raw_covariance);
 
 
 // ============================================================================
@@ -161,24 +160,6 @@ Transform FromcuVSLAMPose(const CUVSLAM_Pose & cuvslam_pose)
   return rtabmap_transform;
 }
 
-void PrintConfiguration(const CUVSLAM_Configuration & cfg)
-{
-  UINFO("Use use_gpu: %s", cfg.use_gpu ? "true" : "false");
-  UINFO("Enable IMU Fusion: %s", cfg.enable_imu_fusion ? "true" : "false");
-  if (cfg.enable_imu_fusion) {
-    UINFO("gyroscope_noise_density: %f",
-      cfg.imu_calibration.gyroscope_noise_density);
-    UINFO("gyroscope_random_walk: %f",
-      cfg.imu_calibration.gyroscope_random_walk);
-    UINFO("accelerometer_noise_density: %f",
-      cfg.imu_calibration.accelerometer_noise_density);
-    UINFO("accelerometer_random_walk: %f",
-      cfg.imu_calibration.accelerometer_random_walk);
-    UINFO("frequency: %f",
-      cfg.imu_calibration.frequency);
-  }
-}
-
 } // namespace rtabmap
 
 #endif
@@ -199,6 +180,7 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
     lost_(false),
     tracking_(false),
     planar_constraints_(false),
+    multicam_mode_(0),
     previous_pose_(Transform::getIdentity()),
     last_timestamp_(-1.0),
     observations_(5000),
@@ -212,6 +194,12 @@ OdometryCuVSLAM::OdometryCuVSLAM(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_CUVSLAM
     Parameters::parse(parameters, Parameters::kRegForce3DoF(), planar_constraints_);
+	Parameters::parse(parameters, Parameters::kOdomCuVSLAMMulticamMode(), multicam_mode_);
+    UASSERT(multicam_mode_ >= 0 && multicam_mode_ <= 2);
+	UINFO("%s=%d", Parameters::kOdomCuVSLAMMulticamMode().c_str(), multicam_mode_);
+    // Warm up GPU and create CUDA context before tracker initialization
+    // Supposedly this will speed up the tracker initialization
+    CUVSLAM_WarmUpGPU();
 #endif
 }
 
@@ -248,7 +236,14 @@ OdometryCuVSLAM::~OdometryCuVSLAM()
 void OdometryCuVSLAM::reset(const Transform & initialPose)
 {
     Odometry::reset(initialPose);
-    
+   
+#ifdef RTABMAP_CUVSLAM
+    this->cleanupCuVSLAMResources();
+#endif
+}
+
+void OdometryCuVSLAM::cleanupCuVSLAMResources()
+{
 #ifdef RTABMAP_CUVSLAM
     // Clean up cuVSLAM handles
     if(cuvslam_handle_)
@@ -300,9 +295,19 @@ Transform OdometryCuVSLAM::computeTransform(
 #ifdef RTABMAP_CUVSLAM
     UTimer timer;
 
+    UDEBUG("=== computeTransform ENTRY === lost_=%s, tracking_=%s, initialized_=%s",
+          lost_ ? "true" : "false",
+          tracking_ ? "true" : "false",
+          initialized_ ? "true" : "false");
+
     // If we are lost after tracking has begun, return null transform
     // We wait until a reset is triggered.
     if(lost_ && tracking_) {
+        UDEBUG("EARLY EXIT: lost_ && tracking_ is true, returning null");
+        if(info) {
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+            info->timeEstimation = timer.ticks();
+        }
         return Transform();
     }
     
@@ -330,6 +335,7 @@ Transform OdometryCuVSLAM::computeTransform(
             cuvslam_handle_,
             ground_constraint_handle_,
             planar_constraints_,
+            multicam_mode_,
             gpu_left_image_data_,
             gpu_right_image_data_,
             gpu_left_image_sizes_,
@@ -341,18 +347,8 @@ Transform OdometryCuVSLAM::computeTransform(
             UERROR("Failed to initialize cuVSLAM tracker");
             return Transform();
         }
-        
-        initialized_ = true;
-        if(info)
-        {
-            info->type = 0;
-            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
-            info->timeEstimation = timer.ticks();
-        }
-        last_timestamp_ = data.stamp();
-        return Transform();
     }
-    
+        
     // Prepare images for cuVSLAM
     std::vector<CUVSLAM_Image> cuvslam_image_objects;
     if(!prepareImages(
@@ -368,10 +364,9 @@ Transform OdometryCuVSLAM::computeTransform(
         return Transform();
     }
     
-    // Process IMU data if available
+    // Not using the IMU yet
     if(!data.imu().empty())
     {
-        // TODO: Implement IMU processing
         UWARN("IMU data available but processing not implemented yet");
     }
     
@@ -394,13 +389,14 @@ Transform OdometryCuVSLAM::computeTransform(
         predicted_pose = TocuVSLAMPose(absolute_guess);
         predicted_pose_ptr = &predicted_pose;
     }
-
+    
     CUVSLAM_PoseEstimate vo_pose_estimate;
     const CUVSLAM_Status vo_status = CUVSLAM_TrackGpuMem(
         cuvslam_handle_, 
         cuvslam_image_objects.data(), 
         cuvslam_image_objects.size(), 
-        predicted_pose_ptr,  // can safely handle nullptr if no guess is provided
+        nullptr,                        // depth_image (not used in this mode)
+        predicted_pose_ptr,             // can safely handle nullptr if no guess is provided
         &vo_pose_estimate
     );
 
@@ -409,23 +405,37 @@ Transform OdometryCuVSLAM::computeTransform(
         // Provide specific error message
         const char * error_msg = "Unknown error";
         switch(vo_status) {
-            case 1: error_msg = "CUVSLAM_TRACKING_LOST"; break;
-            case 2: error_msg = "CUVSLAM_INVALID_PARAMETER"; break;
-            case 3: error_msg = "CUVSLAM_INVALID_IMAGE_FORMAT or CUVSLAM_INVALID_CAMERA_CONFIG"; break;
-            case 4: error_msg = "CUVSLAM_GPU_MEMORY_ERROR"; break;
-            case 5: error_msg = "CUVSLAM_INITIALIZATION_ERROR"; break;
-            default: error_msg = "Unknown cuVSLAM error"; break;
+            case CUVSLAM_TRACKING_LOST:                 error_msg = "CUVSLAM_TRACKING_LOST"; break;
+            case CUVSLAM_INVALID_ARG:                   error_msg = "CUVSLAM_INVALID_PARAMETER"; break;
+            case CUVSLAM_CAN_NOT_LOCALIZE:              error_msg = "CUVSLAM_CAN_NOT_LOCALIZE"; break;
+            case CUVSLAM_GENERIC_ERROR:                 error_msg = "CUVSLAM_GENERIC_ERROR"; break;
+            case CUVSLAM_UNSUPPORTED_NUMBER_OF_CAMERAS: error_msg = "CUVSLAM_UNSUPPORTED_NUMBER_OF_CAMERAS"; break;
+            case CUVSLAM_SLAM_IS_NOT_INITIALIZED:       error_msg = "CUVSLAM_SLAM_IS_NOT_INITIALIZED"; break;
+            default:                                    error_msg = "Unknown cuVSLAM error"; break;
         }
-        
-        UERROR("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
-        
+
+        // Update timing information even on failure
+        last_timestamp_ = data.stamp();
+
         if(info)
         {
+            // Report very high uncertainty to upstream consumers
             info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
             info->timeEstimation = timer.ticks();
         }
-    
-        last_timestamp_ = data.stamp();    
+
+        // The cuVSLAM tracking status never reports lost in my testing.
+        // Thus we use covariance to detect lost state.
+        if(vo_status == CUVSLAM_TRACKING_LOST)
+        {
+            UWARN("LOST: cuVSLAM reported CUVSLAM_TRACKING_LOST");
+            lost_ = true;
+        }
+        else
+        {
+            UWARN("cuVSLAM tracking error: %d (%s)", vo_status, error_msg);
+        }
+
         return Transform();
     }
 
@@ -434,51 +444,41 @@ Transform OdometryCuVSLAM::computeTransform(
     for(int i = 0; i < 6; i++)
     {
         float & diag_val = vo_pose_estimate.covariance[i*6+i];
-        // We allow 1.0 as a valid value, since cuVSLAM sends identity covariance for the first few frames.
-        if(!std::isfinite(diag_val) || diag_val <= 0.0 || (diag_val > 0.1 && diag_val != 1.0))
+
+        // conditions for immediate failure and tracking loss
+        if(!std::isfinite(diag_val) || diag_val < 0.0)
         {
-            diag_val = 9999.0; // Set to high uncertainty
+            diag_val = 9999.0;
             valid_covariance = false;
+        }
+        // Tracker returns identity covariance and 0.0 values after initialization before motion.
+        if(std::abs(diag_val) < 1e-7f)
+        {
+            diag_val = 0.0001;
+        }
+        if(diag_val > 0.1) {
+            valid_covariance = false;
+
+            // If we don't have a guess, we can't use velocity difference to detect lost state.
+            // Thus at this point, we are lost. Warn the user that cuVSLAM probably needs a guess to work well.
+            if(guess.isNull()) {
+                UWARN("No guess provided, but covariance is invalid: %.8f", diag_val);
+                UWARN("We cannot use velocity difference to detect lost state without a guess!");
+                UWARN("Without a guess cuVSLAM is prone to getting lost easily!");
+                UWARN("It is highly recommended to provide a guess to cuVSLAM!");
+                lost_ = true;
+                if(info) {
+                    info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+                    info->timeEstimation = timer.ticks();
+                }
+                return Transform();
+            }
         }
     }
 
     // Convert to RTABMAP covariance format and scale to meet RTABMAP expectations
-    cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance);
-
-    // Handle invalid covariance. Protect against low velocity cases.
-    if(!valid_covariance) {
-        double velocity_ms = 9999.0;
-        double angular_velocity_rad_s = 9999.0;
-        if(!guess.isNull()) {
-            double time_s = data.stamp() - last_timestamp_;
-            velocity_ms = guess.getNorm() / time_s;
-            angular_velocity_rad_s = guess.getAngle(Transform::getIdentity()) / time_s;
-        }
-        if(velocity_ms < 0.1 && angular_velocity_rad_s < 0.1 && last_timestamp_ != -1.0) {
-            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
-        } else {
-            // If we have already begun tracking, now we are lost.
-            if(tracking_) {
-                UWARN("LOST: Velocity is high and covariance is invalid, setting lost to true");
-                lost_ = true;
-            }
-            // Still send covariance for debugging
-            if(info) {
-                info->reg.covariance = covMat;
-            }
-            return Transform();
-        }
-    }
+    cv::Mat covMat = convertCuVSLAMCovariance(vo_pose_estimate.covariance, use_raw_covariance_);
     
-    // Tracking was successful and the covariance is valid, set tracking to true
-    tracking_ = true;
-
-    if(info)
-    {
-        info->reg.covariance = covMat;
-        info->timeEstimation = timer.ticks();
-    }
-
     // Apply ground constraint
     if(planar_constraints_) {
         if(CUVSLAM_GroundConstraintAddNextPose(ground_constraint_handle_, &vo_pose_estimate.pose) != CUVSLAM_SUCCESS) {
@@ -491,13 +491,61 @@ Transform OdometryCuVSLAM::computeTransform(
         }
     }
 
-    // Convert cuVSLAM pose to RTAB-Map Transform
+    // Convert cuVSLAM absolute pose to incremental RTAB-Map Transform
     Transform current_pose = FromcuVSLAMPose(vo_pose_estimate.pose);
     current_pose = canonical_pose_cuvslam * current_pose * cuvslam_pose_canonical;
-
-    // Calculate incremental transform
     UASSERT(!previous_pose_.isNull());
     Transform transform = previous_pose_.inverse() * current_pose;
+
+    // Compute guess and estimated velocity and report lost if velocity ratio is high and covariance is invalid
+    double time_delta_s = 0.0;
+    double guess_velocity_ms = 0.0;
+    double estimated_velocity_ms = 0.0;
+    
+    if(!guess.isNull() && last_timestamp_ > 0.0 && !use_raw_covariance_ && !valid_covariance) {
+        time_delta_s = data.stamp() - last_timestamp_;
+        
+        guess_velocity_ms = guess.getNorm() / time_delta_s;
+        estimated_velocity_ms = transform.getNorm() / time_delta_s;
+        double velocity_ratio = estimated_velocity_ms / guess_velocity_ms;
+        double velocity_difference = std::abs(estimated_velocity_ms - guess_velocity_ms);
+
+        // Check if the expected and predicted velocities are divergent.
+        // Also ensure estimated velocity is not zero.
+        // In rapid deceleration cases, estimated velocity zeros out faster then the guess but we aren't lost yet. So we need to check for this.
+        bool zero_estimated_velocity = estimated_velocity_ms < zero_estimated_velocity_threshold_; 
+        bool invalid_velocity_ratio = velocity_ratio > velocity_ratio_threshold_high_ || velocity_ratio < velocity_ratio_threshold_low_;
+        bool invalid_velocity_difference = velocity_difference > velocity_difference_threshold_;
+        
+        if(invalid_velocity_ratio && invalid_velocity_difference && !zero_estimated_velocity) {
+            UWARN("Velocity ratio is high and covariance is invalid: %.4f, returning null transform", velocity_ratio);
+            lost_ = true;
+            if(info) {
+                info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+                info->timeEstimation = timer.ticks();
+            }
+            return Transform();
+        } else {
+            covMat = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+        }
+    }
+
+    // At this point we have passed the covariance lost checks, so we are tracking.
+    tracking_ = true;
+
+    if(info)
+    {
+        info->reg.covariance = covMat;
+        info->timeEstimation = timer.ticks();
+    }
+
+    // extract 3D VO landmarks for visualization
+    // This will be used to determine if we have enough features to start tracking.
+    CUVSLAM_LandmarkVector landmark_vector;
+    landmark_vector.max = landmarks_.size();
+    landmark_vector.landmarks = landmarks_.data();
+    CUVSLAM_Status landmark_status = CUVSLAM_GetLastLandmarks(cuvslam_handle_, &landmark_vector);
+    int landmarks_num = landmark_vector.num;
 
     // Fill info with visualization data
     if(info) {
@@ -522,11 +570,6 @@ Transform OdometryCuVSLAM::computeTransform(
             info->type = kTypeF2M;
         }
         
-        // extract 3D VO landmarks for visualization
-        CUVSLAM_LandmarkVector landmark_vector;
-        landmark_vector.max = landmarks_.size();
-        landmark_vector.landmarks = landmarks_.data();
-        CUVSLAM_Status landmark_status = CUVSLAM_GetLastLandmarks(cuvslam_handle_, &landmark_vector);
         std::vector<Transform> local_transform_inv(data.stereoCameraModels().size());
         for(size_t i=0; i<data.stereoCameraModels().size(); ++i) {
             local_transform_inv[i] = data.stereoCameraModels()[i].localTransform().inverse();
@@ -552,11 +595,36 @@ Transform OdometryCuVSLAM::computeTransform(
                                 info->reg.inliersIDs.push_back(landmark.id);
                                 break;
                             }
+
+                            // Update landmarks number based on which landmarks were successfully reprojected in the current frame
+                            landmarks_num = info->words.size();
                         }
                     }
                 }
             }
         }
+
+        // If we are in a multi-camera setup and successfully reprojected landmarks into camera frames,
+        // use the number of successfully reprojected landmarks instead of the raw cuVSLAM landmark count.
+        if(data.stereoCameraModels().size() > 1) {
+            landmarks_num = (int)info->words.size();
+        }
+    }
+    
+    // Check if we have enough features to start tracking. Otherwise we are lost.
+    if(landmarks_num < min_landmarks_threshold_ && !initialized_) {
+        if(info) {
+            info->reg.covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0;
+            info->timeEstimation = timer.ticks();
+        }
+        // Free GPU resources and reset state. Prevent memory leaks on init loops.
+        cleanupCuVSLAMResources();
+        lost_ = true;
+        tracking_ = false;
+        initialized_ = false;
+        return Transform();
+    } else {
+        initialized_ = true;
     }
 
     previous_pose_ = current_pose;
@@ -566,7 +634,7 @@ Transform OdometryCuVSLAM::computeTransform(
     UERROR("cuVSLAM support not compiled in RTAB-Map");\
     return Transform();
 #endif
-    
+   
 }
 
 #ifdef RTABMAP_CUVSLAM
@@ -579,6 +647,7 @@ bool initializeCuVSLAM(const SensorData & data,
                        CUVSLAM_TrackerHandle & cuvslam_handle,
                        CUVSLAM_GroundConstraintHandle & ground_constraint_handle,
                        bool planar_constraints,
+                       int multicam_mode,
                        std::vector<uint8_t *> & gpu_left_image_data,
                        std::vector<uint8_t *> & gpu_right_image_data,
                        std::vector<size_t> & gpu_left_image_sizes,
@@ -627,9 +696,9 @@ bool initializeCuVSLAM(const SensorData & data,
         rtabmap::Transform extrinsics = cuvslam_pose_canonical * stereoModel.localTransform() * optical_pose_cuvslam;
         cam_left.pose = TocuVSLAMPose(extrinsics);
         cam_left.border_top = 0;
-        cam_left.border_bottom = leftModel.imageHeight();
+        cam_left.border_bottom = 0;
         cam_left.border_left = 0;
-        cam_left.border_right = leftModel.imageWidth();
+        cam_left.border_right = 0;
 
         // Right camera
         cam_right.parameters = intrinsics_right.data();
@@ -649,9 +718,9 @@ bool initializeCuVSLAM(const SensorData & data,
         extrinsics = cuvslam_pose_canonical * stereoModel.localTransform() * baseline_transform * optical_pose_cuvslam;
         cam_right.pose = TocuVSLAMPose(extrinsics);
         cam_right.border_top = 0;
-        cam_right.border_bottom = rightModel.imageHeight();
+        cam_right.border_bottom = 0;
         cam_right.border_left = 0;
-        cam_right.border_right = rightModel.imageWidth();
+        cam_right.border_right = 0;
     }
     
     // Set up camera rig
@@ -659,12 +728,12 @@ bool initializeCuVSLAM(const SensorData & data,
     camera_rig.cameras = cuvslam_cameras.data();
     camera_rig.num_cameras = cuvslam_cameras.size();
 
-    const CUVSLAM_Configuration configuration = CreateConfiguration(data);
-    PrintConfiguration(configuration);
+    const CUVSLAM_Configuration configuration = CreateConfiguration(data, multicam_mode);
 
     // Create tracker
     CUVSLAM_TrackerHandle tracker_handle;
     UTimer create_timer; create_timer.start();
+    
     const CUVSLAM_Status status_tracker = CUVSLAM_CreateTracker(&tracker_handle, &camera_rig, &configuration);
     
     if (status_tracker != CUVSLAM_SUCCESS) {
@@ -706,12 +775,11 @@ Implementation based on Isaac ROS VisualSlamNode::VisualSlamImpl::CreateConfigur
 Source: isaac_ros_visual_slam/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp:379-422
 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam/blob/19be8c781a55dee9cfbe9f097adca3986638feb1/isaac_ros_visual_slam/src/impl/visual_slam_impl.cpp#L379-L422    
 */
-CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
+CUVSLAM_Configuration CreateConfiguration(const SensorData & data, int multicam_mode)
 {
     CUVSLAM_Configuration configuration;
     CUVSLAM_InitDefaultConfiguration(&configuration);
     
-    configuration.multicam_mode = data.stereoCameraModels().size()>1?1:0;
     
     // Core Visual Odometry Settings 
     configuration.use_motion_model = 1;                 // Enable motion model for better tracking
@@ -726,19 +794,12 @@ CUVSLAM_Configuration CreateConfiguration(const SensorData & data)
     configuration.enable_landmarks_export = 0;          // SLAM feature (optional)
     configuration.enable_reading_slam_internals = 0;    // SLAM feature (optional)
     
-    // IMU Configuration (If we later implement IMU support)
-    configuration.enable_imu_fusion = 0;                //data.imu().empty()?0:1;
-    configuration.debug_imu_mode = 0;                   // Disable IMU debug mode
-    // imu_calibration.gyroscope_noise_density = 0.0002f;    
-    // imu_calibration.gyroscope_random_walk = 0.00003f;      
-    // imu_calibration.accelerometer_noise_density = 0.01f;   
-    // imu_calibration.accelerometer_random_walk = 0.001f;    
-    // imu_calibration.frequency = 200.0f; 
-    // configuration.imu_calibration = imu_calibration;
-    
-    // configuration.max_frame_delta_ms = 100.0;        // Maximum frame interval (100ms default)
-    
-    // SLAM-specific parameters (disabled)
+    // Odometry configuration (Vision-only, no IMU)
+    configuration.odometry_mode = CUVSLAM_OdometryMode::Multicamera;
+    configuration.multicam_mode = multicam_mode;    // moderate (0), performance (1) or precision (2).
+    configuration.debug_imu_mode = 0;
+        
+    // SLAM parameters (disabled)
     configuration.planar_constraints = 0;
     configuration.slam_throttling_time_ms = 0;
     configuration.slam_max_map_size = 0;
@@ -907,6 +968,11 @@ bool prepareImages(const SensorData & data,
         left_cuvslam_image.camera_index = camera_index;
         left_cuvslam_image.pitch = left_image_slice.step;
         left_cuvslam_image.image_encoding = left_encoding;
+        // Mask fields (not used in this implementation)
+        left_cuvslam_image.input_mask = nullptr;
+        left_cuvslam_image.mask_width = 0;
+        left_cuvslam_image.mask_height = 0;
+        left_cuvslam_image.mask_pitch = 0;
         
         cuvslam_images.push_back(left_cuvslam_image);
 
@@ -931,6 +997,11 @@ bool prepareImages(const SensorData & data,
         right_cuvslam_image.camera_index = camera_index;
         right_cuvslam_image.pitch = right_image_slice.step;
         right_cuvslam_image.image_encoding = right_encoding;
+        // Mask fields (not used in this implementation)
+        right_cuvslam_image.input_mask = nullptr;
+        right_cuvslam_image.mask_width = 0;
+        right_cuvslam_image.mask_height = 0;
+        right_cuvslam_image.mask_pitch = 0;
 
         cuvslam_images.push_back(right_cuvslam_image);
         
@@ -953,10 +1024,11 @@ Convert cuVSLAM covariance to RTAB-Map format.
 Based on Isaac ROS implementation: FromcuVSLAMCovariance()
 Source: isaac_ros_visual_slam/src/impl/cuvslam_ros_conversion.cpp:275-299
 */
-cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
+cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance, bool use_raw_covariance)
 {
+    
     // Scale cuvslam covariance to make it more realistic
-    const double scaling_factor = 10.0;
+    const double scaling_factor = use_raw_covariance ? 1.0 : 10.0;
 
     // Handle null covariance pointer
     if(cuvslam_covariance == nullptr)
@@ -982,32 +1054,36 @@ cv::Mat convertCuVSLAMCovariance(const float * cuvslam_covariance)
     block_canonical_pose_cuvslam.block<3, 3>(0, 0) = canonical_pose_cuvslam_mat;
     block_canonical_pose_cuvslam.block<3, 3>(3, 3) = canonical_pose_cuvslam_mat;
     
-    // Map cuVSLAM covariance array to Eigen matrix
-    Eigen::Matrix<float, 6, 6> covariance_mat = 
+    // Map cuVSLAM covariance array to Eigen matrix and convert to double for numerical stability
+    Eigen::Matrix<float, 6, 6> covariance_mat_float = 
         Eigen::Map<Eigen::Matrix<float, 6, 6, Eigen::StorageOptions::AutoAlign>>(const_cast<float*>(covariance));
+    Eigen::Matrix<double, 6, 6> covariance_mat = covariance_mat_float.cast<double>();
     
-    // Reorder covariance matrix elements
+    // Reorder covariance matrix elements (in double precision)
     // The covariance matrix from cuVSLAM arranges elements as follows:
     // (rotation about X axis, rotation about Y axis, rotation about Z axis, x, y, z)
     // However, in RTAB-Map, the order is:
     // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
-    Eigen::Matrix<float, 6, 6> rtabmap_covariance_mat = Eigen::Matrix<float, 6, 6>::Zero();
+    Eigen::Matrix<double, 6, 6> rtabmap_covariance_mat = Eigen::Matrix<double, 6, 6>::Zero();
     rtabmap_covariance_mat.block<3, 3>(0, 0) = covariance_mat.block<3, 3>(3, 3);  // translation-translation
     rtabmap_covariance_mat.block<3, 3>(0, 3) = covariance_mat.block<3, 3>(3, 0);  // translation-rotation
     rtabmap_covariance_mat.block<3, 3>(3, 0) = covariance_mat.block<3, 3>(0, 3);  // rotation-translation
     rtabmap_covariance_mat.block<3, 3>(3, 3) = covariance_mat.block<3, 3>(0, 0);  // rotation-rotation
     
-    // Apply coordinate system transformation
-    Eigen::Matrix<float, 6, 6> covariance_mat_change_basis = 
-        block_canonical_pose_cuvslam * rtabmap_covariance_mat * block_canonical_pose_cuvslam.transpose();
+    // Convert transformation matrix to double for numerical stability in matrix operations
+    Eigen::Matrix<double, 6, 6> block_canonical_pose_cuvslam_double = block_canonical_pose_cuvslam.cast<double>();
     
-    // Convert Eigen matrix to OpenCV Mat
+    // Apply coordinate system transformation (in double precision)
+    Eigen::Matrix<double, 6, 6> covariance_mat_change_basis = 
+        block_canonical_pose_cuvslam_double * rtabmap_covariance_mat * block_canonical_pose_cuvslam_double.transpose();
+    
+    // Convert Eigen matrix to OpenCV Mat (already in double precision)
     cv::Mat cv_covariance(6, 6, CV_64FC1);
     for(int i = 0; i < 6; i++)
     {
         for(int j = 0; j < 6; j++)
         {
-            cv_covariance.at<double>(i, j) = static_cast<double>(covariance_mat_change_basis(i, j));
+            cv_covariance.at<double>(i, j) = covariance_mat_change_basis(i, j);
             // for angular values, scale again to make it more realistic
             if(i > 2 || j > 2) {
                 cv_covariance.at<double>(i, j) *= scaling_factor;
