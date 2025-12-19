@@ -5638,6 +5638,7 @@ int Rtabmap::detectMoreLoopClosures(
 		const ProgressState * processState,
 		float clusterRadiusMin)
 {
+	UDEBUG("");
 	UASSERT(iterations>0);
 
 	if(_graphOptimizer->iterations() <= 0)

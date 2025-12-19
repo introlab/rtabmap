@@ -4305,8 +4305,7 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 	}
 	if(!words.empty() && wordsKpts.empty() && _dbDriver)
 	{
-		std::multimap<int, int> tmpWords;
-		_dbDriver->getLocalFeatures(nodeId, tmpWords, wordsKpts, words3, wordsDescriptors);
+		_dbDriver->getLocalFeatures(nodeId, words, wordsKpts, words3, wordsDescriptors);
 	}
 }
 
