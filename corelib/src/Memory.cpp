@@ -4276,6 +4276,29 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 		words3 = s->getWords3();
 		wordsDescriptors = s->getWordsDescriptors();
 		globalDescriptors = s->sensorData().globalDescriptors();
+
+		if(!words.empty() && wordsKpts.empty() && _dbDriver)
+		{
+			std::multimap<int, int> tmpWords;
+			_dbDriver->getLocalFeatures(nodeId, tmpWords, wordsKpts, words3, wordsDescriptors);
+			if(!tmpWords.empty() && !wordsKpts.empty())
+			{
+				UASSERT(tmpWords.size() == words.size());
+				std::map<int, int> wordsChanged = s->getWordsChanged();
+				for(const auto & iter: wordsChanged) {
+					std::list<int> subwords = uValues(tmpWords, iter.first); // old id
+					if(subwords.size())
+					{
+						tmpWords.erase(iter.first);
+						for(std::list<int>::const_iterator jter=subwords.begin(); jter!=subwords.end(); ++jter)
+						{
+							tmpWords.insert(std::pair<int, int>(iter.second, (*jter))); // new id
+						}
+					}
+				}
+				words = tmpWords;
+			}
+		}
 	}
 	else if(_dbDriver)
 	{
@@ -4302,10 +4325,6 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 				delete signatures.front();
 			}
 		}
-	}
-	if(!words.empty() && wordsKpts.empty() && _dbDriver)
-	{
-		_dbDriver->getLocalFeatures(nodeId, words, wordsKpts, words3, wordsDescriptors);
 	}
 }
 
