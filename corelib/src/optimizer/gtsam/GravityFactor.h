@@ -25,7 +25,7 @@
 #pragma once
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
-#if GTSAM_VERSION_NUMERIC >= 40300
+#if GTSAM_VERSION_NUMERIC >= 40300 && defined(GTSAM_WITH_NOISE_MODEL_FACTOR_N)
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 #endif
 #include <gtsam/geometry/Pose3.h>
