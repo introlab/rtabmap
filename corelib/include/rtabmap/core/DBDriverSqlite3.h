@@ -135,10 +135,12 @@ protected:
 #endif
 			cv::Mat * textures) const;
 
+	virtual void saveFlannIndexQuery(const std::vector<unsigned char> & indexData) const;
+
 	// Load objects
-	virtual void loadQuery(VWDictionary * dictionary, bool lastStateOnly = true) const;
-	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
-	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
+	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true) const;
+	virtual void loadLastNodesQuery(std::list<Signature *> & signatures, bool loadWordIdsOnly) const;
+	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool loadWordIdsOnly) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
 	virtual void loadLinksQuery(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const;
 
@@ -146,6 +148,7 @@ protected:
 	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const;
 	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
+	virtual void getLocalFeaturesQuery(int signatureId, std::multimap<int, int> & words, std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & points, cv::Mat & descriptors) const;
 	virtual void getLastNodeIdsQuery(std::set<int> & ids) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures, bool ignoreIntermediateNodes) const;
 	virtual void getAllOdomPosesQuery(std::map<int, Transform> & poses, bool ignoreChildren, bool ignoreIntermediateNodes) const;
@@ -190,6 +193,8 @@ private:
 			const cv::Point3f & viewpoint) const;
 
 private:
+	void loadWordsQuery(std::list<Signature *> & signatures) const;
+	void loadWordIdsQuery(std::list<Signature *> & signatures) const;
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
 

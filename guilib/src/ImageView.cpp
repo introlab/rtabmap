@@ -266,14 +266,16 @@ ImageView::ImageView(QWidget * parent) :
 	_colorMapBlueToRed = colorMap->addAction(tr("Blue to red"));
 	_colorMapBlueToRed->setCheckable(true);
 	_colorMapBlueToRed->setChecked(false);
-	_colorMapMinRange = colorMap->addAction(tr("Min Range..."));
-	_colorMapMaxRange = colorMap->addAction(tr("Max Range..."));
+	_colorMapInCameraFrame = colorMap->addAction(tr("Camera Frame"));
+	_colorMapInCameraFrame->setCheckable(true);
+	_colorMapInCameraFrame->setChecked(true);
+	_colorMapMinRange = colorMap->addAction(tr("Min Z..."));
+	_colorMapMaxRange = colorMap->addAction(tr("Max Z..."));
 	group = new QActionGroup(this);
 	group->addAction(_colorMapWhiteToBlack);
 	group->addAction(_colorMapBlackToWhite);
 	group->addAction(_colorMapRedToBlue);
 	group->addAction(_colorMapBlueToRed);
-	group->addAction(_colorMapMaxRange);
 	_mouseTracking = _menu->addAction(tr("Show pixel depth"));
 	_mouseTracking->setCheckable(true);
 	_mouseTracking->setChecked(false);
@@ -311,6 +313,7 @@ void ImageView::saveSettings(QSettings & settings, const QString & group) const
 	settings.setValue("graphics_view_scale", this->isGraphicsViewScaled());
 	settings.setValue("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight());
 	settings.setValue("colormap", _colorMapWhiteToBlack->isChecked()?0:_colorMapBlackToWhite->isChecked()?1:_colorMapRedToBlue->isChecked()?2:3);
+	settings.setValue("colormap_camera_frame", this->isDepthColorMapInCameraFrame());
 	settings.setValue("colormap_min_range", this->getDepthColorMapMinRange());
 	settings.setValue("colormap_max_range", this->getDepthColorMapMaxRange());
 	if(!group.isEmpty())
@@ -345,6 +348,7 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	_colorMapBlackToWhite->setChecked(colorMap==1);
 	_colorMapRedToBlue->setChecked(colorMap==2);
 	_colorMapBlueToRed->setChecked(colorMap==3);
+	this->setDepthColorMapInCameraFrame(settings.value("colormap_camera_frame", this->isDepthColorMapInCameraFrame()).toBool());
 	this->setDepthColorMapRange(
 			settings.value("colormap_min_range", this->getDepthColorMapMinRange()).toFloat(),
 			settings.value("colormap_max_range", settings.value("colormap_range" /*backward compatibility*/, this->getDepthColorMapMaxRange())).toFloat());
@@ -763,12 +767,19 @@ void ImageView::setBackgroundColor(const QColor & color)
 	}
 }
 
+void ImageView::setDepthColorMapInCameraFrame(bool enabled) {
+	_colorMapInCameraFrame->setChecked(enabled);
+}
+
+bool ImageView::isDepthColorMapInCameraFrame() const {
+	return _colorMapInCameraFrame->isChecked();
+}
+
 void ImageView::setDepthColorMapRange(float min, float max)
 {
 	_depthColorMapMinRange = min;
 	_depthColorMapMaxRange = max;
 }
-
 
 void ImageView::computeScaleOffsets(const QRect & targetRect, float & scale, float & offsetX, float & offsetY) const
 {
@@ -1054,10 +1065,17 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		}
 		Q_EMIT configChanged();
 	}
+	else if(action == _colorMapInCameraFrame)
+	{
+		if(!_imageDepthCv.empty()) {
+			this->setImageDepth(_imageDepthCv, _imageDepthConfidenceCv);
+		}
+		Q_EMIT configChanged();
+	}
 	else if(action == _colorMapMinRange)
 	{
 		bool ok = false;
-		double value = QInputDialog::getDouble(this, tr("Set depth colormap min range"), tr("Range (m), 0=no limit"), _depthColorMapMinRange, 0, 9999, 1, &ok);
+		double value = QInputDialog::getDouble(this, tr("Set depth colormap min range"), tr("Range (m), 0=no limit"), _depthColorMapMinRange, -9999, 9999, 2, &ok);
 		if(ok)
 		{
 			this->setDepthColorMapRange(value, _depthColorMapMaxRange);
@@ -1070,7 +1088,7 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	else if(action == _colorMapMaxRange)
 	{
 		bool ok = false;
-		double value = QInputDialog::getDouble(this, tr("Set depth colormap max range"), tr("Range (m), 0=no limit"), _depthColorMapMaxRange, 0, 9999, 1, &ok);
+		double value = QInputDialog::getDouble(this, tr("Set depth colormap max range"), tr("Range (m), 0=no limit"), _depthColorMapMaxRange, -9999, 9999, 2, &ok);
 		if(ok)
 		{
 			this->setDepthColorMapRange(_depthColorMapMinRange, value);
@@ -1123,14 +1141,14 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 	if(_mouseTracking->isChecked() &&
 		!_graphicsView->scene()->sceneRect().isNull() &&
 		!_image.isNull() &&
-		!_imageDepthCv.empty() &&(_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
+		!_imageDepthCv.empty() && (_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
 	{
 		float scale, offsetX, offsetY;
 		computeScaleOffsets(this->rect(), scale, offsetX, offsetY);
 		float u = (event->pos().x() - offsetX) / scale;
 		float v = (event->pos().y() - offsetY) / scale;
 		float depthScale = 1;
-		if(_image.width() > _imageDepthCv.cols)
+		if(_image.width() != _imageDepthCv.cols)
 		{
 			depthScale = float(_imageDepthCv.cols) / float(_image.width());
 		}
@@ -1350,8 +1368,71 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 {
 	_imageDepthCv = imageDepth;
 	_imageDepthConfidenceCv = imageDepthConfidence;
+
+	QImage depth;
+	if(!_imageDepthCv.empty() && (_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1)) {
+		if(_colorMapInCameraFrame->isChecked() || _models.empty() || !_models[0].isValidForProjection()) {
+			depth = uCvMat2QImage(_imageDepthCv, true, getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange);
+			if(!_colorMapInCameraFrame->isChecked()) {
+				UWARN("Trying to set depth color map in base frame but the the camera model "
+					  "is not valid for projection, showing depth in camera frame instead.");
+			}
+		}
+		else {
+			// convert the depth values in height values
+			cv::Mat depthInBaseFrame = _imageDepthCv.clone();
+			int subImageWidth = _imageDepthCv.cols / _models.size();
+			std::vector<CameraModel> models; // scale model to size of depth image if needed
+			for(const auto & model: _models) {
+				UASSERT(subImageWidth <= model.imageWidth());
+				if(subImageWidth < model.imageWidth()) {
+					models.push_back(model.scaled(float(subImageWidth)/float(model.imageWidth())));
+				}
+				else {
+					models.push_back(model);
+				}
+			}
+			if(depthInBaseFrame.type() == CV_16UC1) {
+				for(int v=0; v<depthInBaseFrame.rows; ++v){
+					unsigned short * rowPtr = depthInBaseFrame.ptr<unsigned short>(v);
+					for(int u=0; u<depthInBaseFrame.cols; ++u){
+						unsigned short & val = rowPtr[u];
+						if(val > 0) {
+							cv::Point3f pt;
+							int cameraIndex = u/subImageWidth;
+							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
+							models[cameraIndex].project(u,v,float(val)/1000.0f, pt.x, pt.y, pt.z);
+							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
+							val = (unsigned short)(pt.z*1000.0f);
+						}
+					}
+				}
+			}
+			else { // CV_32FC1
+				for(int v=0; v<depthInBaseFrame.rows; ++v){
+					float * rowPtr = depthInBaseFrame.ptr<float>(v);
+					for(int u=0; u<depthInBaseFrame.cols; ++u){
+						float & val = rowPtr[u];
+						if(val > 0) {
+							cv::Point3f pt;
+							int cameraIndex = u/subImageWidth;
+							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
+							models[cameraIndex].project(u,v,val, pt.x, pt.y, pt.z);
+							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
+							val = pt.z;
+						}
+					}
+				}
+			}
+			depth = uCvMat2QImage(depthInBaseFrame, true, getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange);
+		}
+	}
+	else {
+		// right image grayscale or color
+		depth = uCvMat2QImage(_imageDepthCv, true, uCvQtDepthBlackToWhite);
+	}
 	setImageDepth(
-		uCvMat2QImage(_imageDepthCv, true, _imageDepthCv.type()==CV_8UC1?uCvQtDepthBlackToWhite:getDepthColorMap(), _depthColorMapMinRange, _depthColorMapMaxRange),
+		depth,
 		uCvMat2QImage(_imageDepthConfidenceCv, true, getDepthColorMap()));
 }
 
@@ -1367,8 +1448,8 @@ void ImageView::setImageDepth(const QImage & imageDepth, const QImage & imageDep
 	UASSERT(_imageDepth.width() && _imageDepth.height());
 
 	if( _image.width() > 0 &&
-		_image.width() > _imageDepth.width() &&
-		_image.height() > _imageDepth.height())
+		_image.width() != _imageDepth.width() &&
+		_image.height() != _imageDepth.height())
 	{
 		// scale depth to rgb
 		_imageDepth = _imageDepth.scaled(_image.size());

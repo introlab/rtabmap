@@ -64,8 +64,8 @@ void LocalGridCache::add(int nodeId,
 
 void LocalGridCache::add(int nodeId, const LocalGrid & localGrid)
 {
-	UDEBUG("nodeId=%d (ground=%d/%d obstacles=%d/%d empty=%d/%d)",
-			nodeId, localGrid.groundCells.cols,  localGrid.groundCells.channels(),  localGrid.obstacleCells.cols,  localGrid.obstacleCells.channels(), localGrid.emptyCells.cols,  localGrid.emptyCells.channels());
+	//UDEBUG("nodeId=%d (ground=%d/%d obstacles=%d/%d empty=%d/%d)",
+	//		nodeId, localGrid.groundCells.cols,  localGrid.groundCells.channels(),  localGrid.obstacleCells.cols,  localGrid.obstacleCells.channels(), localGrid.emptyCells.cols,  localGrid.emptyCells.channels());
 	if(nodeId < 0)
 	{
 		UWARN("Cannot add nodes with negative id (nodeId=%d)", nodeId);

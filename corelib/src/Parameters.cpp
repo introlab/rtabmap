@@ -168,6 +168,7 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRISK") == 0 ||
 			group.compare("KAZE") == 0 ||
 			group.compare("SuperPoint") == 0 ||
+			group.compare("SuperPointRpautrat") == 0 ||
 			group.compare("PyDetector") == 0;
 }
 
@@ -182,6 +183,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			(stereo && group.compare("Stereo") == 0) ||
 			(icp && group.compare("Icp") == 0) ||
 			(vis && Parameters::isFeatureParameter(iter->first)) ||
+			group.compare("OdomCuVSLAM") == 0 ||
 			group.compare("Reg") == 0 ||
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
@@ -235,6 +237,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.23.1
+		removedParameters_.insert(std::make_pair("OdomVINS/ConfigPath",    std::make_pair(true, Parameters::kOdomVINSFusionConfigPath())));
 
 		// 0.21.13
 		removedParameters_.insert(std::make_pair("Vis/ForwardEstOnly",    std::make_pair(false, "")));
@@ -659,6 +664,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With SuperPoint Rpautrat:"; 
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON) 
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl; 
+#else 
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl; 
+#endif
 				str = "With Python3:";
 #ifdef RTABMAP_PYTHON
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -936,7 +947,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
 				str = "With VINS-Fusion:";
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -1109,8 +1120,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#ifndef RTABMAP_ORBSLAM2
-					if(group.compare("OdomORBSLAM2") == 0)
+#ifndef RTABMAP_ORB_SLAM
+					if(group.compare("OdomORBSLAM") == 0)
 					{
 						ignore = true;
 					}

@@ -9,9 +9,10 @@
       },
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/rtabmap,type=bind",
     "workspaceFolder": "/home/vscode/rtabmap",
+    //"mounts": ["source=${localEnv:HOME}/Documents/RTAB-Map,target=/home/vscode/Documents/RTAB-Map,type=bind,consistency=cached"],
     "settings": {
       "terminal.integrated.defaultProfile.linux": "bash"
     },
     "remoteUser": "vscode",
-    "runArgs": ["--privileged"]
+    "runArgs": ["--privileged", "--network=host"]
 }

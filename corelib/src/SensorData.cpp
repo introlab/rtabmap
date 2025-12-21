@@ -548,7 +548,7 @@ void SensorData::setOccupancyGrid(
 			float cellSize,
 			const cv::Point3f & viewPoint)
 {
-	UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
+	//UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
 	if((!ground.empty() && (!_groundCellsCompressed.empty() || !_groundCellsRaw.empty())) ||
 	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())) ||
 	   (!empty.empty() && (!_emptyCellsCompressed.empty() || !_emptyCellsRaw.empty())))
@@ -649,7 +649,7 @@ void SensorData::uncompressData(
 		cv::Mat * emptyCellsRaw,
 		cv::Mat * depthConfidenceRaw)
 {
-	UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d,%d)", 
+	/*UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d,%d)", 
 		this->id(),
 		imageRaw?1:0,
 		depthRaw?1:0,
@@ -658,7 +658,7 @@ void SensorData::uncompressData(
 		groundCellsRaw?1:0,
 		obstacleCellsRaw?1:0, 
 		emptyCellsRaw?1:0,
-		depthConfidenceRaw?1:0);
+		depthConfidenceRaw?1:0);*/
 	if(imageRaw == 0 &&
 		depthRaw == 0 &&
 		laserScanRaw == 0 &&

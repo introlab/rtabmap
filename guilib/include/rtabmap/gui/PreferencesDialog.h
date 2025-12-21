@@ -98,6 +98,7 @@ public:
 		kSrcRealSense2     = 9,
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
+		kSrcOrbbecSDK      = 12,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,
@@ -173,6 +174,7 @@ public:
 	int getOdomRegistrationApproach() const;
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
+	bool isOdomAsGuessEnabled() const;
 	bool isOdomSensorAsGt() const;
 	bool isGroundTruthAligned() const;
 
@@ -367,11 +369,13 @@ private Q_SLOTS:
 	void changeDictionaryPath();
 	void changeOdometryORBSLAMVocabulary();
 	void changeOdometryOKVISConfigPath();
-	void changeOdometryVINSConfigPath();
+	void changeOdometryVINSFusionConfigPath();
 	void changeOdometryOpenVINSLeftMask();
 	void changeOdometryOpenVINSRightMask();
 	void changeIcpPMConfigPath();
 	void changeSuperPointModelPath();
+	void changeSuperPointRpautratWeightsPath();
+	void changeSuperPointRpautratModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
 	void changePyDescriptorPath();

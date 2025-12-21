@@ -73,6 +73,7 @@ void showUsage()
 			"       --Rtabmap/DetectionRate 2\\\n"
 			"       --Rtabmap/CreateIntermediateNodes true\\\n"
 			"       --RGBD/LinearUpdate 0\\\n"
+			"       --RGBD/AngularUpdate 0\\\n"
 			"       --GFTT/QualityLevel 0.01\\\n"
 			"       --GFTT/MinDistance 7\\\n"
 			"       --OdomF2M/MaxSize 3000\\\n"

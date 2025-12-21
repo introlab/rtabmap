@@ -27,8 +27,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/FlannIndex.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/core/Compression.h>
+#include <rtabmap/core/Version.h>
+#ifdef WIN32
+#include <rtabmap/core/Parameters.h>
+#endif
 
 #include "rtflann/flann.hpp"
+#include <boost/crc.hpp>
 
 namespace rtabmap {
 
@@ -37,7 +45,6 @@ FlannIndex::FlannIndex():
 		nextIndex_(0),
 		featuresType_(0),
 		featuresDim_(0),
-		isLSH_(false),
 		useDistanceL1_(false),
 		rebalancingFactor_(2.0f)
 {
@@ -49,9 +56,9 @@ FlannIndex::~FlannIndex()
 
 void FlannIndex::release()
 {
-	UDEBUG("");
 	if(index_)
 	{
+		UDEBUG("Clearing flann index...");
 		if(featuresType_ == CV_8UC1)
 		{
 			delete (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
@@ -72,12 +79,139 @@ void FlannIndex::release()
 			}
 		}
 		index_ = 0;
+		UDEBUG("Clearing flann index... done!");
 	}
 	nextIndex_ = 0;
-	isLSH_ = false;
 	addedDescriptors_.clear();
 	removedIndexes_.clear();
-	UDEBUG("");
+}
+
+#define FLANN_INDEX_HEADER_SIZE 12
+
+std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) const {
+	if(index_ && !addedDescriptors_.empty())
+	{
+#ifdef WIN32
+		UERROR("FLANN index serialization is not yet implemented on Windows. Parameter \"%s\" cannot be used.", Parameters::kKpFlannIndexSaved().c_str());
+#else
+		UTimer timer;
+		const int headerSizeBytes = sizeof(int)*FLANN_INDEX_HEADER_SIZE;
+		std::vector<unsigned char> indexData(1024*1024*100 + headerSizeBytes); // Max 100 MB
+        FILE* indexDataPtr = fmemopen(indexData.data()+headerSizeBytes, indexData.size() - headerSizeBytes, "wb");
+		long bytes_written = 0;
+        if (indexDataPtr) {
+			if(featuresType_ == CV_8UC1)
+			{
+				((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->save(indexDataPtr);
+			}
+			else
+			{
+				if(useDistanceL1_)
+				{
+					((rtflann::Index<rtflann::L1<float> >*)index_)->save(indexDataPtr);;
+				}
+				else if(featuresDim_ <= 3)
+				{
+					((rtflann::Index<rtflann::L2_Simple<float> >*)index_)->save(indexDataPtr);;
+				}
+				else
+				{
+					((rtflann::Index<rtflann::L2<float> >*)index_)->save(indexDataPtr);;
+				}
+			}
+			bytes_written = ftell(indexDataPtr);
+            fclose(indexDataPtr);
+        }
+		if(bytes_written < long(indexData.size()-headerSizeBytes))
+		{
+			//Expected data size and type
+			int dataRows = 0;
+			int dataCols = 0;
+			int dataType = -1;
+			cv::Mat dataset;
+			std::set<int> removedDescriptors;
+			if(computeChecksum){
+				removedDescriptors.insert(removedIndexes_.begin(), removedIndexes_.end());
+			}
+			for(const auto & iter: addedDescriptors_)
+			{
+				UASSERT(!iter.second.empty());
+				dataRows += iter.second.rows;
+				if(dataCols <= 0) {
+					dataCols = iter.second.cols;
+				}
+				else {
+					UASSERT(dataCols == iter.second.cols);
+				}
+				if(dataType < 0) {
+					dataType = iter.second.type();
+				}
+				else {
+					UASSERT(dataType == iter.second.type());
+				}
+				if(computeChecksum){
+					if(removedDescriptors.find(iter.first) == removedDescriptors.end()) {
+						if(dataset.empty()) {
+							dataset = iter.second.clone();
+						}
+						else {
+							dataset.push_back(iter.second);
+						}
+					}
+					else {
+						dataRows -= iter.second.rows;
+					}
+				}
+			}
+			if(!computeChecksum) {
+				for(const auto & index: removedIndexes_)
+				{
+					dataRows -= addedDescriptors_.at(index).rows;
+				}
+			}
+
+			unsigned int crcValue = 0;
+			if(computeChecksum) {
+				boost::crc_32_type result;
+				result.process_bytes(dataset.data, dataset.total()*dataset.elemSize());
+				crcValue = result.checksum(); 
+			}
+			
+			indexData.resize(bytes_written+headerSizeBytes);
+			indexData.shrink_to_fit();
+			int rebalancingFactorAsInt;
+			memcpy(&rebalancingFactorAsInt, &rebalancingFactor_, sizeof(rebalancingFactor_));
+			int crcValueAsInt;
+			memcpy(&crcValueAsInt, &crcValue, sizeof(crcValue));
+			int header[FLANN_INDEX_HEADER_SIZE] = {
+					RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
+					algorithm_,                                                          // 3,
+					featuresDim_,                                                        // 4,
+					useDistanceL1_?1:0,                                                  // 5,
+					rebalancingFactorAsInt,                                              // 6,
+					dataRows,                                                            // 7,
+					dataCols,                                                            // 8,			
+					dataType,                                                            // 9,
+					crcValueAsInt,                                                       // 10         
+					(int)bytes_written};                                                 // 11
+			UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f data(%dx%d type=%d, crc=%X) %d", 
+				header[0],header[1],header[2],
+				header[3],
+				header[4],
+				header[5],
+				rebalancingFactor_,
+				header[7], header[8], header[9], crcValueAsInt, 
+				header[11]);
+			memcpy(indexData.data(), header, headerSizeBytes);
+			return indexData;
+		}
+		else {
+			UERROR("Target buffer too small to serialize index, aborting.");
+		}
+		UDEBUG("Flann serialization: %fs", timer.ticks());
+#endif
+	}
+	return std::vector<unsigned char>();
 }
 
 size_t FlannIndex::indexedFeatures() const
@@ -139,12 +273,13 @@ size_t FlannIndex::memoryUsed() const
 	return memoryUsage;
 }
 
-void FlannIndex::buildLinearIndex(
+void FlannIndex::buildIndex(
+		flann_algorithm_t algorithm,
 		const cv::Mat & features,
 		bool useDistanceL1,
 		float rebalancingFactor)
 {
-	UDEBUG("");
+	UDEBUG("algorithm=%d", (int)algorithm);
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
@@ -152,8 +287,29 @@ void FlannIndex::buildLinearIndex(
 	featuresDim_ = features.cols;
 	useDistanceL1_ = useDistanceL1;
 	rebalancingFactor_ = rebalancingFactor;
+	algorithm_ = algorithm;
 
-	rtflann::LinearIndexParams params;
+	rtflann::IndexParams params;
+
+	switch (algorithm)
+	{
+	case FLANN_INDEX_LINEAR:
+		params = rtflann::LinearIndexParams();
+		break;
+	case FLANN_INDEX_KDTREE:
+		params = rtflann::KDTreeIndexParams(4);
+		break;
+	case FLANN_INDEX_KDTREE_SINGLE:
+		params = rtflann::KDTreeSingleIndexParams(10, true);
+		break;
+	case FLANN_INDEX_LSH:
+		UASSERT(features.type() == CV_8UC1);
+		params = rtflann::LshIndexParams(12, 20, 2);
+		break;
+	default:
+		UFATAL("The flann algorithm type %d is not supported!", (int)algorithm);
+		break;
+	}
 
 	if(featuresType_ == CV_8UC1)
 	{
@@ -199,13 +355,140 @@ void FlannIndex::buildLinearIndex(
 	UDEBUG("");
 }
 
-void FlannIndex::buildKDTreeIndex(
-		const cv::Mat & features,
-		int trees,
-		bool useDistanceL1,
-		float rebalancingFactor)
+bool FlannIndex::loadIndex(
+	const std::vector<unsigned char> & indexData,
+	flann_algorithm_t algorithm,
+	const cv::Mat & features,
+	bool useDistanceL1,
+	float rebalancingFactor,
+	std::string * error)
 {
-	UDEBUG("");
+	return loadIndex(
+		indexData.data(),
+		indexData.size(),
+		algorithm,
+		features,
+		useDistanceL1,
+		rebalancingFactor),
+		error;
+}
+bool FlannIndex::loadIndex(
+	const unsigned char * indexData,
+	size_t indexDataSize,
+	flann_algorithm_t algorithm,
+	const cv::Mat & features,
+	bool useDistanceL1,
+	float rebalancingFactor,
+	std::string * error)
+{
+	UASSERT(indexData!=NULL);
+	if(indexDataSize == 0) {
+		UWARN("Trying to load empty index....");
+		return false;
+	}
+
+#ifdef WIN32
+	UERROR("FLANN index deserialization is not yet implemented on Windows. Index cannot be loaded from memory buffer.");
+	return false;
+#else
+
+	// Check if the features match the expected data from the index
+	size_t headerSizeBytes = sizeof(int)*FLANN_INDEX_HEADER_SIZE;
+	if(indexDataSize < headerSizeBytes) {
+		if(error) {
+			*error = uFormat("Wrong header size detected (%ld vs expected %ld).", indexDataSize, headerSizeBytes);
+		}
+		return false;
+	}
+	const int * header = (const int *)indexData;
+	
+	int savedAlgorithm = header[3];
+	int savedDim = header[4];
+	bool savedDistanceL1 = header[5]==1;
+	float savedRebalancingFactor;
+	memcpy(&savedRebalancingFactor, &header[6], sizeof(header[6]));
+	int savedRows = header[7];
+	int savedCols = header[8];
+	int savedType = header[9];
+	unsigned int savedCrc;
+	 memcpy(&savedCrc, &header[10], sizeof(header[10]));
+	int savedIndexSize = header[11];
+
+	UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f data(%dx%d type=%d, crc=%X) %d", 
+				header[0],header[1],header[2],
+				header[3],
+				header[4],
+				header[5],
+				savedRebalancingFactor,
+				header[7], header[8], header[9], savedCrc, 
+				header[11]);
+
+	if(savedAlgorithm != algorithm) {
+		if(error) {
+			*error = uFormat("Serialized flann algorithm (%d) doesn't match the expected one (%d).", savedAlgorithm, algorithm);
+		}
+		return false;
+	}
+	if(savedDim != features.cols) {
+		if(error) {
+			*error = uFormat("Serialized feature dimension (%d) doesn't match the expected one (%d).", savedDim, features.cols);
+		}
+		return false;
+	}
+	if(savedDistanceL1 != useDistanceL1) {
+		if(error) {
+			*error = uFormat("Serialized \"use distance L1\" (%s) doesn't match the expected one (%s).", savedDistanceL1?"true":"false", useDistanceL1?"true":"false");
+		}
+		return false;
+	}
+	if(savedRebalancingFactor != rebalancingFactor) {
+		if(error) {
+			*error = uFormat("Serialized \"rebalancing factor\" (%f) doesn't match the expected one (%f).", savedRebalancingFactor, rebalancingFactor);
+		}
+		return false;
+	}
+	if(savedRows != features.rows) {
+		if(error) {
+			*error = uFormat("Serialized feature count (%d) doesn't match the expected one (%d).", savedRows, features.rows);
+		}
+		return false;
+	}
+	if(savedCols != features.cols) {
+		if(error) {
+			*error = uFormat("Serialized feature dimension (%d) doesn't match the expected one (%d).", savedCols, features.cols);
+		}
+		return false;
+	}
+	if(savedType != features.type()) {
+		if(error) {
+			*error = uFormat("Serialized feature type (%d) doesn't match the expected one (%d).", savedType, features.type());
+		}
+		return false;
+	}
+	if(savedCrc != 0) {
+		// Compute checksum and compare
+		boost::crc_32_type result;
+		result.process_bytes(features.data, features.total()*features.elemSize());
+		if(savedCrc != result.checksum()) {
+			if(error) {
+				*error = uFormat("Serialized feature crc (%X) doesn't match the expected one (%X).", savedCrc, result.checksum());
+			}
+			return false;
+		}
+	}
+	if(savedIndexSize != int(indexDataSize - headerSizeBytes)) {
+		if(error) {
+			*error = uFormat("Serialized flann index size (%ld) doesn't match the expected one (%ld).", savedIndexSize, indexDataSize - headerSizeBytes);
+		}
+		return false;
+	}
+	if(savedIndexSize == 0) {
+		if(error) {
+			*error = "Serialized flann index is empty.";
+		}
+		return false;
+	}
+
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
@@ -213,14 +496,39 @@ void FlannIndex::buildKDTreeIndex(
 	featuresDim_ = features.cols;
 	useDistanceL1_ = useDistanceL1;
 	rebalancingFactor_ = rebalancingFactor;
+	algorithm_ = algorithm;
 
-	rtflann::KDTreeIndexParams params(trees);
+	UDEBUG("algorithm=%d", (int)algorithm);
+
+	rtflann::IndexParams params;
+
+	switch (algorithm)
+	{
+	case FLANN_INDEX_LINEAR:
+		params = rtflann::LinearIndexParams();
+		break;
+	case FLANN_INDEX_KDTREE:
+		params = rtflann::KDTreeIndexParams(4);
+		break;
+	case FLANN_INDEX_KDTREE_SINGLE:
+		params = rtflann::KDTreeSingleIndexParams(10, true);
+		break;
+	case FLANN_INDEX_LSH:
+		UASSERT(features.type() == CV_8UC1);
+		params = rtflann::LshIndexParams(12, 20, 2);
+		break;
+	default:
+		UFATAL("The flann algorithm type %d is not supported!", (int)algorithm);
+		break;
+	}
+
+	FILE* indexDataPtr = fmemopen((void*)(indexData+headerSizeBytes), indexDataSize - headerSizeBytes, "r");
 
 	if(featuresType_ == CV_8UC1)
 	{
 		rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
 		index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, params);
-		((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->buildIndex();
+		((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->load_saved_index(indexDataPtr);
 	}
 	else
 	{
@@ -228,22 +536,24 @@ void FlannIndex::buildKDTreeIndex(
 		if(useDistanceL1_)
 		{
 			index_ = new rtflann::Index<rtflann::L1<float> >(dataset, params);
-			((rtflann::Index<rtflann::L1<float> >*)index_)->buildIndex();
+			((rtflann::Index<rtflann::L1<float> >*)index_)->load_saved_index(indexDataPtr);
 		}
 		else if(featuresDim_ <=3)
 		{
 			index_ = new rtflann::Index<rtflann::L2_Simple<float> >(dataset, params);
-			((rtflann::Index<rtflann::L2_Simple<float> >*)index_)->buildIndex();
+			((rtflann::Index<rtflann::L2_Simple<float> >*)index_)->load_saved_index(indexDataPtr);
 		}
 		else
 		{
 			index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
-			((rtflann::Index<rtflann::L2<float> >*)index_)->buildIndex();
+			((rtflann::Index<rtflann::L2<float> >*)index_)->load_saved_index(indexDataPtr);
 		}
 	}
+	fclose(indexDataPtr);
 
 	// incremental FLANN: we should add all headers separately in case we remove
 	// some indexes (to keep underlying matrix data allocated)
+	
 	if(rebalancingFactor_ > 1.0f)
 	{
 		for(int i=0; i<features.rows; ++i)
@@ -257,107 +567,8 @@ void FlannIndex::buildKDTreeIndex(
 		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
 		nextIndex_ += features.rows;
 	}
-	UDEBUG("");
-}
-
-void FlannIndex::buildKDTreeSingleIndex(
-		const cv::Mat & features,
-		int leafMaxSize,
-		bool reorder,
-		bool useDistanceL1,
-		float rebalancingFactor)
-{
-	UDEBUG("");
-	this->release();
-	UASSERT(index_ == 0);
-	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
-	featuresType_ = features.type();
-	featuresDim_ = features.cols;
-	useDistanceL1_ = useDistanceL1;
-	rebalancingFactor_ = rebalancingFactor;
-
-	rtflann::KDTreeSingleIndexParams params(leafMaxSize, reorder);
-
-	if(featuresType_ == CV_8UC1)
-	{
-		rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
-		index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, params);
-		((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->buildIndex();
-	}
-	else
-	{
-		rtflann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
-		if(useDistanceL1_)
-		{
-			index_ = new rtflann::Index<rtflann::L1<float> >(dataset, params);
-			((rtflann::Index<rtflann::L1<float> >*)index_)->buildIndex();
-		}
-		else if(featuresDim_ <=3)
-		{
-			index_ = new rtflann::Index<rtflann::L2_Simple<float> >(dataset, params);
-			((rtflann::Index<rtflann::L2_Simple<float> >*)index_)->buildIndex();
-		}
-		else
-		{
-			index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
-			((rtflann::Index<rtflann::L2<float> >*)index_)->buildIndex();
-		}
-	}
-
-	// incremental FLANN: we should add all headers separately in case we remove
-	// some indexes (to keep underlying matrix data allocated)
-	if(rebalancingFactor_ > 1.0f)
-	{
-		for(int i=0; i<features.rows; ++i)
-		{
-			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
-		}
-	}
-	else
-	{
-		// tree won't ever be rebalanced, so just keep only one header for the data
-		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-		nextIndex_ += features.rows;
-	}
-	UDEBUG("");
-}
-
-void FlannIndex::buildLSHIndex(
-		const cv::Mat & features,
-		unsigned int table_number,
-		unsigned int key_size,
-		unsigned int multi_probe_level,
-		float rebalancingFactor)
-{
-	UDEBUG("");
-	this->release();
-	UASSERT(index_ == 0);
-	UASSERT(features.type() == CV_8UC1);
-	featuresType_ = features.type();
-	featuresDim_ = features.cols;
-	useDistanceL1_ = true;
-	rebalancingFactor_ = rebalancingFactor;
-
-	rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
-	index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, rtflann::LshIndexParams(12, 20, 2));
-	((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->buildIndex();
-
-	// incremental FLANN: we should add all headers separately in case we remove
-	// some indexes (to keep underlying matrix data allocated)
-	if(rebalancingFactor_ > 1.0f)
-	{
-		for(int i=0; i<features.rows; ++i)
-		{
-			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
-		}
-	}
-	else
-	{
-		// tree won't ever be rebalanced, so just keep only one header for the data
-		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-		nextIndex_ += features.rows;
-	}
-	UDEBUG("");
+	return true;
+#endif
 }
 
 bool FlannIndex::isBuilt()

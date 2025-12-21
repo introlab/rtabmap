@@ -76,6 +76,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
 	_binDataKept(Parameters::defaultMemBinDataKept()),
 	_rawDescriptorsKept(Parameters::defaultMemRawDescriptorsKept()),
+	_loadVisualLocalFeaturesOnInit(Parameters::defaultMemLoadVisualLocalFeaturesOnInit()),
 	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
@@ -83,6 +84,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_depthCompressionFormat(Parameters::defaultMemDepthCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
+	_flannIndexSaved(Parameters::defaultKpFlannIndexSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
 	_recentWmRatio(Parameters::defaultMemRecentWmRatio()),
@@ -129,6 +131,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_linksChanged(false),
 	_signaturesAdded(0),
 	_allNodesInWM(true),
+	_receivingOdometryFeatures(false),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
@@ -245,13 +248,13 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 			std::set<int> ids;
 			_dbDriver->getAllNodeIds(ids, true);
-			_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
+			_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures, 0, !_loadVisualLocalFeaturesOnInit);
 		}
 		else
 		{
 			// load previous session working memory
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
-			_dbDriver->loadLastNodes(dbSignatures);
+			_dbDriver->loadLastNodes(dbSignatures, !_loadVisualLocalFeaturesOnInit);
 		}
 		for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 		{
@@ -417,20 +420,22 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			}
 			else
 			{
-				_dbDriver->load(_vwd, false);
+				_dbDriver->load(*_vwd, false);
 			}
 		}
 		else
 		{
 			UDEBUG("load words");
 			// load the last dictionary
-			_dbDriver->load(_vwd, _vwd->isIncremental());
+			_dbDriver->load(*_vwd, _vwd->isIncremental());
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
+		UDEBUG("Adding word references...");
+		UTimer timer;
 		// Enable loaded signatures
 		const std::map<int, Signature *> & signatures = this->getSignatures();
 		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
@@ -441,7 +446,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			const std::multimap<int, int> & words = s->getWords();
 			if(words.size())
 			{
-				UDEBUG("node=%d, word references=%d", s->id(), words.size());
+				//UDEBUG("node=%d, word references=%d", s->id(), words.size());
 				for(std::multimap<int, int>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
 				{
 					if(iter->first > 0)
@@ -458,7 +463,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		{
 			UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
 		}
-		UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+		UDEBUG("Total word references added = %d (in %f s)", _vwd->getTotalActiveReferences(), timer.ticks());
 
 		if(_lastSignature == 0)
 		{
@@ -482,6 +487,37 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 	UDEBUG("map ids start with %d", _idMapCount);
 }
 
+void Memory::saveFlannIndex(bool postInitClosingEvents)
+{
+	if(!_dbDriver) {
+		return;
+	}
+	if(uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.0") >= 0) {
+		if(_flannIndexSaved && !_incrementalMemory) {
+			if(_vwd->isModified()) {
+				UINFO("Saving flann index to database... (%s=true)", Parameters::kKpFlannIndexSaved().c_str());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database..."));
+				_dbDriver->saveFlannIndex(_vwd->serializeIndex());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving flann index to database, done!"));
+			}
+			else
+			{
+				UDEBUG("The dictionary didn't change since loaded, do not need to save again to database.");
+			}
+		}
+		else {
+			// clear if exists
+			_dbDriver->saveFlannIndex(std::vector<unsigned char>());
+		}
+	}
+	else if(_flannIndexSaved)
+	{
+		UWARN("Parameter %s is enabled, but database version is too old (%s < 0.23). Flann index cannot be saved.",
+			Parameters::kKpFlannIndexSaved().c_str(),
+			_dbDriver->getDatabaseVersion().c_str());
+	}
+}
+
 void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::string & ouputDatabasePath)
 {
 	UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
@@ -493,6 +529,8 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		databaseNameChanged = ouputDatabasePath.size() && _dbDriver->getUrl().size() && _dbDriver->getUrl().compare(ouputDatabasePath) != 0?true:false;
 	}
 
+	UDEBUG("_memoryChanged=%d _linksChanged=%d databaseNameChanged=%d", _memoryChanged?1:0, _linksChanged?1:0, databaseNameChanged?1:0);
+
 	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged))
 	{
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
@@ -500,6 +538,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
+			saveFlannIndex(postInitClosingEvents);
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
 			_dbDriver->closeConnection(false, ouputDatabasePath);
 			delete _dbDriver;
@@ -514,11 +553,15 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 	{
 		UINFO("Saving memory...");
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
-		if(!_memoryChanged && _linksChanged && _dbDriver)
+		if(!_memoryChanged && _dbDriver)
 		{
-			// don't update the time stamps!
-			UDEBUG("");
-			_dbDriver->setTimestampUpdateEnabled(false);
+			saveFlannIndex(postInitClosingEvents);
+
+			if(_linksChanged) {
+				// don't update the time stamps!
+				UDEBUG("");
+				_dbDriver->setTimestampUpdateEnabled(false);
+			}
 		}
 		this->clear();
 		if(_dbDriver)
@@ -565,6 +608,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(params, Parameters::kMemBinDataKept(), _binDataKept);
 	Parameters::parse(params, Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
+	Parameters::parse(params, Parameters::kMemLoadVisualLocalFeaturesOnInit(), _loadVisualLocalFeaturesOnInit);
 	Parameters::parse(params, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
 	Parameters::parse(params, Parameters::kMemReduceGraph(), _reduceGraph);
 	Parameters::parse(params, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
@@ -618,6 +662,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMarkerVarianceAngular(), _markerAngVariance);
 	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
+	Parameters::parse(params, Parameters::kKpFlannIndexSaved(), _flannIndexSaved);
 
 	if(_markerAngVariance>=9999)
 	{
@@ -654,10 +699,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 
 	// Keypoint stuff
-	if(_vwd)
-	{
-		_vwd->parseParameters(params);
-	}
+	_vwd->parseParameters(params);
 
 	Parameters::parse(params, Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
 	Parameters::parse(params, Parameters::kKpParallelized(), _parallelized);
@@ -856,7 +898,7 @@ void Memory::preUpdate()
 	{
 		this->cleanUnusedWords();
 	}
-	if(_vwd && !_parallelized)
+	if(!_parallelized)
 	{
 		//When parallelized, it is done in CreateSignature
 		_vwd->update();
@@ -1114,10 +1156,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 		}
 		++_signaturesAdded;
 
-		if(_vwd)
-		{
-			UDEBUG("%d words ref for the signature %d (weight=%d)", signature->getWords().size(), signature->id(), signature->getWeight());
-		}
+		UDEBUG("%d words ref for the signature %d (weight=%d)", signature->getWords().size(), signature->id(), signature->getWeight());
 		if(signature->getWords().size())
 		{
 			signature->setEnabled(true);
@@ -1224,16 +1263,17 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 				std::multimap<int, Link> linksCopy = links;
 				for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
 				{
-					if(iter->second.type() == Link::kNeighbor ||
-					   iter->second.type() == Link::kNeighborMerged)
+					if(iter->second.type() == Link::kNeighborMerged)
 					{
+						// Removing only merged neighbor links, we keep original neighbor 
+						// links to be able to reprocess databases with correct odometry covariance.
 						s->removeLink(iter->first);
-						if(iter->second.type() == Link::kNeighbor)
+					}
+					if(iter->second.type() == Link::kNeighbor)
+					{
+						if(_lastGlobalLoopClosureId == s->id())
 						{
-							if(_lastGlobalLoopClosureId == s->id())
-							{
-								_lastGlobalLoopClosureId = iter->first;
-							}
+							_lastGlobalLoopClosureId = iter->first;
 						}
 					}
 				}
@@ -1836,13 +1876,24 @@ void Memory::clear()
 	UDEBUG("");
 
 	//Get the tree root (parents)
-	std::map<int, Signature*> mem = _signatures;
-	for(std::map<int, Signature *>::iterator i=mem.begin(); i!=mem.end(); ++i)
-	{
-		if(i->second)
+	if(!_dbDriver) {
+		// We are not saving to database anyway, just delete now.
+		for(std::map<int, Signature *>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
 		{
-			UDEBUG("deleting from the working and the short-term memory: %d", i->first);
-			this->moveToTrash(i->second);
+			delete iter->second;
+		}
+		_workingMem.clear();
+		_signatures.clear();
+	}
+	else {
+		std::map<int, Signature*> mem = _signatures;
+		for(std::map<int, Signature *>::iterator i=mem.begin(); i!=mem.end(); ++i)
+		{
+			if(i->second)
+			{
+				//UDEBUG("deleting from the working and the short-term memory: %d", i->first);
+				this->moveToTrash(i->second);
+			}
 		}
 	}
 
@@ -1866,6 +1917,7 @@ void Memory::clear()
 	UDEBUG("");
 	_lastSignature = 0;
 	_lastGlobalLoopClosureId = 0;
+	_signaturesAdded = 0;
 	_idCount = kIdStart;
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
@@ -1879,6 +1931,7 @@ void Memory::clear()
 	_landmarksIndex.clear();
     _landmarksSize.clear();
 	_allNodesInWM = true;
+	_receivingOdometryFeatures = false;
 
 	if(_dbDriver)
 	{
@@ -1886,14 +1939,7 @@ void Memory::clear()
 		cleanUnusedWords();
 		_dbDriver->emptyTrashes();
 	}
-	else
-	{
-		cleanUnusedWords();
-	}
-	if(_vwd)
-	{
-		_vwd->clear();
-	}
+	_vwd->clear(_dbDriver!=NULL);
 	UDEBUG("");
 }
 
@@ -2428,7 +2474,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
  */
 void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> * deletedWords)
 {
-	UDEBUG("id=%d", s?s->id():0);
+	//UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
 		// Cleanup landmark indexes
@@ -2921,6 +2967,37 @@ Transform Memory::computeTransform(
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 
+	// Load word descriptors and keypoints on-demand if necessary
+	if( !_reextractLoopClosureFeatures &&
+		(_registrationPipeline->isImageRequired() || guess.isNull()) &&
+		!fromS.getWords().empty() && fromS.getWordsKpts().empty() &&
+		_dbDriver)
+	{
+		// We assume "toS" has already features in RAM, so just lookup "fromS"
+		UDEBUG("Loading local visual features for signature %d", fromS.id());
+		std::multimap<int, int> words;
+		std::vector<cv::KeyPoint> keypoints;
+		std::vector<cv::Point3f> points;
+		cv::Mat descriptors;
+		UTimer timer;
+		_dbDriver->getLocalFeatures(fromS.id(), words, keypoints, points, descriptors);
+		if(!words.empty() && !keypoints.empty()) {
+			UASSERT(words.size() == fromS.getWords().size());
+			std::map<int, int> wordsChanged = fromS.getWordsChanged();
+			bool wasEnabled = fromS.isEnabled();
+			fromS.setWords(words, keypoints, points, descriptors);
+			for(const auto & iter: wordsChanged) {
+				fromS.changeWordsRef(iter.first, iter.second);
+			}
+			fromS.setEnabled(wasEnabled);
+			UDEBUG("Loaded %ld local visual features for signature %d! (in %f s)", words.size(), fromS.id(), timer.ticks());
+		}
+		else
+		{
+			UDEBUG("Failed to load local visual features for signature %d.", fromS.id());
+		}
+		
+	}
 
 	// compute transform fromId -> toId
 	std::vector<int> inliersV;
@@ -2980,8 +3057,10 @@ Transform Memory::computeTransform(
 			   !_invertedReg &&
 			   !tmpTo.getWordsDescriptors().empty() &&
 			   !tmpTo.getWords().empty() &&
+			   !tmpTo.getWordsKpts().empty() &&
 			   !tmpFrom.getWordsDescriptors().empty() &&
 			   !tmpFrom.getWords().empty() &&
+			   !tmpFrom.getWordsKpts().empty() &&
 			   !tmpFrom.getWords3().empty() &&
 			   fromS.hasLink(0, Link::kNeighbor)) // If doesn't have neighbors, skip bundle
 		{
@@ -3015,8 +3094,12 @@ Transform Memory::computeTransform(
 				if(id != fromS.id() && iter->second.type() == Link::kNeighbor) // assemble only neighbors for the local feature map
 				{
 					const Signature * s = this->getSignature(id);
-					if(s && !s->getWords3().empty())
+					if(s)
 					{
+						if(s->getWordsKpts().empty() && s->getWords3().empty() && s->getWordsDescriptors().empty()) {
+							UDEBUG("Signature %d doesn't have features set. Cannot be added in the local feature map.", s->id());
+							continue;
+						}
 						const std::map<int, int> & wordsTo = uMultimapToMapUnique(s->getWords());
 						for(std::map<int, int>::const_iterator jter=wordsTo.begin(); jter!=wordsTo.end(); ++jter)
 						{
@@ -3115,6 +3198,11 @@ Transform Memory::computeTransform(
 								bundlePoses.insert(std::make_pair(id, iter->second.transform()));
 							}
 
+							if(s->getWordsKpts().empty())
+							{
+								UDEBUG("Signature %d doesn't have features set. Keypoints won't be added in local bundle adjustment.", s->id());
+								continue;
+							}
 							const std::map<int,int> & words = uMultimapToMapUnique(s->getWords());
 							for(std::map<int, int>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
 							{
@@ -3590,7 +3678,7 @@ void Memory::removeAllVirtualLinks()
 
 void Memory::removeVirtualLinks(int signatureId)
 {
-	UDEBUG("");
+	//UDEBUG("");
 	Signature * s = this->_getSignature(signatureId);
 	if(s)
 	{
@@ -3629,10 +3717,7 @@ void Memory::dumpMemory(std::string directory) const
 
 void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
 {
-	if(_vwd)
-	{
-		_vwd->exportDictionary(fileNameRef, fileNameDesc);
-	}
+	_vwd->exportDictionary(fileNameRef, fileNameDesc);
 }
 
 void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
@@ -3753,10 +3838,7 @@ unsigned long Memory::getMemoryUsed() const
 	{
 		memoryUsage += iter->second->getMemoryUsed(true);
 	}
-	if(_vwd)
-	{
-		memoryUsage += _vwd->getMemoryUsed();
-	}
+	memoryUsage += _vwd->getMemoryUsed();
 	memoryUsage += _stMem.size() * (sizeof(int)+sizeof(std::set<int>::iterator)) + sizeof(std::set<int>);
 	memoryUsage += _workingMem.size() * (sizeof(int)+sizeof(double)+sizeof(std::map<int, double>::iterator)) + sizeof(std::map<int, double>);
 	memoryUsage += _groundTruths.size() * (sizeof(int)+sizeof(Transform)+12*sizeof(float) + sizeof(std::map<int, Transform>::iterator)) + sizeof(std::map<int, Transform>);
@@ -4194,6 +4276,29 @@ void Memory::getNodeWordsAndGlobalDescriptors(int nodeId,
 		words3 = s->getWords3();
 		wordsDescriptors = s->getWordsDescriptors();
 		globalDescriptors = s->sensorData().globalDescriptors();
+
+		if(!words.empty() && wordsKpts.empty() && _dbDriver)
+		{
+			std::multimap<int, int> tmpWords;
+			_dbDriver->getLocalFeatures(nodeId, tmpWords, wordsKpts, words3, wordsDescriptors);
+			if(!tmpWords.empty() && !wordsKpts.empty())
+			{
+				UASSERT(tmpWords.size() == words.size());
+				std::map<int, int> wordsChanged = s->getWordsChanged();
+				for(const auto & iter: wordsChanged) {
+					std::list<int> subwords = uValues(tmpWords, iter.first); // old id
+					if(subwords.size())
+					{
+						tmpWords.erase(iter.first);
+						for(std::list<int>::const_iterator jter=subwords.begin(); jter!=subwords.end(); ++jter)
+						{
+							tmpWords.insert(std::pair<int, int>(iter.second, (*jter))); // new id
+						}
+					}
+				}
+				words = tmpWords;
+			}
+		}
 	}
 	else if(_dbDriver)
 	{
@@ -4765,6 +4870,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	{
 		meanWordsPerLocation = _vwd->getTotalActiveReferences() / (treeSize-1); // ignore virtual signature
 	}
+	else if(_useOdometryFeatures) {
+		// To not detect first image as bad signature if odometry 
+		// is using less features than feature2D->getMaxFeatures()
+		meanWordsPerLocation = 0;
+	}
 
 	if(_parallelized && !isIntermediateNode)
 	{
@@ -4868,10 +4978,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	SensorData decimatedData;
 	UDEBUG("Received kpts=%d kpts3D=%d, descriptors=%d _useOdometryFeatures=%s",
 			(int)data.keypoints().size(), (int)data.keypoints3D().size(), data.descriptors().rows, _useOdometryFeatures?"true":"false");
+	// TODO: do we still need the third and fouth comparisons?
+	// TODO: there is significant repetitive code between the if and the else, could we combine them?!
 	if(!_useOdometryFeatures ||
-		data.keypoints().empty() ||
+		(!_receivingOdometryFeatures && data.keypoints().empty()) ||
 		(int)data.keypoints().size() != data.descriptors().rows ||
-		(_feature2D->getType() == Feature2D::kFeatureOrbOctree && data.descriptors().empty()))
+		(!_receivingOdometryFeatures && _feature2D->getType() == Feature2D::kFeatureOrbOctree && data.descriptors().empty()))
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
@@ -5208,6 +5320,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 	else if(_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
 	{
+		_receivingOdometryFeatures = true;
 		UINFO("Use odometry features: kpts=%d 3d=%d desc=%d (dim=%d, type=%d)",
 				(int)data.keypoints().size(),
 				(int)data.keypoints3D().size(),
@@ -6330,7 +6443,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 void Memory::disableWordsRef(int signatureId)
 {
-	UDEBUG("id=%d", signatureId);
+	//UDEBUG("id=%d", signatureId);
 
 	Signature * ss = this->_getSignature(signatureId);
 	if(ss && ss->isEnabled())
@@ -6346,7 +6459,7 @@ void Memory::disableWordsRef(int signatureId)
 
 		count -= _vwd->getTotalActiveReferences();
 		ss->setEnabled(false);
-		UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
+		//UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
 	}
 }
 
@@ -6409,7 +6522,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 
 	UDEBUG("oldWordIds.size()=%d, getOldIds time=%fs", oldWordIds.size(), timer.ticks());
 
-	// the words were deleted, so try to math it with an active word
+	// the words were deleted, so try to match it with an active word
 	std::list<VisualWord *> vws;
 	if(oldWordIds.size() && _dbDriver)
 	{

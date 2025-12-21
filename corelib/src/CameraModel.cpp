@@ -554,7 +554,7 @@ unsigned int CameraModel::deserialize(const unsigned char * data, unsigned int d
 			int iR = 8;
 			int iP = 9;
 			int iL = 10;
-			UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10]);
+			//UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10]);
 			unsigned int requiredDataSize = sizeof(int)*headerSize +
 					sizeof(double)*(header[iK]+header[iD]+header[iR]+header[iP]) +
 					sizeof(float)*header[iL];

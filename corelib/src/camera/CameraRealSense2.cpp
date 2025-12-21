@@ -712,14 +712,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			for (auto& profile : profiles)
 			{
 				auto video_profile = profile.as<rs2::video_stream_profile>();
-				UINFO("%s %d %d %d %d %s type=%d", rs2_format_to_string(
-						video_profile.format()),
-						video_profile.width(),
-						video_profile.height(),
-						video_profile.fps(),
-						video_profile.stream_index(),
-						video_profile.stream_name().c_str(),
-						video_profile.stream_type());
+				UINFO("%s %d %d %d %d %s type=%d", 
+						rs2_format_to_string(profile.format()),
+						video_profile.get()?video_profile.width():-1,
+						video_profile.get()?video_profile.height():-1,
+						profile.fps(),
+						profile.stream_index(),
+						profile.stream_name().c_str(),
+						profile.stream_type());
 			}
 		}
 		int pi = 0;
@@ -728,7 +728,8 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			auto video_profile = profile.as<rs2::video_stream_profile>();
 			if(!stereo)
 			{
-				if( (video_profile.width()  == cameraWidth_ &&
+				if( (video_profile.get() &&
+					 video_profile.width()  == cameraWidth_ &&
 					 video_profile.height() == cameraHeight_ &&
 					 video_profile.fps()    == cameraFps_) ||
 						(strcmp(sensors[i].get_info(RS2_CAMERA_INFO_NAME), "L500 Depth Sensor")==0 &&
@@ -778,7 +779,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 						}
 					}
 				}
-				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF)
+				else if(profile.format() == RS2_FORMAT_MOTION_XYZ32F || profile.format() == RS2_FORMAT_6DOF)
 				{
 					//D435i:
 					//MOTION_XYZ32F 0 0 200 (gyro)
@@ -817,6 +818,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			{
 				//T265:
 				if(!dualMode_ &&
+					video_profile.get() &&
 					video_profile.format() == RS2_FORMAT_Y8 &&
 					video_profile.width()  == 848 &&
 					video_profile.height() == 800 &&
@@ -865,7 +867,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 					}
 					added = true;
 				}
-				else if(video_profile.format() == RS2_FORMAT_MOTION_XYZ32F || video_profile.format() == RS2_FORMAT_6DOF)
+				else if(profile.format() == RS2_FORMAT_MOTION_XYZ32F || profile.format() == RS2_FORMAT_6DOF)
 				{
 					//MOTION_XYZ32F 0 0 200
 					//MOTION_XYZ32F 0 0 62
@@ -884,14 +886,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			for (auto& profile : profiles)
 			{
 				auto video_profile = profile.as<rs2::video_stream_profile>();
-				UERROR("%s %d %d %d %d %s type=%d", rs2_format_to_string(
-						video_profile.format()),
-						video_profile.width(),
-						video_profile.height(),
-						video_profile.fps(),
-						video_profile.stream_index(),
-						video_profile.stream_name().c_str(),
-						video_profile.stream_type());
+				UERROR("%s %d %d %d %d %s type=%d",
+						rs2_format_to_string(profile.format()),
+						video_profile.get()?video_profile.width():-1,
+						video_profile.get()?video_profile.height():-1,
+						profile.fps(),
+						profile.stream_index(),
+						profile.stream_name().c_str(),
+						profile.stream_type());
 			}
 			return false;
 		}
@@ -1075,13 +1077,13 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			 {
 				 auto video_profile = profilesPerSensor[i][j].as<rs2::video_stream_profile>();
 				 UINFO("Opening: %s %d %d %d %d %s type=%d", rs2_format_to_string(
-						 video_profile.format()),
-						 video_profile.width(),
-						 video_profile.height(),
-						 video_profile.fps(),
-						 video_profile.stream_index(),
-						 video_profile.stream_name().c_str(),
-						 video_profile.stream_type());
+						 profilesPerSensor[i][j].format()),
+						 video_profile.get()?video_profile.width():-1,
+						 video_profile.get()?video_profile.height():-1,
+						 profilesPerSensor[i][j].fps(),
+						 profilesPerSensor[i][j].stream_index(),
+						 profilesPerSensor[i][j].stream_name().c_str(),
+						 profilesPerSensor[i][j].stream_type());
 			 }
 			 if(globalTimeSync_ && sensors[i].supports(rs2_option::RS2_OPTION_GLOBAL_TIME_ENABLED))
 			 {
@@ -1525,6 +1527,13 @@ SensorData CameraRealSense2::captureImage(SensorCaptureInfo * info)
 		else
 		{
 			UERROR("Missing frames (received %d, needed=%d)", (int)frameset.size(), desiredFramesetSize);
+			if(frameset.size()>0)
+			{
+				for (auto it = frameset.begin(); it != frameset.end(); ++it)
+				{
+					UERROR("Received frame only from %s", (*it).get_profile().stream_name().c_str());
+				}
+			}
 		}
 	}
 	catch(const std::exception& ex)

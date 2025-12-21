@@ -394,11 +394,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->checkBox_enableForAll, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintButtons()));
 
-	ui_->horizontalSlider_iterations->setTracking(false);
+	ui_->horizontalSlider_iterations->setTracking(true);
 	ui_->horizontalSlider_iterations->setEnabled(false);
 	ui_->spinBox_optimizationsFrom->setEnabled(false);
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
-	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_optimizationFlavor, SIGNAL(activated(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -445,6 +444,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->graphViewer, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->graphicsView_A, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
+	connect(cloudViewer_, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 	connect(ui_->actionConcise_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
@@ -453,6 +453,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_alignScansCloudsWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->comboBox_env_sensor_graph_colormap, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
@@ -653,6 +654,9 @@ void DatabaseViewer::readSettings()
 	ui_->graphicsView_A->loadSettings(settings, "ImageViewA");
 	ui_->graphicsView_B->loadSettings(settings, "ImageViewB");
 
+	// CloudViewer
+	cloudViewer_->loadSettings(settings, "CloudViewer");
+
 	// ICP parameters
 	settings.beginGroup("icp");
 	ui_->spinBox_icp_decimation->setValue(settings.value("decimation", ui_->spinBox_icp_decimation->value()).toInt());
@@ -746,6 +750,9 @@ void DatabaseViewer::writeSettings()
 	// ImageViews
 	ui_->graphicsView_A->saveSettings(settings, "ImageViewA");
 	ui_->graphicsView_B->saveSettings(settings, "ImageViewB");
+
+	// CloudViewer
+	cloudViewer_->saveSettings(settings, "CloudViewer");
 
 	// save ICP parameters
 	settings.beginGroup("icp");
@@ -1122,6 +1129,7 @@ bool DatabaseViewer::closeDatabase()
 		lastWmIds_.clear();
 		mapIds_.clear();
 		weights_.clear();
+		envSensors_.clear();
 		wmStates_.clear();
 		links_.clear();
 		linksAdded_.clear();
@@ -1799,6 +1807,7 @@ void DatabaseViewer::updateIds()
 	idToIndex_.clear();
 	mapIds_.clear();
 	weights_.clear();
+	envSensors_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
 	groundTruthPoses_.clear();
@@ -1905,6 +1914,7 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
+		envSensors_.insert(std::make_pair(ids_[i], sensors));
 		if(w>=0)
 		{
 			for(std::multimap<int, Link>::iterator iter=links.find(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
@@ -5138,6 +5148,15 @@ void DatabaseViewer::update(int value,
 					cloudViewer_->removeAllLines();
 					cloudViewer_->removeAllFrustums();
 					cloudViewer_->removeOccupancyGridMap();
+					std::map<std::string, std::pair<int, int> > colorIndexAndPointSizeMap;
+					for(auto iter=cloudViewer_->getAddedClouds().constBegin(); iter!=cloudViewer_->getAddedClouds().constEnd(); ++iter) {
+						if(uStrContains(iter.key(), "cloud") || uStrContains(iter.key(), "scan")) {
+							colorIndexAndPointSizeMap.insert(std::make_pair(iter.key(), 
+								std::make_pair(
+									cloudViewer_->getCloudColorIndex(iter.key())+1,
+									cloudViewer_->getCloudPointSize(iter.key()))));
+						}
+					}
 					cloudViewer_->removeAllClouds();
 					cloudViewer_->removeOctomap();
 					cloudViewer_->removeElevationMap();
@@ -5194,6 +5213,10 @@ void DatabaseViewer::update(int value,
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(laserScanRaw, laserScanRaw.localTransform());
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						if(colorIndexAndPointSizeMap.find("scan") != colorIndexAndPointSizeMap.end()) {
+							cloudViewer_->setCloudColorIndex("scan", colorIndexAndPointSizeMap.at("scan").first);
+							cloudViewer_->setCloudPointSize("scan", colorIndexAndPointSizeMap.at("scan").second);
 						}
 					}
 
@@ -5281,6 +5304,10 @@ void DatabaseViewer::update(int value,
 								}
 
 								cloudViewer_->addCloud("cloud", cloudValidPoints, pose);
+								if(colorIndexAndPointSizeMap.find("cloud") != colorIndexAndPointSizeMap.end()) {
+									cloudViewer_->setCloudColorIndex("cloud", colorIndexAndPointSizeMap.at("cloud").first);
+									cloudViewer_->setCloudPointSize("cloud", colorIndexAndPointSizeMap.at("cloud").second);
+								}
 							}
 							else
 							{
@@ -5404,7 +5431,12 @@ void DatabaseViewer::update(int value,
 										}
 										if(ui_->checkBox_showCloud->isChecked())
 										{
-											cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+											std::string cloudName = uFormat("cloud_%d", i);
+											cloudViewer_->addCloud(cloudName, cloud, pose);
+											if(colorIndexAndPointSizeMap.find(cloudName) != colorIndexAndPointSizeMap.end()) {
+												cloudViewer_->setCloudColorIndex(cloudName, colorIndexAndPointSizeMap.at(cloudName).first);
+												cloudViewer_->setCloudPointSize(cloudName, colorIndexAndPointSizeMap.at(cloudName).second);
+											}
 										}
 									}
 								}
@@ -5434,7 +5466,12 @@ void DatabaseViewer::update(int value,
 											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 										}
 
-										cloudViewer_->addCloud(uFormat("cloud_%d", i), cloud, pose);
+										std::string cloudName = uFormat("cloud_%d", i);
+										cloudViewer_->addCloud(cloudName, cloud, pose);
+										if(colorIndexAndPointSizeMap.find(cloudName) != colorIndexAndPointSizeMap.end()) {
+											cloudViewer_->setCloudColorIndex(cloudName, colorIndexAndPointSizeMap.at(cloudName).first);
+											cloudViewer_->setCloudPointSize(cloudName, colorIndexAndPointSizeMap.at(cloudName).second);
+										}
 									}
 								}
 							}
@@ -7066,6 +7103,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 void DatabaseViewer::sliderIterationsValueChanged(int value)
 {
+	UDEBUG("sender=%s value=%d currentValue = %d", sender()?sender()->objectName().toStdString().c_str():"NA", value, ui_->horizontalSlider_iterations->value());
 	if(dbDriver_ && value >=0 && value < (int)graphes_.size())
 	{
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
@@ -7208,7 +7246,47 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGPSGraph(gpsPoses_, gpsValues_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_, weights_);
-		if(ui_->checkBox_wmState->isEnabled() &&
+		if(ui_->comboBox_env_sensor_graph_colormap->currentIndex() != 0)
+		{
+			std::map<int, float> colors;
+			EnvSensor::Type curentType = (EnvSensor::Type)ui_->comboBox_env_sensor_graph_colormap->currentIndex();
+			for(std::map<int, rtabmap::Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				auto jter = envSensors_.find(iter->first);
+				if(jter != envSensors_.end() && jter->second.find(curentType) != jter->second.end())
+				{
+					colors.insert(std::make_pair(iter->first, jter->second.at(curentType).value()));
+				}
+			}
+			std::string legend;
+			bool invertedColor = false;
+			unsigned char hueMax = 240; // blue
+			switch(curentType)
+			{
+				case EnvSensor::kWifiSignalStrength:
+					legend = "Wifi Signal Strength (dBm)";
+					invertedColor = true;
+					hueMax = 120; // green
+					break;
+				case EnvSensor::kAmbientTemperature:
+					legend = "Ambient Temperature (Celcius)";
+					break;
+				case EnvSensor::kAmbientAirPressure:
+					legend = "Ambient Air Pressure (hPa)";
+					break;
+				case EnvSensor::kAmbientLight:
+					legend = "Ambient Light / Illuminance (lx)";
+					break;
+				case EnvSensor::kAmbientRelativeHumidity:
+					legend = "Ambient Relative Humidity (%)";
+					break;
+				default:
+					break;
+			}
+			ui_->graphViewer->updateNodeColorByValue(legend, colors, 0.0f, 0.0f, invertedColor, 0, hueMax, 1);
+			UDEBUG("Updated node color based on env sensor %d", (int)curentType);
+		}
+		else if(ui_->checkBox_wmState->isEnabled() &&
 		   ui_->checkBox_wmState->isChecked() &&
 		   !lastWmIds_.empty())
 		{
@@ -7229,6 +7307,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			{
 				ui_->graphViewer->updateNodeColorByValue("In WM", colors, 1, false, 1);
 			}
+			UDEBUG("Updated node color based working memory state");
 		}
 		QGraphicsRectItem * rectScaleItem = 0;
 		ui_->graphViewer->clearMap();
@@ -7432,12 +7511,15 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 #endif
 		}
-		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+		
 		if(rectScaleItem != 0)
 		{
 			ui_->graphViewer->fitInView(rectScaleItem, Qt::KeepAspectRatio);
 			ui_->graphViewer->scene()->removeItem(rectScaleItem);
 			delete rectScaleItem;
+		}
+		else {
+			ui_->graphViewer->fitInView(ui_->graphViewer->sceneRect(), Qt::KeepAspectRatio);
 		}
 
 		ui_->graphViewer->update();
@@ -8327,7 +8409,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 		}
 
 		Transform toPoseInv = filteredScanPoses.at(currentLink.to()).inverse();
-		dbDriver_->loadNodeData(fromS, !silent, true, !silent, !silent);
+		dbDriver_->loadNodeData(*fromS, !silent, true, !silent, !silent);
 		fromS->sensorData().uncompressData();
 		LaserScan fromScan = fromS->sensorData().laserScanRaw();
 		int maxPoints = fromScan.size();
@@ -8473,8 +8555,8 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 			reextractVisualFeatures ||
 			!silent)
 		{
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 		
 			if(!silent)
 			{
@@ -8569,6 +8651,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 
 	if(!transform.isNull())
 	{
+		UASSERT(!info.covariance.empty());
 		if(!transform.isIdentity())
 		{
 			if(info.covariance.at<double>(0,0)<=0.0)
@@ -8762,9 +8845,9 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 			!silent)
 		{
 			// Add sensor data to generate features
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			fromS->sensorData().uncompressData();
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{
@@ -9311,14 +9394,18 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		if(findIter!=linksRefined_.end())
 		{
 			links.insert(*findIter); // add the refined link
-			links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
+			if(findIter->second.from() != findIter->second.to()) {
+				links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
+			}
 			UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
 			continue;
 		}
 
 		UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
-		links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
+		if(iter->second.from() != iter->second.to()) {
+			links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
+		}
 	}
 
 	return links;

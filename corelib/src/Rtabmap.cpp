@@ -1502,8 +1502,8 @@ bool Rtabmap::process(
 	float angleToClosestNodeInTheGraph = 0;
 	if(_rgbdSlamMode)
 	{
-		double linVar = odomCovariance.empty()?1.0f:uMax3(odomCovariance.at<double>(0,0), odomCovariance.at<double>(1,1)>=9999?0:odomCovariance.at<double>(1,1), odomCovariance.at<double>(2,2)>=9999?0:odomCovariance.at<double>(2,2));
-		double angVar = odomCovariance.empty()?1.0f:uMax3(odomCovariance.at<double>(3,3)>=9999?0:odomCovariance.at<double>(3,3), odomCovariance.at<double>(4,4)>=9999?0:odomCovariance.at<double>(4,4), odomCovariance.at<double>(5,5));
+		double linVar = odomCovariance.empty()?0.0f:uMax3(odomCovariance.at<double>(0,0), odomCovariance.at<double>(1,1)>=9999?0:odomCovariance.at<double>(1,1), odomCovariance.at<double>(2,2)>=9999?0:odomCovariance.at<double>(2,2));
+		double angVar = odomCovariance.empty()?0.0f:uMax3(odomCovariance.at<double>(3,3)>=9999?0:odomCovariance.at<double>(3,3), odomCovariance.at<double>(4,4)>=9999?0:odomCovariance.at<double>(4,4), odomCovariance.at<double>(5,5));
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), (float)linVar);
 		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_ang(), (float)angVar);
 
@@ -1544,9 +1544,10 @@ bool Rtabmap::process(
 				{
 					float x,y,z, roll,pitch,yaw;
 					t.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-					bool isMoving = fabs(x) > _rgbdLinearUpdate ||
-									fabs(y) > _rgbdLinearUpdate ||
-									fabs(z) > _rgbdLinearUpdate ||
+					bool isMoving = (_rgbdLinearUpdate > 0.0f && (
+										fabs(x) > _rgbdLinearUpdate ||
+										fabs(y) > _rgbdLinearUpdate ||
+										fabs(z) > _rgbdLinearUpdate)) ||
 									(_rgbdAngularUpdate>0.0f && (
 										fabs(roll) > _rgbdAngularUpdate ||
 										fabs(pitch) > _rgbdAngularUpdate ||
@@ -1607,6 +1608,7 @@ bool Rtabmap::process(
 					Transform t = _memory->computeTransform(oldId, signature->id(), guess, &info);
 					if(!t.isNull())
 					{
+						UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 						UINFO("Odometry refining: update neighbor link (%d->%d, variance:lin=%f, ang=%f) from %s to %s",
 								oldId,
 								signature->id(),
@@ -1614,7 +1616,6 @@ bool Rtabmap::process(
 								info.covariance.at<double>(5,5),
 								guess.prettyPrint().c_str(),
 								t.prettyPrint().c_str());
-						UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 						_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.covariance.inv()));
 
 						if(_optimizeFromGraphEnd)
@@ -1894,7 +1895,7 @@ bool Rtabmap::process(
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+						UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, getInformation(info.covariance))))
 						{
 							++proximityDetectionsInTimeFound;
@@ -2395,24 +2396,22 @@ bool Rtabmap::process(
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
 
-				if(distanceSoFar <= _localRadius)
+				if(_memory->getSignature(_path[i].first) != 0)
 				{
-					if(_memory->getSignature(_path[i].first) != 0)
+					if(immunizedLocations.insert(_path[i].first).second)
 					{
-						if(immunizedLocations.insert(_path[i].first).second)
-						{
-							++immunizedLocally;
-						}
-						UDEBUG("Path immunization: node %d (dist=%fm)", _path[i].first, distanceSoFar);
+						++immunizedLocally;
 					}
-					else if(retrievalLocalIds.size() < _maxLocalRetrieved)
-					{
-						UINFO("retrieval of node %d on path (dist=%fm)", _path[i].first, distanceSoFar);
-						retrievalLocalIds.push_back(_path[i].first);
-						// retrieved locations are automatically immunized
-					}
+					UDEBUG("Path immunization: node %d (dist=%fm)", _path[i].first, distanceSoFar);
 				}
-				else
+				else if(retrievalLocalIds.size() < _maxLocalRetrieved)
+				{
+					UINFO("retrieval of node %d on path (dist=%fm)", _path[i].first, distanceSoFar);
+					retrievalLocalIds.push_back(_path[i].first);
+					// retrieved locations are automatically immunized
+				}
+				
+				if(distanceSoFar > _localRadius)
 				{
 					UDEBUG("Stop on node %d (dist=%fm > %fm)",
 							_path[i].first, distanceSoFar, _localRadius);
@@ -2784,7 +2783,7 @@ bool Rtabmap::process(
 											signature->id(),
 											nearestId,
 											transform.prettyPrint().c_str());
-									UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+									UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 
 									//for statistics
 									loopClosureVisualInliersMeanDist = info.inliersMeanDistance;
@@ -2995,7 +2994,7 @@ bool Rtabmap::process(
 										}
 
 										// set Identify covariance for laser scan matching only
-										UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+										UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, getInformation(info.covariance)/_proximityMergedScanCovFactor, scanMatchingIds));
 										loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
@@ -3083,7 +3082,7 @@ bool Rtabmap::process(
 			if(!rejectedLoopClosure)
 			{
 				// Make the new one the parent of the old one
-				UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+				UASSERT(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
 				
 				loopClosureLinearVariance = uMax3(info.covariance.at<double>(0,0), info.covariance.at<double>(1,1)>=9999?0:info.covariance.at<double>(1,1), info.covariance.at<double>(2,2)>=9999?0:info.covariance.at<double>(2,2));
 				loopClosureAngularVariance = uMax3(info.covariance.at<double>(3,3)>=9999?0:info.covariance.at<double>(3,3), info.covariance.at<double>(4,4)>=9999?0:info.covariance.at<double>(4,4), info.covariance.at<double>(5,5));
@@ -3158,17 +3157,7 @@ bool Rtabmap::process(
 			UASSERT(uContains(_optimizedPoses, signature->id()));
 			UASSERT_MSG(uContains(_optimizedPoses, _path[_pathCurrentIndex].first), uFormat("id=%d", _path[_pathCurrentIndex].first).c_str());
 			Transform virtualLoop = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(_path[_pathCurrentIndex].first);
-
-			if(_localRadius == 0.0f || virtualLoop.getNorm() < _localRadius)
-			{
-				_memory->addLink(Link(signature->id(), _path[_pathCurrentIndex].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // set high variance
-			}
-			else
-			{
-				UERROR("Virtual link larger than local radius (%fm > %fm). Aborting the plan!",
-						virtualLoop.getNorm(), _localRadius);
-				this->clearPath(-1);
-			}
+			_memory->addLink(Link(signature->id(), _path[_pathCurrentIndex].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // set high variance
 		}
 	}
 
@@ -3269,6 +3258,7 @@ bool Rtabmap::process(
 				{
 					constraints.insert(std::make_pair(iter->second.from(), iter->second));
 				}
+
 				cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
@@ -3276,6 +3266,7 @@ bool Rtabmap::process(
 					if(iterPose != _optimizedPoses.end() && poses.find(iterPose->first) == poses.end())
 					{
 						poses.insert(*iterPose);
+
 						// make the poses in the map fixed
 						constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
 						UDEBUG("Constraint %d->%d: %s (type=%s, var=%f)", iterPose->first, iterPose->first, iterPose->second.prettyPrint().c_str(), Link::typeName(Link::kPosePrior).c_str(), 1./_localizationPriorInf);
@@ -3285,11 +3276,14 @@ bool Rtabmap::process(
 
 				std::map<int, Transform> posesOut;
 				std::multimap<int, Link> edgeConstraintsOut;
+
 				bool priorsIgnored = _graphOptimizer->priorsIgnored();
 				UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
 				_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
+
 				// If slam2d: get connected graph while keeping original roll,pitch,z values.
 				_graphOptimizer->getConnectedGraph(signature->id(), poses, constraints, posesOut, edgeConstraintsOut);
+				
 				if(ULogger::level() == ULogger::kDebug)
 				{
 					for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
@@ -5644,6 +5638,7 @@ int Rtabmap::detectMoreLoopClosures(
 		const ProgressState * processState,
 		float clusterRadiusMin)
 {
+	UDEBUG("");
 	UASSERT(iterations>0);
 
 	if(_graphOptimizer->iterations() <= 0)
@@ -6326,6 +6321,7 @@ bool Rtabmap::addLink(const Link & link)
 		std::map<int, Transform> poses = _odomCachePoses;
 		std::multimap<int, Link> constraints = _odomCacheConstraints;
 		constraints.insert(std::make_pair(link.from(), link));
+		cv::Mat priorInfMat = cv::Mat::eye(6,6, CV_64FC1)*_localizationPriorInf;
 		for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 		{
 			std::map<int, Transform>::iterator iterPose = _optimizedPoses.find(iter->second.to());
@@ -6333,7 +6329,7 @@ bool Rtabmap::addLink(const Link & link)
 			{
 				poses.insert(*iterPose);
 				// make the poses in the map fixed
-				constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, cv::Mat::eye(6,6, CV_64FC1)*999999)));
+				constraints.insert(std::make_pair(iterPose->first, Link(iterPose->first, iterPose->first, Link::kPosePrior, iterPose->second, priorInfMat)));
 			}
 		}
 
@@ -6927,24 +6923,24 @@ void Rtabmap::updateGoalIndex()
 				{
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
-				if(distanceSoFar <= _localRadius)
+				
+				if(_path[i].first != _path[i-1].first)
 				{
-					if(_path[i].first != _path[i-1].first)
+					const Signature * s = _memory->getSignature(_path[i].first);
+					if(s)
 					{
-						const Signature * s = _memory->getSignature(_path[i].first);
-						if(s)
+						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
 						{
-							if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
-							{
-								Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-								_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
-								UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
-							}
+							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
+							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
+							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 						}
 					}
 				}
-				else
+
+				if(distanceSoFar > _localRadius)
 				{
+					UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
 					break;
 				}
 			}
@@ -7004,11 +7000,8 @@ void Rtabmap::updateGoalIndex()
 					if((goalIndex == _pathCurrentIndex && i == _path.size()-1) ||
 					   _pathUnreachableNodes.find(i) == _pathUnreachableNodes.end())
 					{
-						if(distanceFromCurrentNode <= _localRadius)
-						{
-							goalIndex = i;
-						}
-						else
+						goalIndex = i;
+						if(distanceFromCurrentNode > _localRadius)
 						{
 							break;
 						}

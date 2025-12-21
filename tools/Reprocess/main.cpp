@@ -73,11 +73,10 @@ void showUsage()
 			"     -default    Input database's parameters are ignored, using default ones instead.\n"
 			"     -odom       Recompute odometry. See \"Odom/\" parameters with --params. If -skip option\n"
 			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
-			"                 cannot be detected in this mode (assuming the database contains continuous frames\n"
-			"                 of a single session).\n"
-			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recompting odometry.\n"
-			"     -odom_lin_var #.#   Override computed odometry linear covariance."
-			"     -odom_ang_var #.#   Override computed odometry angular covariance."
+			"                 may not be detected correctly if the input covariance between sessions doesn't have 9999.\n"
+			"     -odom_input_guess   Forward input database's odometry (if exists) as guess when recomputing odometry.\n"
+			"     -odom_lin_var #.#   Override computed odometry linear covariance.\n"
+			"     -odom_ang_var #.#   Override computed odometry angular covariance.\n"
 			"     -start #    Start from this node ID.\n"
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
@@ -321,6 +320,7 @@ int main(int argc, char * argv[])
 		}
 		else if(strcmp(argv[i], "-odom_input_guess") == 0 || strcmp(argv[i], "--odom_input_guess") == 0)
 		{
+			recomputeOdometry = true;
 			useInputOdometryAsGuess = true;
 		}
 		else if (strcmp(argv[i], "-odom_lin_var") == 0 || strcmp(argv[i], "--odom_lin_var") == 0)
@@ -641,7 +641,7 @@ int main(int argc, char * argv[])
 	if (databases.empty())
 	{
 		printf("No input database \"%s\" detected!\n", inputDatabasePath.c_str());
-		return -1;
+		return 1;
 	}
 	for (std::list<std::string>::iterator iter = databases.begin(); iter != databases.end(); ++iter)
 	{
@@ -652,20 +652,20 @@ int main(int argc, char * argv[])
 			{
 				printf("Did you mean \"%s\"?\n", uReplaceChar(inputDatabasePath, ':', ";").c_str());
 			}
-			return -1;
+			return 1;
 		}
 
 		if (UFile::getExtension(*iter).compare("db") != 0)
 		{
 			printf("File \"%s\" is not a database format (*.db)!\n", iter->c_str());
-			return -1;
+			return 1;
 		}
 	}
 
 	if(UFile::getExtension(outputDatabasePath).compare("db") != 0)
 	{
 		printf("File \"%s\" is not a database format (*.db)!\n", outputDatabasePath.c_str());
-		return -1;
+		return 1;
 	}
 
 	if(UFile::exists(outputDatabasePath))
@@ -679,7 +679,7 @@ int main(int argc, char * argv[])
 	{
 		printf("Failed opening input database!\n");
 		delete dbDriver;
-		return -1;
+		return 1;
 	}
 
 	ParametersMap parameters;
@@ -792,7 +792,7 @@ int main(int argc, char * argv[])
 		printf("Input database doesn't have any nodes saved in it.\n");
 		dbDriver->closeConnection(false);
 		delete dbDriver;
-		return -1;
+		return 1;
 	}
 	if(!((!incrementalMemory || appendMode) && databases.size() > 1))
 	{
@@ -814,7 +814,7 @@ int main(int argc, char * argv[])
 		{
 			printf("Failed opening input database!\n");
 			delete dbDriver;
-			return -1;
+			return 1;
 		}
 		ids.clear();
 		dbDriver->getAllNodeIds(ids, false, false, !intermediateNodes);
@@ -928,7 +928,8 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			printf("Odometry will be recomputed (odom option is set)\n");
+			printf("Odometry will be recomputed (\"odom\" option is set)%s.\n",
+				useInputOdometryAsGuess?" with input odometry guess (\"odom_guess_input\" option is set)":"");
 			Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), rtabmapUpdateRate);
 			if(rtabmapUpdateRate!=0)
 			{
@@ -951,18 +952,28 @@ int main(int argc, char * argv[])
 	}
 	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
-	Transform previousOdomPose = info.odomPose;
+	Transform previousOdomPose;
 	cv::Mat odomCovariance;
 	bool inMotion = true;
 	while(data.isValid() && g_loopForever)
 	{
 		if(recomputeOdometry)
 		{
-			OdometryInfo odomInfo;
-			Transform pose = odometry->process(data, useInputOdometryAsGuess && !info.odomPose.isNull()?previousOdomPose.inverse() * info.odomPose:Transform(), &odomInfo);
-			previousOdomPose = info.odomPose;
-			if(odomInfo.reg.covariance.total() == 36)
+			if(useInputOdometryAsGuess && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0) >= 9999)
 			{
+				if(!odometry->getPose().isIdentity()) {
+					printf("Reset odometry as input odometry triggered new map\n");
+					odometry->reset(odometry->getPose());
+				}
+				previousOdomPose.setNull();
+			}
+			OdometryInfo odomInfo;
+			Transform pose = odometry->process(data, 
+				(useInputOdometryAsGuess && !info.odomPose.isNull() && !previousOdomPose.isNull())?previousOdomPose.inverse() * info.odomPose:Transform(),
+				&odomInfo);
+			if(!pose.isNull() && odomInfo.reg.covariance.total() == 36)
+			{
+				previousOdomPose = info.odomPose;
 				if(odomLinVarOverride > 0.0)
 				{
 					odomInfo.reg.covariance.at<double>(0,0) = odomLinVarOverride;
@@ -976,11 +987,20 @@ int main(int argc, char * argv[])
 					odomInfo.reg.covariance.at<double>(5,5) = odomAngVarOverride;
 				}
 				if(uIsFinite(odomInfo.reg.covariance.at<double>(0,0)) &&
-					odomInfo.reg.covariance.at<double>(0,0) != 1.0 &&
 					odomInfo.reg.covariance.at<double>(0,0)>0.0)
 				{
+					if( useInputOdometryAsGuess && 
+						odomInfo.reg.covariance.at<double>(0,0) >= 9999 && 
+						!previousOdomPose.isNull() &&
+						(pose.x() != 0.0f || pose.y() != 0.0f || pose.z() != 0.0f)) // not the first frame
+					{
+						// In case of external guess and auto reset, keep reporting lost till we
+						// process the second frame with valid covariance. This way it
+						// won't trigger a new map.
+						pose = Transform();
+					}
 					// Use largest covariance error (to be independent of the odometry frame rate)
-					if(odomCovariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > odomCovariance.at<double>(0,0))
+					else if(odomCovariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > odomCovariance.at<double>(0,0))
 					{
 						odomCovariance = odomInfo.reg.covariance;
 					}
@@ -1005,19 +1025,27 @@ int main(int argc, char * argv[])
 					}
 				}
 
-				data = dbReader->takeData(&info);
-				if(scanFromDepth)
+				if(framesToSkip==0 && intermediateNodes)
 				{
-					data.setLaserScan(LaserScan());
+					data.setId(-1); // intermediate node
 				}
-				camThread.postUpdate(&data, &info);
-				++processed;
-				continue;
+				else
+				{
+					data = dbReader->takeData(&info);
+					if(scanFromDepth)
+					{
+						data.setLaserScan(LaserScan());
+					}
+					camThread.postUpdate(&data, &info);
+					++processed;
+					continue;
+				}
 			}
 			info.odomPose = pose;
 			info.odomCovariance = odomCovariance;
 			odomCovariance = cv::Mat();
-			lastUpdateStamp = data.stamp();
+			if(data.id() != -1)
+				lastUpdateStamp = data.stamp();
 
 			uInsert(globalMapStats, odomInfo.statistics(pose));
 		}
@@ -1298,7 +1326,6 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	int databasesMerged = 0;
 	if(!incrementalMemory)
 	{
 		showLocalizationStats(outputDatabasePath);
@@ -1321,7 +1348,7 @@ int main(int argc, char * argv[])
 					mapIds.insert(id);
 				}
 			}
-			databasesMerged = mapIds.size();
+			printf("Sessions linked to last pose: %ld/%ld\n", mapIds.size(), databases.size());
 		}
 	}
 
@@ -1523,5 +1550,5 @@ int main(int argc, char * argv[])
 	}
 #endif
 
-	return databasesMerged;
+	return 0;
 }

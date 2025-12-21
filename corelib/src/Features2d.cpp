@@ -47,6 +47,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_TORCH
 #include "superpoint_torch/SuperPoint.h"
 #endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+#include "superpoint_rpautrat/SuperpointRpautrat.h"
+#endif
 
 #ifdef RTABMAP_PYTHON
 #include "python/PyDetector.h"
@@ -730,9 +733,14 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 		feature2D = new ORBOctree(parameters);
 		break;
 #ifdef RTABMAP_TORCH
-	case Feature2D::kFeatureSuperPointTorch:
-		feature2D = new SuperPointTorch(parameters);
-		break;
+case Feature2D::kFeatureSuperPointTorch:
+    feature2D = new SuperPointTorch(parameters);
+    break;
+#endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+case Feature2D::kFeatureSuperPointRpautrat:
+    feature2D = new SuperPointRpautrat(parameters);
+    break;
 #endif
 	case Feature2D::kFeatureSurfFreak:
 		feature2D = new SURF_FREAK(parameters);
@@ -831,7 +839,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> subKeypoints;
 			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
-			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector && this->getType() != Feature2D::Type::kFeatureSuperPointRpautrat)
 			{
 				limitKeypoints(subKeypoints, maxFeatures, roi.size(), this->getSSC());
 			}
@@ -2610,6 +2618,108 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 	return superPoint_->compute(keypoints);
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
+	return cv::Mat();
+#endif
+}
+
+
+//////////////////////////
+//SuperPointRpautrat
+//////////////////////////
+SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
+		superpointWeightsPath_(Parameters::defaultSuperPointRpautratWeightsPath()),
+		superpointModelPath_(Parameters::defaultSuperPointRpautratModelPath()),
+		outputDir_(""),
+		threshold_(Parameters::defaultSuperPointRpautratThreshold()),
+		nms_(Parameters::defaultSuperPointRpautratNMS()),
+		minDistance_(Parameters::defaultSuperPointRpautratNMSRadius()),
+		cuda_(Parameters::defaultSuperPointRpautratCuda())
+{
+	parseParameters(parameters);
+}
+
+SuperPointRpautrat::~SuperPointRpautrat()
+{
+}
+
+void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
+{
+	Feature2D::parseParameters(parameters);
+
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	std::string previousWeightsPath = superpointWeightsPath_;
+	std::string previousModelPath = superpointModelPath_;
+	bool previousCuda = cuda_;
+	float previousThreshold = threshold_;
+	bool previousNms = nms_;
+	int previousMinDistance = minDistance_;
+	
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratWeightsPath(), superpointWeightsPath_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratModelPath(), superpointModelPath_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratThreshold(), threshold_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMS(), nms_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMSRadius(), minDistance_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratCuda(), cuda_);
+	Parameters::parse(parameters, Parameters::kRtabmapWorkingDirectory(), outputDir_);
+
+	// If working directory is not set, use the default
+	if(outputDir_.empty())
+	{
+		outputDir_ = Parameters::createDefaultWorkingDirectory();
+	}
+
+	// Reinitialize detector if model-affecting parameters changed
+	if(superPoint_.get() == 0 || 
+	   superpointWeightsPath_.compare(previousWeightsPath) != 0 || 
+	   superpointModelPath_.compare(previousModelPath) != 0 ||
+	   previousCuda != cuda_ ||
+	   previousThreshold != threshold_ ||
+	   previousNms != nms_ ||
+	   previousMinDistance != minDistance_)
+	{
+		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, superpointModelPath_, outputDir_, threshold_, nms_, minDistance_, cuda_, this->getMaxFeatures(), this->getSSC()));
+	}
+	else if(superPoint_.get() != 0)
+	{
+		// Update post-processing parameters without reinitializing
+		superPoint_->setMaxFeatures(this->getMaxFeatures());
+		superPoint_->setSSC(this->getSSC());
+	}
+#else
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
+#endif
+}
+
+std::vector<cv::KeyPoint> SuperPointRpautrat::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
+{
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	if(roi.x!=0 || roi.y !=0)
+	{
+		UERROR("SuperPoint Rpautrat: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
+				roi.x, roi.y, roi.width, roi.height,
+				Parameters::kKpRoiRatios().c_str(),
+				Parameters::kVisRoiRatios().c_str(),
+				Parameters::kVisGridRows().c_str(),
+				Parameters::kVisGridCols().c_str(),
+				Parameters::kKpGridRows().c_str(),
+				Parameters::kKpGridCols().c_str());
+		return std::vector<cv::KeyPoint>();
+	}
+	return superPoint_->detect(image, mask);
+#else
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
+	return std::vector<cv::KeyPoint>();
+#endif
+}
+
+cv::Mat SuperPointRpautrat::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	return superPoint_->compute(keypoints);
+#else
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
 	return cv::Mat();
 #endif
 }

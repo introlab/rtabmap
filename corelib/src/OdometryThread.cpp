@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
 
 namespace rtabmap {
 
@@ -63,7 +64,7 @@ bool OdometryThread::handleEvent(UEvent * event)
 			SensorEvent * sensorEvent = (SensorEvent*)event;
 			if(sensorEvent->getCode() == SensorEvent::kCodeData)
 			{
-				this->addData(sensorEvent->data());
+				this->addData(*sensorEvent);
 			}
 		}
 		else if(event->getClassName().compare("IMUEvent") == 0)
@@ -112,31 +113,51 @@ void OdometryThread::mainLoop()
 		_imuBuffer.clear();
 		_oldestAsyncImuStamp = 0.0;
 		_newestAsyncImuStamp = 0.0;
+		_previousGuessPose.setNull();
 	}
 
-	SensorData data;
-	if(getData(data))
+	SensorEvent event;
+	if(getData(event))
 	{
 		OdometryInfo info;
 		UDEBUG("Processing data...");
-		Transform pose = _odometry->process(data, &info);
+		Transform guess;
+		UDEBUG("event.info().odomPose=%s", event.info().odomPose.prettyPrint().c_str());
+		if(!_previousGuessPose.isNull() && !event.info().odomPose.isNull()) {
+			guess = _previousGuessPose.inverse() * event.info().odomPose;
+		}
+
+		SensorData data = event.data();
+		Transform pose = _odometry->process(data, guess , &info);
 		if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (pose.isNull() && data.imu().empty()))
 		{
 			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
+			if(!pose.isNull()) {
+				_previousGuessPose = event.info().odomPose;
+				UASSERT(event.info().odomPose.isNull() || !info.reg.covariance.empty());
+				if(!event.info().odomPose.isNull() && info.reg.covariance.at<double>(0,0) >= 9999 &&
+					(pose.x() != 0.0f || pose.y() != 0.0f || pose.z() != 0.0f)) // not the first frame
+				{
+					// In case of external guess and auto reset, keep reporting lost till we
+					// process the second frame with valid covariance. This way it
+					// won't trigger a new map.
+					pose = Transform();
+				}
+			}
 			// a null pose notify that odometry could not be computed
 			this->post(new OdometryEvent(data, pose, info));
 		}
 	}
 }
 
-void OdometryThread::addData(const SensorData & data)
+void OdometryThread::addData(const SensorEvent & event)
 {
-	if(data.imu().empty())
+	if(event.data().imu().empty())
 	{
 		if(dynamic_cast<OdometryMono*>(_odometry) == 0)
 		{
-			if((data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().empty() && data.stereoCameraModels().empty())) &&
-					data.laserScanRaw().empty())
+			if((event.data().imageRaw().empty() || event.data().depthOrRightRaw().empty() || (event.data().cameraModels().empty() && event.data().stereoCameraModels().empty())) &&
+					event.data().laserScanRaw().empty())
 			{
 				ULOGGER_ERROR("Missing some information (images/scans empty or missing calibration)!?");
 				return;
@@ -145,7 +166,7 @@ void OdometryThread::addData(const SensorData & data)
 		else
 		{
 			// Mono can accept RGB only
-			if(data.imageRaw().empty() || (data.cameraModels().empty() && data.stereoCameraModels().empty()))
+			if(event.data().imageRaw().empty() || (event.data().cameraModels().empty() && event.data().stereoCameraModels().empty()))
 			{
 				ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
 				return;
@@ -156,30 +177,32 @@ void OdometryThread::addData(const SensorData & data)
 	bool notify = true;
 	_dataMutex.lock();
 	{
-		if( !data.imageRaw().empty() ||
-			!data.imageCompressed().empty() ||
-			!data.laserScanRaw().isEmpty() ||
-			!data.laserScanCompressed().empty() || 
-			data.imu().empty())
+		if( !event.data().imageRaw().empty() ||
+			!event.data().imageCompressed().empty() ||
+			!event.data().laserScanRaw().isEmpty() ||
+			!event.data().laserScanCompressed().empty() || 
+			event.data().imu().empty())
 		{
-			if(_oldestAsyncImuStamp > 0.0 && data.stamp() < _oldestAsyncImuStamp) {
+			if(_oldestAsyncImuStamp > 0.0 && event.data().stamp() < _oldestAsyncImuStamp) {
 				UWARN("Received image/lidar with stamp (%f) older than oldest received imu "
 					"(%f), skipping that frame (imu buffer size=%ld). "
 					"When using async IMU, make sure IMU is published faster "
-					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar).",
-					data.stamp(), _oldestAsyncImuStamp, _imuBuffer.size());
+					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar)."
+					"Current camera/lidar delay is %fs.",
+					event.data().stamp(), _oldestAsyncImuStamp, _imuBuffer.size(), UTimer::now() - event.data().stamp());
 				notify = false;
 			}
-			else if(_newestAsyncImuStamp > 0.0 && data.stamp()>=_newestAsyncImuStamp) {
+			else if(_newestAsyncImuStamp > 0.0 && event.data().stamp()>=_newestAsyncImuStamp) {
 				UWARN("Received image/lidar with stamp (%f) newer than latest received imu "
 					"(%f), skipping that frame (imu buffer size=%ld). "
 					"When using async IMU, make sure IMU is published faster "
-					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar).",
-					data.stamp(), _newestAsyncImuStamp, _imuBuffer.size());
+					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar). "
+					"Current camera/lidar delay is %fs.",
+					event.data().stamp(), _newestAsyncImuStamp, _imuBuffer.size(), UTimer::now() - event.data().stamp());
 				notify = false;
 			}
 			else {
-				_dataBuffer.push_back(data);
+				_dataBuffer.push_back(event);
 				while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
 				{
 					UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
@@ -190,11 +213,11 @@ void OdometryThread::addData(const SensorData & data)
 		}
 		else
 		{
-			_imuBuffer.push_back(data);
+			_imuBuffer.push_back(event.data());
 			if(_oldestAsyncImuStamp == 0) {
-				_oldestAsyncImuStamp = data.stamp();
+				_oldestAsyncImuStamp = event.data().stamp();
 			}
-			_newestAsyncImuStamp = data.stamp();
+			_newestAsyncImuStamp = event.data().stamp();
 		}
 	}
 	_dataMutex.unlock();
@@ -205,7 +228,7 @@ void OdometryThread::addData(const SensorData & data)
 	}
 }
 
-bool OdometryThread::getData(SensorData & data)
+bool OdometryThread::getData(SensorEvent & event)
 {
 	bool dataFilled = false;
 	_dataAdded.acquire();
@@ -219,12 +242,12 @@ bool OdometryThread::getData(SensorData & data)
 				_odometry->process(_imuBuffer.front());
 				double stamp =_imuBuffer.front().stamp();
 				_imuBuffer.pop_front();
-				if(stamp > _dataBuffer.front().stamp()) {
+				if(stamp > _dataBuffer.front().data().stamp()) {
 					break;
 				}
 			}
 
-			data = _dataBuffer.front();
+			event = _dataBuffer.front();
 			_dataBuffer.pop_front();
 			dataFilled = true;
 		}

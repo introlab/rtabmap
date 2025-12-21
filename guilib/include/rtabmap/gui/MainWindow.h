@@ -178,6 +178,7 @@ protected Q_SLOTS:
 	void selectFreenect2();
 	void selectK4W2();
 	void selectK4A();
+	void selectOrbbecSDK();
 	void selectRealSense();
 	void selectRealSense2();
 	void selectRealSense2L515();

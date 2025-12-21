@@ -226,7 +226,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_MSCKF_VIO
 	_ui->odom_strategy->setItemData(8, 0, Qt::UserRole - 1);
 #endif
-#ifndef RTABMAP_VINS
+#ifndef RTABMAP_VINS_FUSION
 	_ui->odom_strategy->setItemData(9, 0, Qt::UserRole - 1);
 #endif
 #ifndef RTABMAP_OPENVINS
@@ -237,6 +237,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 #ifndef RTABMAP_OPEN3D
 	_ui->odom_strategy->setItemData(12, 0, Qt::UserRole - 1);
+#endif
+#ifndef RTABMAP_CUVSLAM
+	_ui->odom_strategy->setItemData(13, 0, Qt::UserRole - 1);
 #endif
 
 #if CV_MAJOR_VERSION < 3
@@ -290,6 +293,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_TORCH
 	_ui->comboBox_detector_strategy->setItemData(11, 0, Qt::UserRole - 1);
 	_ui->vis_feature_detector->setItemData(11, 0, Qt::UserRole - 1);
+#endif
+#if !defined(RTABMAP_TORCH) || !defined(RTABMAP_PYTHON)
+	_ui->comboBox_detector_strategy->setItemData(16, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(16, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_PYTHON
@@ -397,6 +404,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if (!CameraK4A::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcK4A - kSrcRGBD, 0, Qt::UserRole - 1);
+	}
+	if (!CameraOrbbecSDK::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOrbbecSDK - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if (!CameraRealSense::available())
 	{
@@ -767,19 +778,39 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_hshift, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_vshift, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_depth_decimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_freenect2MinDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_freenect2MaxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->checkBox_freenect2BilateralFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2EdgeAwareFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_freenect2Pipeline, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->comboBox_k4w2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->comboBox_k4a_rgb_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_k4a_framerate, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_k4a_depth_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_k4a_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_k4a_mkv, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_useMKVStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->spinBox_orbbec_sdk_color_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_orbbec_sdk_color_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_orbbec_sdk_depth_width, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_orbbec_sdk_depth_height, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_color_rectification, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_imu, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_orbbec_sdk_depth_mm, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseDepthScaledToRGBSize, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsenseRGBSource, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irMode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -918,6 +949,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_odom_sensor_scale_factor, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_odom_sensor_wait_time, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_odom_sensor_use_as_gt, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_passthrough_source_odom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_imuFilter_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_imuFilter, SLOT(setCurrentIndex(int)));
@@ -1005,6 +1037,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_rgbCompressionFormat->setObjectName(Parameters::kMemImageCompressionFormat().c_str());
 	_ui->lineEdit_depthCompressionFormat->setObjectName(Parameters::kMemDepthCompressionFormat().c_str());
 	_ui->general_checkBox_keepDescriptors->setObjectName(Parameters::kMemRawDescriptorsKept().c_str());
+	_ui->general_checkBox_loadVisualLocalFeaturesOnInit->setObjectName(Parameters::kMemLoadVisualLocalFeaturesOnInit().c_str());
 	_ui->general_checkBox_saveDepth16bits->setObjectName(Parameters::kMemSaveDepth16Format().c_str());
 	_ui->general_checkBox_compressionParallelized->setObjectName(Parameters::kMemCompressionParallelized().c_str());
 	_ui->general_checkBox_reduceGraph->setObjectName(Parameters::kMemReduceGraph().c_str());
@@ -1079,6 +1112,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_dictionaryPath->setObjectName(Parameters::kKpDictionaryPath().c_str());
 	connect(_ui->toolButton_dictionaryPath, SIGNAL(clicked()), this, SLOT(changeDictionaryPath()));
 	_ui->checkBox_kp_newWordsComparedTogether->setObjectName(Parameters::kKpNewWordsComparedTogether().c_str());
+	_ui->checkBox_kp_flannIndexSaved->setObjectName(Parameters::kKpFlannIndexSaved().c_str());
+	_ui->checkBox_kp_serializeWithChecksum->setObjectName(Parameters::kKpSerializeWithChecksum().c_str());
 	_ui->subpix_winSize_kp->setObjectName(Parameters::kKpSubPixWinSize().c_str());
 	_ui->subpix_iterations_kp->setObjectName(Parameters::kKpSubPixIterations().c_str());
 	_ui->subpix_eps_kp->setObjectName(Parameters::kKpSubPixEps().c_str());
@@ -1165,6 +1200,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_sptorch_nms->setObjectName(Parameters::kSuperPointNMS().c_str());
 	_ui->spinBox_sptorch_minDistance->setObjectName(Parameters::kSuperPointNMSRadius().c_str());
 	_ui->checkBox_sptorch_cuda->setObjectName(Parameters::kSuperPointCuda().c_str());
+
+	// SuperPoint Rpautrat
+	_ui->lineEdit_sprpautrat_weights_path->setObjectName(Parameters::kSuperPointRpautratWeightsPath().c_str());
+	connect(_ui->toolButton_sprpautrat_weights_path, SIGNAL(clicked()), this, SLOT(changeSuperPointRpautratWeightsPath()));
+	_ui->lineEdit_sprpautrat_model_path->setObjectName(Parameters::kSuperPointRpautratModelPath().c_str());
+	connect(_ui->toolButton_sprpautrat_model_path, SIGNAL(clicked()), this, SLOT(changeSuperPointRpautratModelPath()));
+	_ui->doubleSpinBox_sprpautrat_threshold->setObjectName(Parameters::kSuperPointRpautratThreshold().c_str());
+	_ui->checkBox_sprpautrat_nms->setObjectName(Parameters::kSuperPointRpautratNMS().c_str());
+	_ui->spinBox_sprpautrat_minDistance->setObjectName(Parameters::kSuperPointRpautratNMSRadius().c_str());
+	_ui->checkBox_sprpautrat_cuda->setObjectName(Parameters::kSuperPointRpautratCuda().c_str());
 
 	// PyMatcher
 	_ui->lineEdit_pymatcher_path->setObjectName(Parameters::kPyMatcherPath().c_str());
@@ -1553,8 +1598,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->OdomMSCKFInitCovExTrans->setObjectName(Parameters::kOdomMSCKFInitCovExTrans().c_str());
 
 	// Odometry VINS
-	_ui->lineEdit_OdomVinsPath->setObjectName(Parameters::kOdomVINSConfigPath().c_str());
-	connect(_ui->toolButton_OdomVinsPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSConfigPath()));
+	_ui->lineEdit_OdomVinsFusionPath->setObjectName(Parameters::kOdomVINSFusionConfigPath().c_str());
+	connect(_ui->toolButton_OdomVinsFusionPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSFusionConfigPath()));
 
 	// Odometry OpenVINS
 	_ui->checkBox_OdomOpenVINSUseStereo->setObjectName(Parameters::kOdomOpenVINSUseStereo().c_str());
@@ -1631,11 +1676,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
 	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());
 	_ui->stereo_flow_gpu->setObjectName(Parameters::kStereoGpu().c_str());
-	
 
 	// Odometry Open3D
 	_ui->odom_open3d_method->setObjectName(Parameters::kOdomOpen3DMethod().c_str());
 	_ui->odom_open3d_max_depth->setObjectName(Parameters::kOdomOpen3DMaxDepth().c_str());
+
+	// Odometry CuVSLAM
+	_ui->odom_cuvslam_multicam_mode->setObjectName(Parameters::kOdomCuVSLAMMulticamMode().c_str());
 
 	//StereoDense
 	_ui->comboBox_stereoDense_strategy->setObjectName(Parameters::kStereoDenseStrategy().c_str());
@@ -2228,6 +2275,13 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_k4a_depth_resolution->setCurrentIndex(2);
 		_ui->checkbox_k4a_irDepth->setChecked(false);
 		_ui->lineEdit_k4a_mkv->clear();
+		_ui->spinBox_orbbec_sdk_color_width->setValue(800);
+		_ui->spinBox_orbbec_sdk_color_height->setValue(600);
+		_ui->spinBox_orbbec_sdk_depth_width->setValue(800);
+		_ui->spinBox_orbbec_sdk_depth_height->setValue(600);
+		_ui->checkBox_orbbec_sdk_color_rectification->setChecked(false);
+		_ui->checkBox_orbbec_sdk_imu->setChecked(true);
+		_ui->checkBox_orbbec_sdk_depth_mm->setChecked(true);
 		_ui->source_checkBox_useMKVStamps->setChecked(true);
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
@@ -2306,6 +2360,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_odom_sensor_scale_factor->setValue(1);
 		_ui->doubleSpinBox_odom_sensor_wait_time->setValue(100);
 		_ui->checkBox_odom_sensor_use_as_gt->setChecked(false);
+		_ui->checkbox_passthrough_source_odom->setChecked(false);
 
 		_ui->comboBox_imuFilter_strategy->setCurrentIndex(2);
 		_ui->doubleSpinBox_imuFilterMadgwickGain->setValue(Parameters::defaultImuFilterMadgwickGain());
@@ -2713,6 +2768,16 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_useMKVStamps->setChecked(settings.value("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked()).toBool());
 	settings.endGroup(); // K4A
 
+	settings.beginGroup("OrbbecSDK");
+	_ui->spinBox_orbbec_sdk_color_width->setValue(settings.value("color_width", _ui->spinBox_orbbec_sdk_color_width->value()).toInt());
+	_ui->spinBox_orbbec_sdk_color_height->setValue(settings.value("color_height", _ui->spinBox_orbbec_sdk_color_height->value()).toInt());
+	_ui->spinBox_orbbec_sdk_depth_width->setValue(settings.value("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value()).toInt());
+	_ui->spinBox_orbbec_sdk_depth_height->setValue(settings.value("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value()).toInt());
+	_ui->checkBox_orbbec_sdk_color_rectification->setChecked(settings.value("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked()).toBool());
+	_ui->checkBox_orbbec_sdk_imu->setChecked(settings.value("enable_imu", _ui->checkBox_orbbec_sdk_imu->isChecked()).toBool());
+	_ui->checkBox_orbbec_sdk_depth_mm->setChecked(settings.value("depth_mm", _ui->checkBox_orbbec_sdk_depth_mm->isChecked()).toBool());
+	settings.endGroup(); // Orbbec SDK
+
 	settings.beginGroup("RealSense");
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
 	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
@@ -2832,6 +2897,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_odom_sensor_scale_factor->setValue(settings.value("odom_sensor_scale_factor", _ui->doubleSpinBox_odom_sensor_scale_factor->value()).toDouble());
 	_ui->doubleSpinBox_odom_sensor_wait_time->setValue(settings.value("odom_sensor_wait_time", _ui->doubleSpinBox_odom_sensor_wait_time->value()).toDouble());
 	_ui->checkBox_odom_sensor_use_as_gt->setChecked(settings.value("odom_sensor_odom_as_gt", _ui->checkBox_odom_sensor_use_as_gt->isChecked()).toBool());
+	_ui->checkbox_passthrough_source_odom->setChecked(settings.value("odom_sensor_as_guess", _ui->checkbox_passthrough_source_odom->isChecked()).toBool());
 	settings.endGroup(); // OdomSensor
 
 	settings.beginGroup("UsbCam");
@@ -3319,6 +3385,16 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked());
 	settings.endGroup(); // K4A
 
+	settings.beginGroup("OrbbecSDK");
+	settings.setValue("color_width", _ui->spinBox_orbbec_sdk_color_width->value());
+	settings.setValue("color_height", _ui->spinBox_orbbec_sdk_color_height->value());
+	settings.setValue("depth_width", _ui->spinBox_orbbec_sdk_depth_width->value());
+	settings.setValue("depth_height", _ui->spinBox_orbbec_sdk_depth_height->value());
+	settings.setValue("rectify_color", _ui->checkBox_orbbec_sdk_color_rectification->isChecked());
+	settings.setValue("enable_imu", _ui->checkBox_orbbec_sdk_imu->isChecked());
+	settings.setValue("depth_mm", _ui->checkBox_orbbec_sdk_depth_mm->isChecked());
+	settings.endGroup(); // Orbbec SDK
+
 	settings.beginGroup("RealSense");
 	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
 	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
@@ -3436,6 +3512,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("odom_sensor_scale_factor", _ui->doubleSpinBox_odom_sensor_scale_factor->value());
 	settings.setValue("odom_sensor_wait_time", _ui->doubleSpinBox_odom_sensor_wait_time->value());
 	settings.setValue("odom_sensor_odom_as_gt", _ui->checkBox_odom_sensor_use_as_gt->isChecked());
+	settings.setValue("odom_sensor_as_guess", _ui->checkbox_passthrough_source_odom->isChecked());
 	settings.endGroup(); // OdomSensor
 
 	settings.beginGroup("UsbCam");
@@ -3728,15 +3805,6 @@ bool PreferencesDialog::validateForm()
 				tr("Selected odometry local bundle adjustment optimization strategy (Ceres) is not available. RTAB-Map is not built "
 				   "with Ceres. Bundle adjustment is disabled."));
 		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
-	}
-
-	// verify that Robust and Reject threshold are not set at the same time
-	if(_ui->graphOptimization_robust->isChecked() && _ui->graphOptimization_maxError->value()>0.0)
-	{
-		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("Robust graph optimization and maximum optimization error threshold cannot be "
-				   "both used at the same time. Disabling robust optimization."));
-		_ui->graphOptimization_robust->setChecked(false);
 	}
 
 	//verify binary features and nearest neighbor
@@ -5473,9 +5541,10 @@ void PreferencesDialog::updateOdometryStackedIndex(int index)
 	_ui->groupBox_odomOKVIS->setVisible(index==6);
 	_ui->groupBox_odomLOAM->setVisible(index==7);
 	_ui->groupBox_odomMSCKF->setVisible(index==8);
-	_ui->groupBox_odomVINS->setVisible(index==9);
+	_ui->groupBox_odomVINSFusion->setVisible(index==9);
 	_ui->groupBox_odomOpenVINS->setVisible(index==10);
 	_ui->groupBox_odomOpen3D->setVisible(index==12);
+	_ui->groupBox_odomCuvslam->setVisible(index==13);
 }
 
 void PreferencesDialog::useOdomFeatures()
@@ -5564,20 +5633,20 @@ void PreferencesDialog::changeOdometryOKVISConfigPath()
 	}
 }
 
-void PreferencesDialog::changeOdometryVINSConfigPath()
+void PreferencesDialog::changeOdometryVINSFusionConfigPath()
 {
 	QString path;
-	if(_ui->lineEdit_OdomVinsPath->text().isEmpty())
+	if(_ui->lineEdit_OdomVinsFusionPath->text().isEmpty())
 	{
 		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), this->getWorkingDirectory(), tr("VINS-Fusion config (*.yaml)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), _ui->lineEdit_OdomVinsPath->text(), tr("VINS-Fusion config (*.yaml)"));
+		path = QFileDialog::getOpenFileName(this, tr("VINS-Fusion Config"), _ui->lineEdit_OdomVinsFusionPath->text(), tr("VINS-Fusion config (*.yaml)"));
 	}
 	if(!path.isEmpty())
 	{
-		_ui->lineEdit_OdomVinsPath->setText(path);
+		_ui->lineEdit_OdomVinsFusionPath->setText(path);
 	}
 }
 
@@ -5648,6 +5717,41 @@ void PreferencesDialog::changeSuperPointModelPath()
 		_ui->lineEdit_sptorch_path->setText(path);
 	}
 }
+
+void PreferencesDialog::changeSuperPointRpautratWeightsPath()
+{
+	QString path;
+	if(_ui->lineEdit_sprpautrat_weights_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint weights"), this->getWorkingDirectory(), tr("SuperPoint weights (*.pth)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint weights"), _ui->lineEdit_sprpautrat_weights_path->text(), tr("SuperPoint weights (*.pth)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_sprpautrat_weights_path->setText(path);
+	}
+}
+
+void PreferencesDialog::changeSuperPointRpautratModelPath()
+{
+	QString path;
+	if(_ui->lineEdit_sprpautrat_model_path->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint Python Model"), this->getWorkingDirectory(), tr("SuperPoint Python Model (*.py)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select SuperPoint Python Model"), _ui->lineEdit_sprpautrat_model_path->text(), tr("SuperPoint Python Model (*.py)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_sprpautrat_model_path->setText(path);
+	}
+}
+
 
 void PreferencesDialog::changePyMatcherPath()
 {
@@ -5731,6 +5835,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
@@ -5740,6 +5845,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
 	_ui->groupBox_k4a->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD);
+	_ui->groupBox_orbbec_sdk->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD);
 	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
 	_ui->groupBox_realsense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
@@ -5783,7 +5889,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 
 	// Odom Sensor Group
 	_ui->frame_visual_odometry_sensor->setVisible(getOdomSourceDriver() != kSrcUndef); // Not Lidar None
-	_ui->groupBox_odom_sensor->setVisible(_ui->comboBox_sourceType->currentIndex() != 3); // Don't show when database is selected
+	_ui->comboBox_odom_sensor->setEnabled(_ui->comboBox_sourceType->currentIndex() != 3); // Don't enable when database is selected
 
 	// Lidar Sensor Group
 	_ui->comboBox_lidar_src->setEnabled(_ui->comboBox_sourceType->currentIndex() != 3); // Disable if database input
@@ -5809,6 +5915,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB) ||
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect - kSrcRGBD) || //Kinect360
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD) || //K4A
+			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD) || //Orbbec SDK
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD) || //D435i
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense - kSrcRGBD) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoRealSense2 - kSrcStereo) || //T265
@@ -5816,7 +5923,6 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoMyntEye - kSrcStereo) || // MYNT EYE S
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZedOC - kSrcStereo) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoDepthAI - kSrcStereo));
-	_ui->frame_imu_filtering->setVisible(getIMUFilteringStrategy() > 0); // Not None
 	_ui->stackedWidget_imuFilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() > 0);
 	_ui->groupBox_madgwickfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 1);
 	_ui->groupBox_complementaryfilter->setVisible(_ui->comboBox_imuFilter_strategy->currentIndex() == 2);
@@ -5916,6 +6022,10 @@ bool PreferencesDialog::isRelocalizationColorOdomCacheGraphView() const
 bool PreferencesDialog::isOdomDisabled() const
 {
 	return _ui->checkbox_odomDisabled->isChecked();
+}
+bool PreferencesDialog::isOdomAsGuessEnabled() const 
+{
+	return _ui->checkbox_passthrough_source_odom->isChecked();
 }
 bool PreferencesDialog::isOdomSensorAsGt() const
 {
@@ -6637,6 +6747,26 @@ Camera * PreferencesDialog::createCamera(
 						     _ui->comboBox_k4a_framerate->currentIndex(),
 						     _ui->comboBox_k4a_depth_resolution->currentIndex());
 	}
+	else if (driver == kSrcOrbbecSDK)
+	{
+		camera = new CameraOrbbecSDK(
+			device.toStdString(),
+			_ui->spinBox_orbbec_sdk_color_width->value(),
+			_ui->spinBox_orbbec_sdk_color_height->value(),
+			_ui->spinBox_orbbec_sdk_depth_width->value(),
+			_ui->spinBox_orbbec_sdk_depth_height->value(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+		((CameraOrbbecSDK*)camera)->enableColorRectification(_ui->checkBox_orbbec_sdk_color_rectification->isChecked());
+		((CameraOrbbecSDK*)camera)->enableImu(_ui->checkBox_orbbec_sdk_imu->isChecked());
+		((CameraOrbbecSDK*)camera)->enableDepthMM(_ui->checkBox_orbbec_sdk_depth_mm->isChecked());
+
+		camera->setInterIMUPublishing(
+			_ui->checkbox_publishInterIMU->isChecked(),
+			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+					getIMUFilteringBaseFrameConversion());
+	}
 	else if (driver == kSrcRealSense)
 	{
 		if(useRawImages && _ui->comboBox_realsenseRGBSource->currentIndex()!=2)
@@ -6677,7 +6807,8 @@ Camera * PreferencesDialog::createCamera(
 			camera->setInterIMUPublishing(
 					_ui->checkbox_publishInterIMU->isChecked(),
 					_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-							IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+							IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+							getIMUFilteringBaseFrameConversion());
 			if(driver == kSrcStereoRealSense2)
 			{
 				((CameraRealSense2*)camera)->setImagesRectified((_ui->checkBox_stereo_rectify->isEnabled() && _ui->checkBox_stereo_rectify->isChecked()) && !useRawImages);
@@ -6895,7 +7026,8 @@ Camera * PreferencesDialog::createCamera(
 		camera->setInterIMUPublishing(
 				_ui->checkbox_publishInterIMU->isChecked(),
 				_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-						IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+						IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+						getIMUFilteringBaseFrameConversion());
 		((CameraStereoZed*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoZedOC)
@@ -6944,7 +7076,8 @@ Camera * PreferencesDialog::createCamera(
 		camera->setInterIMUPublishing(
 			_ui->checkbox_publishInterIMU->isChecked(),
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
-					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0);
+					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
+					getIMUFilteringBaseFrameConversion());
 	}
 	else if(driver == kSrcUsbDevice)
 	{

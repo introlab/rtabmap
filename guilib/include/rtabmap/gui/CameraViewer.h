@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <QDialog>
+#include <QElapsedTimer>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 
@@ -73,6 +74,9 @@ private:
 	QCheckBox * showScanCheckbox_;
 	QCheckBox * markerCheckbox_;
 	MarkerDetector * markerDetector_;
+	QElapsedTimer fpsTimer_;
+	double lastCapturePeriod_;
+	double previousCaptureStamp_;
 };
 
 } /* namespace rtabmap */
