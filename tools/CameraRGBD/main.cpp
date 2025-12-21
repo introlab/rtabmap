@@ -30,11 +30,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/SensorCaptureThread.h"
+#include <rtabmap/gui/CameraViewer.h>
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UConversion.h"
+#include "rtabmap/utilite/UEventsManager.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
@@ -44,11 +47,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/visualization/cloud_viewer.h>
 #include <stdio.h>
 #include <signal.h>
+#include <QApplication>
 
-void showUsage()
+void showUsage(const char * executableName)
 {
 	printf("\nUsage:\n"
-			"rtabmap-rgbd_camera [options] driver\n"
+			"%s [options] driver\n"
 			"  driver       Driver number to use: 0=OpenNI-PCL (Kinect)\n"
 			"                                     1=OpenNI2    (Kinect and Xtion PRO Live)\n"
 			"                                     2=Freenect   (Kinect)\n"
@@ -68,8 +72,12 @@ void showUsage()
 			"                                     16=XVSDK     (SeerSense)\n"
 			"                                     17=Orbbec SDK\n"
 			"  Options:\n"
-			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
-			"      -device #                      Device ID (number or string)\n");
+			"      -r #.#                         Input rate Hz (default 0=inf)\n"
+			"      -d #                           Device ID (number or string)\n"
+			"      -w #                           Request a specific image width. Not all camera drivers support this.\n"
+			"      -h #                           Request a specific image height. Not all camera drivers support this.\n"
+			"      -pcl                           Use PCL's CloudViewer for visualization (legacy).\n",
+		executableName);
 	exit(1);
 }
 
@@ -91,15 +99,18 @@ int main(int argc, char * argv[])
 	int driver = 0;
 	float rate = 0.0f;
 	std::string deviceId;
+	int width = 0;
+	int height = 0;
+	bool usePCLViz = false;
 	if(argc < 2)
 	{
-		showUsage();
+		showUsage(argv[0]);
 	}
 	else
 	{
 		for(int i=1; i<argc; ++i)
 		{
-			if(strcmp(argv[i], "-rate") == 0)
+			if(strcmp(argv[i], "-rate") == 0 || strcmp(argv[i], "-r") == 0)
 			{
 				++i;
 				if(i < argc)
@@ -107,16 +118,16 @@ int main(int argc, char * argv[])
 					rate = uStr2Float(argv[i]);
 					if(rate < 0.0f)
 					{
-						showUsage();
+						showUsage(argv[0]);
 					}
 				}
 				else
 				{
-					showUsage();
+					showUsage(argv[0]);
 				}
 				continue;
 			}
-			if (strcmp(argv[i], "-device") == 0)
+			if (strcmp(argv[i], "-device") == 0 || strcmp(argv[i], "-d") == 0)
 			{
 				++i;
 				if (i < argc)
@@ -125,18 +136,50 @@ int main(int argc, char * argv[])
 				}
 				else
 				{
-					showUsage();
+					showUsage(argv[0]);
 				}
+				continue;
+			}
+			if (strcmp(argv[i], "-w") == 0)
+			{
+				++i;
+				if (i < argc)
+				{
+					width = atoi(argv[i]);
+				}
+				else
+				{
+					showUsage(argv[0]);
+				}
+				continue;
+			}
+			if (strcmp(argv[i], "-h") == 0)
+			{
+				++i;
+				if (i < argc)
+				{
+					height = atoi(argv[i]);
+				}
+				else
+				{
+					showUsage(argv[0]);
+				}
+				continue;
+			}
+			if (strcmp(argv[i], "-pcl") == 0)
+			{
+				++i;
+				usePCLViz = true;
 				continue;
 			}
 			if(strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0)
 			{
-				showUsage();
+				showUsage(argv[0]);
 			}
 			else if(i< argc-1)
 			{
 				printf("Unrecognized option \"%s\"", argv[i]);
-				showUsage();
+				showUsage(argv[0]);
 			}
 
 			// last
@@ -144,7 +187,7 @@ int main(int argc, char * argv[])
 			if(driver < 0 || driver > 17)
 			{
 				UERROR("driver should be between 0 and 17.");
-				showUsage();
+				showUsage(argv[0]);
 			}
 		}
 	}
@@ -153,7 +196,7 @@ int main(int argc, char * argv[])
 	rtabmap::Camera * camera = 0;
 	if(driver == 0)
 	{
-		camera = new rtabmap::CameraOpenni(deviceId);
+		camera = new rtabmap::CameraOpenni(deviceId, rate);
 	}
 	else if(driver == 1)
 	{
@@ -162,7 +205,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNI2(deviceId);
+		camera = new rtabmap::CameraOpenNI2(deviceId, rtabmap::CameraOpenNI2::kTypeColorDepth, rate);
 	}
 	else if(driver == 2)
 	{
@@ -171,7 +214,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(deviceId.empty()?0:uStr2Int(deviceId));
+		camera = new rtabmap::CameraFreenect(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraFreenect::kTypeColorDepth, rate);
 	}
 	else if(driver == 3)
 	{
@@ -180,7 +223,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(false);
+		camera = new rtabmap::CameraOpenNICV(false, rate);
 	}
 	else if(driver == 4)
 	{
@@ -189,7 +232,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNICV(true);
+		camera = new rtabmap::CameraOpenNICV(true, rate);
 	}
 	else if(driver == 5)
 	{
@@ -198,7 +241,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect2(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraFreenect2::kTypeColor2DepthSD);
+		camera = new rtabmap::CameraFreenect2(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate);
 	}
 	else if(driver == 6)
 	{
@@ -207,7 +250,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with DC1394 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoDC1394();
+		camera = new rtabmap::CameraStereoDC1394(rate);
 	}
 	else if(driver == 7)
 	{
@@ -216,7 +259,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with FlyCapture2/Triclops support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoFlyCapture2();
+		camera = new rtabmap::CameraStereoFlyCapture2(rate);
 	}
 	else if(driver == 8)
 	{
@@ -225,7 +268,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED sdk support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZed(deviceId.empty()?0:uStr2Int(deviceId));
+		camera = new rtabmap::CameraStereoZed(deviceId.empty()?0:uStr2Int(deviceId), -1, 1, 100, false, rate);
 	}
 	else if (driver == 9)
 	{
@@ -234,7 +277,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraRealSense(deviceId.empty()?0:uStr2Int(deviceId));
+		camera = new rtabmap::CameraRealSense(deviceId.empty()?0:uStr2Int(deviceId), 0, 0, false, rate);
 	}
 	else if (driver == 10)
 	{
@@ -243,7 +286,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Kinect for Windows 2 SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4W2(deviceId.empty()?0:uStr2Int(deviceId));
+		camera = new rtabmap::CameraK4W2(deviceId.empty()?0:uStr2Int(deviceId), rtabmap::CameraK4W2::kTypeDepth2ColorSD, rate);
 	}
 	else if (driver == 11)
 	{
@@ -252,7 +295,11 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense2 SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraRealSense2(deviceId);
+		camera = new rtabmap::CameraRealSense2(deviceId, width > 0 && height > 0 ? 0.0f:rate);
+		if(width > 0 && height > 0) 
+		{
+			((rtabmap::CameraRealSense2*)camera)->setResolution(width, height, rate);
+		}
 	}
 	else if (driver == 12)
 	{
@@ -261,7 +308,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Kinect for Azure SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraK4A(1);
+		camera = new rtabmap::CameraK4A(1, rate);
 	}
 	else if (driver == 13)
 	{
@@ -270,7 +317,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Mynt Eye S support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraMyntEye(deviceId);
+		camera = new rtabmap::CameraMyntEye(deviceId, false, false, rate);
 	}
 	else if (driver == 14)
 	{
@@ -279,7 +326,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Zed Open Capture support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZedOC(deviceId.empty()?-1:uStr2Int(deviceId));
+		camera = new rtabmap::CameraStereoZedOC(deviceId.empty()?-1:uStr2Int(deviceId), 3, rate);
 	}
 	else if (driver == 15)
 	{
@@ -288,7 +335,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with depthai-core support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraDepthAI(deviceId);
+		camera = new rtabmap::CameraDepthAI(deviceId, width>0?width:1280, rate);
 	}
 	else if (driver == 16)
 	{
@@ -297,7 +344,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with XVisio SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraSeerSense();
+		camera = new rtabmap::CameraSeerSense(false, rate);
 	}
 	else if (driver == 17)
 	{
@@ -306,7 +353,10 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Orbbec SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOrbbecSDK();
+		if(width>0 && height>0)
+			camera = new rtabmap::CameraOrbbecSDK(deviceId, width, height, width, height, rate);
+		else
+			camera = new rtabmap::CameraOrbbecSDK(deviceId, 800, 600, 800, 600, rate);
 	}
 	else
 	{
@@ -320,111 +370,134 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
-	rtabmap::SensorData data = camera->takeData();
-	if (data.imageRaw().empty())
+	if(usePCLViz)
 	{
-		printf("Cloud not get frame from the camera!\n");
-		delete camera;
-		exit(1);
-	}
-	if(data.imageRaw().cols % data.depthOrRightRaw().cols != 0 || data.imageRaw().rows % data.depthOrRightRaw().rows != 0)
-	{
-		UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
-				data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
-	}
-	pcl::visualization::CloudViewer * viewer = 0;
-	if((data.stereoCameraModels().empty() || data.stereoCameraModels()[0].isValidForProjection()) &&
-	   (data.cameraModels().empty() || !data.cameraModels()[0].isValidForProjection()))
-	{
-		UWARN("Camera not calibrated! The registered cloud cannot be shown.");
-	}
-	else
-	{
-		viewer = new pcl::visualization::CloudViewer("cloud");
-	}
-
-	// to catch the ctrl-c
-	signal(SIGABRT, &sighandler);
-	signal(SIGTERM, &sighandler);
-	signal(SIGINT, &sighandler);
-
-	while(!data.imageRaw().empty() && (viewer==0 || !viewer->wasStopped()) && running)
-	{
-		cv::Mat rgb = data.imageRaw();
-		if(!data.depthRaw().empty() && (data.depthRaw().type() == CV_16UC1 || data.depthRaw().type() == CV_32FC1))
+		rtabmap::SensorData data = camera->takeData();
+		if (data.imageRaw().empty())
 		{
-			// depth
-			cv::Mat depth = data.depthRaw();
-			if(depth.type() == CV_32FC1)
-			{
-				depth = rtabmap::util2d::cvtDepthFromFloat(depth);
-			}
-
-			if(!rgb.empty() && rgb.cols % depth.cols == 0 && rgb.rows % depth.rows == 0 &&
-					data.cameraModels().size() &&
-					data.cameraModels()[0].isValidForProjection())
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
-						rgb, depth,
-						data.cameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
-				if(viewer)
-					viewer->showCloud(cloud, "cloud");
-			}
-			else if(!depth.empty() &&
-					data.cameraModels().size() &&
-					data.cameraModels()[0].isValidForProjection())
-			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
-						depth,
-						data.cameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
-				viewer->showCloud(cloud, "cloud");
-			}
-
-			cv::Mat tmp;
-			unsigned short min=0, max = 2048;
-			uMinMax((unsigned short*)depth.data, depth.rows*depth.cols, min, max);
-			depth.convertTo(tmp, CV_8UC1, 255.0/max);
-
-			cv::imshow("Video", rgb); // show frame
-			cv::imshow("Depth", tmp);
+			printf("Cloud not get frame from the camera!\n");
+			delete camera;
+			exit(1);
 		}
-		else if(!data.rightRaw().empty())
+		if(data.imageRaw().cols % data.depthOrRightRaw().cols != 0 || data.imageRaw().rows % data.depthOrRightRaw().rows != 0)
 		{
-			// stereo
-			cv::Mat right = data.rightRaw();
-			cv::imshow("Left", rgb); // show frame
-			cv::imshow("Right", right);
+			UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
+					data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
+		}
 
-			if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModels().size()==1 && data.stereoCameraModels()[0].isValidForProjection())
+		pcl::visualization::CloudViewer * viewer = 0;
+		if((data.stereoCameraModels().empty() || data.stereoCameraModels()[0].isValidForProjection()) &&
+		(data.cameraModels().empty() || !data.cameraModels()[0].isValidForProjection()))
+		{
+			UWARN("Camera not calibrated! The registered cloud cannot be shown.");
+		}
+		else
+		{
+			viewer = new pcl::visualization::CloudViewer("cloud");
+		}
+
+		// to catch the ctrl-c
+		signal(SIGABRT, &sighandler);
+		signal(SIGTERM, &sighandler);
+		signal(SIGINT, &sighandler);
+
+		while(!data.imageRaw().empty() && (viewer==0 || !viewer->wasStopped()) && running)
+		{
+			cv::Mat rgb = data.imageRaw();
+			if(!data.depthRaw().empty() && (data.depthRaw().type() == CV_16UC1 || data.depthRaw().type() == CV_32FC1))
 			{
-				if(right.channels() == 3)
+				// depth
+				cv::Mat depth = data.depthRaw();
+				if(depth.type() == CV_32FC1)
 				{
-					cv::cvtColor(right, right, CV_BGR2GRAY);
+					depth = rtabmap::util2d::cvtDepthFromFloat(depth);
 				}
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
-						rgb, right,
-						data.stereoCameraModels()[0]);
-				cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.stereoCameraModels()[0].localTransform());
-				if(viewer)
+
+				if(!rgb.empty() && rgb.cols % depth.cols == 0 && rgb.rows % depth.rows == 0 &&
+						data.cameraModels().size() &&
+						data.cameraModels()[0].isValidForProjection())
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
+							rgb, depth,
+							data.cameraModels()[0]);
+					cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
+					if(viewer)
+						viewer->showCloud(cloud, "cloud");
+				}
+				else if(!depth.empty() &&
+						data.cameraModels().size() &&
+						data.cameraModels()[0].isValidForProjection())
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
+							depth,
+							data.cameraModels()[0]);
+					cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.cameraModels()[0].localTransform());
 					viewer->showCloud(cloud, "cloud");
+				}
+
+				cv::Mat tmp;
+				unsigned short min=0, max = 2048;
+				uMinMax((unsigned short*)depth.data, depth.rows*depth.cols, min, max);
+				depth.convertTo(tmp, CV_8UC1, 255.0/max);
+
+				cv::imshow("Video", rgb); // show frame
+				cv::imshow("Depth", tmp);
 			}
+			else if(!data.rightRaw().empty())
+			{
+				// stereo
+				cv::Mat right = data.rightRaw();
+				cv::imshow("Left", rgb); // show frame
+				cv::imshow("Right", right);
+
+				if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModels().size()==1 && data.stereoCameraModels()[0].isValidForProjection())
+				{
+					if(right.channels() == 3)
+					{
+						cv::cvtColor(right, right, CV_BGR2GRAY);
+					}
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromStereoImages(
+							rgb, right,
+							data.stereoCameraModels()[0]);
+					cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform::opengl_T_rtabmap()*data.stereoCameraModels()[0].localTransform());
+					if(viewer)
+						viewer->showCloud(cloud, "cloud");
+				}
+			}
+
+			int c = cv::waitKey(10); // wait 10 ms or for key stroke
+			if(c == 27)
+				break; // if ESC, break and quit
+
+			data = camera->takeData();
 		}
-
-		int c = cv::waitKey(10); // wait 10 ms or for key stroke
-		if(c == 27)
-			break; // if ESC, break and quit
-
-		data = camera->takeData();
+		printf("Closing...\n");
+		if(viewer)
+		{
+			delete viewer;
+		}
+		if(usePCLViz)
+		{
+			cv::destroyWindow("Video");
+			cv::destroyWindow("Depth");
+		}
+		delete camera;
 	}
-	printf("Closing...\n");
-	if(viewer)
+	else // Use our own visualizer
 	{
-		delete viewer;
+		QApplication app(argc, argv);
+
+		rtabmap::CameraViewer cameraViewer;
+		UEventsManager::addHandler(&cameraViewer);
+
+		cameraViewer.setWindowTitle("Camera view");
+		cameraViewer.resize(1280, 480);
+
+		rtabmap::SensorCaptureThread cameraThread(camera);
+
+		cameraThread.start();
+		cameraViewer.exec();
+		cameraThread.join(true);
 	}
-	cv::destroyWindow("Video");
-	cv::destroyWindow("Depth");
-	delete camera;
 	return 0;
 }
