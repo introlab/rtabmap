@@ -136,13 +136,16 @@ before_build:
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
   - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON -DBUILD_TESTING=ON ..
-  
+
+build_script:
+  - cd c:\projects\rtabmap\build
+  - cmake --build . --config Release --target ALL_BUILD
+
 after_build :
   - cmake --build . --config Release --target package
 
 test_script:
   - cd c:\projects\rtabmap\build
-  - cmake --build . --config Release
   - ctest -C Release --output-on-failure --timeout 300
 
 artifacts:
