@@ -2194,14 +2194,27 @@ void NMS(
 		cv::Mat & descriptorsOut, 
 		int dist_thresh, int img_width, int img_height)
 {
-    std::vector<cv::Point2f> pts_raw;
+	if(ptsIn.empty())
+	{
+		return;
+	}
+
+    std::vector<cv::Point2i> pts_raw;
 
     for (size_t i = 0; i < ptsIn.size(); i++)
     {
 		int u = (int) ptsIn[i].pt.x;
 		int v = (int) ptsIn[i].pt.y;
 
-		pts_raw.emplace_back(cv::Point2f(u, v));
+		if(u<0 || u>img_width || v<0 || v>img_height)
+		{
+			UERROR("Point (%f,%f) is outside the image size (%dx%d), this point is ignored!", ptsIn[i].pt.x, ptsIn[i].pt.y, img_width, img_height);
+			pts_raw.emplace_back(cv::Point2i(-1, -1));
+		}
+		else
+		{
+			pts_raw.emplace_back(cv::Point2i(u, v));
+		}
 	}
 
     //Grid Value Legend:
@@ -2220,9 +2233,14 @@ void NMS(
 
     for (size_t i = 0; i < pts_raw.size(); i++)
     {
-        int uu = (int) pts_raw[i].x;
-        int vv = (int) pts_raw[i].y;
+        int uu = pts_raw[i].x;
+        int vv = pts_raw[i].y;
 
+		if(uu < 0) {
+			// skip invalid points
+			continue;
+		}
+		
         grid.at<unsigned char>(vv, uu) = 100;
         inds.at<unsigned short>(vv, uu) = i;
 
@@ -2236,9 +2254,14 @@ void NMS(
 
     for (size_t i = 0; i < pts_raw.size(); i++)
     {
+		if(pts_raw[i].x < 0)
+		{
+			// skip invlaid points
+			continue;
+		}
     	// account for top left padding
-        int uu = (int) pts_raw[i].x + dist_thresh;
-        int vv = (int) pts_raw[i].y + dist_thresh;
+        int uu = pts_raw[i].x + dist_thresh;
+        int vv = pts_raw[i].y + dist_thresh;
         float c = confidence.at<float>(vv-dist_thresh, uu-dist_thresh);
 
         if (grid.at<unsigned char>(vv, uu) == 100)  // If not yet suppressed.
