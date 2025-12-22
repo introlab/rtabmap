@@ -95,7 +95,7 @@ TEST(Util3DTransforms, transformPointCloudXYZ)
     // test indices
     pcl::PointXYZ pt2(4.0f, 5.0f, 6.0f);
     cloud->push_back(pt2);
-    pcl::IndicesPtr indices(new pcl::Indices(1,1)); // will transform only second point
+    pcl::IndicesPtr indices(new std::vector<int>(1,1)); // will transform only second point
     result = util3d::transformPointCloud(cloud, indices, tf);
     ASSERT_EQ(result->size(), 1);
     EXPECT_FLOAT_EQ(result->at(0).x, 5.0f);
@@ -122,7 +122,7 @@ TEST(Util3DTransforms, transformPointCloudXYZI)
     // test indices
     pt.intensity = 52.0f;
     cloud->push_back(pt);
-    pcl::IndicesPtr indices(new pcl::Indices(1,1)); // will transform only second point
+    pcl::IndicesPtr indices(new std::vector<int>(1,1)); // will transform only second point
     result = util3d::transformPointCloud(cloud, indices, tf);
     ASSERT_EQ(result->size(), 1);
     EXPECT_FLOAT_EQ(result->at(0).intensity, 52.0f);
@@ -149,7 +149,7 @@ TEST(Util3DTransforms, transformPointCloudXYZRGB)
     // test indices
     pt.r = 250; pt.g = 105; pt.b = 55;
     cloud->push_back(pt);
-    pcl::IndicesPtr indices(new pcl::Indices(1,1)); // will transform only second point
+    pcl::IndicesPtr indices(new std::vector<int>(1,1)); // will transform only second point
     result = util3d::transformPointCloud(cloud, indices, tf);
     ASSERT_EQ(result->size(), 1);
     EXPECT_EQ(result->at(0).r, 250);
@@ -180,7 +180,7 @@ TEST(Util3DTransforms, transformPointCloudPointNormal)
     pt.x = 0; pt.y = 1; pt.z = 0;
     pt.normal_x = 1; pt.normal_y = 0; pt.normal_z = 0;
     cloud->push_back(pt);
-    pcl::IndicesPtr indices(new pcl::Indices(1,1)); // will transform only second point
+    pcl::IndicesPtr indices(new std::vector<int>(1,1)); // will transform only second point
     result = util3d::transformPointCloud(cloud, indices, tf);
     ASSERT_EQ(result->size(), 1);
     EXPECT_NEAR(result->at(0).x, -1.0f, 1e-6);
@@ -210,7 +210,7 @@ TEST(Util3DTransforms, transformPointCloudXYZINormal)
     // test indices
     pt.intensity = 52.0f;
     cloud->push_back(pt);
-    pcl::IndicesPtr indices(new pcl::Indices(1,1)); // will transform only second point
+    pcl::IndicesPtr indices(new std::vector<int>(1,1)); // will transform only second point
     result = util3d::transformPointCloud(cloud, indices, tf);
     ASSERT_EQ(result->size(), 1);
     EXPECT_FLOAT_EQ(result->at(0).intensity, 52.0f);
@@ -240,7 +240,7 @@ TEST(Util3DTransforms, transformPointCloudXYZRGBNormal)
     // test indices
     pt.r = 250; pt.g = 105; pt.b = 55;
     cloud->push_back(pt);
-    pcl::IndicesPtr indices(new pcl::Indices(1,1)); // will transform only second point
+    pcl::IndicesPtr indices(new std::vector<int>(1,1)); // will transform only second point
     result = util3d::transformPointCloud(cloud, indices, tf);
     ASSERT_EQ(result->size(), 1);
     EXPECT_EQ(result->at(0).r, 250);
