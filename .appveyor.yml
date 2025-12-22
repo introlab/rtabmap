@@ -142,7 +142,7 @@ after_build :
 
 test_script:
   - cd c:\projects\rtabmap\build
-  - cmake --build . --config Release --target all
+  - cmake --build . --config Release
   - ctest -C Release --output-on-failure --timeout 300
 
 artifacts:
