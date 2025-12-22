@@ -1168,6 +1168,17 @@ TEST(Util3dFiltering, cropBoxIncludesPointsInBox)
         EXPECT_LE(x, 6.0f);
     }
 
+    // Point included in the box, with z min=max (2D case)
+    min[2] = max[2] = 0.0f;
+    output = util3d::cropBox(cloud, indices, min, max, transform, negative);
+
+    ASSERT_EQ(output->size(), 4);
+    for (int idx : *output) {
+        float x = cloud->points[idx].x;
+        EXPECT_GE(x, 3.0f);
+        EXPECT_LE(x, 6.0f);
+    }
+
     // Point excluded from the box
     negative = true;
     output = util3d::cropBox(cloud, indices, min, max, transform, negative);
@@ -1197,6 +1208,7 @@ TEST(Util3dFiltering, cropBoxInvalidBoundsTriggerAssertion)
     using PointT = pcl::PointXYZ;
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
     cloud->points.emplace_back(0.0f, 0.0f, 0.0f);
+    cloud->points.emplace_back(0.0f, 1.0f, 0.0f);
     pcl::IndicesPtr indices = nullptr;
 
     Eigen::Vector4f min(5.0f, 0.0f, 0.0f, 1.0f);
