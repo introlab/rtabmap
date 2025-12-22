@@ -20,6 +20,9 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     name: Build on ros ${{ matrix.ros_distribution }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.ros_distribution }}-${{ matrix.os }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
