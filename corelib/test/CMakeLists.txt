@@ -52,11 +52,16 @@ target_link_libraries(test_util3d_surface gtest_main rtabmap_core)
 gtest_discover_tests(test_util3d_surface)
 
 #VisualWord.h
-add_executable(VisualWordTests VisualWordTests.cpp)
-target_link_libraries(VisualWordTests gtest_main rtabmap_core)
-gtest_discover_tests(VisualWordTests)
+add_executable(test_visualword test_visualword.cpp)
+target_link_libraries(test_visualword gtest_main rtabmap_core)
+gtest_discover_tests(test_visualword)
+
+#VWDictionary.h
+add_executable(test_vwdictionary test_vwdictionary.cpp)
+target_link_libraries(test_vwdictionary gtest_main rtabmap_core)
+gtest_discover_tests(test_vwdictionary)
 
 #Transform.h
-add_executable(TransformTests TransformTests.cpp)
-target_link_libraries(TransformTests gtest_main rtabmap_core)
-gtest_discover_tests(TransformTests)
+add_executable(test_transform test_transform.cpp)
+target_link_libraries(test_transform gtest_main rtabmap_core)
+gtest_discover_tests(test_transform)

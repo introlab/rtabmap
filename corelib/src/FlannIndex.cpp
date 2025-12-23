@@ -304,6 +304,7 @@ void FlannIndex::buildIndex(
 		break;
 	case FLANN_INDEX_LSH:
 		UASSERT(features.type() == CV_8UC1);
+		UASSERT_MSG(features.cols >= 8, "LSH requires a minimum of 8 dimensions to provide valid results.");
 		params = rtflann::LshIndexParams(12, 20, 2);
 		break;
 	default:
@@ -719,10 +720,11 @@ void FlannIndex::knnSearch(
 		UERROR("Flann index not yet created!");
 		return;
 	}
-	indices.create(query.rows, knn, sizeof(size_t)==8?CV_64F:CV_32S);
-	dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
-	rtflann::Matrix<size_t> indicesF((size_t*)indices.data, indices.rows, indices.cols);
+	dists = cv::Mat(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F, cv::Scalar(-1));
+
+	std::vector<size_t> indicesBuffer(query.rows * knn, std::numeric_limits<size_t>::max());
+	rtflann::Matrix<size_t> indicesF((size_t*)indicesBuffer.data(), query.rows, knn);
 
 	rtflann::SearchParams params = rtflann::SearchParams(checks, eps, sorted);
 
@@ -748,6 +750,14 @@ void FlannIndex::knnSearch(
 		{
 			((rtflann::Index<rtflann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
 		}
+	}
+
+	indices.create(query.rows, knn, CV_32S);
+	int * ptr = indices.ptr<int>();
+	for(size_t i=0 ; i<indicesBuffer.size(); i+=2)
+	{
+		ptr[i] = indicesBuffer[i] == std::numeric_limits<size_t>::max()?-1:(int)indicesBuffer[i];
+		ptr[i+1] = indicesBuffer[i+1] == std::numeric_limits<size_t>::max()?-1:(int)indicesBuffer[i+1];
 	}
 }
 

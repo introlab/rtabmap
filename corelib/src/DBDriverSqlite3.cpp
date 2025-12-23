@@ -3647,7 +3647,14 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) c
 				if(dataSize>4 && data)
 				{
 					UDEBUG("A flann index was saved in the database (size=%ld).", dataSize);
-					dictionary.deserializeIndex((const unsigned char*)data, dataSize);
+					if(!dictionary.deserializeIndex((const unsigned char*)data, dataSize))
+					{
+						UERROR("Failed to deserialize dictionary's index! See previous logs for reason.");
+					}
+					else
+					{
+						UINFO("Sucessfully loaded dictionary's index.");
+					}
 				}
 				else {
 					UDEBUG("No flann index was saved in the database.");
