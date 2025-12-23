@@ -67,6 +67,11 @@ target_link_libraries(test_transform gtest_main rtabmap_core)
 gtest_discover_tests(test_transform)
 
 #StereoDense.h (tests both BM and SGBM strategies)
-add_executable(test_stereo_dense stereo/test_stereo_dense.cpp)
+add_executable(test_stereo_dense test_stereo_dense.cpp)
 target_link_libraries(test_stereo_dense gtest_main rtabmap_core)
 gtest_discover_tests(test_stereo_dense)
+
+#Stereo.h (tests both BlockMatching and OpticalFlow strategies)
+add_executable(test_stereo test_stereo.cpp)
+target_link_libraries(test_stereo gtest_main rtabmap_core)
+gtest_discover_tests(test_stereo)
