@@ -65,3 +65,8 @@ gtest_discover_tests(test_vwdictionary)
 add_executable(test_transform test_transform.cpp)
 target_link_libraries(test_transform gtest_main rtabmap_core)
 gtest_discover_tests(test_transform)
+
+#StereoDense.h (tests both BM and SGBM strategies)
+add_executable(test_stereo_dense stereo/test_stereo_dense.cpp)
+target_link_libraries(test_stereo_dense gtest_main rtabmap_core)
+gtest_discover_tests(test_stereo_dense)
