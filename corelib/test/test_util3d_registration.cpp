@@ -284,7 +284,7 @@ TEST(Util3DRegistration, icpIdentityTransformConverges)
     auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float i = 0; i < 5; ++i)
     {
-        cloud_source->emplace_back(i, i * 2.0f, 0.0f);
+        cloud_source->push_back(pcl::PointXYZ(i, i * 2.0f, 0.0f));
     }
 
     auto cloud_target = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
@@ -313,7 +313,7 @@ TEST(Util3DRegistration, icpTranslatedTransformConverges)
     auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float i = 0; i < 5; ++i)
     {
-        cloud_source->emplace_back(i, i * 2.0f, 0);
+        cloud_source->push_back(pcl::PointXYZ(i, i * 2.0f, 0));
     }
 
     // Translate the cloud
@@ -348,7 +348,7 @@ TEST(Util3DRegistration, icp2DAlignsFlatClouds)
         for (float y = 0; y < 5; ++y)
         {
             if(y == 0 || y == 2 || y == 4 || x==0 || x==2 || x== 4){
-                cloud_source->emplace_back(x*0.05, y*0.05, (int)x%2==0?0.01:-0.01);
+                cloud_source->push_back(pcl::PointXYZ(x*0.05, y*0.05, (int)x%2==0?0.01:-0.01));
             }
         }
     }
@@ -382,7 +382,7 @@ TEST(Util3DRegistration, icpPointToPlaneAlignsTranslatedPlane)
     {
         for (float y = -0.5f; y <= 0.5f; y += 0.1f)
         {
-            cloud_source_raw->emplace_back(x, y, int(x*10)%2==0&&int(y*10)%2==0?0.01:-0.01);
+            cloud_source_raw->push_back(pcl::PointXYZ(x, y, int(x*10)%2==0&&int(y*10)%2==0?0.01:-0.01));
         }
     }
 

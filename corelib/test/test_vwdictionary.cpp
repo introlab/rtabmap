@@ -621,53 +621,126 @@ TEST_F(VWDictionaryTest, MemoryUsed)
 
 TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
 {
-    // Add words and build index
-    cv::Mat descriptors(5, 32, CV_32F);
-    cv::randu(descriptors, cv::Scalar(0), cv::Scalar(1));
-    dict->addNewWords(descriptors, 1);
-    dict->update();
-    
-    // Serialize
-    std::vector<unsigned char> data = dict->serializeIndex();
-    EXPECT_GT(data.size(), 0u);
-    
-    // Create new dictionary and deserialize
-    VWDictionary dict2;
-    cv::Mat descriptors2(5, 32, CV_32F);
-    cv::randu(descriptors2, cv::Scalar(0), cv::Scalar(1));
-    dict2.addNewWords(descriptors2, 1);
-    
-    // Deserialize should fail because we are not using the same descriptors
-    bool success = dict2.deserializeIndex(data);
-    EXPECT_FALSE(success);
-    success = dict2.deserializeIndex(data.data(), data.size());
-    EXPECT_FALSE(success);
+    // Test with all NNStrategy values
+    VWDictionary::NNStrategy strategies[] = {
+        VWDictionary::kNNFlannNaive,
+        VWDictionary::kNNFlannKdTree,
+        VWDictionary::kNNFlannLSH,
+        VWDictionary::kNNBruteForce,
+        VWDictionary::kNNBruteForceGPU
+    };
 
-    // Same descriptors
-    VWDictionary dict3;
-    dict3.addNewWords(descriptors, 1);
-    success = dict3.deserializeIndex(data);
-    EXPECT_TRUE(success);
+    for(VWDictionary::NNStrategy strategy : strategies)
+    {
+        // Reset dictionary for each strategy
+        dict->clear();
+        dict->setNNStrategy(strategy);
 
-    // Index should be loaded
-    EXPECT_GT(dict3.getIndexedWordsCount(), 0u);
+        if(strategy == VWDictionary::kNNBruteForceGPU)
+        {
+#if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
+            if(!cv::gpu::getCudaEnabledDeviceCount())
+            {
+                continue; // Skip if no GPU available
+            }
+#else
+            continue; // Skip if GPU support not compiled
+#endif
+#else
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+            if(!cv::cuda::getCudaEnabledDeviceCount())
+            {
+                continue; // Skip if no GPU available
+            }
+#else
+            continue; // Skip if GPU support not compiled
+#endif
+#endif
+        }
 
-    // Should fail if index is already built
-    success = dict3.deserializeIndex(data);
-    EXPECT_FALSE(success);
+        // Add words and build index
+        cv::Mat descriptors(5, 32, CV_32F);
+        cv::randu(descriptors, cv::Scalar(0), cv::Scalar(1));
+        
+        // Convert to binary if using LSH strategy
+        if(strategy == VWDictionary::kNNFlannLSH)
+        {
+            // Convert float descriptors to binary
+            descriptors = VWDictionary::convert32FToBin(descriptors, true);
+        }
+        
+        dict->addNewWords(descriptors, 1);
+        dict->update();
+        
+        // Serialize
+        std::vector<unsigned char> data = dict->serializeIndex();
+        if(strategy < VWDictionary::kNNBruteForce)
+        {
+            // flann strategies
+            EXPECT_GT(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+        }
+        else {
+            EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+        }
+        
+        // Create new dictionary and deserialize
+        VWDictionary dict2;
+        dict2.setNNStrategy(strategy);
+        cv::Mat descriptors2(5, 32, CV_32F);
+        cv::randu(descriptors2, cv::Scalar(0), cv::Scalar(1));
+        
+        // Convert to binary if using LSH strategy
+        if(strategy == VWDictionary::kNNFlannLSH)
+        {
+            descriptors2 = VWDictionary::convert32FToBin(descriptors2, true);
+        }
+        
+        dict2.addNewWords(descriptors2, 1);
+        
+        // Deserialize should fail because we are not using the same descriptors
+        bool success = dict2.deserializeIndex(data);
+        EXPECT_FALSE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+        success = dict2.deserializeIndex(data.data(), data.size());
+        EXPECT_FALSE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
 
-    // raw bytes
-    VWDictionary dict4;
-    dict4.addNewWords(descriptors, 1);
-    success = dict4.deserializeIndex(data.data(), data.size());
-    EXPECT_TRUE(success);
+        // Same descriptors
+        VWDictionary dict3;
+        dict3.setNNStrategy(strategy);
+        dict3.addNewWords(descriptors, 1);
+        success = dict3.deserializeIndex(data);
+        if(strategy < VWDictionary::kNNBruteForce)
+        {
+            // flann strategies
+            EXPECT_TRUE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
 
-    // Index should be loaded
-    EXPECT_GT(dict4.getIndexedWordsCount(), 0u);
+            // Index should be loaded
+            EXPECT_GT(dict3.getIndexedWordsCount(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+        }
+        else
+        {
+            EXPECT_FALSE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+            continue;
+        }
 
-    // Should fail if index is already built
-    success = dict4.deserializeIndex(data.data(), data.size());
-    EXPECT_FALSE(success);
+        // Should fail if index is already built
+        success = dict3.deserializeIndex(data);
+        EXPECT_FALSE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+
+        // raw bytes
+        VWDictionary dict4;
+        dict4.setNNStrategy(strategy);
+        dict4.addNewWords(descriptors, 1);
+        success = dict4.deserializeIndex(data.data(), data.size());
+        EXPECT_TRUE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+
+        // Index should be loaded
+        EXPECT_GT(dict4.getIndexedWordsCount(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+
+        // Should fail if index is already built
+        success = dict4.deserializeIndex(data.data(), data.size());
+        EXPECT_FALSE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+    }
 }
 
 TEST_F(VWDictionaryTest, IsModified)
