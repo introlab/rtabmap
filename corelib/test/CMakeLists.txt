@@ -90,3 +90,8 @@ gtest_discover_tests(test_stereocameramodel)
 add_executable(test_statistics test_statistics.cpp)
 target_link_libraries(test_statistics gtest_main rtabmap_core)
 gtest_discover_tests(test_statistics)
+
+#Signature.h
+add_executable(test_signature test_signature.cpp)
+target_link_libraries(test_signature gtest_main rtabmap_core)
+gtest_discover_tests(test_signature)
