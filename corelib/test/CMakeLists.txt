@@ -95,3 +95,8 @@ gtest_discover_tests(test_statistics)
 add_executable(test_signature test_signature.cpp)
 target_link_libraries(test_signature gtest_main rtabmap_core)
 gtest_discover_tests(test_signature)
+
+#SensorEvent.h
+add_executable(test_sensorevent test_sensorevent.cpp)
+target_link_libraries(test_sensorevent gtest_main rtabmap_core)
+gtest_discover_tests(test_sensorevent)
