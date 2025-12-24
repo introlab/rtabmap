@@ -37,9 +37,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/utilite/UStl.h>
 
 namespace rtabmap {
 
+/**
+ * @def RTABMAP_STATS(PREFIX, NAME, UNIT)
+ * @brief Macro to define a statistic with automatic name generation and default initialization
+ * 
+ * This macro generates:
+ * - A static method `k##PREFIX##NAME()` that returns the statistic name in the format "PREFIX/NAME/UNIT"
+ * - A dummy class that initializes the default data map with the statistic name and a default value of 0.0
+ * 
+ * @param PREFIX The group/category prefix (e.g., "Loop", "Timing", "Memory")
+ * @param NAME The statistic name (e.g., "Id", "Total", "Working_memory_size")
+ * @param UNIT The unit of measurement (e.g., "ms", "m", "deg", or empty string "")
+ * 
+ * @note The generated static method can be used to get the standardized statistic name:
+ * @code
+ * std::string statName = Statistics::kTimingTotal(); // Returns "Timing/Total/ms"
+ * statistics.addStatistic(statName, 500.0f);
+ * @endcode
+ * 
+ * @note The default value (0.0) is automatically added to the default data map when a Statistics
+ *       object is first constructed.
+ */
 #define RTABMAP_STATS(PREFIX, NAME, UNIT) \
 	public: \
 		static std::string k##PREFIX##NAME() {return #PREFIX "/" #NAME "/" #UNIT;} \
@@ -50,6 +72,34 @@ namespace rtabmap {
 		}; \
 		Dummy##PREFIX##NAME dummy##PREFIX##NAME
 
+/**
+ * @class Statistics
+ * @brief Collects and manages runtime statistics for RTAB-Map
+ * 
+ * The Statistics class provides a comprehensive system for collecting, storing, and managing
+ * various runtime statistics about RTAB-Map's operation. Statistics are organized into groups
+ * such as:
+ * - **Loop**: Loop closure detection, hypothesis validation, optimization errors
+ * - **Proximity**: Proximity-based detection statistics
+ * - **Memory**: Working memory size, database usage, signature management
+ * - **Timing**: Performance measurements for various operations
+ * - **Keypoint**: Visual word dictionary and feature statistics
+ * - **Gt**: Ground truth comparison statistics
+ * 
+ * Statistics are stored in a map with keys in the format "Group/Name/Unit" (e.g., "Timing/Total time/ms").
+ * This hierarchical naming allows for easy categorization and plotting.
+ * 
+ * The class supports two modes:
+ * - **Basic mode** (`extended() == false`): Only stores loop closure and last signature ID fields
+ * - **Extended mode** (`extended() == true`): Stores all available statistics including poses,
+ *   constraints, likelihoods, posteriors, and detailed timing information
+ * 
+ * Statistics can be serialized to/from strings for storage in databases or transmission over networks.
+ * 
+ * @note Statistics are typically created by RTAB-Map's core components (Rtabmap, Memory, etc.)
+ *       and can be retrieved for analysis, visualization, or debugging purposes.
+ * 
+ */
 class RTABMAP_CORE_EXPORT Statistics
 {
 	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
@@ -217,123 +267,521 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Gt, Localization_angular_error, deg);
 
 public:
+	/**
+	 * @brief Returns the default statistics data map
+	 * 
+	 * Returns a map containing all predefined statistics with their default values (0.0).
+	 * This map is initialized when the first Statistics object is constructed.
+	 * 
+	 * @return Const reference to the default statistics data map
+	 */
 	static const std::map<std::string, float> & defaultData();
+	
+	/**
+	 * @brief Serializes a statistics data map to a string
+	 * 
+	 * Converts a statistics data map into a serialized string format suitable for storage
+	 * or transmission. The format is: "key1:value1;key2:value2;..." where values are
+	 * formatted as numbers with dots (not commas) as decimal separators (independent of the system's locale).
+	 * 
+	 * @param data The statistics data map to serialize
+	 * @return Serialized string representation of the data
+	 * 
+	 * @note Empty maps result in empty strings
+	 * @see deserializeData()
+	 */
 	static std::string serializeData(const std::map<std::string, float> & data);
+	
+	/**
+	 * @brief Deserializes a statistics data map from a string
+	 * 
+	 * Parses a serialized statistics string back into a data map. The string format
+	 * should be: "key1:value1;key2:value2;..." as produced by serializeData().
+	 * 
+	 * @param data The serialized string to parse
+	 * @return Deserialized statistics data map
+	 * 
+	 * @note Invalid entries (missing colons, malformed values) are silently skipped
+	 * @see serializeData()
+	 */
 	static std::map<std::string, float> deserializeData(const std::string & data);
 
 public:
+	/**
+	 * @brief Default constructor
+	 * 
+	 * Creates a new Statistics object in basic mode (extended = false).
+	 * Initializes all ID fields to 0 or -1, and timestamp to 0.0.
+	 * 
+	 * @note The first Statistics object constructed will initialize the default data map.
+	 */
 	Statistics();
+	
+	/**
+	 * @brief Virtual destructor
+	 */
 	virtual ~Statistics();
 
-	// name format = "Grp/Name/unit"
+	/**
+	 * @brief Adds a statistic value to the data map
+	 * 
+	 * Adds or updates a statistic in the internal data map. The name should follow
+	 * the format "Group/Name/Unit" (e.g., "Timing/Total time/ms").
+	 * 
+	 * @param name The statistic name in the format "Group/Name/Unit"
+	 * @param value The statistic value to store
+	 * 
+	 * @note If a statistic with the same name already exists, it will be overwritten.
+	 * @note Use the static methods generated by RTABMAP_STATS() to get standardized names:
+	 * @code
+	 * statistics.addStatistic(Statistics::kTimingTotal(), 500.0f);
+	 * @endcode
+	 */
 	void addStatistic(const std::string & name, float value);
 
 	// setters
+	
+	/**
+	 * @brief Sets whether extended statistics mode is enabled
+	 * 
+	 * In basic mode (extended = false), only loop closure and last signature ID fields are filled.
+	 * In extended mode (extended = true), all available statistics including poses, constraints,
+	 * likelihoods, posteriors, and detailed timing information are stored.
+	 * 
+	 * @param extended True to enable extended mode, false for basic mode
+	 */
 	void setExtended(bool extended) {_extended = extended;}
+	
+	/**
+	 * @brief Sets the reference image ID (current/last processed signature ID)
+	 * @param id The signature ID
+	 */
 	void setRefImageId(int id) {_refImageId = id;}
+	
+	/**
+	 * @brief Sets the reference image map ID
+	 * @param id The map ID associated with the reference image
+	 */
 	void setRefImageMapId(int id) {_refImageMapId = id;}
+	
+	/**
+	 * @brief Sets the loop closure detection ID
+	 * @param id The signature ID where a loop closure was detected (0 if none)
+	 */
 	void setLoopClosureId(int id) {_loopClosureId = id;}
+	
+	/**
+	 * @brief Sets the loop closure map ID
+	 * @param id The map ID associated with the loop closure
+	 */
 	void setLoopClosureMapId(int id) {_loopClosureMapId = id;}
+	
+	/**
+	 * @brief Sets the proximity detection ID
+	 * @param id The signature ID where proximity was detected (0 if none)
+	 */
 	void setProximityDetectionId(int id) {_proximiyDetectionId = id;}
+	
+	/**
+	 * @brief Sets the proximity detection map ID
+	 * @param id The map ID associated with the proximity detection
+	 */
 	void setProximityDetectionMapId(int id) {_proximiyDetectionMapId = id;}
+	
+	/**
+	 * @brief Sets the timestamp for these statistics
+	 * @param stamp The timestamp (typically in seconds since epoch)
+	 */
 	void setStamp(double stamp) {_stamp = stamp;}
 
-	// Use addSignatureData() instead.
+	/**
+	 * @deprecated Use addSignatureData() instead
+	 * @brief Sets the last signature data (deprecated)
+	 * 
+	 * This method is deprecated. Use addSignatureData() instead, which allows
+	 * storing multiple signatures.
+	 */
 	RTABMAP_DEPRECATED void setLastSignatureData(const Signature & data);
-	void addSignatureData(const Signature & data) {_signaturesData.insert(std::make_pair(data.id(), data));}
+	
+	/**
+	 * @brief Adds signature data to the statistics
+	 * 
+	 * Adds a signature to the internal signatures data map. Multiple signatures
+	 * can be stored, indexed by their ID.
+	 * 
+	 * @param data The signature to add
+	 * 
+	 * @note If a signature with the same ID already exists, it will be overwritten.
+	 */
+	void addSignatureData(const Signature & data) {uInsert(_signaturesData, std::make_pair(data.id(), data));}
+	
+	/**
+	 * @brief Sets all signature data at once
+	 * @param data Map of signature IDs to Signature objects
+	 */
 	void setSignaturesData(const std::map<int, Signature> & data) {_signaturesData = data;}
 
+	/**
+	 * @brief Sets the pose graph (node poses)
+	 * 
+	 * Sets the complete pose graph, mapping node IDs to their Transform poses.
+	 * Used in extended mode for visualization and analysis.
+	 * 
+	 * @param poses Map of node IDs to their poses
+	 */
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
+	
+	/**
+	 * @brief Sets the constraint graph (links between nodes)
+	 * 
+	 * Sets the complete constraint graph, mapping node IDs to their Link constraints.
+	 * Used in extended mode for visualization and analysis.
+	 * 
+	 * @param constraints Multimap of node IDs to their links (a node can have multiple links)
+	 */
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
+	
+	/**
+	 * @brief Sets the map correction transform
+	 * 
+	 * The map correction transform represents the transformation from the map fixed frame
+	 * to the odometry fixed frame. This transform is typically updated after graph optimization
+	 * to transform the odometry pose in map frame.
+	 * 
+	 * @param mapCorrection The pose of odometry frame in map coordinate system
+	 */
 	void setMapCorrection(const Transform & mapCorrection) {_mapCorrection = mapCorrection;}
+	
+	/**
+	 * @brief Sets the loop closure transform
+	 * 
+	 * The transform between the current pose and the loop closure pose.
+	 * 
+	 * @param loopClosureTransform The loop closure transform
+	 */
 	void setLoopClosureTransform(const Transform & loopClosureTransform) {_loopClosureTransform = loopClosureTransform;}
+	
+	/**
+	 * @brief Sets the localization covariance matrix
+	 * 
+	 * The covariance matrix representing the uncertainty in the current localization estimate.
+	 * 
+	 * @param covariance The covariance matrix (typically 6x6 for 3D pose)
+	 */
 	void setLocalizationCovariance(const cv::Mat & covariance) {_localizationCovariance = covariance;}
+	
+	/**
+	 * @brief Sets node labels
+	 * @param labels Map of node IDs to their string labels
+	 */
 	void setLabels(const std::map<int, std::string> & labels) {_labels = labels;}
+	
+	/**
+	 * @brief Sets node weights
+	 * @param weights Map of node IDs to their integer weights
+	 */
 	void setWeights(const std::map<int, int> & weights) {_weights = weights;}
+	
+	/**
+	 * @brief Sets posterior probabilities for loop closure hypotheses
+	 * 
+	 * @param posterior Map of node IDs to their posterior probabilities
+	 */
 	void setPosterior(const std::map<int, float> & posterior) {_posterior = posterior;}
+	
+	/**
+	 * @brief Sets likelihood values for loop closure hypotheses
+	 * 
+	 * Likelihood values represent how well each hypothesis matches the current observation.
+	 * 
+	 * @param likelihood Map of node IDs to their likelihood values
+	 */
 	void setLikelihood(const std::map<int, float> & likelihood) {_likelihood = likelihood;}
+	
+	/**
+	 * @brief Sets raw likelihood values (before normalization)
+	 * @param rawLikelihood Map of node IDs to their raw likelihood values
+	 */
 	void setRawLikelihood(const std::map<int, float> & rawLikelihood) {_rawLikelihood = rawLikelihood;}
+	
+	/**
+	 * @brief Sets the local path (sequence of node IDs)
+	 * 
+	 * The local path represents the sequence of next nodes to visit for path planning.
+	 * 
+	 * @param localPath Vector of node IDs in order of next nodes to visit
+	 */
 	void setLocalPath(const std::vector<int> & localPath) {_localPath=localPath;}
+	
+	/**
+	 * @brief Sets the current goal node ID
+	 * @param goal The goal node ID (0 if no goal)
+	 */
 	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
+	
+	/**
+	 * @brief Sets the reduced IDs mapping
+	 * 
+	 * Maps original node IDs to reduced IDs, used for memory optimization.
+	 * 
+	 * @param reducedIds Map of original IDs to reduced IDs
+	 */
 	void setReducedIds(const std::map<int, int> & reducedIds) {_reducedIds = reducedIds;}
+	
+	/**
+	 * @brief Sets the working memory state
+	 * 
+	 * The working memory state is a vector of node IDs currently in working memory.
+	 * 
+	 * @param state Vector of node IDs in working memory
+	 */
 	void setWmState(const std::vector<int> & state) {_wmState = state;}
+	
+	/**
+	 * @brief Sets odometry cache poses
+	 * 
+	 * Cached odometry poses during localization mode.
+	 * 
+	 * @param poses Map of node IDs to their cached odometry poses
+	 */
 	void setOdomCachePoses(const std::map<int, Transform> & poses) {_odomCachePoses = poses;}
+	
+	/**
+	 * @brief Sets odometry cache constraints
+	 * 
+	 * Cached odometry constraints (links) between nodes.
+	 * 
+	 * @param constraints Multimap of node IDs to their cached odometry links
+	 */
 	void setOdomCacheConstraints(const std::multimap<int, Link> & constraints) {_odomCacheConstraints = constraints;}
 
 	// getters
+	
+	/**
+	 * @brief Returns whether extended statistics mode is enabled
+	 * @return True if extended mode, false if basic mode
+	 */
 	bool extended() const {return _extended;}
+	
+	/**
+	 * @brief Returns the reference image ID
+	 * @return The signature ID (0 if not set)
+	 */
 	int refImageId() const {return _refImageId;}
+	
+	/**
+	 * @brief Returns the reference image map ID
+	 * @return The map ID (-1 if not set)
+	 */
 	int refImageMapId() const {return _refImageMapId;}
+	
+	/**
+	 * @brief Returns the loop closure detection ID
+	 * @return The signature ID where loop closure was detected (0 if none)
+	 */
 	int loopClosureId() const {return _loopClosureId;}
+	
+	/**
+	 * @brief Returns the loop closure map ID
+	 * @return The map ID associated with the loop closure (-1 if not set)
+	 */
 	int loopClosureMapId() const {return _loopClosureMapId;}
+	
+	/**
+	 * @brief Returns the proximity detection ID
+	 * @return The signature ID where proximity was detected (0 if none)
+	 */
 	int proximityDetectionId() const {return _proximiyDetectionId;}
+	
+	/**
+	 * @brief Returns the proximity detection map ID
+	 * @return The map ID associated with the proximity detection (-1 if not set)
+	 */
 	int proximityDetectionMapId() const {return _proximiyDetectionMapId;}
+	
+	/**
+	 * @brief Returns the timestamp
+	 * @return The timestamp (0.0 if not set)
+	 */
 	double stamp() const {return _stamp;}
 
+	/**
+	 * @brief Returns the last signature data
+	 * 
+	 * Returns the most recently added signature (by ID). If no signatures are stored,
+	 * returns a dummy empty signature.
+	 * 
+	 * @return Reference to the last signature data
+	 */
 	const Signature & getLastSignatureData() const {return _signaturesData.empty()?_dummyEmptyData:_signaturesData.rbegin()->second;}
+	
+	/**
+	 * @brief Returns all signature data
+	 * @return Const reference to the map of signature IDs to Signature objects
+	 */
 	const std::map<int, Signature> & getSignaturesData() const {return _signaturesData;}
 
+	/**
+	 * @brief Returns the pose graph
+	 * @return Const reference to the map of node IDs to poses
+	 */
 	const std::map<int, Transform> & poses() const {return _poses;}
+	
+	/**
+	 * @brief Returns the constraint graph
+	 * @return Const reference to the multimap of node IDs to links
+	 */
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
+	
+	/**
+	 * @brief Returns the map correction transform
+	 * 
+	 * Returns the transform from the map fixed frame to the odometry fixed frame.
+	 * 
+	 * @return Const reference to the map correction transform
+	 */
 	const Transform & mapCorrection() const {return _mapCorrection;}
+	
+	/**
+	 * @brief Returns the loop closure transform
+	 * @return Const reference to the loop closure transform
+	 */
 	const Transform & loopClosureTransform() const {return _loopClosureTransform;}
+	
+	/**
+	 * @brief Returns the localization covariance matrix
+	 * @return Const reference to the covariance matrix (may be empty)
+	 */
 	const cv::Mat & localizationCovariance() const {return _localizationCovariance;}
+	
+	/**
+	 * @brief Returns node labels
+	 * @return Const reference to the map of node IDs to labels
+	 */
 	const std::map<int, std::string> & labels() const {return _labels;}
+	
+	/**
+	 * @brief Returns node weights
+	 * @return Const reference to the map of node IDs to weights
+	 */
 	const std::map<int, int> & weights() const {return _weights;}
+	
+	/**
+	 * @brief Returns posterior probabilities
+	 * @return Const reference to the map of node IDs to posterior probabilities
+	 */
 	const std::map<int, float> & posterior() const {return _posterior;}
+	
+	/**
+	 * @brief Returns likelihood values
+	 * @return Const reference to the map of node IDs to likelihood values
+	 */
 	const std::map<int, float> & likelihood() const {return _likelihood;}
+	
+	/**
+	 * @brief Returns raw likelihood values
+	 * @return Const reference to the map of node IDs to raw likelihood values
+	 */
 	const std::map<int, float> & rawLikelihood() const {return _rawLikelihood;}
+	
+	/**
+	 * @brief Returns the local path
+	 * @return Const reference to the vector of node IDs
+	 */
 	const std::vector<int> & localPath() const {return _localPath;}
+	
+	/**
+	 * @brief Returns the current goal node ID
+	 * @return The goal node ID (0 if no goal)
+	 */
 	int currentGoalId() const {return _currentGoalId;}
+	
+	/**
+	 * @brief Returns the reduced IDs mapping
+	 * @return Const reference to the map of original IDs to reduced IDs
+	 */
 	const std::map<int, int> & reducedIds() const {return _reducedIds;}
+	
+	/**
+	 * @brief Returns the working memory state
+	 * @return Const reference to the vector of node IDs in working memory
+	 */
 	const std::vector<int> & wmState() const {return _wmState;}
+	
+	/**
+	 * @brief Returns odometry cache poses
+	 * @return Const reference to the map of node IDs to cached odometry poses
+	 */
 	const std::map<int, Transform> & odomCachePoses() const {return _odomCachePoses;}
+	
+	/**
+	 * @brief Returns odometry cache constraints
+	 * @return Const reference to the multimap of node IDs to cached odometry links
+	 */
 	const std::multimap<int, Link> & odomCacheConstraints() const {return _odomCacheConstraints;}
 
+	/**
+	 * @brief Returns the statistics data map
+	 * 
+	 * Returns the map containing all plottable statistics in the format "Group/Name/Unit" -> value.
+	 * This is the main data structure for storing numeric statistics.
+	 * 
+	 * @return Const reference to the statistics data map
+	 * 
+	 * @note Use addStatistic() to add values to this map
+	 * @note Use serializeData() to convert this map to a string for storage
+	 */
 	const std::map<std::string, float> & data() const {return _data;}
 
 private:
-	bool _extended; // 0 -> only loop closure and last signature ID fields are filled
+	bool _extended; ///< Extended mode flag: false = only loop closure and last signature ID, true = all statistics
 
-	int _refImageId;
-	int _refImageMapId;
-	int _loopClosureId;
-	int _loopClosureMapId;
-	int _proximiyDetectionId;
-	int _proximiyDetectionMapId;
-	double _stamp;
+	int _refImageId; ///< Reference image ID (current/last processed signature)
+	int _refImageMapId; ///< Reference image map ID
+	int _loopClosureId; ///< Loop closure detection ID (0 if none)
+	int _loopClosureMapId; ///< Loop closure map ID
+	int _proximiyDetectionId; ///< Proximity detection ID (0 if none)
+	int _proximiyDetectionMapId; ///< Proximity detection map ID
+	double _stamp; ///< Timestamp for these statistics
 
-	std::map<int, Signature> _signaturesData;
-	Signature _dummyEmptyData;
+	std::map<int, Signature> _signaturesData; ///< Map of signature IDs to Signature objects
+	Signature _dummyEmptyData; ///< Dummy empty signature returned when no signatures are stored
 
-	std::map<int, Transform> _poses;
-	std::multimap<int, Link> _constraints;
-	Transform _mapCorrection;
-	Transform _loopClosureTransform;
-	cv::Mat _localizationCovariance;
+	std::map<int, Transform> _poses; ///< Pose graph: node IDs to poses
+	std::multimap<int, Link> _constraints; ///< Constraint graph: node IDs to links (multimap allows multiple links per node)
+	Transform _mapCorrection; ///< Transform from map fixed frame to odometry fixed frame (typically updated after optimization)
+	Transform _loopClosureTransform; ///< Loop closure transform
+	cv::Mat _localizationCovariance; ///< Localization covariance matrix
 
-	std::map<int, std::string> _labels;
-	std::map<int, int> _weights;
-	std::map<int, float> _posterior;
-	std::map<int, float> _likelihood;
-	std::map<int, float> _rawLikelihood;
+	std::map<int, std::string> _labels; ///< Node labels
+	std::map<int, int> _weights; ///< Node weights
+	std::map<int, float> _posterior; ///< Posterior probabilities for loop closure hypotheses
+	std::map<int, float> _likelihood; ///< Likelihood values for loop closure hypotheses
+	std::map<int, float> _rawLikelihood; ///< Raw likelihood values (before normalization)
 
-	std::vector<int> _localPath;
-	int _currentGoalId;
+	std::vector<int> _localPath; ///< Local path (sequence of node IDs)
+	int _currentGoalId; ///< Current goal node ID (0 if no goal)
 
-	std::map<int, int> _reducedIds;
+	std::map<int, int> _reducedIds; ///< Mapping of original IDs to reduced/compressed IDs
 
-	std::vector<int> _wmState;
+	std::vector<int> _wmState; ///< Working memory state (vector of node IDs in working memory)
 
-	std::map<int, Transform> _odomCachePoses;
-	std::multimap<int, Link> _odomCacheConstraints;
+	std::map<int, Transform> _odomCachePoses; ///< Cached odometry poses in localization mode
+	std::multimap<int, Link> _odomCacheConstraints; ///< Cached odometry constraints/links
 
-	// Format for statistics (Plottable statistics must go in that map) :
-	// {"Group/Name/Unit", value}
-	// Example : {"Timing/Total time/ms", 500.0f}
+	/**
+	 * @brief Statistics data map (plottable statistics)
+	 * 
+	 * Format: {"Group/Name/Unit", value}
+	 * Example: {"Timing/Total time/ms", 500.0f}
+	 * 
+	 * All plottable numeric statistics are stored in this map with hierarchical names
+	 * that allow for easy categorization and visualization.
+	 */
 	std::map<std::string, float> _data;
-	static std::map<std::string, float> _defaultData;
-	static bool _defaultDataInitialized;
+	
+	static std::map<std::string, float> _defaultData; ///< Static default data map (initialized on first Statistics construction)
+	static bool _defaultDataInitialized; ///< Flag indicating if default data has been initialized
 	// end extended data
 };
 

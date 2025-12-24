@@ -85,3 +85,8 @@ gtest_discover_tests(test_cameramodel)
 add_executable(test_stereocameramodel test_stereocameramodel.cpp)
 target_link_libraries(test_stereocameramodel gtest_main rtabmap_core)
 gtest_discover_tests(test_stereocameramodel)
+
+#Statistics.h
+add_executable(test_statistics test_statistics.cpp)
+target_link_libraries(test_statistics gtest_main rtabmap_core)
+gtest_discover_tests(test_statistics)
