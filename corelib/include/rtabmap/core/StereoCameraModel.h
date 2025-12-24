@@ -110,8 +110,8 @@ public:
 	 * @param name             The base name for the stereo camera model.
 	 * @param leftCameraModel  The camera model representing the left camera.
 	 * @param rightCameraModel The camera model representing the right camera.
-	 * @param R                (Optional) Rotation matrix from left to right camera (3x3, CV_64FC1).
-	 * @param T                (Optional) Translation vector from left to right camera (3x1, CV_64FC1).
+	 * @param R                (Optional) Rotation matrix of the left camera relative to the right camera coordinate system (3x3, CV_64FC1).
+	 * @param T                (Optional) Translation vector of the left camera relative to the right camera coordinate system (3x1, CV_64FC1).
 	 * @param E                (Optional) Essential matrix between the two cameras (3x3, CV_64FC1).
 	 * @param F                (Optional) Fundamental matrix between the two cameras (3x3, CV_64FC1).
 	 *
@@ -134,7 +134,7 @@ public:
 	 * @brief Constructs a StereoCameraModel from two camera models and an extrinsic Transform between them.
 	 *
 	 * This constructor sets up a stereo camera model using the given left and right camera models along with
-	 * an optional 3D transform (`extrinsics`) representing the pose of the right camera relative to the left camera.
+	 * an optional 3D transform (`extrinsics`) representing the pose of the left camera relative to the right camera coordinate system.
 	 * 
 	 * If a valid (non-null) transform is provided, the corresponding rotation and translation matrices are extracted
 	 * and stored as the stereo extrinsic parameters. Stereo rectification will be attempted if both camera models
@@ -145,7 +145,7 @@ public:
 	 * @param name         Base name for the stereo camera model.
 	 * @param leftCameraModel  Camera model for the left camera.
 	 * @param rightCameraModel Camera model for the right camera.
-	 * @param extrinsics   (Optional) Transform from the left camera to the right camera. If null, no extrinsics are used.
+	 * @param extrinsics   (Optional) Transform of the left camera relative to the right camera coordinate system. If null, no extrinsics are used.
 	 *
 	 * @throws UException if `extrinsics` is not null and either camera model is not valid for rectification.
 	 * 
@@ -160,8 +160,23 @@ public:
 			const Transform & extrinsics);
 
 	/**
-     * @brief Minimal constructor using focal lengths and baseline only.
-     */
+	 * @brief Minimal constructor using focal lengths and baseline only.
+	 * 
+	 * Creates a simplified stereo camera model using only the essential intrinsic parameters
+	 * and baseline. This constructor assumes the images are already rectified and both cameras
+	 * have the same intrinsic parameters.
+	 * 
+	 * @param fx Focal length in x direction (pixels).
+	 * @param fy Focal length in y direction (pixels).
+	 * @param cx Principal point x coordinate (pixels).
+	 * @param cy Principal point y coordinate (pixels).
+	 * @param baseline Stereo baseline distance in meters.
+	 * @param localTransform Local transform from camera to robot base frame (default: optical rotation).
+	 * @param imageSize Image size (width, height). Optional, can be set later.
+	 * 
+	 * @note This constructor creates a simplified model suitable for rectified stereo pairs.
+	 *       For full calibration with distortion, use the constructors that accept camera matrices.
+	 */
 	StereoCameraModel(
 			double fx,
 			double fy,
@@ -170,9 +185,24 @@ public:
 			double baseline,
 			const Transform & localTransform = Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
 			const cv::Size & imageSize = cv::Size(0,0));
+	
 	/**
-     * @brief Minimal constructor that also sets a name, required if we want to save it to a file.
-     */
+	 * @brief Minimal constructor that also sets a name, required if we want to save it to a file.
+	 * 
+	 * Same as the minimal constructor but also sets the camera name, which is required
+	 * when saving the calibration to disk.
+	 * 
+	 * @param name Camera name identifier (used for saving calibration files).
+	 * @param fx Focal length in x direction (pixels).
+	 * @param fy Focal length in y direction (pixels).
+	 * @param cx Principal point x coordinate (pixels).
+	 * @param cy Principal point y coordinate (pixels).
+	 * @param baseline Stereo baseline distance in meters.
+	 * @param localTransform Local transform from camera to robot base frame (default: optical rotation).
+	 * @param imageSize Image size (width, height). Optional, can be set later.
+	 * 
+	 * @note Use this constructor when you plan to save the calibration to a file.
+	 */
 	StereoCameraModel(
 			const std::string & name,
 			double fx,
@@ -209,8 +239,17 @@ public:
 	bool isRectificationMapInitialized() const {return left_.isRectificationMapInitialized() && right_.isRectificationMapInitialized();}
 
 	/**
-     * @brief Sets the camera name and optional image suffixes for the left and right cameras.
-     */
+	 * @brief Sets the camera name and optional image suffixes for the left and right cameras.
+	 * 
+	 * Updates the stereo camera model name and the suffixes used for identifying left and right
+	 * camera calibration files. The suffixes are used when loading/saving calibration data from disk.
+	 * 
+	 * @param name Base name for the stereo camera model.
+	 * @param leftSuffix Suffix for the left camera (default: "left"). Used in filenames like "cameraName_left.yaml".
+	 * @param rightSuffix Suffix for the right camera (default: "right"). Used in filenames like "cameraName_right.yaml".
+	 * 
+	 * @note The suffixes are used by load() and save() methods to construct filenames for each camera.
+	 */
 	void setName(const std::string & name, const std::string & leftSuffix = "left", const std::string & rightSuffix = "right");
 	
 	/**
@@ -324,8 +363,16 @@ public:
 	unsigned int deserialize(const unsigned char * data, unsigned int dataSize);
 
 	/**
-     * @brief Returns the stereo baseline in meters.
-     */
+	 * @brief Returns the stereo baseline in meters.
+	 * 
+	 * Computes the baseline distance between the left and right cameras using the projection
+	 * matrices. The baseline is calculated as the difference in x-translation (Tx) normalized
+	 * by the focal length.
+	 * 
+	 * @return The baseline distance in meters. Returns 0.0 if focal lengths are invalid or zero.
+	 * 
+	 * @note The baseline is a physical distance and is essential for depth computation from disparity.
+	 */
 	double baseline() const {return right_.fx()!=0.0 && left_.fx() != 0.0 ? left_.Tx() / left_.fx() - right_.Tx()/right_.fx():0.0;}
 
 	/**
@@ -384,12 +431,31 @@ public:
 	const cv::Mat & F() const {return F_;} ///< Fundamental matrix
 
 	/**
-     * @brief Scales both cameras' calibration by a factor.
-     */
+	 * @brief Scales both cameras' calibration by a factor.
+	 * 
+	 * Scales the intrinsic parameters (focal lengths, principal points) and image sizes
+	 * of both left and right cameras by the given scale factor. This is useful when working
+	 * with downscaled or upscaled images.
+	 * 
+	 * @param scale Scaling factor (> 0). For example, use 0.5 to downscale or 2.0 to upscale.
+	 * 
+	 * @note The baseline is not scaled, as it represents a physical distance between cameras.
+	 * @note Only valid camera models are scaled. Invalid models are left unchanged.
+	 */
 	void scale(double scale);
+	
 	/**
-     * @brief Applies region-of-interest (ROI) cropping to both cameras.
-     */
+	 * @brief Applies region-of-interest (ROI) cropping to both cameras.
+	 * 
+	 * Adjusts both camera models for a region of interest by shifting the principal points
+	 * and updating the image sizes. This is useful when working with cropped or subwindowed images.
+	 * 
+	 * @param roi Region of interest rectangle. The top-left corner defines the offset for principal points.
+	 * 
+	 * @note The principal points (cx, cy) are adjusted by subtracting the ROI's top-left coordinates.
+	 * @note The image size is set to the ROI size.
+	 * @note Only valid camera models are adjusted. Invalid models are left unchanged.
+	 */
 	void roi(const cv::Rect & roi);
 
 	/**
@@ -403,8 +469,29 @@ public:
 	const Transform & localTransform() const {return left_.localTransform();}
 
 	/**
-     * @brief Returns the stereo transform (right camera relative to left).
-     */
+	 * @brief Returns the stereo transform (left camera relative to right camera coordinate system).
+	 * 
+	 * The stereo transform brings points given in the
+	 * first (left) camera's coordinate system to points in the second (right) camera's coordinate
+	 * system. In more technical terms, it performs a change of basis from the
+	 * first camera's coordinate system to the second camera's coordinate system. Due to its duality,
+	 * it is equivalent to the position of the first camera with respect to the second
+	 * camera coordinate system.
+	 * 
+	 * @return Transform from left camera to right camera coordinate system. Returns identity if R_ or T_ are empty.
+	 * 
+	 * @note The transform is constructed from the stereo extrinsic parameters R_ and T_.
+	 * 
+	 * @par Example:
+	 * For a stereo camera with a baseline of 15 cm, where the right camera is positioned to the
+	 * right of the left camera, the x value of the returned Transform would be -0.15 (negative
+	 * because it represents the position of the left camera in the right camera's coordinate system).
+	 * @code
+	 * StereoCameraModel stereo(...);
+	 * Transform transform = stereo.stereoTransform();
+	 * // If baseline is 0.15 m, transform.x() would be approximately -0.15
+	 * @endcode
+	 */
 	Transform stereoTransform() const;
 
 	/**
@@ -426,6 +513,16 @@ public:
 	const std::string & getRightSuffix() const {return rightSuffix_;}
 
 private:
+	/**
+	 * @brief Updates stereo rectification parameters for both cameras.
+	 * 
+	 * This private method computes the rectification and projection matrices for both left and right
+	 * cameras based on the stereo extrinsic parameters (R_, T_). It is called automatically when
+	 * constructing a StereoCameraModel with valid extrinsics.
+	 * 
+	 * @note Requires both R_ and T_ to be non-empty and valid.
+	 * @note Both camera models must be valid for rectification.
+	 */
 	void updateStereoRectification();
 
 private:

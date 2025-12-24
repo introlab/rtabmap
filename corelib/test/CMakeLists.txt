@@ -75,3 +75,13 @@ gtest_discover_tests(test_stereo_dense)
 add_executable(test_stereo test_stereo.cpp)
 target_link_libraries(test_stereo gtest_main rtabmap_core)
 gtest_discover_tests(test_stereo)
+
+#CameraModel.h
+add_executable(test_cameramodel test_cameramodel.cpp)
+target_link_libraries(test_cameramodel gtest_main rtabmap_core)
+gtest_discover_tests(test_cameramodel)
+
+#StereoCameraModel.h
+add_executable(test_stereocameramodel test_stereocameramodel.cpp)
+target_link_libraries(test_stereocameramodel gtest_main rtabmap_core)
+gtest_discover_tests(test_stereocameramodel)
