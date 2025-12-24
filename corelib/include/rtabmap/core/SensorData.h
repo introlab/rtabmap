@@ -936,7 +936,7 @@ public:
 	/**
 	 * @brief Sets landmarks
 	 * @param landmarks Map of landmark IDs to landmark data
-	 * @note Landmark IDs are typically negative.
+	 * @note Landmark IDs should be positive and non-zero.
 	 */
 	void setLandmarks(const Landmarks & landmarks) {_landmarks = landmarks;}
 	
@@ -973,9 +973,9 @@ public:
 	 * within the image bounds.
 	 * 
 	 * @param pt 3D point in robot frame (base_link)
-	 * @return True if the point is visible from at least one camera, false otherwise
+	 * @return Camera index (>=0) of the first camera found with the point visible, -1 if the point is not visible by any camera.
 	 */
-	bool isPointVisibleFromCameras(const cv::Point3f & pt) const;
+	int isPointVisibleFromCameras(const cv::Point3f & pt) const;
 
 #ifdef HAVE_OPENCV_CUDEV
 	/**
