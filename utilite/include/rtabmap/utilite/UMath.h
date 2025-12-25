@@ -119,7 +119,7 @@ inline T uMax(const T * v, unsigned int size, unsigned int & index)
 template<class T>
 inline T uMax(const std::vector<T> & v, unsigned int & index)
 {
-	return uMax(v.data(), v->size(), index);
+	return uMax(v.data(), v.size(), index);
 }
 
 /**

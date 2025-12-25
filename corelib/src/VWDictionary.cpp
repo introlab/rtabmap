@@ -661,14 +661,17 @@ void VWDictionary::update()
 				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), dim);
 				ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
-				_flannIndex->buildIndex(
-					_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-						_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-							FlannIndex::FLANN_INDEX_KDTREE, // kNNFlannKdTree
-					_dataTree,
-					useDistanceL1_,
-					_incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
-				ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+				if(_strategy < kNNBruteForce)
+				{
+					_flannIndex->buildIndex(
+						_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
+							_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
+								FlannIndex::FLANN_INDEX_KDTREE, // kNNFlannKdTree
+						_dataTree,
+						useDistanceL1_,
+						_incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
+					ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+				}
 			}
 		}
 		UDEBUG("Dictionary updated! (size=%d added=%d removed=%d)",
@@ -697,38 +700,38 @@ std::vector<unsigned char> VWDictionary::serializeIndex() const
 	return _flannIndex->serializeIndex(_serializeWithChecksum);
 }
 
-void VWDictionary::deserializeIndex(const std::vector<unsigned char> & data)
+bool VWDictionary::deserializeIndex(const std::vector<unsigned char> & data)
 {
-	deserializeIndex(data.data(), data.size());
+	return deserializeIndex(data.data(), data.size());
 }
 
-void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
+bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 {
 	if(data== NULL || size == 0)
 	{
 		UWARN("Trying to deserialize empty data, aborting.");
-		return;
+		return false;
 	}
 	UDEBUG("Loading flann index... (data size=%ld bytes)", size);
 	if(_strategy >= kNNBruteForce) {
 		//ignore
-		return;
+		return false;
 	}
 
 	if(_flannIndex->isBuilt()) {
 		UERROR("Flann index is already built, cannot deserialize data!");
-		return;
+		return false;
 	}
 
 	if(_visualWords.empty()) {
 		UERROR("Descriptors should be added before deserializing flann index! See VWDictionary::addWord()");
-		return;
+		return false;
 	}
 
 	if(!(_removedIndexedWords.empty() && _visualWords.size() == _notIndexedWords.size())) {
 		UERROR("State of dictionary not as expected before deserializing. (removed words=%ld, words=%ld, not indexed=%ld)", 
 			_removedIndexedWords.size(), _visualWords.size(), _notIndexedWords.size());
-		return;
+		return false;
 	}
 		
 	std::map<int, int> mapIndexId;
@@ -818,9 +821,11 @@ void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 	else {
 		UWARN("Failed deserializing flann index data (error: %s), the index will be rebuilt on next update.", errorMsg.c_str());
 		_flannIndex->release(); // reset to initial state
+		return false;
 	}
 
 	ULOGGER_DEBUG("Time to load flann index = %f s", timer.ticks());
+	return true;
 }
 
 void VWDictionary::clear(bool printWarningsIfNotEmpty)
@@ -1075,14 +1080,9 @@ std::list<int> VWDictionary::addNewWords(
 			for(int j=0; j<dists.cols; ++j)
 			{
 				float d = dists.at<float>(i,j);
-				int index;
-				if (sizeof(size_t) == 8)
-				{
-					index = *((size_t*)&results.at<double>(i, j));
-				}
-				else
-				{
-					index = *((size_t*)&results.at<int>(i, j));
+				int index = results.at<int>(i, j);
+				if(index<0) {
+					continue;
 				}
 				int id = uValue(_mapIndexId, index);
 				if(d >= 0.0f && id != 0)
@@ -1440,15 +1440,9 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				for(int j=0; j<dists.cols; ++j)
 				{
 					float d = dists.at<float>(i,j);
-					int index;
-
-					if (sizeof(size_t) == 8)
-					{
-						index = *((size_t*)&results.at<double>(i, j));
-					}
-					else
-					{
-						index = *((size_t*)&results.at<int>(i, j));
+					int index = results.at<int>(i, j);
+					if(index < 0) {
+						continue;
 					}
 					int id = uValue(_mapIndexId, index);
 					if(d >= 0.0f && id != 0)

@@ -138,6 +138,9 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 	UDEBUG("iterations=%d", iterations);
 	UDEBUG("ssdApproach=%d", ssdApproach?1:0);
 	UASSERT(minDisparityF >= 0.0f && minDisparityF <= maxDisparityF);
+	UASSERT(!leftImage.empty() && !rightImage.empty());
+	UASSERT(leftImage.size() == rightImage.size());
+	UASSERT(leftImage.type() == CV_8UC1 && rightImage.type() == CV_8UC1);
 
 	// window should be odd
 	if(winSize.width%2 == 0)
@@ -213,7 +216,8 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 										cv::Range(center.y-halfWin.height,center.y+halfWin.height+1),
 										cv::Range(center.x+d-halfWin.width,center.x+d+halfWin.width+1));
 						scores[oi] = ssdApproach?ssd(windowLeft, windowRight):sad(windowLeft, windowRight);
-						if(scores[oi] > 0 && (bestScore < 0.0f || scores[oi] < bestScore))
+						// score: the lower the better
+						if(scores[oi] >= 0 && (bestScore < 0.0f || scores[oi] < bestScore))
 						{
 							bestScoreIndex = oi;
 							bestScore = scores[oi];
@@ -357,17 +361,6 @@ typedef float acctype;
 typedef float itemtype;
 #define  CV_DESCALE(x,n)     (((x) + (1 << ((n)-1))) >> (n))
 
-//
-// Adapted from OpenCV cv::calcOpticalFlowPyrLK() to force
-// only optical flow on x-axis (assuming that prevImg is the left
-// image and nextImg is the right image):
-// https://github.com/Itseez/opencv/blob/ddf82d0b154873510802ef75c53e628cd7b2cb13/modules/video/src/lkpyramid.cpp#L1088
-//
-// The difference is on this line:
-// https://github.com/Itseez/opencv/blob/ddf82d0b154873510802ef75c53e628cd7b2cb13/modules/video/src/lkpyramid.cpp#L683-L684
-// - cv::Point2f delta( (float)((A12*b2 - A22*b1) * D), (float)((A12*b1 - A11*b2) * D));
-// + cv::Point2f delta( (float)((A12*b2 - A22*b1) * D), 0); //<--- note the 0 for y
-//
 void calcOpticalFlowPyrLKStereo( cv::InputArray _prevImg, cv::InputArray _nextImg,
                            cv::InputArray _prevPts, cv::InputOutputArray _nextPts,
                            cv::OutputArray _status, cv::OutputArray _err,
@@ -1358,7 +1351,6 @@ cv::Mat interpolate(const cv::Mat & image, int factor, float depthErrorRatio)
 	return out;
 }
 
-// Registration Depth to RGB (return registered depth image)
 cv::Mat registerDepth(
 	const cv::Mat & depth,
 	const cv::Mat & depthK,
@@ -1477,9 +1469,9 @@ cv::Mat fillDepthHoles(const cv::Mat & depth, int maximumHoleSize, float errorRa
 	UASSERT(maximumHoleSize > 0);
 	cv::Mat output = depth.clone();
 	bool isMM = depth.type() == CV_16UC1;
-	for(int y=0; y<depth.rows-2; ++y)
+	for(int y=0; y<depth.rows-1; ++y)
 	{
-		for(int x=0; x<depth.cols-2; ++x)
+		for(int x=0; x<depth.cols-1; ++x)
 		{
 			float a, bRight, bDown;
 			if(isMM)
@@ -1873,7 +1865,7 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 	if (!found_finite)
 	{
 		UWARN("Given an empty depth image. Doing nothing.");
-		return cv::Mat();
+		return output;
 	}
 	UDEBUG("base_min=%f base_max=%f", base_min, base_max);
 
@@ -2085,8 +2077,16 @@ cv::Mat brightnessAndContrastAuto(const cv::Mat &src, const cv::Mat & mask, floa
     // current range
     float inputRange = maxGray - minGray;
 
-    alpha = (histSize - 1) / inputRange;   // alpha expands current range to histsize range
-    beta = -minGray * alpha;             // beta shifts current range so that minGray will go to 0
+	if(inputRange == 0.0f)
+	{
+		alpha = 1.0f;
+		beta = 0.0f;
+	}
+	else
+	{
+		alpha = (histSize - 1) / inputRange;   // alpha expands current range to histsize range
+		beta = -minGray * alpha;             // beta shifts current range so that minGray will go to 0
+	}
 
     UINFO("minGray=%f maxGray=%f alpha=%f beta=%f", minGray, maxGray, alpha, beta);
 
@@ -2143,6 +2143,10 @@ void HSVtoRGB( float *r, float *g, float *b, float h, float s, float v )
 		*r = *g = *b = v;
 		return;
 	}
+	if(h/360.0f >= 1.0f)
+	{
+		h -= floor(h/360.0f)*360.0f;
+	}
 	h /= 60;			// sector 0 to 5
 	i = floor( h );
 	f = h - i;			// factorial part of h
@@ -2187,17 +2191,30 @@ void NMS(
 		const std::vector<cv::KeyPoint> & ptsIn,
 		const cv::Mat & descriptorsIn,
 		std::vector<cv::KeyPoint> & ptsOut,
-		cv::Mat & descriptorsOut,
-        int border, int dist_thresh, int img_width, int img_height)
+		cv::Mat & descriptorsOut, 
+		int dist_thresh, int img_width, int img_height)
 {
-    std::vector<cv::Point2f> pts_raw;
+	if(ptsIn.empty())
+	{
+		return;
+	}
+
+    std::vector<cv::Point2i> pts_raw;
 
     for (size_t i = 0; i < ptsIn.size(); i++)
     {
 		int u = (int) ptsIn[i].pt.x;
 		int v = (int) ptsIn[i].pt.y;
 
-		pts_raw.emplace_back(cv::Point2f(u, v));
+		if(u<0 || u>img_width || v<0 || v>img_height)
+		{
+			UERROR("Point (%f,%f) is outside the image size (%dx%d), this point is ignored!", ptsIn[i].pt.x, ptsIn[i].pt.y, img_width, img_height);
+			pts_raw.emplace_back(cv::Point2i(-1, -1));
+		}
+		else
+		{
+			pts_raw.emplace_back(cv::Point2i(u, v));
+		}
 	}
 
     //Grid Value Legend:
@@ -2216,9 +2233,14 @@ void NMS(
 
     for (size_t i = 0; i < pts_raw.size(); i++)
     {
-        int uu = (int) pts_raw[i].x;
-        int vv = (int) pts_raw[i].y;
+        int uu = pts_raw[i].x;
+        int vv = pts_raw[i].y;
 
+		if(uu < 0) {
+			// skip invalid points
+			continue;
+		}
+		
         grid.at<unsigned char>(vv, uu) = 100;
         inds.at<unsigned short>(vv, uu) = i;
 
@@ -2232,9 +2254,14 @@ void NMS(
 
     for (size_t i = 0; i < pts_raw.size(); i++)
     {
+		if(pts_raw[i].x < 0)
+		{
+			// skip invlaid points
+			continue;
+		}
     	// account for top left padding
-        int uu = (int) pts_raw[i].x + dist_thresh;
-        int vv = (int) pts_raw[i].y + dist_thresh;
+        int uu = pts_raw[i].x + dist_thresh;
+        int vv = pts_raw[i].y + dist_thresh;
         float c = confidence.at<float>(vv-dist_thresh, uu-dist_thresh);
 
         if (grid.at<unsigned char>(vv, uu) == 100)  // If not yet suppressed.
@@ -2295,7 +2322,9 @@ void NMS(
 std::vector<int> SSC(
 	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows, const std::vector<int> & indx)
 {
-	bool useIndx = keypoints.size() == indx.size();
+	UASSERT(keypoints.empty() || indx.empty() || keypoints.size() == indx.size());
+
+	bool useIndx = !indx.empty();
 
 	// several temp expression variables to simplify solution equation
 	int exp1 = rows + cols + 2*maxKeypoints;

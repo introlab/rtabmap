@@ -169,15 +169,22 @@ inline void extractXYZCorrespondencesImpl(const std::list<std::pair<cv::Point2f,
 							   const pcl::PointCloud<PointT> & cloud1,
 							   const pcl::PointCloud<PointT> & cloud2,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers1,
-							   pcl::PointCloud<pcl::PointXYZ> & inliers2,
-							   char depthAxis)
+							   pcl::PointCloud<pcl::PointXYZ> & inliers2)
 {
+	UASSERT(cloud1.empty() || cloud1.isOrganized());
+	UASSERT(cloud2.empty() || cloud2.isOrganized());
 	for(std::list<std::pair<cv::Point2f, cv::Point2f> >::const_iterator iter = correspondences.begin();
 		iter!=correspondences.end();
 		++iter)
 	{
-		PointT pt1 = cloud1.at(int(iter->first.y+0.5f) * cloud1.width + int(iter->first.x+0.5f));
-		PointT pt2 = cloud2.at(int(iter->second.y+0.5f) * cloud2.width + int(iter->second.x+0.5f));
+		int u1 = int(iter->first.x+0.5f);
+		int v1 = int(iter->first.y+0.5f);
+		int u2 = int(iter->second.x+0.5f);
+		int v2 = int(iter->second.y+0.5f);
+		UASSERT(v1>=0 && v1 < (int)cloud1.height && u1>=0 && u1<(int)cloud1.width);
+		UASSERT(v2>=0 && v2 < (int)cloud2.height && u2>=0 && u2<(int)cloud2.width);
+		PointT pt1 = cloud1.at(v1 * cloud1.width + u1);
+		PointT pt2 = cloud2.at(v2 * cloud2.width + u2);
 		if(pcl::isFinite(pt1) &&
 		   pcl::isFinite(pt2))
 		{
@@ -191,19 +198,17 @@ void extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2
 							   const pcl::PointCloud<pcl::PointXYZ> & cloud1,
 							   const pcl::PointCloud<pcl::PointXYZ> & cloud2,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers1,
-							   pcl::PointCloud<pcl::PointXYZ> & inliers2,
-							   char depthAxis)
+							   pcl::PointCloud<pcl::PointXYZ> & inliers2)
 {
-	extractXYZCorrespondencesImpl(correspondences, cloud1, cloud2, inliers1, inliers2, depthAxis);
+	extractXYZCorrespondencesImpl(correspondences, cloud1, cloud2, inliers1, inliers2);
 }
 void extractXYZCorrespondences(const std::list<std::pair<cv::Point2f, cv::Point2f> > & correspondences,
 							   const pcl::PointCloud<pcl::PointXYZRGB> & cloud1,
 							   const pcl::PointCloud<pcl::PointXYZRGB> & cloud2,
 							   pcl::PointCloud<pcl::PointXYZ> & inliers1,
-							   pcl::PointCloud<pcl::PointXYZ> & inliers2,
-							   char depthAxis)
+							   pcl::PointCloud<pcl::PointXYZ> & inliers2)
 {
-	extractXYZCorrespondencesImpl(correspondences, cloud1, cloud2, inliers1, inliers2, depthAxis);
+	extractXYZCorrespondencesImpl(correspondences, cloud1, cloud2, inliers1, inliers2);
 }
 
 int countUniquePairs(const std::multimap<int, pcl::PointXYZ> & wordsA,
@@ -268,29 +273,6 @@ void filterMaxDepth(pcl::PointCloud<pcl::PointXYZ> & inliers1,
 		inliers1 = tmpInliers1;
 		inliers2 = tmpInliers2;
 	}
-}
-
-
-// a kdtree is constructed with cloud_target, then nearest neighbor
-// is computed for each cloud_source points.
-int getCorrespondencesCount(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
-							const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
-							float maxDistance)
-{
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-	kdTree->setInputCloud(cloud_target);
-	int count = 0;
-	float sqrdMaxDistance = maxDistance * maxDistance;
-	for(unsigned int i=0; i<cloud_source->size(); ++i)
-	{
-		std::vector<int> ind(1);
-		std::vector<float> dist(1);
-		if(kdTree->nearestKSearch(cloud_source->at(i), 1, ind, dist) && dist[0] < sqrdMaxDistance)
-		{
-			++count;
-		}
-	}
-	return count;
 }
 
 /**

@@ -23,17 +23,46 @@
 #include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
 
 /**
- * This class is used to get some informations
- * about the current process.
+ * \file UProcessInfo.h
+ * \brief UProcessInfo class for getting process information
+ *
+ * This class provides methods to retrieve information about the current process,
+ * such as memory usage.
+ */
+
+/**
+ * \class UProcessInfo
+ * \brief Class for getting information about the current process
+ *
+ * This class provides static methods to retrieve information about the current
+ * process, such as memory usage. The information is retrieved from the operating
+ * system.
+ *
+ * Example:
+ * @code
+ * long int memory = UProcessInfo::getMemoryUsage();
+ * std::cout << "Memory usage: " << memory << " bytes" << std::endl;
+ * @endcode
  */
 class UTILITE_EXPORT UProcessInfo {
 public:
+	/**
+	 * \brief Constructor
+	 */
 	UProcessInfo();
+	
+	/**
+	 * \brief Virtual destructor
+	 */
 	virtual ~UProcessInfo();
 
 	/**
-	 * Get the memory used by the current process.
-	 * @return the number of bytes used by the current process.
+	 * \brief Get the memory used by the current process
+	 * 
+	 * This method returns the amount of memory currently used by the process.
+	 * The exact meaning of "memory used" may vary between operating systems.
+	 * 
+	 * @return the number of bytes used by the current process, or -1 on error
 	 */
 	static long int getMemoryUsage();
 };
