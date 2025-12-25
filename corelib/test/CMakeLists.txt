@@ -105,3 +105,13 @@ gtest_discover_tests(test_sensorevent)
 add_executable(test_sensordata test_sensordata.cpp)
 target_link_libraries(test_sensordata gtest_main rtabmap_core)
 gtest_discover_tests(test_sensordata)
+
+#SensorCapture.h
+add_executable(test_sensorcapture test_sensorcapture.cpp)
+target_link_libraries(test_sensorcapture gtest_main rtabmap_core)
+gtest_discover_tests(test_sensorcapture)
+
+#SensorCaptureThread.h
+add_executable(test_sensorcapturethread test_sensorcapturethread.cpp)
+target_link_libraries(test_sensorcapturethread gtest_main rtabmap_core)
+gtest_discover_tests(test_sensorcapturethread)
