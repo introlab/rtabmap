@@ -775,6 +775,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 					cameraTransform,
 					fundMatrixReprojError_,
 					fundMatrixConfidence_,
+					4,
 					refWords3Guess);  // for scale estimation
 
 			if(cameraTransform.getNorm() < minTranslation_*5)

@@ -80,6 +80,7 @@ std::map<int, cv::Point3f> RTABMAP_CORE_EXPORT generateWords3DMono(
 		Transform & cameraTransform,
 		float ransacReprojThreshold = 3.0f,
 		float ransacConfidence = 0.99f,
+		int varianceMedianRatio = 4,
 		const std::map<int, cv::Point3f> & refGuess3D = std::map<int, cv::Point3f>(),
 		double * variance = 0,
 		std::vector<int> * matchesOut = 0);

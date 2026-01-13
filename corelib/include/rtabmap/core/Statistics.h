@@ -67,6 +67,7 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Visual_inliers_ratio,);
 	RTABMAP_STATS(Loop, Visual_matches,);
+	RTABMAP_STATS(Loop, Visual_variance,);
 	RTABMAP_STATS(Loop, Distance_since_last_loc, m);
 	RTABMAP_STATS(Loop, Last_id,);
 	RTABMAP_STATS(Loop, Optimization_max_error, m);

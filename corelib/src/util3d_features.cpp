@@ -213,6 +213,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 		Transform & cameraTransform,
 		float ransacReprojThreshold,
 		float ransacConfidence,
+		int varianceMedianRatio,
 		const std::map<int, cv::Point3f> & refGuess3D,
 		double * varianceOut,
 		std::vector<int> * matchesOut)
@@ -345,7 +346,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 							errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
 						}
 						std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-						double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+						double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> varianceMedianRatio];
 						float var = 2.1981 * median_error_sqr;
 						//UDEBUG("scale %d = %f variance = %f", (int)i, s, variance);
 
@@ -369,7 +370,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 						errorSqrdDists[j] = uNormSquared(refPt.x-newPt.x, refPt.y-newPt.y, refPt.z-newPt.z);
 					}
 					std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-					double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+					double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> varianceMedianRatio];
 					variance = 2.1981 * median_error_sqr;
 				}
 			}

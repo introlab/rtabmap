@@ -41,6 +41,7 @@ public:
 		inliersMeanDistance(0.0f),
 		inliersDistribution(0.0f),
 		matches(0),
+		variance(0.0f),
 		icpInliersRatio(0),
 		icpTranslation(0.0f),
 		icpRotation(0.0f),
@@ -64,6 +65,7 @@ public:
 		output.inliersDistribution = inliersDistribution;
 		output.matches = matches;
 		output.matchesPerCam = matchesPerCam;
+		output.variance = variance;
 		output.icpInliersRatio = icpInliersRatio;
 		output.icpTranslation = icpTranslation;
 		output.icpRotation = icpRotation;
@@ -85,6 +87,7 @@ public:
 	float inliersDistribution;
 	std::vector<int> inliersIDs;
 	int matches;
+	float variance;
 	std::vector<int> matchesIDs;
 	std::vector<int> projectedIDs; // "From" IDs
 	std::vector<int> inliersPerCam;

@@ -303,7 +303,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		cv::Mat descriptorsTmp;
 		if(ssc)
 		{
-			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with SSC", keypoints.size());
 
 			// Sorting keypoints by deacreasing order of strength
 			std::vector<float> responseVector;
@@ -419,7 +419,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 		inliers.resize(keypoints.size(), false);
 		if(ssc)
 		{
-			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with SSC", keypoints.size());
 
 			// Sorting keypoints by deacreasing order of strength
 			std::vector<float> responseVector;
