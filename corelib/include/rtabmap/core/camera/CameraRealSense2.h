@@ -146,6 +146,7 @@ private:
 	Transform dualExtrinsics_;
 	std::string jsonConfig_;
 	bool closing_;
+	bool playback_;
 
 	static Transform realsense2PoseRotation_;
 	static Transform realsense2PoseRotationInv_;
