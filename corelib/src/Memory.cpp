@@ -5836,7 +5836,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		cameraModels.size() == 1 &&
 		words.size() &&
 		(words3D.size() == 0 || (words.size() == words3D.size() && words3DValid!=(int)words3D.size())) &&
-		_registrationPipeline->isImageRequired() &&
 		_signatures.size() &&
 		_signatures.rbegin()->second->mapId() == _idMapCount) // same map
 	{
@@ -5880,11 +5879,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			// The following is used only to re-estimate the correspondences, the returned transform is ignored
 			Transform tmpt;
-			RegistrationVis reg(parameters_);
+			ParametersMap tmpParams = parameters_;
+			// Pure 2D-2D without guess would generate variance=1
+			uInsert(tmpParams, ParametersPair(Parameters::kVisEpipolarGeometryVar(), "1"));
+			RegistrationVis reg(tmpParams);
 			if(_registrationPipeline->isScanRequired())
 			{
 				// If icp is used, remove it to just do visual registration
-				RegistrationVis vis(parameters_);
+				RegistrationVis vis(tmpParams);
 				tmpt = vis.computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
 			}
 			else
@@ -5906,11 +5908,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				previousWords.insert(std::make_pair(iter->first, cpPrevious.getWordsKpts()[iter->second]));
 			}
+			float reprojError = Parameters::defaultVisPnPReprojError();
+			int varianceMedianRatio = Parameters::defaultVisPnPVarianceMedianRatio();
+			Parameters::parse(parameters_, Parameters::kVisPnPReprojError(), reprojError);
+			Parameters::parse(parameters_, Parameters::kVisPnPVarianceMedianRatio(), varianceMedianRatio);
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
 					currentWords,
 					previousWords,
 					cameraModels[0],
-					cameraTransform);
+					cameraTransform,
+					reprojError,
+					0.99f,
+					varianceMedianRatio);
 
 			UDEBUG("inliers=%d", (int)inliers.size());
 

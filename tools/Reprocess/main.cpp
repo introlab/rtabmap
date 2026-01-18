@@ -93,6 +93,7 @@ void showUsage()
 			"                                      e.g., \"0.05 0.075\" for two cameras setup.\n"
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -nopriors   Don't republish priors contained in input database.\n"
+			"     -noimu      Don't republish IMU contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
@@ -272,6 +273,7 @@ int main(int argc, char * argv[])
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool ignorePriors = false;
+	bool ignoreImu = false;
 	bool republishLoopClosures = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
@@ -489,6 +491,11 @@ int main(int argc, char * argv[])
 		{
 			ignorePriors = true;
 			printf("Ignoring priors from input database (-nopriors option).\n");
+		}
+		else if(strcmp(argv[i], "-noimu") == 0 || strcmp(argv[i], "--noimu") == 0)
+		{
+			ignoreImu = true;
+			printf("Ignoring IMU from input database (-noimu option).\n");
 		}
 		else if(strcmp(argv[i], "-pub_loops") == 0 || strcmp(argv[i], "--pub_loops") == 0)
 		{
@@ -900,6 +907,7 @@ int main(int argc, char * argv[])
 			startMapId,
 			stopMapId,
 			ignorePriors,
+			ignoreImu,
 			cameraLocalTransformOverrides);
 
 	dbReader->init();

@@ -321,6 +321,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%d", Parameters::kVisPnPFlags().c_str(), _PnPFlags);
 	UDEBUG("%s=%f", Parameters::kVisPnPMaxVariance().c_str(), _PnPMaxVar);
 	UDEBUG("%s=%f", Parameters::kVisPnPSplitLinearCovComponents().c_str(), _PnPSplitLinearCovarianceComponents);
+	UDEBUG("%s=%f", Parameters::kVisPnPVarianceMedianRatio().c_str(), _PnPVarMedianRatio);
 	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowWinSize().c_str(), _flowWinSize);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
@@ -1632,6 +1633,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						cameraTransform,
 						_PnPReprojError,
 						0.99f,
+						_PnPVarMedianRatio,
 						words3A, // for scale estimation
 						&variance,
 						&matchesV);
@@ -2204,6 +2206,10 @@ Transform RegistrationVis::computeTransformationImpl(
 	info.matches = matchesCount;
 	info.rejectedMsg = msg;
 	info.covariance = covariance;
+	if(!covariance.empty())
+	{
+		info.variance = covariance.at<double>(0,0);
+	}
 
 	UDEBUG("inliers=%d/%d", info.inliers, info.matches);
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());

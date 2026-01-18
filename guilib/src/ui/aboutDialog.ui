@@ -778,7 +778,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="52" column="0">
-               <widget class="QLabel" name="label_48">
+               <widget class="QLabel" name="label_481">
                 <property name="text">
                  <string>With cuVSLAM :</string>
                 </property>

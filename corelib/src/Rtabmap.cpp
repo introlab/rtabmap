@@ -2613,6 +2613,7 @@ bool Rtabmap::process(
 	int loopClosureVisualInliers = 0; // for statistics
 	float loopClosureVisualInliersRatio = 0.0f;
 	int loopClosureVisualMatches = 0;
+	float loopClosureVisualVariance = 0.0f;
 	float loopClosureLinearVariance = 0.0f;
 	float loopClosureAngularVariance = 0.0f;
 	float loopClosureVisualInliersMeanDist = 0;
@@ -2795,6 +2796,7 @@ bool Rtabmap::process(
 									loopClosureVisualInliers = info.inliers;
 									loopClosureVisualInliersRatio = info.inliersRatio;
 									loopClosureVisualMatches = info.matches;
+									loopClosureVisualVariance = info.variance;
 
 									cv::Mat information = getInformation(info.covariance);
 									loopClosureLinearVariance = 1.0/information.at<double>(0,0);
@@ -3062,6 +3064,7 @@ bool Rtabmap::process(
 				loopClosureVisualInliers = info.inliers;
 				loopClosureVisualInliersRatio = info.inliersRatio;
 				loopClosureVisualMatches = info.matches;
+				loopClosureVisualVariance = info.variance;
 				rejectedLoopClosure = transform.isNull();
 				if(rejectedLoopClosure)
 				{
@@ -4049,6 +4052,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers(), loopClosureVisualInliers);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_ratio(), loopClosureVisualInliersRatio);
 			statistics_.addStatistic(Statistics::kLoopVisual_matches(), loopClosureVisualMatches);
+			statistics_.addStatistic(Statistics::kLoopVisual_variance(), loopClosureVisualVariance);
 			statistics_.addStatistic(Statistics::kLoopLinear_variance(), loopClosureLinearVariance);
 			statistics_.addStatistic(Statistics::kLoopAngular_variance(), loopClosureAngularVariance);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());

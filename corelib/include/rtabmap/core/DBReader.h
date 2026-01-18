@@ -59,6 +59,7 @@ public:
 			 int startMapId = 0,
 			 int stopMapId = -1,
 			 bool priorsIgnored = false,
+			 bool imuIgnored = false,
 			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>());
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
@@ -74,6 +75,7 @@ public:
 			 int startMapId = 0,
 			 int stopMapId = -1,
 			 bool priorsIgnored = false,
+			 bool imuIgnored = false,
 			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>());
 	virtual ~DBReader();
 
@@ -107,6 +109,7 @@ private:
 	bool _landmarksIgnored;
 	bool _featuresIgnored;
 	bool _priorsIgnored;
+	bool _imuIgnored;
 	int _startMapId;
 	int _stopMapId;
 	std::vector<Transform> _cameraLocalTransformOverrides;
