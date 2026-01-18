@@ -7188,46 +7188,49 @@ Camera * PreferencesDialog::createCamera(
 		std::vector<Transform> localTransformOverrides;
 		if(_ui->source_checkBox_overrideLocalTransforms->isChecked())
 		{
-			std::list<std::string> transforms = uSplit(_ui->lineEdit_sourceLocalTransform->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString(), ';');
-			for(auto t: transforms)
+			if(!_ui->lineEdit_sourceLocalTransform->text().isEmpty())
 			{
-				localTransformOverrides.push_back(Transform::fromString(t));
-			}
-
-			// offset(s)?
-			if(_ui->source_lineEdit_databaseLocalTransformOffset->text().isEmpty())
-			{
-				std::vector<float> localTransformOffsetOverrides;
-				std::list<std::string> offsetStr = uSplit(_ui->source_lineEdit_databaseLocalTransformOffset->text().toStdString(), ' ');
-				for(std::list<std::string>::iterator iter=offsetStr.begin(); iter!=offsetStr.end(); ++iter)
+				std::list<std::string> transforms = uSplit(_ui->lineEdit_sourceLocalTransform->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString(), ';');
+				for(auto t: transforms)
 				{
-					localTransformOffsetOverrides.push_back(uStr2Float(*iter));
-					UINFO("Camera offset = %f", localTransformOffsetOverrides.back());
+					localTransformOverrides.push_back(Transform::fromString(t));
 				}
-				if(!localTransformOffsetOverrides.empty())
+
+				// offset(s)?
+				if(!_ui->source_lineEdit_databaseLocalTransformOffset->text().isEmpty())
 				{
-					if(!localTransformOverrides.empty() && localTransformOffsetOverrides.size() > 1 && localTransformOffsetOverrides.size() != localTransformOverrides.size())
+					std::vector<float> localTransformOffsetOverrides;
+					std::list<std::string> offsetStr = uSplit(_ui->source_lineEdit_databaseLocalTransformOffset->text().toStdString(), ' ');
+					for(std::list<std::string>::iterator iter=offsetStr.begin(); iter!=offsetStr.end(); ++iter)
 					{
-						QMessageBox::warning(this, tr("DBReader"),
-							tr( "Camera lens offset vector size (%1) is not equal to local transform overrides (%2). "
-								"Camera lens offset vector should be one to affect all cameras or the same size than local transforms overrides.").arg(localTransformOffsetOverrides.size()).arg(localTransformOverrides.size()), QMessageBox::Ok);
-						return 0;
+						localTransformOffsetOverrides.push_back(uStr2Float(*iter));
+						UINFO("Camera offset = %f", localTransformOffsetOverrides.back());
 					}
-					else {
-						for(size_t i=0; i<localTransformOverrides.size(); ++i)
+					if(!localTransformOffsetOverrides.empty())
+					{
+						if(!localTransformOverrides.empty() && localTransformOffsetOverrides.size() > 1 && localTransformOffsetOverrides.size() != localTransformOverrides.size())
 						{
-							float offset = localTransformOffsetOverrides.size()==1?localTransformOffsetOverrides[0]:localTransformOffsetOverrides[i];
-							localTransformOverrides[i] *= Transform(0, offset, 0);
-							UINFO("Overriding camera's local transform %ld to %s (offset=%f)", i, localTransformOverrides[i].prettyPrint().c_str(), offset);
+							QMessageBox::warning(this, tr("DBReader"),
+								tr( "Camera lens offset vector size (%1) is not equal to local transform overrides (%2). "
+									"Camera lens offset vector should be one to affect all cameras or the same size than local transforms overrides.").arg(localTransformOffsetOverrides.size()).arg(localTransformOverrides.size()), QMessageBox::Ok);
+							return 0;
+						}
+						else {
+							for(size_t i=0; i<localTransformOverrides.size(); ++i)
+							{
+								float offset = localTransformOffsetOverrides.size()==1?localTransformOffsetOverrides[0]:localTransformOffsetOverrides[i];
+								localTransformOverrides[i] *= Transform(0, offset, 0);
+								UINFO("Overriding camera's local transform %ld to %s (offset=%f)", i, localTransformOverrides[i].prettyPrint().c_str(), offset);
+							}
 						}
 					}
 				}
 			}
-		}
-		else if(!_ui->source_lineEdit_databaseLocalTransformOffset->text().isEmpty())
-		{
-			UWARN("Overriding camera offsets can only be used when camera local transforms are overriden. Ignoring offsets :\"%s\"", 
-				_ui->source_lineEdit_databaseLocalTransformOffset->text().toStdString().c_str());
+			else if(!_ui->source_lineEdit_databaseLocalTransformOffset->text().isEmpty())
+			{
+				UWARN("Overriding camera offsets can only be used when camera local transforms are overriden. Ignoring offsets :\"%s\"", 
+					_ui->source_lineEdit_databaseLocalTransformOffset->text().toStdString().c_str());
+			}
 		}
 		
 		camera = new DBReader(_ui->source_database_lineEdit_path->text().toStdString(),
