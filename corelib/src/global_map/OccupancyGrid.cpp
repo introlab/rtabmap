@@ -92,7 +92,6 @@ void OccupancyGrid::clear()
 {
 	map_ = cv::Mat();
 	mapInfo_ = cv::Mat();
-	cellCount_.clear();
 	GlobalMap::clear();
 }
 
@@ -433,11 +432,6 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 				if(iter != emptyLocalMaps.end() || jter!=occupiedLocalMaps.end())
 				{
 					addAssembledNode(kter->first, kter->second);
-					std::map<int, std::pair<int, int> >::iterator cter = cellCount_.find(kter->first);
-					if(cter == cellCount_.end() && kter->first > 0)
-					{
-						cter = cellCount_.insert(std::make_pair(kter->first, std::pair<int,int>(0,0))).first;
-					}
 					if(iter!=emptyLocalMaps.end())
 					{
 						for(int i=0; i<iter->second.cols; ++i)
@@ -459,30 +453,12 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 										// cannot rewrite on cells referred by more recent nodes
 										continue;
 									}
-									if(nodeId > 0)
-									{
-										std::map<int, std::pair<int, int> >::iterator eter = cellCount_.find(nodeId);
-										UASSERT_MSG(eter != cellCount_.end(), uFormat("current pose=%d nodeId=%d", kter->first, nodeId).c_str());
-										if(value == 0)
-										{
-											eter->second.first -= 1;
-										}
-										else if(value == 100)
-										{
-											eter->second.second -= 1;
-										}
-										if(kter->first < 0)
-										{
-											eter->second.first += 1;
-										}
-									}
 								}
 								if(kter->first > 0)
 								{
 									info[0] = (float)kter->first;
 									info[1] = ptf[0];
 									info[2] = ptf[1];
-									cter->second.first+=1;
 								}
 								value = 0; // free space
 
@@ -533,23 +509,6 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 										// cannot rewrite on cells referred by more recent nodes
 										continue;
 									}
-									if(nodeId>0)
-									{
-										std::map<int, std::pair<int, int> >::iterator eter = cellCount_.find(nodeId);
-										UASSERT_MSG(eter != cellCount_.end(), uFormat("current pose=%d nodeId=%d", kter->first, nodeId).c_str());
-										if(value == 0)
-										{
-											eter->second.first -= 1;
-										}
-										else if(value == 100)
-										{
-											eter->second.second -= 1;
-										}
-										if(kter->first < 0)
-										{
-											eter->second.first += 1;
-										}
-									}
 								}
 								if(kter->first > 0)
 								{
@@ -557,7 +516,6 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 									info[1] = float(i) * cellSize_ + xMin;
 									info[2] = float(j) * cellSize_ + yMin;
 									info[3] = logOddsClampingMin_;
-									cter->second.first+=1;
 								}
 								value = -2; // free space (footprint)
 							}
@@ -585,30 +543,12 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 										// cannot rewrite on cells referred by more recent nodes
 										continue;
 									}
-									if(nodeId>0)
-									{
-										std::map<int, std::pair<int, int> >::iterator eter = cellCount_.find(nodeId);
-										UASSERT_MSG(eter != cellCount_.end(), uFormat("current pose=%d nodeId=%d", kter->first, nodeId).c_str());
-										if(value == 0)
-										{
-											eter->second.first -= 1;
-										}
-										else if(value == 100)
-										{
-											eter->second.second -= 1;
-										}
-										if(kter->first < 0)
-										{
-											eter->second.second += 1;
-										}
-									}
 								}
 								if(kter->first > 0)
 								{
 									info[0] = (float)kter->first;
 									info[1] = ptf[0];
 									info[2] = ptf[1];
-									cter->second.second+=1;
 								}
 
 								// update odds
@@ -651,20 +591,6 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 			mapInfo_ = mapInfo;
 			minValues_[0] = xMin;
 			minValues_[1] = yMin;
-
-			// clean cellCount_
-			for(std::map<int, std::pair<int, int> >::iterator iter= cellCount_.begin(); iter!=cellCount_.end();)
-			{
-				UASSERT(iter->second.first >= 0 && iter->second.second >= 0);
-				if(iter->second.first == 0 && iter->second.second == 0)
-				{
-					cellCount_.erase(iter++);
-				}
-				else
-				{
-					++iter;
-				}
-			}
 		}
 	}
 
@@ -677,7 +603,6 @@ unsigned long OccupancyGrid::getMemoryUsed() const
 
 	memoryUsage += map_.total() * map_.elemSize();
 	memoryUsage += mapInfo_.total() * mapInfo_.elemSize();
-	memoryUsage += cellCount_.size()*(sizeof(int)*3 + sizeof(std::pair<int, int>) + sizeof(std::map<int, std::pair<int, int> >::iterator)) + sizeof(std::map<int, std::pair<int, int> >);
 
 	return memoryUsage;
 }
