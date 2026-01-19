@@ -57,7 +57,6 @@ protected:
 private:
 	cv::Mat map_;
 	cv::Mat mapInfo_;
-	std::map<int, std::pair<int, int> > cellCount_; //<node Id, cells>
 
 	float minMapSize_;
 	bool erode_;
