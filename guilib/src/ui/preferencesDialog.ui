@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-747</y>
+            <y>0</y>
             <width>684</width>
             <height>5110</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>10</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -12114,6 +12114,47 @@ When set to false, no new words are added to dictionary, so no more updates are 
                     <string>Database</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_11" columnstretch="0,1">
+                    <item row="8" column="1">
+                     <widget class="QLabel" name="label_77">
+                      <property name="text">
+                       <string>Sqlite3 journal mode,
+see Sqlite3 doc 'PRAGMA journal_mode'.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="7" column="1">
+                     <widget class="QLabel" name="label_75">
+                      <property name="text">
+                       <string>Sqlite3 cache size,
+see Sqlite3 doc 'PRAGMA cache_size'.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="1">
+                     <widget class="QLabel" name="label_610">
+                      <property name="text">
+                       <string>Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., &quot;0.19&quot; vs &quot;0.20&quot; or &quot;1.0&quot; vs &quot;2.0&quot;). Patch version is ignored (e.g., &quot;0.20.1&quot; and &quot;0.20.3&quot; will generate a &quot;0.20&quot; database).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="0" column="0">
                      <widget class="QCheckBox" name="general_checkBox_keepBinaryData">
                       <property name="text">
@@ -12121,6 +12162,146 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                       <property name="checked">
                        <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_74">
+                      <property name="text">
+                       <string>Using database in the memory instead of a file on the hard disk (this greatly improve database access performance but it requires more RAM memory).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="9" column="1">
+                     <widget class="QLabel" name="label_89">
+                      <property name="text">
+                       <string>Sqlite3 synchronous,
+see Sqlite3 doc 'PRAGMA synchronous'.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QCheckBox" name="general_checkBox_keepNotLinkedNodes">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="7" column="0">
+                     <widget class="QSpinBox" name="spinBox_dbCacheSize">
+                      <property name="minimum">
+                       <number>10</number>
+                      </property>
+                      <property name="maximum">
+                       <number>999999</number>
+                      </property>
+                      <property name="singleStep">
+                       <number>100</number>
+                      </property>
+                      <property name="value">
+                       <number>2000</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="9" column="0">
+                     <widget class="QComboBox" name="comboBox_dbSynchronous">
+                      <property name="currentIndex">
+                       <number>2</number>
+                      </property>
+                      <item>
+                       <property name="text">
+                        <string>OFF</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>NORMAL</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>FULL</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item row="10" column="0">
+                     <widget class="QComboBox" name="comboBox_dbTempStore">
+                      <item>
+                       <property name="text">
+                        <string>DEFAULT</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>FILE</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>MEMORY</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
+                     <widget class="QLabel" name="label_760">
+                      <property name="text">
+                       <string>Depth image compression format (should be &quot;.png&quot; or &quot;.rvl&quot;).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_keepRehearsed">
+                      <property name="text">
+                       <string>Keep not linked nodes in db (rehearsed nodes and deleted nodes are saved).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="0">
+                     <widget class="QLineEdit" name="lineEdit_targetDatabaseVersion">
+                      <property name="placeholderText">
+                       <string>major.minor</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_299">
+                      <property name="text">
+                       <string>RGB image compression format (should be &quot;.jpg&quot; or &quot;.png&quot;).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -12137,14 +12318,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="0">
-                     <widget class="QCheckBox" name="checkBox_dbInMemory">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="7" column="0">
+                    <item row="8" column="0">
                      <widget class="QComboBox" name="comboBox_dbJournalMode">
                       <item>
                        <property name="text">
@@ -12173,20 +12347,7 @@ When set to false, no new words are added to dictionary, so no more updates are 
                       </item>
                      </widget>
                     </item>
-                    <item row="2" column="1">
-                     <widget class="QLabel" name="label_74">
-                      <property name="text">
-                       <string>Using database in the memory instead of a file on the hard disk (this greatly improve database access performance but it requires more RAM memory).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="1">
+                    <item row="10" column="1">
                      <widget class="QLabel" name="label_120">
                       <property name="text">
                        <string>Sqlite3 temp store,
@@ -12200,132 +12361,23 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="9" column="0">
-                     <widget class="QComboBox" name="comboBox_dbTempStore">
-                      <item>
-                       <property name="text">
-                        <string>DEFAULT</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>FILE</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>MEMORY</string>
-                       </property>
-                      </item>
-                     </widget>
+                    <item row="4" column="0">
+                     <widget class="QLineEdit" name="lineEdit_rgbCompressionFormat"/>
                     </item>
-                    <item row="1" column="0">
-                     <widget class="QCheckBox" name="general_checkBox_keepNotLinkedNodes">
+                    <item row="5" column="0">
+                     <widget class="QLineEdit" name="lineEdit_depthCompressionFormat"/>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QCheckBox" name="checkBox_dbInMemory">
                       <property name="text">
                        <string/>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="6" column="0">
-                     <widget class="QSpinBox" name="spinBox_dbCacheSize">
-                      <property name="minimum">
-                       <number>10</number>
-                      </property>
-                      <property name="maximum">
-                       <number>999999</number>
-                      </property>
-                      <property name="singleStep">
-                       <number>100</number>
-                      </property>
-                      <property name="value">
-                       <number>2000</number>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="6" column="1">
-                     <widget class="QLabel" name="label_75">
-                      <property name="text">
-                       <string>Sqlite3 cache size,
-see Sqlite3 doc 'PRAGMA cache_size'.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="7" column="1">
-                     <widget class="QLabel" name="label_77">
-                      <property name="text">
-                       <string>Sqlite3 journal mode,
-see Sqlite3 doc 'PRAGMA journal_mode'.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="8" column="1">
-                     <widget class="QLabel" name="label_89">
-                      <property name="text">
-                       <string>Sqlite3 synchronous,
-see Sqlite3 doc 'PRAGMA synchronous'.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="8" column="0">
-                     <widget class="QComboBox" name="comboBox_dbSynchronous">
-                      <property name="currentIndex">
-                       <number>2</number>
-                      </property>
-                      <item>
-                       <property name="text">
-                        <string>OFF</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>NORMAL</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>FULL</string>
-                       </property>
-                      </item>
-                     </widget>
-                    </item>
-                    <item row="1" column="1">
-                     <widget class="QLabel" name="label_keepRehearsed">
-                      <property name="text">
-                       <string>Keep not linked nodes in db (rehearsed nodes and deleted nodes are saved).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
                     <item row="3" column="1">
-                     <widget class="QLabel" name="label_299">
+                     <widget class="QLabel" name="label_787">
                       <property name="text">
-                       <string>RGB image compression format (should be &quot;.jpg&quot; or &quot;.png&quot;).</string>
+                       <string>In localization mode, open the database in read-only mode (ignored if SLAM mode is enabled). If memory management is enabled, it means that the latest state of the memory / occupancy grid / session won't be saved back in the database for next sessions. Last localization pose won't also be saved back in the database at the end of the session.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -12336,41 +12388,9 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                      </widget>
                     </item>
                     <item row="3" column="0">
-                     <widget class="QLineEdit" name="lineEdit_rgbCompressionFormat"/>
-                    </item>
-                    <item row="4" column="1">
-                     <widget class="QLabel" name="label_760">
+                     <widget class="QCheckBox" name="checkBox_dbReadOnly">
                       <property name="text">
-                       <string>Depth image compression format (should be &quot;.png&quot; or &quot;.rvl&quot;).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="0">
-                     <widget class="QLineEdit" name="lineEdit_depthCompressionFormat"/>
-                    </item>
-                    <item row="5" column="1">
-                     <widget class="QLabel" name="label_610">
-                      <property name="text">
-                       <string>Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., &quot;0.19&quot; vs &quot;0.20&quot; or &quot;1.0&quot; vs &quot;2.0&quot;). Patch version is ignored (e.g., &quot;0.20.1&quot; and &quot;0.20.3&quot; will generate a &quot;0.20&quot; database).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="0">
-                     <widget class="QLineEdit" name="lineEdit_targetDatabaseVersion">
-                      <property name="placeholderText">
-                       <string>major.minor</string>
+                       <string/>
                       </property>
                      </widget>
                     </item>

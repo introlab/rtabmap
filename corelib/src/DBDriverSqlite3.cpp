@@ -320,7 +320,7 @@ bool DBDriverSqlite3::getDatabaseVersionQuery(std::string & version) const
 	return false;
 }
 
-bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten)
+bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten, bool readOnly)
 {
 	this->disconnectDatabaseQuery();
 	// Open a database connection
@@ -332,7 +332,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	if(!url.empty())
 	{
 		dbFileExist = UFile::exists(url.c_str());
-		if(dbFileExist && overwritten)
+		if(dbFileExist && overwritten && !readOnly)
 		{
 			UINFO("Deleting database %s...", url.c_str());
 			UASSERT(UFile::erase(url.c_str()) == 0);
@@ -354,12 +354,12 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		{
 			ULOGGER_INFO("Using empty database in the memory.");
 		}
-		rc = sqlite3_open_v2(":memory:", &_ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
+		rc = sqlite3_open_v2(":memory:", &_ppDb, readOnly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	}
 	else
 	{
 		ULOGGER_INFO("Using database \"%s\" from the hard drive.", url.c_str());
-		rc = sqlite3_open_v2(url.c_str(), &_ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
+		rc = sqlite3_open_v2(url.c_str(), &_ppDb, readOnly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	}
 	if(rc != SQLITE_OK)
 	{

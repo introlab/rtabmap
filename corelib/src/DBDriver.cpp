@@ -83,12 +83,12 @@ void DBDriver::closeConnection(bool save, const std::string & outputUrl)
 	UDEBUG("");
 }
 
-bool DBDriver::openConnection(const std::string & url, bool overwritten)
+bool DBDriver::openConnection(const std::string & url, bool overwritten, bool readOnly)
 {
 	UDEBUG("");
 	_url = url;
 	_dbSafeAccessMutex.lock();
-	if(this->connectDatabaseQuery(url, overwritten))
+	if(this->connectDatabaseQuery(url, overwritten, readOnly))
 	{
 		_dbSafeAccessMutex.unlock();
 		return true;

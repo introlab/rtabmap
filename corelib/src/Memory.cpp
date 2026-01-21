@@ -83,6 +83,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rgbCompressionFormat(Parameters::defaultMemImageCompressionFormat()),
 	_depthCompressionFormat(Parameters::defaultMemDepthCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
+	_localizationReadOnly(Parameters::defaultMemLocalizationReadOnly()),
 	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
 	_flannIndexSaved(Parameters::defaultKpFlannIndexSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
@@ -214,8 +215,9 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	{
 		_dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
 		success = false;
+		bool dbReadOnly = !this->isIncremental() && _localizationReadOnly;
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\"..."));
-		if(_dbDriver->openConnection(dbUrl, dbOverwritten))
+		if(_dbDriver->openConnection(dbUrl, dbOverwritten, dbReadOnly))
 		{
 			success = true;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));
@@ -531,16 +533,23 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 
 	UDEBUG("_memoryChanged=%d _linksChanged=%d databaseNameChanged=%d", _memoryChanged?1:0, _linksChanged?1:0, databaseNameChanged?1:0);
 
-	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged))
+	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged) || this->isReadOnly())
 	{
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
 
 		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
-			saveFlannIndex(postInitClosingEvents);
+			if(!this->isReadOnly()) {
+				saveFlannIndex(postInitClosingEvents);
+			}
+			else if(_memoryChanged || _linksChanged || databaseNameChanged)
+			{
+				UWARN("Memory has been modified (nodes=%s links=%s name=%s) but the database is read-only, changes are not saved to database.",
+					_memoryChanged?"true":"false", _linksChanged?"true":"false", databaseNameChanged?"true":"false");
+			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-			_dbDriver->closeConnection(false, ouputDatabasePath);
+			_dbDriver->closeConnection(false);
 			delete _dbDriver;
 			_dbDriver = 0;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
@@ -663,6 +672,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
 	Parameters::parse(params, Parameters::kKpFlannIndexSaved(), _flannIndexSaved);
+	Parameters::parse(params, Parameters::kMemLocalizationReadOnly(), _localizationReadOnly);
 
 	if(_markerAngVariance>=9999)
 	{

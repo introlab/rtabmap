@@ -1070,6 +1070,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Database
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
+	_ui->checkBox_dbReadOnly->setObjectName(Parameters::kMemLocalizationReadOnly().c_str());
 	_ui->spinBox_dbCacheSize->setObjectName(Parameters::kDbSqlite3CacheSize().c_str());
 	_ui->comboBox_dbJournalMode->setObjectName(Parameters::kDbSqlite3JournalMode().c_str());
 	_ui->comboBox_dbSynchronous->setObjectName(Parameters::kDbSqlite3Synchronous().c_str());
