@@ -20,7 +20,7 @@
 #ifndef UTILITE_H
 #define UTILITE_H
 
-/** \mainpage UtiLite
+/** \defgroup UtiLite
   *
   * \section intro Introduction
   * <a href="http://utilite.googlecode.com">UtiLite</a> is a simple library to create small cross-platform

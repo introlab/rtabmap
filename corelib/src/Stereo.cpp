@@ -79,8 +79,15 @@ std::vector<cv::Point2f> Stereo::computeCorrespondences(
 		const std::vector<cv::Point2f> & leftCorners,
 		std::vector<unsigned char> & status) const
 {
+	if(leftCorners.empty())
+	{
+		status.clear();
+		return std::vector<cv::Point2f>();
+	}
+	UASSERT(!leftImage.empty() && !rightImage.empty());
 	UASSERT(leftImage.type() == CV_8UC1);
 	UASSERT(rightImage.type() == CV_8UC1);
+	UASSERT(leftImage.size() == rightImage.size());
 	std::vector<cv::Point2f> rightCorners;
 	UDEBUG("util2d::calcStereoCorrespondences() begin");
 	rightCorners = util2d::calcStereoCorrespondences(
@@ -147,8 +154,15 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 		const std::vector<cv::Point2f> & leftCorners,
 		std::vector<unsigned char> & status) const
 {
+	if(leftCorners.empty())
+	{
+		status.clear();
+		return std::vector<cv::Point2f>();
+	}
+	UASSERT(!leftImage.empty() && !rightImage.empty());
 	UASSERT(leftImage.type() == CV_8UC1);
 	UASSERT(rightImage.type() == CV_8UC1);
+	UASSERT(leftImage.size() == rightImage.size());
 	std::vector<cv::Point2f> rightCorners;
 	std::vector<float> err;
 #ifdef HAVE_OPENCV_CUDAOPTFLOW

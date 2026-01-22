@@ -51,6 +51,7 @@ Transform transformFromXYZCorrespondencesSVD(
 	const pcl::PointCloud<pcl::PointXYZ> & cloud1,
 	const pcl::PointCloud<pcl::PointXYZ> & cloud2)
 {
+	UASSERT(cloud1.size() == cloud2.size());
 	pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> svd;
 
 	// Perform the alignment
@@ -205,7 +206,7 @@ Transform transformFromXYZCorrespondences(
 				{
 					double variance =  model->computeVariance();
 					UASSERT(uIsFinite(variance));
-					*covariance *= variance;
+					*covariance *= variance + 1e-6;
 				}
 
 				// get best transformation
@@ -256,7 +257,13 @@ void computeVarianceAndCorrespondencesImpl(
 	est->setInputTarget(target);
 	est->setInputSource(source);
 	pcl::Correspondences correspondences;
-	est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	if(reciprocal) {
+		est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
+	else {
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
+
 
 	if(correspondences.size())
 	{
@@ -340,7 +347,12 @@ void computeVarianceAndCorrespondencesImpl(
 	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
 	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
 	pcl::Correspondences correspondences;
-	est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	if(reciprocal) {
+		est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
+	else {
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
 
 	if(correspondences.size()>=3)
 	{
@@ -411,7 +423,7 @@ Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_sourc
 	// Set the transformation epsilon (criterion 2)
 	icp.setTransformationEpsilon (epsilon*epsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
-	//icp.setEuclideanFitnessEpsilon (1);
+	//icp.setEuclideanFitnessEpsilon (-std::numeric_limits<double>::max());
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
 
 	// Perform the alignment
@@ -486,6 +498,7 @@ Transform icpPointToPlaneImpl(
 	{
 		// FIXME probably an estimation approach already 2D like in icp() version above exists.
 		t = t.to3DoF();
+		pcl::transformPointCloudWithNormals(*cloud_source, cloud_source_registered, t.toEigen4f());
 	}
 
 	return t;

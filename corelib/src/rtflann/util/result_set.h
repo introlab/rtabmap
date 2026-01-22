@@ -107,7 +107,7 @@ public:
         capacity_(capacity_)
     {
 		// reserving capacity to prevent memory re-allocations
-		dist_index_.resize(capacity_, DistIndex(std::numeric_limits<DistanceType>::max(),-1));
+		dist_index_.resize(capacity_, DistIndex(std::numeric_limits<DistanceType>::max(),std::numeric_limits<size_t>::max()));
     	clear();
     }
 
@@ -210,7 +210,7 @@ public:
     KNNResultSet(int capacity) : capacity_(capacity)
     {
 		// reserving capacity to prevent memory re-allocations
-		dist_index_.resize(capacity_, DistIndex(std::numeric_limits<DistanceType>::max(),-1));
+		dist_index_.resize(capacity_, DistIndex(std::numeric_limits<DistanceType>::max(),std::numeric_limits<size_t>::max()));
     	clear();
     }
 
@@ -252,7 +252,8 @@ public:
 #endif
             {
                 // Check for duplicate indices
-                for (size_t j = i - 1; dist_index_[j].dist_ == dist && j--;) {
+                // https://github.com/flann-lib/flann/pull/472
+                for (size_t j = i; j-- && dist_index_[j].dist_ == dist;) {
                     if (dist_index_[j].index_ == index) {
                         return;
                     }

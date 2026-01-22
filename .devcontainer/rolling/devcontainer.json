@@ -14,5 +14,5 @@
       "terminal.integrated.defaultProfile.linux": "bash"
     },
     "remoteUser": "vscode",
-    "runArgs": ["--privileged", "--network=host"]
+    "runArgs": ["--privileged"]
 }
