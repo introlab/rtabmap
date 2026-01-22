@@ -4343,7 +4343,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool updateTimestamp) const
 {
-	UDEBUG("nodes = %d", nodes.size());
+	UDEBUG("nodes = %d, updateTimestamp = %s", nodes.size(), updateTimestamp?"true":"false");
 	if(_ppDb && nodes.size())
 	{
 		UTimer timer;
@@ -4382,7 +4382,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		{
 			s = *i;
 			int index = 1;
-			if(s)
+			if(s && (s->isModified() || updateTimestamp))
 			{
 				rc = sqlite3_bind_int(ppStmt, index++, s->getWeight());
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -4406,7 +4406,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 
 				//step
 				rc=sqlite3_step(ppStmt);
-				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s (node id = %d map=%d)", _version.c_str(), sqlite3_errmsg(_ppDb), s->id(), s->mapId()).c_str());
 
 				rc = sqlite3_reset(ppStmt);
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());

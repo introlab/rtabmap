@@ -45,7 +45,7 @@ DBDriver * DBDriver::create(const ParametersMap & parameters)
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
 	_emptyTrashesTime(0),
-	_timestampUpdate(true)
+	_timestampUpdate(false)
 {
 	this->parseParameters(parameters);
 }
@@ -73,7 +73,15 @@ void DBDriver::closeConnection(bool save, const std::string & outputUrl)
 	else
 	{
 		_trashesMutex.lock();
+		for(auto & iter: _trashSignatures)
+		{
+			delete iter.second;
+		}
 		_trashSignatures.clear();
+		for(auto & iter: _trashVisualWords)
+		{
+			delete iter.second;
+		}
 		_trashVisualWords.clear();
 		_trashesMutex.unlock();
 	}

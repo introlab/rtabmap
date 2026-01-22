@@ -186,10 +186,6 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			_dbDriver = 0; // HACK for the clear() below to think that there is no db
 		}
 	}
-	else if(!_memoryChanged && _linksChanged)
-	{
-		_dbDriver->setTimestampUpdateEnabled(false); // update links only
-	}
 	this->clear();
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 
@@ -213,7 +209,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	bool success = true;
 	if(_dbDriver)
 	{
-		_dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
+
 		success = false;
 		bool dbReadOnly = !this->isIncremental() && _localizationReadOnly;
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\"..."));
@@ -565,12 +561,6 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		if(!_memoryChanged && _dbDriver)
 		{
 			saveFlannIndex(postInitClosingEvents);
-
-			if(_linksChanged) {
-				// don't update the time stamps!
-				UDEBUG("");
-				_dbDriver->setTimestampUpdateEnabled(false);
-			}
 		}
 		this->clear();
 		if(_dbDriver)
@@ -1875,6 +1865,7 @@ void Memory::clear()
 			uInsert(parameters, parameters_);
 			parameters.erase(Parameters::kRtabmapWorkingDirectory()); // don't save working directory as it is machine dependent
 			UDEBUG("");
+			_dbDriver->setTimestampUpdateEnabled(true); // Only re-stamp if we updated the memory
 			_dbDriver->addInfoAfterRun(memSize,
 					_lastSignature?_lastSignature->id():0,
 					UProcessInfo::getMemoryUsage(),
@@ -1948,6 +1939,7 @@ void Memory::clear()
 		_dbDriver->join(true);
 		cleanUnusedWords();
 		_dbDriver->emptyTrashes();
+		_dbDriver->setTimestampUpdateEnabled(false);
 	}
 	_vwd->clear(_dbDriver!=NULL);
 	UDEBUG("");
@@ -3636,7 +3628,7 @@ void Memory::updateLink(const Link & link, bool updateInDatabase)
 
 			if(oldType!=Link::kVirtualClosure || link.type()!=Link::kVirtualClosure)
 			{
-				_linksChanged = true;
+				_linksChanged = _incrementalMemory || (fromS->isSaved() && toS->isSaved());
 			}
 		}
 		else
