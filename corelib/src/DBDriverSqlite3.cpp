@@ -5751,7 +5751,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 
 void DBDriverSqlite3::saveFlannIndexQuery(const std::vector<unsigned char> & data) const
 {
-	UDEBUG("");
+	UDEBUG("data size = %ld bytes", data.size());
 	if(_ppDb && uStrNumCmp(_version, "0.23.0") >= 0)
 	{
 		UTimer timer;

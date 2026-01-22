@@ -242,6 +242,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		if(loadAllNodesInWM)
 		{
+			UDEBUG("Loading all nodes to WM...");
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 			std::set<int> ids;
 			_dbDriver->getAllNodeIds(ids, true);
@@ -249,6 +250,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		}
 		else
 		{
+			UDEBUG("Loading last nodes to WM...");
 			// load previous session working memory
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
 			_dbDriver->loadLastNodes(dbSignatures, !_loadVisualLocalFeaturesOnInit);
