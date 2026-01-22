@@ -211,9 +211,8 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	{
 
 		success = false;
-		bool dbReadOnly = !this->isIncremental() && _localizationReadOnly;
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\"..."));
-		if(_dbDriver->openConnection(dbUrl, dbOverwritten, dbReadOnly))
+		if(_dbDriver->openConnection(dbUrl, dbOverwritten, isReadOnly()))
 		{
 			success = true;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));

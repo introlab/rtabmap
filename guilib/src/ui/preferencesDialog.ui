@@ -12377,7 +12377,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                     <item row="3" column="1">
                      <widget class="QLabel" name="label_787">
                       <property name="text">
-                       <string>In localization mode, open the database in read-only mode (ignored if SLAM mode is enabled). If memory management is enabled, it means that the latest state of the memory / occupancy grid / session won't be saved back in the database for next sessions. Last localization pose won't also be saved back in the database at the end of the session.</string>
+                       <string>In localization mode, open the database in read-only mode (ignored in SLAM mode). Currrenty incompatible with memory management (i.e., Time and/or Memory thresholds cannot be used) and if there are disjoint sessions in working memory. Last localization pose won't be saved back in the database at the end of the session, so the robot will always restart to original last localization pose, unless RGBD/StartAtOrigin is used or an external initial pose is provided on initialization.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
