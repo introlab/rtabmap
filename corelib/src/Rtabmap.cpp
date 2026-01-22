@@ -507,6 +507,11 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	}
 	if(_memory)
 	{
+		if(_memory->isReadOnly() && databaseSaved)
+		{
+			UWARN("Database is read-only, latest optimized poses, latest localization pose and latest state of the memory are not saved.");
+			databaseSaved = false;
+		}
 		if(databaseSaved)
 		{
 			if(_memory->isGraphReduced() && _memory->isIncremental())

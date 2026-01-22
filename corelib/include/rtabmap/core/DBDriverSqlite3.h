@@ -51,7 +51,7 @@ public:
 	void setTempStore(int tempStore);
 
 protected:
-	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false);
+	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false, bool readOnly = false);
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "");
 	virtual bool isConnectedQuery() const;
 	virtual unsigned long getMemoryUsedQuery() const; // In bytes

@@ -211,6 +211,7 @@ public:
 	std::set<int> getAllSignatureIds(bool ignoreChildren = true) const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
+	bool isReadOnly() const {return !_incrementalMemory && _localizationReadOnly;}
 	bool isLocalizationDataSaved() const {return _localizationDataSaved;}
 	const Signature * getSignature(int id) const;
 	bool isInSTM(int signatureId) const {return _stMem.find(signatureId) != _stMem.end();}
@@ -307,6 +308,7 @@ private:
 	std::string _rgbCompressionFormat;
 	std::string _depthCompressionFormat;
 	bool _incrementalMemory;
+	bool _localizationReadOnly;
 	bool _localizationDataSaved;
 	bool _flannIndexSaved;
 	bool _reduceGraph;
