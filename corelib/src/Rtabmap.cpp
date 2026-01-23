@@ -385,19 +385,19 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 					!_optimizeFromGraphEnd?_memory->getWorkingMem().lower_bound(1)->first:_memory->getWorkingMem().rbegin()->first,
 					false, _optimizedPoses, cov, &_constraints);
 		}
-		if(!_optimizedPoses.empty())
+		if(_optimizedPoses.lower_bound(1) != _optimizedPoses.end())
 		{
 			if(_restartAtOrigin)
 			{
-				UWARN("last localization pose is ignored (%s=true), assuming we start at the origin of the map.", Parameters::kRGBDStartAtOrigin().c_str());
-				lastPose = _optimizedPoses.begin()->second;
+				UWARN("last localization pose is ignored (%s=true), assuming we start at the first node of the map.", Parameters::kRGBDStartAtOrigin().c_str());
+				lastPose = _optimizedPoses.lower_bound(1)->second;
 			}
 			_lastLocalizationPose = lastPose;
 
 			UINFO("Loaded optimizedPoses=%d firstPose %d=%s lastLocalizationPose=%s",
 					_optimizedPoses.size(),
-					_optimizedPoses.begin()->first,
-					_optimizedPoses.begin()->second.prettyPrint().c_str(),
+					_optimizedPoses.lower_bound(1)->first,
+					_optimizedPoses.lower_bound(1)->second.prettyPrint().c_str(),
 					_lastLocalizationPose.prettyPrint().c_str());
 
 			if(_constraints.empty())
@@ -411,7 +411,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 			UTimer time;
 			std::map<int, float> likelihood;
 			likelihood.insert(std::make_pair(Memory::kIdVirtual, 1));
-			for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+			for(std::map<int, Transform>::iterator iter=_optimizedPoses.lower_bound(1); iter!=_optimizedPoses.end(); ++iter)
 			{
 				if(_memory->getSignature(iter->first))
 				{
