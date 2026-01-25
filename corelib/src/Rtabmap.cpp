@@ -728,29 +728,24 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 			isMemIncremental != _memory->isIncremental())
 		{
 			// Mode has changed from Mapping to Localization, cleanup the local graph
-			if(_memory->isGraphReduced() && _memory->isIncremental())
+			if(_memory->isIncremental())
 			{
-				// Force reducing graph, then remove filtered nodes from the optimized poses
-				std::map<int, int> reducedIds;
-				_memory->incrementMapId(&reducedIds);
-				for(std::map<int, int>::iterator iter=reducedIds.begin(); iter!=reducedIds.end(); ++iter)
+				if(_memory->isGraphReduced())
 				{
-					_optimizedPoses.erase(iter->first);
+					// Force reducing graph, then remove filtered nodes from the optimized poses
+					std::map<int, int> reducedIds;
+					_memory->incrementMapId(&reducedIds);
+					for(std::map<int, int>::iterator iter=reducedIds.begin(); iter!=reducedIds.end(); ++iter)
+					{
+						_optimizedPoses.erase(iter->first);
+					}
 				}
+				_odomCachePoses.clear();
+				_odomCacheConstraints.clear();
 			}
 
 			// In both cases, we save the latest optimized graph and latest localization pose
 			_memory->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
-
-			// Mode changed from Localization to Mapping, clear local graph
-			if(!_memory->isIncremental()) {
-				_optimizedPoses.clear();
-				_lastLocalizationPose.setNull();
-				_mapCorrection.setIdentity();
-				_mapCorrectionBackup.setNull();
-				_localizationCovariance = cv::Mat();
-				_lastLocalizationNodeId = 0;
-			}
 		}
 
 		_memory->parseParameters(parameters);
@@ -764,12 +759,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		if(_createGlobalScanMap && !_memory->isIncremental() && _globalScanMap.empty() && !_optimizedPoses.empty())
 		{
 			this->createGlobalScanMap();
-		}
-
-		if(_memory->isIncremental())
-		{
-			_odomCachePoses.clear();
-			_odomCacheConstraints.clear();
 		}
 	}
 
@@ -1794,7 +1783,7 @@ bool Rtabmap::process(
 			}
 		}
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
-		if(!_memory->isIncremental() && signature->getWeight() >= 0)
+		if(signature->getWeight() >= 0)
 		{
 			UDEBUG("Update odometry localization cache (size=%d/%d)", (int)_odomCachePoses.size(), _maxOdomCacheSize);
 			if(!_odomCachePoses.empty())
@@ -2672,7 +2661,9 @@ bool Rtabmap::process(
 				std::map<int, float> nearestIds = graph::findNearestNodes(signature->id(), _optimizedPoses, _localRadius);
 				UDEBUG("nearestIds=%d/%d", (int)nearestIds.size(), (int)_optimizedPoses.size());
 				std::map<int, Transform> nearestPoses;
+				std::map<int, Transform> optimizedPosesWithOdomCache;
 				std::multimap<int, int> links;
+				std::map<int, Transform> * refPoses = &_optimizedPoses;
 				if(_memory->isIncremental() && _proximityMaxGraphDepth>0)
 				{
 					// get bidirectional links
@@ -2684,6 +2675,25 @@ bool Rtabmap::process(
 							links.insert(std::make_pair(iter->second.to(), iter->second.from())); // <->
 						}
 					}
+					if(_odomCachePoses.size() > 1)
+					{
+						// Add odometry cache if it contains a loop closure
+						// That could happen when we just switched from localization mode to 
+						// mapping mode while being localized on the previous session.
+						optimizedPosesWithOdomCache = _optimizedPoses;
+						optimizedPosesWithOdomCache.insert(_odomCachePoses.begin(), _odomCachePoses.end());
+						refPoses = &optimizedPosesWithOdomCache;
+						for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end(); ++iter)
+						{
+							if(uContains(optimizedPosesWithOdomCache, iter->second.from()) && 
+							   uContains(optimizedPosesWithOdomCache, iter->second.to()) && 
+							   iter->second.from() != iter->second.to())
+							{
+								links.insert(std::make_pair(iter->second.from(), iter->second.to()));
+								links.insert(std::make_pair(iter->second.to(), iter->second.from())); // <->
+							}
+						}
+					}
 				}
 				for(std::map<int, float>::iterator iter=nearestIds.lower_bound(1); iter!=nearestIds.end(); ++iter)
 				{
@@ -2691,7 +2701,7 @@ bool Rtabmap::process(
 					{
 						if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
 						{
-							std::list<std::pair<int, Transform> > path = graph::computePath(_optimizedPoses, links, signature->id(), iter->first);
+							std::list<std::pair<int, Transform> > path = graph::computePath(*refPoses, links, signature->id(), iter->first);
 							UDEBUG("Graph depth to %d = %ld", iter->first, path.size());
 							if(!path.empty() && (int)path.size() <= _proximityMaxGraphDepth)
 							{
@@ -4318,6 +4328,20 @@ bool Rtabmap::process(
 			// If there is a too small displacement, remove the node
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
+
+			// Update odom cache (if we just switched from mapping mode to localization mode)
+			_odomCachePoses.erase(signature->id());
+			for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end();)
+			{
+				if(iter->second.from() == signature->id() || iter->second.to() == signature->id())
+				{
+					_odomCacheConstraints.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
 		}
 		else
 		{
