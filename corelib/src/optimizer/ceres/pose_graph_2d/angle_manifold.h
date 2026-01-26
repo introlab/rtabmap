@@ -77,7 +77,7 @@ class AngleManifold {
 
 #else
 
-class AngleManfold {
+class AngleManifold {
  public:
 
   template <typename T>
@@ -90,7 +90,7 @@ class AngleManfold {
   }
 
   static ceres::LocalParameterization* Create() {
-    return (new ceres::AutoDiffLocalParameterization<AngleManfold, 1, 1>);
+    return (new ceres::AutoDiffLocalParameterization<AngleManifold, 1, 1>);
   }
 };
 
