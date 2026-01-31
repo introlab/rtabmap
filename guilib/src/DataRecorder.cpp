@@ -72,13 +72,15 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 		ParametersMap customParameters;
 		customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // deactivate rehearsal
 		customParameters.insert(ParametersPair(Parameters::kKpMaxFeatures(), "-1")); // deactivate keypoints extraction
-		customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "true")); // to keep images
+		customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "true")); // make sure we keep images
 		customParameters.insert(ParametersPair(Parameters::kMemMapLabelsAdded(), "false")); // don't create map labels
+		customParameters.insert(ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false")); // make sure we don't create local grids
 		customParameters.insert(ParametersPair(Parameters::kMemBadSignaturesIgnored(), "true")); // make sure memory cleanup is done
-		customParameters.insert(ParametersPair(Parameters::kMemIntermediateNodeDataKept(), "true"));
-		if(!recordInRAM)
+		customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "true")); // make sure we save every frame
+
+		if(recordInRAM)
 		{
-			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
+			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "true"));
 		}
 		memory_ = new Memory();
 		if(!memory_->init(path.toStdString(), true, customParameters))
