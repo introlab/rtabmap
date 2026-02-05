@@ -543,7 +543,7 @@ bool OptimizerTORO::loadGraph(
 				}
 				else
 				{
-					UFATAL("Referred poses from the link not exist!");
+					UERROR("Referred poses from the link (%d->%d) don't exist! Link ignored!", idFrom, idTo);
 				}
 			}
 			else if(strList.size())

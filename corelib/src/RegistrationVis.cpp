@@ -2184,6 +2184,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				// We take the second eigen value
 				info.inliersDistribution = pca_analysis.eigenvalues.at<float>(0, 1);
 
+				UDEBUG("Visual distribution: %f (eigen values = %f %f)", info.inliersDistribution, pca_analysis.eigenvalues.at<float>(0, 0), pca_analysis.eigenvalues.at<float>(0, 1));
+
 				if(info.inliersDistribution < _minInliersDistributionThr)
 				{
 					msg = uFormat("The distribution (%f) of inliers is under %s threshold (%f)",

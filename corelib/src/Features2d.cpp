@@ -1414,7 +1414,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 				}
 
 				//Keep track of the data, to be easier to manage the data in the next step
-				hessianMap.insert(std::pair<float, int>(cudaSiftData_->h_data[i].sharpness, i));
+				hessianMap.insert(std::pair<float, int>(abs(cudaSiftData_->h_data[i].sharpness), i));
 			}
 
 			if((int)hessianMap.size() < maxKeypoints)
@@ -1434,7 +1434,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 				keypoints[k].pt.y = cudaSiftData_->h_data[i].ypos;
 				keypoints[k].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
 				keypoints[k].angle = cudaSiftData_->h_data[i].orientation;
-				keypoints[k].response = cudaSiftData_->h_data[i].sharpness; 
+				keypoints[k].response = abs(cudaSiftData_->h_data[i].sharpness); 
 				keypoints[k].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upscale_?1:0);
 			}
 		}
