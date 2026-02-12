@@ -855,6 +855,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_detectMore_intraSession->setChecked(true);
 	ui_->checkBox_detectMore_interSession->setChecked(true);
 	ui_->checkBox_opt_graph_as_guess->setChecked(true);
+	ui_->spinBox_fromToMapId->setValue(-1);
 }
 
 void DatabaseViewer::openDatabase()

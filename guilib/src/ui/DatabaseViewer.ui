@@ -1729,7 +1729,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>403</width>
+          <width>314</width>
           <height>188</height>
          </rect>
         </property>
@@ -1885,8 +1885,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>518</width>
-          <height>1071</height>
+          <width>276</width>
+          <height>1598</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2604,7 +2604,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-117</y>
+          <y>-152</y>
           <width>403</width>
           <height>287</height>
          </rect>
@@ -2781,7 +2781,7 @@
             <number>9999</number>
            </property>
            <property name="value">
-            <number>1</number>
+            <number>-1</number>
            </property>
           </widget>
          </item>
@@ -2799,8 +2799,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>428</width>
-          <height>196</height>
+          <width>181</width>
+          <height>485</height>
          </rect>
         </property>
         <attribute name="label">
