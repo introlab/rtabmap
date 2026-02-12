@@ -4297,6 +4297,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	bool intraSession = ui_->checkBox_detectMore_intraSession->isChecked();
 	bool interSession = ui_->checkBox_detectMore_interSession->isChecked();
 	bool useOptimizedGraphAsGuess = ui_->checkBox_opt_graph_as_guess->isChecked();
+	int fromToMapId = ui_->spinBox_fromToMapId->value();
 	if(!interSession && !intraSession)
 	{
 		QMessageBox::warning(this, tr("Cannot detect more loop closures"), tr("Intra and inter session parameters are disabled! Enable one or both."));
@@ -4313,13 +4314,37 @@ void DatabaseViewer::detectMoreLoopClosures()
 				ui_->doubleSpinBox_detectMore_radius->value(),
 				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
 
-		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
-		progressDialog->appendText(tr("Looking for more loop closures, %1 clusters found.").arg(clusters.size()));
 		QApplication::processEvents();
 		if(progressDialog->isCanceled())
 		{
 			break;
 		}
+
+		progressDialog->appendText(tr("Looking for more loop closures: %1 clusters found.").arg(clusters.size()));
+		if(fromToMapId >=0)
+		{
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				int mapId = uValue(mapIds_, iter->first, 0);
+				if(mapId != fromToMapId)
+				{
+					iter = clusters.erase(iter);
+				}
+				else {
+					++iter;
+				}
+			}
+			progressDialog->appendText(tr("Looking for more loop closures: filtered %1 clusters for map session %2.").arg(clusters.size()).arg(fromToMapId));
+			if(clusters.empty())
+			{
+				progressDialog->appendText(tr("No clusters belong to mapId %1, aborting!").arg(fromToMapId));
+				QApplication::processEvents();
+				break;
+			}
+		}
+
+		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
+		QApplication::processEvents();
 
 		std::set<int> addedLinks;
 		int i=0;

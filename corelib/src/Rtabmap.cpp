@@ -5645,7 +5645,8 @@ int Rtabmap::detectMoreLoopClosures(
 		bool intraSession,
 		bool interSession,
 		const ProgressState * processState,
-		float clusterRadiusMin)
+		float clusterRadiusMin,
+		int toFromMapId)
 {
 	UDEBUG("");
 	UASSERT(iterations>0);
@@ -5696,7 +5697,28 @@ int Rtabmap::detectMoreLoopClosures(
 				clusterRadiusMax,
 				clusterAngle);
 
-		UINFO("Looking for more loop closures, clustering poses... found %d clusters.", (int)clusters.size());
+		UINFO("Looking for more loop closures: clustering poses... found %ld clusters.", clusters.size());
+
+		if(toFromMapId >=0)
+		{
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				int mapId = uValue(mapIds, iter->first, 0);
+				if(mapId != toFromMapId)
+				{
+					iter = clusters.erase(iter);
+				}
+				else {
+					++iter;
+				}
+			}
+			UINFO("Looking for more loop closures: filtered %ld clusters for map session %d.", clusters.size(), toFromMapId);
+			if(clusters.empty())
+			{
+				UERROR("No clusters belong to mapId %d, aborting.", toFromMapId);
+				break;
+			}
+		}
 
 		int i=0;
 		std::set<int> addedLinks;
@@ -5787,22 +5809,22 @@ int Rtabmap::detectMoreLoopClosures(
 								float maxLinearErrorRatio = 0.0f;
 								float maxAngularErrorRatio = 0.0f;
 								std::map<int, Transform> optimizedPoses;
-								std::multimap<int, Link> links;
+								std::multimap<int, Link> linksOut;
 								UASSERT(poses.find(fromId) != poses.end());
 								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
+								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, linksOut);
 								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
-								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
-								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
-								UASSERT(graph::findLink(links, from, to) != links.end());
-								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
+								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)linksOut.size()).c_str());
+								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)linksOut.size()).c_str());
+								UASSERT(graph::findLink(linksOut, from, to) != linksOut.end());
+								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, linksOut);
 								std::string msg;
 								if(optimizedPoses.size())
 								{
 									graph::computeMaxGraphErrors(
 											optimizedPoses,
-											links,
+											linksOut,
 											maxLinearErrorRatio,
 											maxAngularErrorRatio,
 											maxLinearError,

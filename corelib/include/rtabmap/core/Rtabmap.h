@@ -209,7 +209,8 @@ public:
 			bool intraSession = true,
 			bool interSession = true,
 			const ProgressState * state = 0,
-			float clusterRadiusMin = 0.0f);
+			float clusterRadiusMin = 0.0f,
+			int toFromMapId = -1);
 	bool globalBundleAdjustment(
 			int optimizerType = 1 /*g2o*/,
 			bool rematchFeatures = true,

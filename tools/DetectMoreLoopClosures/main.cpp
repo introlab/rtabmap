@@ -58,6 +58,7 @@ void showUsage()
 			"    -i #          Iterations (default 1).\n"
 			"    --intra       Add only intra-session loop closures.\n"
 			"    --inter       Add only inter-session loop closures.\n"
+			"    --session #   Add loop closures only from/to that map session ID (use -1 for last session).\n"
 			"\n%s", Parameters::showUsage());
 	exit(1);
 }
@@ -101,6 +102,7 @@ int main(int argc, char * argv[])
 	int iterations = 1;
 	bool intraSession = false;
 	bool interSession = false;
+	int fromToMapId = -2;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -171,6 +173,18 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--session") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				fromToMapId = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
 	}
 	ParametersMap inputParams = Parameters::parseArguments(argc,  argv);
 
@@ -227,9 +241,24 @@ int main(int argc, char * argv[])
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
 
+	if(fromToMapId <= -2)
+	{
+		fromToMapId = -1; // means all below
+	}
+	else
+	{
+		bool last = false;
+		if(fromToMapId == -1)
+		{
+			// get last session ID
+			fromToMapId = rtabmap.getMemory()->getMapId(rtabmap.getMemory()->getLastSignatureId(), true);
+		}
+		printf("From/To Session ID = %d%s\n", fromToMapId, last?" (last session)":"");
+	}
+
 	PrintProgressState progress;
 	printf("Detecting...\n");
-	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin);
+	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin, fromToMapId);
 	if(detected < 0)
 	{
 		if(!g_loopForever)
