@@ -5673,17 +5673,23 @@ int Rtabmap::detectMoreLoopClosures(
 	std::map<int, Transform> posesToCheckLoopClosures;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> links;
-	std::map<int, Signature> signatures; // some signatures may be in LTM, get them all
-	this->getGraph(poses, links, true, true, &signatures);
+	this->getGraph(poses, links, true, true);
 
 	std::map<int, int> mapIds;
 	UDEBUG("remove all invalid or intermediate nodes, fill mapIds");
 	for(std::map<int, Transform>::iterator iter=poses.upper_bound(0); iter!=poses.end();++iter)
 	{
-		if(signatures.at(iter->first).getWeight() >= 0)
+		Transform odom, gt;
+		int mapId, weight;
+		std::string l;
+		double s;
+		std::vector<float> v;
+		GPS gps;
+		EnvSensors srs;
+		if(_memory->getNodeInfo(iter->first, odom, mapId, weight, l, s, gt, v, gps, srs, true) && weight >= 0)
 		{
 			posesToCheckLoopClosures.insert(*iter);
-			mapIds.insert(std::make_pair(iter->first, signatures.at(iter->first).mapId()));
+			mapIds.insert(std::make_pair(iter->first, mapId));
 		}
 	}
 
@@ -5770,8 +5776,10 @@ int Rtabmap::detectMoreLoopClosures(
 						{
 							checkedLoopClosures.insert(std::make_pair(from, to));
 
-							UASSERT(signatures.find(from) != signatures.end());
-							UASSERT(signatures.find(to) != signatures.end());
+							Signature fromS = getSignatureCopy(from, false, true, false, false, true, false);
+							Signature toS = getSignatureCopy(to, false, true, false, false, true, false);
+							UASSERT(fromS.getWeight()>=0);
+							UASSERT(toS.getWeight()>=0);
 
 							Transform guess;
 							if(_proximityBySpace && uContains(poses, from) && uContains(poses, to))
@@ -5781,7 +5789,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 							RegistrationInfo info;
 							// use signatures instead of IDs because some signatures may not be in WM
-							Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), guess, &info);
+							Transform t = _memory->computeTransform(fromS, toS, guess, &info);
 
 							if(!t.isNull())
 							{
@@ -5790,11 +5798,11 @@ int Rtabmap::detectMoreLoopClosures(
 								//optimize the graph to see if the new constraint is globally valid
 
 								int fromId = from;
-								int mapId = signatures.at(from).mapId();
+								int mapId = fromS.mapId();
 								// use first node of the map containing from
-								for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
+								for(std::map<int, Transform>::iterator ster=posesToCheckLoopClosures.begin(); ster!=posesToCheckLoopClosures.end(); ++ster)
 								{
-									if(ster->second.mapId() == mapId)
+									if(uValue(mapIds, ster->first, 0) == mapId)
 									{
 										fromId = ster->first;
 										break;
