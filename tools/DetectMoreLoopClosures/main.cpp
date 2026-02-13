@@ -74,12 +74,17 @@ void sighandler(int sig)
 class PrintProgressState : public ProgressState
 {
 public:
+	PrintProgressState() :
+		stamp_(UTimer::now())
+	{}
 	virtual bool callback(const std::string & msg) const
 	{
 		if(!msg.empty())
-			printf("%s \n", msg.c_str());
+			printf("[%f] %s \n", UTimer::now()-stamp_, msg.c_str());
 		return g_loopForever;
 	}
+private:
+	double stamp_;
 };
 
 int main(int argc, char * argv[])
@@ -235,8 +240,10 @@ int main(int argc, char * argv[])
 	// Get the global optimized map
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
+	UTimer timer;
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
+	printf("Initialization... done! (%f sec)\n", timer.ticks());
 
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
