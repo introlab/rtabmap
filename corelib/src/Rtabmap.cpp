@@ -5669,7 +5669,8 @@ int Rtabmap::detectMoreLoopClosures(
 		bool intraSession,
 		bool interSession,
 		const ProgressState * processState,
-		float clusterRadiusMin)
+		float clusterRadiusMin,
+		int toFromMapId)
 {
 	UDEBUG("");
 	UASSERT(iterations>0);
@@ -5696,17 +5697,23 @@ int Rtabmap::detectMoreLoopClosures(
 	std::map<int, Transform> posesToCheckLoopClosures;
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> links;
-	std::map<int, Signature> signatures; // some signatures may be in LTM, get them all
-	this->getGraph(poses, links, true, true, &signatures);
+	this->getGraph(poses, links, true, true);
 
 	std::map<int, int> mapIds;
 	UDEBUG("remove all invalid or intermediate nodes, fill mapIds");
 	for(std::map<int, Transform>::iterator iter=poses.upper_bound(0); iter!=poses.end();++iter)
 	{
-		if(signatures.at(iter->first).getWeight() >= 0)
+		Transform odom, gt;
+		int mapId, weight;
+		std::string l;
+		double s;
+		std::vector<float> v;
+		GPS gps;
+		EnvSensors srs;
+		if(_memory->getNodeInfo(iter->first, odom, mapId, weight, l, s, gt, v, gps, srs, true) && weight >= 0)
 		{
 			posesToCheckLoopClosures.insert(*iter);
-			mapIds.insert(std::make_pair(iter->first, signatures.at(iter->first).mapId()));
+			mapIds.insert(std::make_pair(iter->first, mapId));
 		}
 	}
 
@@ -5720,7 +5727,28 @@ int Rtabmap::detectMoreLoopClosures(
 				clusterRadiusMax,
 				clusterAngle);
 
-		UINFO("Looking for more loop closures, clustering poses... found %d clusters.", (int)clusters.size());
+		UINFO("Looking for more loop closures: clustering poses... found %ld clusters.", clusters.size());
+
+		if(toFromMapId >=0)
+		{
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				int mapId = uValue(mapIds, iter->first, 0);
+				if(mapId != toFromMapId)
+				{
+					iter = clusters.erase(iter);
+				}
+				else {
+					++iter;
+				}
+			}
+			UINFO("Looking for more loop closures: filtered %ld clusters for map session %d.", clusters.size(), toFromMapId);
+			if(clusters.empty())
+			{
+				UERROR("No clusters belong to mapId %d, aborting.", toFromMapId);
+				break;
+			}
+		}
 
 		int i=0;
 		std::set<int> addedLinks;
@@ -5772,8 +5800,10 @@ int Rtabmap::detectMoreLoopClosures(
 						{
 							checkedLoopClosures.insert(std::make_pair(from, to));
 
-							UASSERT(signatures.find(from) != signatures.end());
-							UASSERT(signatures.find(to) != signatures.end());
+							Signature fromS = getSignatureCopy(from, false, true, false, false, true, false);
+							Signature toS = getSignatureCopy(to, false, true, false, false, true, false);
+							UASSERT(fromS.getWeight()>=0);
+							UASSERT(toS.getWeight()>=0);
 
 							Transform guess;
 							if(_proximityBySpace && uContains(poses, from) && uContains(poses, to))
@@ -5783,7 +5813,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 							RegistrationInfo info;
 							// use signatures instead of IDs because some signatures may not be in WM
-							Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), guess, &info);
+							Transform t = _memory->computeTransform(fromS, toS, guess, &info);
 
 							if(!t.isNull())
 							{
@@ -5792,11 +5822,11 @@ int Rtabmap::detectMoreLoopClosures(
 								//optimize the graph to see if the new constraint is globally valid
 
 								int fromId = from;
-								int mapId = signatures.at(from).mapId();
+								int mapId = fromS.mapId();
 								// use first node of the map containing from
-								for(std::map<int, Signature>::iterator ster=signatures.begin(); ster!=signatures.end(); ++ster)
+								for(std::map<int, Transform>::iterator ster=posesToCheckLoopClosures.begin(); ster!=posesToCheckLoopClosures.end(); ++ster)
 								{
-									if(ster->second.mapId() == mapId)
+									if(uValue(mapIds, ster->first, 0) == mapId)
 									{
 										fromId = ster->first;
 										break;
@@ -5811,22 +5841,22 @@ int Rtabmap::detectMoreLoopClosures(
 								float maxLinearErrorRatio = 0.0f;
 								float maxAngularErrorRatio = 0.0f;
 								std::map<int, Transform> optimizedPoses;
-								std::multimap<int, Link> links;
+								std::multimap<int, Link> linksOut;
 								UASSERT(poses.find(fromId) != poses.end());
 								UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
 								UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
+								_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, linksOut);
 								UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
-								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
-								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
-								UASSERT(graph::findLink(links, from, to) != links.end());
-								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
+								UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)linksOut.size()).c_str());
+								UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)linksOut.size()).c_str());
+								UASSERT(graph::findLink(linksOut, from, to) != linksOut.end());
+								optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, linksOut);
 								std::string msg;
 								if(optimizedPoses.size())
 								{
 									graph::computeMaxGraphErrors(
 											optimizedPoses,
-											links,
+											linksOut,
 											maxLinearErrorRatio,
 											maxAngularErrorRatio,
 											maxLinearError,

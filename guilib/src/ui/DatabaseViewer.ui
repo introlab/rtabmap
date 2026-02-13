@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>307</width>
+           <width>364</width>
            <height>389</height>
           </rect>
          </property>
@@ -392,7 +392,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>306</width>
+           <width>364</width>
            <height>389</height>
           </rect>
          </property>
@@ -1722,7 +1722,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1885,8 +1885,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>518</width>
-          <height>1071</height>
+          <width>276</width>
+          <height>1598</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2604,15 +2604,22 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>222</width>
-          <height>306</height>
+          <y>-152</y>
+          <width>403</width>
+          <height>287</height>
          </rect>
         </property>
         <attribute name="label">
          <string>Detect more loop closures</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
+         <item row="5" column="0">
+          <widget class="QCheckBox" name="checkBox_detectMore_interSession">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radiusMin">
            <property name="suffix">
@@ -2632,13 +2639,6 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_36">
-           <property name="text">
-            <string>Radius Min</string>
-           </property>
-          </widget>
-         </item>
          <item row="4" column="1">
           <widget class="QLabel" name="label_32">
            <property name="text">
@@ -2646,23 +2646,43 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="0">
-          <spacer name="verticalSpacer_5">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="label_29">
+         <item row="3" column="1">
+          <widget class="QLabel" name="label_31">
            <property name="text">
-            <string>Radius Max</string>
+            <string>Iterations</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QSpinBox" name="spinBox_detectMore_iterations">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
+           <property name="value">
+            <number>5</number>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="0">
+          <widget class="QCheckBox" name="checkBox_opt_graph_as_guess">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="1">
+          <widget class="QLabel" name="label_37">
+           <property name="text">
+            <string>Use optimized graph as guess</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -2670,25 +2690,6 @@
           <widget class="QLabel" name="label_30">
            <property name="text">
             <string>Angle</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_angle">
-           <property name="suffix">
-            <string> degrees</string>
-           </property>
-           <property name="decimals">
-            <number>0</number>
-           </property>
-           <property name="maximum">
-            <double>180.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>30.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -2711,18 +2712,18 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
-          <widget class="QSpinBox" name="spinBox_detectMore_iterations">
-           <property name="minimum">
-            <number>1</number>
+         <item row="8" column="0">
+          <spacer name="verticalSpacer_5">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
            </property>
-           <property name="maximum">
-            <number>100</number>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
            </property>
-           <property name="value">
-            <number>5</number>
-           </property>
-          </widget>
+          </spacer>
          </item>
          <item row="4" column="0">
           <widget class="QCheckBox" name="checkBox_detectMore_intraSession">
@@ -2731,10 +2732,17 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
-          <widget class="QLabel" name="label_31">
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_29">
            <property name="text">
-            <string>Iterations</string>
+            <string>Radius Max</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_36">
+           <property name="text">
+            <string>Radius Min</string>
            </property>
           </widget>
          </item>
@@ -2745,30 +2753,42 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
-          <widget class="QCheckBox" name="checkBox_detectMore_interSession">
-           <property name="text">
-            <string/>
+         <item row="2" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_angle">
+           <property name="suffix">
+            <string> degrees</string>
+           </property>
+           <property name="decimals">
+            <number>0</number>
+           </property>
+           <property name="maximum">
+            <double>180.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>30.000000000000000</double>
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
-          <widget class="QCheckBox" name="checkBox_opt_graph_as_guess">
-           <property name="text">
-            <string/>
+         <item row="7" column="0">
+          <widget class="QSpinBox" name="spinBox_fromToMapId">
+           <property name="minimum">
+            <number>-1</number>
            </property>
-           <property name="checked">
-            <bool>true</bool>
+           <property name="maximum">
+            <number>9999</number>
+           </property>
+           <property name="value">
+            <number>-1</number>
            </property>
           </widget>
          </item>
-         <item row="6" column="1">
-          <widget class="QLabel" name="label_37">
+         <item row="7" column="1">
+          <widget class="QLabel" name="label_38">
            <property name="text">
-            <string>Use optimized graph as guess</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
+            <string>From/to map ID only (-1 is all)</string>
            </property>
           </widget>
          </item>
