@@ -144,6 +144,7 @@ public:
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
 	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true);
+	int reduceNode(int id, float maxProximityDistance = 0.0f, bool keepLinkedInDb = false);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}

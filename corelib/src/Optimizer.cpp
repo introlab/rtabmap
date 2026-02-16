@@ -217,6 +217,10 @@ LinkIdKey(int id, Link::Type type) :
 		{
 			return true;
 		}
+		else if(k.type_ == Link::kNeighborMerged && type_ != Link::kNeighbor && type_ != Link::kNeighborMerged)
+		{
+			return false;
+		}
 		else
 		{
 			// normal link, sort by smallest to largest id
@@ -256,7 +260,7 @@ void Optimizer::getConnectedGraph(
 		}
 	}
 
-	while(nextPoses.size())
+	while(!nextPoses.empty())
 	{
 		// Fill up all nodes before landmarks
 		// For nodes, fill up all neightbor nodes before loop closure ones

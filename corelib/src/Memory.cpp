@@ -1185,114 +1185,162 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
+int Memory::reduceNode(int id, float maxProximityDistance, bool keepLinkedInDb)
 {
-	UDEBUG("Inserting node %d from STM in WM...", id);
-	UASSERT(_stMem.find(id) != _stMem.end());
 	Signature * s = this->_getSignature(id);
 	UASSERT(s!=0);
 
-	if(_reduceGraph)
+	if(!s->getLabel().empty())
 	{
-		bool merge = false;
-		const std::multimap<int, Link> & links = s->getLinks();
-		std::map<int, Link> neighbors;
-		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
-		{
-			if(!merge)
-			{
-				merge = iter->second.to() < s->id() && // should be a parent->child link
-						iter->second.to() != iter->second.from() &&
-						iter->second.type() != Link::kNeighbor &&
-						iter->second.type() != Link::kNeighborMerged &&
-						iter->second.userDataCompressed().empty() &&
-						iter->second.type() != Link::kUndef &&
-						iter->second.type() != Link::kVirtualClosure;
-				if(merge)
-				{
-					UDEBUG("Reduce %d to %d", s->id(), iter->second.to());
-					if(reducedTo)
-					{
-						*reducedTo = iter->second.to();
-					}
-				}
+		// We currently not remove nodes with labels
+		return 0;
+	}
 
-			}
-			if(iter->second.type() == Link::kNeighbor)
+	int reducedTo = 0;
+	bool merge = false;
+	const std::multimap<int, Link> & links = s->getLinks();
+	std::map<int, Link> neighbors;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(!merge || iter->second.type() == Link::kGlobalClosure) // prioritize reducing to global loop closures
+		{
+			merge = iter->second.to() != iter->second.from() &&
+					iter->second.type() != Link::kNeighbor &&
+					iter->second.type() != Link::kNeighborMerged &&
+					iter->second.userDataCompressed().empty() &&
+					iter->second.type() != Link::kUndef &&
+					iter->second.type() != Link::kVirtualClosure &&
+					(maxProximityDistance==0 || 
+					 (iter->second.type() == Link::kLocalSpaceClosure && 
+					  iter->second.transform().getNormSquared() < maxProximityDistance*maxProximityDistance)); // in case of far lidar proximity links
+			if(merge)
 			{
-				neighbors.insert(*iter);
+				reducedTo = iter->second.to();
+				UDEBUG("Reduce %d to %d", s->id(), reducedTo);
 			}
 		}
-		if(merge)
+		if(iter->second.type() == Link::kNeighbor)
 		{
-			if(s->getLabel().empty())
+			neighbors.insert(*iter);
+		}
+	}
+	if(merge)
+	{
+		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			Signature * sTo = this->_getSignature(iter->first);
+			if(sTo->id()!=s->id()) // Not Prior/Gravity links...
 			{
-				for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+				UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
+				sTo->removeLink(s->id());
+				if(iter->second.type() != Link::kNeighbor &&
+					iter->second.type() != Link::kNeighborMerged &&
+					iter->second.type() != Link::kUndef)
 				{
-					Signature * sTo = this->_getSignature(iter->first);
-					if(sTo->id()!=s->id()) // Not Prior/Gravity links...
+					// link to all neighbors
+					for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 					{
-						UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
-						sTo->removeLink(s->id());
-						if(iter->second.type() != Link::kNeighbor &&
-						   iter->second.type() != Link::kNeighborMerged &&
-						   iter->second.type() != Link::kUndef)
+						if(!sTo->hasLink(jter->second.to()))
 						{
-							// link to all neighbors
-							for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+							UDEBUG("Merging link %d->%d (type=%d) to link %d->%d (type %d)",
+									iter->second.from(), iter->second.to(), iter->second.type(),
+									jter->second.from(), jter->second.to(), jter->second.type());
+							Link l = iter->second.inverse().merge(
+									jter->second,
+									iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
+							sTo->addLink(l);
+							Signature * sB = this->_getSignature(l.to());
+							UASSERT(sB!=0);
+							UASSERT_MSG(!sB->hasLink(l.from()), uFormat("%d->%d type=%d", sB->id(), l.to(), l.type()).c_str());
+							sB->addLink(l.inverse());
+						}
+					}
+					// link to all landmarks
+					for(std::map<int, Link>::const_iterator jter=s->getLandmarks().begin(); jter!=s->getLandmarks().end(); ++jter)
+					{
+						if(!uContains(sTo->getLandmarks(), jter->first))
+						{
+							UDEBUG("Move landmark observation %d from %d to %d",
+									jter->first, s->id(), sTo->id());
+							Link l = iter->second.inverse().merge(
+									jter->second,
+									jter->second.type());
+							sTo->addLandmark(l);
+							// Update landmark index
+							std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(jter->first);
+							if(nter!=_landmarksIndex.end())
 							{
-								if(!sTo->hasLink(jter->second.to()))
-								{
-									UDEBUG("Merging link %d->%d (type=%d) to link %d->%d (type %d)",
-											iter->second.from(), iter->second.to(), iter->second.type(),
-											jter->second.from(), jter->second.to(), jter->second.type());
-									Link l = iter->second.inverse().merge(
-											jter->second,
-											iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
-									sTo->addLink(l);
-									Signature * sB = this->_getSignature(l.to());
-									UASSERT(sB!=0);
-									UASSERT_MSG(!sB->hasLink(l.from()), uFormat("%d->%d", sB->id(), l.to()).c_str());
-									sB->addLink(l.inverse());
-								}
+								nter->second.insert(sTo->id());
+							}
+							else
+							{
+								std::set<int> tmp;
+								tmp.insert(sTo->id());
+								_landmarksIndex.insert(std::make_pair(jter->first, tmp));
 							}
 						}
 					}
 				}
+			}
+		}
 
-				//remove neighbor links
-				std::multimap<int, Link> linksCopy = links;
-				for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
+		//remove neighbor links
+		std::multimap<int, Link> linksCopy = links;
+		for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
+		{
+			if(iter->second.type() == Link::kNeighborMerged)
+			{
+				// Removing only merged neighbor links, we keep original neighbor 
+				// links to be able to reprocess databases with correct odometry covariance.
+				s->removeLink(iter->first);
+			}
+		}
+
+		this->moveToTrash(s, keepLinkedInDb);
+		s = 0;
+		_linksChanged = true;
+		_memoryChanged = true;
+	}
+	return reducedTo;
+}
+
+void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
+{
+	UDEBUG("Inserting node %d from STM in WM...", id);
+	UASSERT(_stMem.find(id) != _stMem.end());
+	int reducedId = 0;
+	if(_reduceGraph)
+	{
+		Signature * s = this->_getSignature(id);
+		UASSERT(s!=0);
+		std::multimap<int, Link> links = s->getLinks();
+		// Setting true to make sure we save all visual
+		// words that could be referenced in a previously
+		// transferred node in LTM (#979)
+		reducedId = reduceNode(s->id(), 0, true);
+		if(reducedToOut) {
+			*reducedToOut = reducedId;
+		}
+		if(reducedId>0)
+		{
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kNeighbor)
 				{
-					if(iter->second.type() == Link::kNeighborMerged)
+					if(_lastGlobalLoopClosureId == s->id())
 					{
-						// Removing only merged neighbor links, we keep original neighbor 
-						// links to be able to reprocess databases with correct odometry covariance.
-						s->removeLink(iter->first);
-					}
-					if(iter->second.type() == Link::kNeighbor)
-					{
-						if(_lastGlobalLoopClosureId == s->id())
-						{
-							_lastGlobalLoopClosureId = iter->first;
-						}
+						_lastGlobalLoopClosureId = iter->first;
 					}
 				}
-
-				// Setting true to make sure we save all visual
-				// words that could be referenced in a previously
-				// transferred node in LTM (#979)
-				this->moveToTrash(s, true);
-				s = 0;
 			}
 		}
 	}
-	if(s != 0)
+	if(reducedId == 0)
 	{
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 		_stMem.erase(*_stMem.begin());
 	}
-	// else already removed from STM/WM in moveToTrash()
+	// else already removed from STM/WM in reduceNode()
 }
 
 const Signature * Memory::getSignature(int id) const
@@ -2507,9 +2555,10 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		// If not saved to database
 		if(!keepLinkedToGraph)
 		{
-			UASSERT_MSG(this->isInSTM(s->id()),
+			UASSERT_MSG(this->isInSTM(s->id()) || this->isInWM(s->id()),
 						uFormat("Deleting location (%d) outside the "
-								"STM is not implemented!", s->id()).c_str());
+								"WM/STM is not implemented! STM size=%ld WM size=%ld",
+								s->id(), this->getStMem().size(), this->getWorkingMem().size()).c_str());
 			const std::multimap<int, Link> & links = s->getLinks();
 			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
@@ -2520,7 +2569,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 					UASSERT_MSG(sTo!=0,
 								uFormat("A neighbor (%d) of the deleted location %d is "
 										"not found in WM/STM! Are you deleting a location "
-										"outside the STM?", iter->first, s->id()).c_str());
+										"outside the WM/STM?", iter->first, s->id()).c_str());
 
 					if(iter->first > s->id() && links.size()>1 && sTo->hasLink(s->id()))
 					{
@@ -2530,7 +2579,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 					}
 
 					// child
-					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id() && s->getWeight()>0)
+					if(iter->second.type() == Link::kGlobalClosure && s->getWeight()>0)
 					{
 						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
 					}
