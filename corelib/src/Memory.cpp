@@ -1185,47 +1185,57 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-int Memory::reduceNode(int id, float maxProximityDistance, bool keepLinkedInDb)
+int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb)
 {
+	std::set<int> reducedTo = reduceNode(id, maxDistance, keepLinkedInDb, false);
+	return reducedTo.empty()?0:*reducedTo.rbegin();
+}
+
+bool canBeReduced(const Link & link, float maxDistance)
+{
+	return  link.to() != link.from() &&
+			link.type() != Link::kNeighbor &&
+			link.type() != Link::kNeighborMerged &&
+			link.userDataCompressed().empty() &&
+			link.type() != Link::kUndef &&
+			link.type() != Link::kVirtualClosure &&
+			(maxDistance==0 || link.transform().getNormSquared() < maxDistance*maxDistance);
+}
+
+std::set<int> Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks)
+{
+	std::set<int> reducedTo;
 	Signature * s = this->_getSignature(id);
-	UASSERT(s!=0);
+	if(s==0)
+	{
+		UWARN("Node %d is not in WM/STM, cannot reduce it.", id);
+		return reducedTo;
+	}
 
 	if(!s->getLabel().empty())
 	{
 		// We currently not remove nodes with labels
-		return 0;
+		return reducedTo;
 	}
 
-	int reducedTo = 0;
-	bool merge = false;
 	const std::multimap<int, Link> & links = s->getLinks();
 	std::map<int, Link> neighbors;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-		if(!merge || iter->second.type() == Link::kGlobalClosure) // prioritize reducing to global loop closures
-		{
-			merge = iter->second.to() != iter->second.from() &&
-					iter->second.type() != Link::kNeighbor &&
-					iter->second.type() != Link::kNeighborMerged &&
-					iter->second.userDataCompressed().empty() &&
-					iter->second.type() != Link::kUndef &&
-					iter->second.type() != Link::kVirtualClosure &&
-					(maxProximityDistance==0 || 
-					 (iter->second.type() == Link::kLocalSpaceClosure && 
-					  iter->second.transform().getNormSquared() < maxProximityDistance*maxProximityDistance)); // in case of far lidar proximity links
-			if(merge)
+			if(canBeReduced(iter->second, maxDistance))
 			{
-				reducedTo = iter->second.to();
-				UDEBUG("Reduce %d to %d", s->id(), reducedTo);
+				reducedTo.insert(iter->second.to());
+				UDEBUG("Reduce %d to %d (distance=%f)", s->id(), iter->second.to(), iter->second.transform().getNorm());
 			}
-		}
+		
 		if(iter->second.type() == Link::kNeighbor)
 		{
 			neighbors.insert(*iter);
 		}
 	}
-	if(merge)
+	if(!reducedTo.empty())
 	{
+		std::vector<int> propagateIds;
 		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
 			Signature * sTo = this->_getSignature(iter->first);
@@ -1234,7 +1244,7 @@ int Memory::reduceNode(int id, float maxProximityDistance, bool keepLinkedInDb)
 				UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
 				sTo->removeLink(s->id());
 				if(iter->second.type() != Link::kNeighbor &&
-					iter->second.type() != Link::kNeighborMerged &&
+					(iter->second.type() != Link::kNeighborMerged || propagateNeighborMergedLinks) &&
 					iter->second.type() != Link::kUndef)
 				{
 					// link to all neighbors
@@ -1242,12 +1252,13 @@ int Memory::reduceNode(int id, float maxProximityDistance, bool keepLinkedInDb)
 					{
 						if(!sTo->hasLink(jter->second.to()))
 						{
-							UDEBUG("Merging link %d->%d (type=%d) to link %d->%d (type %d)",
-									iter->second.from(), iter->second.to(), iter->second.type(),
-									jter->second.from(), jter->second.to(), jter->second.type());
 							Link l = iter->second.inverse().merge(
 									jter->second,
 									iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
+							UDEBUG("Merging link %d->%d (type=%d) to with %d->%d (type %d). Adding %d->%d (type %d) to %d and %d",
+								iter->second.to(), iter->second.from(), iter->second.type(),
+								jter->second.from(), jter->second.to(), jter->second.type(),
+								l.from(), l.to(), l.type(), sTo->id(), l.to());
 							sTo->addLink(l);
 							Signature * sB = this->_getSignature(l.to());
 							UASSERT(sB!=0);
@@ -1281,6 +1292,19 @@ int Memory::reduceNode(int id, float maxProximityDistance, bool keepLinkedInDb)
 						}
 					}
 				}
+				
+				// Check if node merged to can also be reduced, if so, we have to propagate the neighbor merged links to the next node
+				if(reducedTo.find(sTo->id()) != reducedTo.end())
+				{
+					for(std::multimap<int, Link>::const_iterator lter=sTo->getLinks().begin(); lter!=sTo->getLinks().end(); ++lter)
+					{
+						if(canBeReduced(lter->second, maxDistance))
+						{
+							UDEBUG("Will progagate %d to %d (distance=%f)", sTo->id(), lter->second.to(), lter->second.transform().getNorm());
+							propagateIds.push_back(lter->second.to());
+						}
+					}
+				}
 			}
 		}
 
@@ -1300,6 +1324,15 @@ int Memory::reduceNode(int id, float maxProximityDistance, bool keepLinkedInDb)
 		s = 0;
 		_linksChanged = true;
 		_memoryChanged = true;
+
+		for(auto id: propagateIds)
+		{
+			//Nodes can be already reduced by other nodes, check if they are still there
+			if(getSignature(id) != 0)
+			{
+				reducedTo = reduceNode(id, maxDistance, keepLinkedInDb, true);
+			}
+		}
 	}
 	return reducedTo;
 }

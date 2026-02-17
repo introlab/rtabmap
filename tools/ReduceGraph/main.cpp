@@ -54,7 +54,8 @@ void showUsage(const char * exec)
 			"Options:\n"
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
-			"\n%s", exec, Parameters::showUsage());
+			"    --radius #.#   Maximum loop closure distance that can be merged.\n"
+			"\n", exec);
 	exit(1);
 }
 
@@ -70,6 +71,7 @@ int main(int argc, char * argv[])
 
 	bool keepLatest = false;
 	bool keepLinked = false;
+	float radius = 0.0f;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -84,10 +86,24 @@ int main(int argc, char * argv[])
 		{
 			keepLinked = uStr2Bool(argv[i]);
 		}
+		else if(std::strcmp(argv[i], "--radius") == 0)
+		{
+			++i;
+			if(i < argc-1)
+			{
+				radius = uStr2Float(argv[i]);
+			}
+			else {
+				showUsage(argv[0]);
+			}
+		}
 	}
-	ParametersMap inputParams = Parameters::parseArguments(argc,  argv);
+	
+	// Just parse logging options
+	Parameters::parseArguments(argc, argv);
 
-	// Add some optimizations (soft set, can be overriden by arguments)
+	// Add some optimizations
+	ParametersMap inputParams;
 	inputParams.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true")); // load the whole map in RAM
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
 	inputParams.insert(ParametersPair(Parameters::kKpNNStrategy(), "3")); // don't need flann index
@@ -96,6 +112,7 @@ int main(int argc, char * argv[])
 	if(!UFile::exists(dbPath))
 	{
 		printf("Database %s doesn't exist!\n", dbPath.c_str());
+		return 1;
 	}
 
 	printf("\nDatabase: %s\n", dbPath.c_str());
@@ -113,11 +130,6 @@ int main(int argc, char * argv[])
 		UERROR("Cannot open database %s!", dbPath.c_str());
 	}
 	delete driver;
-
-	for(ParametersMap::iterator iter=inputParams.begin(); iter!=inputParams.end(); ++iter)
-	{
-		printf(" Using parameter \"%s=%s\" from arguments\n", iter->first.c_str(), iter->second.c_str());
-	}
 
 	Memory memory;
 	printf("Initialization...\n");
@@ -140,30 +152,25 @@ int main(int argc, char * argv[])
 	Transform lastLocalizationPose;
 	bool hasOptimizedPoses = !memory.loadOptimizedPoses(&lastLocalizationPose).empty();
 
-	float proximityMaxRadius = Parameters::defaultRGBDProximityPathFilteringRadius();
-	Parameters::parse(parameters, Parameters::kRGBDProximityPathFilteringRadius(), proximityMaxRadius);
 	int totalNodesReduced = 0;
+	std::vector<int> vids;
+	vids.reserve(ids.size());
 	if(keepLatest)
 	{
 		// we process older to newer nodes, merging to new nodes
-		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
-		{
-			int id = *iter;
-			int reducedId = memory.reduceNode(id, proximityMaxRadius, keepLinked);
-			if(reducedId > 0)
-			{
-				printf("Reduced node %d to node %d!\n", id, reducedId);
-				++totalNodesReduced;
-			}
-		}
+		vids.insert(vids.end(), ids.begin(), ids.end());
 	}
 	else
 	{
 		// we process newer to older nodes, merging to old nodes
-		for(std::set<int>::reverse_iterator iter = ids.rbegin(); iter!=ids.rend(); ++iter)
+		vids.insert(vids.end(), ids.rbegin(), ids.rend());
+	}
+	for(auto id: vids)
+	{
+		// Nodes can be already reduced by other nodes, check if they are still there
+		if(memory.getSignature(id) != 0)
 		{
-			int id = *iter;
-			int reducedId = memory.reduceNode(id, proximityMaxRadius, keepLinked);
+			int reducedId = memory.reduceNode(id, radius, keepLinked);
 			if(reducedId > 0)
 			{
 				printf("Reduced node %d to node %d!\n", id, reducedId);
