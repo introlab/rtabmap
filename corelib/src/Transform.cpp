@@ -530,35 +530,35 @@ Transform Transform::getTransform(
 				const double & stamp)
 {
 	UASSERT(!tfBuffer.empty());
-	std::map<double, Transform>::const_iterator imuIterB = tfBuffer.lower_bound(stamp);
-	std::map<double, Transform>::const_iterator imuIterA = imuIterB;
-	if(imuIterA != tfBuffer.begin())
+	std::map<double, Transform>::const_iterator iterB = tfBuffer.lower_bound(stamp);
+	std::map<double, Transform>::const_iterator iterA = iterB;
+	if(iterA != tfBuffer.begin())
 	{
-		imuIterA = --imuIterA;
+		iterA = --iterA;
 	}
-	if(imuIterB == tfBuffer.end())
+	if(iterB == tfBuffer.end())
 	{
-		imuIterB = --imuIterB;
+		iterB = --iterB;
 	}
-	Transform imuT;
-	if(imuIterB->first == stamp)
+	Transform t;
+	if(iterB->first == stamp)
 	{
-		imuT = imuIterB->second;
+		t = iterB->second;
 	}
-	else if(imuIterA != imuIterB)
+	else if(iterA != iterB)
 	{
 		//interpolate:
-		imuT = imuIterA->second.interpolate((stamp-imuIterA->first) / (imuIterB->first-imuIterA->first), imuIterB->second);
+		t = iterA->second.interpolate((stamp-iterA->first) / (iterB->first-iterA->first), iterB->second);
 	}
-	else if(stamp > imuIterB->first)
+	else if(stamp > iterB->first)
 	{
-		UWARN("No transform found for stamp %f! Latest is %f", stamp, imuIterB->first);
+		UWARN("No transform found for stamp %f! Latest is %f", stamp, iterB->first);
 	}
 	else
 	{
-		UWARN("No transform found for stamp %f! Earliest is %f", stamp, imuIterA->first);
+		UWARN("No transform found for stamp %f! Earliest is %f", stamp, iterA->first);
 	}
-	return imuT;
+	return t;
 }
 
 Transform Transform::getClosestTransform(

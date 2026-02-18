@@ -130,6 +130,22 @@ bool LaserScan::isScanHasTime(const Format & format)
 	return format==kXYZIT;
 }
 
+float LaserScan::packRGB(unsigned char r, unsigned char g, unsigned char b)
+{
+	int rgb = ((int)r) << 16 | ((int)g) << 8 | ((int)b);
+	float f;
+    std::memcpy(&f, &rgb, sizeof(float));
+	return f;
+}
+void LaserScan::unpackRGB(float rgb, unsigned char & r, unsigned char & g, unsigned char & b)
+{
+	int * ptrInt = (int*)&rgb;
+	b = (unsigned char)(*ptrInt & 0xFF);
+	g = (unsigned char)((*ptrInt >> 8) & 0xFF);
+	r = (unsigned char)((*ptrInt >> 16) & 0xFF);
+}
+
+
 LaserScan LaserScan::backwardCompatibility(
 		const cv::Mat & oldScanFormat,
 		int maxPoints,

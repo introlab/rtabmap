@@ -20,6 +20,9 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     name: Build on ros ${{ matrix.ros_distribution }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.ros_distribution }}-${{ matrix.os }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -64,11 +67,20 @@ jobs:
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: |
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
       run: |
         source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
         ./rtabmap-console --version
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: |
+        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --rerun-failed
       
