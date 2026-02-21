@@ -11,6 +11,7 @@ IF(NOT MULTI_ARCH AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
 ENDIF(NOT MULTI_ARCH AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
 
 INCLUDE(GNUInstallDirs)
+INCLUDE(FetchContent)
 
 ####### local cmake modules #######
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
@@ -858,17 +859,28 @@ IF(WITH_OPENGV)
    if(opengv_FOUND)
       MESSAGE(STATUS "Found system-installed OpenGV: ${opengv_INCLUDE_DIRS}")
    else()
-      message(STATUS "Build OpenGV from submodule")
+      if(USE_INTERNAL_OPENGV)
+         message(STATUS "Download/Build OpenGV internally (USE_INTERNAL_OPENGV=ON).")
+      else()
+         message(STATUS "System-installed OpenGV not found, proceed to download/build OpenGV internally (WITH_OPENGV=ON).")
+      endif()
       
       function(add_submodule_opengv)
+         FetchContent_Declare(
+            opengv
+            GIT_REPOSITORY https://github.com/laurentkneip/opengv.git
+            GIT_TAG        91f4b19c73450833a40e463ad3648aae80b3a7f3
+         )
          set(BUILD_SHARED_LIBS OFF)
          set(BUILD_TESTS OFF)
          set(CMAKE_BUILD_TYPE Release)
-         add_subdirectory(extern/opengv)
+         set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+         FetchContent_MakeAvailable(opengv)
       endfunction()
 
       add_submodule_opengv()
-      set(opengv_FOUND True)
+      set(opengv_FOUND TRUE)
+      set(opengv_VERSION "internal")
    endif()
 ENDIF(WITH_OPENGV)
 
@@ -1620,7 +1632,11 @@ MESSAGE(STATUS "  With Open3D               = NO (Open3D not found)")
 ENDIF()
 
 IF(opengv_FOUND AND WITH_OPENGV)
+IF(opengv_VERSION STREQUAL "internal")
+MESSAGE(STATUS "  With OpenGV (internal)    = YES (License: BSD)")
+ELSE()
 MESSAGE(STATUS "  With OpenGV ${opengv_VERSION}           = YES (License: BSD)")
+ENDIF()
 ELSEIF(NOT WITH_OPENGV)
 MESSAGE(STATUS "  With OpenGV               = NO (WITH_OPENGV=OFF)")
 ELSE()
