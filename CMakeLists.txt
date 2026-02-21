@@ -870,6 +870,7 @@ IF(WITH_OPENGV)
             opengv
             GIT_REPOSITORY https://github.com/laurentkneip/opengv.git
             GIT_TAG        91f4b19c73450833a40e463ad3648aae80b3a7f3
+            PATCH_COMMAND  git apply "${CMAKE_CURRENT_LIST_DIR}/patches/opengv_windows.patch"
          )
          set(BUILD_SHARED_LIBS OFF)
          set(BUILD_TESTS OFF)

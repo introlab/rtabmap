@@ -1,0 +1,14 @@
+diff --git a/modules/FindEigen.cmake b/modules/FindEigen.cmake
+index 126f4a0..3034a94 100644
+--- a/modules/FindEigen.cmake
++++ b/modules/FindEigen.cmake
+@@ -62,6 +62,9 @@ if (EIGEN_INCLUDE_DIRS)
+ else ()
+ 
+   find_path(EIGEN_INCLUDE_DIR NAMES signature_of_eigen3_matrix_library
++      HINTS
++      ENV EIGEN3_ROOT
++      ENV EIGEN3_ROOT_DIR
+       PATHS
+       ${CMAKE_INSTALL_PREFIX}/include
+       ${KDE4_INCLUDE_DIR}
