@@ -884,17 +884,13 @@ IF(WITH_OPENGV OR okvis_FOUND)
             GIT_REPOSITORY https://github.com/laurentkneip/opengv.git
             GIT_TAG        91f4b19c73450833a40e463ad3648aae80b3a7f3
             PATCH_COMMAND ${CMAKE_COMMAND} 
-                  -DPATCH_FILE=${CMAKE_CURRENT_LIST_DIR}/patches/opengv_marchnative.patch 
+                  -DPATCH_FILE=${CMAKE_CURRENT_LIST_DIR}/patches/opengv_build.patch 
                   -P ${CMAKE_CURRENT_LIST_DIR}/patches/apply_patch.cmake
          )
          set(BUILD_SHARED_LIBS OFF)
          set(BUILD_TESTS OFF)
          set(CMAKE_BUILD_TYPE Release)
          set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-         # Eigen should have been already added by PCL, just populate the compatible variables
-         set(Eigen_INCLUDE_DIRS ${Eigen3_INCLUDE_DIRS})
-         set(Eigen_INCLUDE_DIR ${Eigen3_INCLUDE_DIR})
-         set(Eigen_DIR ${Eigen3_DIR})
          set(BUILD_WITH_MARCHNATIVE ${PCL_USING_MARCHNATIVE})
          FetchContent_MakeAvailable(opengv)
       endfunction()
