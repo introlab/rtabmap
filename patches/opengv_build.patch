@@ -19,3 +19,32 @@ index 9660f55..c57c40d 100644
      add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
    ENDIF()
    add_definitions (
+diff --git a/modules/FindEigen.cmake b/modules/FindEigen.cmake
+index 126f4a0..bb01173 100644
+--- a/modules/FindEigen.cmake
++++ b/modules/FindEigen.cmake
+@@ -15,6 +15,8 @@
+ # Copyright (c) 2009 Benoit Jacob <jacob.benoit.1@gmail.com>
+ # Redistribution and use is allowed according to the terms of the 2-clause BSD license.
+ 
++MESSAGE(WARNING "INTERNAL OPENGV EIGEN")
++
+ if(NOT Eigen_FIND_VERSION)
+   if(NOT Eigen_FIND_VERSION_MAJOR)
+     set(Eigen_FIND_VERSION_MAJOR 2)
+@@ -54,13 +56,13 @@ macro(_eigen3_check_version)
+ endmacro(_eigen3_check_version)
+ 
+ if (EIGEN_INCLUDE_DIRS)
+-
++MESSAGE(WARNING "ALREADY SET")
+   # in cache already
+   _eigen3_check_version()
+   set(EIGEN_FOUND ${EIGEN_VERSION_OK})
+ 
+ else ()
+-
++MESSAGE(WARNING "NOT ALREADY SET")
+   find_path(EIGEN_INCLUDE_DIR NAMES signature_of_eigen3_matrix_library
+       PATHS
+       ${CMAKE_INSTALL_PREFIX}/include
