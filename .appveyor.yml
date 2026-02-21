@@ -131,14 +131,13 @@ install:
   - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
   - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
   
-before_build:
-  - cd c:\projects\rtabmap\build
-  - ECHO %PROGRAMFILES%
-  - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-  
-after_build :
-  - cmake --build . --config Release --target package
+build: off
+
+build_script:
+  - cmd: mkdir build
+  - cmd: cd build
+  - cmd: cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+  - cmd: cmake --build . --config Release --target package
 
 artifacts:
   - path: build\RTABMap-*
