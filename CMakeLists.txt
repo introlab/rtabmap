@@ -893,6 +893,7 @@ IF(WITH_OPENGV OR okvis_FOUND)
          set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
          # Eigen should have been already added by PCL, just populate the compatible variables
          MeSSAGE(STATUS "Eigen3_INCLUDE_DIRS=${Eigen3_INCLUDE_DIRS} Eigen3_INCLUDE_DIR=${Eigen3_INCLUDE_DIR}")
+         MeSSAGE(STATUS "EIGEN_INCLUDE_DIRS=${EIGEN_INCLUDE_DIRS} EIGEN_INCLUDE_DIR=${EIGEN_INCLUDE_DIR}")
          set(EIGEN_INCLUDE_DIRS "${Eigen3_INCLUDE_DIRS}" CACHE PATH "Eigen include dirs" FORCE)
          set(EIGEN_INCLUDE_DIR "${Eigen3_INCLUDE_DIR}" CACHE PATH "Eigen include dir" FORCE)
          set(BUILD_WITH_MARCHNATIVE ${PCL_USING_MARCHNATIVE})
