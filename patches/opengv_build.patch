@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 9660f55..b775f0a 100644
+index 9660f55..c57c40d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -18,6 +18,7 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
@@ -19,43 +19,3 @@ index 9660f55..b775f0a 100644
      add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
    ENDIF()
    add_definitions (
-@@ -54,6 +55,7 @@ IF(BUILD_POSITION_INDEPENDENT_CODE)
- ENDIF()
- 
- set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
-+MESSAGE(WARNING "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
- find_package(Eigen REQUIRED)
- set(ADDITIONAL_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIR}/unsupported)
- 
-diff --git a/modules/FindEigen.cmake b/modules/FindEigen.cmake
-index 126f4a0..bcff49b 100644
---- a/modules/FindEigen.cmake
-+++ b/modules/FindEigen.cmake
-@@ -15,6 +15,8 @@
- # Copyright (c) 2009 Benoit Jacob <jacob.benoit.1@gmail.com>
- # Redistribution and use is allowed according to the terms of the 2-clause BSD license.
- 
-+MESSAGE(WARNING "INTERNAL OPENGV EIGEN")
-+
- if(NOT Eigen_FIND_VERSION)
-   if(NOT Eigen_FIND_VERSION_MAJOR)
-     set(Eigen_FIND_VERSION_MAJOR 2)
-@@ -54,13 +56,17 @@ macro(_eigen3_check_version)
- endmacro(_eigen3_check_version)
- 
- if (EIGEN_INCLUDE_DIRS)
-+MESSAGE(WARNING "ALREADY SET")
-+MESSAGE(WARNING "EIGEN_INCLUDE_DIRS=${EIGEN_INCLUDE_DIRS}")
-+MESSAGE(WARNING "EIGEN_INCLUDE_DIR=${EIGEN_INCLUDE_DIR}")
-+MESSAGE(WARNING "EIGEN_DIR=${EIGEN_DIR}")
- 
-   # in cache already
-   _eigen3_check_version()
-   set(EIGEN_FOUND ${EIGEN_VERSION_OK})
- 
- else ()
--
-+MESSAGE(WARNING "NOT ALREADY SET")
-   find_path(EIGEN_INCLUDE_DIR NAMES signature_of_eigen3_matrix_library
-       PATHS
-       ${CMAKE_INSTALL_PREFIX}/include
