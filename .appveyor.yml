@@ -11,8 +11,6 @@ clone_folder: c:\projects\rtabmap
 platform: x64
 configuration: Release
 
-rolling_builds: true
-
 init:
   - cmake --version
   - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
