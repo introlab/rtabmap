@@ -1,0 +1,3 @@
+[submodule "extern/opengv"]
+	path = extern/opengv
+	url = https://github.com/laurentkneip/opengv.git
