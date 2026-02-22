@@ -15,6 +15,7 @@ runs:
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
+        toolset: '14.0'
 
     - name: Disable Windows Python App Alias and add Python to PATH
       shell: pwsh
