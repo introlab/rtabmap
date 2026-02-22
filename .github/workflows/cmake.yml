@@ -58,7 +58,7 @@ jobs:
         boost_version: 1.69.0
         version: legacy
         toolset: msvc14.1
-        platform: win32
+        platform_version: win32
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
