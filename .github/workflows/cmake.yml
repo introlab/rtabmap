@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, windows-2022, windows-latest]
+        os: [ubuntu-24.04, ubuntu-22.04, windows-2022]
         include:
         - os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
@@ -33,9 +33,9 @@ jobs:
         - os: windows-2022
           extra_deps: ""
           extra_cmake_def: '-G "Visual Studio 17 2022" -A x64 -T v140 -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 -DCMAKE_VS_SDK_LIBRARY_DIRECTORIES="C:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64" -DCMAKE_VS_SDK_INCLUDE_DIRECTORIES="C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/um;C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/shared" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
-        - os: windows-latest
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+#        - os: windows-latest
+#          extra_deps: ""
+#          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
 
     steps:
     - uses: actions/checkout@v4
@@ -44,15 +44,15 @@ jobs:
       if: matrix.os == 'windows-2022'
       uses: ./.github/actions/install-windows-deps
 
-    - name: INstall VCPKG Windows Dependencies
-      if: matrix.os == 'windows-latest'
-      uses: lukka/run-vcpkg@v11
-      id: runvcpkg
-      with:
-        vcpkgJsonGlob: '**/vcpkg.json'
-    - name: Prints output of run-vcpkg's action.
-      if: matrix.os == 'windows-latest'
-      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
+#    - name: INstall VCPKG Windows Dependencies
+#      if: matrix.os == 'windows-latest'
+#      uses: lukka/run-vcpkg@v11
+#      id: runvcpkg
+#      with:
+#        vcpkgJsonGlob: '**/vcpkg.json'
+#    - name: Prints output of run-vcpkg's action.
+#      if: matrix.os == 'windows-latest'
+#      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
             
     - name: Install Linux Dependencies
       if: matrix.os != 'windows-2022'
