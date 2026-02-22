@@ -32,7 +32,7 @@ jobs:
           extra_cmake_def: "-DWITH_CERES=ON"
         - os: windows-latest
           extra_deps: ""
-          extra_cmake_def: '-G "Visual Studio 14 2015" -A x64 -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
+          extra_cmake_def: '-G "Visual Studio 17 2022" -A x64 -T v140 -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
 
     steps:
     - uses: actions/checkout@v4

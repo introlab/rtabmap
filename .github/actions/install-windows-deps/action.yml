@@ -3,9 +3,13 @@ description: 'Installs Qt, OpenCV, PCL, and others'
 runs:
   using: "composite"
   steps:
-    - name: Install VS 2015 Build Tools
-      shell: cmd
-      run: choco install visualcppbuildtools -y
+    - name: Add VS 2015 (v140) Toolset to VS 2022
+      shell: pwsh
+      run: |
+        # Call the VS Installer to add the specific v140 component
+        Start-Process -FilePath "C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe" `
+          -ArgumentList "modify --passive --norestart --installPath `"C:\Program Files\Microsoft Visual Studio\2022\Enterprise`" --add Microsoft.VisualStudio.Component.VC.140" `
+          -Wait
 
     - name: Disable Windows Python App Alias and add Python to PATH
       shell: pwsh
