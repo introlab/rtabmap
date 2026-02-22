@@ -30,9 +30,6 @@ jobs:
         - os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
-#        - os: windows-2022
-#          extra_deps: ""
-#          extra_cmake_def: '-G "Visual Studio 17 2022" -A x64 -T v140 -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 -DCMAKE_VS_SDK_LIBRARY_DIRECTORIES="C:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64" -DCMAKE_VS_SDK_INCLUDE_DIRECTORIES="C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/um;C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/shared" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
         - os: windows-latest
           extra_deps: ""
           extra_cmake_def: '-DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_AS_BUNDLE=ON'
@@ -40,23 +37,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Legacy Windows Dependencies
-      if: matrix.os == 'windows-2022'
-      uses: ./.github/actions/install-windows-deps
-
     - name: Install VCPKG Windows Dependencies
       if: matrix.os == 'windows-latest'
       uses: lukka/run-vcpkg@v11
       id: runvcpkg
       with:
         runVcpkgInstall: true
-        runVcpkgFormatString: '[`install`, `--recurse`, `--clean-after-build`, `--x-install-root`, `$[env.VCPKG_INSTALLED_DIR]`, `--triplet`, `$[env.VCPKG_DEFAULT_TRIPLET]`, `--x-feature`, `tools`]'
+        runVcpkgFormatString: '[`install`, `--recurse`, `--clean-after-build`, `--x-install-root`, `$[env.VCPKG_INSTALLED_DIR]`, `--triplet`, `$[env.VCPKG_DEFAULT_TRIPLET]`, `--x-feature`, `tools`, `--x-feature`, `k4w2`, `--x-feature`, `octomap`, `--x-feature`, `openmp`, `--x-feature`, `openni2`, `--x-feature`, `realsense2`, `--x-feature`, `gtsam-deps`, `--x-feature`, `libpointmatcher-deps`]'
     - name: Prints output of run-vcpkg's action.
       if: matrix.os == 'windows-latest'
       run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
-            
+    - name: Install custom Windows Dependencies
+      if: matrix.os == 'windows-latest'
+      uses: ./.github/actions/install-windows-deps
+
     - name: Install Linux Dependencies
-      if: matrix.os != 'windows-2022'
+      if: matrix.os != 'windows-latest'
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update

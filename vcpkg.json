@@ -47,6 +47,13 @@
     }
   ],
   "features": {
+    "gtsam-deps": {
+      "description": "Build GTSAM's dependencies",
+      "dependencies": [
+        "boost-assign",
+        "boost-format"
+      ]
+    },
     "gui": {
       "description": "Build RTAB-Map with GUI support (Qt)",
       "dependencies": [
@@ -77,6 +84,14 @@
       "description": "Build RTAB-Map with Kinect For Windows SDK 2.0 camera driver",
       "dependencies": [
         "kinectsdk2"
+      ]
+    },
+    "libpointmatcher-deps": {
+      "description": "Build libpointmatcher's dependencies",
+      "dependencies": [
+        "boost-assign",
+        "boost-program-options",
+        "boost-timer"
       ]
     },
     "octomap": {
