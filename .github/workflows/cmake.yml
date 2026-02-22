@@ -70,7 +70,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Build Package
-      if: matrix.os == 'windows-2022'
+      if: matrix.os == 'windows-latest'
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target package
 
     - name: Info
@@ -79,7 +79,7 @@ jobs:
         ./rtabmap-console --version
 
     - name: Upload RTABMap Artifacts
-      if: matrix.os == 'windows-2022'
+      if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries           # Give your artifact a recognizable name
