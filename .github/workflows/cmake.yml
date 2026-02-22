@@ -51,11 +51,18 @@ jobs:
         target: 'desktop'
         arch: 'win64_msvc2015_64'
         cache: true
-    - name: Install Boost
+    - name: Cache Boost
       if: matrix.os == 'windows-latest'
+      id: cache-boost
+      uses: actions/cache@v4
+      with:
+        path: C:\Program Files\boost_1_62_0
+        key: ${{ runner.os }}-boost-1.62.0-v1
+    - name: Install Boost
+      if: matrix.os == 'windows-latest' && steps.cache-boost.outputs.cache-hit != 'true'
       run: |
         curl -L -o boost_1_62_0-msvc-14.0-64.exe "https://sourceforge.net/projects/boost/files/boost-binaries/1.62.0/boost_1_62_0-msvc-14.0-64.exe/download"
-        Start-Process -FilePath ".\boost_1_62_0-msvc-14.0-64.exe" -ArgumentList "-o`"C:\Program Files`" -y" -Wait
+        Start-Process -FilePath ".\boost_1_62_0-msvc-14.0-64.exe" -ArgumentList "/silent /dir=`"C:\Program Files\boost_1_62_0`"" -Wait
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
@@ -167,7 +174,7 @@ jobs:
         # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
         echo "PATH=%QT_ROOT_DIR%\bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Boost
-        echo "PATH=%PATH%;C:\Libraries\boost_1_62_0\boost" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=%PATH%;C:\Program Files\boost_1_62_0" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Openni2
         echo "PATH=%PATH%;C:\Program Files\OpenNI2\Redist" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         echo "OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include" | Out-File -FilePath $env:GITHUB_ENV -Append
