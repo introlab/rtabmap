@@ -168,7 +168,7 @@
     - ps: "ls \"C:/Program Files/yaml-cpp\""
     # RealSense2
     - ps: |
-        if (!(Test-Path "C:\Program Files\Intel RealSense SDK 2.0")) {
+        if (!(Test-Path "C:\Program Files (x86)\Intel RealSense SDK 2.0")) {
             Write-Host "Intel RealSense SDK 2.0 not found in cache. Downloading and installing..."
             Invoke-WebRequest -Uri 'https://github.com/IntelRealSense/librealsense/releases/download/v2.40.0/Intel.RealSense.SDK-WIN10-2.40.0.2482.exe' -OutFile 'realsense2.exe'
             Start-Process -FilePath ".\realsense2.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
@@ -206,7 +206,7 @@
     - C:\Program Files\cpu_tsdf -> appveyor.yml
     - C:\Program Files\open_chisel -> appveyor.yml
     - C:\Program Files\yaml-cpp -> appveyor.yml
-    - C:\Program Files\Intel RealSense SDK 2.0 -> appveyor.yml
+    - C:\Program Files (x86)\Intel RealSense SDK 2.0 -> appveyor.yml
     - C:\Program Files\Azure Kinect SDK v1.4.1 -> appveyor.yml
 
 - image: rtabmap-deps
