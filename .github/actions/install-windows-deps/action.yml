@@ -3,11 +3,9 @@ description: 'Installs Qt, OpenCV, PCL, and others'
 runs:
   using: "composite"
   steps:
-    - name: Set up MSVC Developer Command Prompt
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
-        toolset: 14.0
+    - name: Install VS 2015 Build Tools
+      shell: cmd
+      run: choco install visualcppbuildtools -y
 
     - name: Disable Windows Python App Alias and add Python to PATH
       shell: pwsh
