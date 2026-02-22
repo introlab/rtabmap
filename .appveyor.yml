@@ -1,285 +1,338 @@
+- branches:
+    only:
+      - master
 
-branches:
-  only:
-    - master
-    - devel
+  image: Visual Studio 2015
+  
+  environment:
+    APPVEYOR_BAKE_IMAGE: rtabmap-deps
 
-os: Visual Studio 2015
+  install:
+    - ps: Write-Host "Baking new image on master branch..."
+    # To download from google drive
+    - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
+    - ps: py -m pip --disable-pip-version-check install gdown>=5.1.0 
+    # Qt
+    - set QTDIR=C:\Qt\5.10.1\msvc2015_64
+    # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
+    - set PATH=%QTDIR%\bin;%PATH%
+    # Boost
+    - set PATH=%PATH%;C:\Libraries\boost_1_62_0\lib64-msvc-14.0
+    # Openni2
+    - ps: |
+        if (!(Test-Path "C:\Program Files\OpenNI2")) {
+            Write-Host "OpenNI2 not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/d98jv79l6oy9fxz/OpenNI2.exe?dl=0' -outfile OpenNI2.exe
+            OpenNI2.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "OpenNI2 restored from cache."
+        }
+    - ECHO "Installed OpenNI2:"
+    - ps: "ls \"C:/Program Files/OpenNI2\""
+    - set PATH=%PATH%;C:\Program Files\OpenNI2\Redist
+    - set OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include
+    - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
+    - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
+    # OpenCV
+    #- appveyor-retry appveyor DownloadFile http://downloads.sourceforge.net/project/opencvlibrary/4.5.2/opencv-4.5.2-vc14_vc15.exe
+    #- cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
+    #- ECHO "Installed OpenCV:"
+    #- ps: "ls \"C:/Program Files/opencv/build\""
+    #- set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
+    - ps: |
+        if (!(Test-Path "C:\Program Files\opencv")) {
+            Write-Host "OpenCV not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/o6ofn491bc0jso1/opencv450_vc14.exe?dl=0' -outfile opencv.exe
+            opencv.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "OpenCV restored from cache."
+        }
+    - ECHO "Installed OpenCV:"
+    - ps: "ls \"C:/Program Files/opencv\""
+    - set PATH=%PATH%;C:\Program Files\opencv\x64\vc14\bin
+    # VTK (including QVTK)
+    - ps: |
+        if (!(Test-Path "C:\Program Files\VTK")) {
+            Write-Host "VTK not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/1l33b5l3f3y52gf/VTK-6_3-msvc140.exe?dl=0' -outfile VTK-6_3.exe
+            VTK-6_3.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "VTK restored from cache."
+        }
+    - ECHO "Installed VTK:"
+    - ps: "ls \"C:/Program Files/VTK\""
+    - set PATH=%PATH%;C:\Program Files\VTK\bin
+    # QHull 
+    - ps: |
+        if (!(Test-Path "C:\Program Files\Qhull")) {
+            Write-Host "Qhull not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/9widnk9msdsh2b8/Qhull-msvc140.exe?dl=0' -outfile Qhull.exe
+            Qhull.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "Qhull restored from cache."
+        }
+    - ECHO "Installed QHull:"
+    - ps: "ls \"C:/Program Files/Qhull\""
+    - set PATH=%PATH%;C:\Program Files\Qhull\bin
+    # FLANN 
+    - ps: |
+        if (!(Test-Path "C:\Program Files\FLANN")) {
+            Write-Host "FLANN not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/7k58jbmqa51sxmh/FLANN-msvc140.exe?dl=0' -outfile FLANN.exe
+            FLANN.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "FLANN restored from cache."
+        }
+    - ECHO "Installed FLANN:"
+    - ps: "ls \"C:/Program Files/FLANN\""
+    - set PATH=%PATH%;C:\Program Files\FLANN\bin
+    # Eigen 
+    - ps: |
+        if (!(Test-Path "C:\Program Files\Eigen")) {
+            Write-Host "Eigen not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/3v6i9i8dxj4o8ji/Eigen.exe?dl=0' -outfile Eigen.exe
+            Eigen.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "Eigen restored from cache."
+        }
+    - ECHO "Installed Eigen:"
+    - ps: "ls \"C:/Program Files/Eigen\""
+    # PCL
+    - ps: |
+        if (!(Test-Path "C:\Program Files\PCL")) {
+            Write-Host "PCL not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/2iayr4lyqa50i9j/PCL_181_August2018_x64_vc14.exe?dl=0' -outfile PCL_1.8.1.exe
+            PCL_1.8.1.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "PCL restored from cache."
+        }
+    - ECHO "Installed PCL:"
+    - ps: "ls \"C:/Program Files/PCL\""
+    - set PATH=%PATH%;C:\Program Files\PCL\bin
+    # zlib
+    - ps: |
+        if (!(Test-Path "C:\Program Files\zlib")) {
+            Write-Host "zlib not found in cache. Downloading and installing..."
+            gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
+            Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
+        } else {
+            Write-Host "zlib restored from cache."
+        }
+    - ECHO "Installed zlib:"
+    - ps: "ls \"C:/Program Files/zlib\""
+    - set PATH=%PATH%;C:\Program Files\zlib\bin
+    # g2o
+    - ps: |
+        if (!(Test-Path "C:\Program Files\g2o")) {
+            Write-Host "g2o not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/ht74s5pa21wokzw/g2o.exe?dl=0' -outfile g2o.exe
+            g2o.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "g2o restored from cache."
+        }
+    - ECHO "Installed g2o:"
+    - ps: "ls \"C:/Program Files/g2o\""
+    - set PATH=%PATH%;C:\Program Files\g2o\bin
+    # GTSAM
+    - ps: |
+        if (!(Test-Path "C:\Program Files\GTSAM")) {
+            Write-Host "GTSAM not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/0fpr6r4cgsqmvhf/GTSAM-4_0_0_alpha2-msvc140.exe?dl=0' -outfile GTSAM.exe
+            GTSAM.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "GTSAM restored from cache."
+        }
+    - ECHO "Installed GTSAM:"
+    - ps: "ls \"C:/Program Files/GTSAM\""
+    - set PATH=%PATH%;C:\Program Files\GTSAM\bin
+    # OctoMap
+    - ps: |
+        if (!(Test-Path "C:\Program Files\octomap-distribution")) {
+            Write-Host "OctoMap not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/6jpxu0nm8ne6e54/octomap_x64_vc14.exe?dl=0' -outfile octomap.exe
+            octomap.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "OctoMap restored from cache."
+        }
+    - ECHO "Installed OctoMap:"
+    - ps: "ls \"C:/Program Files/octomap-distribution\""
+    - set PATH=%PATH%;C:\Program Files\octomap-distribution\bin
+    # CPU-TSDF
+    - ps: |
+        if (!(Test-Path "C:\Program Files\cpu_tsdf")) {
+            Write-Host "cpu_tsdf not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/mgges9va1uzxr0q/cpu_tsdf_sept2015_x64_vc14.exe?dl=0' -outfile cpu_tsdf.exe
+            cpu_tsdf.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "cpu_tsdf restored from cache."
+        }
+    - ECHO "Installed CPU-TSDF:"
+    - ps: "ls \"C:/Program Files/cpu_tsdf\""
+    - set PATH=%PATH%;C:\Program Files\cpu_tsdf\bin
+    # Open Chisel
+    - ps: |
+        if (!(Test-Path "C:\Program Files\open_chisel")) {
+            Write-Host "open_chisel not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/0aaphcde4acrinm/open_chisel_x64_vc14.exe?dl=0' -outfile open_chisel.exe
+            open_chisel.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "open_chisel restored from cache."
+        }
+    - ECHO "Installed Open Chisel:"
+    - ps: "ls \"C:/Program Files/open_chisel\""
+    - set PATH=%PATH%;C:\Program Files\open_chisel\bin
+    # yaml-cpp
+    - ps: |
+        if (!(Test-Path "C:\Program Files\yaml-cpp")) {
+            Write-Host "yaml-cpp not found in cache. Downloading and installing..."
+            wget 'https://dl.dropboxusercontent.com/s/22qfvftwj6zq8tj/yaml-cpp_x64_vc14.exe?dl=0' -outfile yaml-cpp.exe
+            yaml-cpp.exe -o"C:\Program Files" -y
+        } else {
+            Write-Host "yaml-cpp restored from cache."
+        }
+    - ECHO "Installed yaml-cpp:"
+    - ps: "ls \"C:/Program Files/yaml-cpp\""
+    # RealSense2
+    - ps: |
+        if (!(Test-Path "C:\Program Files\Intel RealSense SDK 2.0")) {
+            Write-Host "Intel RealSense SDK 2.0 not found in cache. Downloading and installing..."
+            wget 'https://github.com/IntelRealSense/librealsense/releases/download/v2.40.0/Intel.RealSense.SDK-WIN10-2.40.0.2482.exe' -outfile realsense2.exe
+            realsense2.exe /VERYSILENT
+        } else {
+            Write-Host "Intel RealSense SDK 2.0 restored from cache."
+        }
+    - ECHO "Installed RealSense2:"
+    - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
+    - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
+    - set RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0
+    # Kinect 4 Azure
+    - ps: |
+        if (!(Test-Path "C:\Program Files\Azure Kinect SDK v1.4.1")) {
+            Write-Host "Azure Kinect SDK v1.4.1 not found in cache. Downloading and installing..."
+            wget 'https://download.microsoft.com/download/3/d/6/3d6d9e99-a251-4cf3-8c6a-8e108e960b4b/Azure%20Kinect%20SDK%201.4.1.exe' -outfile azure.exe
+            azure.exe /quiet
+        } else {
+            Write-Host "Azure Kinect SDK v1.4.1restored from cache."
+        }
+    - ECHO "Installed Kinect For Azure:"
+    - ps: "ls \"C:/Program Files/Azure Kinect SDK v1.4.1\""
+    - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
+    - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
 
-clone_folder: c:\projects\rtabmap
+  build: off
 
-platform: x64
-configuration: Release
+  cache:
+    - C:\Program Files\OpenNI2 -> appveyor.yml
+    - C:\Program Files\opencv -> appveyor.yml
+    - C:\Program Files\VTK -> appveyor.yml
+    - C:\Program Files\Qhull -> appveyor.yml
+    - C:\Program Files\FLANN -> appveyor.yml
+    - C:\Program Files\Eigen -> appveyor.yml
+    - C:\Program Files\PCL -> appveyor.yml
+    - C:\Program Files\zlib -> appveyor.yml
+    - C:\Program Files\g2o -> appveyor.yml
+    - C:\Program Files\GTSAM -> appveyor.yml
+    - C:\Program Files\octomap-distribution -> appveyor.yml
+    - C:\Program Files\cpu_tsdf -> appveyor.yml
+    - C:\Program Files\open_chisel -> appveyor.yml
+    - C:\Program Files\yaml-cpp -> appveyor.yml
+    - C:\Program Files\Intel RealSense SDK 2.0 -> appveyor.yml
+    - C:\Program Files\Azure Kinect SDK v1.4.1 -> appveyor.yml
 
-init:
-  - cmake --version
-  - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
-  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
+- image: rtabmap-deps
+  branches:
+    only:
+      - master
 
-install:
-  # To download from google drive
-  - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
-  - ps: py -m pip --disable-pip-version-check install gdown>=5.1.0 
-  # Qt
-  - set QTDIR=C:\Qt\5.10.1\msvc2015_64
-  # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
-  - set PATH=%QTDIR%\bin;%PATH%
-  # Boost
-  - set PATH=%PATH%;C:\Libraries\boost_1_62_0\lib64-msvc-14.0
-  # Openni2
-  - ps: |
-      if (!(Test-Path "C:\Program Files\OpenNI2")) {
-          Write-Host "OpenNI2 not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/d98jv79l6oy9fxz/OpenNI2.exe?dl=0' -outfile OpenNI2.exe
-          OpenNI2.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "OpenNI2 restored from cache."
-      }
-  - ECHO "Installed OpenNI2:"
-  - ps: "ls \"C:/Program Files/OpenNI2\""
-  - set PATH=%PATH%;C:\Program Files\OpenNI2\Redist
-  - set OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include
-  - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
-  - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
-  # OpenCV
-  #- appveyor-retry appveyor DownloadFile http://downloads.sourceforge.net/project/opencvlibrary/4.5.2/opencv-4.5.2-vc14_vc15.exe
-  #- cmd: opencv-4.5.2-vc14_vc15.exe -o"C:\Program Files" -y
-  #- ECHO "Installed OpenCV:"
-  #- ps: "ls \"C:/Program Files/opencv/build\""
-  #- set PATH=%PATH%;C:\Program Files\opencv\build\x64\vc14\bin
-  - ps: |
-      if (!(Test-Path "C:\Program Files\opencv")) {
-          Write-Host "OpenCV not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/o6ofn491bc0jso1/opencv450_vc14.exe?dl=0' -outfile opencv.exe
-          opencv.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "OpenCV restored from cache."
-      }
-  - ECHO "Installed OpenCV:"
-  - ps: "ls \"C:/Program Files/opencv\""
-  - set PATH=%PATH%;C:\Program Files\opencv\x64\vc14\bin
-  # VTK (including QVTK)
-  - ps: |
-      if (!(Test-Path "C:\Program Files\VTK")) {
-          Write-Host "VTK not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/1l33b5l3f3y52gf/VTK-6_3-msvc140.exe?dl=0' -outfile VTK-6_3.exe
-          VTK-6_3.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "VTK restored from cache."
-      }
-  - ECHO "Installed VTK:"
-  - ps: "ls \"C:/Program Files/VTK\""
-  - set PATH=%PATH%;C:\Program Files\VTK\bin
-  # QHull 
-  - ps: |
-      if (!(Test-Path "C:\Program Files\Qhull")) {
-          Write-Host "Qhull not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/9widnk9msdsh2b8/Qhull-msvc140.exe?dl=0' -outfile Qhull.exe
-          Qhull.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "Qhull restored from cache."
-      }
-  - ECHO "Installed QHull:"
-  - ps: "ls \"C:/Program Files/Qhull\""
-  - set PATH=%PATH%;C:\Program Files\Qhull\bin
-  # FLANN 
-  - ps: |
-      if (!(Test-Path "C:\Program Files\FLANN")) {
-          Write-Host "FLANN not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/7k58jbmqa51sxmh/FLANN-msvc140.exe?dl=0' -outfile FLANN.exe
-          FLANN.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "FLANN restored from cache."
-      }
-  - ECHO "Installed FLANN:"
-  - ps: "ls \"C:/Program Files/FLANN\""
-  - set PATH=%PATH%;C:\Program Files\FLANN\bin
-  # Eigen 
-  - ps: |
-      if (!(Test-Path "C:\Program Files\Eigen")) {
-          Write-Host "Eigen not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/3v6i9i8dxj4o8ji/Eigen.exe?dl=0' -outfile Eigen.exe
-          Eigen.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "Eigen restored from cache."
-      }
-  - ECHO "Installed Eigen:"
-  - ps: "ls \"C:/Program Files/Eigen\""
-  # PCL
-  - ps: |
-      if (!(Test-Path "C:\Program Files\PCL")) {
-          Write-Host "PCL not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/2iayr4lyqa50i9j/PCL_181_August2018_x64_vc14.exe?dl=0' -outfile PCL_1.8.1.exe
-          PCL_1.8.1.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "PCL restored from cache."
-      }
-  - ECHO "Installed PCL:"
-  - ps: "ls \"C:/Program Files/PCL\""
-  - set PATH=%PATH%;C:\Program Files\PCL\bin
-  # zlib
-  - ps: |
-      if (!(Test-Path "C:\Program Files\zlib")) {
-          Write-Host "zlib not found in cache. Downloading and installing..."
-          gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
-          Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
-      } else {
-          Write-Host "zlib restored from cache."
-      }
-  - ECHO "Installed zlib:"
-  - ps: "ls \"C:/Program Files/zlib\""
-  - set PATH=%PATH%;C:\Program Files\zlib\bin
-  # g2o
-  - ps: |
-      if (!(Test-Path "C:\Program Files\g2o")) {
-          Write-Host "g2o not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/ht74s5pa21wokzw/g2o.exe?dl=0' -outfile g2o.exe
-          g2o.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "g2o restored from cache."
-      }
-  - ECHO "Installed g2o:"
-  - ps: "ls \"C:/Program Files/g2o\""
-  - set PATH=%PATH%;C:\Program Files\g2o\bin
-  # GTSAM
-  - ps: |
-      if (!(Test-Path "C:\Program Files\GTSAM")) {
-          Write-Host "GTSAM not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/0fpr6r4cgsqmvhf/GTSAM-4_0_0_alpha2-msvc140.exe?dl=0' -outfile GTSAM.exe
-          GTSAM.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "GTSAM restored from cache."
-      }
-  - ECHO "Installed GTSAM:"
-  - ps: "ls \"C:/Program Files/GTSAM\""
-  - set PATH=%PATH%;C:\Program Files\GTSAM\bin
-  # OctoMap
-  - ps: |
-      if (!(Test-Path "C:\Program Files\octomap-distribution")) {
-          Write-Host "OctoMap not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/6jpxu0nm8ne6e54/octomap_x64_vc14.exe?dl=0' -outfile octomap.exe
-          octomap.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "OctoMap restored from cache."
-      }
-  - ECHO "Installed OctoMap:"
-  - ps: "ls \"C:/Program Files/octomap-distribution\""
-  - set PATH=%PATH%;C:\Program Files\octomap-distribution\bin
-  # CPU-TSDF
-  - ps: |
-      if (!(Test-Path "C:\Program Files\cpu_tsdf")) {
-          Write-Host "cpu_tsdf not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/mgges9va1uzxr0q/cpu_tsdf_sept2015_x64_vc14.exe?dl=0' -outfile cpu_tsdf.exe
-          cpu_tsdf.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "cpu_tsdf restored from cache."
-      }
-  - ECHO "Installed CPU-TSDF:"
-  - ps: "ls \"C:/Program Files/cpu_tsdf\""
-  - set PATH=%PATH%;C:\Program Files\cpu_tsdf\bin
-  # Open Chisel
-  - ps: |
-      if (!(Test-Path "C:\Program Files\open_chisel")) {
-          Write-Host "open_chisel not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/0aaphcde4acrinm/open_chisel_x64_vc14.exe?dl=0' -outfile open_chisel.exe
-          open_chisel.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "open_chisel restored from cache."
-      }
-  - ECHO "Installed Open Chisel:"
-  - ps: "ls \"C:/Program Files/open_chisel\""
-  - set PATH=%PATH%;C:\Program Files\open_chisel\bin
-  # yaml-cpp
-  - ps: |
-      if (!(Test-Path "C:\Program Files\yaml-cpp")) {
-          Write-Host "yaml-cpp not found in cache. Downloading and installing..."
-          wget 'https://dl.dropboxusercontent.com/s/22qfvftwj6zq8tj/yaml-cpp_x64_vc14.exe?dl=0' -outfile yaml-cpp.exe
-          yaml-cpp.exe -o"C:\Program Files" -y
-      } else {
-          Write-Host "yaml-cpp restored from cache."
-      }
-  - ECHO "Installed yaml-cpp:"
-  - ps: "ls \"C:/Program Files/yaml-cpp\""
-  # RealSense2
-  - ps: |
-      if (!(Test-Path "C:\Program Files\Intel RealSense SDK 2.0")) {
-          Write-Host "Intel RealSense SDK 2.0 not found in cache. Downloading and installing..."
-          wget 'https://github.com/IntelRealSense/librealsense/releases/download/v2.40.0/Intel.RealSense.SDK-WIN10-2.40.0.2482.exe' -outfile realsense2.exe
-          realsense2.exe /VERYSILENT
-      } else {
-          Write-Host "Intel RealSense SDK 2.0 restored from cache."
-      }
-  - ECHO "Installed RealSense2:"
-  - ps: "ls \"C:/Program Files (x86)/Intel RealSense SDK 2.0\""
-  - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
-  - set RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0
-  # Kinect 4 Azure
-  - ps: |
-      if (!(Test-Path "C:\Program Files\Azure Kinect SDK v1.4.1")) {
-          Write-Host "Azure Kinect SDK v1.4.1 not found in cache. Downloading and installing..."
-          wget 'https://download.microsoft.com/download/3/d/6/3d6d9e99-a251-4cf3-8c6a-8e108e960b4b/Azure%20Kinect%20SDK%201.4.1.exe' -outfile azure.exe
-          azure.exe /quiet
-      } else {
-          Write-Host "Azure Kinect SDK v1.4.1restored from cache."
-      }
-  - ECHO "Installed Kinect For Azure:"
-  - ps: "ls \"C:/Program Files/Azure Kinect SDK v1.4.1\""
-  - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
-  - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
+  clone_folder: c:\projects\rtabmap
 
-build: off
+  platform: x64
+  configuration: Release
 
-environment:
-  matrix:
-    - job_name: BuildDependencies
-    - job_name: BuildMainProject
-      job_depends_on: BuildDependencies
+  init:
+    - cmake --version
+    - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
+    - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
 
-for:
-  - matrix:
-      only:
-        - job_name: BuildDependencies
-    build_script:
-      - cmd: cd build
-      - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-      - cmd: ninja opengv
-      - cmd: appveyor exit
+  install:
+    - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
+    # Qt
+    - set QTDIR=C:\Qt\5.10.1\msvc2015_64
+    # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
+    - set PATH=%QTDIR%\bin;%PATH%
+    # Boost
+    - set PATH=%PATH%;C:\Libraries\boost_1_62_0\lib64-msvc-14.0
+    # Openni2
+    - set PATH=%PATH%;C:\Program Files\OpenNI2\Redist
+    - set OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include
+    - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
+    - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
+    # OpenCV
+    - set PATH=%PATH%;C:\Program Files\opencv\x64\vc14\bin
+    # VTK (including QVTK)
+    - set PATH=%PATH%;C:\Program Files\VTK\bin
+    # QHull 
+    - set PATH=%PATH%;C:\Program Files\Qhull\bin
+    # FLANN 
+    - set PATH=%PATH%;C:\Program Files\FLANN\bin
+    # PCL
+    - set PATH=%PATH%;C:\Program Files\PCL\bin
+    # zlib
+    - set PATH=%PATH%;C:\Program Files\zlib\bin
+    # g2o
+    - set PATH=%PATH%;C:\Program Files\g2o\bin
+    # GTSAM
+    - set PATH=%PATH%;C:\Program Files\GTSAM\bin
+    # OctoMap
+    - set PATH=%PATH%;C:\Program Files\octomap-distribution\bin
+    # CPU-TSDF
+    - set PATH=%PATH%;C:\Program Files\cpu_tsdf\bin
+    # Open Chisel
+    - set PATH=%PATH%;C:\Program Files\open_chisel\bin
+    # RealSense2
+    - set PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64
+    - set RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0
+    # Kinect 4 Azure
+    - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
+    - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
 
-  - matrix:
-      only:
-        - job_name: BuildMainProject
-    build_script:
+  build: off
+
+  environment:
+    matrix:
+      - job_name: BuildDependencies
+      - job_name: BuildMainProject
+        job_depends_on: BuildDependencies
+
+  for:
+    - matrix:
+        only:
+          - job_name: BuildDependencies
+      build_script:
         - cmd: cd build
         - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-        - cmd: ninja
-        - cmd: ninja package
+        - cmd: ninja opengv
+        - cmd: appveyor exit
 
-cache:
-  - C:\Program Files\OpenNI2 -> appveyor.yml
-  - C:\Program Files\opencv -> appveyor.yml
-  - C:\Program Files\VTK -> appveyor.yml
-  - C:\Program Files\Qhull -> appveyor.yml
-  - C:\Program Files\FLANN -> appveyor.yml
-  - C:\Program Files\Eigen -> appveyor.yml
-  - C:\Program Files\PCL -> appveyor.yml
-  - C:\Program Files\zlib -> appveyor.yml
-  - C:\Program Files\g2o -> appveyor.yml
-  - C:\Program Files\GTSAM -> appveyor.yml
-  - C:\Program Files\octomap-distribution -> appveyor.yml
-  - C:\Program Files\cpu_tsdf -> appveyor.yml
-  - C:\Program Files\open_chisel -> appveyor.yml
-  - C:\Program Files\yaml-cpp -> appveyor.yml
-  - C:\Program Files\Intel RealSense SDK 2.0 -> appveyor.yml
-  - C:\Program Files\Azure Kinect SDK v1.4.1 -> appveyor.yml
-  - build\_deps -> CMakeLists.txt
+    - matrix:
+        only:
+          - job_name: BuildMainProject
+      build_script:
+          - cmd: cd build
+          - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+          - cmd: ninja
+          - cmd: ninja package
 
-artifacts:
-  - path: build\RTABMap-*
-  
-notifications:
-  - provider: Email
-    to:
-      - matlabbe@gmail.com
-    on_build_success: false
-    on_build_failure: false
-    on_build_status_changed: true
+  cache:
+    - build\_deps -> CMakeLists.txt
+
+  artifacts:
+    - path: build\RTABMap-*
+    
+  notifications:
+    - provider: Email
+      to:
+        - matlabbe@gmail.com
+      on_build_success: false
+      on_build_failure: false
+      on_build_status_changed: true
