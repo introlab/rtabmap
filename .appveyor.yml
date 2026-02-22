@@ -130,14 +130,36 @@ install:
   - ps: "ls \"C:/Program Files/Azure Kinect SDK v1.4.1\""
   - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
   - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
-  
+
 build: off
 
-build_script:
-  - cmd: cd build
-  - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-  - cmd: ninja
-  - cmd: ninja package
+environment:
+  matrix:
+    - job_name: BuildDependencies
+    - job_name: BuildMainProject
+      job_depends_on: BuildDependencies
+
+for:
+  - matrix:
+      only:
+        - job_name: BuildDependencies
+    build_script:
+      - cmd: cd build
+      - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+      - cmd: ninja opengv
+      - cmd: appveyor exit
+
+  - matrix:
+      only:
+        - job_name: BuildMainProject
+    build_script:
+        - cmd: cd build
+        - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+        - cmd: ninja
+        - cmd: ninja package
+
+cache:
+  - build\_deps -> CMakeLists.txt
 
 artifacts:
   - path: build\RTABMap-*
