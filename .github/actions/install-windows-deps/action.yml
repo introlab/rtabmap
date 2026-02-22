@@ -48,7 +48,7 @@ runs:
       run: |
         Write-Host "Installing dependencies..."
         # To download from google drive
-        py -m pip --disable-pip-version-check install gdown>=5.1.0 
+        pip --disable-pip-version-check install gdown>=5.1.0 
         # Openni2
         Write-Host "OpenNI2 not found in cache. Downloading and installing..."
         Invoke-WebRequest -Uri 'https://dl.dropboxusercontent.com/s/d98jv79l6oy9fxz/OpenNI2.exe?dl=0' -OutFile 'OpenNI2.exe'
