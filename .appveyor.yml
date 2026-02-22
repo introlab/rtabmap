@@ -134,7 +134,7 @@ install:
 build: off
 
 build_script:
-  - cmd: mkdir build && cd build
+  - cmd: cd build
   - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
   - cmd: ninja
   - cmd: ninja package
