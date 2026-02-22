@@ -17,19 +17,28 @@ runs:
         target: 'desktop'
         arch: 'win64_msvc2015_64'
         cache: true
+
     - name: Cache Boost
       id: cache-boost
       uses: actions/cache@v4
       with:
         path: C:\Program Files\boost_1_62_0
         key: ${{ runner.os }}-boost-1.62.0-v1
-    - name: Install Boost && steps.cache-boost.outputs.cache-hit != 'true'
+    - name: Install Boost
+      if: steps.cache-boost.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
         curl -L -o boost_1_62_0-msvc-14.0-64.exe "https://sourceforge.net/projects/boost/files/boost-binaries/1.62.0/boost_1_62_0-msvc-14.0-64.exe/download"
         Write-Host "Installing boost..."
         Start-Process -FilePath ".\boost_1_62_0-msvc-14.0-64.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"C:\Program Files\boost_1_62_0`"" -Wait
         ls "C:\Program Files\boost_1_62_0"
+    - name: Save Boost Cache
+      if: steps.restore-boost.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: C:\Program Files\boost_1_62_0
+        key: ${{ runner.os }}-boost-1.62.0-v1
+    
     - name: Set up MSVC Developer Command Prompt
       uses: ilammy/msvc-dev-cmd@v1
       with:
