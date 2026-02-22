@@ -1,8 +1,7 @@
-- branches:
+- image: Visual Studio 2015
+  branches:
     only:
       - master
-
-  image: Visual Studio 2015
   
   environment:
     APPVEYOR_BAKE_IMAGE: rtabmap-deps
@@ -265,6 +264,9 @@
     - set PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools
     - set K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1
 
+  cache:
+    - build\_deps -> CMakeLists.txt
+
   build: off
 
   environment:
@@ -273,27 +275,18 @@
       - job_name: BuildMainProject
         job_depends_on: BuildDependencies
 
-  for:
-    - matrix:
-        only:
-          - job_name: BuildDependencies
-      build_script:
-        - cmd: cd build
-        - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-        - cmd: ninja opengv
-        - cmd: appveyor exit
-
-    - matrix:
-        only:
-          - job_name: BuildMainProject
-      build_script:
-          - cmd: cd build
-          - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-          - cmd: ninja
-          - cmd: ninja package
-
-  cache:
-    - build\_deps -> CMakeLists.txt
+  build_script:
+    - ps: |
+        if ($env:job_name -eq "BuildDependencies") {
+            cd build
+            cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+            ninja opengv
+        } else {
+            cd build
+            cmake -G "Ninja" -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+            ninja opengv
+            ninja package
+        }
 
   artifacts:
     - path: build\RTABMap-*
