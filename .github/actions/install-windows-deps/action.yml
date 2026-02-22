@@ -19,6 +19,19 @@ runs:
         $pythonPath = split-path (where.exe python | select-object -first 1)
         echo "$pythonPath\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Locate Psapi.lib
+      id: find_psapi
+      shell: pwsh
+      run: |
+        # Search for Psapi.lib in the standard Windows Kits directory
+        $sdk_path = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\Lib" -Filter "Psapi.lib" -Recurse | 
+                    Where-Object { $_.FullName -like "*\um\x64\*" } | 
+                    Select-Object -First 1 -ExpandProperty FullName
+        
+        if (-not $sdk_path) { throw "Psapi.lib not found!" }
+        echo "PSAPI_PATH=$sdk_path" >> $env:GITHUB_ENV
+        Write-Host "Found Psapi.lib at: $sdk_path"
+
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
