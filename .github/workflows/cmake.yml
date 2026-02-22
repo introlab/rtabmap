@@ -42,18 +42,18 @@ jobs:
         version: '5.10.1'
         target: 'desktop'
         arch: 'win64_msvc2015_64'
+        cache: true
     - name: Install Boost
       if: matrix.os == 'windows-latest'
       uses: MarkusJx/install-boost@v2
       with:
-        boost_version: 1.62.0
-        boost_install_dir: C:\Libraries\boost_1_62_0
-        platform_version: 2016
+        boost_version: 1.69.0
+        version: legacy
+        arch: x86_64
+        platform: win32
     - name: Set up Python
       if: matrix.os == 'windows-latest'
       uses: actions/setup-python@v5
-      with:
-        python-version: '3.8'
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
@@ -162,11 +162,10 @@ jobs:
         # Setup the PATH
         Write-Host "Original PATH: %PATH%"
         # Qt
-        echo "QTDIR=C:\Qt\5.10.1\msvc2015_64" | Out-File -FilePath $env:GITHUB_ENV -Append
         # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
-        echo "PATH=%QTDIR%\bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=%QT_ROOT_DIR%\bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Boost
-        echo "PATH=%PATH%;C:\Libraries\boost_1_62_0\lib64-msvc-14.0" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=%PATH%;C:\Libraries\boost_1_62_0\boost" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Openni2
         echo "PATH=%PATH%;C:\Program Files\OpenNI2\Redist" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         echo "OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include" | Out-File -FilePath $env:GITHUB_ENV -Append
