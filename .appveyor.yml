@@ -90,7 +90,7 @@
     - ps: |
         if (!(Test-Path "C:\Program Files\zlib")) {
             Write-Host "zlib not found in cache. Downloading and installing..."
-            pip --disable-pip-version-check install gdown>=5.1.0 
+            py -m pip --disable-pip-version-check install gdown>=5.1.0 
             gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
             Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
         } else {
