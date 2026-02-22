@@ -20,7 +20,7 @@ jobs:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04, windows-latest]
         include:
@@ -58,6 +58,7 @@ jobs:
         boost_version: 1.69.0
         version: legacy
         toolset: msvc14.1
+        platform: win32
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
