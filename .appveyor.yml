@@ -247,7 +247,7 @@ cache:
   - build\_deps -> CMakeLists.txt
 
 platform: x64
-  configuration: Release
+configuration: Release
 
 init:
   - cmake --version
