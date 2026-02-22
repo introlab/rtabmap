@@ -8,6 +8,9 @@
 
   install:
     - ps: Write-Host "Baking new image on master branch..."
+    # To download from google drive
+    - set PATH=C:\Python38-x64;C:\Python38-x64\Scripts;%PATH%
+    - ps: py -m pip --disable-pip-version-check install gdown>=5.1.0 
     # Openni2
     - ps: |
         if (!(Test-Path "C:\Program Files\OpenNI2")) {
@@ -90,7 +93,6 @@
     - ps: |
         if (!(Test-Path "C:\Program Files\zlib")) {
             Write-Host "zlib not found in cache. Downloading and installing..."
-            py -m pip --disable-pip-version-check install gdown>=5.1.0 
             gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
             Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
         } else {
