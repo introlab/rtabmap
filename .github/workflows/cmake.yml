@@ -53,12 +53,9 @@ jobs:
         cache: true
     - name: Install Boost
       if: matrix.os == 'windows-latest'
-      uses: MarkusJx/install-boost@v2
-      with:
-        boost_version: 1.69.0
-        version: legacy
-        toolset: msvc14.1
-        platform_version: win32
+      run: |
+        curl -L -o boost_1_62_0-msvc-14.0-64.exe "https://sourceforge.net/projects/boost/files/boost-binaries/1.62.0/boost_1_62_0-msvc-14.0-64.exe/download"
+        Start-Process -FilePath ".\boost_1_62_0-msvc-14.0-64.exe" -ArgumentList "-o`"C:\Program Files`" -y" -Wait
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
