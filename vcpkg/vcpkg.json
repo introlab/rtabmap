@@ -1,6 +1,6 @@
 {
   "name": "rtabmap",
-  "version": "0.23.4",
+  "version": "latest",
   "description": "Real-Time Appearance-Based Mapping",
   "homepage": "https://introlab.github.io/rtabmap/",
   "license": null,
