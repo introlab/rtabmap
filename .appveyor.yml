@@ -210,9 +210,6 @@
     - C:\Program Files\Azure Kinect SDK v1.4.1 -> appveyor.yml
 
 - image: rtabmap-deps
-  branches:
-    only:
-      - master
 
   clone_folder: c:\projects\rtabmap
 
