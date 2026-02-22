@@ -14,7 +14,7 @@ configuration: Release
 init:
   - cmake --version
   - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
-  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
 
 install:
   # To download from google drive
@@ -134,9 +134,10 @@ install:
 build: off
 
 build_script:
-  - cmd: cd build
-  - cmd: cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
-  - cmd: cmake --build . --config Release --target package
+  - cmd: mkdir build && cd build
+  - cmd: cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON ..
+  - cmd: ninja
+  - cmd: ninja package
 
 artifacts:
   - path: build\RTABMap-*
