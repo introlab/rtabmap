@@ -10,6 +10,8 @@ runs:
       run: |
         Remove-Item "$env:LOCALAPPDATA\Microsoft\WindowsApps\python.exe" -ErrorAction SilentlyContinue
         Remove-Item "$env:LOCALAPPDATA\Microsoft\WindowsApps\python3.exe" -ErrorAction SilentlyContinue
+        $pythonPath = split-path (where.exe python | select-object -first 1)
+        echo "$pythonPath\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
@@ -47,8 +49,6 @@ runs:
       shell: pwsh
       run: |
         Write-Host "Installing dependencies..."
-        # To download from google drive
-        pip --disable-pip-version-check install gdown>=5.1.0 
         # Openni2
         Write-Host "OpenNI2 not found in cache. Downloading and installing..."
         Invoke-WebRequest -Uri 'https://dl.dropboxusercontent.com/s/d98jv79l6oy9fxz/OpenNI2.exe?dl=0' -OutFile 'OpenNI2.exe'
@@ -91,7 +91,11 @@ runs:
         ls "C:/Program Files/PCL"
         # zlib
         Write-Host "zlib not found in cache. Downloading and installing..."
-        python -m gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
+        # To download from google drive
+        pip --disable-pip-version-check install gdown>=5.1.0 
+        $pythonPath = split-path (where.exe python | select-object -first 1)
+        echo "$pythonPath\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        gdown -q 0B46akLGdg-uaYm9MTTI4MUtUcmc
         Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
         Write-Host "Installed zlib:"
         ls "C:/Program Files/zlib"
@@ -144,43 +148,43 @@ runs:
         Write-Host "Installed Kinect For Azure:"
         ls "C:/Program Files/Azure Kinect SDK v1.4.1"
         # Setup the PATH
-        Write-Host "Original PATH: %PATH%"
-        # Qt
-        # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
-        echo "PATH=%QT_ROOT_DIR%\bin;%PATH%" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        Write-Host "Original PATH: ${{ env.PATH }}"
         # Boost
-        echo "PATH=%PATH%;C:\Program Files\boost_1_62_0" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\boost_1_62_0" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Openni2
-        echo "PATH=%PATH%;C:\Program Files\OpenNI2\Redist" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\OpenNI2\Redist" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         echo "OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist" | Out-File -FilePath $env:GITHUB_ENV -Append
         # OpenCV
-        echo "PATH=%PATH%;C:\Program Files\opencv\x64\vc14\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\opencv\x64\vc14\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # VTK (including QVTK)
-        echo "PATH=%PATH%;C:\Program Files\VTK\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\VTK\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # QHull 
-        echo "PATH=%PATH%;C:\Program Files\Qhull\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\Qhull\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # FLANN 
-        echo "PATH=%PATH%;C:\Program Files\FLANN\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\FLANN\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # PCL
-        echo "PATH=%PATH%;C:\Program Files\PCL\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\PCL\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # zlib
-        echo "PATH=%PATH%;C:\Program Files\zlib\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\zlib\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # g2o
-        echo "PATH=%PATH%;C:\Program Files\g2o\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\g2o\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # GTSAM
-        echo "PATH=%PATH%;C:\Program Files\GTSAM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\GTSAM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # OctoMap
-        echo "PATH=%PATH%;C:\Program Files\octomap-distribution\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\octomap-distribution\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # CPU-TSDF
-        echo "PATH=%PATH%;C:\Program Files\cpu_tsdf\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\cpu_tsdf\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Open Chisel
-        echo "PATH=%PATH%;C:\Program Files\open_chisel\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\open_chisel\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # RealSense2
-        echo "PATH=%PATH%;C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files (x86)\Intel RealSense SDK 2.0\bin\x64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         echo "RealSense2_ROOT_DIR=C:\Program Files (x86)\Intel RealSense SDK 2.0" | Out-File -FilePath $env:GITHUB_ENV -Append
         # Kinect 4 Azure
-        echo "PATH=%PATH%;C:\Program Files\Azure Kinect SDK v1.4.1\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "PATH=C:\Program Files\Azure Kinect SDK v1.4.1\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         echo "K4A_ROOT_DIR=C:\Program Files\Azure Kinect SDK v1.4.1" | Out-File -FilePath $env:GITHUB_ENV -Append
-        Write-Host "Updated PATH: %PATH%"
+        # Qt
+        # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
+        echo "${{ env.QT_ROOT_DIR }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        Write-Host "Updated PATH: ${{ env.PATH }}"
