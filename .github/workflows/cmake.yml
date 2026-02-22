@@ -51,7 +51,7 @@ jobs:
       with:
         vcpkgGitCommitId: '36e865795cc144329c3f53d747e808d290c8771d'
         runVcpkgInstall: true
-        vcpkgJsonGlob: 'vcpkg/vcpkg.json'
+        vcpkgJsonGlob: 'vcpkg.json'
         runVcpkgFormatString: '[`install`, `--recurse`, `--clean-after-build`, `--x-install-root`, `$[env.VCPKG_INSTALLED_DIR]`, `--triplet`, `$[env.VCPKG_DEFAULT_TRIPLET]`, `--x-feature`, `tools`]'
     - name: Prints output of run-vcpkg's action.
       if: matrix.os == 'windows-latest'
