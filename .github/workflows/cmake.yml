@@ -32,7 +32,7 @@ jobs:
           extra_cmake_def: "-DWITH_CERES=ON"
         - os: windows-latest
           extra_deps: ""
-          extra_cmake_def: '-G "Visual Studio 17 2022" -A x64 -T v140 -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 -DPSAPI_LIBRARIES="PSAPI_PLACEHOLDER" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
+          extra_cmake_def: '-G "Visual Studio 17 2022" -A x64 -T v140 -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.19041.0 -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
 
     steps:
     - uses: actions/checkout@v4
@@ -50,8 +50,7 @@ jobs:
 
     - name: Configure CMake
       run: |
-        $cmake_args = "${{ matrix.extra_cmake_def }}".Replace("PSAPI_PLACEHOLDER", "$env:PSAPI_PATH")
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} $cmake_args
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }} -DPSAPI_LIBRARIES="$env:PSAPI_PATH"
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
