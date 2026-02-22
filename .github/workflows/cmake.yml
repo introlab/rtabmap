@@ -35,6 +35,14 @@ jobs:
           extra_cmake_def: '-DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL\cmake" -DCPUTSDF_DIR="C:\Program Files\cpu_tsdf\share\cpu_tsdf" -Dyaml-cpp_DIR="C:\Program Files\yaml-cpp\CMake" -DBUILD_AS_BUNDLE=ON'
 
     steps:
+    - name: Set up Python
+      if: matrix.os == 'windows-latest'
+      uses: actions/setup-python@v5
+    - name: Disable Windows Python App Alias
+      if: matrix.os == 'windows-latest'
+      run: |
+        Remove-Item "$env:LOCALAPPDATA\Microsoft\WindowsApps\python.exe" -ErrorAction SilentlyContinue
+        Remove-Item "$env:LOCALAPPDATA\Microsoft\WindowsApps\python3.exe" -ErrorAction SilentlyContinue
     - name: Install Qt
       if: matrix.os == 'windows-latest'
       uses: jurplel/install-qt-action@v4
@@ -49,11 +57,8 @@ jobs:
       with:
         boost_version: 1.69.0
         version: legacy
-        arch: x86_64
+        platform_version: 2016
         platform: win32
-    - name: Set up Python
-      if: matrix.os == 'windows-latest'
-      uses: actions/setup-python@v5
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
