@@ -62,7 +62,8 @@ jobs:
       if: matrix.os == 'windows-latest' && steps.cache-boost.outputs.cache-hit != 'true'
       run: |
         curl -L -o boost_1_62_0-msvc-14.0-64.exe "https://sourceforge.net/projects/boost/files/boost-binaries/1.62.0/boost_1_62_0-msvc-14.0-64.exe/download"
-        Start-Process -FilePath ".\boost_1_62_0-msvc-14.0-64.exe" -ArgumentList "/silent /dir=`"C:\Program Files\boost_1_62_0`"" -Wait
+        Write-Host "Installing boost..."
+        Start-Process -FilePath ".\boost_1_62_0-msvc-14.0-64.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
     - name: Set up MSVC Developer Command Prompt
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
