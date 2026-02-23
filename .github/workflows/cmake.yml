@@ -41,15 +41,18 @@ jobs:
       if: matrix.os == 'windows-latest'
       uses: lukka/run-vcpkg@v11
       id: runvcpkg
+      env:
+        VCPKG_DEFAULT_TRIPLET: x64-windows-release
+        VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-release
       with:
         runVcpkgInstall: true
-        runVcpkgFormatString: '[`install`, `--recurse`, `--clean-after-build`, `--x-install-root`, `$[env.VCPKG_INSTALLED_DIR]`, `--triplet`, `$[env.VCPKG_DEFAULT_TRIPLET]`, `--x-feature`, `tools`, `--x-feature`, `k4w2`, `--x-feature`, `octomap`, `--x-feature`, `openmp`, `--x-feature`, `openni2`, `--x-feature`, `realsense2`, `--x-feature`, `gtsam-deps`, `--x-feature`, `libpointmatcher-deps`]'
+        #runVcpkgFormatString: '[`install`, `--recurse`, `--clean-after-build`, `--x-install-root`, `$[env.VCPKG_INSTALLED_DIR]`, `--triplet`, `$[env.VCPKG_DEFAULT_TRIPLET]`, `--x-feature`, `tools`, `--x-feature`, `k4w2`, `--x-feature`, `octomap`, `--x-feature`, `openmp`, `--x-feature`, `openni2`, `--x-feature`, `realsense2`, `--x-feature`, `gtsam-deps`, `--x-feature`, `libpointmatcher-deps`]'
     - name: Prints output of run-vcpkg's action.
       if: matrix.os == 'windows-latest'
       run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
-    - name: Install custom Windows Dependencies
-      if: matrix.os == 'windows-latest'
-      uses: ./.github/actions/install-windows-deps
+#    - name: Install custom Windows Dependencies
+#      if: matrix.os == 'windows-latest'
+#      uses: ./.github/actions/install-windows-deps
 
     - name: Install Linux Dependencies
       if: matrix.os != 'windows-latest'
