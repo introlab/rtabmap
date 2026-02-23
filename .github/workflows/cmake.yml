@@ -32,7 +32,7 @@ jobs:
           extra_cmake_def: "-DWITH_CERES=ON"
         - os: windows-latest
           extra_deps: ""
-          extra_cmake_def: '-DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_AS_BUNDLE=ON'
+          extra_cmake_def: '-DWITH_OPENGV=OFF -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_AS_BUNDLE=ON'
 
     steps:
     - uses: actions/checkout@v4
