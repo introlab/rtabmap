@@ -44,6 +44,7 @@ jobs:
       env:
         VCPKG_DEFAULT_TRIPLET: x64-windows-release
         VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-release
+        VCPKG_MAX_CONCURRENCY: 1
       with:
         runVcpkgInstall: true
         #runVcpkgFormatString: '[`install`, `--recurse`, `--clean-after-build`, `--x-install-root`, `$[env.VCPKG_INSTALLED_DIR]`, `--triplet`, `$[env.VCPKG_DEFAULT_TRIPLET]`, `--x-feature`, `tools`, `--x-feature`, `k4w2`, `--x-feature`, `octomap`, `--x-feature`, `openmp`, `--x-feature`, `openni2`, `--x-feature`, `realsense2`, `--x-feature`, `gtsam-deps`, `--x-feature`, `libpointmatcher-deps`]'
