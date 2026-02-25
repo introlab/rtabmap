@@ -30,7 +30,7 @@ jobs:
         - os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
-        - os:  windows-2022
+        - os: windows-2022
           extra_deps: ""
           extra_cmake_def: '-DWITH_OPENGV=OFF -DBUILD_AS_BUNDLE=ON'
 
@@ -53,7 +53,7 @@ jobs:
       run: |
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }} -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
 
-     - name: Configure CMake
+    - name: Configure CMake
       if: matrix.os != ' windows-2022'
       run: |
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
