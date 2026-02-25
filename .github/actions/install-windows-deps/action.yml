@@ -8,7 +8,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/vcpkg_install
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg-export-c93431c5.7z') }}
+        key: ${{ runner.os }}-vcpkg-c93431c5
 
     - name: Download and Install vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'
