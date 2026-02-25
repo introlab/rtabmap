@@ -31,6 +31,8 @@ runs:
 
         Invoke-WebRequest -Uri $url -OutFile $archivePath
         & 7z x $archivePath "-o$install_dir" -y
+        Write-Host "Contents of $install_dir :"
+        Get-ChildItem -Path "$install_dir"
 
     - name: Add vcpkg to PATH and env variable
       shell: pwsh
