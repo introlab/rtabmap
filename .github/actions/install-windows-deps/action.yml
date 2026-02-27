@@ -135,7 +135,8 @@ runs:
         cmake -S . -B build `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release"
         
         cmake --build build --config Release --target install
 
