@@ -70,7 +70,8 @@ runs:
           -DGTSAM_BUILD_UNSTABLE=OFF `
           -DGTSAM_INSTALL_CPPUNILITE=OFF `
           -DGTSAM_USE_SYSTEM_EIGEN=ON `
-          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
+          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
+          -DBOOST_ROOT="$env:BOOST_ROOT"
         
         cmake --build gtsam/build --config Release --target install
 
