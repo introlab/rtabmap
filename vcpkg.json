@@ -51,7 +51,15 @@
       "description": "Build GTSAM's dependencies",
       "dependencies": [
         "boost-assign",
-        "boost-format"
+        "boost-format",
+        "boost-serialization",
+        "boost-system",
+        "boost-filesystem",
+        "boost-thread",
+        "boost-program-options",
+        "boost-date-time",
+        "boost-timer",
+        "boost-chrono"
       ]
     },
     "gui": {
