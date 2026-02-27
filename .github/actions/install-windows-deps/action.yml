@@ -71,7 +71,7 @@ runs:
           -DGTSAM_INSTALL_CPPUNILITE=OFF `
           -DGTSAM_USE_SYSTEM_EIGEN=ON `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DBOOST_ROOT="$env:BOOST_ROOT"
+          -DCMAKE_POLICY_DEFAULT_CMP0074=NEW
         
         cmake --build gtsam/build --config Release --target install
 
