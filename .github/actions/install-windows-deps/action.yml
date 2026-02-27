@@ -41,7 +41,6 @@ runs:
         $vcpkg_path = "${{ github.workspace }}/vcpkg_install/vcpkg-export-20260225-040358"
         echo "VCPKG_INSTALLATION_ROOT=$vcpkg_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "VCPKG_TARGET_TRIPLET=x64-windows-release" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        #echo "BOOST_ROOT=$vcpkg_path/installed/x64-windows-release" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "$vcpkg_path/installed\x64-windows-release\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Cache GTSAM
@@ -70,7 +69,8 @@ runs:
           -DGTSAM_BUILD_UNSTABLE=OFF `
           -DGTSAM_INSTALL_CPPUNILITE=OFF `
           -DGTSAM_USE_SYSTEM_EIGEN=ON `
-          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
+          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
+          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release"
         
         cmake --build gtsam/build --config Release --target install
 
