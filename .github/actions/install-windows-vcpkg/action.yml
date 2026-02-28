@@ -27,8 +27,7 @@ runs:
         #   C:\vcpkg\vcpkg.exe install --recurse --clean-after-build --triplet x64-windows-release --x-feature tools --x-feature k4w2 --x-feature octomap --x-feature openmp --x-feature realsense2 --x-feature openni2 --x-feature gtsam-deps --x-feature libpointmatcher-deps 
         #   C:\vcpkg\vcpkg.exe export --7zip --output-dir=.\vcpkg_binaries --host-triplet=x64-windows-release
 
-        #$url = "https://www.dropbox.com/scl/fi/3zksz0d1vdmhp7uj4mcfn/vcpkg-export-c93431c5.7z?rlkey=al7wsqe049ndtf36oanq9in2a&st=lz4g74q3&dl=1"
-        $url = "https://file.kiwi/a56ae78b#erAQh1IdH_rLOLZfJn26LQ"
+        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-c93431c5.7z"
 
         Invoke-WebRequest -Uri $url -OutFile $archivePath
         & 7z x $archivePath "-o$install_dir" -y
