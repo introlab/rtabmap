@@ -56,14 +56,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
           ${{ matrix.extra_cmake_def }} `
           -DVCPKG_MANIFEST_INSTALL=OFF `
-          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
-          -DTIFF_INCLUDE_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/include" `
-          -DTIFF_LIBRARY="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/lib/tiff.lib" `
-          -DVTK_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/share/vtk" `
-          -DVTK_FOUND=ON `
-          -DPCL_VTK_COMPONENTS:STRING="" `
-          -DProtobuf_PROTOC_EXECUTABLE="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/protobuf/protoc.exe" `
-          -DCMAKE_PREFIX_PATH="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
+          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake
 
     - name: Configure CMake
       if: matrix.os != 'windows-2022'
