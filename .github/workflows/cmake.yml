@@ -60,7 +60,7 @@ jobs:
           -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
           -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
           -DProtobuf_PROTOC_EXECUTABLE="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/protobuf/protoc.exe" `
-          -DVTKCompileTools_DIR="C:/workspace/vcpkg_installed/installed/x64-windows/share/vtk-compile-tools"
+          -DVTKCompileTools_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows/share/vtk-compile-tools"
 
     - name: Configure CMake
       if: matrix.os != 'windows-2022'
