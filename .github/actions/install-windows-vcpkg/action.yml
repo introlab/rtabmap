@@ -3,6 +3,11 @@ description: 'Installs PCL, Qt, VTK, g2o and others'
 runs:
   using: "composite"
   steps:
+    - name: Set up MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64 
+  
     - name: Cache vcpkg
       id: cache-vcpkg
       uses: actions/cache@v4
