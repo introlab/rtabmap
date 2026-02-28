@@ -60,6 +60,10 @@ jobs:
           -DTIFF_INCLUDE_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/include" `
           -DTIFF_LIBRARY="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/lib/tiff.lib" `
           -DVTK_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/share/vtk" `
+          -Dvtk_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/share/vtk" `
+          -DVTK_FOUND=ON `
+          -DPCL_NO_VTK=OFF `
+          -DCMAKE_DISABLE_FIND_PACKAGE_VTK=OFF `
           -DProtobuf_PROTOC_EXECUTABLE="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/protobuf/protoc.exe" `
           -DCMAKE_PREFIX_PATH="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
 
