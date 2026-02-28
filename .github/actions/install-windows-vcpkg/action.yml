@@ -40,5 +40,4 @@ runs:
         #what are the commands to add env variable 
         $vcpkg_path = "${{ runner.workspace }}/vcpkg_install/vcpkg-export-20260225-040358"
         echo "VCPKG_EXPORT_PATH=$vcpkg_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "$vcpkg_path/installed\x64-windows-release\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         echo "$vcpkg_path/installed\x64-windows-release\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

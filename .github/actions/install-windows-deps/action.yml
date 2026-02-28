@@ -7,14 +7,14 @@ runs:
       id: cache-gtsam
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/gtsam_install
+        path: ${{ runner.workspace }}/gtsam_install
         key: ${{ runner.os }}-gtsam-4.0.0-alpha2-${{ hashFiles('**/gtsam-4.0.0-alpha2-MSVC.patch') }}
 
     - name: Build and Install GTSAM
       if: steps.cache-gtsam.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        $INSTALL_DIR = "${{ github.workspace }}/gtsam_install"
+        $INSTALL_DIR = "${{ runner.workspace }}/gtsam_install"
       
         git clone --branch 4.0.0-alpha2 https://github.com/borglab/gtsam.git
         $patchUrl = "https://gist.githubusercontent.com/matlabbe/f66f65540df61edee87d2aa2777e3a73/raw/f6fe0f9e56835fd5a735d954ecdd7453a3036892/gtsam-4.0.0-alpha2-MSVC.patch"
@@ -22,7 +22,7 @@ runs:
         git -C gtsam apply ../gtsam-4.0.0-alpha2-MSVC.patch
 
         cmake -S gtsam -B gtsam/build `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake" `
           -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF `
           -DGTSAM_BUILD_TESTS=OFF `
           -DGTSAM_BUILD_STATIC_LIBRARY=ON `
@@ -30,7 +30,7 @@ runs:
           -DGTSAM_INSTALL_CPPUNILITE=OFF `
           -DGTSAM_USE_SYSTEM_EIGEN=ON `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release" `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
           -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS"
         
         cmake --build gtsam/build --config Release --target install
@@ -38,31 +38,31 @@ runs:
     - name: Add GTSAM to PATH
       shell: pwsh
       run: |
-        echo "${{ github.workspace }}/gtsam_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "${{ runner.workspace }}/gtsam_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     # libnabo is a dependency of libpointmatcher
     - name: Cache libnabo
       id: cache-libnabo
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/libnabo_install
+        path: ${{ runner.workspace }}/libnabo_install
         key: ${{ runner.os }}-libnabo-c925c47
 
     - name: Build and Install libnabo
       if: steps.cache-libnabo.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        $INSTALL_DIR = "${{ github.workspace }}/libnabo_install"
+        $INSTALL_DIR = "${{ runner.workspace }}/libnabo_install"
 
         git clone https://github.com/ethz-asl/libnabo.git
         cd libnabo
         git checkout c925c47
 
         cmake -S . -B build `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake" `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release" `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
           -DSHARED_LIBS=ON `
           -DLIBNABO_BUILD_DOXYGEN=OFF `
           -DLIBNABO_BUILD_EXAMPLES=OFF `
@@ -74,20 +74,20 @@ runs:
     - name: Add libnabo to PATH
       shell: pwsh
       run: |
-        echo "${{ github.workspace }}/libnabo_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "${{ runner.workspace }}/libnabo_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Cache libpointmatcher
       id: cache-lpm
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/lpm_install
+        path: ${{ runner.workspace }}/lpm_install
         key: ${{ runner.os }}-lpm-7dc58e5-${{ hashFiles('**/pointmatcher_windows_dll.patch') }}
 
     - name: Build and Install libpointmatcher
       if: steps.cache-lpm.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        $INSTALL_DIR = "${{ github.workspace }}/lpm_install"
+        $INSTALL_DIR = "${{ runner.workspace }}/lpm_install"
 
         git clone https://github.com/ethz-asl/libpointmatcher.git
         cd libpointmatcher
@@ -98,11 +98,11 @@ runs:
         git apply ../pointmatcher_windows_dll.patch
 
         cmake -S . -B build `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake" `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
           -DCMAKE_BUILD_TYPE=Release `
           -DBUILD_TESTS=OFF `
-          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release" `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
           -DBUILD_SHARED_LIBS=ON `
           -DPOINTMATCHER_BUILD_EVALUATIONS=OFF `
           -DPOINTMATCHER_BUILD_EXAMPLES=OFF
@@ -117,6 +117,6 @@ runs:
     - name: Add libpointmatcher to PATH
       shell: pwsh
       run: |
-        echo "${{ github.workspace }}/lpm_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "${{ runner.workspace }}/lpm_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
         
