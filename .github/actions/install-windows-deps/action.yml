@@ -29,7 +29,7 @@ runs:
 
         $url = "https://www.dropbox.com/scl/fi/3zksz0d1vdmhp7uj4mcfn/vcpkg-export-c93431c5.7z?rlkey=al7wsqe049ndtf36oanq9in2a&st=lz4g74q3&dl=1"
 
-        (New-Object System.Net.WebClient).DownloadFile($url, $archivePath)
+        curl.exe -L $url -o $archivePath
         & 7z x $archivePath "-o$install_dir" -y
         Write-Host "Contents of $install_dir :"
         Get-ChildItem -Path "$install_dir"
