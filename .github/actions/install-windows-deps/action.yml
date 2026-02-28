@@ -102,7 +102,12 @@ runs:
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release"
+          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release" `
+          -DSHARED_LIBS=ON `
+          -DLIBNABO_BUILD_DOXYGEN=OFF `
+          -DLIBNABO_BUILD_EXAMPLES=OFF `
+          -DLIBNABO_BUILD_PYTHON=OFF `
+          -DLIBNABO_BUILD_TESTS=OFF
         
         cmake --build build --config Release --target install
 
@@ -137,7 +142,10 @@ runs:
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
           -DCMAKE_BUILD_TYPE=Release `
           -DBUILD_TESTS=OFF `
-          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release"
+          -DCMAKE_PREFIX_PATH="$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-release" `
+          -DBUILD_SHARED_LIBS=ON `
+          -DPOINTMATCHER_BUILD_EVALUATIONS=OFF `
+          -DPOINTMATCHER_BUILD_EXAMPLES=OFF
         
         cmake --build build --config Release --target install
 
