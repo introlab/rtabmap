@@ -56,6 +56,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
           ${{ matrix.extra_cmake_def }} `
           -DVCPKG_MANIFEST_INSTALL=OFF `
+          -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
           -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
           -DTIFF_INCLUDE_DIR="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/include" `
           -DTIFF_LIBRARY="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/lib/tiff.lib" `
