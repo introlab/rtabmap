@@ -1,48 +1,8 @@
-name: 'Install Windows Dependencies'
-description: 'Installs PCL, Qt, VTK, g2o, GTSAM, libpointmatcher and others'
+name: 'Install Other Windows Dependencies'
+description: 'Installs GTSAM, libpointmatcher'
 runs:
   using: "composite"
   steps:
-    - name: Cache vcpkg
-      id: cache-vcpkg
-      uses: actions/cache@v4
-      with:
-        path: ${{ github.workspace }}/vcpkg_install
-        key: ${{ runner.os }}-vcpkg-c93431c5
-
-    - name: Download and Install vcpkg
-      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
-      shell: pwsh
-      run: |
-        $install_dir = "${{ github.workspace }}\vcpkg_install"
-        $archivePath = "${{ github.workspace }}\vcpkg-export-c93431c5.7z"
-
-        # The file has been built locally with these commands (from a "x64 Native Tools Command Prompt for VS 2022"):
-        #   git clone https://github.com/microsoft/vcpkg.git
-        #   cd vcpkg
-        #   git checkout ########### (use version in vcpkg.json of this repo)
-        #   .\bootstrap-vcpkg.bat
-        # 
-        # In rtabmap folder (manifest mode using vcpkg.json in the repo, note that this command install in a vcpkg_installed subfolder of the repo, make sure you have >20 GB free, note also openni2 requires .NET Framework 4.7.2):
-        #   C:\vcpkg\vcpkg.exe install --recurse --clean-after-build --triplet x64-windows-release --x-feature tools --x-feature k4w2 --x-feature octomap --x-feature openmp --x-feature realsense2 --x-feature openni2 --x-feature gtsam-deps --x-feature libpointmatcher-deps 
-        #   C:\vcpkg\vcpkg.exe export --7zip --output-dir=.\vcpkg_binaries --host-triplet=x64-windows-release
-
-        $url = "https://www.dropbox.com/scl/fi/3zksz0d1vdmhp7uj4mcfn/vcpkg-export-c93431c5.7z?rlkey=al7wsqe049ndtf36oanq9in2a&st=lz4g74q3&dl=1"
-
-        Invoke-WebRequest -Uri $url -OutFile $archivePath
-        & 7z x $archivePath "-o$install_dir" -y
-        Write-Host "Contents of $install_dir :"
-        Get-ChildItem -Path "$install_dir"
-
-    - name: Add vcpkg to PATH and env variable
-      shell: pwsh
-      run: |
-        #what are the commands to add env variable 
-        $vcpkg_path = "${{ github.workspace }}/vcpkg_install/vcpkg-export-20260225-040358"
-        echo "VCPKG_INSTALLATION_ROOT=$vcpkg_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "VCPKG_TARGET_TRIPLET=x64-windows-release" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "$vcpkg_path/installed\x64-windows-release\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
     - name: Cache GTSAM
       id: cache-gtsam
       uses: actions/cache@v4

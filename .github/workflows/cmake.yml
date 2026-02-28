@@ -39,7 +39,7 @@ jobs:
 
     - name: Install Windows Dependencies
       if: matrix.os == 'windows-2022'
-      uses: ./.github/actions/install-windows-deps
+      uses: ./.github/actions/install-windows-vcpkg
 
     - name: Install Linux Dependencies
       if: matrix.os != 'windows-2022'
