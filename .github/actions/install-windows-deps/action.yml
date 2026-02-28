@@ -22,7 +22,10 @@ runs:
         git -C gtsam apply ../gtsam-4.0.0-alpha2-MSVC.patch
 
         cmake -S gtsam -B gtsam/build `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
+          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
+          -DVCPKG_INSTALLED_DIR="$env:VCPKG_EXPORT_PATH/installed" `
+          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake `
           -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF `
           -DGTSAM_BUILD_TESTS=OFF `
           -DGTSAM_BUILD_STATIC_LIBRARY=ON `
@@ -30,7 +33,6 @@ runs:
           -DGTSAM_INSTALL_CPPUNILITE=OFF `
           -DGTSAM_USE_SYSTEM_EIGEN=ON `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DVCPKG_MANIFEST_INSTALL=OFF `
           -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS"
         
         cmake --build gtsam/build --config Release --target install
@@ -59,10 +61,12 @@ runs:
         git checkout c925c47
 
         cmake -S . -B build `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
+          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
+          -DVCPKG_INSTALLED_DIR="$env:VCPKG_EXPORT_PATH/installed" `
+          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
           -DCMAKE_BUILD_TYPE=Release `
-          -DVCPKG_MANIFEST_INSTALL=OFF `
           -DSHARED_LIBS=ON `
           -DLIBNABO_BUILD_DOXYGEN=OFF `
           -DLIBNABO_BUILD_EXAMPLES=OFF `
@@ -98,11 +102,13 @@ runs:
         git apply ../pointmatcher_windows_dll.patch
 
         cmake -S . -B build `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
+          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
+          -DVCPKG_INSTALLED_DIR="$env:VCPKG_EXPORT_PATH/installed" `
+          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake `
           -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
           -DCMAKE_BUILD_TYPE=Release `
           -DBUILD_TESTS=OFF `
-          -DVCPKG_MANIFEST_INSTALL=OFF `
           -DBUILD_SHARED_LIBS=ON `
           -DPOINTMATCHER_BUILD_EVALUATIONS=OFF `
           -DPOINTMATCHER_BUILD_EXAMPLES=OFF
