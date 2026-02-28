@@ -56,7 +56,8 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
           ${{ matrix.extra_cmake_def }} `
           -DVCPKG_MANIFEST_INSTALL=OFF `
-          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
+          -DProtobuf_PROTOC_EXECUTABLE="${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/protobuf/protoc.exe"
 
     - name: Configure CMake
       if: matrix.os != 'windows-2022'
