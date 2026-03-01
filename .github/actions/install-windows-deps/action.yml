@@ -13,17 +13,17 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.workspace }}/vcpkg_installed
-        key: ${{ runner.os }}-vcpkg-c93431c5-v2
+        key: ${{ runner.os }}-vcpkg-export-c93431c5-x64-vs2022
 
     - name: Download and Install vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
         $install_dir = "${{ runner.workspace }}\vcpkg_installed"
-        $archivePath = "${{ runner.workspace }}\vcpkg-export-c93431c5.7z"
+        $archivePath = "${{ runner.workspace }}\vcpkg-export.7z"
 
         # The file has been built locally with bundle-windows-deps.bat
-        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-c93431c5.7z"
+        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-c93431c5-x64-vs2022.7z"
 
         Invoke-WebRequest -Uri $url -OutFile $archivePath
         & 7z x $archivePath "-o$install_dir" -y
