@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 9660f55..236a704 100644
+index 9660f55..8853047 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -18,6 +18,7 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
@@ -29,9 +29,12 @@ index 9660f55..236a704 100644
  
  set( OPENGV_SOURCE_FILES
    src/absolute_pose/modules/main.cpp
-@@ -189,11 +189,8 @@ target_include_directories( opengv PUBLIC
+@@ -187,13 +187,10 @@ set_target_properties( opengv random_generators PROPERTIES
+ 
+ target_include_directories( opengv PUBLIC 
                  # only when building from the source tree
-                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+-                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
++                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${EIGEN3_INCLUDE_DIR}/unsupported>
                  # only when using the lib from the install path
 -                $<INSTALL_INTERFACE:include>
 -                ${ADDITIONAL_INCLUDE_DIRS} )
@@ -53,19 +56,3 @@ index 9b4c9ee..485720c 100644
 +find_dependency(Eigen3)
  include("${CMAKE_CURRENT_LIST_DIR}/@targets_export_name@.cmake")
  check_required_components("@PROJECT_NAME@")
-diff --git a/src/absolute_pose/modules/main.cpp b/src/absolute_pose/modules/main.cpp
-index ed0c271..a179aaf 100644
---- a/src/absolute_pose/modules/main.cpp
-+++ b/src/absolute_pose/modules/main.cpp
-@@ -29,8 +29,8 @@
-  ******************************************************************************/
- 
- 
--#include <Eigen/NonLinearOptimization>
--#include <Eigen/NumericalDiff>
-+#include <unsupported/Eigen/NonLinearOptimization>
-+#include <unsupported/Eigen/NumericalDiff>
- 
- #include <opengv/absolute_pose/modules/main.hpp>
- #include <opengv/absolute_pose/modules/gp3p/modules.hpp>
- 

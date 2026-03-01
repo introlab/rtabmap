@@ -1,7 +1,12 @@
 {
   "name": "rtabmap",
   "version-string": "latest",
-  "builtin-baseline": "c93431c51b046bd9f74356e8ac6cbf10586f7310",
+  "$baseline_comment": [
+    "`builtin-baseline` pins the vcpkg *registry snapshot* (a commit in the vcpkg repo).",
+    "Currently matching gtsam's vcpkg version.",
+    "Current commit is from 2026-01-16."
+  ],
+  "builtin-baseline": "66c0373dc7fca549e5803087b9487edfe3aca0a1",
   "description": "Real-Time Appearance-Based Mapping",
   "homepage": "https://introlab.github.io/rtabmap/",
   "license": null,
@@ -52,18 +57,36 @@
   ],
   "features": {
     "gtsam-deps": {
-      "description": "Build GTSAM's dependencies",
+      "description": "Build GTSAM's dependencies (based on official vcpkg.json file in gtsam repo). Removed pybind11.",
       "dependencies": [
-        "boost-assign",
-        "boost-format",
-        "boost-serialization",
-        "boost-system",
-        "boost-filesystem",
-        "boost-thread",
-        "boost-program-options",
-        "boost-date-time",
-        "boost-timer",
-        "boost-chrono"
+        {
+		  "$mkl_comment": [
+			"MKL is only used on Windows/Linux (not macOS).",
+			"The platform expression uses OR; `windows,linux` is equivalent to `windows | linux`.",
+			"If we later want a different BLAS/LAPACK backend on macOS, add it as a separate dependency with `platform: osx`."
+		  ],
+		  "name": "intel-mkl",
+		  "platform": "windows | linux"
+		},
+		"tbb",
+		"geographiclib",
+		"eigen3",
+		"boost-concept-check",
+		"boost-fusion",
+		"boost-graph",
+		"boost-move",
+		"boost-optional",
+		"boost-phoenix",
+		"boost-pool",
+		"boost-program-options",
+		"boost-random",
+		"boost-range",
+		"boost-serialization",
+		"boost-smart-ptr",
+		"boost-spirit",
+		"boost-timer",
+		"boost-tokenizer",
+		"boost-type-traits"
       ]
     },
     "gui": {
@@ -102,6 +125,7 @@
       "description": "Build libpointmatcher's dependencies",
       "dependencies": [
         "boost-assign",
+		"boost-format",
         "boost-program-options",
         "boost-timer"
       ]

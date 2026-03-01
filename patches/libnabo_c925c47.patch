@@ -44,3 +44,15 @@ index 0de01c3..c60d0f4 100644
  include(${CMAKE_CURRENT_LIST_DIR}/libnabo-targets.cmake)
  
  # This causes catkin_simple to link against these libraries
+diff --git a/nabo/kdtree_cpu.cpp b/nabo/kdtree_cpu.cpp
+index cb1f8d1..52a444f 100644
+--- a/nabo/kdtree_cpu.cpp
++++ b/nabo/kdtree_cpu.cpp
+@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <queue>
+ #include <algorithm>
+ #include <utility>
++#include <cassert>
+ #ifdef HAVE_OPENMP
+ #include <omp.h>
+ #endif

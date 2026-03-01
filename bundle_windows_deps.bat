@@ -65,6 +65,7 @@ if not exist libnabo (
     echo [+] Downloading...
     git clone https://github.com/ethz-asl/libnabo.git
     cd libnabo
+	:: Jan 27, 2022
     git checkout c925c47
 	git apply ../patches/libnabo_c925c47.patch
     cd ..
@@ -82,7 +83,7 @@ cmake -S . -B build ^
   -DLIBNABO_BUILD_EXAMPLES=OFF ^
   -DLIBNABO_BUILD_PYTHON=OFF ^
   -DLIBNABO_BUILD_TESTS=OFF || exit /b %errorlevel%
-cmake --build build --config Release --target install
+cmake --build build --config Release --target install || exit /b %errorlevel%
 cd ..
 
 :: libpointmatcher
@@ -91,6 +92,7 @@ if not exist libpointmatcher (
     echo [+] Downloading and applying patch...
     git clone https://github.com/ethz-asl/libpointmatcher.git
     cd libpointmatcher
+	:: Mar 17, 2023
     git checkout 7dc58e5
     git apply ../patches/pointmatcher_7dc58e5.patch
     cd ..
@@ -108,7 +110,7 @@ cmake -S . -B build  ^
   -DPOINTMATCHER_BUILD_EVALUATIONS=OFF ^
   -DPOINTMATCHER_BUILD_EXAMPLES=OFF ^
   -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED /EHsc -DBOOST_EXCEPTION_DISABLE" || exit /b %errorlevel%
-cmake --build build --config Release --target install
+cmake --build build --config Release --target install || exit /b %errorlevel%
 cd ..
 
 :: We remove the files in the top-level CMake directory to force use of share/libpointmatcher/cmake
@@ -120,9 +122,10 @@ if exist "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\CMake\" (
 echo [+] Building gtsam...
 if not exist gtsam (
     echo [+] Downloading and applying patch...
-    git clone --branch 4.0.0-alpha2 https://github.com/borglab/gtsam.git
+    git clone https://github.com/borglab/gtsam.git
     cd gtsam
-    git apply ../patches/gtsam-4.0.0-alpha2.patch
+	:: Feb 28, 2026
+	git checkout f7dddec7b8766e97c1c04894da096d304bbdda92
     cd ..
 )
 cd gtsam
@@ -134,12 +137,11 @@ cmake -S . -B build  ^
   -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
   -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF  ^
   -DGTSAM_BUILD_TESTS=OFF  ^
-  -DGTSAM_BUILD_STATIC_LIBRARY=ON  ^
   -DGTSAM_BUILD_UNSTABLE=OFF  ^
-  -DGTSAM_INSTALL_CPPUNILITE=OFF ^
   -DGTSAM_USE_SYSTEM_EIGEN=ON ^
+  -DGTSAM_UNSTABLE_BUILD_PYTHON=OFF ^
   -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS" || exit /b %errorlevel%
-cmake --build build --config Release --target install
+cmake --build build --config Release --target install || exit /b %errorlevel%
 cd ..
 
 :: opengv
@@ -148,6 +150,7 @@ if not exist opengv (
     echo [+] Downloading and applying patch...
     git clone https://github.com/laurentkneip/opengv.git
     cd opengv
+	:: Aug 6, 2020
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3
     git apply ../patches/opengv_91f4b19c.patch
     cd ..
@@ -161,7 +164,7 @@ cmake -S . -B build  ^
   -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
   -DBUILD_TESTS=OFF  ^
   -DBUILD_SHARED_LIBS=ON || exit /b %errorlevel%
-cmake --build build --config Release --target install
+cmake --build build --config Release --target install || exit /b %errorlevel%
 cd ..
 
 :: 5. ZIP the folder
@@ -175,7 +178,7 @@ cd ..
 set "FINAL_ZIP=%TARGET_NAME%.7z"
 
 :: compress contents without the root folder
-"%SEVENZIP_EXE%" a -t7z -mx9 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*"
+"%SEVENZIP_EXE%" u -t7z -mx9 -up0q0 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*"
 
 if %ERRORLEVEL% EQU 0 (
     echo [!] Success! Package created at %FINAL_ZIP%
