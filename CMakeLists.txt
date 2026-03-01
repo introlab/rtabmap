@@ -857,7 +857,7 @@ IF(WITH_OPENGV OR okvis_FOUND)
 
    if(opengv_FOUND)
       MESSAGE(STATUS "Found system-installed OpenGV: ${opengv_INCLUDE_DIRS}")
-   else()
+   elseif(USE_INTERNAL_OPENGV)
       SET(PCL_USING_MARCHNATIVE OFF)
       if(PCL_COMPILE_OPTIONS)
          if("${PCL_COMPILE_OPTIONS}" MATCHES "-march=native")
@@ -871,14 +871,7 @@ IF(WITH_OPENGV OR okvis_FOUND)
          set(MSG_EXTRA "with -march-native (used by PCL)")
       endif()
    
-      if(USE_INTERNAL_OPENGV)
-         message(STATUS "Download/Build OpenGV internally (USE_INTERNAL_OPENGV=ON) ${MSG_EXTRA}.")
-      elseif(WITH_OPENGV)
-         message(STATUS "System-installed OpenGV not found, proceed to download/build OpenGV internally (WITH_OPENGV=ON) ${MSG_EXTRA}.")
-      else() # okvis_FOUND
-         message(STATUS "System-installed OpenGV not found, proceed to download/build OpenGV internally (WITH_OKVIS=ON) ${MSG_EXTRA}.")
-      endif()
-      
+      message(STATUS "Download/Build OpenGV internally (USE_INTERNAL_OPENGV=ON) ${MSG_EXTRA}.")     
       function(add_submodule_opengv)
          FetchContent_Declare(
             opengv
