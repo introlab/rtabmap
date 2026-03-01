@@ -45,7 +45,9 @@ echo [+] Installing dependencies via vcpkg manifest...
 
 :: 3. Export
 echo [+] Exporting built binaries to raw folder...
-set TARGET_NAME=vcpkg-export-%VCPKG_COMMIT_SHORT%
+set "VS_LOCATOR=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+for /f "usebackq tokens=*" %%i in (`"%VS_LOCATOR%" -latest -property catalog_productLineVersion`) do set VS_YEAR=vs%%i
+set TARGET_NAME=vcpkg-export-%VCPKG_COMMIT_SHORT%-x64-%VS_YEAR%
 set TARGET_FULL_PATH=%EXPORT_DIR%\%TARGET_NAME%
 if exist "%TARGET_FULL_PATH%" rd /s /q "%TARGET_FULL_PATH%"
 "%VCPKG_ROOT%\vcpkg.exe" export --raw --output-dir="%EXPORT_DIR%" --triplet=%TRIPLET%
