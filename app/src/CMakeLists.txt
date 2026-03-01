@@ -95,9 +95,11 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime 
           REGEX ".*pdb" EXCLUDE)
-    INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
+	IF(NOT WIN32)
+		INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime)
+	ENDIF()
   ENDIF(OpenNI2_FOUND)
   
   IF(k4a_FOUND)
