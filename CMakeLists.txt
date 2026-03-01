@@ -885,7 +885,7 @@ IF(WITH_OPENGV OR okvis_FOUND)
             GIT_REPOSITORY https://github.com/laurentkneip/opengv.git
             GIT_TAG        91f4b19c73450833a40e463ad3648aae80b3a7f3
             PATCH_COMMAND ${CMAKE_COMMAND} 
-                  -DPATCH_FILE=${CMAKE_CURRENT_LIST_DIR}/patches/opengv_build.patch 
+                  -DPATCH_FILE=${CMAKE_CURRENT_LIST_DIR}/patches/opengv_91f4b19c.patch
                   -P ${CMAKE_CURRENT_LIST_DIR}/patches/apply_patch.cmake
          )
          set(BUILD_SHARED_LIBS OFF)

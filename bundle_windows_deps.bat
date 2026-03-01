@@ -64,6 +64,7 @@ if not exist libnabo (
     git clone https://github.com/ethz-asl/libnabo.git
     cd libnabo
     git checkout c925c47
+	git apply ../patches/libnabo_c925c47.patch
     cd ..
 )
 cd libnabo
@@ -74,7 +75,7 @@ cmake -S . -B build ^
   -DCMAKE_TOOLCHAIN_FILE="%FINAL_EXPORT_PATH%\scripts\buildsystems\vcpkg.cmake" ^
   -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
   -DCMAKE_BUILD_TYPE=Release ^
-  -DBUILD_SHARED_LIBS=ON ^
+  -DSHARED_LIBS=FALSE ^
   -DLIBNABO_BUILD_DOXYGEN=OFF ^
   -DLIBNABO_BUILD_EXAMPLES=OFF ^
   -DLIBNABO_BUILD_PYTHON=OFF ^
@@ -89,10 +90,7 @@ if not exist libpointmatcher (
     git clone https://github.com/ethz-asl/libpointmatcher.git
     cd libpointmatcher
     git checkout 7dc58e5
-    
-    set "PATCH_URL=https://gist.githubusercontent.com/matlabbe/fabab6d0d0e0960dd94e8b633ad713cb/raw/b079c1553041f217246834cb3ddb0847a0c3b96d/pointmatcher_windows_dll.patch"
-    curl -L "!PATCH_URL!" -o pointmatcher_windows_dll.patch
-    git apply pointmatcher_windows_dll.patch
+    git apply ../patches/pointmatcher_7dc58e5.patch
     cd ..
 )
 cd libpointmatcher
@@ -122,10 +120,7 @@ if not exist gtsam (
     echo [+] Downloading and applying patch...
     git clone --branch 4.0.0-alpha2 https://github.com/borglab/gtsam.git
     cd gtsam
-    
-    set "PATCH_URL=https://gist.githubusercontent.com/matlabbe/f66f65540df61edee87d2aa2777e3a73/raw/f6fe0f9e56835fd5a735d954ecdd7453a3036892/gtsam-4.0.0-alpha2-MSVC.patch"
-    curl -L "!PATCH_URL!" -o gtsam-4.0.0-alpha2-MSVC.patch
-    git apply gtsam-4.0.0-alpha2-MSVC.patch
+    git apply ../patches/gtsam-4.0.0-alpha2.patch
     cd ..
 )
 cd gtsam
@@ -152,7 +147,7 @@ if not exist opengv (
     git clone https://github.com/laurentkneip/opengv.git
     cd opengv
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3
-    git apply ../patches/opengv_build.patch
+    git apply ../patches/opengv_91f4b19c.patch
     cd ..
 )
 cd opengv
