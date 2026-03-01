@@ -44,6 +44,10 @@
     {
       "name": "openmp",
       "platform": "!osx"
+    },
+    {
+      "name": "tbb",
+      "platform": "!osx"
     }
   ],
   "features": {
@@ -148,6 +152,22 @@
             "fs",
             "intrinsics",
             "nonfree",
+            "thread"
+          ]
+        }
+      ]
+    },
+	"tbb": {
+      "description": "Include TBB (for opencv and gtsam-deps)",
+      "dependencies": [
+		"tbb",
+        {
+          "name": "opencv",
+          "default-features": false,
+          "features": [
+            "fs",
+            "intrinsics",
+            "tbb",
             "thread"
           ]
         }
