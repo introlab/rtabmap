@@ -166,7 +166,7 @@ cd ..
 echo [+] Creating final package with 7-Zip...
 :: Rip off pdb files
 cd /d "%FINAL_EXPORT_PATH%"
-del /s /q /f *.pdb
+del /s /q /f *.pdb >nul 2>&1
 
 cd ..
 
