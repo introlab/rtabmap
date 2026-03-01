@@ -1,128 +1,36 @@
-name: 'Install Other Windows Dependencies'
-description: 'Installs GTSAM, libpointmatcher'
+name: 'Install Windows Dependencies'
+description: 'Installs PCL, Qt, VTK, g2o and others'
 runs:
   using: "composite"
   steps:
-    - name: Cache GTSAM
-      id: cache-gtsam
+    - name: Set up MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64 
+  
+    - name: Cache vcpkg
+      id: cache-vcpkg
       uses: actions/cache@v4
       with:
-        path: ${{ runner.workspace }}/gtsam_install
-        key: ${{ runner.os }}-gtsam-4.0.0-alpha2-${{ hashFiles('**/gtsam-4.0.0-alpha2-MSVC.patch') }}
+        path: ${{ runner.workspace }}/vcpkg_installed
+        key: ${{ runner.os }}-vcpkg-c93431c5-v2
 
-    - name: Build and Install GTSAM
-      if: steps.cache-gtsam.outputs.cache-hit != 'true'
+    - name: Download and Install vcpkg
+      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        $INSTALL_DIR = "${{ runner.workspace }}/gtsam_install"
-      
-        git clone --branch 4.0.0-alpha2 https://github.com/borglab/gtsam.git
-        $patchUrl = "https://gist.githubusercontent.com/matlabbe/f66f65540df61edee87d2aa2777e3a73/raw/f6fe0f9e56835fd5a735d954ecdd7453a3036892/gtsam-4.0.0-alpha2-MSVC.patch"
-        curl -L $patchUrl -o gtsam-4.0.0-alpha2-MSVC.patch
-        git -C gtsam apply ../gtsam-4.0.0-alpha2-MSVC.patch
+        $install_dir = "${{ runner.workspace }}\vcpkg_installed"
+        $archivePath = "${{ runner.workspace }}\vcpkg-export-c93431c5.7z"
 
-        cmake -S gtsam -B gtsam/build `
-          -DVCPKG_MANIFEST_INSTALL=OFF `
-          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
-          -DVCPKG_INSTALLED_DIR="$env:VCPKG_EXPORT_PATH/installed" `
-          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake `
-          -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF `
-          -DGTSAM_BUILD_TESTS=OFF `
-          -DGTSAM_BUILD_STATIC_LIBRARY=ON `
-          -DGTSAM_BUILD_UNSTABLE=OFF `
-          -DGTSAM_INSTALL_CPPUNILITE=OFF `
-          -DGTSAM_USE_SYSTEM_EIGEN=ON `
-          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS"
-        
-        cmake --build gtsam/build --config Release --target install
+        # The file has been built locally with bundle-windows-deps.bat
+        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-c93431c5.7z"
 
-    - name: Add GTSAM to PATH
+        Invoke-WebRequest -Uri $url -OutFile $archivePath
+        & 7z x $archivePath "-o$install_dir" -y
+
+    - name: Add vcpkg to PATH and env variable
       shell: pwsh
       run: |
-        echo "${{ runner.workspace }}/gtsam_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    # libnabo is a dependency of libpointmatcher
-    - name: Cache libnabo
-      id: cache-libnabo
-      uses: actions/cache@v4
-      with:
-        path: ${{ runner.workspace }}/libnabo_install
-        key: ${{ runner.os }}-libnabo-c925c47
-
-    - name: Build and Install libnabo
-      if: steps.cache-libnabo.outputs.cache-hit != 'true'
-      shell: pwsh
-      run: |
-        $INSTALL_DIR = "${{ runner.workspace }}/libnabo_install"
-
-        git clone https://github.com/ethz-asl/libnabo.git
-        cd libnabo
-        git checkout c925c47
-
-        cmake -S . -B build `
-          -DVCPKG_MANIFEST_INSTALL=OFF `
-          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
-          -DVCPKG_INSTALLED_DIR="$env:VCPKG_EXPORT_PATH/installed" `
-          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake `
-          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DSHARED_LIBS=ON `
-          -DLIBNABO_BUILD_DOXYGEN=OFF `
-          -DLIBNABO_BUILD_EXAMPLES=OFF `
-          -DLIBNABO_BUILD_PYTHON=OFF `
-          -DLIBNABO_BUILD_TESTS=OFF
-        
-        cmake --build build --config Release --target install
-
-    - name: Add libnabo to PATH
-      shell: pwsh
-      run: |
-        echo "${{ runner.workspace }}/libnabo_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    - name: Cache libpointmatcher
-      id: cache-lpm
-      uses: actions/cache@v4
-      with:
-        path: ${{ runner.workspace }}/lpm_install
-        key: ${{ runner.os }}-lpm-7dc58e5-${{ hashFiles('**/pointmatcher_windows_dll.patch') }}
-
-    - name: Build and Install libpointmatcher
-      if: steps.cache-lpm.outputs.cache-hit != 'true'
-      shell: pwsh
-      run: |
-        $INSTALL_DIR = "${{ runner.workspace }}/lpm_install"
-
-        git clone https://github.com/ethz-asl/libpointmatcher.git
-        cd libpointmatcher
-        git checkout 7dc58e5
-        
-        $patchUrl = "https://gist.githubusercontent.com/matlabbe/fabab6d0d0e0960dd94e8b633ad713cb/raw/7c99c2276765015134e06b45f9be35377101446a/pointmatcher_windows_dll.patch"
-        curl -L $patchUrl -o ../pointmatcher_windows_dll.patch
-        git apply ../pointmatcher_windows_dll.patch
-
-        cmake -S . -B build `
-          -DVCPKG_MANIFEST_INSTALL=OFF `
-          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
-          -DVCPKG_INSTALLED_DIR="$env:VCPKG_EXPORT_PATH/installed" `
-          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_EXPORT_PATH/scripts/buildsystems/vcpkg.cmake `
-          -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DBUILD_TESTS=OFF `
-          -DBUILD_SHARED_LIBS=ON `
-          -DPOINTMATCHER_BUILD_EVALUATIONS=OFF `
-          -DPOINTMATCHER_BUILD_EXAMPLES=OFF
-        
-        cmake --build build --config Release --target install
-
-        # We remove the files in the top-level CMake directory to force use of share/libpointmatcher/cmake
-        if (Test-Path "$INSTALL_DIR/CMake") {
-            Remove-Item -Recurse -Force "$INSTALL_DIR/CMake"
-        }
-
-    - name: Add libpointmatcher to PATH
-      shell: pwsh
-      run: |
-        echo "${{ runner.workspace }}/lpm_install/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-        
+        $vcpkg_path = "${{ runner.workspace }}\vcpkg_installed"
+        echo "VCPKG_EXPORT_PATH=$vcpkg_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "$vcpkg_path\installed\x64-windows-release\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
