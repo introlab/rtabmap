@@ -150,7 +150,9 @@ int main(int argc, char * argv[])
 	}
 
 	Transform lastLocalizationPose;
-	bool hasOptimizedPoses = !memory.loadOptimizedPoses(&lastLocalizationPose).empty();
+	std::map<int, Transform> optimizedPoses = memory.loadOptimizedPoses(&lastLocalizationPose);
+	float xMin, yMin, cellSize;
+	bool hasOptimizedMap = !memory.load2DMap(xMin, yMin, cellSize).empty();
 
 	int totalNodesReduced = 0;
 	std::vector<int> vids;
@@ -178,19 +180,51 @@ int main(int argc, char * argv[])
 			}
 		}
 	}
-	printf("Reduced a total of %d nodes out of %ld nodes\n", totalNodesReduced, ids.size());
+	printf("Reduced a total of %d top nodes out of %ld nodes\n", totalNodesReduced, ids.size());
 
-	// Clear the optimized poses, this will force rtabmap to re-optimize the graph on initialization
-	if(hasOptimizedPoses)
+	if(!optimizedPoses.empty())
 	{
-		printf("Note that there were optimized poses/map saved in the database, "
-			   "clearing them so that they are regenerated next time rtabmap loads that map.\n");
-		memory.saveOptimizedPoses(std::map<int, Transform>(), lastLocalizationPose);
+		size_t removed = 0;
+		// cleanup reduced nodes from the optimized poses
+		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(0); iter!=optimizedPoses.end();)
+		{
+			if(memory.getSignature(iter->first) == 0)
+			{
+				iter = optimizedPoses.erase(iter);
+				++removed;
+			}
+			else
+			{
+				++iter;
+			}
+		}
+		printf("Updated optimized graph from %ld poses to %ld poses\n", optimizedPoses.size()+removed, optimizedPoses.size());
+		memory.saveOptimizedPoses(optimizedPoses, lastLocalizationPose);
 	}
-	// This will force rtabmap_ros to regenerate the global occupancy grid if there was one
-	memory.save2DMap(cv::Mat(), 0, 0, 0);
-	memory.saveOptimizedMesh(cv::Mat());
-
+	if(hasOptimizedMap)
+	{
+		printf("The database has a global occupancy grid, regenerating one with the remaining nodes of the optimized graph!\n");
+		LocalGridCache cache;
+		OccupancyGrid grid(&cache, parameters);
+		for(std::map<int, Transform>::iterator iter=optimizedPoses.lower_bound(0); iter!=optimizedPoses.end(); ++iter)
+		{
+			SensorData data = memory.getNodeData(iter->first, false, false, false, true);
+			data.uncompressData();
+			cache.add(iter->first, data.gridGroundCellsRaw(), data.gridObstacleCellsRaw(), data.gridEmptyCellsRaw(), data.gridCellSize(), data.gridViewPoint());
+		}
+		grid.update(optimizedPoses);
+		cv::Mat map = grid.getMap(xMin, yMin);
+		if(map.empty())
+		{
+			printf("Could not regenerate the global occupancy grid! The grid is not updated.\n");
+		}
+		else
+		{
+			memory.save2DMap(map, xMin, yMin, grid.getCellSize());
+			printf("Saved the new global occupancy grid!\n");
+		}
+	}
+		
 	memory.close(true);
 
 	return 0;
