@@ -141,6 +141,7 @@ cmake -S . -B build  ^
   -DGTSAM_USE_SYSTEM_EIGEN=ON ^
   -DGTSAM_BUILD_WITH_PRECOMPILED_HEADERS=OFF ^
   -DGTSAM_UNSTABLE_BUILD_PYTHON=OFF ^
+  -DGTSAM_WITH_EIGEN_MKL=ON ^
   -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS" || exit /b %errorlevel%
 cmake --build build --config Release --target install || exit /b %errorlevel%
 cd ..
@@ -179,7 +180,7 @@ cd ..
 set "FINAL_ZIP=%TARGET_NAME%.7z"
 
 :: compress contents without the root folder
-"%SEVENZIP_EXE%" u -t7z -mx9 -up0q0 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*"
+"%SEVENZIP_EXE%" u -t7z -mx9 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*" -up0q0
 
 if %ERRORLEVEL% EQU 0 (
     echo [!] Success! Package created at %FINAL_ZIP%
