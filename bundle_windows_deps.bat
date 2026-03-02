@@ -139,6 +139,7 @@ cmake -S . -B build  ^
   -DGTSAM_BUILD_TESTS=OFF  ^
   -DGTSAM_BUILD_UNSTABLE=OFF  ^
   -DGTSAM_USE_SYSTEM_EIGEN=ON ^
+  -DGTSAM_BUILD_WITH_PRECOMPILED_HEADERS=OFF ^
   -DGTSAM_UNSTABLE_BUILD_PYTHON=OFF ^
   -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS" || exit /b %errorlevel%
 cmake --build build --config Release --target install || exit /b %errorlevel%
