@@ -1,0 +1,13 @@
+diff --git a/cmake/HandleMKL.cmake b/cmake/HandleMKL.cmake
+index 07ac53e4f..fde0185b6 100644
+--- a/cmake/HandleMKL.cmake
++++ b/cmake/HandleMKL.cmake
+@@ -38,5 +38,8 @@ if(WIN32 AND GTSAM_USE_EIGEN_MKL AND DEFINED VCPKG_INSTALLED_DIR)
+         COMMAND_EXPAND_LISTS
+         VERBATIM
+     )
++	if (NOT TARGET check)
++		add_custom_target(check)
++	endif()
+     add_dependencies(check copy_mkl_dlls)
+ endif()

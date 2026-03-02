@@ -126,6 +126,7 @@ if not exist gtsam (
     cd gtsam
 	:: Feb 28, 2026
 	git checkout f7dddec7b8766e97c1c04894da096d304bbdda92
+    git apply ../patches/gtsam_f7dddec7.patch
     cd ..
 )
 cd gtsam
@@ -142,6 +143,7 @@ cmake -S . -B build  ^
   -DGTSAM_BUILD_WITH_PRECOMPILED_HEADERS=OFF ^
   -DGTSAM_UNSTABLE_BUILD_PYTHON=OFF ^
   -DGTSAM_WITH_EIGEN_MKL=ON ^
+  -DGTSAM_WITH_EIGEN_MKL_OPENMP=ON ^
   -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS" || exit /b %errorlevel%
 cmake --build build --config Release --target install || exit /b %errorlevel%
 cd ..
