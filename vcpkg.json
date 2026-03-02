@@ -57,17 +57,8 @@
   ],
   "features": {
     "gtsam-deps": {
-      "description": "Build GTSAM's dependencies (based on official vcpkg.json file in gtsam repo). Removed pybind11.",
+      "description": "Build GTSAM's dependencies (based on official vcpkg.json file in gtsam repo). Removed pybind11 and mkl.",
       "dependencies": [
-        {
-		  "$mkl_comment": [
-			"MKL is only used on Windows/Linux (not macOS).",
-			"The platform expression uses OR; `windows,linux` is equivalent to `windows | linux`.",
-			"If we later want a different BLAS/LAPACK backend on macOS, add it as a separate dependency with `platform: osx`."
-		  ],
-		  "name": "intel-mkl",
-		  "platform": "windows | linux"
-		},
 		"tbb",
 		"geographiclib",
 		"eigen3",
