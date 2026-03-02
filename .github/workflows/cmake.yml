@@ -32,7 +32,7 @@ jobs:
           extra_cmake_def: "-DWITH_CERES=ON"
         - os: windows-2022
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_GTSAM=OFF'
 
     steps:
     - uses: actions/checkout@v4
