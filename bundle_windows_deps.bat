@@ -35,13 +35,14 @@ echo [+] Installing dependencies via vcpkg manifest...
     --triplet=%TRIPLET% ^
     --host-triplet=%TRIPLET% ^
     --x-feature=tools ^
-	--x-feature=k4w2 ^
-	--x-feature=octomap ^
-	--x-feature=openmp ^
+    --x-feature=k4w2 ^
+    --x-feature=octomap ^
+    --x-feature=openmp ^
     --x-feature=realsense2 ^
-	--x-feature=openni2 ^
-	--x-feature=gtsam-deps ^
-	--x-feature=libpointmatcher-deps
+    --x-feature=openni2 ^
+    --x-feature=gtsam-deps ^
+    --x-feature=python ^
+    --x-feature=libpointmatcher-deps
 
 :: 3. Export
 echo [+] Exporting built binaries to raw folder...
@@ -58,6 +59,9 @@ for /d %%i in ("%EXPORT_DIR%\vcpkg-export-*") do set "FINAL_EXPORT_PATH=%%i"
 ren "%FINAL_EXPORT_PATH%" "%TARGET_NAME%" || exit /b %errorlevel%
 set "FINAL_EXPORT_PATH=%TARGET_FULL_PATH%"
 
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m ensurepip --upgrade || exit /b %errorlevel%
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/Scripts/pip3.exe install numpy || exit /b %errorlevel%
+
 :: 4. Other dependencies not in vcpkg
 :: libnabo
 echo [+] Building libnabo...
@@ -65,9 +69,9 @@ if not exist libnabo (
     echo [+] Downloading...
     git clone https://github.com/ethz-asl/libnabo.git
     cd libnabo
-	:: Jan 27, 2022
+    :: Jan 27, 2022
     git checkout c925c47
-	git apply ../patches/libnabo_c925c47.patch
+    git apply ../patches/libnabo_c925c47.patch
     cd ..
 )
 cd libnabo
@@ -92,7 +96,7 @@ if not exist libpointmatcher (
     echo [+] Downloading and applying patch...
     git clone https://github.com/ethz-asl/libpointmatcher.git
     cd libpointmatcher
-	:: Mar 17, 2023
+    :: Mar 17, 2023
     git checkout 7dc58e5
     git apply ../patches/pointmatcher_7dc58e5.patch
     cd ..
@@ -124,9 +128,10 @@ if not exist gtsam (
     echo [+] Downloading and applying patch...
     git clone https://github.com/borglab/gtsam.git
     cd gtsam
-	:: Feb 28, 2026
-	git checkout f7dddec7b8766e97c1c04894da096d304bbdda92
-    git apply ../patches/gtsam_f7dddec7.patch
+    :: June 18, 2025
+    git checkout 4.3a0-ros
+    git cherry-pick 18af4e6
+    git apply ../patches/gtsam_4_3a0-ros.patch
     cd ..
 )
 cd gtsam
@@ -154,7 +159,7 @@ if not exist opengv (
     echo [+] Downloading and applying patch...
     git clone https://github.com/laurentkneip/opengv.git
     cd opengv
-	:: Aug 6, 2020
+    :: Aug 6, 2020
     git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3
     git apply ../patches/opengv_91f4b19c.patch
     cd ..

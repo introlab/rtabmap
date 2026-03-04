@@ -32,7 +32,7 @@ jobs:
           extra_cmake_def: "-DWITH_CERES=ON"
         - os: windows-2022
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_GTSAM=OFF'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON'
 
     steps:
     - uses: actions/checkout@v4
@@ -53,6 +53,7 @@ jobs:
       run: |
         cmake `
           -B ${{github.workspace}}/build `
+          -GNinja `
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
           ${{ matrix.extra_cmake_def }} `
           -DVCPKG_MANIFEST_INSTALL=OFF `

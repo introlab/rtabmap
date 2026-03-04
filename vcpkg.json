@@ -59,25 +59,25 @@
     "gtsam-deps": {
       "description": "Build GTSAM's dependencies (based on official vcpkg.json file in gtsam repo). Removed pybind11 and mkl.",
       "dependencies": [
-		"tbb",
-		"geographiclib",
-		"eigen3",
-		"boost-concept-check",
-		"boost-fusion",
-		"boost-graph",
-		"boost-move",
-		"boost-optional",
-		"boost-phoenix",
-		"boost-pool",
-		"boost-program-options",
-		"boost-random",
-		"boost-range",
-		"boost-serialization",
-		"boost-smart-ptr",
-		"boost-spirit",
-		"boost-timer",
-		"boost-tokenizer",
-		"boost-type-traits"
+        "tbb",
+        "geographiclib",
+        "eigen3",
+        "boost-concept-check",
+        "boost-fusion",
+        "boost-graph",
+        "boost-move",
+        "boost-optional",
+        "boost-phoenix",
+        "boost-pool",
+        "boost-program-options",
+        "boost-random",
+        "boost-range",
+        "boost-serialization",
+        "boost-smart-ptr",
+        "boost-spirit",
+        "boost-timer",
+        "boost-tokenizer",
+        "boost-type-traits"
       ]
     },
     "gui": {
@@ -116,7 +116,7 @@
       "description": "Build libpointmatcher's dependencies",
       "dependencies": [
         "boost-assign",
-		"boost-format",
+        "boost-format",
         "boost-program-options",
         "boost-timer"
       ]
@@ -172,10 +172,16 @@
         }
       ]
     },
-	"tbb": {
+    "python": {
+      "description": "Build RTAB-Map with python support",
+      "dependencies": [
+        "pybind11"
+      ]
+    },
+    "tbb": {
       "description": "Include TBB (for opencv and gtsam-deps)",
       "dependencies": [
-		"tbb",
+        "tbb",
         {
           "name": "opencv",
           "default-features": false,
