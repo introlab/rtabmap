@@ -60,7 +60,8 @@ ren "%FINAL_EXPORT_PATH%" "%TARGET_NAME%" || exit /b %errorlevel%
 set "FINAL_EXPORT_PATH=%TARGET_FULL_PATH%"
 
 %FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m ensurepip --upgrade || exit /b %errorlevel%
-%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/Scripts/pip3.exe install numpy || exit /b %errorlevel%
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install "numpy<2" || exit /b %errorlevel%
+:: %FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install torch torchvision opencv-python-headless "numpy<2" || exit /b %errorlevel%
 
 :: 4. Other dependencies not in vcpkg
 :: libnabo

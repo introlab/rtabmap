@@ -156,6 +156,68 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		ENDIF()
 	ENDIF(WIN32 AND CUDA_FOUND)
   ENDIF(Torch_FOUND)
+  
+  IF(Python3_FOUND)
+	# bundle python3
+    IF(WIN32)
+		set(PYTHON_ZIP_NAME "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.zip")
+		get_filename_component(PYTHON_ROOT "${Python3_EXECUTABLE}" DIRECTORY)
+		file(TO_CMAKE_PATH "${Python3_STDLIB}" SANITIZED_STDLIB)
+
+		MESSAGE(STATUS "Python3_EXECUTABLE=${Python3_EXECUTABLE}")
+		MESSAGE(STATUS "Python3_STDLIB=${SANITIZED_STDLIB}")
+		
+		install(FILES "${Python3_EXECUTABLE}" DESTINATION bin COMPONENT runtime)
+
+		# when using python-opencv, it expects python3.dll, not python312.dll
+		install(CODE "
+			set(BIN_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin\")
+			set(TARGET_DLL \"\${BIN_DIR}/python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll\")
+			set(LINK_DLL \"\${BIN_DIR}/python3.dll\")
+
+			# Use 'mklink /H' to create a hard link on Windows
+			execute_process(
+				COMMAND cmd /c mklink /H \"\${LINK_DLL}\" \"\${TARGET_DLL}\"
+				RESULT_VARIABLE LINK_RESULT
+				ERROR_VARIABLE LINK_ERROR
+			)
+		" COMPONENT Runtime)
+		
+		file(TO_CMAKE_PATH "${Python3_STDLIB}" SANITIZED_STDLIB)
+		file(GLOB LIB_CONTENTS RELATIVE "${SANITIZED_STDLIB}" "${SANITIZED_STDLIB}/*")
+		list(REMOVE_ITEM LIB_CONTENTS "site-packages")
+		install(CODE "
+			execute_process(
+				COMMAND \"${CMAKE_COMMAND}\" -E tar cf \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PYTHON_ZIP_NAME}\" --format=zip -- ${LIB_CONTENTS}
+				WORKING_DIRECTORY \"${SANITIZED_STDLIB}\"
+			)
+		" COMPONENT runtime)
+		set(PYTHON_SITE_PACKAGES "${SANITIZED_STDLIB}/site-packages")
+		
+		install(DIRECTORY "${PYTHON_SITE_PACKAGES}/"
+				DESTINATION bin/Lib/site-packages
+				COMPONENT runtime
+		)
+		install(DIRECTORY "${PYTHON_ROOT}/DLLs"
+				DESTINATION bin/
+				COMPONENT runtime
+				FILES_MATCHING 
+				PATTERN "*.dll"
+				PATTERN "*.pyd"
+		)
+		install(DIRECTORY "${PYTHON_ROOT}/Scripts"
+				DESTINATION bin/
+				COMPONENT runtime
+		)
+		# install our scripts in share for convenience
+		install(DIRECTORY "${PROJECT_SOURCE_DIR}/corelib/src/python/"
+				DESTINATION share
+				COMPONENT runtime
+				FILES_MATCHING
+				PATTERN "*.py"
+		)
+	ENDIF(WIN32)
+  ENDIF(Python3_FOUND)
 
   IF(Qt6_FOUND)
 	# Reference: https://doc-snapshots.qt.io/qt6-6.4/qt-deploy-runtime-dependencies.html

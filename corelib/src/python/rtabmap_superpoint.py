@@ -8,6 +8,7 @@
 import random
 import numpy as np
 import torch
+import os
 
 #import sys
 #import os
@@ -21,15 +22,19 @@ torch.set_grad_enabled(False)
 device = 'cpu'
 superpoint = []
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 def init(cuda):
     #print("SuperPoint python init()")
     
     global device
     device = 'cuda' if torch.cuda.is_available() and cuda else 'cpu'
     
+    weights_abs_path = os.path.join(script_dir, "superpoint_v1.pth")
+    
     # This class runs the SuperPoint network and processes its outputs.
     global superpoint
-    superpoint = SuperPointFrontend(weights_path="superpoint_v1.pth",
+    superpoint = SuperPointFrontend(weights_path=weights_abs_path,
                           nms_dist=4,
                           conf_thresh=0.015,
                           nn_thresh=1,
@@ -52,5 +57,5 @@ def detect(imageBuffer):
 
 if __name__ == '__main__':
     #test
-    init(True)
+    init(False)
     detect(np.random.rand(640,480)*255)
