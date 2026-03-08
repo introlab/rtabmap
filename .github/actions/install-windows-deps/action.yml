@@ -13,7 +13,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.workspace }}/vcpkg_installed
-        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-v2
+        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-v3
 
     - name: Download and Install vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'
