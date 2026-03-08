@@ -169,20 +169,6 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		
 		install(FILES "${Python3_EXECUTABLE}" DESTINATION bin COMPONENT runtime)
 
-		# when using python-opencv, it expects python3.dll, not python312.dll
-		install(CODE "
-			set(BIN_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin\")
-			set(TARGET_DLL \"\${BIN_DIR}/python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll\")
-			set(LINK_DLL \"\${BIN_DIR}/python3.dll\")
-
-			# Use 'mklink /H' to create a hard link on Windows
-			execute_process(
-				COMMAND cmd /c mklink /H \"\${LINK_DLL}\" \"\${TARGET_DLL}\"
-				RESULT_VARIABLE LINK_RESULT
-				ERROR_VARIABLE LINK_ERROR
-			)
-		" COMPONENT Runtime)
-		
 		file(TO_CMAKE_PATH "${Python3_STDLIB}" SANITIZED_STDLIB)
 		file(GLOB LIB_CONTENTS RELATIVE "${SANITIZED_STDLIB}" "${SANITIZED_STDLIB}/*")
 		list(REMOVE_ITEM LIB_CONTENTS "site-packages")
@@ -326,6 +312,32 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     include(\"BundleUtilities\")
     fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
   " COMPONENT runtime)
+  
+  IF(Python3_FOUND)
+    IF(WIN32)
+		# when using python-opencv, it expects python3.dll, not python312.dll
+		install(CODE "
+			set(PY_VERSION_SUFFIX \"${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}\")
+			set(BIN_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin\")
+			set(TARGET_DLL_PATH \"\${BIN_DIR}/python\${PY_VERSION_SUFFIX}.dll\")
+			set(LINK_DLL_PATH \"\${BIN_DIR}/python3.dll\")
+			
+			file(TO_NATIVE_PATH \"\${TARGET_DLL_PATH}\" TARGET_DLL)
+			file(TO_NATIVE_PATH \"\${LINK_DLL_PATH}\" LINK_DLL)
+
+			# Use 'mklink /H' to create a hard link on Windows
+			execute_process(
+				COMMAND cmd /c mklink /H \"\${LINK_DLL}\" \"\${TARGET_DLL}\"
+				RESULT_VARIABLE LINK_RESULT
+				ERROR_VARIABLE LINK_ERROR
+			)
+			
+			if(NOT LINK_RESULT EQUAL 0)
+				message(FATAL_ERROR  \"Failed to create python dll hard link: \${LINK_ERROR} (\${LINK_DLL} -> \${TARGET_DLL})\")
+			endif()
+		" COMPONENT runtime)
+	ENDIF()
+  ENDIF()
 
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   
