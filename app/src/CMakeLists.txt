@@ -168,7 +168,21 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 		MESSAGE(STATUS "Python3_STDLIB=${SANITIZED_STDLIB}")
 		
 		install(FILES "${Python3_EXECUTABLE}" DESTINATION bin COMPONENT runtime)
+		
+		# when using python-opencv, it expects python3.dll, not python312.dll
+		get_filename_component(VCPKG_TRIPLET_ROOT "${PYTHON_TOOLS_DIR}/../../" ABSOLUTE)
+		set(VCPKG_BIN_DIR "${VCPKG_TRIPLET_ROOT}/bin")
+		find_file(PYTHON3_STABLE_DLL 
+			NAMES python3.dll 
+			PATHS "${VCPKG_BIN_DIR}"
+			NO_DEFAULT_PATH
+		)
+		if(PYTHON3_STABLE_DLL)
+			message(STATUS "Found python3.dll at: ${PYTHON3_STABLE_DLL}")
+			install(FILES "${PYTHON3_STABLE_DLL}" DESTINATION bin COMPONENT runtime)
+		endif()
 
+		# install python Lib in python312.zip (without site-packages, which is installed separatly afterwards)
 		file(TO_CMAKE_PATH "${Python3_STDLIB}" SANITIZED_STDLIB)
 		file(GLOB LIB_CONTENTS RELATIVE "${SANITIZED_STDLIB}" "${SANITIZED_STDLIB}/*")
 		list(REMOVE_ITEM LIB_CONTENTS "site-packages")
@@ -184,6 +198,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 				DESTINATION bin/Lib/site-packages
 				COMPONENT runtime
 		)
+		# install python DDLs
 		install(DIRECTORY "${PYTHON_ROOT}/DLLs"
 				DESTINATION bin/
 				COMPONENT runtime
@@ -191,11 +206,8 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 				PATTERN "*.dll"
 				PATTERN "*.pyd"
 		)
-		install(DIRECTORY "${PYTHON_ROOT}/Scripts"
-				DESTINATION bin/
-				COMPONENT runtime
-		)
-		# install our scripts in share for convenience
+
+		# install our python scripts in share for convenience
 		install(DIRECTORY "${PROJECT_SOURCE_DIR}/corelib/src/python/"
 				DESTINATION share
 				COMPONENT runtime
@@ -313,31 +325,5 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
   " COMPONENT runtime)
   
-  IF(Python3_FOUND)
-    IF(WIN32)
-		# when using python-opencv, it expects python3.dll, not python312.dll
-		install(CODE "
-			set(PY_VERSION_SUFFIX \"${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}\")
-			set(BIN_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin\")
-			set(TARGET_DLL_PATH \"\${BIN_DIR}/python\${PY_VERSION_SUFFIX}.dll\")
-			set(LINK_DLL_PATH \"\${BIN_DIR}/python3.dll\")
-			
-			file(TO_NATIVE_PATH \"\${TARGET_DLL_PATH}\" TARGET_DLL)
-			file(TO_NATIVE_PATH \"\${LINK_DLL_PATH}\" LINK_DLL)
-
-			# Use 'mklink /H' to create a hard link on Windows
-			execute_process(
-				COMMAND cmd /c mklink /H \"\${LINK_DLL}\" \"\${TARGET_DLL}\"
-				RESULT_VARIABLE LINK_RESULT
-				ERROR_VARIABLE LINK_ERROR
-			)
-			
-			if(NOT LINK_RESULT EQUAL 0)
-				message(FATAL_ERROR  \"Failed to create python dll hard link: \${LINK_ERROR} (\${LINK_DLL} -> \${TARGET_DLL})\")
-			endif()
-		" COMPONENT runtime)
-	ENDIF()
-  ENDIF()
-
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   

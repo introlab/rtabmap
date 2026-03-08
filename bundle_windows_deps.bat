@@ -42,7 +42,7 @@ echo [+] Installing dependencies via vcpkg manifest...
     --x-feature=openni2 ^
     --x-feature=gtsam-deps ^
     --x-feature=python ^
-    --x-feature=libpointmatcher-deps
+    --x-feature=libpointmatcher-deps || exit /b %errorlevel%
 
 :: 3. Export
 echo [+] Exporting built binaries to raw folder...
@@ -51,7 +51,7 @@ for /f "usebackq tokens=*" %%i in (`"%VS_LOCATOR%" -latest -property catalog_pro
 set TARGET_NAME=vcpkg-export-%VCPKG_COMMIT_SHORT%-x64-%VS_YEAR%
 set TARGET_FULL_PATH=%EXPORT_DIR%\%TARGET_NAME%
 if exist "%TARGET_FULL_PATH%" rd /s /q "%TARGET_FULL_PATH%"
-"%VCPKG_ROOT%\vcpkg.exe" export --raw --output-dir="%EXPORT_DIR%" --triplet=%TRIPLET%
+"%VCPKG_ROOT%\vcpkg.exe" export --raw --output-dir="%EXPORT_DIR%" --triplet=%TRIPLET%  || exit /b %errorlevel%
 
 :: Find the actual exported folder name (it usually contains a date/hash)
 for /d %%i in ("%EXPORT_DIR%\vcpkg-export-*") do set "FINAL_EXPORT_PATH=%%i"

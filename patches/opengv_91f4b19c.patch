@@ -49,13 +49,13 @@ index 9660f55..c4a076f 100644
  
  IF (BUILD_TESTS)
 diff --git a/modules/Config.cmake.in b/modules/Config.cmake.in
-index 9b4c9ee..485720c 100644
+index 9b4c9ee..6963356 100644
 --- a/modules/Config.cmake.in
 +++ b/modules/Config.cmake.in
 @@ -1,4 +1,4 @@
  @PACKAGE_INIT@
 -
-+find_dependency(Eigen3)
++find_dependency(Eigen3 CONFIG)
  include("${CMAKE_CURRENT_LIST_DIR}/@targets_export_name@.cmake")
  check_required_components("@PROJECT_NAME@")
 diff --git a/src/absolute_pose/CentralAbsoluteAdapter.cpp b/src/absolute_pose/CentralAbsoluteAdapter.cpp

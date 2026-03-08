@@ -97,7 +97,8 @@
           "features": [
             "gui",
             "opengl",
-            "widgets"
+            "widgets",
+			"png"
           ]
         },
         {
