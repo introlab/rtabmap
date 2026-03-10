@@ -467,7 +467,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			{
 				UERROR("The dictionary is empty or missing some words from nodes in WM, "
 					"we cannot repair it because it is a fixed dictionary. Make sure you "
-					"are using the right fixed ditionary that was used to generate the map.");
+					"are using the right fixed dictionary that was used to generate the map.");
 			}
 			else
 			{
