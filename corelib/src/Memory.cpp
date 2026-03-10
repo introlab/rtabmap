@@ -437,7 +437,8 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		UTimer timer;
 		// Enable loaded signatures
 		const std::map<int, Signature *> & signatures = this->getSignatures();
-		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+		bool corruptedDictionary = false;
+		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end() && !corruptedDictionary; ++i)
 		{
 			Signature * s = this->_getSignature(i->first);
 			UASSERT(s != 0);
@@ -450,12 +451,102 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				{
 					if(iter->first > 0)
 					{
-						_vwd->addWordRef(iter->first, i->first);
+						if(!_vwd->addWordRef(iter->first, i->first))
+						{
+							corruptedDictionary = true;
+							break;
+						}
 					}
 				}
-				s->setEnabled(true);
+				s->setEnabled(!corruptedDictionary);
 			}
 		}
+		if(corruptedDictionary)
+		{
+			if(!_vwd->isIncremental())
+			{
+				UERROR("The dictionary is empty or missing some words from nodes in WM, "
+					"we cannot repair it because it is a fixed dictionary. Make sure you "
+					"are using the right fixed ditionary that was used to generate the map.");
+			}
+			else
+			{
+				std::string msg = uFormat(
+					"The dictionary is empty or missing some words from nodes in WM, "
+					"we will try to repair it. This can be caused by rtabmap closing before it has time "
+					"to save the dictionary. Re-creating the dictionary from %ld nodes...",
+					signatures.size());
+				UWARN("%s", msg.c_str());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+
+				//remove all words ref
+
+				const std::map<int, VisualWord *> & addedWords = _vwd->getVisualWords();
+				int missingWords = 0;
+				int nodesRepaired = 0;
+				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+				{
+					Signature * s = this->_getSignature(i->first);
+					UASSERT(s != 0);
+
+					if(s->isEnabled())
+					{
+						// Words already in dictionary and references added
+						continue;
+					}
+
+					const std::multimap<int, int> * words = &s->getWords();
+					if(words->size())
+					{
+						cv::Mat descriptors = s->getWordsDescriptors();
+						std::multimap<int, int> loadedWords;
+						if(descriptors.empty())
+						{
+							// We may have started rtabmap without loading features, check in the database
+							std::multimap<int, int> w;
+							std::vector<cv::KeyPoint> k;
+							std::vector<cv::Point3f> p;
+							_dbDriver->getLocalFeatures(s->id(), loadedWords, k, p, descriptors);
+							UASSERT(loadedWords.size() == words->size()); // Just doublecheck
+							words = &loadedWords; // The index will be set
+							UASSERT(!descriptors.empty());
+						}
+						bool repaired = false;
+						for(std::multimap<int, int>::const_iterator iter = words->begin(); iter!=words->end(); ++iter)
+						{
+							if(iter->first > 0)
+							{
+								if(addedWords.find(iter->first) == addedWords.end())
+								{
+									UASSERT_MSG(iter->second >= 0 && iter->second < descriptors.rows, 
+										uFormat("iter->second=%d descriptors.rows=%d (signature=%d word=%d)",
+										iter->second, descriptors.rows, s->id(), iter->first).c_str());
+									_vwd->addWord(new VisualWord(iter->first, descriptors.row(iter->second).clone()));
+									++missingWords;
+									repaired = true;
+								}
+								else
+								{
+									_vwd->removeAllWordRef(iter->first, s->id());
+								}
+								UASSERT(_vwd->addWordRef(iter->first, s->id()));
+							}
+						}
+						nodesRepaired += (repaired?1:0);
+						s->setEnabled(true);
+					}
+				}
+
+				msg = uFormat(
+					"Regenerated the dictionary with %d missing words from %d nodes.",
+					missingWords,
+					nodesRepaired);
+				UWARN("%s", msg.c_str());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+				_memoryChanged = true; // This will force rtabmap to save back the dictionary even if we don't process any new data
+			}
+		}
+
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
 		if(_vwd->getUnusedWordsSize() && _vwd->isIncremental())
@@ -6599,7 +6690,10 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 			{
 				if(keys.at(i)>0)
 				{
-					_vwd->addWordRef(keys.at(i), (*j)->id());
+					if(_vwd->addWordRef(keys.at(i), (*j)->id()))
+					{
+						UERROR("Could not add word ref %d to node %d!?", keys.at(i), (*j)->id());
+					}
 				}
 			}
 			(*j)->setEnabled(true);
