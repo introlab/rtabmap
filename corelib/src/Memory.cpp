@@ -482,8 +482,8 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				//remove all words ref
 
 				const std::map<int, VisualWord *> & addedWords = _vwd->getVisualWords();
-				int missingWords = 0;
 				int nodesRepaired = 0;
+				size_t oldSize = addedWords.size();
 				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 				{
 					Signature * s = this->_getSignature(i->first);
@@ -522,7 +522,6 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 										uFormat("iter->second=%d descriptors.rows=%d (signature=%d word=%d)",
 										iter->second, descriptors.rows, s->id(), iter->first).c_str());
 									_vwd->addWord(new VisualWord(iter->first, descriptors.row(iter->second).clone()));
-									++missingWords;
 									repaired = true;
 								}
 								else
@@ -538,8 +537,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				}
 
 				msg = uFormat(
-					"Regenerated the dictionary with %d missing words from %d nodes.",
-					missingWords,
+					"Regenerated the dictionary with %ld missing words (%ld -> %ld) from %d nodes.",
+					addedWords.size() - oldSize,
+					oldSize,
+					addedWords.size(),
 					nodesRepaired);
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
