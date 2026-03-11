@@ -17,29 +17,40 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.build_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, windows-2022]
+        build_name: [ubuntu-24.04, ubuntu-22.04, windows-2022, windows-2022-cuda]
         include:
-        - os: ubuntu-22.04
+        - build_name: ubuntu-22.04
+          os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
           extra_cmake_def: ""
-        - os: ubuntu-24.04
+        - build_name: ubuntu-24.04
+          os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
-        - os: windows-2022
+        - build_name: windows-2022
+          os: windows-2022
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=OFF'
+        - build_name: windows-2022-cuda
+          os: windows-2022
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=ON'
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Windows Dependencies
-      if: matrix.os == 'windows-2022'
+      if: matrix.build_name == 'windows-2022'
       uses: ./.github/actions/install-windows-deps
+ 
+    - name: Install Windows Dependencies with CUDA
+      if: matrix.build_name == 'windows-2022-cuda'
+      uses: ./.github/actions/install-windows-cuda-deps
 
     - name: Install Linux Dependencies
       if: matrix.os != 'windows-2022'
@@ -58,7 +69,8 @@ jobs:
           -DVCPKG_MANIFEST_INSTALL=OFF `
           -DVCPKG_TARGET_TRIPLET=x64-windows-release `
           -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
-          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
+          -DTorch_DIR=${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3/Lib/site-packages/torch/share/cmake/Torch
 
     - name: Configure CMake
       if: matrix.os != 'windows-2022'
@@ -84,6 +96,7 @@ jobs:
         name: RTABMap-Binaries           # Give your artifact a recognizable name
         path: build/RTABMap-*            # Supports wildcards for files and directories
         if-no-files-found: warn          # Optional: warn, error, or ignore
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build

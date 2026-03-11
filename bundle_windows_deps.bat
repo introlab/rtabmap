@@ -59,9 +59,9 @@ for /d %%i in ("%EXPORT_DIR%\vcpkg-export-*") do set "FINAL_EXPORT_PATH=%%i"
 ren "%FINAL_EXPORT_PATH%" "%TARGET_NAME%" || exit /b %errorlevel%
 set "FINAL_EXPORT_PATH=%TARGET_FULL_PATH%"
 
+:: We install numpy<2 to be compatible with SuperPoint and SuperGlue scripts
 %FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m ensurepip --upgrade || exit /b %errorlevel%
 %FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install "numpy<2" || exit /b %errorlevel%
-:: %FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install torch torchvision opencv-python-headless "numpy<2" || exit /b %errorlevel%
 
 :: 4. Other dependencies not in vcpkg
 :: libnabo
@@ -76,7 +76,7 @@ if not exist libnabo (
     cd ..
 )
 cd libnabo
-cmake -S . -B build ^
+cmake -S . -B build -GNinja ^
   -DVCPKG_MANIFEST_INSTALL=OFF  ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-release  ^
   -DVCPKG_INSTALLED_DIR="%FINAL_EXPORT_PATH%\installed"  ^
@@ -103,7 +103,7 @@ if not exist libpointmatcher (
     cd ..
 )
 cd libpointmatcher
-cmake -S . -B build  ^
+cmake -S . -B build -GNinja ^
   -DVCPKG_MANIFEST_INSTALL=OFF  ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-release  ^
   -DVCPKG_INSTALLED_DIR="%FINAL_EXPORT_PATH%\installed"  ^
@@ -136,12 +136,13 @@ if not exist gtsam (
     cd ..
 )
 cd gtsam
-cmake -S . -B build  ^
+cmake -S . -B build -GNinja ^
   -DVCPKG_MANIFEST_INSTALL=OFF  ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-release  ^
   -DVCPKG_INSTALLED_DIR="%FINAL_EXPORT_PATH%\installed"  ^
   -DCMAKE_TOOLCHAIN_FILE="%FINAL_EXPORT_PATH%\scripts\buildsystems\vcpkg.cmake"  ^
   -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
+  -DCMAKE_BUILD_TYPE=Release ^
   -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF  ^
   -DGTSAM_BUILD_TESTS=OFF  ^
   -DGTSAM_BUILD_UNSTABLE=OFF  ^
@@ -166,7 +167,7 @@ if not exist opengv (
     cd ..
 )
 cd opengv
-cmake -S . -B build  ^
+cmake -S . -B build -GNinja ^
   -DVCPKG_MANIFEST_INSTALL=OFF  ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-release  ^
   -DVCPKG_INSTALLED_DIR="%FINAL_EXPORT_PATH%\installed"  ^
@@ -195,3 +196,28 @@ if %ERRORLEVEL% EQU 0 (
 ) else (
     echo [X] 7-Zip failed with error code %ERRORLEVEL%
 )
+
+
+:: Example building rtabmap afterwards
+goto :EndComment
+
+set VCPKG_UNZIPPED_EXPORT_PATH=%USERPROFILE%\Downloads\vcpkg-export-########-x64-vs2022
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\bin;%PATH%
+
+cmake -B build -GNinja ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON ^
+  -DWITH_ZED=OFF ^
+  -DVCPKG_MANIFEST_INSTALL=OFF ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows-release ^
+  -DVCPKG_INSTALLED_DIR="%VCPKG_UNZIPPED_EXPORT_PATH%/installed" ^
+  -DCMAKE_TOOLCHAIN_FILE=%VCPKG_UNZIPPED_EXPORT_PATH%/scripts/buildsystems/vcpkg.cmake ^
+  -DGTSAM_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\CMake 
+
+cmake --build build --config Release --target package
+
+:: To install CPU pytorch inside rtabmap package afterwards.
+:: Note that python.exe is the one in the bin directory of the package, not the system one.
+python.exe -m pip install torch torchvision opencv-python-headless "numpy<2"
+
+:EndComment
