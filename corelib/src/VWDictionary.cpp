@@ -868,7 +868,7 @@ int VWDictionary::getNextId()
 	return ++_lastWordId;
 }
 
-void VWDictionary::addWordRef(int wordId, int signatureId)
+bool VWDictionary::addWordRef(int wordId, int signatureId)
 {
 	VisualWord * vw = 0;
 	vw = uValue(_visualWords, wordId, vw);
@@ -878,10 +878,12 @@ void VWDictionary::addWordRef(int wordId, int signatureId)
 		_totalActiveReferences += 1;
 
 		_unusedWords.erase(vw->id());
+		return true;
 	}
 	else
 	{
-		UERROR("Not found word %d (dict size=%d)", wordId, (int)_visualWords.size());
+		UWARN("Not found word %d (dict size=%d)", wordId, (int)_visualWords.size());
+		return false;
 	}
 }
 
