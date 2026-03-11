@@ -13,7 +13,8 @@ runs:
       id: cuda-toolkit
       with:
         cuda: '13.0.0'
-        cudnn: '9.x'
+        method: 'network'
+        sub-packages: '["cudnn"]'
 
     - name: Verify CUDA
       shell: bash
