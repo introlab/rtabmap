@@ -89,7 +89,7 @@ public:
 	std::vector<int> findNN(const std::list<VisualWord *> & vws) const;
 	std::vector<int> findNN(const cv::Mat & descriptors) const;
 
-	void addWordRef(int wordId, int signatureId);
+	bool addWordRef(int wordId, int signatureId);
 	void removeAllWordRef(int wordId, int signatureId);
 	const VisualWord * getWord(int id) const;
 	VisualWord * getUnusedWord(int id) const;
