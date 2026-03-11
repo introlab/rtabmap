@@ -68,6 +68,10 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
             <td><a href="http://build.ros2.org/job/Jbin_uN64__rtabmap__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Jbin_uN64__rtabmap__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
+            <td>Kilted</td>
+            <td><a href="http://build.ros2.org/job/Kbin_uN64__rtabmap__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Kbin_uN64__rtabmap__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
+        </tr>
+        <tr>
             <td>Rolling</td>
             <td><a href="http://build.ros2.org/job/Rbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Rbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
         </tr>
