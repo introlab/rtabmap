@@ -26,7 +26,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.workspace }}/vcpkg_installed
-        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-cuda
+        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-cuda130
 
     - name: Download and Install vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'
@@ -36,7 +36,7 @@ runs:
         $archivePath = "${{ runner.workspace }}\vcpkg-export.7z"
 
         # The file has been built locally with bundle-windows-deps.bat
-        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-66c0373d-x64-vs2022-cuda.7z"
+        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-66c0373d-x64-vs2022-cuda130.7z"
 
         Invoke-WebRequest -Uri $url -OutFile $archivePath
         & 7z x $archivePath "-o$install_dir" -y
