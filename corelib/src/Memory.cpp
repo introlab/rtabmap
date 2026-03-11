@@ -545,6 +545,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
 				_memoryChanged = true; // This will force rtabmap to save back the dictionary even if we don't process any new data
+				_vwd->update();
 			}
 		}
 
