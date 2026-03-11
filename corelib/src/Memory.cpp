@@ -495,10 +495,13 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				const std::map<int, VisualWord *> & addedWords = _vwd->getVisualWords();
 				int nodesRepaired = 0;
 				size_t oldSize = addedWords.size();
+				std::string assertMsg = 
+					"If we assert here, the problem is maybe deeper. Try "
+					"to use rtabmap-recovery tool instead to fix the database.";
 				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 				{
 					Signature * s = this->_getSignature(i->first);
-					UASSERT(s != 0);
+					UASSERT_MSG(s != 0, assertMsg.c_str());
 
 					if(s->isEnabled())
 					{
@@ -518,9 +521,9 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 							std::vector<cv::KeyPoint> k;
 							std::vector<cv::Point3f> p;
 							_dbDriver->getLocalFeatures(s->id(), loadedWords, k, p, descriptors);
-							UASSERT(loadedWords.size() == words->size()); // Just doublecheck
+							UASSERT_MSG(loadedWords.size() == words->size(), assertMsg.c_str()); // Just doublecheck
 							words = &loadedWords; // The index will be set
-							UASSERT(!descriptors.empty());
+							UASSERT_MSG(!descriptors.empty(), assertMsg.c_str());
 						}
 						bool repaired = false;
 						for(std::multimap<int, int>::const_iterator iter = words->begin(); iter!=words->end(); ++iter)
@@ -530,12 +533,12 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 								if(addedWords.find(iter->first) == addedWords.end())
 								{
 									UASSERT_MSG(iter->second >= 0 && iter->second < descriptors.rows, 
-										uFormat("iter->second=%d descriptors.rows=%d (signature=%d word=%d)",
-										iter->second, descriptors.rows, s->id(), iter->first).c_str());
+										uFormat("iter->second=%d descriptors.rows=%d (signature=%d word=%d). %s",
+										iter->second, descriptors.rows, s->id(), iter->first, assertMsg.c_str()).c_str());
 									_vwd->addWord(new VisualWord(iter->first, descriptors.row(iter->second).clone()));
 									repaired = true;
 								}
-								UASSERT(_vwd->addWordRef(iter->first, s->id()));
+								UASSERT_MSG(_vwd->addWordRef(iter->first, s->id()), assertMsg.c_str());
 							}
 						}
 						nodesRepaired += (repaired?1:0);
