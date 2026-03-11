@@ -451,7 +451,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				{
 					if(iter->first > 0)
 					{
-						if(!_vwd->addWordRef(iter->first, i->first))
+						if(!_vwd->addWordRef(iter->first, s->id()))
 						{
 							corruptedDictionary = true;
 							break;
@@ -459,6 +459,17 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					}
 				}
 				s->setEnabled(!corruptedDictionary);
+				if(corruptedDictionary)
+				{
+					//revert all changes from that signature till it broke above
+					for(std::multimap<int, int>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
+					{
+						if(iter->first > 0)
+						{
+							_vwd->removeAllWordRef(iter->first, s->id());
+						}
+					}
+				}
 			}
 		}
 		if(corruptedDictionary)
@@ -523,10 +534,6 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 										iter->second, descriptors.rows, s->id(), iter->first).c_str());
 									_vwd->addWord(new VisualWord(iter->first, descriptors.row(iter->second).clone()));
 									repaired = true;
-								}
-								else
-								{
-									_vwd->removeAllWordRef(iter->first, s->id());
 								}
 								UASSERT(_vwd->addWordRef(iter->first, s->id()));
 							}
