@@ -256,7 +256,12 @@ IF(WITH_PYTHON AND Python3_FOUND)
 	)
 ENDIF(WITH_PYTHON AND Python3_FOUND)
 
-
+IF(onnxruntime_FOUND)
+	SET(PUBLIC_LIBRARIES
+		${PUBLIC_LIBRARIES}
+		onnxruntime::onnxruntime
+	)
+ENDIF(onnxruntime_FOUND)
 
 IF(Freenect_FOUND)
 	IF(Freenect_DASH_INCLUDES)
