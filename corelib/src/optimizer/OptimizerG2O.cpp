@@ -1637,7 +1637,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
 				
-					if(this->isSlam2d())
+					if(!vCam->fixed() && this->isSlam2d())
 					{
 						// add a singleton constraint that locks the position of the robot on the plane
 						EdgeSBACamPrior* planeConstraint = new EdgeSBACamPrior();
@@ -1648,7 +1648,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						fixedZ.setTranslation(g2o::Vector3(0,0,camPose.z()));
 						planeConstraint->setMeasurement(fixedZ);
 						planeConstraint->vertices()[0] = vCam;
-						planeConstraint->setParameterId(0, 0);
 						optimizer.addEdge(planeConstraint);
 					}
 
@@ -2073,7 +2072,10 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						}
 						else 
 						{
-							UERROR("Planar constraints didn't work!?");
+							UWARN("Planar constraints didn't work!? original pose (%d), pose %s -> %s. Falling back to old approach.",
+								iter->first,
+								iter->second.prettyPrint().c_str(),
+								t.prettyPrint().c_str());
 							// get transform between old and new pose
 							t = iter->second.inverse() * t;
 							optimizedPoses.insert(std::pair<int, Transform>(iter->first, iter->second * t.to3DoF()));

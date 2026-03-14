@@ -50,7 +50,13 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
     // return the error estimate as a 3-vector
     void computeError() {
       const g2o::VertexCam* v = static_cast<const g2o::VertexCam*>(_vertices[0]);
-      _error = (_inverseMeasurement * v->estimate()).log();
+      g2o::SE3Quat delta = _inverseMeasurement * v->estimate();
+      _error[0]=delta.translation().x();
+      _error[1]=delta.translation().y();
+      _error[2]=delta.translation().z();
+      _error[3]=delta.rotation().x();
+      _error[4]=delta.rotation().y();
+      _error[5]=delta.rotation().z();
     }
     
     // jacobian
