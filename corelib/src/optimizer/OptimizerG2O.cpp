@@ -57,11 +57,13 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/sba/types_sba.h"
 #include "g2o/solvers/eigen/linear_solver_eigen.h"
 #include "g2o/config.h"
+#include "g2o/types/slam2d_addons/edge_se2_line2d.h"
 #include "g2o/types/slam2d/types_slam2d.h"
 #include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/edge_se3_xyzprior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #include "g2o/edge_se3_gravity.h"
 #include "g2o/edge_sbacam_gravity.h"
+#include "g2o/edge_sbacam_prior.h"
 #include "g2o/edge_xy_prior.h"  // Include after types_slam2d.h to be ignored on newest g2o versions
 #include "g2o/edge_xyz_prior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #ifdef G2O_HAVE_CSPARSE
@@ -1634,6 +1636,21 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							camPose.prettyPrint().c_str());*/
 
 					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
+				
+					if(!vCam->fixed() && this->isSlam2d())
+					{
+						// add a singleton constraint that locks the position of the robot on the plane
+						EdgeSBACamPrior* planeConstraint = new EdgeSBACamPrior();
+						Eigen::Matrix<double, 6, 6> pinfo = Eigen::Matrix<double, 6, 6>::Zero();
+						pinfo(2, 2) = 1e9;
+						planeConstraint->setInformation(pinfo);
+						g2o::SE3Quat fixedZ = g2o::SE3Quat();
+						fixedZ.setTranslation(g2o::Vector3(0,0,camPose.z()));
+						planeConstraint->setMeasurement(fixedZ);
+						planeConstraint->vertices()[0] = vCam;
+						optimizer.addEdge(planeConstraint);
+					}
+
 				}
 			}
 		}
@@ -2043,12 +2060,26 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						return optimizedPoses;
 					}
 
-					// FIXME: is there a way that we can add the 2D constraint directly in SBA?
 					if(this->isSlam2d())
 					{
-						// get transform between old and new pose
-						t = iter->second.inverse() * t;
-						optimizedPoses.insert(std::pair<int, Transform>(iter->first, iter->second * t.to3DoF()));
+						// The optimized poses should be already fixed to original height,
+						// but it may have varied a little (not exaclty the same number).
+						// Here we just put back the original z value.
+						if(fabs(t.z() - iter->second.z()) < 0.001)
+						{
+							t.z() = iter->second.z();
+							optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+						}
+						else 
+						{
+							UWARN("Planar constraints didn't work!? original pose (%d), pose %s -> %s. Falling back to old approach.",
+								iter->first,
+								iter->second.prettyPrint().c_str(),
+								t.prettyPrint().c_str());
+							// get transform between old and new pose
+							t = iter->second.inverse() * t;
+							optimizedPoses.insert(std::pair<int, Transform>(iter->first, iter->second * t.to3DoF()));
+						}
 					}
 					else
 					{
