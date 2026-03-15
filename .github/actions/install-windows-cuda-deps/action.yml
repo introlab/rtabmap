@@ -8,11 +8,29 @@ runs:
       with:
         arch: x64 
   
+    - name: Cache CUDA
+      id: cache-cuda
+      uses: actions/cache@v4
+      with:
+        path: |
+          'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0'
+        key: cuda-13.0-windows-2022
+
     - name: Install CUDA
+      if: steps.cache-cuda.outputs.cache-hit != 'true'
       uses: Jimver/cuda-toolkit@v0.2.30
       id: cuda-toolkit
       with:
         cuda: '13.0.0'
+
+    - name: Setup CUDA_PATH
+      if: steps.cache-cuda.outputs.cache-hit == 'true'
+      shell: pwsh
+      run:
+        $cuda_path = "$C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0"
+        echo "CUDA_PATH=$cuda_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CUDA_PATH_V13_0=$cuda_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "$cuda_path\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Verify CUDA
       shell: bash

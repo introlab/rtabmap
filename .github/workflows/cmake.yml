@@ -22,16 +22,20 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [ubuntu-24.04, ubuntu-22.04, windows-2022, windows-2022-cuda]
+        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv, windows-2022, windows-2022-cuda]
         include:
         - build_name: ubuntu-22.04
           os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: ""
+          extra_cmake_def: "-DWITH_CERES=ON"
         - build_name: ubuntu-24.04
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
+        - build_name: ubuntu-24.04-with-opengv
+          os: ubuntu-24.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_INTERNA_OPENGV=ON"
         - build_name: windows-2022
           os: windows-2022
           extra_deps: ""
