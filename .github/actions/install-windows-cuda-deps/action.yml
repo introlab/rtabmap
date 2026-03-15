@@ -13,8 +13,6 @@ runs:
       id: cuda-toolkit
       with:
         cuda: '13.0.0'
-        method: 'network'
-        sub-packages: '["cudnn"]'
 
     - name: Verify CUDA
       shell: bash
@@ -27,7 +25,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.workspace }}/vcpkg_installed
-        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-cuda130
+        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-cuda130_v1
 
     - name: Download and Install vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'

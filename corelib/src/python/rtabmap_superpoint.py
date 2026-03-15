@@ -52,6 +52,10 @@ def detect(imageBuffer):
     # use copy to make sure memory is correctly re-ordered
     pts = np.float32(np.transpose(pts)).copy()
     desc = np.float32(np.transpose(desc)).copy()
+    
+    # rtabmap expects format:
+    #   pts:         array Nx3 (type=11 or float)
+    #   descriptors: array NxDIM 35x256 (type=11 or float)
     return pts, desc
 
 

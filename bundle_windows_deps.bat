@@ -34,6 +34,7 @@ echo [+] Installing dependencies via vcpkg manifest...
 "%VCPKG_ROOT%\vcpkg.exe" install ^
     --triplet=%TRIPLET% ^
     --host-triplet=%TRIPLET% ^
+	--clean-after-build ^
     --x-feature=tools ^
     --x-feature=k4w2 ^
     --x-feature=octomap ^
@@ -42,7 +43,7 @@ echo [+] Installing dependencies via vcpkg manifest...
     --x-feature=openni2 ^
     --x-feature=gtsam-deps ^
     --x-feature=python ^
-    --x-feature=libpointmatcher-deps || exit /b %errorlevel%
+    --x-feature=libpointmatcher-deps || exit /b !errorlevel!
 
 :: 3. Export
 echo [+] Exporting built binaries to raw folder...
@@ -51,17 +52,20 @@ for /f "usebackq tokens=*" %%i in (`"%VS_LOCATOR%" -latest -property catalog_pro
 set TARGET_NAME=vcpkg-export-%VCPKG_COMMIT_SHORT%-x64-%VS_YEAR%
 set TARGET_FULL_PATH=%EXPORT_DIR%\%TARGET_NAME%
 if exist "%TARGET_FULL_PATH%" rd /s /q "%TARGET_FULL_PATH%"
-"%VCPKG_ROOT%\vcpkg.exe" export --raw --output-dir="%EXPORT_DIR%" --triplet=%TRIPLET%  || exit /b %errorlevel%
+"%VCPKG_ROOT%\vcpkg.exe" export --raw --output-dir="%EXPORT_DIR%" --triplet=%TRIPLET%  || exit /b !errorlevel!
 
 :: Find the actual exported folder name (it usually contains a date/hash)
-for /d %%i in ("%EXPORT_DIR%\vcpkg-export-*") do set "FINAL_EXPORT_PATH=%%i"
+for /d %%i in ("%EXPORT_DIR%\vcpkg-export-20??????-??????") do set "FINAL_EXPORT_PATH=%%i"
 
-ren "%FINAL_EXPORT_PATH%" "%TARGET_NAME%" || exit /b %errorlevel%
+echo [+] Rename folder %FINAL_EXPORT_PATH% to %TARGET_NAME%
+ren "%FINAL_EXPORT_PATH%" "%TARGET_NAME%" || exit /b !errorlevel!
 set "FINAL_EXPORT_PATH=%TARGET_FULL_PATH%"
 
+echo [+] Add numpy...
 :: We install numpy<2 to be compatible with SuperPoint and SuperGlue scripts
 %FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m ensurepip --upgrade || exit /b %errorlevel%
-%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install "numpy<2" || exit /b %errorlevel%
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install --upgrade pip || exit /b !errorlevel!
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install "numpy<2" || exit /b !errorlevel!
 
 :: 4. Other dependencies not in vcpkg
 :: libnabo
@@ -87,8 +91,8 @@ cmake -S . -B build -GNinja ^
   -DLIBNABO_BUILD_DOXYGEN=OFF ^
   -DLIBNABO_BUILD_EXAMPLES=OFF ^
   -DLIBNABO_BUILD_PYTHON=OFF ^
-  -DLIBNABO_BUILD_TESTS=OFF || exit /b %errorlevel%
-cmake --build build --config Release --target install || exit /b %errorlevel%
+  -DLIBNABO_BUILD_TESTS=OFF || exit /b !errorlevel!
+cmake --build build --config Release --target install || exit /b !errorlevel!
 cd ..
 
 :: libpointmatcher
@@ -114,8 +118,8 @@ cmake -S . -B build -GNinja ^
   -DBUILD_SHARED_LIBS=ON  ^
   -DPOINTMATCHER_BUILD_EVALUATIONS=OFF ^
   -DPOINTMATCHER_BUILD_EXAMPLES=OFF ^
-  -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED /EHsc -DBOOST_EXCEPTION_DISABLE" || exit /b %errorlevel%
-cmake --build build --config Release --target install || exit /b %errorlevel%
+  -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED /EHsc -DBOOST_EXCEPTION_DISABLE" || exit /b !errorlevel!
+cmake --build build --config Release --target install || exit /b !errorlevel!
 cd ..
 
 :: We remove the files in the top-level CMake directory to force use of share/libpointmatcher/cmake
@@ -151,8 +155,8 @@ cmake -S . -B build -GNinja ^
   -DGTSAM_UNSTABLE_BUILD_PYTHON=OFF ^
   -DGTSAM_WITH_EIGEN_MKL=OFF ^
   -DGTSAM_WITH_EIGEN_MKL_OPENMP=OFF ^
-  -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS" || exit /b %errorlevel%
-cmake --build build --config Release --target install || exit /b %errorlevel%
+  -DCMAKE_CXX_FLAGS="-DBOOST_TIMER_ENABLE_DEPRECATED -DBOOST_BIND_GLOBAL_PLACEHOLDERS" || exit /b !errorlevel!
+cmake --build build --config Release --target install || exit /b !errorlevel!
 cd ..
 
 :: opengv
@@ -174,8 +178,8 @@ cmake -S . -B build -GNinja ^
   -DCMAKE_TOOLCHAIN_FILE="%FINAL_EXPORT_PATH%\scripts\buildsystems\vcpkg.cmake"  ^
   -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
   -DBUILD_TESTS=OFF  ^
-  -DBUILD_SHARED_LIBS=ON || exit /b %errorlevel%
-cmake --build build --config Release --target install || exit /b %errorlevel%
+  -DBUILD_SHARED_LIBS=ON || exit /b !errorlevel!
+cmake --build build --config Release --target install || exit /b !errorlevel!
 cd ..
 
 :: 5. ZIP the folder
@@ -191,10 +195,10 @@ set "FINAL_ZIP=%TARGET_NAME%.7z"
 :: compress contents without the root folder
 "%SEVENZIP_EXE%" u -t7z -mx9 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*" -up0q0
 
-if %ERRORLEVEL% EQU 0 (
+if !errorlevel! EQU 0 (
     echo [!] Success! Package created at %FINAL_ZIP%
 ) else (
-    echo [X] 7-Zip failed with error code %ERRORLEVEL%
+    echo [X] 7-Zip failed with error code !errorlevel!
 )
 
 

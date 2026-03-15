@@ -1,6 +1,15 @@
 @echo off
 setlocal enabledelayedexpansion
 
+IF NOT DEFINED CUDA_PATH (
+    echo [ERROR] CUDA_PATH is not set.
+    exit /b 1
+)
+
+set PATH=%CUDA_PATH%\bin;%PATH%
+set PATH=%CUDA_PATH%\bin\x64;%PATH%
+set PATH=%CUDA_PATH%\extras\CUPTI\lib64;%PATH%
+
 :: CUDA Toolkit should be manually installed on the computer before running this script
 :: We assume also that cuDNN is merged into CUDA installed directory.
 where nvcc >nul 2>&1
@@ -47,49 +56,79 @@ set FINAL_EXPORT_PATH=%EXPORT_DIR%\%TARGET_NAME%
 
 if not exist "%FINAL_EXPORT_PATH%" (
     if not exist "%VCPKG_EXPORT_PATH%" (
-        call bundle_windows_deps.bat || exit /b %errorlevel%
+        call bundle_windows_deps.bat || exit /b !errorlevel!
 	)
 	echo [+] Copying %VCPKG_EXPORT_PATH% to %FINAL_EXPORT_PATH%
-	xcopy "%VCPKG_EXPORT_PATH%" "%FINAL_EXPORT_PATH%\" /E /I /H /Y /Q || exit /b %errorlevel%
+	xcopy "%VCPKG_EXPORT_PATH%" "%FINAL_EXPORT_PATH%\" /E /I /H /Y /Q || exit /b !errorlevel!
 	echo [+] Remove opencv built by vcpkg
-	rmdir /s /q "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\include\opencv4" || exit /b %errorlevel%
-	rmdir /s /q "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\share\opencv4" || exit /b %errorlevel%
-	rmdir /s /q "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\share\opencv" || exit /b %errorlevel%
-	del "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin\opencv*" || exit /b %errorlevel%
-	del "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\lib\opencv*" || exit /b %errorlevel%
+	rmdir /s /q "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\include\opencv4" || exit /b !errorlevel!
+	rmdir /s /q "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\share\opencv4" || exit /b !errorlevel!
+	rmdir /s /q "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\share\opencv" || exit /b !errorlevel!
+	del "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin\opencv*" || exit /b !errorlevel!
+	del "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\lib\opencv*" || exit /b !errorlevel!
+	:: bundle cudnn runtime libraries
+	xcopy "%CUDA_PATH%\bin\x64\cudnn*.dll" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin\" /Y
 )
 
 :: pytorch deps
-%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install numpy packaging "cmake<4" setuptools pyyaml typing_extensions
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install numpy packaging "setuptools<82" pyyaml typing_extensions
+
+git config --global core.longpaths true
 
 :: pytorch, build with local cuda libraries to avoid duplicating them when we install rtabmap
 echo [+] Building pytorch with cuda support...
 if not exist pytorch (
     echo [+] Downloading pytorch...
-	git config --global core.longpaths true
-    git clone https://github.com/pytorch/pytorch || exit /b %errorlevel%
+    git clone https://github.com/pytorch/pytorch || exit /b !errorlevel!
     cd pytorch
 	:: Jan 21, 2026
     git checkout v2.10.0 
-	git submodule update --init --recursive || exit /b %errorlevel%
+	git submodule update --init --recursive || exit /b !errorlevel!
     cd ..
 )
 
-cd pytorch
+set "PYTHONHOME=%FINAL_EXPORT_PATH%\installed\%TRIPLET%\tools\python3"
+set "Python_ROOT_DIR=%FINAL_EXPORT_PATH%\installed\%TRIPLET%"
 set CMAKE_GENERATOR=Ninja
-set Python_ROOT_DIR=%FINAL_EXPORT_PATH%\installed\x64-windows-release
-set PYTHONHOME=%FINAL_EXPORT_PATH%\installed\x64-windows-release\tools\python3
 set BUILD_TEST=0
-set LIB="%LIB%;%FINAL_EXPORT_PATH%\installed\x64-windows-release\lib"
-set INCLUDE="%INCLUDE%;%FINAL_EXPORT_PATH%\installed\x64-windows-release\include"
-%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe setup.py install || exit /b %errorlevel%
+set ATEN_NO_TEST=1
+set INSTALL_TEST=OFF
+set "LIB=%FINAL_EXPORT_PATH%\installed\%TRIPLET%\lib;%LIB%"
+set "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\include;INCLUDE=%INCLUDE%"
+
+:: check if torch is installed
+%PYTHONHOME%/python.exe -m pip show torch >nul 2>&1
+if !errorlevel! neq 0 (
+    cd pytorch
+    %PYTHONHOME%/python.exe setup.py install || exit /b !errorlevel!
+    cd ..
+)
+if exist "%PYTHONHOME%\Lib\site-packages\torch\test" rd /s /q %PYTHONHOME%\Lib\site-packages\torch\test"
+del "%PYTHONHOME%\Lib\site-packages\torch\bin\test_*" || exit /b !errorlevel!
+
+echo [+] Building torchvision...
+if not exist torchvision (
+    echo [+] Downloading torchvision...
+    git clone https://github.com/pytorch/vision.git torchvision || exit /b !errorlevel!
+    cd torchvision
+	:: Jan 6, 2026
+    git checkout v0.25.0
+	git submodule update --init --recursive || exit /b !errorlevel!
+    cd ..
+)
+cd torchvision
+set PATH=%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin;%PATH%
+set DISTUTILS_USE_SDK=1
+set TORCHVISION_INCLUDE=%FINAL_EXPORT_PATH%\installed\%TRIPLET%\include
+set TORCHVISION_LIBRARY=%FINAL_EXPORT_PATH%\installed\%TRIPLET%\lib
+%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe -m pip install . -v --no-build-isolation || exit /b !errorlevel!
 cd ..
 
 :: opencv_cuda
 echo [+] Building opencv with cuda support...
 if not exist opencv (
     echo [+] Downloading opencv...
-    git clone https://github.com/opencv/opencv.git || exit /b %errorlevel%
+    git clone https://github.com/opencv/opencv.git || exit /b !errorlevel!
     cd opencv
     :: 4.13.0 minimum required to be compatible with cuda 13
 	:: Dec 31, 2025
@@ -98,7 +137,7 @@ if not exist opencv (
 )
 if not exist opencv_contrib (
     echo [+] Downloading opencv_contrib...
-	git clone https://github.com/opencv/opencv_contrib.git || exit /b %errorlevel%
+	git clone https://github.com/opencv/opencv_contrib.git || exit /b !errorlevel!
     cd opencv
     :: 4.13.0 minimum required to be compatible with cuda 13
 	:: Dec 31, 2025
@@ -108,7 +147,7 @@ if not exist opencv_contrib (
 cd opencv
 cmake -S . -B build -GNinja ^
   -DVCPKG_MANIFEST_INSTALL=OFF  ^
-  -DVCPKG_TARGET_TRIPLET=x64-windows-release  ^
+  -DVCPKG_TARGET_TRIPLET=%TRIPLET%  ^
   -DVCPKG_INSTALLED_DIR="%FINAL_EXPORT_PATH%\installed"  ^
   -DCMAKE_TOOLCHAIN_FILE="%FINAL_EXPORT_PATH%\scripts\buildsystems\vcpkg.cmake" ^
   -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
@@ -123,11 +162,15 @@ cmake -S . -B build -GNinja ^
   -DOPENCV_ENABLE_NONFREE=ON ^
   -DBUILD_opencv_apps=OFF ^
   -DBUILD_opencv_python3=ON ^
-  -DPYTHON_EXECUTABLE=%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe ^
+  -DPYTHON3_EXECUTABLE=%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe ^
+  -DPYTHON3_PACKAGES_PATH=bin/Lib/site-packages ^
   -DBUILD_opencv_java_bindings_generator=OFF ^
   -DWITH_CUDA=ON ^
-  -DWITH_TBB=ON || exit /b %errorlevel%
-cmake --build build --config Release --target install || exit /b %errorlevel%
+  -DWITH_VTK=OFF ^
+  -DWITH_TBB=ON || exit /b !errorlevel!
+cmake --build build --config Release --target install || exit /b !errorlevel!
+:: move cv2 package under tools/python3
+robocopy "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin\Lib" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib" /E /MOVE /NFL /NDL /NJH /NC /NS /NP
 cd ..
 
 
@@ -136,28 +179,42 @@ echo [+] Creating final package with 7-Zip...
 :: Rip off pdb files
 cd /d "%FINAL_EXPORT_PATH%"
 del /s /q /f *.pdb >nul 2>&1
-
 cd ..
 
 set "FINAL_ZIP=%TARGET_NAME%.7z"
 
 :: compress contents without the root folder
-"%SEVENZIP_EXE%" u -t7z -mx9 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*" -up0q0
+"%SEVENZIP_EXE%" u -t7z -mx9 "%FINAL_ZIP%" "%FINAL_EXPORT_PATH%\*" -up0q0 || exit /b !errorlevel!
 
-if %ERRORLEVEL% EQU 0 (
+if !errorlevel! EQU 0 (
     echo [!] Success! Package created at %FINAL_ZIP%
 ) else (
-    echo [X] 7-Zip failed with error code %ERRORLEVEL%
+    echo [X] 7-Zip failed with error code !errorlevel!
 )
 
 :: Example building rtabmap with opencv cuda and libtorch afterwards
 goto :EndComment
 
-set VCPKG_UNZIPPED_EXPORT_PATH=%USERPROFILE%\Downloads\vcpkg-export-########-x64-vs2022-cuda131
-set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\bin;%PATH%
+:: Set path of unzipped deps
+set VCPKG_UNZIPPED_EXPORT_PATH=
+
+set TRIPLET=x64-windows-release
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\bin;%PATH%
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3;%PATH%
+set PATH=%CUDA_PATH%\bin;%PATH%
 set PATH=%CUDA_PATH%\bin\x64;%PATH%
 set PATH=%CUDA_PATH%\extras\CUPTI\lib64;%PATH%
-set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\tools\python3\Lib\site-packages\torch\lib;%PATH%
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\torch\lib;%PATH%
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\numpy.libs;%PATH%
+
+:: Other dependencies
+
+:: For ZED, modify zed-config.cmake and remove all dependencies
+set PATH=%PATH%;%ZED_SDK_ROOT_DIR%\bin
+
+:: For kinect 4 windows SDK v2, move kinect20.dll from system32 to KINECTSDK20_DIR\bin 
+:: For kinect 4 windows SDK v1, move kinect10.dll and KinectAudio10.dll to KINECTSDK20_DIR\bin
+set PATH=%PATH%;%KINECTSDK20_DIR%\bin
 
 cmake -B build_cuda -GNinja ^
   -DCMAKE_BUILD_TYPE=Release ^
@@ -166,12 +223,17 @@ cmake -B build_cuda -GNinja ^
   -DWITH_TORCH=ON ^
   -DWITH_ZED=ON ^
   -DVCPKG_MANIFEST_INSTALL=OFF ^
-  -DVCPKG_TARGET_TRIPLET=x64-windows-release ^
+  -DVCPKG_TARGET_TRIPLET=%TRIPLET% ^
   -DVCPKG_INSTALLED_DIR="%VCPKG_UNZIPPED_EXPORT_PATH%/installed" ^
   -DCMAKE_TOOLCHAIN_FILE=%VCPKG_UNZIPPED_EXPORT_PATH%/scripts/buildsystems/vcpkg.cmake ^
-  -DGTSAM_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\CMake ^
-  -DTorch_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\tools\python3\Lib\site-packages\torch\share\cmake\Torch
+  -DGTSAM_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\CMake ^
+  -DTorch_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\torch\share\cmake\Torch
 
 cmake --build build_cuda --config Release --target package
+
+:: Generate superpoint weights (from share directory of the installed package)
+curl -L -O "https://raw.githubusercontent.com/magicleap/SuperPointPretrainedNetwork/master/demo_superpoint.py"
+curl -L -O "https://github.com/magicleap/SuperPointPretrainedNetwork/raw/refs/heads/master/superpoint_v1.pth"
+..\bin\python.exe rtabmap_trace_superpoint.py
 
 :EndComment
