@@ -116,7 +116,7 @@ jobs:
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
     - name: Upload RTABMap Artifacts (Installer)
-      if: matrix.os == 'windows-2022'
+      if: matrix.os == 'windows-2022' && github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries-${{ matrix.build_name }}-exe
