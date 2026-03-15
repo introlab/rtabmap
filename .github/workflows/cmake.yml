@@ -109,7 +109,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries-${{ matrix.build_name }}
-        path: build/RTABMap-*
+        path: |
+          build/RTABMap-*.zip
+          build/RTABMap-*.exe
+        compression-level: 0
         if-no-files-found: warn
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
