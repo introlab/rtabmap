@@ -84,9 +84,15 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Build Package
+    - name: Build Windows Package
       if: matrix.os == 'windows-2022'
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target package
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "pull_request") {
+          cpack --config build/CPackConfig.cmake -G ZIP -B build
+        } else {
+          cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+        }
 
     - name: Rename CUDA artifacts
       if: matrix.build_name == 'windows-2022-cuda'
