@@ -11,42 +11,110 @@ on:
 env:
   BUILD_TYPE: Release
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.build_name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04]
+        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv, windows-2022, windows-2022-cuda]
         include:
-        - os: ubuntu-22.04
+        - build_name: ubuntu-22.04
+          os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: ""
-        - os: ubuntu-24.04
+          extra_cmake_def: "-DWITH_CERES=ON"
+        - build_name: ubuntu-24.04
+          os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
+        - build_name: ubuntu-24.04-with-opengv
+          os: ubuntu-24.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DBUILD_OPENGV=ON"
+        - build_name: windows-2022
+          os: windows-2022
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=OFF'
+        - build_name: windows-2022-cuda
+          os: windows-2022
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=ON'
 
-    steps:    
-    - name: Install dependencies
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Windows Dependencies
+      if: matrix.build_name == 'windows-2022'
+      uses: ./.github/actions/install-windows-deps
+ 
+    - name: Install Windows Dependencies with CUDA
+      if: matrix.build_name == 'windows-2022-cuda'
+      uses: ./.github/actions/install-windows-cuda-deps
+
+    - name: Install Linux Dependencies
+      if: matrix.os != 'windows-2022'
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
         sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
 
-    - uses: actions/checkout@v4
+    - name: Configure CMake
+      if: matrix.os == 'windows-2022'
+      run: |
+        cmake `
+          -B ${{github.workspace}}/build `
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
+          ${{ matrix.extra_cmake_def }} `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
+          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
+          -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
+          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
+          -DTorch_DIR=${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3/Lib/site-packages/torch/share/cmake/Torch
 
     - name: Configure CMake
+      if: matrix.os != 'windows-2022'
       run: |
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
+    - name: Build Windows Package
+      if: matrix.os == 'windows-2022'
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "pull_request") {
+          cpack --config build/CPackConfig.cmake -G ZIP -B build
+        } else {
+          cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+        }
+
+    - name: Rename CUDA artifacts
+      if: matrix.build_name == 'windows-2022-cuda'
+      shell: pwsh
+      run: Get-ChildItem -Path "build" -Filter "RTABMap-*" | Rename-Item -NewName { $_.BaseName + "_cuda" + $_.Extension }
+
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
       run: |
         ./rtabmap-console --version
+
+    - name: Upload RTABMap Artifacts
+      if: matrix.os == 'windows-2022'
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}
+        path: |
+          build/RTABMap-*.zip
+          build/RTABMap-*.exe
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build

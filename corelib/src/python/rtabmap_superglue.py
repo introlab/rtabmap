@@ -38,7 +38,6 @@ def init(descriptorDim, matchThreshold, iterations, cuda, model):
     global superglue
     superglue = SuperGlue(config.get('superglue', {})).eval().to(device)
 
-
 def match(kptsFrom, kptsTo, scoresFrom, scoresTo, descriptorsFrom, descriptorsTo, imageWidth, imageHeight):
     #print("SuperGlue python match()")
     global device
@@ -77,6 +76,8 @@ def match(kptsFrom, kptsTo, scoresFrom, scoresTo, descriptorsFrom, descriptorsTo
        
     matchesArray = np.stack((matchesFrom, matchesTo), axis=1);
     
+    # rtabmap expects format:
+    #   matches: array Nx2 (type=9 or uint64)
     return matchesArray
 
 

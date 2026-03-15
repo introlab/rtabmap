@@ -40,7 +40,7 @@ QMultiComboBox::QMultiComboBox(QWidget *widget ) :
 
 QMultiComboBox::~QMultiComboBox()
 {
-    disconnect(&vlist_,0,0,0);
+	vlist_.disconnect(SIGNAL(itemChanged(QListWidgetItem*)));
 }
 
 

@@ -95,9 +95,11 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime 
           REGEX ".*pdb" EXCLUDE)
-    INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
+	IF(NOT WIN32)
+		INSTALL(FILES "${OpenNI2_BIN_DIR}/OpenNI.ini" 
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime)
+	ENDIF()
   ENDIF(OpenNI2_FOUND)
   
   IF(k4a_FOUND)
@@ -138,23 +140,107 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   ENDIF(OrbbecSDK_FOUND)
   
   IF(Torch_FOUND)
-	# Install needed cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll
-	# TODO: should be a more general way to include them if version is different
+	# Install needed cudnn dlls
     IF(WIN32 AND CUDA_FOUND)
-		find_file(CUDNN_OPS_DLL NAMES cudnn_ops_infer64_8.dll)
-		find_file(CUDNN_CNN_DLL NAMES cudnn_cnn_infer64_8.dll)
-		IF(CUDNN_OPS_DLL AND CUDNN_CNN_DLL)
-			MESSAGE(STATUS "Found ${CUDNN_OPS_DLL}")
-			MESSAGE(STATUS "Found ${CUDNN_CNN_DLL}")
-			INSTALL(FILES ${CUDNN_OPS_DLL} ${CUDNN_CNN_DLL}
-			  DESTINATION ${thirdparty_dest_dir} 
-			  COMPONENT runtime)
-		ELSE()
-			MESSAGE(AUTHOR_WARNING "Using Torch with CUDA, but cudnn_ops_infer64_8.dll and cudnn_cnn_infer64_8.dll are not found on the PATH, so it won't be added to package.")
+	    find_path(cuDNN_BIN_DIR NAMES cudnn.dll cudnn64.dll cudnn64_9.dll)
+        IF(NOT cuDNN_BIN_DIR)
+            MESSAGE(FATAL_ERROR "cudnn dlls not found! Make sure the dlls are in a directory on your PATH.")
+        ENDIF(NOT cuDNN_BIN_DIR)
+		MESSAGE(STATUS "cuDNN_BIN_DIR = ${cuDNN_BIN_DIR}")
+		file(GLOB CUDNN_DLLS "${cuDNN_BIN_DIR}/cudnn*.dll")
+		IF(CUDNN_DLLS)
+			MESSAGE(STATUS "Found cuDNN DLLs: ${CUDNN_DLLS}")
+			INSTALL(FILES ${CUDNN_DLLS}
+					DESTINATION ${thirdparty_dest_dir} 
+					COMPONENT runtime)
 		ENDIF()
 	ENDIF(WIN32 AND CUDA_FOUND)
   ENDIF(Torch_FOUND)
+  
+  set(python_pyd_dir "")
+  IF(Python3_FOUND)
+	# bundle python3
+    IF(WIN32)
+		set(python_pyd_dir "bin/Lib/site-packages")
+		set(PYTHON_ZIP_NAME "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.zip")
+		get_filename_component(PYTHON_ROOT "${Python3_EXECUTABLE}" DIRECTORY)
+		file(TO_CMAKE_PATH "${Python3_STDLIB}" SANITIZED_STDLIB)
 
+		MESSAGE(STATUS "Python3_EXECUTABLE=${Python3_EXECUTABLE}")
+		MESSAGE(STATUS "Python3_STDLIB=${SANITIZED_STDLIB}")
+		
+		install(FILES "${Python3_EXECUTABLE}" DESTINATION bin COMPONENT runtime)
+		
+		# when using python-opencv, it expects python3.dll, not python312.dll
+		get_filename_component(VCPKG_TRIPLET_ROOT "${PYTHON_TOOLS_DIR}/../../" ABSOLUTE)
+		set(VCPKG_BIN_DIR "${VCPKG_TRIPLET_ROOT}/bin")
+		find_file(PYTHON3_STABLE_DLL 
+			NAMES python3.dll 
+			PATHS "${VCPKG_BIN_DIR}"
+			NO_DEFAULT_PATH
+		)
+		if(PYTHON3_STABLE_DLL)
+			message(STATUS "Found python3.dll at: ${PYTHON3_STABLE_DLL}")
+			install(FILES "${PYTHON3_STABLE_DLL}" DESTINATION bin COMPONENT runtime)
+		endif()
+
+		# install python Lib in python312.zip (without site-packages, which is installed separatly afterwards)
+		file(TO_CMAKE_PATH "${Python3_STDLIB}" SANITIZED_STDLIB)
+		file(GLOB LIB_CONTENTS RELATIVE "${SANITIZED_STDLIB}" "${SANITIZED_STDLIB}/*")
+		list(REMOVE_ITEM LIB_CONTENTS "site-packages")
+		install(CODE "
+			execute_process(
+				COMMAND \"${CMAKE_COMMAND}\" -E tar cf \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/${PYTHON_ZIP_NAME}\" --format=zip -- ${LIB_CONTENTS}
+				WORKING_DIRECTORY \"${SANITIZED_STDLIB}\"
+			)
+		" COMPONENT runtime)
+		set(PYTHON_SITE_PACKAGES "${SANITIZED_STDLIB}/site-packages")
+		
+		install(DIRECTORY "${PYTHON_SITE_PACKAGES}/"
+				DESTINATION "${thirdparty_dest_dir}/Lib/site-packages"
+				COMPONENT runtime
+				PATTERN "*.exe" EXCLUDE
+				PATTERN "*.lib" EXCLUDE
+				PATTERN "*.hpp" EXCLUDE
+				PATTERN "*.h" EXCLUDE
+				PATTERN "*/torch/*" EXCLUDE
+		)
+		if(EXISTS "${PYTHON_SITE_PACKAGES}/torch")
+			install(DIRECTORY "${PYTHON_SITE_PACKAGES}/torch"
+					DESTINATION "${thirdparty_dest_dir}/Lib/site-packages/"
+					COMPONENT runtime
+					PATTERN "*.exe" EXCLUDE
+					PATTERN "*.lib" EXCLUDE
+					PATTERN "*.hpp" EXCLUDE
+					PATTERN "*.h" EXCLUDE
+					PATTERN "*.dll" EXCLUDE
+			)
+			file(GLOB_RECURSE PY_DLL_FILES "${PYTHON_SITE_PACKAGES}/torch/*.dll")
+			if(PY_DLL_FILES)
+				install(FILES ${PY_DLL_FILES} DESTINATION bin COMPONENT runtime)
+			endif()
+		endif()
+
+		# install python DDLs
+		file(GLOB_RECURSE PY_DLL_FILES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${python_pyd_dir}/*.dll\")
+		install(DIRECTORY "${PYTHON_ROOT}/DLLs"
+				DESTINATION "${thirdparty_dest_dir}/"
+				COMPONENT runtime
+				FILES_MATCHING 
+				PATTERN "*.dll"
+				PATTERN "*.pyd"
+		)
+
+		# install our python scripts in share for convenience
+		install(DIRECTORY "${PROJECT_SOURCE_DIR}/corelib/src/python/"
+				DESTINATION share
+				COMPONENT runtime
+				FILES_MATCHING
+				PATTERN "*.py"
+		)
+	ENDIF(WIN32)
+  ENDIF(Python3_FOUND)
+  
   IF(Qt6_FOUND)
 	# Reference: https://doc-snapshots.qt.io/qt6-6.4/qt-deploy-runtime-dependencies.html
 	# The following script must only be executed at install time
@@ -249,7 +335,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   IF(APPLE)
     SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
   ENDIF(APPLE)
- 
+
   # Now the work of copying dependencies into the bundle/package
   # The quotes are escaped and variables to use at install time have their $ escaped
   # An alternative is the do a configure_file() on a script and use install(SCRIPT  ...).
@@ -257,11 +343,26 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   # over.
   # To find dependencies, cmake use "otool" on Apple and "dumpbin" on Windows (make sure you have one of them).
   install(CODE "
-   file(GLOB_RECURSE QTPLUGINS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+    # Glob Qt Plugins
+    file(GLOB_RECURSE ALL_LIBS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+    
+    if(NOT \"${python_pyd_dir}\" STREQUAL \"\")
+        file(GLOB_RECURSE PYD_FILES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${python_pyd_dir}/*.pyd\")
+        if(PYD_FILES)
+            list(APPEND ALL_LIBS \${PYD_FILES})
+        endif()
+		if(WIN32)
+			file(GLOB_RECURSE DLL_FILES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${python_pyd_dir}/torch/*.dll\")
+			if(DLL_FILES)
+				list(APPEND ALL_LIBS \${DLL_FILES})
+			endif()
+		endif()
+    endif()
+	
     set(BU_CHMOD_BUNDLE_ITEMS ON)
     include(\"BundleUtilities\")
-    fixup_bundle(\"${APPS}\" \"\${QTPLUGINS}\" \"${DIRS}\")
+    fixup_bundle(\"${APPS}\" \"\${ALL_LIBS}\" \"${DIRS}\")
   " COMPONENT runtime)
-
+  
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   
