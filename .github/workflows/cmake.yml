@@ -84,6 +84,11 @@ jobs:
       if: matrix.os == 'windows-2022'
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target package
 
+    - name: Rename CUDA artifacts
+      if: matrix.build_name == 'windows-2022-cuda'
+      shell: pwsh
+      run: Get-ChildItem -Path "build" -Filter "RTABMap-*" | Rename-Item -NewName { $_.BaseName + "_cuda" + $_.Extension }
+
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
       run: |
