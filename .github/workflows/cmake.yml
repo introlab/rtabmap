@@ -35,7 +35,7 @@ jobs:
         - build_name: ubuntu-24.04-with-opengv
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_INTERNA_OPENGV=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DBUILD_OPENGV=ON"
         - build_name: windows-2022
           os: windows-2022
           extra_deps: ""
