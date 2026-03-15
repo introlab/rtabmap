@@ -205,18 +205,20 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 				PATTERN "*.h" EXCLUDE
 				PATTERN "*/torch/*" EXCLUDE
 		)
-		install(DIRECTORY "${PYTHON_SITE_PACKAGES}/torch"
-				DESTINATION "${thirdparty_dest_dir}/Lib/site-packages/"
-				COMPONENT runtime
-				PATTERN "*.exe" EXCLUDE
-				PATTERN "*.lib" EXCLUDE
-				PATTERN "*.hpp" EXCLUDE
-				PATTERN "*.h" EXCLUDE
-				PATTERN "*.dll" EXCLUDE
-		)
-		file(GLOB_RECURSE PY_DLL_FILES "${PYTHON_SITE_PACKAGES}/torch/*.dll")
-		if(PY_DLL_FILES)
-			install(FILES ${PY_DLL_FILES} DESTINATION bin COMPONENT runtime)
+		if(EXISTS "${PYTHON_SITE_PACKAGES}/torch")
+			install(DIRECTORY "${PYTHON_SITE_PACKAGES}/torch"
+					DESTINATION "${thirdparty_dest_dir}/Lib/site-packages/"
+					COMPONENT runtime
+					PATTERN "*.exe" EXCLUDE
+					PATTERN "*.lib" EXCLUDE
+					PATTERN "*.hpp" EXCLUDE
+					PATTERN "*.h" EXCLUDE
+					PATTERN "*.dll" EXCLUDE
+			)
+			file(GLOB_RECURSE PY_DLL_FILES "${PYTHON_SITE_PACKAGES}/torch/*.dll")
+			if(PY_DLL_FILES)
+				install(FILES ${PY_DLL_FILES} DESTINATION bin COMPONENT runtime)
+			endif()
 		endif()
 
 		# install python DDLs
