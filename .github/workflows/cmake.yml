@@ -102,9 +102,9 @@ jobs:
       if: matrix.os == 'windows-2022'
       uses: actions/upload-artifact@v4
       with:
-        name: RTABMap-Binaries           # Give your artifact a recognizable name
-        path: build/RTABMap-*            # Supports wildcards for files and directories
-        if-no-files-found: warn          # Optional: warn, error, or ignore
+        name: RTABMap-Binaries-${{ matrix.build_name }}
+        path: build/RTABMap-*
+        if-no-files-found: warn
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
 #    - name: Test
