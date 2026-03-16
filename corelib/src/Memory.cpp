@@ -1288,9 +1288,9 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks)
+int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb)
 {
-	std::set<int> reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb, propagateNeighborMergedLinks);
+	std::set<int> reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb);
 	return reducedTo.empty()?0:*reducedTo.rbegin();
 }
 
@@ -1305,7 +1305,7 @@ bool canBeReduced(const Link & link, float maxDistance)
 			(maxDistance==0 || link.transform().getNormSquared() < maxDistance*maxDistance);
 }
 
-std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks)
+std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb)
 {
 	std::set<int> reducedTo;
 	Signature * s = this->_getSignature(id);
@@ -1347,7 +1347,7 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 				UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
 				sTo->removeLink(s->id());
 				if(iter->second.type() != Link::kNeighbor &&
-					(iter->second.type() != Link::kNeighborMerged || propagateNeighborMergedLinks) &&
+					(iter->second.type() != Link::kNeighborMerged || iter->second.transform().getNorm() < maxDistance) &&
 					iter->second.type() != Link::kUndef)
 				{
 					// link to all neighbors
@@ -1433,7 +1433,7 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 			//Nodes can be already reduced by other nodes, check if they are still there
 			if(getSignature(id) != 0)
 			{
-				reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb, true);
+				reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb);
 			}
 		}
 	}
