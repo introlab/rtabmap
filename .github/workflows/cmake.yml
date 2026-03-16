@@ -104,13 +104,23 @@ jobs:
       run: |
         ./rtabmap-console --version
 
-    - name: Upload RTABMap Artifacts
+    - name: Upload RTABMap Artifacts (ZIP)
       if: matrix.os == 'windows-2022'
       uses: actions/upload-artifact@v4
       with:
-        name: RTABMap-Binaries-${{ matrix.build_name }}
+        name: RTABMap-Binaries-${{ matrix.build_name }}-zip
         path: |
           build/RTABMap-*.zip
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+
+    - name: Upload RTABMap Artifacts (Installer)
+      if: matrix.os == 'windows-2022' && github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}-exe
+        path: |
           build/RTABMap-*.exe
         compression-level: 0
         if-no-files-found: warn
