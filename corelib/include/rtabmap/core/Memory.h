@@ -144,7 +144,7 @@ public:
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
 	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true);
-	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false);
+	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false, bool propagateNeighborMergedLinks = false);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
@@ -278,7 +278,7 @@ private:
 	void initCountId();
 	void rehearsal(Signature * signature, Statistics * stats = 0);
 	bool rehearsalMerge(int oldId, int newId);
-	std::set<int> reduceNode(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks);
+	std::set<int> reduceNode_(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks);
 
 	const std::map<int, Signature*> & getSignatures() const {return _signatures;}
 

@@ -172,7 +172,7 @@ int main(int argc, char * argv[])
 		// Nodes can be already reduced by other nodes, check if they are still there
 		if(memory.getSignature(id) != 0)
 		{
-			int reducedId = memory.reduceNode(id, radius, keepLinked);
+			int reducedId = memory.reduceNode(id, radius, keepLinked, true);
 			if(reducedId > 0)
 			{
 				printf("Reduced node %d to node %d!\n", id, reducedId);

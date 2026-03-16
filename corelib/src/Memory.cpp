@@ -1288,9 +1288,9 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb)
+int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks)
 {
-	std::set<int> reducedTo = reduceNode(id, maxDistance, keepLinkedInDb, false);
+	std::set<int> reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb, propagateNeighborMergedLinks);
 	return reducedTo.empty()?0:*reducedTo.rbegin();
 }
 
@@ -1305,7 +1305,7 @@ bool canBeReduced(const Link & link, float maxDistance)
 			(maxDistance==0 || link.transform().getNormSquared() < maxDistance*maxDistance);
 }
 
-std::set<int> Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks)
+std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb, bool propagateNeighborMergedLinks)
 {
 	std::set<int> reducedTo;
 	Signature * s = this->_getSignature(id);
@@ -1433,7 +1433,7 @@ std::set<int> Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb,
 			//Nodes can be already reduced by other nodes, check if they are still there
 			if(getSignature(id) != 0)
 			{
-				reducedTo = reduceNode(id, maxDistance, keepLinkedInDb, true);
+				reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb, true);
 			}
 		}
 	}
