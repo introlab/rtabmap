@@ -1,0 +1,589 @@
+diff --git a/.gitignore b/.gitignore
+index 85152fb..da016a7 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -5,3 +5,4 @@
+ *.cur_trans
+ build
+ .ipynb_checkpoints/
++pointmatcher/pm_export.h
+\ No newline at end of file
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 819a834..d72850a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -233,7 +233,7 @@ else()
+         #get_property(yaml-cpp-pm_INCLUDE TARGET yaml-cpp-pm PROPERTY INCLUDE_DIRECTORIES)
+         #include_directories(${yaml-cpp-pm_INCLUDE})
+ 
+-        list(APPEND EXTERNAL_LIBS $<TARGET_FILE:yaml-cpp-pm>)
++        list(APPEND EXTERNAL_LIBS $<TARGET_LINKER_FILE:yaml-cpp-pm>)
+         list(APPEND EXTRA_DEPS yaml-cpp-pm)
+         set(yamlcpp_FOUND)
+ 
+@@ -291,6 +291,8 @@ else ()
+ 	set (CMAKE_CXX_STANDARD 11)
+ endif ()
+ 
++option(BUILD_SHARED_LIBS "Set to ON to build shared libraries" OFF)
++
+ # SOURCE
+ 
+ # Pointmatcher lib and install
+@@ -363,12 +365,18 @@ set(POINTMATCHER_SRC
+ 
+ file(GLOB_RECURSE POINTMATCHER_HEADERS "pointmatcher/*.h")
+ 
+-
+ # In CMake >=3.4 we can easily build shared libraries in Mac and Windows.
+ # No need to distinguish between operating systems while building targets
+ 
+ add_library(pointmatcher ${POINTMATCHER_SRC} ${POINTMATCHER_HEADERS} )
+ 
++include(GenerateExportHeader)
++generate_export_header(pointmatcher
++  BASE_NAME PM
++  EXPORT_FILE_NAME "${CMAKE_CURRENT_SOURCE_DIR}/pointmatcher/pm_export.h"
++  DEFINE_NO_DEPRECATED
++)
++
+ target_include_directories(pointmatcher PUBLIC
+   $<INSTALL_INTERFACE:>
+   $<INSTALL_INTERFACE:pointmatcher>
+@@ -417,6 +425,7 @@ install(FILES
+ 	pointmatcher/Timer.h
+ 	pointmatcher/Functions.h
+ 	pointmatcher/IO.h
++	pointmatcher/pm_export.h
+ 	DESTINATION ${INSTALL_INCLUDE_DIR}/pointmatcher
+ )
+ 
+@@ -515,7 +524,7 @@ add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS pointmatcher)
+ get_property(CONF_INCLUDE_DIRS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+ 
+ # Create variable with the library location
+-set(POINTMATCHER_LIB  $<TARGET_FILE:pointmatcher>)
++set(POINTMATCHER_LIB  $<TARGET_LINKER_FILE:pointmatcher>)
+ 
+ # Configure config file for local build tree
+ configure_file(libpointmatcherConfig.cmake.in
+diff --git a/pointmatcher/Bibliography.h b/pointmatcher/Bibliography.h
+index 17a353d..c86def5 100644
+--- a/pointmatcher/Bibliography.h
++++ b/pointmatcher/Bibliography.h
+@@ -40,6 +40,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <string>
+ #include <vector>
+ 
++#include "pm_export.h"
++
+ namespace PointMatcherSupport
+ {
+ 	typedef std::vector<std::string> StringVector;
+@@ -48,7 +50,7 @@ namespace PointMatcherSupport
+ 	typedef StringMapMap Bibliography;
+ 	typedef std::map<std::string, unsigned> BibIndices;
+ 	
+-	struct CurrentBibliography
++	struct PM_EXPORT CurrentBibliography
+ 	{
+ 		enum Mode
+ 		{
+@@ -68,7 +70,7 @@ namespace PointMatcherSupport
+ 		void dumpBibtex(std::ostream& os) const;
+ 	};
+ 	
+-	std::string getAndReplaceBibEntries(const std::string&, CurrentBibliography& curBib);
++	PM_EXPORT std::string getAndReplaceBibEntries(const std::string&, CurrentBibliography& curBib);
+ 	
+ }; // PointMatcherSupport
+ 
+diff --git a/pointmatcher/DeprecationWarnings.h b/pointmatcher/DeprecationWarnings.h
+index b1ca8ec..dc84582 100644
+--- a/pointmatcher/DeprecationWarnings.h
++++ b/pointmatcher/DeprecationWarnings.h
+@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #ifndef __POINTMATCHER_DEPRECATION_WARNINGS_H
+ #define __POINTMATCHER_DEPRECATION_WARNINGS_H
+ 
+-
+ #if __cplusplus >= 201402L
+ #define PM_DEPRECATED(msg) [[deprecated(msg)]]
+ #define PM_DEPRECATION_SUPPORTED
+diff --git a/pointmatcher/IO.cpp b/pointmatcher/IO.cpp
+index c4288c9..8722747 100644
+--- a/pointmatcher/IO.cpp
++++ b/pointmatcher/IO.cpp
+@@ -51,7 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include "boost/lexical_cast.hpp"
+ #include "boost/foreach.hpp"
+ 
+-#ifdef WIN32
++#ifdef _WIN32
+ #define strtok_r strtok_s
+ #endif // WIN32
+ 
+@@ -359,7 +359,9 @@ void PointMatcherSupport::validateFile(const std::string& fileName)
+ 	ifstream ifs(fileName.c_str());
+ 	if (!ifs.good() || !boost::filesystem::is_regular_file(fullPath))
+ 	#if BOOST_FILESYSTEM_VERSION >= 3
+-		#if BOOST_VERSION >= 105000
++		#if BOOST_VERSION >= 109000
++				throw runtime_error(string("Cannot open file ") + boost::filesystem::absolute(fullPath).generic_string());
++		#elif BOOST_VERSION >= 105000
+ 				throw runtime_error(string("Cannot open file ") + boost::filesystem::complete(fullPath).generic_string());
+ 		#else
+ 				throw runtime_error(string("Cannot open file ") + boost::filesystem3::complete(fullPath).generic_string());
+@@ -375,7 +377,11 @@ template<typename T>
+ typename PointMatcher<T>::DataPoints PointMatcher<T>::DataPoints::load(const std::string& fileName)
+ {
+ 	const boost::filesystem::path path(fileName);
++#if BOOST_VERSION >= 109000
++	const string ext = path.extension().string();
++#else
+ 	const string& ext(boost::filesystem::extension(path));
++#endif
+ 	if (boost::iequals(ext, ".vtk"))
+ 		return PointMatcherIO<T>::loadVTK(fileName);
+ 	else if (boost::iequals(ext, ".csv"))
+@@ -809,7 +815,11 @@ template<typename T>
+ void PointMatcher<T>::DataPoints::save(const std::string& fileName, bool binary) const
+ {
+ 	const boost::filesystem::path path(fileName);
++#if BOOST_VERSION >= 109000
++	const string ext = path.extension().string();
++#else
+ 	const string& ext(boost::filesystem::extension(path));
++#endif
+ 	if (boost::iequals(ext, ".vtk"))
+ 		return PointMatcherIO<T>::saveVTK(*this, fileName, binary);
+ 
+diff --git a/pointmatcher/IO.h b/pointmatcher/IO.h
+index 162dc21..8a0cefa 100644
+--- a/pointmatcher/IO.h
++++ b/pointmatcher/IO.h
+@@ -58,7 +58,7 @@ struct PointMatcherIO
+ 	//! ex: nx, ny, nz are associated with (0,normals) (1,normals) (2,normals) respectively
+ 	typedef std::map<std::string, LabelAssociationPair > SublabelAssociationMap;
+ 	
+-	static std::string getColLabel(const Label& label, const int row); //!< convert a descriptor label to an appropriate sub-label
++	PM_EXPORT static std::string getColLabel(const Label& label, const int row); //!< convert a descriptor label to an appropriate sub-label
+ 	
+ 	//! Type of information in a DataPoints. Each type is stored in its own dense matrix.
+ 	enum PMPropTypes
+@@ -70,7 +70,7 @@ struct PointMatcherIO
+ 		};
+ 
+ 	//! Structure containing all information required to map external information to PointMatcher internal representation
+-	struct SupportedLabel
++	struct PM_EXPORT SupportedLabel
+ 	{
+ 		std::string internalName; //!< name used in PointMatcher
+ 		std::string externalName; //!< name used in external format
+@@ -84,7 +84,7 @@ struct PointMatcherIO
+ 	typedef std::vector<SupportedLabel> SupportedLabels;
+ 
+ 	//! Helper structure designed to parse file headers
+-	struct GenericInputHeader
++	struct PM_EXPORT GenericInputHeader
+ 	{
+ 		std::string name; //!< name found in the file
+ 		unsigned int matrixRowId; //!< on which row the information will be loaded
+@@ -159,7 +159,7 @@ struct PointMatcherIO
+ 	}
+ 
+ 	//! Generate a vector of Labels by checking for collision is the same name is reused.
+-	class LabelGenerator
++	class PM_EXPORT LabelGenerator
+ 	{
+ 		Labels labels; //!< vector of labels used to cumulat information
+ 
+@@ -180,11 +180,11 @@ struct PointMatcherIO
+ 	//static PMPropTypes getPMType(const std::string& externalName); //! Return the type of information specific to a DataPoints based on a sulabel name
+ 
+ 	// CSV
+-	static DataPoints loadCSV(const std::string& fileName);
+-	static DataPoints loadCSV(std::istream& is);
++	PM_EXPORT static DataPoints loadCSV(const std::string& fileName);
++	PM_EXPORT static DataPoints loadCSV(std::istream& is);
+ 
+-	static void saveCSV(const DataPoints& data, const std::string& fileName);
+-	static void saveCSV(const DataPoints& data, std::ostream& os);
++	PM_EXPORT static void saveCSV(const DataPoints& data, const std::string& fileName);
++	PM_EXPORT static void saveCSV(const DataPoints& data, std::ostream& os);
+ 
+ 	// VTK
+ 	//! Enumeration of legacy VTK data types that can be parsed
+@@ -209,25 +209,25 @@ struct PointMatcherIO
+ 
+ 	};
+ 
+-	static DataPoints loadVTK(const std::string& fileName);
+-	static DataPoints loadVTK(std::istream& is);
++	PM_EXPORT static DataPoints loadVTK(const std::string& fileName);
++	PM_EXPORT static DataPoints loadVTK(std::istream& is);
+ 
+-	static void saveVTK(const DataPoints& data, const std::string& fileName, bool binary = false);
++	PM_EXPORT static void saveVTK(const DataPoints& data, const std::string& fileName, bool binary = false);
+ 
+ 	// PLY
+-	static DataPoints loadPLY(const std::string& fileName);
+-	static DataPoints loadPLY(std::istream& is);
++	PM_EXPORT static DataPoints loadPLY(const std::string& fileName);
++	PM_EXPORT static DataPoints loadPLY(std::istream& is);
+ 
+-	static void savePLY(const DataPoints& data, const std::string& fileName); //!< save datapoints to PLY point cloud format
++	PM_EXPORT static void savePLY(const DataPoints& data, const std::string& fileName); //!< save datapoints to PLY point cloud format
+ 
+ 	// PCD
+-	static DataPoints loadPCD(const std::string& fileName);
+-	static DataPoints loadPCD(std::istream& is);
++	PM_EXPORT static DataPoints loadPCD(const std::string& fileName);
++	PM_EXPORT static DataPoints loadPCD(std::istream& is);
+ 
+-	static void savePCD(const DataPoints& data, const std::string& fileName); //!< save datapoints to PCD point cloud format
++	PM_EXPORT static void savePCD(const DataPoints& data, const std::string& fileName); //!< save datapoints to PCD point cloud format
+ 
+ 	//! Information to exploit a reading from a file using this library. Fields might be left blank if unused.
+-	struct FileInfo
++	struct PM_EXPORT FileInfo
+ 	{
+ 		typedef Eigen::Matrix<T, 3, 1> Vector3; //!< alias
+ 
+@@ -242,7 +242,7 @@ struct PointMatcherIO
+ 	};
+ 
+ 	//! A vector of file info, to be used in batch processing
+-	struct FileInfoVector: public std::vector<FileInfo>
++	struct PM_EXPORT FileInfoVector: public std::vector<FileInfo>
+ 	{
+ 		FileInfoVector();
+ 		FileInfoVector(const std::string& fileName, std::string dataPath = "", std::string configPath = "");
+@@ -264,7 +264,7 @@ struct PointMatcherIO
+ 	static bool plyPropTypeValid (const std::string& type);
+ 
+ 	//! Interface for PLY property
+-	struct PLYProperty
++	struct PM_EXPORT PLYProperty
+ 	{
+ 		//PLY information:
+ 		std::string name; //!< name of PLY property
+@@ -299,7 +299,7 @@ struct PointMatcherIO
+ 	typedef typename PLYProperties::iterator it_PLYProp;
+ 
+ 	//! Interface for all PLY elements. 
+-	class PLYElement
++	class PM_EXPORT PLYElement
+ 	{
+ 	public:
+ 		std::string name; //!< name identifying the PLY element
+@@ -331,7 +331,7 @@ struct PointMatcherIO
+ 
+ 
+ 	//! Implementation of PLY vertex element
+-	class PLYVertex : public PLYElement
++	class PM_EXPORT PLYVertex : public PLYElement
+ 	{
+ 	public:
+ 		//! Constructor
+@@ -346,7 +346,7 @@ struct PointMatcherIO
+ 	};
+ 
+ 	//! Factory for PLY elements
+-	class PLYElementF
++	class PM_EXPORT PLYElementF
+ 	{
+ 		enum ElementTypes
+ 		{
+diff --git a/pointmatcher/Parametrizable.h b/pointmatcher/Parametrizable.h
+index 318e7f1..edc1355 100644
+--- a/pointmatcher/Parametrizable.h
++++ b/pointmatcher/Parametrizable.h
+@@ -46,6 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #define BOOST_ASSIGN_MAX_PARAMS 6
+ #include <boost/assign/list_inserter.hpp>
+ 
++#include "pm_export.h"
+ 
+ namespace PointMatcherSupport
+ {	
+@@ -95,7 +96,7 @@ namespace PointMatcherSupport
+ 	}
+ 	
+ 	//! The superclass of classes that are constructed using generic parameters. This class provides the parameter storage and fetching mechanism
+-	struct Parametrizable
++	struct PM_EXPORT Parametrizable
+ 	{
+ 		//! An exception thrown when one tries to fetch the value of an unexisting parameter
+ 		struct InvalidParameter: std::runtime_error
+@@ -114,7 +115,7 @@ namespace PointMatcherSupport
+ 		}
+ 		
+ 		//! The documentation of a parameter
+-		struct ParameterDoc
++		struct PM_EXPORT ParameterDoc
+ 		{
+ 			std::string name; //!< name
+ 			std::string doc; //!< short documentation
+@@ -173,7 +174,7 @@ namespace PointMatcherSupport
+ 		
+ 		friend std::ostream& operator<< (std::ostream& o, const Parametrizable& p);
+ 	};
+-	std::ostream& operator<< (std::ostream& o, const Parametrizable::ParametersDoc& p);
++	PM_EXPORT std::ostream& operator<< (std::ostream& o, const Parametrizable::ParametersDoc& p);
+ } // namespace PointMatcherSupport
+ 
+ #endif // __POINTMATCHER_PARAMETRIZABLE_H
+diff --git a/pointmatcher/PointMatcher.h b/pointmatcher/PointMatcher.h
+index f26aa2c..435a464 100644
+--- a/pointmatcher/PointMatcher.h
++++ b/pointmatcher/PointMatcher.h
+@@ -101,7 +101,7 @@ namespace PointMatcherSupport
+ 
+ 	
+ 	//! The logger interface, used to output warnings and informations
+-	struct Logger: public Parametrizable
++	struct PM_EXPORT Logger: public Parametrizable
+ 	{
+ 		Logger();
+ 		Logger(const std::string& className, const ParametersDoc paramsDoc, const Parameters& params);
+@@ -127,7 +127,7 @@ namespace PointMatcherSupport
+ 
+ //! Functions and classes that are dependant on scalar type are defined in this templatized class
+ template<typename T>
+-struct PointMatcher
++struct PM_EXPORT PointMatcher
+ {
+ 	// ---------------------------------
+ 	// macros for constants
+@@ -145,7 +145,7 @@ struct PointMatcher
+ 	//TODO: gather exceptions here and in Exceptions.cpp
+ 
+ 	//! Point matcher did not converge
+-	struct ConvergenceError: std::runtime_error
++	struct PM_EXPORT ConvergenceError: std::runtime_error
+ 	{
+ 		ConvergenceError(const std::string& reason);
+ 	};
+@@ -204,7 +204,7 @@ struct PointMatcher
+ 		Moreover, the position of the points is in homogeneous coordinates because they need both translation and rotation, while the normals need only rotation.
+ 		All channels contain scalar values of type ScalarType.
+ 	*/
+-	struct DataPoints
++	struct PM_EXPORT DataPoints
+ 	{
+ 		//! A view on a feature or descriptor
+ 		typedef Eigen::Block<Matrix> View;
+@@ -218,7 +218,7 @@ struct PointMatcher
+ 		typedef typename Matrix::Index Index;
+ 		
+ 		//! The name for a certain number of dim
+-		struct Label
++		struct PM_EXPORT Label
+ 		{
+ 			std::string text; //!< name of the label
+ 			size_t span; //!< number of data dimensions the label spans
+@@ -226,7 +226,7 @@ struct PointMatcher
+ 			bool operator ==(const Label& that) const;
+ 		};
+ 		//! A vector of Label
+-		struct Labels: std::vector<Label>
++		struct PM_EXPORT Labels: std::vector<Label>
+ 		{
+ 			typedef typename std::vector<Label>::const_iterator const_iterator; //!< alias
+ 			Labels();
+@@ -368,7 +368,7 @@ struct PointMatcher
+ 		This class holds a list of associated reference identifiers, along with the corresponding \e squared distance, for all points in the reading.
+ 		A single point in the reading can have one or multiple matches.
+ 	*/
+-	struct Matches
++	struct PM_EXPORT Matches
+ 	{
+ 		typedef Matrix Dists; //!< Squared distances to closest points, dense matrix of ScalarType
+ 		typedef IntMatrix Ids; //!< Identifiers of closest points, dense matrix of integers
+@@ -401,7 +401,7 @@ struct PointMatcher
+ 	// ---------------------------------
+ 	
+ 	//! A function that transforms points and their descriptors given a transformation matrix
+-	struct Transformation: public Parametrizable
++	struct PM_EXPORT Transformation: public Parametrizable
+ 	{
+ 		Transformation();
+ 		Transformation(const std::string& className, const ParametersDoc paramsDoc, const Parameters& params);
+@@ -422,7 +422,7 @@ struct PointMatcher
+ 	};
+ 	
+ 	//! A chain of Transformation
+-	struct Transformations: public std::vector<std::shared_ptr<Transformation> >
++	struct PM_EXPORT Transformations: public std::vector<std::shared_ptr<Transformation> >
+ 	{
+ 		void apply(DataPoints& cloud, const TransformationParameters& parameters) const;
+ 	};
+@@ -437,7 +437,7 @@ struct PointMatcher
+ 	/**
+ 		The filter might add information, for instance surface normals, or might change the number of points, for instance by randomly removing some of them.
+ 	*/
+-	struct DataPointsFilter: public Parametrizable
++	struct PM_EXPORT DataPointsFilter: public Parametrizable
+ 	{
+ 		DataPointsFilter();
+ 		DataPointsFilter(const std::string& className, const ParametersDoc paramsDoc, const Parameters& params);
+@@ -452,7 +452,7 @@ struct PointMatcher
+ 	};
+ 	
+ 	//! A chain of DataPointsFilter
+-	struct DataPointsFilters: public std::vector<std::shared_ptr<DataPointsFilter> >
++	struct PM_EXPORT DataPointsFilters: public std::vector<std::shared_ptr<DataPointsFilter> >
+ 	{
+ 		DataPointsFilters();
+ 		DataPointsFilters(std::istream& in);
+@@ -470,7 +470,7 @@ struct PointMatcher
+ 	/**
+ 		This typically uses a space-partitioning structure such as a kd-tree for performance optimization.
+ 	*/
+-	struct Matcher: public Parametrizable
++	struct PM_EXPORT Matcher: public Parametrizable
+ 	{
+ 		unsigned long visitCounter; //!< number of points visited
+ 		
+@@ -496,7 +496,7 @@ struct PointMatcher
+ 		Criteria can be a fixed maximum authorized distance, a factor of the median distance, etc. 
+ 		Points with zero weights are ignored in the subsequent minimization step.
+ 	*/
+-	struct OutlierFilter: public Parametrizable
++	struct PM_EXPORT OutlierFilter: public Parametrizable
+ 	{
+ 		OutlierFilter();
+ 		OutlierFilter(const std::string& className, const ParametersDoc paramsDoc, const Parameters& params);
+@@ -509,7 +509,7 @@ struct PointMatcher
+ 	
+ 	
+ 	//! A chain of OutlierFilter
+-	struct OutlierFilters: public std::vector<std::shared_ptr<OutlierFilter> >
++	struct PM_EXPORT OutlierFilters: public std::vector<std::shared_ptr<OutlierFilter> >
+ 	{
+ 		
+ 		OutlierWeights compute(const DataPoints& filteredReading, const DataPoints& filteredReference, const Matches& input);
+@@ -527,7 +527,7 @@ struct PointMatcher
+ 	/**
+ 		Typical error minimized are point-to-point and point-to-plane.
+ 	*/
+-	struct ErrorMinimizer: public Parametrizable
++	struct PM_EXPORT ErrorMinimizer: public Parametrizable
+ 	{
+ 		//! A structure holding data ready for minimization. The data are "normalized", for instance there are no points with 0 weight, etc.
+ 		struct ErrorElements
+@@ -580,7 +580,7 @@ struct PointMatcher
+ 		For example, a condition can be the number of times the loop was executed, or it can be related to the matching error.
+ 		Because the modules can be chained, we defined that the relation between modules must agree through an OR-condition, while all AND-conditions are defined within a single module.
+ 	*/
+-	struct TransformationChecker: public Parametrizable
++	struct PM_EXPORT TransformationChecker: public Parametrizable
+ 	{
+ 	protected:
+ 		typedef std::vector<std::string> StringVector; //!< a vector of strings
+@@ -608,7 +608,7 @@ struct PointMatcher
+ 	};
+ 	
+ 	//! A chain of TransformationChecker
+-	struct TransformationCheckers: public std::vector<std::shared_ptr<TransformationChecker> >
++	struct PM_EXPORT TransformationCheckers: public std::vector<std::shared_ptr<TransformationChecker> >
+ 	{
+ 		void init(const TransformationParameters& parameters, bool& iterate);
+ 		void check(const TransformationParameters& parameters, bool& iterate);
+@@ -621,7 +621,7 @@ struct PointMatcher
+ 	// ---------------------------------
+ 	
+ 	//! An inspector allows to log data at the different steps, for analysis.
+-	struct Inspector: public Parametrizable
++	struct PM_EXPORT Inspector: public Parametrizable
+ 	{
+ 		
+ 		Inspector();
+@@ -652,7 +652,7 @@ struct PointMatcher
+ 	// algorithms
+ 	
+ 	//! Stuff common to all ICP algorithms
+-	struct ICPChainBase
++	struct PM_EXPORT ICPChainBase
+ 	{
+ 	public:
+ 		DataPointsFilters readingDataPointsFilters; //!< filters for reading, applied once
+@@ -699,7 +699,7 @@ struct PointMatcher
+ 	};
+ 	
+ 	//! ICP algorithm
+-	struct ICP: ICPChainBase
++	struct PM_EXPORT ICP: ICPChainBase
+ 	{
+ 		TransformationParameters operator()(
+ 			const DataPoints& readingIn,
+@@ -730,7 +730,7 @@ struct PointMatcher
+ 	
+ 	//! ICP alogrithm, taking a sequence of clouds and using a map
+ 	//! Warning: used with caution, you need to set the map manually.
+-	struct ICPSequence: public ICP
++	struct PM_EXPORT ICPSequence: public ICP
+ 	{
+ 		TransformationParameters operator()(
+ 			const DataPoints& cloudIn);
+diff --git a/pointmatcher/Registrar.h b/pointmatcher/Registrar.h
+index 706211f..84557f8 100644
+--- a/pointmatcher/Registrar.h
++++ b/pointmatcher/Registrar.h
+@@ -63,7 +63,7 @@ namespace PointMatcherSupport
+ #endif
+ 
+ 	//! Retrieve name and parameters from a yaml node
+-	void getNameParamsFromYAML(const YAML::Node& module, std::string& name, Parametrizable::Parameters& params);
++	PM_EXPORT void getNameParamsFromYAML(const YAML::Node& module, std::string& name, Parametrizable::Parameters& params);
+ 
+ 	//! An exception thrown when one tries to instanciate an element that does not exist in the registrar
+ 	struct InvalidElement: std::runtime_error
+@@ -73,13 +73,13 @@ namespace PointMatcherSupport
+ 
+ 	//! A factor for subclasses of Interface
+ 	template<typename Interface>
+-	struct Registrar
++	struct PM_EXPORT Registrar
+ 	{
+ 	public:
+ 		typedef Interface TargetType; //!< alias to recover the template parameter
+ 
+ 		//! The interface for class descriptors
+-		struct ClassDescriptor
++		struct PM_EXPORT ClassDescriptor
+ 		{
+ 			//! Virtual destructor, do nothing
+ 			virtual ~ClassDescriptor() {}
+@@ -93,7 +93,7 @@ namespace PointMatcherSupport
+ 
+ 		//! A descriptor for a class C that provides parameters
+ 		template<typename C>
+-		struct GenericClassDescriptor: public ClassDescriptor
++		struct PM_EXPORT GenericClassDescriptor: public ClassDescriptor
+ 		{
+ 			virtual std::shared_ptr<Interface> createInstance(const std::string& className, const Parametrizable::Parameters& params) const
+ 			{
+@@ -124,7 +124,7 @@ namespace PointMatcherSupport
+ 
+ 		//! A descriptor for a class C that does not provide any parameter
+ 		template<typename C>
+-		struct GenericClassDescriptorNoParam: public ClassDescriptor
++		struct PM_EXPORT GenericClassDescriptorNoParam: public ClassDescriptor
+ 		{
+ 			virtual std::shared_ptr<Interface> createInstance(const std::string& className, const Parametrizable::Parameters& params) const
+ 			{
+diff --git a/pointmatcher/Timer.h b/pointmatcher/Timer.h
+index 316dbe2..6a9898a 100644
+--- a/pointmatcher/Timer.h
++++ b/pointmatcher/Timer.h
+@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #define __POINTMATCHER_TIMER_H
+ 
+ #include <time.h>
+-#ifndef WIN32
++#ifndef _WIN32
+ #include <unistd.h>
+ #endif // WIN32
+ 
