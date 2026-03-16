@@ -15,6 +15,7 @@ ADD_SUBDIRECTORY( Report )
 ADD_SUBDIRECTORY( Info )
 ADD_SUBDIRECTORY( CleanupLocalGrids )
 ADD_SUBDIRECTORY( GlobalBundleAdjustment )
+ADD_SUBDIRECTORY( ReduceGraph )
 
 IF(OPENCV_NONFREE_FOUND)
 ADD_SUBDIRECTORY( VocabularyComparison )

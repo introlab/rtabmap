@@ -4419,14 +4419,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		ULOGGER_DEBUG("Update Node table, Time=%fs", timer.ticks());
 
 		// Update links part1
-		if(uStrNumCmp(_version, "0.18.3") >= 0)
-		{
-			query = uFormat("DELETE FROM Link WHERE from_id=? and type!=%d;", (int)Link::kLandmark);
-		}
-		else
-		{
-			query = uFormat("DELETE FROM Link WHERE from_id=?;");
-		}
+		query = uFormat("DELETE FROM Link WHERE from_id=?;");
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
@@ -4458,6 +4451,12 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 				// Save links
 				const std::multimap<int, Link> & links = (*j)->getLinks();
 				for(std::multimap<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
+				{
+					stepLink(ppStmt, i->second);
+				}
+				// Save landmarks
+				const std::map<int, Link> & landmarks = (*j)->getLandmarks();
+				for(std::map<int, Link>::const_iterator i=landmarks.begin(); i!=landmarks.end(); ++i)
 				{
 					stepLink(ppStmt, i->second);
 				}

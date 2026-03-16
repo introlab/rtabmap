@@ -63,14 +63,7 @@ void showUsage()
 	exit(1);
 }
 
-// catch ctrl-c
 bool g_loopForever = true;
-void sighandler(int sig)
-{
-	printf("\nSignal %d caught...\n", sig);
-	g_loopForever = false;
-}
-
 class PrintProgressState : public ProgressState
 {
 public:
@@ -86,6 +79,15 @@ public:
 private:
 	double stamp_;
 };
+PrintProgressState progress;
+
+// catch ctrl-c
+void sighandler(int sig)
+{
+	printf("\nSignal %d caught...\n", sig);
+	g_loopForever = false;
+	progress.setCanceled(true);
+}
 
 int main(int argc, char * argv[])
 {
@@ -94,7 +96,7 @@ int main(int argc, char * argv[])
 	signal(SIGINT, &sighandler);
 
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kError);
+	ULogger::setLevel(ULogger::kWarning);
 
 	if(argc < 2)
 	{
@@ -267,7 +269,6 @@ int main(int argc, char * argv[])
 		printf("From/To Session ID = %d%s\n", fromToMapId, last?" (last session)":"");
 	}
 
-	PrintProgressState progress;
 	printf("Detecting...\n");
 	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin, fromToMapId);
 	if(detected < 0)
