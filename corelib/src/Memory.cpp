@@ -1290,8 +1290,8 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 
 int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb)
 {
-	std::set<int> reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb);
-	return reducedTo.empty()?0:*reducedTo.rbegin();
+	std::map<int, float> reducedTo = reduceNodeImpl(id, maxDistance, keepLinkedInDb);
+	return reducedTo.empty()?0:reducedTo.rbegin()->first;
 }
 
 bool canBeReduced(const Link & link, float maxDistance)
@@ -1302,12 +1302,13 @@ bool canBeReduced(const Link & link, float maxDistance)
 			link.userDataCompressed().empty() &&
 			link.type() != Link::kUndef &&
 			link.type() != Link::kVirtualClosure &&
-			(maxDistance==0 || link.transform().getNormSquared() < maxDistance*maxDistance);
+			(maxDistance==0 || link.transform().getNorm() < maxDistance);
 }
 
-std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb)
+std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keepLinkedInDb)
 {
-	std::set<int> reducedTo;
+	UDEBUG("Reducing %d (max distance=%f, keep linked in db=%s)", id, maxDistance, keepLinkedInDb?"true":"false");
+	std::map<int, float> reducedTo;
 	Signature * s = this->_getSignature(id);
 	if(s==0)
 	{
@@ -1321,15 +1322,16 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 		return reducedTo;
 	}
 
-	const std::multimap<int, Link> & links = s->getLinks();
+	std::multimap<int, Link> links = s->getLinks();
 	std::map<int, Link> neighbors;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
-			if(canBeReduced(iter->second, maxDistance))
-			{
-				reducedTo.insert(iter->second.to());
-				UDEBUG("Reduce %d to %d (distance=%f)", s->id(), iter->second.to(), iter->second.transform().getNorm());
-			}
+		if(canBeReduced(iter->second, maxDistance))
+		{
+			float distance = iter->second.transform().getNorm();
+			reducedTo.insert(std::make_pair(iter->second.to(), distance));
+			UDEBUG("Reduce %d to %d (distance=%f)", s->id(), iter->second.to(), distance);
+		}
 		
 		if(iter->second.type() == Link::kNeighbor)
 		{
@@ -1338,7 +1340,7 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 	}
 	if(!reducedTo.empty())
 	{
-		std::vector<int> propagateIds;
+		std::vector<std::pair<int, float> > propagateIds;
 		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
 			Signature * sTo = this->_getSignature(iter->first);
@@ -1347,9 +1349,24 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 				UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
 				sTo->removeLink(s->id());
 				if(iter->second.type() != Link::kNeighbor &&
-					(iter->second.type() != Link::kNeighborMerged || iter->second.transform().getNorm() < maxDistance) &&
 					iter->second.type() != Link::kUndef)
 				{
+					if(iter->second.type() == Link::kNeighborMerged)
+					{
+						if(maxDistance == 0.0f)
+						{
+							// online graph reduction, always skip these links
+							continue;
+						}
+						s->removeLink(sTo->id());
+						std::list<std::pair<int, Transform> > path = graph::computePath(s->id(), sTo->id(), this, false);
+						float pathLength = graph::computePathLength(uListToVector(path));
+						if(!path.empty() && iter->second.transform().getNorm() / pathLength > 0.2)
+						{
+							// skip, reachable by another path of similar size
+							continue;
+						}
+					}
 					// link to all neighbors
 					for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
 					{
@@ -1394,17 +1411,18 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 							}
 						}
 					}
-				}
-				
-				// Check if node merged to can also be reduced, if so, we have to propagate the neighbor merged links to the next node
-				if(reducedTo.find(sTo->id()) != reducedTo.end())
-				{
-					for(std::multimap<int, Link>::const_iterator lter=sTo->getLinks().begin(); lter!=sTo->getLinks().end(); ++lter)
+					// Check if node merged to can also be reduced, if so, we have to propagate the neighbor merged links to the next node
+					auto reduceToIter = reducedTo.find(sTo->id());
+					if(maxDistance > 0.0f && reduceToIter != reducedTo.end())
 					{
-						if(canBeReduced(lter->second, maxDistance))
+						float distance = maxDistance - reduceToIter->second;
+						for(std::multimap<int, Link>::const_iterator lter=sTo->getLinks().begin(); lter!=sTo->getLinks().end(); ++lter)
 						{
-							UDEBUG("Will progagate %d to %d (distance=%f)", sTo->id(), lter->second.to(), lter->second.transform().getNorm());
-							propagateIds.push_back(lter->second.to());
+							if(canBeReduced(lter->second, distance))
+							{
+								UDEBUG("Ref %d: Will progagate %d to %d (distance=%f, current max=%f)", id, sTo->id(), lter->second.to(), lter->second.transform().getNorm(), distance);
+								propagateIds.push_back(std::make_pair(lter->second.to(), distance));
+							}
 						}
 					}
 				}
@@ -1412,7 +1430,7 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 		}
 
 		//remove neighbor links
-		std::multimap<int, Link> linksCopy = links;
+		/*std::multimap<int, Link> linksCopy = links;
 		for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
 		{
 			if(iter->second.type() == Link::kNeighborMerged)
@@ -1421,19 +1439,19 @@ std::set<int> Memory::reduceNode_(int id, float maxDistance, bool keepLinkedInDb
 				// links to be able to reprocess databases with correct odometry covariance.
 				s->removeLink(iter->first);
 			}
-		}
+		}*/
 
 		this->moveToTrash(s, keepLinkedInDb);
 		s = 0;
 		_linksChanged = true;
 		_memoryChanged = true;
 
-		for(auto id: propagateIds)
+		for(auto pair: propagateIds)
 		{
 			//Nodes can be already reduced by other nodes, check if they are still there
-			if(getSignature(id) != 0)
+			if(getSignature(pair.first) != 0)
 			{
-				reducedTo = reduceNode_(id, maxDistance, keepLinkedInDb);
+				reducedTo = reduceNodeImpl(pair.first, pair.second, keepLinkedInDb);
 			}
 		}
 	}

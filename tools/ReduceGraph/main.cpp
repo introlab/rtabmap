@@ -54,7 +54,7 @@ void showUsage(const char * exec)
 			"Options:\n"
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
-			"    --radius #.#   Maximum loop closure distance that can be merged.\n"
+			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
 			"\n", exec);
 	exit(1);
 }
@@ -71,7 +71,7 @@ int main(int argc, char * argv[])
 
 	bool keepLatest = false;
 	bool keepLinked = false;
-	float radius = 0.0f;
+	float radius = 1.0f;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -92,12 +92,19 @@ int main(int argc, char * argv[])
 			if(i < argc-1)
 			{
 				radius = uStr2Float(argv[i]);
+				if(radius <= 0.0f)
+				{
+					printf("--radius should be > 0, parsed %f\n", radius);
+					showUsage(argv[0]);
+				}
 			}
 			else {
 				showUsage(argv[0]);
 			}
 		}
 	}
+	printf("Parameters:\n");
+	printf("  radius = %f m\n", radius);
 	
 	// Just parse logging options
 	Parameters::parseArguments(argc, argv);
@@ -115,7 +122,7 @@ int main(int argc, char * argv[])
 		return 1;
 	}
 
-	printf("\nDatabase: %s\n", dbPath.c_str());
+	printf("Database: %s\n", dbPath.c_str());
 
 	// Get parameters
 	ParametersMap parameters;

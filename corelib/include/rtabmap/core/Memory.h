@@ -278,7 +278,7 @@ private:
 	void initCountId();
 	void rehearsal(Signature * signature, Statistics * stats = 0);
 	bool rehearsalMerge(int oldId, int newId);
-	std::set<int> reduceNode_(int id, float maxDistance, bool keepLinkedInDb);
+	std::map<int, float> reduceNodeImpl(int id, float maxDistance, bool keepLinkedInDb);
 
 	const std::map<int, Signature*> & getSignatures() const {return _signatures;}
 
