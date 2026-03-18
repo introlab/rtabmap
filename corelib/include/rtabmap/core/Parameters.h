@@ -742,7 +742,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, CorFlowMaxLevel,           int,   3,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowUseMinEigenVals,    bool,  true,  uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach. Use minimum eigen values as an error measure, otherwise L1 distance between patches is used as an error measure.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowMinEigThreshold,    float, 1e-4,  uFormat("[%s=true] If the minimum eigenvalue of a feature's spatial gradient matrix is less than this threshold, then the feature is filtered out.", kVisCorFlowUseMinEigenVals().c_str()));
-    RTABMAP_PARAM(Vis, CorFlowErrorThreshold,     float, 50,    uFormat("[%s=false] Filter out features with error greater than this threshold.", kVisCorFlowUseMinEigenVals().c_str()));
+    RTABMAP_PARAM(Vis, CorFlowErrorThreshold,     float, 20,    uFormat("[%s=false] Filter out features with error greater than this threshold.", kVisCorFlowUseMinEigenVals().c_str()));
     RTABMAP_PARAM(Vis, CorFlowGpu,                bool,  false, uFormat("[%s=1] Enable GPU version of the optical flow approach (only available if OpenCV is built with CUDA). Note that %s is not used in the GPU implementation.", kVisCorType().c_str(), kVisCorFlowUseMinEigenVals().c_str()));
     #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(Vis, BundleAdjustment,          int,   1,     "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
