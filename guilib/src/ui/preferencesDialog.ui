@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>10</number>
+                <number>24</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -16425,7 +16425,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>13</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -16965,23 +16965,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               <string>[Visual] Correspondences computation: Optical Flow</string>
                              </property>
                              <layout class="QGridLayout" name="gridLayout_52" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="odom_flow_winSize">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>21</number>
+                                </property>
+                               </widget>
+                              </item>
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_201">
                                 <property name="text">
                                  <string>Window size.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="3" column="1">
-                               <widget class="QLabel" name="label_297">
-                                <property name="text">
-                                 <string>Max level.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -17007,19 +17010,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="0" column="0">
-                               <widget class="QSpinBox" name="odom_flow_winSize">
-                                <property name="minimum">
-                                 <number>1</number>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_295">
+                                <property name="text">
+                                 <string>Iterations.</string>
                                 </property>
-                                <property name="maximum">
-                                 <number>999999</number>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
                                 </property>
-                                <property name="singleStep">
-                                 <number>1</number>
-                                </property>
-                                <property name="value">
-                                 <number>21</number>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                 </property>
                                </widget>
                               </item>
@@ -17042,10 +17042,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="1" column="1">
-                               <widget class="QLabel" name="label_295">
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_296">
                                 <property name="text">
-                                 <string>Iterations.</string>
+                                 <string>Epsilon.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -17071,23 +17071,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                 </property>
                                </widget>
                               </item>
-                              <item row="2" column="1">
-                               <widget class="QLabel" name="label_296">
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_297">
                                 <property name="text">
-                                 <string>Epsilon.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="4" column="1">
-                               <widget class="QLabel" name="label_odom_flow_gpu">
-                                <property name="text">
-                                 <string>Use GPU. OpenCV built with CUDA required.</string>
+                                 <string>Max level.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -17098,9 +17085,106 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </widget>
                               </item>
                               <item row="4" column="0">
+                               <widget class="QCheckBox" name="odom_flow_useMinEigenVals">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_792">
+                                <property name="text">
+                                 <string>Use minimum eigen values as an error measure, otherwise L1 distance between patches is used as an error measure.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QDoubleSpinBox" name="odom_flow_minEigThreshold">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.000100000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.000100000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_791">
+                                <property name="text">
+                                 <string>[Eigen error measure] If the minimum eigenvalue of a feature's spatial gradient matrix is less than this threshold, then the feature is filtered out.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QDoubleSpinBox" name="odom_flow_errorThreshold">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>9999.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>50.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_793">
+                                <property name="text">
+                                 <string>[L1 error measure] Filter out features with error greater than this threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
                                <widget class="QCheckBox" name="odom_flow_gpu">
                                 <property name="text">
                                  <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_odom_flow_gpu">
+                                <property name="text">
+                                 <string>Use GPU. OpenCV built with CUDA required.  Note that the error measure parameter is not used with the GPU implementation.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                 </property>
                                </widget>
                               </item>
@@ -23020,6 +23104,35 @@ Lower the ratio -&gt; higher the precision.</string>
                            <string>Motion estimation: 3D to 3D</string>
                           </property>
                           <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,1">
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_38">
+                             <property name="text">
+                              <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="0">
+                            <widget class="QSpinBox" name="loopClosure_bowRefineIterations">
+                             <property name="minimum">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <number>10000</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>1</number>
+                             </property>
+                             <property name="value">
+                              <number>10</number>
+                             </property>
+                            </widget>
+                           </item>
                            <item row="0" column="0">
                             <widget class="QDoubleSpinBox" name="loopClosure_bowInlierDistance">
                              <property name="suffix">
@@ -23052,34 +23165,18 @@ Lower the ratio -&gt; higher the precision.</string>
                              </property>
                             </widget>
                            </item>
-                           <item row="1" column="0">
-                            <widget class="QSpinBox" name="loopClosure_bowRefineIterations">
-                             <property name="minimum">
-                              <number>0</number>
+                           <item row="2" column="1">
+                            <spacer name="verticalSpacer_93">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
                              </property>
-                             <property name="maximum">
-                              <number>10000</number>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>40</height>
+                              </size>
                              </property>
-                             <property name="singleStep">
-                              <number>1</number>
-                             </property>
-                             <property name="value">
-                              <number>10</number>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="1" column="1">
-                            <widget class="QLabel" name="label_38">
-                             <property name="text">
-                              <string>Refine iterations of the resulting transformation computed by RANSAC. 0 means no refining.</string>
-                             </property>
-                             <property name="wordWrap">
-                              <bool>true</bool>
-                             </property>
-                             <property name="textInteractionFlags">
-                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                             </property>
-                            </widget>
+                            </spacer>
                            </item>
                           </layout>
                          </widget>
@@ -24566,7 +24663,7 @@ Lower the ratio -&gt; higher the precision.</string>
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_icpStrategy">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_90">
                        <layout class="QVBoxLayout" name="verticalLayout_156">
@@ -25532,10 +25629,17 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="1">
-                        <widget class="QLabel" name="label_stereo_flow_gpu">
+                       <item row="10" column="0">
+                        <widget class="QCheckBox" name="stereo_flow_useMinEigenVals">
                          <property name="text">
-                          <string>[OpticalFlow = true] Do optical flow on GPU. RTAB-Map should be built with OpenCV CUDA.</string>
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="1">
+                        <widget class="QLabel" name="label_788">
+                         <property name="text">
+                          <string>[OpticalFlow = true] Use minimum eigen values as an error measure, otherwise L1 distance between patches is used as an error measure.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -25545,10 +25649,87 @@ Lower the ratio -&gt; higher the precision.</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="0">
+                       <item row="11" column="0">
+                        <widget class="QDoubleSpinBox" name="stereo_flow_minEigThreshold">
+                         <property name="decimals">
+                          <number>6</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.000100000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.000100000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="11" column="1">
+                        <widget class="QLabel" name="label_789">
+                         <property name="text">
+                          <string>[OpticalFlow = true / Eigen error measure] If the minimum eigenvalue of a feature's spatial gradient matrix is less than this threshold, then the feature is filtered out.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="0">
+                        <widget class="QDoubleSpinBox" name="stereo_flow_errorThreshold">
+                         <property name="decimals">
+                          <number>6</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>9999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>50.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="1">
+                        <widget class="QLabel" name="label_790">
+                         <property name="text">
+                          <string>[OpticalFlow = true / L1 error measure] Filter out features with error greater than this threshold.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="13" column="0">
                         <widget class="QCheckBox" name="stereo_flow_gpu">
                          <property name="text">
                           <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="13" column="1">
+                        <widget class="QLabel" name="label_stereo_flow_gpu">
+                         <property name="text">
+                          <string>[OpticalFlow = true] Do optical flow on GPU. RTAB-Map should be built with OpenCV CUDA. Note that the error measure parameter is not used with the GPU implementation.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                          </property>
                         </widget>
                        </item>
