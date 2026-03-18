@@ -1358,6 +1358,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_iterations->setObjectName(Parameters::kVisCorFlowIterations().c_str());
 	_ui->odom_flow_eps->setObjectName(Parameters::kVisCorFlowEps().c_str());
 	_ui->odom_flow_gpu->setObjectName(Parameters::kVisCorFlowGpu().c_str());
+	_ui->odom_flow_useMinEigenVals->setObjectName(Parameters::kVisCorFlowUseMinEigenVals().c_str());
+	_ui->odom_flow_minEigThreshold->setObjectName(Parameters::kVisCorFlowMinEigThreshold().c_str());
+	_ui->odom_flow_errorThreshold->setObjectName(Parameters::kVisCorFlowErrorThreshold().c_str());
 	_ui->loopClosure_bundle->setObjectName(Parameters::kVisBundleAdjustment().c_str());
 
 	//RegistrationIcp
@@ -1678,7 +1681,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereo_maxDisparity->setObjectName(Parameters::kStereoMaxDisparity().c_str());
 	_ui->stereo_ssd->setObjectName(Parameters::kStereoSSD().c_str());
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
-	_ui->stereo_flow_getMinEigenVals->setObjectName(Parameters::kStereoGetMinEigenVals().c_str());
+	_ui->stereo_flow_useMinEigenVals->setObjectName(Parameters::kStereoUseMinEigenVals().c_str());
 	_ui->stereo_flow_minEigThreshold->setObjectName(Parameters::kStereoMinEigThreshold().c_str());
 	_ui->stereo_flow_errorThreshold->setObjectName(Parameters::kStereoErrorThreshold().c_str());
 	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());

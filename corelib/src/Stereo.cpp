@@ -113,7 +113,7 @@ std::vector<cv::Point2f> Stereo::computeCorrespondences(
 StereoOpticalFlow::StereoOpticalFlow(const ParametersMap & parameters) :
 		Stereo(parameters),
 		epsilon_(Parameters::defaultStereoEps()),
-		getMinEigenVals_(Parameters::defaultStereoGetMinEigenVals()),
+		useMinEigenVals_(Parameters::defaultStereoUseMinEigenVals()),
 		minEigThreshold_(Parameters::defaultStereoMinEigThreshold()),
 		errorThreshold_(Parameters::defaultStereoErrorThreshold()),
 		gpu_(Parameters::defaultStereoGpu())
@@ -125,7 +125,7 @@ void StereoOpticalFlow::parseParameters(const ParametersMap & parameters)
 {
 	Stereo::parseParameters(parameters);
 	Parameters::parse(parameters, Parameters::kStereoEps(), epsilon_);
-	Parameters::parse(parameters, Parameters::kStereoGetMinEigenVals(), getMinEigenVals_);
+	Parameters::parse(parameters, Parameters::kStereoUseMinEigenVals(), useMinEigenVals_);
 	Parameters::parse(parameters, Parameters::kStereoMinEigThreshold(), minEigThreshold_);
 	Parameters::parse(parameters, Parameters::kStereoErrorThreshold(), errorThreshold_);
 	Parameters::parse(parameters, Parameters::kStereoGpu(), gpu_);
@@ -178,10 +178,10 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 				this->winSize(),
 				this->maxLevel(),
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, this->iterations(), this->epsilon()),
-				this->getMinEigenVals() ? cv::OPTFLOW_LK_GET_MIN_EIGENVALS : 0, this->minEigThreshold());
+				this->usingMinEigenVals() ? cv::OPTFLOW_LK_GET_MIN_EIGENVALS : 0, this->minEigThreshold());
 		UDEBUG("util2d::calcOpticalFlowPyrLKStereo() end");
 	}
-	if(this->getMinEigenVals())
+	if(this->usingMinEigenVals())
 	{
 		updateStatus(leftCorners, rightCorners, status);
 	}

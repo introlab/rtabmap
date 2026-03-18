@@ -96,7 +96,7 @@ public:
 #endif
 
 	float epsilon() const {return epsilon_;}
-	bool getMinEigenVals() const {return getMinEigenVals_;}
+	bool usingMinEigenVals() const {return useMinEigenVals_;}
 	float minEigThreshold() const {return minEigThreshold_;}
 	float errorThreshold() const {return errorThreshold_;}
 	virtual bool isGpuEnabled() const;
@@ -110,7 +110,7 @@ private:
 
 private:
 	float epsilon_;
-	bool getMinEigenVals_;
+	bool useMinEigenVals_;
 	float minEigThreshold_;
 	float errorThreshold_;
 	bool gpu_;
