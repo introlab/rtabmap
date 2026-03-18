@@ -791,37 +791,14 @@ IF(CUVSLAM_FOUND)
 ENDIF(CUVSLAM_FOUND)
 
 IF(GTSAM_FOUND)
-	# Make sure GTSAM is built with system Eigen, not the included one in its package
-	IF(GTSAM_INCLUDE_DIR)
-		SET(INCLUDE_DIRS 
-			${INCLUDE_DIRS} 
-			${GTSAM_INCLUDE_DIR} 
-		)
-	ELSE()
-		SET(INCLUDE_DIRS 
-			${INCLUDE_DIRS} 
-			${GTSAM_INCLUDE_DIRS}
-		)
-	ENDIF()
 	SET(SRC_FILES
     	${SRC_FILES}
 		optimizer/gtsam/GravityFactor.cpp
 	)
-	IF(WIN32)
-		# GTSAM should be built in STATIC on Windows to avoid "error C2338: THIS_METHOD_IS_ONLY_FOR_1x1_EXPRESSIONS" when building GTSAM
-		add_definitions("-DGTSAM_IMPORT_STATIC") 
-	ENDIF(WIN32)
 	SET(LIBRARIES
 		${LIBRARIES}
-		gtsam # Windows: Place static libs at the end
+		gtsam
 	)
-	IF(WIN32)
-		#explicitly add metis target on windows (after gtsam target)
-		SET(LIBRARIES
-			${LIBRARIES}
-			metis
-		)
-	ENDIF(WIN32)
 ENDIF(GTSAM_FOUND)
 
 IF(WITH_MADGWICK)

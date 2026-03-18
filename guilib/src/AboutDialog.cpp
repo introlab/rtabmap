@@ -121,6 +121,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_liblas->setText("No");
 	_ui->label_liblas_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_OPENGV
+	_ui->label_opengv->setText("Yes");
+	_ui->label_opengv_license->setEnabled(true);
+#else
+	_ui->label_opengv->setText("No");
+	_ui->label_opengv_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_CUDASIFT
 	_ui->label_cudasift->setText("Yes");
 	_ui->label_cudasift_license->setEnabled(true);
