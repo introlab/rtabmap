@@ -294,7 +294,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SIFT, PreciseUpscale,    bool, false,  "Whether to enable precise upscaling in the scale pyramid (OpenCV >= 4.8).");
     RTABMAP_PARAM(SIFT, RootSIFT,          bool, false,  "Apply RootSIFT normalization of the descriptors.");
     RTABMAP_PARAM(SIFT, Gpu,               bool, false,  "CudaSift: Use GPU version of SIFT. This option is enabled only if RTAB-Map is built with CudaSift dependency and GPUs are detected.");
-    RTABMAP_PARAM(SIFT, GaussianThreshold, float, 2.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.");
+    RTABMAP_PARAM(SIFT, GaussianThreshold, float, 2.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features with low response/hessian are produced by the detector.");
+    RTABMAP_PARAM(SIFT, MaxGaussianThreshold, float, 0.0,   uFormat("CudaSift: Maximum threshold on difference of Gaussians for feature pruning (ignored if smaller or equal than %s). The lower the threshold, the less features with high response/hessian are produced by the detector.", kSIFTGaussianThreshold().c_str()));
     RTABMAP_PARAM(SIFT, Upscale,           bool, false,  "CudaSift: Whether to enable upscaling.");
 
     RTABMAP_PARAM(BRIEF, Bytes,            int, 32,      "Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");

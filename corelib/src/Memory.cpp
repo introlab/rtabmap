@@ -5168,16 +5168,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					{
 						UASSERT(!decimatedData.cameraModels().empty());
 						UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
-						if(_maskFloorThreshold<0.0f)
-						{
-							cv::Mat depthBelow;
-							util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
-							depthMask = depthBelow;
-						}
-						else
-						{
-							depthMask = util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold);
-						}
+						depthMask = util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold);
 						UDEBUG("Masking floor done.");
 					}
 
@@ -5227,6 +5218,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			else
 			{
 				int oldMaxFeatures = _feature2D->getMaxFeatures();
+				bool oldSSC = _feature2D->getSSC();
 				UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
 				ParametersMap tmpMaxFeatureParameter;
 				if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
@@ -5234,6 +5226,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					// The total extracted features should match the number of features used for transformation estimation
 					UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
 					tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
+					tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpSSC(), uNumber2Str(_visSSC)));
 					_feature2D->parseParameters(tmpMaxFeatureParameter);
 				}
 
@@ -5244,6 +5237,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				if(tmpMaxFeatureParameter.size())
 				{
 					tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
+					tmpMaxFeatureParameter.at(Parameters::kKpSSC()) = uBool2Str(oldSSC);
 					_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
 				}
 				t = timer.ticks();
@@ -5444,8 +5438,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		bool ssc = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visSSC:_feature2D->getSSC();
 		if((int)keypoints.size() > maxFeatures)
 		{
-			if(data.cameraModels().size()==1 || data.stereoCameraModels().size()==1)
-				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures, data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(), ssc);
+			if(data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
+				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures, data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()), ssc);
 			else
 				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures);
 		}
@@ -5678,13 +5672,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
 							Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
 				}
-				if(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
-					data.cameraModels().size()==1 || data.stereoCameraModels().size()==1)
+				if(decimatedData.cameraModels().size()>=1 || decimatedData.stereoCameraModels().size()>=1 ||
+					data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
 				{
-					Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(),
-						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
-						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
-						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+					Feature2D::limitKeypoints(
+						keypoints,
+						inliers,
+						_feature2D->getMaxFeatures(),
+						decimatedData.cameraModels().size()?cv::Size(decimatedData.cameraModels()[0].imageWidth()*decimatedData.cameraModels().size(), decimatedData.cameraModels()[0].imageHeight()):
+						decimatedData.stereoCameraModels().size()?cv::Size(decimatedData.stereoCameraModels()[0].left().imageWidth()*decimatedData.stereoCameraModels().size(), decimatedData.stereoCameraModels()[0].left().imageWidth()):
+						data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):
+						cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()),
 						_feature2D->getSSC());
 				}
 				else
