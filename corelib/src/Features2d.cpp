@@ -1414,7 +1414,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 				}
 
 				//Keep track of the data, to be easier to manage the data in the next step
-				hessianMap.insert(std::pair<float, int>(abs(cudaSiftData_->h_data[i].sharpness)>3?0:abs(cudaSiftData_->h_data[i].sharpness), i));
+				hessianMap.insert(std::pair<float, int>(abs(cudaSiftData_->h_data[i].sharpness), i));
 			}
 
 			if(hessianMap.size() < maxKeypoints)
