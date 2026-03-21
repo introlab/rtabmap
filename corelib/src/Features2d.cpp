@@ -1388,8 +1388,8 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		cudaSiftDescriptors_ = cv::Mat();
 		if(cudaSiftData_->numPts)
 		{
-			int maxKeypoints = this->getMaxFeatures();
-			if(maxKeypoints == 0 || maxKeypoints > cudaSiftData_->numPts)
+			size_t maxKeypoints = this->getMaxFeatures();
+			if(maxKeypoints == 0 || maxKeypoints > (size_t)cudaSiftData_->numPts)
 			{
 				maxKeypoints = cudaSiftData_->numPts;
 			}
@@ -1414,28 +1414,44 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 				}
 
 				//Keep track of the data, to be easier to manage the data in the next step
-				hessianMap.insert(std::pair<float, int>(abs(cudaSiftData_->h_data[i].sharpness), i));
+				hessianMap.insert(std::pair<float, int>(abs(cudaSiftData_->h_data[i].sharpness)>3?0:abs(cudaSiftData_->h_data[i].sharpness), i));
 			}
 
-			if((int)hessianMap.size() < maxKeypoints)
+			if(hessianMap.size() < maxKeypoints)
 			{
 				maxKeypoints = hessianMap.size();
 			}
 
-			std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
 			keypoints.resize(maxKeypoints);
 			cudaSiftDescriptors_ = cv::Mat(maxKeypoints, 128, CV_32FC1);
-			for(unsigned int k=0; k<keypoints.size() && iter!=hessianMap.rend(); ++k, ++iter)
+			size_t k=0;
+			for(std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+				k<keypoints.size() && iter!=hessianMap.rend(); 
+				++iter)
 			{
 				int i = iter->second;
+				if(k>0 && 
+					fabs(keypoints[k-1].pt.x-cudaSiftData_->h_data[i].xpos) +
+					fabs(keypoints[k-1].pt.y-cudaSiftData_->h_data[i].ypos) < 0.1f)
+				{
+					// Same feature, skip doubles
+					continue;
+				}
 				float *desc = cudaSiftData_->h_data[i].data;
 				cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(k));
 				keypoints[k].pt.x = cudaSiftData_->h_data[i].xpos;
 				keypoints[k].pt.y = cudaSiftData_->h_data[i].ypos;
 				keypoints[k].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
-				keypoints[k].angle = cudaSiftData_->h_data[i].orientation;
+				keypoints[k].angle = cudaSiftData_->h_data[i].edgeness;
 				keypoints[k].response = abs(cudaSiftData_->h_data[i].sharpness); 
 				keypoints[k].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upscale_?1:0);
+				++k;
+			}
+			if(k < maxKeypoints)
+			{
+				UDEBUG("max keypoints = %d, uniques=%d", maxKeypoints, k);
+				keypoints.resize(k);
+				cudaSiftDescriptors_.resize(k);
 			}
 		}
 	}
