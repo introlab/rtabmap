@@ -293,6 +293,7 @@ public:
 	double getSourceScanForceGroundNormalsUp() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
+	Transform getGroundTruthLocalTransform() const; // directory images
 	Transform getIMULocalTransform() const; // directory images
 	QString getIMUPath() const;
 	int getIMURate() const;

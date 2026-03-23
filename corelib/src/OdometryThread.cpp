@@ -188,7 +188,7 @@ void OdometryThread::addData(const SensorEvent & event)
 					"(%f), skipping that frame (imu buffer size=%ld). "
 					"When using async IMU, make sure IMU is published faster "
 					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar)."
-					"Current camera/lidar delay is %fs.",
+					"Current camera/lidar delay with system time is %fs.",
 					event.data().stamp(), _oldestAsyncImuStamp, _imuBuffer.size(), UTimer::now() - event.data().stamp());
 				notify = false;
 			}
@@ -197,7 +197,7 @@ void OdometryThread::addData(const SensorEvent & event)
 					"(%f), skipping that frame (imu buffer size=%ld). "
 					"When using async IMU, make sure IMU is published faster "
 					"than camera/lidar (assuming IMU latency is very small compared to camera/lidar). "
-					"Current camera/lidar delay is %fs.",
+					"Current camera/lidar delay with system time is %fs.",
 					event.data().stamp(), _newestAsyncImuStamp, _imuBuffer.size(), UTimer::now() - event.data().stamp());
 				notify = false;
 			}

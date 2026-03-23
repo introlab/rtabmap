@@ -3313,7 +3313,7 @@ void MainWindow::updateMapCloud(
 							{
 								std::string gtFrustumId = uFormat("f_gt_%d", iter->first);
 								color = Qt::gray;
-								_cloudViewer->addOrUpdateFrustum(gtFrustumId, _currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
+								_cloudViewer->addOrUpdateFrustum(gtFrustumId, mapToGt*_currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
 							}
 						}
 					}
