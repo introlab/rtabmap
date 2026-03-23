@@ -515,7 +515,6 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				Transform gtInv = _groundTruthLocalTransform.inverse();
 				for(auto pose: groundTruth_)
 				{
-					UWARN("gt %s -> %s (local=%s inv=%s)", pose.prettyPrint().c_str(), (pose*gtInv).prettyPrint().c_str(), _groundTruthLocalTransform.prettyPrint().c_str(), gtInv.prettyPrint().c_str());
 					pose = pose*gtInv; // pose of base_link, assuming ground truth frame and base frame are rigidly fixed
 				}
 			}

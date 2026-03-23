@@ -317,7 +317,7 @@ int main(int argc, char * argv[])
 	((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(!pathGt.empty())
 	{
-		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 10);
+		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 1);
 	}
 	if(!pathOdom.empty())
 	{
