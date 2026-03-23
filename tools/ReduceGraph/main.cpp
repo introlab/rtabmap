@@ -55,6 +55,7 @@ void showUsage(const char * exec)
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
+			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec);
 	exit(1);
 }
@@ -72,7 +73,7 @@ int main(int argc, char * argv[])
 	bool keepLatest = false;
 	bool keepLinked = false;
 	float radius = 1.0f;
-	for(int i=1; i<argc-1; ++i)
+	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
