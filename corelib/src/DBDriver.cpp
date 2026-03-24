@@ -1513,4 +1513,108 @@ void DBDriver::generateGraph(
 	}
 }
 
+
+std::vector<unsigned char> DBDriver::serializeFeatures(
+	const std::vector<cv::KeyPoint> & keypoints, 
+	const std::vector<cv::Point3f> & points3D,
+	const cv::Mat & descriptors)
+{
+	const int headerSize = 13;
+	int header[headerSize] = {
+			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
+			CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION,             // 3,4,5 (In case the format/order/size of KeyPoint and/or Point3f changes in the future)
+			sizeof(cv::KeyPoint), keypoints.size(),                              // 6,7
+			sizeof(cv::Point3f), points3D.size(),                                // 8,9
+			descriptors.type(), descriptors.cols, descriptors.rows}              // 10,11,12
+	UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d %d %d",
+		header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10],header[11],header[12]);
+	std::vector<unsigned char> data(
+			sizeof(int)*headerSize +
+			keypoints.size()*sizeof(cv::KeyPoint) + // pos_x, pos_y, size, dir, response, octave
+			points3D.size()*sizeof(cv::Point3f) + // depth_x, depth_y, depth_z
+			descriptors.total()*descriptors.elemSize());
+	memcpy(data.data(), header, sizeof(int)*headerSize);
+	int index = sizeof(int)*headerSize;
+	if(!keypoints.empty())
+	{
+		memcpy(data.data()+index, keypoints.data(), sizeof(cv::KeyPoint)*keypoints.size());
+		index += sizeof(cv::KeyPoint)*(keypoints.size());
+	}
+	if(!points3D.empty())
+	{
+		memcpy(data.data()+index, points3D.data(), sizeof(cv::Point3f)*points3D.size());
+		index += sizeof(cv::KeyPoint)*(points3D.size());
+	}
+	if(!descriptors.empty())
+	{
+		memcpy(data.data()+index, descriptors.data, descriptors.elemSize()*descriptors.total());
+		index+=descriptors.elemSize()*(descriptors.total());
+	}
+	return compressData(cv::Mat(1, data.size(), CV_8UC1, (void *)data.data()));
+}
+
+bool DBDriver::deserializeFeatures(
+	const unsigned char * compressedData,
+	unsigned int compressedDataSize,
+	std::vector<cv::KeyPoint> & keypoints,
+	std::vector<cv::Point3f> & points3D,
+	cv::Mat & descriptors)
+{
+	cv::Mat serializedData = uncompressData(compressedData, compressedDataSize);
+	if(serializedData.empty())
+	{
+		return false;
+	}
+	UASSERT(serializedData.type() == CV_8UC1);
+	int headerSize = 13;
+	if(serializedData.total() >= sizeof(int)*headerSize)
+	{
+		const int * header = (const int *)serializedData.data();
+		UASSERT(header[6] == sizeof(cv::KeyPoint));
+		int n_kpts = header[7];
+		UASSERT(header[8] == sizeof(cv::Point3f));
+		int n_pts = header[9];
+		int d_type = header[10];
+		int d_rows = header[11];
+		int d_cols = header[12];
+
+		keypoints.resize(n_kpts);
+		points3D.resize(n_pts);
+		descriptors = cv::Mat(d_rows, d_cols, d_type);
+		unsigned int requiredDataSize = sizeof(int)*headerSize +
+				sizeof(cv::KeyPoint)*n_kpts +
+				sizeof(cv::Point3f)*n_pts +
+				descriptors.total() * descriptors.elemSize();
+		UASSERT_MSG(serializedData.total() == requiredDataSize,
+				uFormat("dataSize=%d != required=%d (header: version %d.%d.%d cv=%d.%d.%d kpts=%d (size=%d) pts=%d (size=%d) descriptors=%dx%d type=%d",
+						serializedData.total(),
+						requiredDataSize,
+						header[0], header[1], header[2], 
+						header[3], header[4], header[5],
+						header[7], header[6],
+						header[9], header[8],
+						header[11], header[12], header[10]).c_str());
+		unsigned int index = sizeof(int)*headerSize;
+		if(n_kpts != 0)
+		{
+			memcpy(keypoints.data(), (void*)(serializedData.data+index), n_kpts*sizeof(cv::KeyPoint));
+			index += n_kpts*sizeof(cv::KeyPoint);
+		}
+		if(n_pts != 0)
+		{
+			memcpy(points3D.data(), (void*)(serializedData.data+index), n_pts*sizeof(cv::Point3f));
+			index += n_pts*sizeof(cv::Point3f);
+		}
+		if(d_rows > 0)
+		{
+			cv::Mat(d_rows, d_cols, d_type, (void*)(serializedData.data+index)).copyTo(descriptors);
+			index+=descriptors.elemSize()*(descriptors.total());
+		}
+		UASSERT(index == serializedData.size());
+		return true;
+	}
+	UERROR("Wrong serialized features format detected (size in bytes=%ld)! Cannot deserialize the data.", serializedData.size());
+	return false;
+}
+
 } // namespace rtabmap

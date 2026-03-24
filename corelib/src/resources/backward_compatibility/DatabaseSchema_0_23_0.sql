@@ -45,8 +45,6 @@ CREATE TABLE Data (
 	view_point_x FLOAT,
 	view_point_y FLOAT,
 	view_point_z FLOAT,
-
-	features BLOB,            -- compressed serialized data (pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor)
 	
 	user_data BLOB,           -- compressed data (User data)
 	time_enter DATE,
@@ -76,7 +74,17 @@ CREATE TABLE Word (
 CREATE TABLE Feature (
 	node_id INTEGER NOT NULL,
 	word_id INTEGER NOT NULL,
-	index INTEGER NOT NULL,   -- index of the feature in "features" field of Data
+	pos_x FLOAT NOT NULL,
+	pos_y FLOAT NOT NULL,
+	size INTEGER NOT NULL,
+	dir FLOAT NOT NULL,
+	response FLOAT NOT NULL,
+	octave INTEGER NOT NULL,
+	depth_x FLOAT,
+	depth_y FLOAT,
+	depth_z FLOAT,
+	descriptor_size INTEGER,
+	descriptor BLOB,
 	FOREIGN KEY (node_id) REFERENCES Node(id)
 );
 
@@ -173,5 +181,5 @@ CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
 -- *******************************************************************
 -- VERSION
 -- *******************************************************************
-INSERT INTO Admin(version) VALUES('@PROJECT_VERSION@');
+INSERT INTO Admin(version) VALUES('0.23.4');
 

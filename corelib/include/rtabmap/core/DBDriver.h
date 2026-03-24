@@ -300,6 +300,18 @@ protected:
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;
 	virtual void getAllLabelsQuery(std::map<int, std::string> & labels) const = 0;
 
+protected:
+	std::vector<unsigned char> serializeFeatures(
+		const std::vector<cv::KeyPoint> & keypoints, 
+		const std::vector<cv::Point3f> & points3D,
+		const cv::Mat & descriptors);
+	bool deserializeFeatures(
+		const unsigned char * compressedData,
+		unsigned int compressedDataSize,
+		std::vector<cv::KeyPoint> & keypoints,
+		std::vector<cv::Point3f> & points3D,
+		cv::Mat & descriptors);
+
 private:
 	//non-abstract methods
 	void saveOrUpdate(const std::vector<Signature *> & signatures);
