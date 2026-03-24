@@ -181,5 +181,5 @@ CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
 -- *******************************************************************
 -- VERSION
 -- *******************************************************************
-INSERT INTO Admin(version) VALUES('0.23.4');
+INSERT INTO Admin(version) VALUES('0.23.0');
 
