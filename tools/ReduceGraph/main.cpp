@@ -106,6 +106,8 @@ int main(int argc, char * argv[])
 	}
 	printf("Parameters:\n");
 	printf("  radius = %f m\n", radius);
+	printf("  keep_latest = %s\n", keepLatest?"true":"false");
+	printf("  keep_linked = %s\n", keepLinked?"true":"false");
 	
 	// Just parse logging options
 	Parameters::parseArguments(argc, argv);
@@ -142,6 +144,7 @@ int main(int argc, char * argv[])
 	Memory memory;
 	printf("Initialization...\n");
 	UTimer timer;
+	ParametersMap originalParameters = parameters;
 	uInsert(parameters, inputParams);
 	if(!memory.init(dbPath, false, parameters))
 	{
@@ -232,6 +235,9 @@ int main(int argc, char * argv[])
 			printf("Saved the new global occupancy grid!\n");
 		}
 	}
+
+	// Restore original parameters before saving back the database
+	memory.parseParameters(originalParameters);
 		
 	memory.close(true);
 

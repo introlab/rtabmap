@@ -198,6 +198,7 @@ int main(int argc, char * argv[])
 	// Add some optimizations (soft set, can be overriden by arguments)
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
 	inputParams.insert(ParametersPair(Parameters::kKpNNStrategy(), "3")); // don't need flann index
+	inputParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // should be incremental to update links
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
@@ -247,6 +248,7 @@ int main(int argc, char * argv[])
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
 	UTimer timer;
+	ParametersMap originalParameters = parameters;
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
@@ -306,6 +308,9 @@ int main(int argc, char * argv[])
 			printf("Save new global occupancy grid!\n");
 		}
 	}
+
+	// Restore original parameters before saving back the database
+	rtabmap.parseParameters(originalParameters);
 
 	rtabmap.close();
 
