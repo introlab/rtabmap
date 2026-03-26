@@ -119,6 +119,7 @@ int main(int argc, char * argv[])
 	}
 	printf("Parameters:\n");
 	printf("  radius = %f m\n", radius);
+	printf("  ratio = %f\n", ratio);
 	printf("  keep_latest = %s\n", keepLatest?"true":"false");
 	printf("  keep_linked = %s\n", keepLinked?"true":"false");
 	
