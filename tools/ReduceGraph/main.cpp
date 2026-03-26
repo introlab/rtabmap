@@ -55,6 +55,7 @@ void showUsage(const char * exec)
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
+			"    --ratio #.#    Neighbor links with length over this ratio relative to graph distance to same node are not propagated. Default is 0.2.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec);
 	exit(1);
@@ -73,6 +74,7 @@ int main(int argc, char * argv[])
 	bool keepLatest = false;
 	bool keepLinked = false;
 	float radius = 1.0f;
+	float ratio = 0.2f;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -98,6 +100,17 @@ int main(int argc, char * argv[])
 					printf("--radius should be > 0, parsed %f\n", radius);
 					showUsage(argv[0]);
 				}
+			}
+			else {
+				showUsage(argv[0]);
+			}
+		}
+		else if(std::strcmp(argv[i], "--ratio") == 0)
+		{
+			++i;
+			if(i < argc-1)
+			{
+				ratio = uStr2Float(argv[i]);
 			}
 			else {
 				showUsage(argv[0]);
@@ -183,7 +196,7 @@ int main(int argc, char * argv[])
 		// Nodes can be already reduced by other nodes, check if they are still there
 		if(memory.getSignature(id) != 0)
 		{
-			int reducedId = memory.reduceNode(id, radius, keepLinked);
+			int reducedId = memory.reduceNode(id, radius, keepLinked, ratio);
 			if(reducedId > 0)
 			{
 				printf("Reduced node %d to node %d!\n", id, reducedId);

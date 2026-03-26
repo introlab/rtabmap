@@ -1288,9 +1288,9 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb)
+int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, float neighborMergedRatio)
 {
-	std::map<int, float> reducedTo = reduceNodeImpl(id, maxDistance, keepLinkedInDb);
+	std::map<int, float> reducedTo = reduceNodeImpl(id, maxDistance, keepLinkedInDb, neighborMergedRatio);
 	return reducedTo.empty()?0:reducedTo.rbegin()->first;
 }
 
@@ -1305,7 +1305,7 @@ bool canBeReduced(const Link & link, float maxDistance)
 			(maxDistance==0 || link.transform().getNorm() < maxDistance);
 }
 
-std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keepLinkedInDb)
+std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keepLinkedInDb, float neighborMergedRatio)
 {
 	UDEBUG("Reducing %d (max distance=%f, keep linked in db=%s)", id, maxDistance, keepLinkedInDb?"true":"false");
 	std::map<int, float> reducedTo;
@@ -1353,15 +1353,15 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 				{
 					if(iter->second.type() == Link::kNeighborMerged)
 					{
+						s->removeLink(sTo->id());
 						if(maxDistance == 0.0f)
 						{
 							// online graph reduction, always skip these links
 							continue;
 						}
-						s->removeLink(sTo->id());
 						std::list<std::pair<int, Transform> > path = graph::computePath(s->id(), sTo->id(), this, false);
 						float pathLength = graph::computePathLength(uListToVector(path));
-						if(!path.empty() && iter->second.transform().getNorm() / pathLength > 0.2)
+						if(!path.empty() && pathLength>0.0f && iter->second.transform().getNorm() / pathLength > neighborMergedRatio)
 						{
 							// skip, reachable by another path of similar size
 							continue;
@@ -1429,18 +1429,6 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 			}
 		}
 
-		//remove neighbor links
-		/*std::multimap<int, Link> linksCopy = links;
-		for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
-		{
-			if(iter->second.type() == Link::kNeighborMerged)
-			{
-				// Removing only merged neighbor links, we keep original neighbor 
-				// links to be able to reprocess databases with correct odometry covariance.
-				s->removeLink(iter->first);
-			}
-		}*/
-
 		this->moveToTrash(s, keepLinkedInDb);
 		s = 0;
 		_linksChanged = true;
@@ -1451,7 +1439,7 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 			//Nodes can be already reduced by other nodes, check if they are still there
 			if(getSignature(pair.first) != 0)
 			{
-				reducedTo = reduceNodeImpl(pair.first, pair.second, keepLinkedInDb);
+				reducedTo = reduceNodeImpl(pair.first, pair.second, keepLinkedInDb, neighborMergedRatio);
 			}
 		}
 	}
