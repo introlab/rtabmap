@@ -63,6 +63,7 @@ CameraImages::CameraImages() :
 		_syncImageRateWithStamps(true),
 		_odometryFormat(0),
 		_groundTruthFormat(0),
+		_groundTruthLocalTransform(Transform::getIdentity()),
 		_maxPoseTimeDiff(0.02),
 		_captureDelay(0.0)
 	{}
@@ -93,6 +94,7 @@ CameraImages::CameraImages(const std::string & path,
 	_syncImageRateWithStamps(true),
 	_odometryFormat(0),
 	_groundTruthFormat(0),
+	_groundTruthLocalTransform(Transform::getIdentity()),
 	_maxPoseTimeDiff(0.02),
 	_captureDelay(0.0)
 {
@@ -478,27 +480,43 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		if(success && _odometryPath.size() && odometry_.empty())
 		{
 			success = readPoses(odometry_, _stamps, _odometryPath, _odometryFormat, _maxPoseTimeDiff);
+			if(!success)
+			{
+				UERROR("Failed to read odometry poses.");
+			}
+			
+			if(success)
+			{
+				for(size_t i=0; i<odometry_.size(); ++i)
+				{
+					// linear cov = 0.0001
+					cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1) * (i==0?9999.0:0.0001);
+					if(i!=0)
+					{
+						// angular cov = 0.000001
+						covariance.at<double>(3,3) *= 0.01;
+						covariance.at<double>(4,4) *= 0.01;
+						covariance.at<double>(5,5) *= 0.01;
+					}
+					covariances_.push_back(covariance);
+				}
+			}
 		}
 
 		if(success && _groundTruthPath.size())
 		{
 			success = readPoses(groundTruth_, _stamps, _groundTruthPath, _groundTruthFormat, _maxPoseTimeDiff);
-		}
-
-		if(!odometry_.empty())
-		{
-			for(size_t i=0; i<odometry_.size(); ++i)
+			if(!success)
 			{
-				// linear cov = 0.0001
-				cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1) * (i==0?9999.0:0.0001);
-				if(i!=0)
+				UERROR("Failed to read ground truth poses.");
+			}
+			else if(!_groundTruthLocalTransform.isIdentity())
+			{
+				Transform gtInv = _groundTruthLocalTransform.inverse();
+				for(auto pose: groundTruth_)
 				{
-					// angular cov = 0.000001
-					covariance.at<double>(3,3) *= 0.01;
-					covariance.at<double>(4,4) *= 0.01;
-					covariance.at<double>(5,5) *= 0.01;
+					pose = pose*gtInv; // pose of base_link, assuming ground truth frame and base frame are rigidly fixed
 				}
-				covariances_.push_back(covariance);
 			}
 		}
 	}
@@ -607,7 +625,7 @@ bool CameraImages::readPoses(
 		}
 		if(validPoses != (int)inOutStamps.size())
 		{
-			UWARN("%d valid poses of %d stamps", validPoses, (int)inOutStamps.size());
+			UWARN("%d/%ld valid poses of %ld stamps", validPoses, outputPoses.size(), inOutStamps.size());
 		}
 	}
 	else
@@ -756,32 +774,19 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 
 			if(_stamps.size())
 			{
-				stamp = _stamps.front();
-				_stamps.pop_front();
-				if(_stamps.size())
-				{
-					_captureDelay = _stamps.front() - stamp;
-				}
+				UERROR("stamps cannot be used when startAt < 0");
 			}
 			if(odometry_.size())
 			{
-				odometryPose = odometry_.front();
-				odometry_.pop_front();
-				if(covariances_.size())
-				{
-					covariance = covariances_.front();
-					covariances_.pop_front();
-				}
+				UERROR("odometry cannot be used when startAt < 0");
 			}
 			if(groundTruth_.size())
 			{
-				groundTruthPose = groundTruth_.front();
-				groundTruth_.pop_front();
+				UERROR("groundTruth cannot be used when startAt < 0");
 			}
 			if(_models.size() && !model.isValidForProjection())
 			{
-				model = _models.front();
-				_models.pop_front();
+				UERROR("models cannot be used when startAt < 0");
 			}
 		}
 		else
@@ -792,6 +797,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 			{
 				imageFilePath = _path + imageFileName;
 				scanFilePath = _scanPath + scanFileName;
+				size_t stampsSize = _stamps.size();
 				if(_stamps.size())
 				{
 					stamp = _stamps.front();
@@ -803,6 +809,8 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 				}
 				if(odometry_.size())
 				{
+					UASSERT_MSG(stampsSize==0 || stampsSize == odometry_.size(), 
+						uFormat("Stamps=%ld odometry=%ld", _stamps.size(), odometry_.size()).c_str());
 					odometryPose = odometry_.front();
 					odometry_.pop_front();
 					if(covariances_.size())
@@ -813,11 +821,15 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 				}
 				if(groundTruth_.size())
 				{
+					UASSERT_MSG(stampsSize==0 || stampsSize == groundTruth_.size(), 
+						uFormat("Stamps=%ld groundTruth=%ld", _stamps.size(), groundTruth_.size()).c_str());
 					groundTruthPose = groundTruth_.front();
 					groundTruth_.pop_front();
 				}
 				if(_models.size() && !model.isValidForProjection())
 				{
+					UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(), 
+						uFormat("Stamps=%ld models=%ld", _stamps.size(), _models.size()).c_str());
 					model = _models.front();
 					_models.pop_front();
 				}
@@ -834,6 +846,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 
 					imageFilePath = _path + imageFileName;
 					scanFilePath = _scanPath + scanFileName;
+					size_t stampsSize = _stamps.size();
 					if(_stamps.size())
 					{
 						stamp = _stamps.front();
@@ -845,6 +858,8 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					}
 					if(odometry_.size())
 					{
+						UASSERT_MSG(stampsSize==0 || stampsSize == odometry_.size(), 
+							uFormat("Stamps=%ld odometry=%ld", stampsSize, odometry_.size()).c_str());
 						odometryPose = odometry_.front();
 						odometry_.pop_front();
 						if(covariances_.size())
@@ -855,11 +870,15 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					}
 					if(groundTruth_.size())
 					{
+						UASSERT_MSG(stampsSize==0 || stampsSize == groundTruth_.size(), 
+							uFormat("Stamps=%ld groundTruth=%ld", _stamps.size(), groundTruth_.size()).c_str());
 						groundTruthPose = groundTruth_.front();
 						groundTruth_.pop_front();
 					}
 					if(_models.size() && !model.isValidForProjection())
 					{
+						UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(), 
+							uFormat("Stamps=%ld models=%ld", _stamps.size(), _models.size()).c_str());
 						model = _models.front();
 						_models.pop_front();
 					}
