@@ -46,6 +46,15 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mReviewRequested = false
     
     private var mMaximumMemory: Int = 0
+    private struct MotionSample {
+        let timestamp: TimeInterval
+        let distanceTravelled: Float
+        let yaw: Float
+        let pitch: Float
+        let roll: Float
+    }
+    private let debugMotionWindowSeconds: TimeInterval = 5.0
+    private var debugMotionSamples: [MotionSample] = []
     
     // UI states
     private enum State {
@@ -381,6 +390,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                            pitch: Float,
                            yaw: Float)
     {
+        let now = ProcessInfo.processInfo.systemUptime
+        if loopClosureId > 0 {
+            self.debugMotionSamples.removeAll()
+        }
+        let motionMetrics = self.updateDebugMotionMetrics(timestamp: now, distanceTravelled: distanceTravelled, yaw: yaw, pitch: pitch, roll: roll)
         let availableMem = self.getAvailableMemory()
         let usedMem = self.mMaximumMemory - availableMem;
         
@@ -458,6 +472,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     "Hypothesis (%): \(Int(hypothesis*100)) / \(Int(self.mLoopThr*100)) (\(loopClosureId>0 ? loopClosureId : highestHypId))\n" +
                     String(format: "FPS (rendering): %.1f Hz\n", fps) +
                     String(format: "Travelled distance: %.2f m\n", distanceTravelled) +
+                    String(format: "Average speed (last %.1f s): %.2f m/s\n", self.debugMotionWindowSeconds, motionMetrics.linearMetersPerSecond) +
+                    String(format: "Turn rate (last %.1f s): %.1f deg/s\n", self.debugMotionWindowSeconds, motionMetrics.turnDegreesPerSecond) +
                     String(format: "Pose (x,y,z): %.2f %.2f %.2f", x, y, z)
             }
             if(self.mState == .STATE_MAPPING || self.mState == .STATE_VISUALIZING_CAMERA)
@@ -530,6 +546,47 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 }
             }
         }
+    }
+
+    private func updateDebugMotionMetrics(timestamp: TimeInterval, distanceTravelled: Float, yaw: Float, pitch: Float, roll: Float) -> (linearMetersPerSecond: Float, turnDegreesPerSecond: Float) {
+        debugMotionSamples.append(MotionSample(timestamp: timestamp, distanceTravelled: distanceTravelled, yaw: yaw, pitch: pitch, roll: roll))
+
+        let minimumTimestamp = timestamp - debugMotionWindowSeconds
+        debugMotionSamples.removeAll { $0.timestamp < minimumTimestamp }
+
+        guard let firstSample = debugMotionSamples.first, let lastSample = debugMotionSamples.last else {
+            return (0.0, 0.0)
+        }
+
+        let deltaTime = max(Float(lastSample.timestamp - firstSample.timestamp), 0.001)
+        let deltaDistance = max(0.0, lastSample.distanceTravelled - firstSample.distanceTravelled)
+        let linearMetersPerSecond = deltaDistance / deltaTime
+
+        var accumulatedAngleDelta: Float = 0.0
+        if debugMotionSamples.count >= 2 {
+            for index in 1..<debugMotionSamples.count {
+                let prev = debugMotionSamples[index - 1]
+                let curr = debugMotionSamples[index]
+                let yawDelta = shortestAngleDeltaRadians(from: prev.yaw, to: curr.yaw)
+                let pitchDelta = shortestAngleDeltaRadians(from: prev.pitch, to: curr.pitch)
+                let rollDelta = shortestAngleDeltaRadians(from: prev.roll, to: curr.roll)
+                accumulatedAngleDelta += sqrt(yawDelta*yawDelta + pitchDelta*pitchDelta + rollDelta*rollDelta)
+            }
+        }
+        let turnDegreesPerSecond = accumulatedAngleDelta * 180.0 / .pi / deltaTime
+
+        return (linearMetersPerSecond, turnDegreesPerSecond)
+    }
+
+    private func shortestAngleDeltaRadians(from start: Float, to end: Float) -> Float {
+        var delta = end - start
+        while delta > .pi {
+            delta -= 2.0 * .pi
+        }
+        while delta < -.pi {
+            delta += 2.0 * .pi
+        }
+        return delta
     }
     
     func cameraInfoEventReceived(_ rtabmap: RTABMap, type: Int, key: String, value: String) {
