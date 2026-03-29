@@ -57,7 +57,6 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/sba/types_sba.h"
 #include "g2o/solvers/eigen/linear_solver_eigen.h"
 #include "g2o/config.h"
-#include "g2o/types/slam2d_addons/edge_se2_line2d.h"
 #include "g2o/types/slam2d/types_slam2d.h"
 #include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/edge_se3_xyzprior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
@@ -1581,8 +1580,38 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #endif
 		}
 
+		// detect if there is a global pose prior set, if so remove rootId
+		bool hasGravityConstraints = false;
+		if(!priorsIgnored() || (!isSlam2d() && gravitySigma() > 0))
+		{
+			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if(iter->second.from() == iter->second.to())
+				{
+					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
+					{
+						if(rootId!=0) {
+							UDEBUG("Removed rootId=%d because there are priors.");
+						}
+						rootId = 0;
+						break;
+					}
+					else if(!isSlam2d() &&
+							gravitySigma() > 0 &&
+							iter->second.type() == Link::kGravity)
+					{
+						hasGravityConstraints = true;
+						if(priorsIgnored())
+						{
+							break;
+						}
+					}
+				}
+			}
+		}
 
-		UDEBUG("fill poses to g2o...");
+
+		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first > 0)
@@ -1621,7 +1650,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					vCam->setId(iter->first*MULTICAM_OFFSET + i);
 
 					// negative root means that all other poses should be fixed instead of the root
-					vCam->setFixed((rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId));
+					bool fixNode = (rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId);
 
 					/*UDEBUG("camPose %d (camid=%d) (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
 							iter->first,
@@ -1637,18 +1666,60 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
 				
-					if(!vCam->fixed() && this->isSlam2d())
+					if(this->isSlam2d())
 					{
-						// add a singleton constraint that locks the position of the robot on the plane
-						EdgeSBACamPrior* planeConstraint = new EdgeSBACamPrior();
-						Eigen::Matrix<double, 6, 6> pinfo = Eigen::Matrix<double, 6, 6>::Zero();
-						pinfo(2, 2) = 1e9;
-						planeConstraint->setInformation(pinfo);
-						g2o::SE3Quat fixedZ = g2o::SE3Quat();
-						fixedZ.setTranslation(g2o::Vector3(0,0,camPose.z()));
-						planeConstraint->setMeasurement(fixedZ);
-						planeConstraint->vertices()[0] = vCam;
-						optimizer.addEdge(planeConstraint);
+						if(fixNode)
+						{
+							UDEBUG("Set node %d fixed", iter->first);
+							vCam->setFixed(true);
+						}
+						else if(i==0) // Only set prior on the first camera
+						{
+							// add a singleton constraint that locks the position of the robot on the plane
+							EdgeSBACamPrior* planeConstraint = new EdgeSBACamPrior();
+							Eigen::Matrix<double, 6, 6> pinfo = Eigen::Matrix<double, 6, 6>::Zero();
+							pinfo(2, 2) = 1e9;
+							planeConstraint->setInformation(pinfo);
+							g2o::SE3Quat fixedZ = g2o::SE3Quat();
+							fixedZ.setTranslation(g2o::Vector3(0,0,iter->second.z()));
+							planeConstraint->setMeasurement(fixedZ);
+							Eigen::Affine3d a = iterModel->second[i].localTransform().inverse().toEigen3d();
+							planeConstraint->setCameraInvLocalTransform(g2o::SE3Quat(a.linear(), a.translation()));
+							planeConstraint->vertices()[0] = vCam;
+							optimizer.addEdge(planeConstraint);
+						}
+					}
+					else if(fixNode)
+					{
+						if(rootId < 0 || !hasGravityConstraints)
+						{
+							UDEBUG("Set node %d fixed", iter->first);
+							vCam->setFixed(true);
+						}
+						else if(hasGravityConstraints && i==0) // Only set prior on the first camera
+						{
+							// Setup root prior (fixed x,y,z,yaw)
+							EdgeSBACamPrior * e = new EdgeSBACamPrior();
+							e->vertices()[0] = vCam;
+							Eigen::Affine3d a = iter->second.toEigen3d();
+							e->setMeasurement(g2o::SE3Quat(a.linear(), a.translation()));
+							a = iterModel->second[i].localTransform().inverse().toEigen3d();
+							e->setCameraInvLocalTransform(g2o::SE3Quat(a.linear(), a.translation()));
+							Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity()*10e6;
+							// pitch and roll not fixed
+							information(3,3) = information(4,4) = 1;
+							e->setInformation(information);
+							if (!optimizer.addEdge(e))
+							{
+								delete e;
+								UERROR("Map: Failed adding fixed constraint of node %d, set as fixed instead", iter->first);
+								vCam->setFixed(true);
+							}
+							else
+							{
+								UDEBUG("Set node %d fixed with prior (have gravity constraints)", iter->first);
+							}
+						}
 					}
 
 				}

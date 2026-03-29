@@ -47,10 +47,15 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
       information().setIdentity();
     }
 
+    void setCameraInvLocalTransform(const g2o::SE3Quat & t)
+    {
+    	_cameraInvLocalTransform = t;
+    }
+
     // return the error estimate as a 3-vector
     void computeError() {
       const g2o::VertexCam* v = static_cast<const g2o::VertexCam*>(_vertices[0]);
-      g2o::SE3Quat delta = _inverseMeasurement * v->estimate();
+      g2o::SE3Quat delta = _inverseMeasurement * v->estimate() * _cameraInvLocalTransform;
       _error[0]=delta.translation().x();
       _error[1]=delta.translation().y();
       _error[2]=delta.translation().z();
@@ -95,7 +100,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
       g2o::VertexCam *v = static_cast<g2o::VertexCam*>(_vertices[0]);
       assert(v && "Vertex for the Prior edge is not set");
 
-      g2o::SE3Quat newEstimate = measurement();
+      g2o::SE3Quat newEstimate = measurement()*_cameraInvLocalTransform.inverse();
       if (_information.block<3,3>(0,0).array().abs().sum() == 0){ // do not set translation, as that part of the information is all zero
         newEstimate.setTranslation(v->estimate().translation());
       }
@@ -109,6 +114,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
     virtual bool write(std::ostream& os) const override { return true; }
   protected:
     g2o::SE3Quat _inverseMeasurement;
+    g2o::SE3Quat _cameraInvLocalTransform;
 };
 
 }
