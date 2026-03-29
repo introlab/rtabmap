@@ -1580,35 +1580,22 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #endif
 		}
 
-		// detect if there is a global pose prior set, if so remove rootId
+		// detect if there are gravity constraints
 		bool hasGravityConstraints = false;
-		if(!priorsIgnored() || (!isSlam2d() && gravitySigma() > 0))
+#ifndef RTABMAP_ORB_SLAM
+		if(!isSlam2d() && gravitySigma() > 0)
 		{
 			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				if(iter->second.from() == iter->second.to())
+				if( iter->second.from() == iter->second.to() &&
+					iter->second.type() == Link::kGravity)
 				{
-					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
-					{
-						if(rootId!=0) {
-							UDEBUG("Removed rootId=%d because there are priors.");
-						}
-						rootId = 0;
-						break;
-					}
-					else if(!isSlam2d() &&
-							gravitySigma() > 0 &&
-							iter->second.type() == Link::kGravity)
-					{
-						hasGravityConstraints = true;
-						if(priorsIgnored())
-						{
-							break;
-						}
-					}
+					hasGravityConstraints = true;
+					break;
 				}
 			}
 		}
+#endif
 
 
 		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
@@ -1696,7 +1683,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							UDEBUG("Set node %d fixed", iter->first);
 							vCam->setFixed(true);
 						}
-						else if(hasGravityConstraints && i==0) // Only set prior on the first camera
+						else if(hasGravityConstraints && i==0) // Only set prior on the first camera in case of multi-cam
 						{
 							// Setup root prior (fixed x,y,z,yaw)
 							EdgeSBACamPrior * e = new EdgeSBACamPrior();
