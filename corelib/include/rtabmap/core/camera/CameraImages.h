@@ -102,10 +102,11 @@ public:
 	}
 
 	// 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
-	void setGroundTruthPath(const std::string & filePath, int format = 0)
+	void setGroundTruthPath(const std::string & filePath, int format = 0, const Transform & localTransform = Transform::getIdentity())
 	{
 		_groundTruthPath = filePath;
 		_groundTruthFormat = format;
+		_groundTruthLocalTransform = localTransform;
 	}
 
 	void setMaxPoseTimeDiff(double diff) {_maxPoseTimeDiff = diff;}
@@ -164,6 +165,7 @@ private:
 	int _odometryFormat;
 	std::string _groundTruthPath;
 	int _groundTruthFormat;
+	Transform _groundTruthLocalTransform;
 	double _maxPoseTimeDiff;
 
 	std::list<double> _stamps;
