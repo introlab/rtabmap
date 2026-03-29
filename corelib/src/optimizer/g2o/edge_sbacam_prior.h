@@ -74,7 +74,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
       _inverseMeasurement = m.inverse();
     }
 
-    virtual bool setMeasurementData(const number_t* d) override {
+    virtual bool setMeasurementData(const double* d) override {
       Eigen::Map<const g2o::Vector7> v(d);
       // SE3Quat expects [x, y, z, qx, qy, qz, qw]
       _measurement.fromVector(v);
@@ -82,7 +82,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
       return true;
     }
     
-    virtual bool getMeasurementData(number_t* d) const override {
+    virtual bool getMeasurementData(double* d) const override {
       Eigen::Map<g2o::Vector7> v(d);
       // Returns [x, y, z, qx, qy, qz, qw]
       v = _measurement.toVector();
@@ -91,7 +91,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
   
     virtual int measurementDimension() const {return 7;}
 
-    virtual number_t initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& /*from*/, 
+    virtual double initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& /*from*/, 
              g2o::OptimizableGraph::Vertex* /*to*/) { 
       return 1.;
     }
