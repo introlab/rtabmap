@@ -26,7 +26,7 @@ target_include_directories(rtabmap_utilite PUBLIC
 IF(MINGW)
     TARGET_LINK_LIBRARIES(rtabmap_utilite PRIVATE ${PTHREADS_LIBRARY} "-lpsapi")
 ELSEIF(WIN32 OR MSVC)
-	FIND_LIBRARY(PSAPI_LIBRARIES NAMES psapi libpsapi.dll.a libpsapi.a libpsapi.lib )
+	FIND_LIBRARY(PSAPI_LIBRARIES NAMES psapi libpsapi libpsapi.dll.a libpsapi.a libpsapi.lib REQUIRED)
 	TARGET_LINK_LIBRARIES(rtabmap_utilite PRIVATE ${PSAPI_LIBRARIES})
 ELSE()
     TARGET_LINK_LIBRARIES(rtabmap_utilite PRIVATE ${PTHREADS_LIBRARY})

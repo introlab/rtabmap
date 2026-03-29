@@ -1,0 +1,58 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2e9de0c..6a031c7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -103,16 +103,7 @@ endif ()
+ include(GNUInstallDirs)
+ 
+ # eigen 2 or 3
+-find_path(EIGEN_INCLUDE_DIR NAMES signature_of_eigen3_matrix_library
+-  HINTS  ENV EIGEN3_INC_DIR
+-         ENV EIGEN3_DIR
+-  PATHS  Eigen/Core
+-         /usr/local/include
+-         /usr/include
+-         /opt/local/include
+-  PATH_SUFFIXES include eigen3 eigen2 eigen
+-  DOC "Directory containing the Eigen3 header files"
+-)
++find_package(Eigen3 REQUIRED)
+ 
+ # optionally, opencl
+ # OpenCL disabled as its code is not up-to-date with API
+@@ -165,10 +156,10 @@ endif ()
+ set_target_properties(${LIB_NAME} PROPERTIES VERSION "${PROJECT_VERSION}" SOVERSION 1)
+ 
+ target_include_directories(${LIB_NAME} PUBLIC
+-	${EIGEN_INCLUDE_DIR}
+ 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+ 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+   )
++target_link_libraries(${LIB_NAME} PUBLIC Eigen3::Eigen)
+ 
+ # openmp
+ set(USE_OPEN_MP TRUE CACHE BOOL "Set to FALSE to not use OpenMP")
+diff --git a/libnaboConfig.cmake.in b/libnaboConfig.cmake.in
+index 0de01c3..8bb8194 100644
+--- a/libnaboConfig.cmake.in
++++ b/libnaboConfig.cmake.in
+@@ -1,5 +1,7 @@
+ # - Config file for the libnabo package
+ 
++find_dependency(Eigen3 CONFIG)
++
+ include(${CMAKE_CURRENT_LIST_DIR}/libnabo-targets.cmake)
+ 
+ # This causes catkin_simple to link against these libraries
+diff --git a/nabo/kdtree_cpu.cpp b/nabo/kdtree_cpu.cpp
+index cb1f8d1..52a444f 100644
+--- a/nabo/kdtree_cpu.cpp
++++ b/nabo/kdtree_cpu.cpp
+@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <queue>
+ #include <algorithm>
+ #include <utility>
++#include <cassert>
+ #ifdef HAVE_OPENMP
+ #include <omp.h>
+ #endif
