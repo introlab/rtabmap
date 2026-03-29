@@ -44,6 +44,7 @@ class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	EdgeSBACamGravity(){
     	information().setIdentity();
+      cameraInvLocalTransform_.setIdentity();
     }
     virtual bool read(std::istream& is) {return false;} // not implemented
     virtual bool write(std::ostream& os) const {return false;} // not implemented
