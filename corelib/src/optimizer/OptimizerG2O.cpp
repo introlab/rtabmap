@@ -1656,7 +1656,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							pinfo(2, 2) = 1e9;
 							planeConstraint->setInformation(pinfo);
 							g2o::SE3Quat fixedZ = g2o::SE3Quat();
-							fixedZ.setTranslation(g2o::Vector3(0,0,iter->second.z()));
+							fixedZ.setTranslation(Eigen::Vector3d(0,0,iter->second.z()));
 							planeConstraint->setMeasurement(fixedZ);
 							Eigen::Affine3d a = iterModel->second[i].localTransform().inverse().toEigen3d();
 							planeConstraint->setCameraInvLocalTransform(g2o::SE3Quat(a.linear(), a.translation()));

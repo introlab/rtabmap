@@ -1,4 +1,4 @@
-name: CMake
+name: CMake-Windows
 
 on:
   push:
@@ -22,20 +22,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv, windows-2022, windows-2022-cuda]
+        build_name: [windows-2022, windows-2022-cuda]
         include:
-        - build_name: ubuntu-22.04
-          os: ubuntu-22.04
-          extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON"
-        - build_name: ubuntu-24.04
-          os: ubuntu-24.04
-          extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON"
-        - build_name: ubuntu-24.04-with-opengv
-          os: ubuntu-24.04
-          extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DBUILD_OPENGV=ON"
         - build_name: windows-2022
           os: windows-2022
           extra_deps: ""
@@ -56,15 +44,7 @@ jobs:
       if: matrix.build_name == 'windows-2022-cuda'
       uses: ./.github/actions/install-windows-cuda-deps
 
-    - name: Install Linux Dependencies
-      if: matrix.os != 'windows-2022'
-      run: |
-        DEBIAN_FRONTEND=noninteractive
-        sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
-
     - name: Configure CMake
-      if: matrix.os == 'windows-2022'
       run: |
         cmake `
           -B ${{github.workspace}}/build `
@@ -76,16 +56,10 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
           -DTorch_DIR=${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3/Lib/site-packages/torch/share/cmake/Torch
 
-    - name: Configure CMake
-      if: matrix.os != 'windows-2022'
-      run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
-
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Build Windows Package
-      if: matrix.os == 'windows-2022'
       shell: pwsh
       run: |
         if ("${{ github.event_name }}" -eq "pull_request") {
@@ -105,7 +79,6 @@ jobs:
         ./rtabmap-console --version
 
     - name: Upload RTABMap Artifacts (ZIP)
-      if: matrix.os == 'windows-2022'
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries-${{ matrix.build_name }}-zip
@@ -116,7 +89,7 @@ jobs:
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
     - name: Upload RTABMap Artifacts (Installer)
-      if: matrix.os == 'windows-2022' && github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries-${{ matrix.build_name }}-exe
