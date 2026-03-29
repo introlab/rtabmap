@@ -6163,6 +6163,14 @@ void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 							kptB->keypoint().pt.y,
 							cB);
 				}
+				else if(ids[i]<0)
+				{
+					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::gray);
+				}
+			}
+			for(auto iter = wordsB.begin(); iter.key()<0 && iter!=wordsB.end(); ++iter)
+			{
+				ui_->graphicsView_B->setFeatureColor(iter.key(), Qt::gray);
 			}
 			ui_->graphicsView_A->update();
 			ui_->graphicsView_B->update();

@@ -309,7 +309,8 @@ private:
 	bool preciseUpscale_;
 	bool rootSIFT_;
 	bool gpu_;
-	float guaussianThreshold_;
+	float gaussianThreshold_;
+	float maxGaussianThreshold_;
 	bool upscale_;
 
 	cv::Ptr<CV_SIFT> sift_;
