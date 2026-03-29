@@ -1255,11 +1255,11 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 	{
 		if (xRatio > 0 && yRatio > 0)
 		{
-			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), color);
+			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), iter->first<0?Qt::gray:color);
 		}
 		else
 		{
-			addFeature(iter->first, iter->second, 0, color);
+			addFeature(iter->first, iter->second, 0, iter->first<0?Qt::gray:color);
 		}
 	}
 

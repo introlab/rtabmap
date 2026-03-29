@@ -171,6 +171,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_label_gpu->setEnabled(false);
 	_ui->sift_doubleSpinBox_gaussianDiffThreshold->setEnabled(false);
 	_ui->sift_label_gaussianThreshold->setEnabled(false);
+	_ui->sift_doubleSpinBox_maxGaussianDiffThreshold->setEnabled(false);
+	_ui->sift_label_maxGaussianThreshold->setEnabled(false);
 	_ui->sift_checkBox_upscale->setEnabled(false);
 	_ui->sift_label_upscale->setEnabled(false);
 #endif
@@ -1145,6 +1147,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->sift_checkBox_rootsift->setObjectName(Parameters::kSIFTRootSIFT().c_str());
 	_ui->sift_checkBox_gpu->setObjectName(Parameters::kSIFTGpu().c_str());
 	_ui->sift_doubleSpinBox_gaussianDiffThreshold->setObjectName(Parameters::kSIFTGaussianThreshold().c_str());
+	_ui->sift_doubleSpinBox_maxGaussianDiffThreshold->setObjectName(Parameters::kSIFTMaxGaussianThreshold().c_str());
 	_ui->sift_checkBox_upscale->setObjectName(Parameters::kSIFTUpscale().c_str());
 
 	//BRIEF descriptor
