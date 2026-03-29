@@ -1598,7 +1598,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #endif
 
 
-		UDEBUG("fill poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
+		UDEBUG("fill %ld poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", poses.size(), rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first > 0)
@@ -1638,18 +1638,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 					// negative root means that all other poses should be fixed instead of the root
 					bool fixNode = (rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId);
-
-					/*UDEBUG("camPose %d (camid=%d) (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
-							iter->first,
-							vCam->id(),
-							vCam->fixed()?1:0,
-							iterModel->second[i].fx(),
-							iterModel->second[i].fy(),
-							iterModel->second[i].cx(),
-							iterModel->second[i].cy(),
-							iterModel->second[i].Tx(),
-							iterModel->second[i].Tx()<0.0?-iterModel->second[i].Tx()/iterModel->second[i].fx():baseline_,
-							camPose.prettyPrint().c_str());*/
 
 					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
 				
@@ -1709,6 +1697,17 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						}
 					}
 
+					/*UDEBUG("camPose %d (camid=%d) (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
+							iter->first,
+							vCam->id(),
+							vCam->fixed()?1:0,
+							iterModel->second[i].fx(),
+							iterModel->second[i].fy(),
+							iterModel->second[i].cx(),
+							iterModel->second[i].cy(),
+							iterModel->second[i].Tx(),
+							iterModel->second[i].Tx()<0.0?-iterModel->second[i].Tx()/iterModel->second[i].fx():baseline_,
+							camPose.prettyPrint().c_str());*/
 				}
 			}
 		}
