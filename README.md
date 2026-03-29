@@ -35,7 +35,7 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
   <table>
     <tbody>
         <tr>
-           <td><a href="https://github.com/introlab/rtabmap/actions/workflows/cmake.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake.yml/badge.svg" alt="Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml/badge.svg" alt="Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/docker.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/docker.yml/badge.svg" alt="Build Status"/>
+           <td><a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-linux.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-linux.yml/badge.svg" alt="CMake Linux Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-windows.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-windows.yml/badge.svg" alt="CMake Windows Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml/badge.svg" alt="CMake ROS Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/docker.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/docker.yml/badge.svg" alt="Docker Build Status"/>
            </td>
         </tr>
      </tbody>
