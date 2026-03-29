@@ -5750,6 +5750,32 @@ int Rtabmap::detectMoreLoopClosures(
 			}
 		}
 
+		if(_memory->getMaxStMemSize() > 1)
+		{
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				if(abs(iter->first - iter->second) < _memory->getMaxStMemSize())
+				{
+					iter = clusters.erase(iter);
+				}
+				else
+				{
+					// compute path to know how far we are in terms of graph length
+					std::map<int, int> ids = _memory->getNeighborsId(iter->first, _memory->getMaxStMemSize(), -1, true, true, true);
+					if(ids.find(iter->second) != ids.end())
+					{
+						iter = clusters.erase(iter);
+					}
+					else
+					{
+						++iter;
+					}
+				}
+			}
+			UINFO("Looking for more loop closures: filtered %ld clusters for too close nodes (below %s=%d).",
+				clusters.size(), Parameters::kMemSTMSize().c_str(), _memory->getMaxStMemSize());
+		}
+
 		int i=0;
 		std::set<int> addedLinks;
 		for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter, ++i)

@@ -2020,19 +2020,21 @@ std::list<std::pair<int, Transform> > computePath(
 		bool lookInDatabase,
 		bool updateNewCosts,
 		float linearVelocity,  // m/sec
-		float angularVelocity) // rad/sec
+		float angularVelocity, // rad/sec
+		bool ignoreDirectLinks) 
 {
 	UASSERT(memory!=0);
 	UASSERT(fromId>=0);
 	UASSERT(toId!=0);
 	std::list<std::pair<int, Transform> > path;
-	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f",
+	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f ignoreDirectLinks=%d",
 			fromId,
 			toId,
 			lookInDatabase?1:0,
 			updateNewCosts?1:0,
 			linearVelocity,
-			angularVelocity);
+			angularVelocity,
+			ignoreDirectLinks?1:0);
 
 	std::multimap<int, Link> allLinks;
 	if(lookInDatabase)
@@ -2110,7 +2112,9 @@ std::list<std::pair<int, Transform> > computePath(
 		}
 		for(std::multimap<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
-			if(iter->second.from() != iter->second.to())
+			if(iter->second.from() != iter->second.to() &&
+			  (!ignoreDirectLinks || 
+				(!(iter->second.from()==fromId && iter->second.to()==toId) && !(iter->second.to()==fromId && iter->second.from()==toId))))
 			{
 				Transform nextPose = currentNode->pose()*iter->second.transform();
 				float cost = 0.0f;
@@ -2396,26 +2400,15 @@ std::map<int, Transform> getPosesInRadius(const Transform & targetPose, const st
 
 
 float computePathLength(
-		const std::vector<std::pair<int, Transform> > & path,
-		unsigned int fromIndex,
-		unsigned int toIndex)
+		const std::vector<std::pair<int, Transform> > & path)
 {
 	float length = 0.0f;
 	if(path.size() > 1)
 	{
-		UASSERT(fromIndex  < path.size() && toIndex < path.size() && fromIndex <= toIndex);
-		if(fromIndex >= toIndex)
+		for(unsigned int i=0; i<path.size()-1; ++i)
 		{
-			toIndex = (unsigned int)path.size()-1;
+			length+=path[i].second.getDistance(path[i+1].second);
 		}
-		float x=0, y=0, z=0;
-		for(unsigned int i=fromIndex; i<toIndex-1; ++i)
-		{
-			x += fabs(path[i].second.x() - path[i+1].second.x());
-			y += fabs(path[i].second.y() - path[i+1].second.y());
-			z += fabs(path[i].second.z() - path[i+1].second.z());
-		}
-		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
 }
@@ -2426,19 +2419,15 @@ float computePathLength(
 	float length = 0.0f;
 	if(path.size() > 1)
 	{
-		float x=0, y=0, z=0;
 		std::map<int, Transform>::const_iterator iter=path.begin();
 		Transform previousPose = iter->second;
 		++iter;
 		for(; iter!=path.end(); ++iter)
 		{
 			const Transform & currentPose = iter->second;
-			x += fabs(previousPose.x() - currentPose.x());
-			y += fabs(previousPose.y() - currentPose.y());
-			z += fabs(previousPose.z() - currentPose.z());
+			length+=previousPose.getDistance(currentPose);
 			previousPose = currentPose;
 		}
-		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
 }
