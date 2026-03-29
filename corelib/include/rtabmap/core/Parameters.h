@@ -224,7 +224,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, BadSignaturesIgnored,        bool, false,    "Bad signatures are ignored.");
     RTABMAP_PARAM(Mem, InitWMWithAllNodes,          bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
     RTABMAP_PARAM(Mem, DepthAsMask,                 bool, true,     "Use depth image as mask when extracting features for vocabulary.");
-    RTABMAP_PARAM(Mem, DepthMaskFloorThr,           float, 0.0,     uFormat("Filter floor from depth mask below specified threshold (m) before extracting features. 0 means disabled, negative means remove all objects above the floor threshold instead. Ignored if %s is false.", kMemDepthAsMask().c_str()));
+    RTABMAP_PARAM(Mem, DepthMaskFloorThr,           float, 0.0,     uFormat("Filter floor from depth mask below specified threshold (m) before extracting features. 0 means disabled. Ignored if %s is false.", kMemDepthAsMask().c_str()));
     RTABMAP_PARAM(Mem, StereoFromMotion,            bool, false,    uFormat("Triangulate features without depth using stereo from motion (odometry). It would be ignored if %s is true and the feature detector used supports masking.", kMemDepthAsMask().c_str()));
     RTABMAP_PARAM(Mem, ImagePreDecimation,          unsigned int, 1, uFormat("Decimation of the RGB image before visual feature detection. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If %s is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.",kMemDepthAsMask().c_str()));
     RTABMAP_PARAM(Mem, ImagePostDecimation,         unsigned int, 1, uFormat("Decimation of the RGB image before saving it to database. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. Decimation is done from the original image. If set to same value than %s, data already decimated is saved (no need to re-decimate the image).", kMemImagePreDecimation().c_str()));
@@ -294,7 +294,8 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SIFT, PreciseUpscale,    bool, false,  "Whether to enable precise upscaling in the scale pyramid (OpenCV >= 4.8).");
     RTABMAP_PARAM(SIFT, RootSIFT,          bool, false,  "Apply RootSIFT normalization of the descriptors.");
     RTABMAP_PARAM(SIFT, Gpu,               bool, false,  "CudaSift: Use GPU version of SIFT. This option is enabled only if RTAB-Map is built with CudaSift dependency and GPUs are detected.");
-    RTABMAP_PARAM(SIFT, GaussianThreshold, float, 2.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features are produced by the detector.");
+    RTABMAP_PARAM(SIFT, GaussianThreshold, float, 2.0,   "CudaSift: Threshold on difference of Gaussians for feature pruning. The higher the threshold, the less features with low response/hessian are produced by the detector.");
+    RTABMAP_PARAM(SIFT, MaxGaussianThreshold, float, 0.0,   uFormat("CudaSift: Maximum threshold on difference of Gaussians for feature pruning (ignored if smaller or equal than %s). The lower the threshold, the less features with high response/hessian are produced by the detector.", kSIFTGaussianThreshold().c_str()));
     RTABMAP_PARAM(SIFT, Upscale,           bool, false,  "CudaSift: Whether to enable upscaling.");
 
     RTABMAP_PARAM(BRIEF, Bytes,            int, 32,      "Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
@@ -724,7 +725,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, MaxDepth,                  float, 0,     "Max depth of the features (0 means no limit).");
     RTABMAP_PARAM(Vis, MinDepth,                  float, 0,     "Min depth of the features (0 means no limit).");
     RTABMAP_PARAM(Vis, DepthAsMask,               bool,  true,  "Use depth image as mask when extracting features.");
-    RTABMAP_PARAM(Vis, DepthMaskFloorThr,         float, 0.0,    uFormat("Filter floor from depth mask below specified threshold (m) before extracting features. 0 means disabled, negative means remove all objects above the floor threshold instead. Ignored if %s is false.", kVisDepthAsMask().c_str()));
+    RTABMAP_PARAM(Vis, DepthMaskFloorThr,         float, 0.0,    uFormat("Filter floor from depth mask below specified threshold (m) before extracting features. 0 means disabled. Ignored if %s is false.", kVisDepthAsMask().c_str()));
     RTABMAP_PARAM_STR(Vis, RoiRatios,        "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
     RTABMAP_PARAM(Vis, SubPixWinSize,             int,   3,     "See cv::cornerSubPix().");
     RTABMAP_PARAM(Vis, SubPixIterations,          int,   0,     "See cv::cornerSubPix(). 0 disables sub pixel refining.");

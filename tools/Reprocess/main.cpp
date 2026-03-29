@@ -128,6 +128,8 @@ void sighandler(int sig)
 int loopCount = 0;
 int proxCount = 0;
 int loopCountMotion = 0;
+int loopInter = 0;
+int loopIntra = 0;
 int totalFrames = 0;
 int totalFramesMotion = 0;
 std::vector<float> previousLocalizationDistances;
@@ -1239,15 +1241,23 @@ int main(int argc, char * argv[])
 				++loopCountMotion;
 			}
 			int loopMapId = stats.loopClosureId() > 0? stats.loopClosureMapId(): stats.proximityDetectionMapId();
-			printf("Processed %d/%d nodes [id=%d map=%d opt_graph=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
+			if(loopMapId != stats.refImageMapId())
+			{
+				++loopInter;
+			}
+			else
+			{
+				++loopIntra;
+			}
+			printf("Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
 		}
 		else if(landmarkId != 0)
 		{
-			printf("Processed %d/%d nodes [id=%d map=%d opt_graph=%d]... %dms Loop on landmark %d\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()),  int(iterationTime.ticks() * 1000), landmarkId);
+			printf("Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms Loop on landmark %d\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f),  int(iterationTime.ticks() * 1000), landmarkId);
 		}
 		else
 		{
-			printf("Processed %d/%d nodes [id=%d map=%d opt_graph=%d]... %dms\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(iterationTime.ticks() * 1000));
+			printf("Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000));
 		}
 
 		// Here we accumulate statistics about distance from last localization
@@ -1340,7 +1350,8 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		printf("Total loop closures = %d (Loop=%d, Prox=%d, In Motion=%d/%d)\n", loopCount+proxCount, loopCount, proxCount, loopCountMotion, totalFramesMotion);
+		printf("Total loop closures = %d (Loop=%d, Prox=%d, In Motion=%d/%d, Intra=%d, Inter=%d)\n",
+			loopCount+proxCount, loopCount, proxCount, loopCountMotion, totalFramesMotion, loopIntra, loopInter);
 
 		if(databases.size()>1)
 		{
