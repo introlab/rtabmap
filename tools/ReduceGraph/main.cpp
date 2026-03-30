@@ -54,10 +54,10 @@ void showUsage(const char * exec)
 			"Options:\n"
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
+			"    --pre_cleanup  Remove all user loop closures linking nodes closer than %s in the graph before reducing the graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
-			"    --ratio #.#    Neighbor links with length over this ratio relative to graph distance to same node are not propagated. Default is 0.2.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
-			"\n", exec);
+			"\n", exec, Parameters::kMemSTMSize().c_str());
 	exit(1);
 }
 
@@ -74,7 +74,7 @@ int main(int argc, char * argv[])
 	bool keepLatest = false;
 	bool keepLinked = false;
 	float radius = 1.0f;
-	float ratio = 0.2f;
+	bool preCleanup = false;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -83,11 +83,15 @@ int main(int argc, char * argv[])
 		}
 		else if(std::strcmp(argv[i], "--keep_latest") == 0)
 		{
-			keepLatest = uStr2Bool(argv[i]);
+			keepLatest = true;
 		}
 		else if(std::strcmp(argv[i], "--keep_linked") == 0)
 		{
-			keepLinked = uStr2Bool(argv[i]);
+			keepLinked = true;
+		}
+		else if(std::strcmp(argv[i], "--pre_cleanup") == 0)
+		{
+			preCleanup = true;
 		}
 		else if(std::strcmp(argv[i], "--radius") == 0)
 		{
@@ -105,23 +109,12 @@ int main(int argc, char * argv[])
 				showUsage(argv[0]);
 			}
 		}
-		else if(std::strcmp(argv[i], "--ratio") == 0)
-		{
-			++i;
-			if(i < argc-1)
-			{
-				ratio = uStr2Float(argv[i]);
-			}
-			else {
-				showUsage(argv[0]);
-			}
-		}
 	}
 	printf("Parameters:\n");
 	printf("  radius = %f m\n", radius);
-	printf("  ratio = %f\n", ratio);
 	printf("  keep_latest = %s\n", keepLatest?"true":"false");
 	printf("  keep_linked = %s\n", keepLinked?"true":"false");
+	printf("  pre_cleanup = %s\n", preCleanup?"true":"false");
 	
 	// Just parse logging options
 	Parameters::parseArguments(argc, argv);
@@ -192,12 +185,41 @@ int main(int argc, char * argv[])
 		// we process newer to older nodes, merging to old nodes
 		vids.insert(vids.end(), ids.rbegin(), ids.rend());
 	}
+
+	if(preCleanup)
+	{
+		if(memory.getMaxStMemSize() <= 1)
+		{
+			printf("--pre_cleanup is used but %s <= 1, skipping pre cleanup...\n", Parameters::kMemSTMSize().c_str());
+		}
+		else
+		{
+			int totalRemoved = 0;
+			for(auto id: vids)
+			{
+				auto nids = memory.getNeighborsId(id, memory.getMaxStMemSize(), -1, true, true, true);
+				auto links = memory.getLinks(id, true, false);
+				for(auto link:links)
+				{
+					if( link.second.type() == Link::kUserClosure &&
+						nids.find(link.first)!=nids.end())
+					{
+						memory.removeLink(id, link.first);
+						++totalRemoved;
+					}
+				}
+			}
+			printf("Removed %d user links that were linking nodes that were close in the graph (below %s=%d)\n",
+				totalRemoved, Parameters::kMemSTMSize().c_str(), memory.getMaxStMemSize());
+		}
+	}
+
 	for(auto id: vids)
 	{
 		// Nodes can be already reduced by other nodes, check if they are still there
 		if(memory.getSignature(id) != 0)
 		{
-			int reducedId = memory.reduceNode(id, radius, keepLinked, ratio, keepLatest?1:-1);
+			int reducedId = memory.reduceNode(id, radius, keepLinked, keepLatest?1:-1);
 			if(reducedId > 0)
 			{
 				printf("Reduced node %d to node %d!\n", id, reducedId);
@@ -205,7 +227,7 @@ int main(int argc, char * argv[])
 			}
 		}
 	}
-	printf("Reduced a total of %d top nodes out of %ld nodes\n", totalNodesReduced, ids.size());
+	printf("Reduced a total of %d nodes out of %ld nodes\n", totalNodesReduced, ids.size());
 
 	if(!optimizedPoses.empty())
 	{
@@ -252,7 +274,8 @@ int main(int argc, char * argv[])
 
 	// Restore original parameters before saving back the database
 	memory.parseParameters(originalParameters);
-		
+	
+	printf("Saving all changes to database...\n");
 	memory.close(true);
 
 	return 0;

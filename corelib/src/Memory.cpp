@@ -1288,12 +1288,6 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, float neighborMergedRatio, int direction)
-{
-	std::map<int, float> reducedTo = reduceNodeImpl(id, maxDistance, keepLinkedInDb, neighborMergedRatio, direction);
-	return reducedTo.empty()?0:reducedTo.rbegin()->first;
-}
-
 bool Memory::canBeReduced(const Link & link, float maxDistance, int direction)
 {
 	return  link.to() != link.from() &&
@@ -1306,32 +1300,32 @@ bool Memory::canBeReduced(const Link & link, float maxDistance, int direction)
 			(direction == 0 || (direction==-1 && link.to() < link.from()) || (direction==1 && link.to() > link.from()));
 }
 
-std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keepLinkedInDb, float neighborMergedRatio, int direction)
+int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direction)
 {
-	UDEBUG("Reducing %d (max distance=%f, keep linked in db=%s, ratio=%f, direction=%d)",
-		id, maxDistance, keepLinkedInDb?"true":"false", neighborMergedRatio, direction);
-	std::map<int, float> reducedTo;
+	UDEBUG("Reducing %d (max distance=%f, keep linked in db=%s, direction=%d)",
+		id, maxDistance, keepLinkedInDb?"true":"false", direction);
 	Signature * s = this->_getSignature(id);
 	if(s==0)
 	{
 		UWARN("Node %d is not in WM/STM, cannot reduce it.", id);
-		return reducedTo;
+		return 0;
 	}
 
 	if(!s->getLabel().empty())
 	{
 		// We currently not remove nodes with labels
-		return reducedTo;
+		return 0;
 	}
 
 	std::multimap<int, Link> links = s->getLinks();
 	std::map<int, Link> neighbors;
+	int reducedTo = 0;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(canBeReduced(iter->second, maxDistance, direction))
 		{
 			float distance = iter->second.transform().getNorm();
-			reducedTo.insert(std::make_pair(iter->second.to(), distance));
+			reducedTo = iter->second.to();
 			UDEBUG("Reduce %d to %d (distance=%f)",
 				s->id(), iter->second.to(), distance);
 		}
@@ -1341,9 +1335,21 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 			neighbors.insert(*iter);
 		}
 	}
-	if(!reducedTo.empty())
+	if(reducedTo>0)
 	{
-		std::vector<std::pair<int, float> > propagateIds;
+		if(maxDistance > 0.0f)
+		{
+			// Only reduce if all neighbor merged links are also below maxDistance
+			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if( iter->second.type() == Link::kNeighborMerged &&
+					iter->second.transform().getNorm() > maxDistance)
+				{
+					return 0;
+				}
+			}
+		}
+
 		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
 			Signature * sTo = this->_getSignature(iter->first);
@@ -1360,13 +1366,6 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 						if(maxDistance == 0.0f)
 						{
 							// online graph reduction, always skip these links
-							continue;
-						}
-						std::list<std::pair<int, Transform> > path = graph::computePath(s->id(), sTo->id(), this, false);
-						float pathLength = graph::computePathLength(uListToVector(path));
-						if(!path.empty() && pathLength>0.0f && iter->second.transform().getNorm() / pathLength > neighborMergedRatio)
-						{
-							// skip, reachable by another path of similar size
 							continue;
 						}
 					}
@@ -1414,20 +1413,6 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 							}
 						}
 					}
-					// Check if node merged to can also be reduced, if so, we have to propagate the neighbor merged links to the next node
-					auto reduceToIter = reducedTo.find(sTo->id());
-					if(maxDistance > 0.0f && reduceToIter != reducedTo.end())
-					{
-						float distance = maxDistance - reduceToIter->second;
-						for(std::multimap<int, Link>::const_iterator lter=sTo->getLinks().begin(); lter!=sTo->getLinks().end(); ++lter)
-						{
-							if(canBeReduced(lter->second, distance, direction))
-							{
-								UDEBUG("Ref %d: Will progagate %d to %d (distance=%f, current max=%f)", id, sTo->id(), lter->second.to(), lter->second.transform().getNorm(), distance);
-								propagateIds.push_back(std::make_pair(lter->second.to(), distance));
-							}
-						}
-					}
 				}
 			}
 		}
@@ -1436,15 +1421,6 @@ std::map<int, float> Memory::reduceNodeImpl(int id, float maxDistance, bool keep
 		s = 0;
 		_linksChanged = true;
 		_memoryChanged = true;
-
-		for(auto pair: propagateIds)
-		{
-			//Nodes can be already reduced by other nodes, check if they are still there
-			if(getSignature(pair.first) != 0)
-			{
-				reducedTo = reduceNodeImpl(pair.first, pair.second, keepLinkedInDb, neighborMergedRatio, direction);
-			}
-		}
 	}
 	return reducedTo;
 }
