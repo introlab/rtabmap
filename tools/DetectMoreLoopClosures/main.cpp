@@ -197,7 +197,6 @@ int main(int argc, char * argv[])
 
 	// Add some optimizations (soft set, can be overriden by arguments)
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
-	inputParams.insert(ParametersPair(Parameters::kKpNNStrategy(), "3")); // don't need flann index
 	inputParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // should be incremental to update links
 
 	std::string dbPath = argv[argc-1];

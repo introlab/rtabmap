@@ -123,7 +123,6 @@ int main(int argc, char * argv[])
 	ParametersMap inputParams;
 	inputParams.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true")); // load the whole map in RAM
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
-	inputParams.insert(ParametersPair(Parameters::kKpNNStrategy(), "3")); // don't need flann index
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
