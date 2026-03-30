@@ -98,6 +98,7 @@ SET(SRC_FILES
     odometry/OdometryORBSLAM3.cpp
     odometry/OdometryLOAM.cpp
     odometry/OdometryFLOAM.cpp
+    odometry/OdometryLIOSAM.cpp
     odometry/OdometryMSCKF.cpp
     odometry/OdometryVINSFusion.cpp
     odometry/OdometryOpenVINS.cpp
@@ -603,6 +604,18 @@ IF(floam_FOUND)
         ${floam_LIBRARIES}
     )
 ENDIF(floam_FOUND)
+
+IF(lio_sam_FOUND)
+    SET(INCLUDE_DIRS
+        ${INCLUDE_DIRS}
+        ${lio_sam_INCLUDE_DIRS}
+    )
+    link_directories(${lio_sam_LIBRARY_DIRS})
+    SET(LIBRARIES
+        ${LIBRARIES}
+        lio_sam_core
+    )
+ENDIF(lio_sam_FOUND)
 
 IF(ZED_FOUND)
 	SET(INCLUDE_DIRS

@@ -465,7 +465,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(GTSAM, IncRelinearizeSkip,       int, 1, "Only relinearize any variables every X calls to ISAM2::update(). See GTSAM::ISAM2 doc for more info.");
 
     // Odometry
-    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM 6=OKVIS 7=LOAM 8=MSCKF_VIO 9=VINS-Fusion 10=OpenVINS 11=FLOAM 12=Open3D 13=cuVSLAM");
+    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM 6=OKVIS 7=LOAM 8=MSCKF_VIO 9=VINS-Fusion 10=OpenVINS 11=FLOAM 12=Open3D 13=cuVSLAM 14=LIO-SAM");
     RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,       "Automatically reset odometry after X consecutive images where odometry cannot be computed (a value of 0 disables auto-reset). When a reset occurs, odometry resumes from the last successfully computed pose with large covariance to trigger a new map. If external odometry is used, it will also be reset based on the motion estimated relative to the last computed pose but no large covariance will be received, so that a new map won't be triggered.");
     RTABMAP_PARAM(Odom, Holonomic,              bool, true,   "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
     RTABMAP_PARAM(Odom, FillInfoData,           bool, true,   "Fill info with data (inliers/outliers features).");
@@ -686,6 +686,20 @@ class RTABMAP_CORE_EXPORT Parameters
 
     // Odometry cuVSLAM
     RTABMAP_PARAM(OdomCuVSLAM, MulticamMode,        int, 0,  "cuVSLAM multicam_mode setting: 0=moderate, 1=performance, 2=precision.");
+
+    // Odometry LIO-SAM
+    RTABMAP_PARAM(OdomLIOSAM, Sensor,       int,   0,     "LiDAR sensor: 0=Velodyne, 1=Ouster, 2=Livox");
+    RTABMAP_PARAM(OdomLIOSAM, NScan,        int,   16,    "Number of LiDAR channels (16, 32, 64, 128).");
+    RTABMAP_PARAM(OdomLIOSAM, HorizonScan,  int,   1800,  "Horizontal resolution (Velodyne:1800, Ouster:512/1024/2048).");
+    RTABMAP_PARAM(OdomLIOSAM, ImuAccNoise,  float, 0.01,  "IMU accelerometer white noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuGyrNoise,  float, 0.001, "IMU gyroscope white noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuAccBiasN,  float, 0.0002,"IMU accelerometer bias noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuGyrBiasN,  float, 0.00003,"IMU gyroscope bias noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuGravity,   float, 9.80511,"Gravity magnitude.");
+    RTABMAP_PARAM(OdomLIOSAM, EdgeThreshold,float, 1.0,   "Edge feature curvature threshold.");
+    RTABMAP_PARAM(OdomLIOSAM, SurfThreshold,float, 0.1,   "Surface feature curvature threshold.");
+    RTABMAP_PARAM(OdomLIOSAM, LinVar,       float, 0.01,  "Linear output variance.");
+    RTABMAP_PARAM(OdomLIOSAM, AngVar,       float, 0.01,  "Angular output variance.");
 
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");
