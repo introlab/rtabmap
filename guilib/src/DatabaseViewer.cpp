@@ -4700,10 +4700,17 @@ void DatabaseViewer::graphNodeSelected(int id)
 
 void DatabaseViewer::graphLinkSelected(int from, int to)
 {
-	if(from>0 && idToIndex_.contains(from))
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
-	if(to>0 && idToIndex_.contains(to))
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+	if(from < 0 || to < 0)
+	{
+		updateLoopClosuresSlider(from, to);
+	}
+	else
+	{
+		if(idToIndex_.contains(from))
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
+		if(idToIndex_.contains(to))
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+	}
 }
 
 void DatabaseViewer::sliderAValueChanged(int value)
@@ -8051,6 +8058,17 @@ void DatabaseViewer::updateGraphView()
 				ui_->label_timeOptimization->setNum(0);
 				ui_->label_poses->setNum((int)optPoses.size());
 				graphes_.push_back(optPoses);
+				// Just get the links:
+				std::map<int, rtabmap::Transform> posesOut;
+				UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
+				std::shared_ptr<Optimizer> optimizer(Optimizer::create(parameters));
+				optimizer->getConnectedGraph(
+						fromId,
+						optPoses,
+						links,
+						posesOut,
+						graphLinks_);
+				UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)graphLinks_.size());
 			}
 			ui_->horizontalSlider_rotation->setEnabled(false);
 			ui_->pushButton_applyRotation->setEnabled(false);
