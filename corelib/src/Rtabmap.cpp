@@ -5731,6 +5731,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 		if(toFromMapId >=0)
 		{
+			size_t clustersBefore = clusters.size();
 			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
 			{
 				int mapId = uValue(mapIds, iter->first, 0);
@@ -5742,7 +5743,7 @@ int Rtabmap::detectMoreLoopClosures(
 					++iter;
 				}
 			}
-			UINFO("Looking for more loop closures: filtered %ld clusters for map session %d.", clusters.size(), toFromMapId);
+			UINFO("Looking for more loop closures: filtered %ld/%ld clusters for map session %d.", clustersBefore-clusters.size(), clustersBefore, toFromMapId);
 			if(clusters.empty())
 			{
 				UERROR("No clusters belong to mapId %d, aborting.", toFromMapId);
@@ -5752,6 +5753,7 @@ int Rtabmap::detectMoreLoopClosures(
 
 		if(_memory->getMaxStMemSize() > 1)
 		{
+			size_t clustersBefore = clusters.size();
 			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
 			{
 				if(abs(iter->first - iter->second) < _memory->getMaxStMemSize())
@@ -5772,8 +5774,8 @@ int Rtabmap::detectMoreLoopClosures(
 					}
 				}
 			}
-			UINFO("Looking for more loop closures: filtered %ld clusters for too close nodes (below %s=%d).",
-				clusters.size(), Parameters::kMemSTMSize().c_str(), _memory->getMaxStMemSize());
+			UINFO("Looking for more loop closures: filtered %ld/%ld clusters for too close nodes (below %s=%d).",
+				clustersBefore-clusters.size(), clustersBefore, Parameters::kMemSTMSize().c_str(), _memory->getMaxStMemSize());
 		}
 
 		int i=0;
