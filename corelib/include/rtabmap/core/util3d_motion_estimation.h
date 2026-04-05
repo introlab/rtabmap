@@ -39,6 +39,41 @@ namespace rtabmap
 namespace util3d
 {
 
+/**
+ * @brief Estimates a 6-DOF camera transform from 3D-2D point correspondences using PnP RANSAC.
+ *
+ * This function estimates the motion (transform) between two views by solving the Perspective-n-Point (PnP)
+ * problem using 3D points from one frame and their corresponding 2D keypoints in another frame.
+ * It optionally refines the result, computes covariance of the pose estimate, and handles degenerate cases.
+ *
+ * @param words3A 3D points in frame A, indexed by feature ID.
+ * @param words2B 2D keypoints in frame B, indexed by feature ID (shared with `words3A`).
+ * @param cameraModel Intrinsic and extrinsic parameters of the camera (must be valid).
+ * @param minInliers Minimum number of inliers required to accept the estimated transform. If the value is <4, it is set internally to 4.
+ * @param iterations Number of RANSAC iterations for PnP.
+ * @param reprojError Maximum allowed reprojection error (in pixels) to consider a point an inlier.
+ * @param flagsPnP Flags to control the `cv::solvePnPRansac` behavior (e.g., `cv::SOLVEPNP_ITERATIVE`).
+ * @param refineIterations Number of iterations for non-linear optimization (set to 0 to disable refinement).
+ * @param varianceMedianRatio Index divisor used to select the robust variance threshold from sorted error residuals (e.g., 4 → use the 25% percentile).
+ * @param maxVariance Maximum allowed median variance (linear error). Estimates with higher variance are rejected.
+ * @param guess Initial guess for the camera pose (must not be null). Typically from odometry or motion model.
+ * @param words3B Optional 3D points in frame B (if available). Used to better estimate 3D errors and variances.
+ * @param covariance Optional output pointer for the estimated 6x6 pose covariance matrix.
+ *                   The matrix contains linear variance in the top-left 3x3 and angular variance in the bottom-right 3x3.
+ * @param matchesOut Optional output vector of all matched IDs used (regardless of inlier status).
+ * @param inliersOut Optional output vector of matched IDs that were determined to be inliers.
+ * @param splitLinearCovarianceComponents Whether to split and compute variance for X, Y, Z components separately.
+ *
+ * @return The estimated transformation from frame B to frame A. If estimation fails or is rejected due to variance,
+ *         a null transform is returned (i.e., `transform.isNull()` will be true).
+ *
+ * @note
+ * - If `words3B` is provided, 3D variance is computed by comparing reprojected points to actual transformed points.
+ * - If `words3B` is empty, variance is estimated using reprojection error only.
+ * - The function assumes the camera model's local transform is known and factored into the pose estimation.
+ *
+ * @see cv::solvePnPRansac
+ */
 Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
@@ -56,7 +91,63 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0,
 			bool splitLinearCovarianceComponents = false);
-			
+
+/**
+ * @brief Estimates the 3D-to-2D motion (pose) transformation between a set of 3D points and their corresponding 2D keypoints using the OpenGV library.
+ *
+ * This function uses a robust multi-camera Perspective-n-Point (PnP) algorithm to estimate the transformation from a 3D point cloud (scene A)
+ * to a set of 2D keypoints (scene B) given the corresponding camera models and initial pose guess.
+ * The method supports multiple camera models and uses RANSAC with OpenGV for outlier rejection.
+ *
+ * @param words3A                3D points in the source frame (scene A), indexed by feature ID.
+ * @param words2B                2D keypoints in the destination frame (scene B), indexed by feature ID.
+ * @param cameraModels           List of camera models (multi-camera rig setup) for the destination frame.
+ * @param samplingPolicy         Sampling strategy (0 = auto, 1 = any, 2 = homogeneous multi-camera).
+ * @param minInliers             Minimum number of inliers required to consider the estimated transform as valid.
+ * @param iterations             Maximum number of RANSAC iterations.
+ * @param reprojError            Reprojection error threshold used by RANSAC.
+ * @param flagsPnP               PnP flags (not used internally).
+ * @param refineIterations       Number of pose refinement iterations after RANSAC (not used internally).
+ * @param varianceMedianRatio    Divider used to compute median-based variance from the error distribution.
+ * @param maxVariance            Maximum allowed variance to accept the transform. Higher values permit more noisy estimates.
+ * @param guess                  Initial guess of the transformation.
+ * @param words3B                Optional 3D points in destination frame (scene B) to evaluate the covariance using 3D 
+ *                               correspondences, otherwise covariance is estimated from reprojection errors.
+ * @param covariance             Optional output 6x6 covariance matrix of the estimated transform.
+ * @param matchesOut             Optional output: matches grouped per camera.
+ * @param inliersOut             Optional output: inliers grouped per camera.
+ * @param splitLinearCovarianceComponents If true, linear covariance is split into separate x/y/z components.
+ *
+ * @return The estimated Transform from scene A to scene B. Returns a null Transform if estimation fails or variance exceeds threshold.
+ *
+ * @note This function requires RTAB-Map to be built with OpenGV support.
+ *
+ * @warning The function assumes all camera models have the same image width and valid intrinsic parameters.
+ *
+ * @see https://github.com/laurentkneip/opengv
+ */
+Transform estimateMotion3DTo2D(
+			const std::map<int, cv::Point3f> & words3A,
+			const std::map<int, cv::KeyPoint> & words2B,
+			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy,
+			int minInliers,
+			int iterations,
+			double reprojError,
+			int flagsPnP,
+			int refineIterations,
+			int varianceMedianRatio,
+			float maxVariance,
+			const Transform & guess,
+			const std::map<int, cv::Point3f> & words3B,
+			cv::Mat * covariance,
+			std::vector<std::vector<int> > * matchesOut,
+			std::vector<std::vector<int> > * inliersOut,
+			bool splitLinearCovarianceComponents);
+/**
+ * @brief Estimates the 3D-to-2D motion (pose) transformation between a set of 3D points and their corresponding 2D keypoints using the OpenGV library.
+ * @see estimateMotion3DTo2D(), the only difference is that output matches and inliers are combined in same vector instead of per camera
+ */
 Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
@@ -76,25 +167,27 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			std::vector<int> * inliersOut = 0,
 			bool splitLinearCovarianceComponents = false);
 
-Transform estimateMotion3DTo2D(
-			const std::map<int, cv::Point3f> & words3A,
-			const std::map<int, cv::KeyPoint> & words2B,
-			const std::vector<CameraModel> & cameraModels,
-			unsigned int samplingPolicy,
-			int minInliers,
-			int iterations,
-			double reprojError,
-			int flagsPnP,
-			int refineIterations,
-			int varianceMedianRatio,
-			float maxVariance,
-			const Transform & guess,
-			const std::map<int, cv::Point3f> & words3B,
-			cv::Mat * covariance,
-			std::vector<std::vector<int> > * matchesOut,
-			std::vector<std::vector<int> > * inliersOut,
-			bool splitLinearCovarianceComponents);
-
+/**
+ * @brief Estimates the 3D rigid transformation between two sets of 3D points.
+ *
+ * This function matches 3D points from two frames (A and B) using their unique IDs,
+ * filters correspondences based on a minimum number of inliers and distance threshold,
+ * and estimates the 6DoF transformation using PCL's RANSAC-based method.
+ *
+ * @param words3A            A map of 3D points from the previous frame (id -> point).
+ * @param words3B            A map of 3D points from the current frame (id -> point).
+ * @param minInliers         Minimum number of inliers required to accept the transformation.
+ * @param inliersDistance    Maximum distance between correspondences to be considered inliers.
+ * @param iterations         Maximum number of RANSAC iterations.
+ * @param refineIterations   Number of iterations for refining the transformation after RANSAC.
+ * @param covariance         (Optional) Output 6x6 covariance matrix of the estimated transform.
+ * @param matchesOut         (Optional) Output vector of all matched point IDs (from words3A).
+ * @param inliersOut         (Optional) Output vector of inlier point IDs (subset of matchesOut).
+ *
+ * @return A Transform object representing the estimated rigid body motion from frame B to A.
+ *         If not enough inliers are found or the estimation fails, a null Transform is returned.
+ *
+ */
 Transform RTABMAP_CORE_EXPORT estimateMotion3DTo3D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::Point3f> & words3B,
@@ -106,6 +199,36 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo3D(
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 
+/**
+ * @brief Estimates the camera pose using the PnP RANSAC algorithm and optionally refines it.
+ *
+ * This function computes the rotation and translation vectors (rvec, tvec) that transform 3D object points
+ * into the camera frame, using the Perspective-n-Point (PnP) method with RANSAC for robust outlier rejection.
+ * After an initial estimation using OpenCV's `solvePnPRansac`, it optionally refines the model iteratively
+ * based on reprojection error thresholds.
+ *
+ * @param objectPoints        A vector of 3D points in the object coordinate space.
+ * @param imagePoints         A vector of corresponding 2D points in the image plane.
+ * @param cameraMatrix        The camera intrinsic matrix (3x3).
+ * @param distCoeffs          Vector of distortion coefficients (k1, k2, p1, p2, k3, ...).
+ * @param rvec                Output rotation vector (Rodrigues form).
+ * @param tvec                Output translation vector.
+ * @param useExtrinsicGuess   If true, uses the provided rvec and tvec as an initial guess.
+ * @param iterationsCount     The number of RANSAC iterations.
+ * @param reprojectionError   Maximum allowed reprojection error to classify an inlier.
+ * @param minInliersCount     Minimum number of inliers required to accept a model.
+ * @param inliers             Output vector of indices of inlier points.
+ * @param flags               Method for solving PnP (`cv::SOLVEPNP_*` flags).
+ * @param refineIterations    Number of refinement iterations after RANSAC.
+ * @param refineSigma         Multiplier for the reprojection error standard deviation to define adaptive inlier threshold.
+ *
+ * @note This function uses OpenCV 3's implementation of `solvePnPRansac` for robustness.
+ *       After RANSAC, the pose is optionally refined by minimizing reprojection error on inliers.
+ *
+ * @warning Refinement may oscillate or terminate early if convergence is poor or the inlier set becomes unstable.
+ *
+ * @see cv::solvePnP, cv::solvePnPRansac
+ */
 void RTABMAP_CORE_EXPORT solvePnPRansac(
 		const std::vector<cv::Point3f> & objectPoints,
 		const std::vector<cv::Point2f> & imagePoints,

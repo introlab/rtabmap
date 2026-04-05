@@ -318,7 +318,11 @@ public:
 
     /**
      * Set is the logger buffers messages, default false. When true, the messages are
-     * buffered until the application is closed or ULogger::flush() is called.
+     * buffered until the application is closed or ULogger::flush() is called. 
+     * 
+     * Note that if logging to a file, flush doesn't mean that messages are written to file right 
+     * away. To write everything on disk, set logger type to kTypeNoLog.
+     * 
      * @see ULogger::flush()
 	 * @param buffered true to buffer messages, otherwise set to false.
 	 */
@@ -373,14 +377,6 @@ public:
 	 * @see setBuffered()
 	 */
 	static void flush();
-
-    /**
-     * Write a message directly to logger without level handling.
-     * @param msg the message to write.
-     * @param ... the variable arguments
-     * @deprecated use UDEBUG(), UINFO(), UWARN(), UERROR() or UFATAL()
-     */
-    static void write(const char* msg, ...);
 
     /*
      * Write a message to logger: use UDEBUG(), UINFO(), UWARN(), UERROR() or UFATAL() instead.

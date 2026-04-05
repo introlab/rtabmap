@@ -89,6 +89,23 @@ SensorData::SensorData(
 	setUserData(userData);
 }
 
+// RGB-D constructor + Depth confidence
+SensorData::SensorData(
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		const cv::Mat & depth_confidence,
+		const CameraModel & cameraModel,
+		int id,
+		double stamp,
+		const cv::Mat & userData) :
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	setRGBDImage(rgb, depth, depth_confidence, cameraModel);
+	setUserData(userData);
+}
+
 // RGB-D constructor + laser scan
 SensorData::SensorData(
 		const LaserScan & laserScan,
@@ -576,9 +593,13 @@ void SensorData::setOccupancyGrid(
 			_groundCellsRaw = ground;
 			ctGround.start();
 		}
-		else if(ground.type() == CV_8UC1)
+		else if(ground.type() == CV_8UC1 && ground.rows == 1)
 		{
 			_groundCellsCompressed = ground;
+		}
+		else
+		{
+			UFATAL("Unsupported local occupancy grid format for ground cells: OpenCV type=%d size=%dx%d", ground.type(), ground.cols, ground.rows);
 		}
 	}
 	if(!obstacles.empty())
@@ -588,9 +609,13 @@ void SensorData::setOccupancyGrid(
 			_obstacleCellsRaw = obstacles;
 			ctObstacles.start();
 		}
-		else if(obstacles.type() == CV_8UC1)
+		else if(obstacles.type() == CV_8UC1 && obstacles.rows == 1)
 		{
 			_obstacleCellsCompressed = obstacles;
+		}
+		else
+		{
+			UFATAL("Unsupported local occupancy grid format for obstacle cells: OpenCV type=%d size=%dx%d", obstacles.type(), obstacles.cols, obstacles.rows);
 		}
 	}
 	if(!empty.empty())
@@ -600,9 +625,13 @@ void SensorData::setOccupancyGrid(
 			_emptyCellsRaw = empty;
 			ctEmpty.start();
 		}
-		else if(empty.type() == CV_8UC1)
+		else if(empty.type() == CV_8UC1 && empty.rows == 1)
 		{
 			_emptyCellsCompressed = empty;
+		}
+		else
+		{
+			UFATAL("Unsupported local occupancy grid format for empty cells: OpenCV type=%d size=%dx%d", empty.type(), empty.cols, empty.rows);
 		}
 	}
 	ctGround.join();
@@ -1012,7 +1041,7 @@ void SensorData::clearRawData(bool images, bool scan, bool userData)
 }
 
 
-bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
+int SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 {
 	if(_cameraModels.size() >= 1)
 	{
@@ -1023,13 +1052,12 @@ bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 				cv::Point3f ptInCameraFrame = util3d::transformPoint(pt, _cameraModels[i].localTransform().inverse());
 				if(ptInCameraFrame.z > 0.0f)
 				{
-					int borderWidth = int(float(_cameraModels[i].imageWidth())* 0.2);
 					int u, v;
 					_cameraModels[i].reproject(ptInCameraFrame.x, ptInCameraFrame.y, ptInCameraFrame.z, u, v);
-					if(uIsInBounds(u, borderWidth, _cameraModels[i].imageWidth()-2*borderWidth) &&
-					   uIsInBounds(v, borderWidth, _cameraModels[i].imageHeight()-2*borderWidth))
+					if(uIsInBounds(u, 0, _cameraModels[i].imageWidth()) &&
+					   uIsInBounds(v, 0, _cameraModels[i].imageHeight()))
 					{
-						return true;
+						return i;
 					}
 				}
 			}
@@ -1049,7 +1077,7 @@ bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 					if(uIsInBounds(u, 0, _stereoCameraModels[i].left().imageWidth()) &&
 					   uIsInBounds(v, 0, _stereoCameraModels[i].left().imageHeight()))
 					{
-						return true;
+						return i;
 					}
 				}
 			}
@@ -1059,7 +1087,7 @@ bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 	{
 		UERROR("no valid camera model!");
 	}
-	return false;
+	return -1;
 }
 
 } // namespace rtabmap

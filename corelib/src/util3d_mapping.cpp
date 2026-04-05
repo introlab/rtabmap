@@ -818,18 +818,29 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 	ptA = start;
 	ptB = end;
 
-	float slope = float(ptB.y - ptA.y)/float(ptB.x - ptA.x);
-
 	// clip end point
 	ptB.x = std::min(std::max(ptB.x, 0), grid.cols-1);
 	ptB.y = std::min(std::max(ptB.y, 0), grid.rows-1);
 
+	if(ptA == ptB) {
+		signed char * v = &grid.at<signed char>(ptA.y, ptA.x);
+		if(*v == 100 && stopOnObstacle)
+		{
+			return;
+		}
+		else
+		{
+			*v = 0; // free space
+		}
+		return;
+	}
+
+	float slope = ptB.x - ptA.x != 0 ? float(ptB.y - ptA.y)/float(ptB.x - ptA.x) : std::numeric_limits<float>::quiet_NaN();
+
 	bool swapped = false;
-	if(slope<-1.0f || slope>1.0f)
+	if(!uIsFinite(slope) || slope<-1.0f || slope>1.0f)
 	{
 		// swap x and y
-		slope = 1.0f/slope;
-
 		int tmp = ptA.x;
 		ptA.x = ptA.y;
 		ptA.y = tmp;
@@ -837,6 +848,13 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 		tmp = ptB.x;
 		ptB.x = ptB.y;
 		ptB.y = tmp;
+
+		if(!uIsFinite(slope)) {
+			slope = 0.0f;
+		}
+		else {
+			slope = 1.0f/slope;
+		}
 
 		swapped = true;
 	}
@@ -860,13 +878,13 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 
 		if(!swapped)
 		{
-			UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%f grid.rows=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.rows, x, slope, b, x).c_str());
-			UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("upperbound=%f grid.rows=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.rows, x+1, slope, b, x).c_str());
+			UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.rows, uFormat("lowerbound=%d upperbound=%d grid.rows=%d x=%d slope=%f b=%f", lowerbound, upperbound, grid.rows, x, slope, b).c_str());
+			UASSERT_MSG(upperbound >= 0 && upperbound < grid.rows, uFormat("lowerbound=%d upperbound=%d grid.rows=%d x+1=%d slope=%f b=%f", lowerbound, upperbound, grid.rows, x+1, slope, b).c_str());
 		}
 		else
 		{
-			UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.cols, uFormat("lowerbound=%f grid.cols=%d x=%d slope=%f b=%f x=%f", lowerbound, grid.cols, x, slope, b, x).c_str());
-			UASSERT_MSG(upperbound >= 0 && upperbound < grid.cols, uFormat("upperbound=%f grid.cols=%d x+1=%d slope=%f b=%f x=%f", upperbound, grid.cols, x+1, slope, b, x).c_str());
+			UASSERT_MSG(lowerbound >= 0 && lowerbound < grid.cols, uFormat("lowerbound=%d upperbound=%d grid.cols=%d x=%d slope=%f b=%f", lowerbound, upperbound, grid.cols, x, slope, b).c_str());
+			UASSERT_MSG(upperbound >= 0 && upperbound < grid.cols, uFormat("lowerbound=%d upperbound=%d grid.cols=%d x+1=%d slope=%f b=%f", lowerbound, upperbound, grid.cols, x+1, slope, b).c_str());
 		}
 
 		for(int y = lowerbound; y<=(int)upperbound; ++y)
@@ -989,9 +1007,9 @@ cv::Mat erodeMap(const cv::Mat & map)
 {
 	UASSERT(map.type() == CV_8SC1);
 	cv::Mat erodedMap = map.clone();
-	for(int i=0; i<map.rows; ++i)
+	for(int i=1; i<map.rows-1; ++i)
 	{
-		for(int j=0; j<map.cols; ++j)
+		for(int j=1; j<map.cols-1; ++j)
 		{
 			if(map.at<signed char>(i, j) == 100)
 			{

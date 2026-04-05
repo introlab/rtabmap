@@ -50,6 +50,7 @@ jobs:
           -B ${{github.workspace}}/build `
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
           ${{ matrix.extra_cmake_def }} `
+          -DBUILD_TESTING=ON `
           -DVCPKG_MANIFEST_INSTALL=OFF `
           -DVCPKG_TARGET_TRIPLET=x64-windows-release `
           -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
@@ -57,7 +58,11 @@ jobs:
           -DTorch_DIR=${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3/Lib/site-packages/torch/share/cmake/Torch
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ALL_BUILD
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
 
     - name: Build Windows Package
       shell: pwsh

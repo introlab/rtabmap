@@ -1,0 +1,117 @@
+
+add_definitions("-DRTABMAP_TEST_DATA_ROOT=\"${TEST_DATA_ROOT}\"")
+
+#util2d.h
+add_executable(test_util2d test_util2d.cpp)
+target_link_libraries(test_util2d gtest_main rtabmap_core)
+gtest_discover_tests(test_util2d)
+
+#util3d.h
+add_executable(test_util3d test_util3d.cpp)
+target_link_libraries(test_util3d gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d)
+
+#util3d_transforms.h
+add_executable(test_util3d_transforms test_util3d_transforms.cpp)
+target_link_libraries(test_util3d_transforms gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_transforms)
+
+#util3d_filtering.h
+add_executable(test_util3d_filtering test_util3d_filtering.cpp)
+target_link_libraries(test_util3d_filtering gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_filtering)
+
+#util3d_registration.h
+add_executable(test_util3d_registration test_util3d_registration.cpp)
+target_link_libraries(test_util3d_registration gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_registration)
+
+#util3d_features.h
+add_executable(test_util3d_features test_util3d_features.cpp)
+target_link_libraries(test_util3d_features gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_features)
+
+#util3d_correspondences.h
+add_executable(test_util3d_correspondences test_util3d_correspondences.cpp)
+target_link_libraries(test_util3d_correspondences gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_correspondences)
+
+#util3d_mapping.h
+add_executable(test_util3d_mapping test_util3d_mapping.cpp)
+target_link_libraries(test_util3d_mapping gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_mapping)
+
+#util3d_motion_estimation.h
+add_executable(test_util3d_motion_estimation test_util3d_motion_estimation.cpp)
+target_link_libraries(test_util3d_motion_estimation gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_motion_estimation)
+
+#util3d_surface.h
+add_executable(test_util3d_surface test_util3d_surface.cpp)
+target_link_libraries(test_util3d_surface gtest_main rtabmap_core)
+gtest_discover_tests(test_util3d_surface)
+
+#VisualWord.h
+add_executable(test_visualword test_visualword.cpp)
+target_link_libraries(test_visualword gtest_main rtabmap_core)
+gtest_discover_tests(test_visualword)
+
+#VWDictionary.h
+add_executable(test_vwdictionary test_vwdictionary.cpp)
+target_link_libraries(test_vwdictionary gtest_main rtabmap_core)
+gtest_discover_tests(test_vwdictionary)
+
+#Transform.h
+add_executable(test_transform test_transform.cpp)
+target_link_libraries(test_transform gtest_main rtabmap_core)
+gtest_discover_tests(test_transform)
+
+#StereoDense.h (tests both BM and SGBM strategies)
+add_executable(test_stereo_dense test_stereo_dense.cpp)
+target_link_libraries(test_stereo_dense gtest_main rtabmap_core)
+gtest_discover_tests(test_stereo_dense)
+
+#Stereo.h (tests both BlockMatching and OpticalFlow strategies)
+add_executable(test_stereo test_stereo.cpp)
+target_link_libraries(test_stereo gtest_main rtabmap_core)
+gtest_discover_tests(test_stereo)
+
+#CameraModel.h
+add_executable(test_cameramodel test_cameramodel.cpp)
+target_link_libraries(test_cameramodel gtest_main rtabmap_core)
+gtest_discover_tests(test_cameramodel)
+
+#StereoCameraModel.h
+add_executable(test_stereocameramodel test_stereocameramodel.cpp)
+target_link_libraries(test_stereocameramodel gtest_main rtabmap_core)
+gtest_discover_tests(test_stereocameramodel)
+
+#Statistics.h
+add_executable(test_statistics test_statistics.cpp)
+target_link_libraries(test_statistics gtest_main rtabmap_core)
+gtest_discover_tests(test_statistics)
+
+#Signature.h
+add_executable(test_signature test_signature.cpp)
+target_link_libraries(test_signature gtest_main rtabmap_core)
+gtest_discover_tests(test_signature)
+
+#SensorEvent.h
+add_executable(test_sensorevent test_sensorevent.cpp)
+target_link_libraries(test_sensorevent gtest_main rtabmap_core)
+gtest_discover_tests(test_sensorevent)
+
+#SensorData.h
+add_executable(test_sensordata test_sensordata.cpp)
+target_link_libraries(test_sensordata gtest_main rtabmap_core)
+gtest_discover_tests(test_sensordata)
+
+#SensorCapture.h
+add_executable(test_sensorcapture test_sensorcapture.cpp)
+target_link_libraries(test_sensorcapture gtest_main rtabmap_core)
+gtest_discover_tests(test_sensorcapture)
+
+#SensorCaptureThread.h
+add_executable(test_sensorcapturethread test_sensorcapturethread.cpp)
+target_link_libraries(test_sensorcapturethread gtest_main rtabmap_core)
+gtest_discover_tests(test_sensorcapturethread)

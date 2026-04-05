@@ -33,10 +33,50 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+/**
+ * @class SensorCaptureInfo
+ * @brief Metadata structure for sensor data capture and processing
+ * 
+ * SensorCaptureInfo contains metadata about sensor data capture, including timing
+ * information for various processing steps, camera identification, and odometry
+ * information. This information is typically attached to SensorEvent objects to
+ * provide context about how the sensor data was captured and processed.
+ * 
+ * The class tracks timing for various processing stages:
+ * - **Capture**: Time to capture data from the sensor
+ * - **Processing**: Time for various image processing steps (deskewing, disparity,
+ *   mirroring, exposure compensation, decimation, histogram equalization, etc.)
+ * - **Depth processing**: Time for depth-related operations (scan from depth,
+ *   undistort depth, bilateral filtering)
+ * - **Total**: Total processing time
+ * 
+ * Odometry information includes:
+ * - **Pose**: The odometry pose at the time of capture
+ * - **Covariance**: Uncertainty of the odometry twist (6x6 matrix)
+ * - **Velocity**: 6DOF velocity vector [vx, vy, vz, vroll, vpitch, vyaw]
+ * 
+ * @note All timing values are in seconds (float).
+ * @note The odometry covariance matrix is initialized to identity by default.
+ * 
+ * @see SensorEvent
+ * @see SensorData
+ */
 class SensorCaptureInfo
 {
 
 public:
+	/**
+	 * @brief Default constructor
+	 * 
+	 * Initializes all fields to default values:
+	 * - cameraName: empty string
+	 * - id: 0
+	 * - stamp: 0.0
+	 * - All timing fields: 0.0f
+	 * - odomPose: null transform
+	 * - odomCovariance: 6x6 identity matrix
+	 * - odomVelocity: empty vector
+	 */
 	SensorCaptureInfo() :
 		cameraName(""),
 		id(0),
@@ -55,28 +95,41 @@ public:
 		odomCovariance(cv::Mat::eye(6,6,CV_64FC1))
 	{
 	}
+	
+	/**
+	 * @brief Virtual destructor
+	 */
 	virtual ~SensorCaptureInfo() {}
 
-	std::string cameraName;
-	int id;
-	double stamp;
-	float timeCapture;
-	float timeDeskewing;
-	float timeDisparity;
-	float timeMirroring;
-	float timeStereoExposureCompensation;
-	float timeImageDecimation;
-	float timeHistogramEqualization;
-	float timeScanFromDepth;
-	float timeUndistortDepth;
-	float timeBilateralFiltering;
-	float timeTotal;
-	Transform odomPose;
-	cv::Mat odomCovariance;
-	std::vector<float> odomVelocity;
+	std::string cameraName; ///< Camera/sensor name identifier
+	int id; ///< Capture ID (typically matches SensorData ID)
+	double stamp; ///< Timestamp in seconds (typically matches SensorData stamp)
+	
+	// Timing information (all in seconds)
+	float timeCapture; ///< Time to capture data from the sensor (seconds)
+	float timeDeskewing; ///< Time for laser scan deskewing (seconds)
+	float timeDisparity; ///< Time to compute stereo disparity (seconds)
+	float timeMirroring; ///< Time for image mirroring/flipping (seconds)
+	float timeStereoExposureCompensation; ///< Time for stereo exposure compensation (seconds)
+	float timeImageDecimation; ///< Time for image decimation/downsampling (seconds)
+	float timeHistogramEqualization; ///< Time for histogram equalization (seconds)
+	float timeScanFromDepth; ///< Time to convert depth image to laser scan (seconds)
+	float timeUndistortDepth; ///< Time to undistort depth image (seconds)
+	float timeBilateralFiltering; ///< Time for bilateral filtering of depth (seconds)
+	float timeTotal; ///< Total processing time (seconds)
+	
+	// Odometry information
+	Transform odomPose; ///< Odometry pose at the time of capture (in odometry coordinate frame)
+	cv::Mat odomCovariance; ///< Odometry twist covariance matrix (6x6, CV_64FC1). Default: identity matrix
+	std::vector<float> odomVelocity; ///< 6DOF odometry velocity [vx, vy, vz, vroll, vpitch, vyaw] (m/s, rad/s)
 };
 
-//backward compatibility
+/**
+ * @deprecated Use SensorCaptureInfo instead
+ * @brief Backward compatibility typedef
+ * 
+ * CameraInfo is deprecated. Use SensorCaptureInfo instead.
+ */
 RTABMAP_DEPRECATED typedef SensorCaptureInfo CameraInfo;
 
 } // namespace rtabmap

@@ -133,15 +133,15 @@ public:
 
 	/*
 	 * Try to acquire the semaphore, not a blocking call.
-	 * @return false if the semaphore can't be taken without waiting (value <= 0), true otherwise
+	 * @return true if the semaphore could be acquired with the number specified, false otherwise
 	 */
 #ifdef _WIN32
-	int acquireTry() const
+	bool acquireTry() const
 	{
-		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?0:EAGAIN);
+		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?true:false);
 	}
 #else
-	int acquireTry(int n)
+	bool acquireTry(int n)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		if(n > _available)
@@ -158,19 +158,21 @@ public:
 	/**
 	 * Release the semaphore, increasing its value by 1 and
 	 * signaling waiting threads (which called acquire()).
+	 * @return true on success, false otherwise
 	 */
 #ifdef _WIN32
-	int release(int n = 1) const
+	bool release(int n = 1) const
 	{
-		return (ReleaseSemaphore((HANDLE)S,n,0)?0:ERANGE);
+		return (ReleaseSemaphore((HANDLE)S,n,0)?true:false);
 	}
 #else
-	void release(int n = 1)
+	bool release(int n = 1)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		_available += n;
 		pthread_cond_broadcast(&_cond);
 		pthread_mutex_unlock(&_waitMutex);
+		return true;
 	}
 #endif
 
