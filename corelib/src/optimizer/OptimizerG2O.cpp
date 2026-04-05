@@ -1560,7 +1560,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #endif // RTABMAP_ORB_SLAM
 
 #ifndef RTABMAP_ORB_SLAM
-		if(optimizer_ == 1)
+		// ISSUE: It seems the fatal error
+		//        "[SetJac] infinite jac" happens relatively
+		//        easily with GaussNewton on SBA problem,
+		//        ignore optimizer_ and always use Levenberg for SBA.
+		// TODO: Note that g2o/RobustKernelDelta parameter could be
+		//       potentially tuned to avoid that error with GaussNewton.
+		if(0)//optimizer_ == 1)
 		{
 #ifdef RTABMAP_G2O_CPP11
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(
@@ -2018,7 +2024,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(uIsNan(chi2))
 			{
-				UERROR("Optimization generated NANs, aborting optimization! Try another g2o's optimizer (current=%d).", optimizer_);
+				UERROR("Optimization generated NANs, aborting optimization! Try another g2o's optimizer (current %s=%d) or solver (current %s=%d).",
+						Parameters::kg2oOptimizer().c_str(), optimizer_, Parameters::kg2oSolver().c_str(), solver_);
 				return optimizedPoses;
 			}
 			UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), chi2);
@@ -2052,15 +2059,18 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
 #endif
 
-						cv::Point3f pt3d;
+						int id=-1;
 						if((*iter)->vertex(0)->id() > negVertexOffset)
 						{
-							pt3d = points3DMap.at(negVertexOffset - (*iter)->vertex(0)->id());
+							id = negVertexOffset - (*iter)->vertex(0)->id();
 						}
 						else
 						{
-							pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
+							id = (*iter)->vertex(0)->id() - stepVertexId;
 						}
+						UASSERT_MSG(points3DMap.find(id) != points3DMap.end(), uFormat("word id=%d points3DMap=%ld vertex id=%d (negVertexOffset=%d stepVertexId=%d)",
+							id, points3DMap.size(), (*iter)->vertex(0)->id(), negVertexOffset, stepVertexId).c_str());
+						cv::Point3f pt3d = points3DMap.at(id);
 						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
 
 						if(outliers)
