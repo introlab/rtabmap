@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/DBDriverSqlite3.h"
+#include "rtabmap/core/Compression.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -665,14 +666,14 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	}
 }
 
-void DBDriver::loadNodeData(Signature & signature, bool images, bool scan, bool userData, bool occupancyGrid) const
+void DBDriver::loadNodeData(Signature & signature, bool images, bool scan, bool userData, bool occupancyGrid, bool features) const
 {
 	std::list<Signature *> signatures;
 	signatures.push_back(&signature);
-	this->loadNodeData(signatures, images, scan, userData, occupancyGrid);
+	this->loadNodeData(signatures, images, scan, userData, occupancyGrid, features);
 }
 
-void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
+void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid, bool features) const
 {
 	// Don't look in the trash, we assume that if we want to load
 	// data of a signature, it is not in thrash! Print an error if so.
@@ -688,14 +689,14 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bo
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid);
+	this->loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid, features);
 	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::getNodeData(
 		int signatureId,
 		SensorData & data,
-		bool images, bool scan, bool userData, bool occupancyGrid) const
+		bool images, bool scan, bool userData, bool occupancyGrid, bool features) const
 {
 	bool found = false;
 	// look in the trash
@@ -703,11 +704,12 @@ void DBDriver::getNodeData(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
-		if((!s->isSaved() ||
+		if(!s->isSaved() ||
 			((!images || !s->sensorData().imageCompressed().empty()) &&
 			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
 			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
-			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f) &&
+			 (!features || !s->sensorData().keypoints().empty())))
 		{
 			data = (SensorData)s->sensorData();
 			if(!images)
@@ -726,6 +728,10 @@ void DBDriver::getNodeData(
 			{
 				data.setOccupancyGrid(cv::Mat(), cv::Mat(), cv::Mat(), 0, cv::Point3f());
 			}
+			if(!features)
+			{
+				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			}
 			found = true;
 		}
 	}
@@ -737,7 +743,7 @@ void DBDriver::getNodeData(
 		std::list<Signature *> signatures;
 		Signature tmp(signatureId);
 		signatures.push_back(&tmp);
-		loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid);
+		loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid, features);
 		data = signatures.front()->sensorData();
 		_dbSafeAccessMutex.unlock();
 	}
@@ -1517,15 +1523,15 @@ void DBDriver::generateGraph(
 std::vector<unsigned char> DBDriver::serializeFeatures(
 	const std::vector<cv::KeyPoint> & keypoints, 
 	const std::vector<cv::Point3f> & points3D,
-	const cv::Mat & descriptors)
+	const cv::Mat & descriptors) const
 {
 	const int headerSize = 13;
 	int header[headerSize] = {
 			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
 			CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION,             // 3,4,5 (In case the format/order/size of KeyPoint and/or Point3f changes in the future)
-			sizeof(cv::KeyPoint), keypoints.size(),                              // 6,7
-			sizeof(cv::Point3f), points3D.size(),                                // 8,9
-			descriptors.type(), descriptors.cols, descriptors.rows}              // 10,11,12
+			sizeof(cv::KeyPoint), (int)keypoints.size(),                         // 6,7
+			sizeof(cv::Point3f), (int)points3D.size(),                           // 8,9
+			descriptors.type(), descriptors.cols, descriptors.rows};             // 10,11,12
 	UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d %d %d",
 		header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10],header[11],header[12]);
 	std::vector<unsigned char> data(
@@ -1558,7 +1564,7 @@ bool DBDriver::deserializeFeatures(
 	unsigned int compressedDataSize,
 	std::vector<cv::KeyPoint> & keypoints,
 	std::vector<cv::Point3f> & points3D,
-	cv::Mat & descriptors)
+	cv::Mat & descriptors) const
 {
 	cv::Mat serializedData = uncompressData(compressedData, compressedDataSize);
 	if(serializedData.empty())
@@ -1569,7 +1575,7 @@ bool DBDriver::deserializeFeatures(
 	int headerSize = 13;
 	if(serializedData.total() >= sizeof(int)*headerSize)
 	{
-		const int * header = (const int *)serializedData.data();
+		const int * header = (const int *)serializedData.data;
 		UASSERT(header[6] == sizeof(cv::KeyPoint));
 		int n_kpts = header[7];
 		UASSERT(header[8] == sizeof(cv::Point3f));
@@ -1610,7 +1616,7 @@ bool DBDriver::deserializeFeatures(
 			cv::Mat(d_rows, d_cols, d_type, (void*)(serializedData.data+index)).copyTo(descriptors);
 			index+=descriptors.elemSize()*(descriptors.total());
 		}
-		UASSERT(index == serializedData.size());
+		UASSERT(index == serializedData.total());
 		return true;
 	}
 	UERROR("Wrong serialized features format detected (size in bytes=%ld)! Cannot deserialize the data.", serializedData.size());

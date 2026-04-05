@@ -1301,7 +1301,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 	//UDEBUG("load data for %d signatures images=%d scan=%d userData=%d, grid=%d",
 	//		(int)signatures.size(), images?1:0, scan?1:0, userData?1:0, occupancyGrid?1:0);
 
-	if(!images && !scan && !userData && !occupancyGrid && (uStrNumCmp(_version, "0.24.0") < 0 || !features))
+	if(!images && !scan && !userData && !occupancyGrid && !features)
 	{
 		UWARN("All requested data fields are false! Nothing loaded...");
 		return;
@@ -1854,7 +1854,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
 					if(dataSize > 0 && data)
 					{
-						if(!deserializeFeatures(data, dataSize, keypoints, points3D, descriptors))
+						if(!deserializeFeatures((const unsigned char *)data, dataSize, keypoints, points3D, descriptors))
 						{
 							UERROR("Failed desrializing features for node %d!", (*iter)->id());
 						}
@@ -1913,6 +1913,11 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		//ULOGGER_DEBUG("Time=%fs", timer.ticks());
+	}
+
+	if(features && uStrNumCmp(_version, "0.24.0") < 0)
+	{
+		loadWordsQuery(signatures);
 	}
 }
 
