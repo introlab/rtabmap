@@ -63,14 +63,7 @@ void showUsage()
 	exit(1);
 }
 
-// catch ctrl-c
 bool g_loopForever = true;
-void sighandler(int sig)
-{
-	printf("\nSignal %d caught...\n", sig);
-	g_loopForever = false;
-}
-
 class PrintProgressState : public ProgressState
 {
 public:
@@ -86,6 +79,15 @@ public:
 private:
 	double stamp_;
 };
+PrintProgressState progress;
+
+// catch ctrl-c
+void sighandler(int sig)
+{
+	printf("\nSignal %d caught...\n", sig);
+	g_loopForever = false;
+	progress.setCanceled(true);
+}
 
 int main(int argc, char * argv[])
 {
@@ -94,7 +96,7 @@ int main(int argc, char * argv[])
 	signal(SIGINT, &sighandler);
 
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kError);
+	ULogger::setLevel(ULogger::kWarning);
 
 	if(argc < 2)
 	{
@@ -195,7 +197,7 @@ int main(int argc, char * argv[])
 
 	// Add some optimizations (soft set, can be overriden by arguments)
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
-	inputParams.insert(ParametersPair(Parameters::kKpNNStrategy(), "3")); // don't need flann index
+	inputParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // should be incremental to update links
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
@@ -245,6 +247,7 @@ int main(int argc, char * argv[])
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
 	UTimer timer;
+	ParametersMap originalParameters = parameters;
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
@@ -267,7 +270,6 @@ int main(int argc, char * argv[])
 		printf("From/To Session ID = %d%s\n", fromToMapId, last?" (last session)":"");
 	}
 
-	PrintProgressState progress;
 	printf("Detecting...\n");
 	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin, fromToMapId);
 	if(detected < 0)
@@ -305,6 +307,9 @@ int main(int argc, char * argv[])
 			printf("Save new global occupancy grid!\n");
 		}
 	}
+
+	// Restore original parameters before saving back the database
+	rtabmap.parseParameters(originalParameters);
 
 	rtabmap.close();
 

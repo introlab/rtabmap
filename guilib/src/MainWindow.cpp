@@ -3313,7 +3313,7 @@ void MainWindow::updateMapCloud(
 							{
 								std::string gtFrustumId = uFormat("f_gt_%d", iter->first);
 								color = Qt::gray;
-								_cloudViewer->addOrUpdateFrustum(gtFrustumId, _currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
+								_cloudViewer->addOrUpdateFrustum(gtFrustumId, mapToGt*_currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color, model.fovX(), model.fovY());
 							}
 						}
 					}
@@ -6563,6 +6563,7 @@ void MainWindow::showPostProcessingDialog()
 			_postProcessingDialog->iterations(),
 			_postProcessingDialog->interSession(),
 			_postProcessingDialog->intraSession(),
+			_postProcessingDialog->minGraphDistance(),
 			_postProcessingDialog->isSBA(),
 			_postProcessingDialog->sbaIterations(),
 			_postProcessingDialog->sbaVariance(),
@@ -6579,6 +6580,7 @@ void MainWindow::postProcessing(
 		int iterations,
 		bool interSession,
 		bool intraSession,
+		int minGraphDistance,
 		bool sba,
 		int sbaIterations,
 		double sbaVariance,
@@ -6687,6 +6689,7 @@ void MainWindow::postProcessing(
 		{
 			odomMaxInf = graph::getMaxOdomInf(_currentLinksMap);
 		}
+		std::multimap<int, Link> neigborLinks = graph::filterLinks(_currentLinksMap, Link::kNeighbor, true);
 
 		std::shared_ptr<Registration> registration(Registration::create(parameters));
 
@@ -6704,6 +6707,34 @@ void MainWindow::postProcessing(
 			_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+(int)clusters.size());
 			_progressDialog->appendText(tr("Looking for more loop closures, clustering poses... found %1 clusters.").arg(clusters.size()));
 			QApplication::processEvents();
+
+			if(minGraphDistance > 1)
+			{
+				int clustersBefore = clusters.size();
+				for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+				{
+					if(abs(iter->first - iter->second) < minGraphDistance)
+					{
+						iter = clusters.erase(iter);
+					}
+					else
+					{
+						// compute path to know how far we are in terms of graph length
+						std::list<int> path = graph::computePath(neigborLinks, iter->first, iter->second);
+						if(!path.empty() && (int)path.size() <= minGraphDistance)
+						{
+							iter = clusters.erase(iter);
+						}
+						else
+						{
+							++iter;
+						}
+					}
+				}
+				_progressDialog->appendText(tr("Filtered %1/%2 clusters for too close nodes (below minimum graph distance=%3).")
+					.arg(clustersBefore-clusters.size()).arg(clustersBefore).arg(minGraphDistance));
+				QApplication::processEvents();
+			}
 
 			int i=0;
 			std::set<int> addedLinks;

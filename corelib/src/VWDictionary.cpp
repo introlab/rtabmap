@@ -573,6 +573,15 @@ void VWDictionary::update()
 				_removedIndexedWords.size() == 0 &&
 				_visualWords.size())
 		{
+			const int IMGIDX_SHIFT = 18;
+    		const int IMGIDX_ONE = (1 << IMGIDX_SHIFT); // a limit defined in https://github.com/opencv/opencv/blob/4.x/modules/features2d/src/matchers.cpp
+			if(_dataTree.rows >= IMGIDX_ONE)
+			{
+				UWARN("%s=%d is not a FLANN strategy and the number of words in the vocabulary (%d) is over %d (IMGIDX_ONE), so opencv may "
+					"assert on an IMGIDX_ONE check when adding new words. Use a FLANN strategy instead (%s<%d).",
+					Parameters::kKpNNStrategy().c_str(), _strategy, _dataTree.rows, IMGIDX_ONE, Parameters::kKpNNStrategy().c_str(), kNNBruteForce);
+			}
+
 			//just add not indexed words
 			int i = _dataTree.rows;
 			if(!_dataTree.empty()) {
@@ -1006,7 +1015,7 @@ std::list<int> VWDictionary::addNewWords(
 	if(_flannIndex->isBuilt() || (!_dataTree.empty() && _dataTree.rows >= (int)k))
 	{
 		//Find nearest neighbors
-		UDEBUG("newPts.total()=%d ", descriptors.rows);
+		UDEBUG("newPts.total()=%d _strategy=%d", descriptors.rows, _strategy);
 
 		if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
 		{

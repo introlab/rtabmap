@@ -239,6 +239,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopClosureReextractFeatures()));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopCovLimited()));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDProximityPathFilteringRadius()));
+	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kMemSTMSize()));
 	ui_->parameters_toolbox->setupUi(parameters);
 	exportDialog_->setObjectName("ExportCloudsDialog");
 	restoreDefaultSettings();
@@ -481,6 +482,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_intraSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_interSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_minGraphDistance, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_opt_graph_as_guess, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
@@ -678,6 +680,7 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_detectMore_intraSession->setChecked(settings.value("intra_session", ui_->checkBox_detectMore_intraSession->isChecked()).toBool());
 	ui_->checkBox_detectMore_interSession->setChecked(settings.value("inter_session", ui_->checkBox_detectMore_interSession->isChecked()).toBool());
 	ui_->checkBox_opt_graph_as_guess->setChecked(settings.value("opt_graph_as_guess", ui_->checkBox_opt_graph_as_guess->isChecked()).toBool());
+	ui_->spinBox_minGraphDistance->setValue(settings.value("min_graph_distance", ui_->spinBox_minGraphDistance->value()).toInt());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -775,6 +778,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("intra_session", ui_->checkBox_detectMore_intraSession->isChecked());
 	settings.setValue("inter_session", ui_->checkBox_detectMore_interSession->isChecked());
 	settings.setValue("opt_graph_as_guess", ui_->checkBox_opt_graph_as_guess->isChecked());
+	settings.setValue("min_graph_distance", ui_->spinBox_minGraphDistance->value());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -856,6 +860,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_detectMore_interSession->setChecked(true);
 	ui_->checkBox_opt_graph_as_guess->setChecked(true);
 	ui_->spinBox_fromToMapId->setValue(-1);
+	ui_->spinBox_minGraphDistance->setValue(10);
 }
 
 void DatabaseViewer::openDatabase()
@@ -4285,10 +4290,12 @@ void DatabaseViewer::detectMoreLoopClosures()
 	const ParametersMap & parameters = ui_->parameters_toolbox->getParameters();
 	bool loopCovLimited = Parameters::defaultRGBDLoopCovLimited();
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), loopCovLimited);
+	std::multimap<int, Link> links = updateLinksWithModifications(links_);
 	if(loopCovLimited)
 	{
-		odomMaxInf_ = graph::getMaxOdomInf(updateLinksWithModifications(links_));
+		odomMaxInf_ = graph::getMaxOdomInf(links);
 	}
+	links = graph::filterLinks(links, Link::kNeighbor, true); // keep only neighbor links
 
 	int iterations = ui_->spinBox_detectMore_iterations->value();
 	UASSERT(iterations > 0);
@@ -4299,6 +4306,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	bool interSession = ui_->checkBox_detectMore_interSession->isChecked();
 	bool useOptimizedGraphAsGuess = ui_->checkBox_opt_graph_as_guess->isChecked();
 	int fromToMapId = ui_->spinBox_fromToMapId->value();
+	int minimumGraphDistance = ui_->spinBox_minGraphDistance->value();
 	if(!interSession && !intraSession)
 	{
 		QMessageBox::warning(this, tr("Cannot detect more loop closures"), tr("Intra and inter session parameters are disabled! Enable one or both."));
@@ -4324,6 +4332,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 		progressDialog->appendText(tr("Looking for more loop closures: %1 clusters found.").arg(clusters.size()));
 		if(fromToMapId >=0)
 		{
+			int clusterBefore = clusters.size();
 			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
 			{
 				int mapId = uValue(mapIds_, iter->first, 0);
@@ -4335,13 +4344,42 @@ void DatabaseViewer::detectMoreLoopClosures()
 					++iter;
 				}
 			}
-			progressDialog->appendText(tr("Looking for more loop closures: filtered %1 clusters for map session %2.").arg(clusters.size()).arg(fromToMapId));
+			progressDialog->appendText(tr("Looking for more loop closures: filtered %1/%2 clusters for map session %3.")
+				.arg(clusterBefore-clusters.size()).arg(clusterBefore).arg(fromToMapId));
 			if(clusters.empty())
 			{
 				progressDialog->appendText(tr("No clusters belong to mapId %1, aborting!").arg(fromToMapId));
 				QApplication::processEvents();
 				break;
 			}
+		}
+
+		if(minimumGraphDistance > 1)
+		{
+			int clusterBefore = clusters.size();
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				if(abs(iter->first - iter->second) < minimumGraphDistance)
+				{
+					iter = clusters.erase(iter);
+				}
+				else
+				{
+					// compute path to know how far we are in terms of graph length
+					std::list<int> path = graph::computePath(links, iter->first, iter->second);
+					if(!path.empty() && (int)path.size() <= minimumGraphDistance)
+					{
+						iter = clusters.erase(iter);
+					}
+					else
+					{
+						++iter;
+					}
+				}
+			}
+			progressDialog->appendText(tr("Filtered %1/%2 clusters for too close nodes (below minimum graph distance=%3).")
+				.arg(clusterBefore-clusters.size()).arg(clusterBefore).arg(minimumGraphDistance));
+			QApplication::processEvents();
 		}
 
 		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
@@ -4700,10 +4738,17 @@ void DatabaseViewer::graphNodeSelected(int id)
 
 void DatabaseViewer::graphLinkSelected(int from, int to)
 {
-	if(from>0 && idToIndex_.contains(from))
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
-	if(to>0 && idToIndex_.contains(to))
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+	if(from < 0 || to < 0)
+	{
+		updateLoopClosuresSlider(from, to);
+	}
+	else
+	{
+		if(idToIndex_.contains(from))
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
+		if(idToIndex_.contains(to))
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+	}
 }
 
 void DatabaseViewer::sliderAValueChanged(int value)
@@ -6163,6 +6208,14 @@ void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 							kptB->keypoint().pt.y,
 							cB);
 				}
+				else if(ids[i]<0)
+				{
+					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::gray);
+				}
+			}
+			for(auto iter = wordsB.begin(); iter.key()<0 && iter!=wordsB.end(); ++iter)
+			{
+				ui_->graphicsView_B->setFeatureColor(iter.key(), Qt::gray);
 			}
 			ui_->graphicsView_A->update();
 			ui_->graphicsView_B->update();
@@ -8043,6 +8096,17 @@ void DatabaseViewer::updateGraphView()
 				ui_->label_timeOptimization->setNum(0);
 				ui_->label_poses->setNum((int)optPoses.size());
 				graphes_.push_back(optPoses);
+				// Just get the links:
+				std::map<int, rtabmap::Transform> posesOut;
+				UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
+				std::shared_ptr<Optimizer> optimizer(Optimizer::create(parameters));
+				optimizer->getConnectedGraph(
+						fromId,
+						optPoses,
+						links,
+						posesOut,
+						graphLinks_);
+				UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)graphLinks_.size());
 			}
 			ui_->horizontalSlider_rotation->setEnabled(false);
 			ui_->pushButton_applyRotation->setEnabled(false);

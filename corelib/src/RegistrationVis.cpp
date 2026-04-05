@@ -447,16 +447,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								UASSERT(!fromSignature.sensorData().cameraModels().empty());
 								UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
-								if(_maskFloorThreshold<0.0f)
-								{
-									cv::Mat depthBelow;
-									util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
-									depthMask = depthBelow;
-								}
-								else
-								{
-									depthMask = util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold);
-								}
+								depthMask = util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold);
 								UDEBUG("Masking floor done.");
 							}
 
@@ -817,16 +808,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								UASSERT(!toSignature.sensorData().cameraModels().empty());
 								UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
-								if(_maskFloorThreshold<0.0f)
-								{
-									cv::Mat depthBelow;
-									util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
-									depthMask = depthBelow;
-								}
-								else
-								{
-									depthMask = util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold);
-								}
+								depthMask = util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold);
 								UDEBUG("Masking floor done.");
 							}
 

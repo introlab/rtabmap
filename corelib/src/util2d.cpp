@@ -2296,6 +2296,7 @@ std::vector<int> SSC(
 	const std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, float tolerance, int cols, int rows, const std::vector<int> & indx)
 {
 	bool useIndx = keypoints.size() == indx.size();
+	maxKeypoints = maxKeypoints - round(maxKeypoints * tolerance); // Just the make sure the solution will always be <= input maxKeypoints
 
 	// several temp expression variables to simplify solution equation
 	int exp1 = rows + cols + 2*maxKeypoints;

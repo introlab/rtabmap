@@ -466,7 +466,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 				minimumHessian = iter->first;
 			}
 		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, maxKeypoints, minimumHessian);
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size()-removed, minimumHessian);
 		ULOGGER_DEBUG("filter keypoints time = %f s", timer.ticks());
 	}
 	else
@@ -1251,7 +1251,8 @@ SIFT::SIFT(const ParametersMap & parameters) :
 	preciseUpscale_(Parameters::defaultSIFTPreciseUpscale()),
 	rootSIFT_(Parameters::defaultSIFTRootSIFT()),
 	gpu_(Parameters::defaultSIFTGpu()),
-	guaussianThreshold_(Parameters::defaultSIFTGaussianThreshold()),
+	gaussianThreshold_(Parameters::defaultSIFTGaussianThreshold()),
+	maxGaussianThreshold_(Parameters::defaultSIFTMaxGaussianThreshold()),
 	upscale_(Parameters::defaultSIFTUpscale()),
 	cudaSiftData_(0),
 	cudaSiftMemory_(0),
@@ -1284,23 +1285,25 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTPreciseUpscale(), preciseUpscale_);
 	Parameters::parse(parameters, Parameters::kSIFTRootSIFT(), rootSIFT_);
 	Parameters::parse(parameters, Parameters::kSIFTGpu(), gpu_);
-	Parameters::parse(parameters, Parameters::kSIFTGaussianThreshold(), guaussianThreshold_);
+	Parameters::parse(parameters, Parameters::kSIFTGaussianThreshold(), gaussianThreshold_);
+	Parameters::parse(parameters, Parameters::kSIFTMaxGaussianThreshold(), maxGaussianThreshold_);
 	Parameters::parse(parameters, Parameters::kSIFTUpscale(), upscale_);
 	
 	if(gpu_)
 	{
 #ifdef RTABMAP_CUDASIFT
 		// Check if there is a cuda device
-		if(InitCuda(0, ULogger::level() == ULogger::kDebug)) {
-			UDEBUG("Init SiftData");
-			if(cudaSiftData_ == 0) {
+		if(cudaSiftData_==0)
+		{
+			if(InitCuda(0, ULogger::level() == ULogger::kDebug)) {
+				UDEBUG("Init SiftData");
 				cudaSiftData_ = new SiftData();
 				InitSiftData(*cudaSiftData_, 8192, true, true);
 			}
-		}
-		else{
-			UWARN("No cuda device(s) detected, CudaSift is not available! Using SIFT CPU version instead.");
-			gpu_ = false;
+			else{
+				UWARN("No cuda device(s) detected, CudaSift is not available! Using SIFT CPU version instead.");
+				gpu_ = false;
+			}
 		}
 #else
 		UWARN("RTAB-Map is not built with CudaSift so %s cannot be used!", Parameters::kSIFTGpu().c_str());
@@ -1363,7 +1366,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 			numOctaves = 7; // hard-coded limit in CudaSift
 		}
 		float initBlur = sigma_; /* Amount of initial Gaussian blurring in standard deviations */
-		float thresh = guaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
+		float thresh = gaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
 		float edgeLimit = edgeThreshold_;   
 		float minScale = 0.0f; /* Minimum acceptable scale to remove fine-scale features */
 		UDEBUG("numOctaves=%d initBlur=%f thresh=%f edgeLimit=%f minScale=%f upScale=%s w=%d h=%d", numOctaves, initBlur, thresh, edgeLimit, minScale, upscale_?"true":"false", w, h);
@@ -1388,15 +1391,9 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		cudaSiftDescriptors_ = cv::Mat();
 		if(cudaSiftData_->numPts)
 		{
-			int maxKeypoints = this->getMaxFeatures();
-			if(maxKeypoints == 0 || maxKeypoints > cudaSiftData_->numPts)
-			{
-				maxKeypoints = cudaSiftData_->numPts;
-			}
-
-			// Re-using same implementation of limitKeypoints() directly here to avoid doubling memory copies
-			// Sort words by hessian
-			std::multimap<float, int> hessianMap; // <hessian,id>
+			keypoints.resize(cudaSiftData_->numPts);
+			cudaSiftDescriptors_ = cv::Mat(cudaSiftData_->numPts, 128, CV_32FC1);
+			size_t k=0;
 			for(int i=0; i<cudaSiftData_->numPts; ++i)
 			{
 				// Ignore keypoints with invalid descriptors
@@ -1413,29 +1410,40 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 					continue;
 				}
 
-				//Keep track of the data, to be easier to manage the data in the next step
-				hessianMap.insert(std::pair<float, int>(abs(cudaSiftData_->h_data[i].sharpness), i));
-			}
+				if(i>0 && 
+					cudaSiftData_->h_data[i].subsampling == cudaSiftData_->h_data[i-1].subsampling &&
+					fabs(cudaSiftData_->h_data[i].xpos-cudaSiftData_->h_data[i-1].xpos) +
+					fabs(cudaSiftData_->h_data[i].xpos-cudaSiftData_->h_data[i-1].ypos) < 0.1f)
+				{
+					// Same feature, skip doubles
+					continue;
+				}
 
-			if((int)hessianMap.size() < maxKeypoints)
-			{
-				maxKeypoints = hessianMap.size();
-			}
+				float response = abs(cudaSiftData_->h_data[i].sharpness);
+				if(maxGaussianThreshold_>gaussianThreshold_ && response > maxGaussianThreshold_)
+				{
+					continue;
+				}
 
-			std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
-			keypoints.resize(maxKeypoints);
-			cudaSiftDescriptors_ = cv::Mat(maxKeypoints, 128, CV_32FC1);
-			for(unsigned int k=0; k<keypoints.size() && iter!=hessianMap.rend(); ++k, ++iter)
-			{
-				int i = iter->second;
-				float *desc = cudaSiftData_->h_data[i].data;
 				cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(k));
 				keypoints[k].pt.x = cudaSiftData_->h_data[i].xpos;
 				keypoints[k].pt.y = cudaSiftData_->h_data[i].ypos;
 				keypoints[k].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
 				keypoints[k].angle = cudaSiftData_->h_data[i].orientation;
-				keypoints[k].response = abs(cudaSiftData_->h_data[i].sharpness); 
+				keypoints[k].response = response; 
 				keypoints[k].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upscale_?1:0);
+				++k;
+			}
+			if(k < keypoints.size())
+			{
+				UDEBUG("keypoints extracted = %d, valid=%d", keypoints.size(), k);
+				keypoints.resize(k);
+				cudaSiftDescriptors_.resize(k);
+			}
+			if(this->getMaxFeatures() != 0 && this->getMaxFeatures() < (int)keypoints.size())
+			{
+				// Call limitKeypoints() now to filter the descriptors.
+				this->limitKeypoints(keypoints, cudaSiftDescriptors_, this->getMaxFeatures(), cv::Size(w,h), this->getSSC());
 			}
 		}
 	}
@@ -1457,12 +1465,13 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 
 cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
+	cv::Mat descriptors;
 #ifdef RTABMAP_CUDASIFT
 	if(gpu_)
 	{
 		if((int)keypoints.size() == cudaSiftDescriptors_.rows)
 		{
-			return cudaSiftDescriptors_.clone();
+			descriptors = cudaSiftDescriptors_.clone();
 		}
 		else
 		{
@@ -1470,19 +1479,25 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 			return cv::Mat();
 		}
 	}
+	else
+	{
 #endif
 
-	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	cv::Mat descriptors;
+		UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifdef RTABMAP_NONFREE
-	sift_->compute(image, keypoints, descriptors);
+		sift_->compute(image, keypoints, descriptors);
 #else
-	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+		UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 #else // >=4.4, >=3.4.11
-	sift_->compute(image, keypoints, descriptors);
+		sift_->compute(image, keypoints, descriptors);
 #endif
+
+#ifdef RTABMAP_CUDASIFT
+	}
+#endif
+
 	if( rootSIFT_ && !descriptors.empty())
 	{
 		UDEBUG("Performing RootSIFT...");

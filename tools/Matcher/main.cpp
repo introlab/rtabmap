@@ -87,6 +87,11 @@ void showUsage()
 			"   --to_depth \"to_depth.png\"        Depth or right image file of the second image.\n"
 			"                                        For 3D->3D estimation, from_depth and to_depth\n"
 			"                                        should be both set.\n"
+			"   --raw                              Provided images are raw and should be rectified.\n"
+			"                                        Doesn't need to be explicitly set if calibration\n"
+			"                                        is not provided. For RGB-D data, only the RGB image\n"
+			"                                        is rectified, the depth is assumed already matching\n"
+			"                                        the rectified one.\n"
 			"\n\n"
 			"%s\n",
 			Parameters::showUsage());
@@ -107,6 +112,7 @@ int main(int argc, char * argv[])
 	std::string toDepthPath;
 	std::string calibrationPath;
 	std::string calibrationToPath;
+	bool imagesRectified = true;
 	for(int i=1; i<argc-2; ++i)
 	{
 		if(strcmp(argv[i], "--from_depth") == 0)
@@ -157,6 +163,10 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(strcmp(argv[i], "--raw") == 0)
+		{
+			imagesRectified = false;
+		}
 		else if(strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
@@ -171,6 +181,10 @@ int main(int argc, char * argv[])
 	}
 	printf("  --from_depth  = \"%s\"\n", fromDepthPath.c_str());
 	printf("  --to_depth    = \"%s\"\n", toDepthPath.c_str());
+	if(!imagesRectified)
+	{
+		printf("  --raw (images will be rectified)\n");
+	}
 
 #ifdef RTABMAP_PYTHON
 	rtabmap::PythonInterface pythonInterface;
@@ -311,12 +325,57 @@ int main(int argc, char * argv[])
 		if(model.isValidForProjection())
 		{
 			printf("Mono calibration model detected.\n");
+
+			if(!imagesRectified)
+			{
+				if(!model.isValidForRectification())
+				{
+					printf("ERROR: calibration model \"%s\" is not valid for rectification and --raw option was set. Aborting.\n", calibrationPath.c_str());
+					exit(-1);
+				}
+				if(!model.isRectificationMapInitialized()) {
+					model.initRectificationMap();
+				}
+				if(!modelTo.isValidForRectification())
+				{
+					printf("ERROR: calibration model \"%s\" is not valid for rectification and --raw option was set. Aborting.\n", calibrationToPath.c_str());
+					exit(-1);
+				}
+				if(!modelTo.isRectificationMapInitialized()) {
+					modelTo.initRectificationMap();
+				}
+				imageFrom = model.rectifyImage(imageFrom);
+				imageTo = modelTo.rectifyImage(imageTo);
+			}
 			dataFrom = SensorData(imageFrom, fromDepth, model, 1);
 			dataTo = SensorData(imageTo, toDepth, modelTo, 2);
 		}
 		else //stereo
 		{
 			printf("Stereo calibration model detected.\n");
+			if(!imagesRectified)
+			{
+				if(!stereoModel.isValidForRectification())
+				{
+					printf("ERROR: stereo calibration model \"%s\" is not valid for rectification and --raw option was set. Aborting.\n", calibrationPath.c_str());
+					exit(-1);
+				}
+				if(!stereoModel.isRectificationMapInitialized()) {
+					stereoModel.initRectificationMap();
+				}
+				if(!stereoModelTo.isValidForRectification())
+				{
+					printf("ERROR: stereo calibration model \"%s\" is not valid for rectification and --raw option was set. Aborting.\n", calibrationToPath.c_str());
+					exit(-1);
+				}
+				if(!stereoModelTo.isRectificationMapInitialized()) {
+					stereoModelTo.initRectificationMap();
+				}
+				imageFrom = stereoModel.left().rectifyImage(imageFrom);
+				fromDepth = stereoModel.right().rectifyImage(fromDepth);
+				imageTo = stereoModelTo.left().rectifyImage(imageTo);
+				toDepth = stereoModelTo.right().rectifyImage(toDepth);
+			}
 			dataFrom = SensorData(imageFrom, fromDepth, stereoModel, 1);
 			dataTo = SensorData(imageTo, toDepth, stereoModelTo, 2);
 		}
@@ -329,7 +388,7 @@ int main(int argc, char * argv[])
 		{
 			parameters.insert(ParametersPair(Parameters::kVisEstimationType(), "2")); // Set 2D->2D estimation for mono images
 			parameters.insert(ParametersPair(Parameters::kVisEpipolarGeometryVar(), "1")); //Unknown scale
-			printf("Calibration not set, setting %s=1 and %s=2 by default (2D->2D estimation)\n", Parameters::kVisEpipolarGeometryVar().c_str(), Parameters::kVisEstimationType().c_str());
+			printf("Depth/Stereo not set, setting %s=1 and %s=2 by default (2D->2D estimation)\n", Parameters::kVisEpipolarGeometryVar().c_str(), Parameters::kVisEstimationType().c_str());
 		}
 		RegistrationVis reg(parameters);
 		RegistrationInfo info;

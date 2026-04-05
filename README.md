@@ -7,7 +7,7 @@ rtabmap
 [![Downloads][downloads-image]][downloads]
 [![License][license-image]][license]
 
-[release-image]: https://img.shields.io/badge/release-0.21.4-green.svg?style=flat
+[release-image]: https://img.shields.io/badge/release-0.23.1-green.svg?style=flat
 [releases]: https://github.com/introlab/rtabmap/releases
 
 [downloads-image]: https://img.shields.io/github/downloads/introlab/rtabmap/total?label=downloads
@@ -35,13 +35,7 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
   <table>
     <tbody>
         <tr>
-           <td>Linux</td>
-           <td><a href="https://github.com/introlab/rtabmap/actions/workflows/cmake.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake.yml/badge.svg" alt="Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml/badge.svg" alt="Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/docker.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/docker.yml/badge.svg" alt="Build Status"/>
-           </td>
-        </tr>
-        <tr>
-           <td>Windows</td>
-           <td><a href="https://ci.appveyor.com/project/matlabbe/rtabmap/branch/master"><img src="https://ci.appveyor.com/api/projects/status/hr73xspix9oqa26h/branch/master?svg=true" alt="Build Status"/>
+           <td><a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-linux.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-linux.yml/badge.svg" alt="CMake Linux Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-windows.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-windows.yml/badge.svg" alt="CMake Windows Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml/badge.svg" alt="CMake ROS Build Status"/> <br> <a href="https://github.com/introlab/rtabmap/actions/workflows/docker.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/docker.yml/badge.svg" alt="Docker Build Status"/>
            </td>
         </tr>
      </tbody>
@@ -59,13 +53,17 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
             <td><a href="http://build.ros.org/job/Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary/"><img src="http://build.ros.org/buildStatus/icon?job=Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
-            <td rowspan="3">ROS 2</td>
+            <td rowspan="4">ROS 2</td>
             <td>Humble</td>
             <td><a href="http://build.ros2.org/job/Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
             <td>Jazzy</td>
             <td><a href="http://build.ros2.org/job/Jbin_uN64__rtabmap__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Jbin_uN64__rtabmap__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
+        </tr>
+        <tr>
+            <td>Kilted</td>
+            <td><a href="http://build.ros2.org/job/Kbin_uN64__rtabmap__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Kbin_uN64__rtabmap__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
             <td>Rolling</td>
