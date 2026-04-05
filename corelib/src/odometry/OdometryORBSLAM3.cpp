@@ -430,7 +430,14 @@ Transform OdometryORBSLAM3::computeTransform(
 		(data.stereoCameraModels().size() == 1 &&
 			data.stereoCameraModels()[0].isValidForProjection())))
 	{
-		UERROR("Invalid camera model!");
+		if(data.cameraModels().size() > 1 || data.stereoCameraModels().size() > 1)
+		{
+			UERROR("Multi-camera not supported with ORB_SLAM integration!");
+		}
+		else
+		{
+			UERROR("Invalid camera model!");
+		}
 		return t;
 	}
 
