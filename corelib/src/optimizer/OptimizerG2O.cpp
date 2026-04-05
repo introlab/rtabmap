@@ -61,8 +61,6 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/edge_se3_xyzprior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #include "g2o/edge_se3_gravity.h"
-#include "g2o/edge_sbacam_gravity.h"
-#include "g2o/edge_sbacam_prior.h"
 #include "g2o/edge_xy_prior.h"  // Include after types_slam2d.h to be ignored on newest g2o versions
 #include "g2o/edge_xyz_prior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #ifdef G2O_HAVE_CSPARSE
@@ -78,6 +76,19 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/types_sba.h"
 #include "g2o/types/types_six_dof_expmap.h"
 #include "g2o/solvers/linear_solver_eigen.h"
+#include "g2o/edge_se3_expmap.h"
+#endif
+
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
+namespace rtabmap {
+#ifdef RTABMAP_ORB_SLAM
+typedef g2o::VertexSE3Expmap VertexCam;
+#else
+typedef g2o::VertexCam VertexCam;
+#endif
+}
+#include "g2o/edge_sbacam_gravity.h"
+#include "g2o/edge_sbacam_prior.h"
 #endif
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
@@ -1415,81 +1426,6 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	return optimizedPoses;
 }
 
-#ifdef RTABMAP_ORB_SLAM
-/**
- * \brief 3D edge between two SBAcam
- */
- class EdgeSE3Expmap : public g2o::BaseBinaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap, g2o::VertexSE3Expmap>
-{
-  public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    EdgeSE3Expmap():  BaseBinaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap, g2o::VertexSE3Expmap>(){}
-    bool read(std::istream& is)
-      {
-        return false;
-      }
-
-      bool write(std::ostream& os) const
-      {
-        return false;
-      }
-
-    void computeError()
-    {
-      const g2o::VertexSE3Expmap* v1 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
-      const g2o::VertexSE3Expmap* v2 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
-      g2o::SE3Quat delta = _inverseMeasurement * (v1->estimate().inverse()*v2->estimate());
-      _error[0]=delta.translation().x();
-      _error[1]=delta.translation().y();
-      _error[2]=delta.translation().z();
-      _error[3]=delta.rotation().x();
-      _error[4]=delta.rotation().y();
-      _error[5]=delta.rotation().z();
-    }
-
-    virtual void setMeasurement(const g2o::SE3Quat& meas){
-      _measurement=meas;
-      _inverseMeasurement=meas.inverse();
-    }
-
-    virtual double initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& , g2o::OptimizableGraph::Vertex* ) { return 1.;}
-    virtual void initialEstimate(const g2o::OptimizableGraph::VertexSet& from_, g2o::OptimizableGraph::Vertex* ){
-    	g2o::VertexSE3Expmap* from = static_cast<g2o::VertexSE3Expmap*>(_vertices[0]);
-    	g2o::VertexSE3Expmap* to = static_cast<g2o::VertexSE3Expmap*>(_vertices[1]);
-		if (from_.count(from) > 0)
-		  to->setEstimate((g2o::SE3Quat) from->estimate() * _measurement);
-		else
-		  from->setEstimate((g2o::SE3Quat) to->estimate() * _inverseMeasurement);
-    }
-
-    virtual bool setMeasurementData(const double* d){
-      Eigen::Map<const g2o::Vector7d> v(d);
-      _measurement.fromVector(v);
-      _inverseMeasurement = _measurement.inverse();
-      return true;
-    }
-
-    virtual bool getMeasurementData(double* d) const{
-      Eigen::Map<g2o::Vector7d> v(d);
-      v = _measurement.toVector();
-      return true;
-    }
-
-    virtual int measurementDimension() const {return 7;}
-
-    virtual bool setMeasurementFromState() {
-    	const g2o::VertexSE3Expmap* v1 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
-		const g2o::VertexSE3Expmap* v2 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
-		_measurement = (v1->estimate().inverse()*v2->estimate());
-		_inverseMeasurement = _measurement.inverse();
-		return true;
-    }
-
-  protected:
-    g2o::SE3Quat _inverseMeasurement;
-};
-#endif
-
 std::map<int, Transform> OptimizerG2O::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
@@ -1588,7 +1524,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		// detect if there are gravity constraints
 		bool hasGravityConstraints = false;
-#ifndef RTABMAP_ORB_SLAM
 		if(!isSlam2d() && gravitySigma() > 0)
 		{
 			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
@@ -1601,7 +1536,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				}
 			}
 		}
-#endif
 
 
 		UDEBUG("fill %ld poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", poses.size(), rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
@@ -1620,11 +1554,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 					// Add node's pose
 					UASSERT(!camPose.isNull());
-#ifdef RTABMAP_ORB_SLAM
-					g2o::VertexSE3Expmap * vCam = new g2o::VertexSE3Expmap();
-#else
-					g2o::VertexCam * vCam = new g2o::VertexCam();
-#endif
+
+					rtabmap::VertexCam * vCam = new rtabmap::VertexCam();
 
 					Eigen::Affine3d a = camPose.toEigen3d();
 #ifdef RTABMAP_ORB_SLAM
@@ -1732,7 +1663,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 				if(id1 == id2)
 				{
-#ifndef RTABMAP_ORB_SLAM
 					g2o::HyperGraph::Edge * edge = 0;
 					if(gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
 					{
@@ -1746,7 +1676,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						Eigen::MatrixXd information = Eigen::MatrixXd::Identity(3, 3) * 1.0/(gravitySigma()*gravitySigma());
 
-						g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1*MULTICAM_OFFSET);
+						rtabmap::VertexCam* v1 = (rtabmap::VertexCam*)optimizer.vertex(id1*MULTICAM_OFFSET);
 						EdgeSBACamGravity* priorEdge(new EdgeSBACamGravity());
 						std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
 						// Gravity constraint added only to first camera of a pose
@@ -1763,7 +1693,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
 						return optimizedPoses;
 					}
-#endif
 				}
 				else if(id1>0 && id2>0) // not supporting landmarks
 				{
@@ -1919,14 +1848,14 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						g2o::OptimizableGraph::Edge * e;
 						double baseline = 0.0;
+						rtabmap::VertexCam* vcam = dynamic_cast<rtabmap::VertexCam*>(optimizer.vertex(camId));
 #ifdef RTABMAP_ORB_SLAM
-						g2o::VertexSE3Expmap* vcam = dynamic_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(camId));
+						
 						std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(poseId);
 
-						UASSERT(iterModel != models.end() && camIndex<iterModel->second.size() && iterModel->second[camIndex].isValidForProjection());
+						UASSERT(iterModel != models.end() && camIndex<(int)iterModel->second.size() && iterModel->second[camIndex].isValidForProjection());
 						baseline = iterModel->second[camIndex].Tx()<0.0?-iterModel->second[camIndex].Tx()/iterModel->second[camIndex].fx():baseline_;
 #else
-						g2o::VertexCam* vcam = dynamic_cast<g2o::VertexCam*>(optimizer.vertex(camId));
 						baseline = vcam->estimate().baseline;
 #endif
 						double variance = pixelVariance_;
