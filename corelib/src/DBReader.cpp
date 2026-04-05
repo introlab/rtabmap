@@ -56,6 +56,7 @@ DBReader::DBReader(const std::string & databasePath,
 				   int startMapId,
 				   int stopMapId,
 				   bool priorsIgnored,
+				   bool imuIgnored,
 				   const std::vector<Transform> & cameraLocalTransformOverrides) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
@@ -69,6 +70,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
 	_priorsIgnored(priorsIgnored),
+	_imuIgnored(imuIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
@@ -96,6 +98,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   int startMapId,
 				   int stopMapId,
 				   bool priorsIgnored,
+				   bool imuIgnored,
 				   const std::vector<Transform> & cameraLocalTransformOverrides) :
 	Camera(frameRate),
    _paths(databasePaths),
@@ -109,6 +112,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
 	_priorsIgnored(priorsIgnored),
+	_imuIgnored(imuIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
@@ -463,14 +467,17 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 			}
 
 			Transform gravityTransform;
-			std::multimap<int, Link> gravityLinks;
-			_dbDriver->loadLinks(*_currentId, gravityLinks, Link::kGravity);
-			if( gravityLinks.size() &&
-				!gravityLinks.begin()->second.transform().isNull() &&
-				gravityLinks.begin()->second.infMatrix().cols == 6 &&
-				gravityLinks.begin()->second.infMatrix().rows == 6)
+			if(!_imuIgnored)
 			{
-				gravityTransform = gravityLinks.begin()->second.transform();
+				std::multimap<int, Link> gravityLinks;
+				_dbDriver->loadLinks(*_currentId, gravityLinks, Link::kGravity);
+				if( gravityLinks.size() &&
+					!gravityLinks.begin()->second.transform().isNull() &&
+					gravityLinks.begin()->second.infMatrix().cols == 6 &&
+					gravityLinks.begin()->second.infMatrix().rows == 6)
+				{
+					gravityTransform = gravityLinks.begin()->second.transform();
+				}
 			}
 
 			Landmarks landmarks;

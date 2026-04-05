@@ -320,7 +320,7 @@ bool DBDriverSqlite3::getDatabaseVersionQuery(std::string & version) const
 	return false;
 }
 
-bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten)
+bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten, bool readOnly)
 {
 	this->disconnectDatabaseQuery();
 	// Open a database connection
@@ -332,7 +332,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	if(!url.empty())
 	{
 		dbFileExist = UFile::exists(url.c_str());
-		if(dbFileExist && overwritten)
+		if(dbFileExist && overwritten && !readOnly)
 		{
 			UINFO("Deleting database %s...", url.c_str());
 			UASSERT(UFile::erase(url.c_str()) == 0);
@@ -354,12 +354,12 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		{
 			ULOGGER_INFO("Using empty database in the memory.");
 		}
-		rc = sqlite3_open_v2(":memory:", &_ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
+		rc = sqlite3_open_v2(":memory:", &_ppDb, readOnly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	}
 	else
 	{
 		ULOGGER_INFO("Using database \"%s\" from the hard drive.", url.c_str());
-		rc = sqlite3_open_v2(url.c_str(), &_ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
+		rc = sqlite3_open_v2(url.c_str(), &_ppDb, readOnly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	}
 	if(rc != SQLITE_OK)
 	{
@@ -4350,7 +4350,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool updateTimestamp) const
 {
-	UDEBUG("nodes = %d", nodes.size());
+	UDEBUG("nodes = %d, updateTimestamp = %s", nodes.size(), updateTimestamp?"true":"false");
 	if(_ppDb && nodes.size())
 	{
 		UTimer timer;
@@ -4389,7 +4389,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		{
 			s = *i;
 			int index = 1;
-			if(s)
+			if(s && (s->isModified() || updateTimestamp))
 			{
 				rc = sqlite3_bind_int(ppStmt, index++, s->getWeight());
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -4413,7 +4413,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 
 				//step
 				rc=sqlite3_step(ppStmt);
-				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s (node id = %d map=%d)", _version.c_str(), sqlite3_errmsg(_ppDb), s->id(), s->mapId()).c_str());
 
 				rc = sqlite3_reset(ppStmt);
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -4426,14 +4426,7 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 		ULOGGER_DEBUG("Update Node table, Time=%fs", timer.ticks());
 
 		// Update links part1
-		if(uStrNumCmp(_version, "0.18.3") >= 0)
-		{
-			query = uFormat("DELETE FROM Link WHERE from_id=? and type!=%d;", (int)Link::kLandmark);
-		}
-		else
-		{
-			query = uFormat("DELETE FROM Link WHERE from_id=?;");
-		}
+		query = uFormat("DELETE FROM Link WHERE from_id=?;");
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		for(std::list<Signature *>::const_iterator j=nodes.begin(); j!=nodes.end(); ++j)
@@ -4465,6 +4458,12 @@ void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool upd
 				// Save links
 				const std::multimap<int, Link> & links = (*j)->getLinks();
 				for(std::multimap<int, Link>::const_iterator i=links.begin(); i!=links.end(); ++i)
+				{
+					stepLink(ppStmt, i->second);
+				}
+				// Save landmarks
+				const std::map<int, Link> & landmarks = (*j)->getLandmarks();
+				for(std::map<int, Link>::const_iterator i=landmarks.begin(); i!=landmarks.end(); ++i)
 				{
 					stepLink(ppStmt, i->second);
 				}
@@ -5758,7 +5757,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 
 void DBDriverSqlite3::saveFlannIndexQuery(const std::vector<unsigned char> & data) const
 {
-	UDEBUG("");
+	UDEBUG("data size = %ld bytes", data.size());
 	if(_ppDb && uStrNumCmp(_version, "0.23.0") >= 0)
 	{
 		UTimer timer;

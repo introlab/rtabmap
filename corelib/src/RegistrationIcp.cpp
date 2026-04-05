@@ -529,6 +529,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				double toComplexity = util3d::computeNormalsComplexity(toScan, guess, &complexityVectorsTo, &complexityValuesTo);
 				float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 				info.icpStructuralComplexity = complexity;
+				UDEBUG("structural complexity: from=%f to=%f", fromComplexity, toComplexity);
 				if(complexity < _pointToPlaneMinComplexity)
 				{
 					tooLowComplexityForPlaneToPlane = true;

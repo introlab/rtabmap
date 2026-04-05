@@ -2325,6 +2325,7 @@ std::vector<int> SSC(
 	UASSERT(keypoints.empty() || indx.empty() || keypoints.size() == indx.size());
 
 	bool useIndx = !indx.empty();
+	maxKeypoints = maxKeypoints - round(maxKeypoints * tolerance); // Just the make sure the solution will always be <= input maxKeypoints
 
 	// several temp expression variables to simplify solution equation
 	int exp1 = rows + cols + 2*maxKeypoints;

@@ -1255,11 +1255,11 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 	{
 		if (xRatio > 0 && yRatio > 0)
 		{
-			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), color);
+			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), iter->first<0?Qt::gray:color);
 		}
 		else
 		{
-			addFeature(iter->first, iter->second, 0, color);
+			addFeature(iter->first, iter->second, 0, iter->first<0?Qt::gray:color);
 		}
 	}
 
@@ -1401,7 +1401,7 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 							cv::Point3f pt;
 							int cameraIndex = u/subImageWidth;
 							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
-							models[cameraIndex].project(u,v,float(val)/1000.0f, pt.x, pt.y, pt.z);
+							models[cameraIndex].project(u-(cameraIndex*subImageWidth),v,float(val)/1000.0f, pt.x, pt.y, pt.z);
 							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
 							val = (unsigned short)(pt.z*1000.0f);
 						}
@@ -1417,7 +1417,7 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 							cv::Point3f pt;
 							int cameraIndex = u/subImageWidth;
 							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
-							models[cameraIndex].project(u,v,val, pt.x, pt.y, pt.z);
+							models[cameraIndex].project(u-(cameraIndex*subImageWidth),v,val, pt.x, pt.y, pt.z);
 							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
 							val = pt.z;
 						}

@@ -1,4 +1,4 @@
-name: CMake
+name: CMake-Linux
 
 on:
   push:
@@ -11,33 +11,43 @@ on:
 env:
   BUILD_TYPE: Release
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.build_name }}
     runs-on: ${{ matrix.os }}
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}
       cancel-in-progress: true
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04]
+        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv]
         include:
-        - os: ubuntu-22.04
+        - build_name: ubuntu-22.04
+          os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: ""
-        - os: ubuntu-24.04
+          extra_cmake_def: "-DWITH_CERES=ON"
+        - build_name: ubuntu-24.04
+          os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
           extra_cmake_def: "-DWITH_CERES=ON"
+        - build_name: ubuntu-24.04-with-opengv
+          os: ubuntu-24.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DBUILD_OPENGV=ON"
 
-    steps:    
-    - name: Install dependencies
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Linux Dependencies
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
         sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
-
-    - uses: actions/checkout@v4
 
     - name: Configure CMake
       run: |

@@ -58,28 +58,36 @@ void showUsage()
 			"    -i #          Iterations (default 1).\n"
 			"    --intra       Add only intra-session loop closures.\n"
 			"    --inter       Add only inter-session loop closures.\n"
+			"    --session #   Add loop closures only from/to that map session ID (use -1 for last session).\n"
 			"\n%s", Parameters::showUsage());
 	exit(1);
 }
 
-// catch ctrl-c
 bool g_loopForever = true;
+class PrintProgressState : public ProgressState
+{
+public:
+	PrintProgressState() :
+		stamp_(UTimer::now())
+	{}
+	virtual bool callback(const std::string & msg) const
+	{
+		if(!msg.empty())
+			printf("[%f] %s \n", UTimer::now()-stamp_, msg.c_str());
+		return g_loopForever;
+	}
+private:
+	double stamp_;
+};
+PrintProgressState progress;
+
+// catch ctrl-c
 void sighandler(int sig)
 {
 	printf("\nSignal %d caught...\n", sig);
 	g_loopForever = false;
+	progress.setCanceled(true);
 }
-
-class PrintProgressState : public ProgressState
-{
-public:
-	virtual bool callback(const std::string & msg) const
-	{
-		if(!msg.empty())
-			printf("%s \n", msg.c_str());
-		return g_loopForever;
-	}
-};
 
 int main(int argc, char * argv[])
 {
@@ -88,7 +96,7 @@ int main(int argc, char * argv[])
 	signal(SIGINT, &sighandler);
 
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kError);
+	ULogger::setLevel(ULogger::kWarning);
 
 	if(argc < 2)
 	{
@@ -101,6 +109,7 @@ int main(int argc, char * argv[])
 	int iterations = 1;
 	bool intraSession = false;
 	bool interSession = false;
+	int fromToMapId = -2;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -171,8 +180,24 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if(std::strcmp(argv[i], "--session") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				fromToMapId = uStr2Int(argv[i]);
+			}
+			else
+			{
+				showUsage();
+			}
+		}
 	}
 	ParametersMap inputParams = Parameters::parseArguments(argc,  argv);
+
+	// Add some optimizations (soft set, can be overriden by arguments)
+	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
+	inputParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // should be incremental to update links
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
@@ -221,15 +246,32 @@ int main(int argc, char * argv[])
 	// Get the global optimized map
 	Rtabmap rtabmap;
 	printf("Initialization...\n");
+	UTimer timer;
+	ParametersMap originalParameters = parameters;
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
+	printf("Initialization... done! (%f sec)\n", timer.ticks());
 
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
 
-	PrintProgressState progress;
+	if(fromToMapId <= -2)
+	{
+		fromToMapId = -1; // means all below
+	}
+	else
+	{
+		bool last = false;
+		if(fromToMapId == -1)
+		{
+			// get last session ID
+			fromToMapId = rtabmap.getMemory()->getMapId(rtabmap.getMemory()->getLastSignatureId(), true);
+		}
+		printf("From/To Session ID = %d%s\n", fromToMapId, last?" (last session)":"");
+	}
+
 	printf("Detecting...\n");
-	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin);
+	int detected = rtabmap.detectMoreLoopClosures(clusterRadiusMax, clusterAngle, iterations, intraSession, interSession, &progress, clusterRadiusMin, fromToMapId);
 	if(detected < 0)
 	{
 		if(!g_loopForever)
@@ -265,6 +307,9 @@ int main(int argc, char * argv[])
 			printf("Save new global occupancy grid!\n");
 		}
 	}
+
+	// Restore original parameters before saving back the database
+	rtabmap.parseParameters(originalParameters);
 
 	rtabmap.close();
 

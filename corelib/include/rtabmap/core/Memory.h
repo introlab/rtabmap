@@ -144,6 +144,7 @@ public:
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
 	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true);
+	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false, int direction = 0);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
@@ -211,6 +212,7 @@ public:
 	std::set<int> getAllSignatureIds(bool ignoreChildren = true) const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
+	bool isReadOnly() const {return !_incrementalMemory && _localizationReadOnly;}
 	bool isLocalizationDataSaved() const {return _localizationDataSaved;}
 	const Signature * getSignature(int id) const;
 	bool isInSTM(int signatureId) const {return _stMem.find(signatureId) != _stMem.end();}
@@ -276,6 +278,7 @@ private:
 	void initCountId();
 	void rehearsal(Signature * signature, Statistics * stats = 0);
 	bool rehearsalMerge(int oldId, int newId);
+	bool canBeReduced(const Link & link, float maxDistance, int direction);
 
 	const std::map<int, Signature*> & getSignatures() const {return _signatures;}
 
@@ -307,6 +310,7 @@ private:
 	std::string _rgbCompressionFormat;
 	std::string _depthCompressionFormat;
 	bool _incrementalMemory;
+	bool _localizationReadOnly;
 	bool _localizationDataSaved;
 	bool _flannIndexSaved;
 	bool _reduceGraph;

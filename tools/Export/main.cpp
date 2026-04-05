@@ -1691,15 +1691,24 @@ int main(int argc, char * argv[])
 			{
 				if(voxelSize>0.0f)
 				{
-					if(cloud.get() && !cloud->empty())
+					if(cloud.get() && !cloud->empty()) {
 						cloud = rtabmap::util3d::voxelize(cloud, indices, voxelSize);
-					else if(cloudI.get() && !cloudI->empty())
+						if(!cloud->empty())
+							cloud = rtabmap::util3d::transformPointCloud(cloud, iter->second);
+					}
+					else if(cloudI.get() && !cloudI->empty()) {
 						cloudI = rtabmap::util3d::voxelize(cloudI, indices, voxelSize);
+						if(!cloudI->empty())
+							cloudI = rtabmap::util3d::transformPointCloud(cloudI, iter->second);
+					}
 				}
-				if(cloud.get() && !cloud->empty())
-					cloud = rtabmap::util3d::transformPointCloud(cloud, iter->second);
-				else if(cloudI.get() && !cloudI->empty())
-					cloudI = rtabmap::util3d::transformPointCloud(cloudI, iter->second);
+				else
+				{
+					if(cloud.get() && !cloud->empty())
+						cloud = rtabmap::util3d::transformPointCloud(cloud, indices, iter->second);
+					else if(cloudI.get() && !cloudI->empty())
+						cloudI = rtabmap::util3d::transformPointCloud(cloudI, indices, iter->second);
+				}
 
 				if(filter_ceiling != 0.0 || filter_floor != 0.0f)
 				{

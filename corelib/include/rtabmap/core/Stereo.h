@@ -311,6 +311,10 @@ public:
 	 */
 	virtual bool isGpuEnabled() const;
 
+	bool usingMinEigenVals() const {return useMinEigenVals_;}
+	float minEigThreshold() const {return minEigThreshold_;}
+	float errorThreshold() const {return errorThreshold_;}
+
 private:
 	/**
 	 * @brief Update status vector based on disparity constraints
@@ -329,10 +333,14 @@ private:
 	void updateStatus(
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
-		std::vector<unsigned char> & status) const;
+		std::vector<unsigned char> & status,
+		std::vector<float> err = {}) const;
 
 private:
 	float epsilon_; ///< Convergence threshold for optical flow (default: from Parameters::defaultStereoEps())
+	bool useMinEigenVals_;
+	float minEigThreshold_;
+	float errorThreshold_;
 	bool gpu_;      ///< Enable GPU acceleration (default: from Parameters::defaultStereoGpu(), requires OpenCV CUDA)
 };
 

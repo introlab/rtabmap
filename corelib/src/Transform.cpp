@@ -52,6 +52,26 @@ Transform::Transform(
 			r11, r12, r13, o14,
 			r21, r22, r23, o24,
 			r31, r32, r33, o34);
+
+	if( r11>0.0f || r12>0.0f || r13>0.0f ||
+		r21>0.0f || r22>0.0f || r23>0.0f ||
+		r31>0.0f || r32>0.0f || r33>0.0f)
+	{
+		Eigen::Matrix3f m;
+		m << r11, r12, r13,
+			r21, r22, r23,
+			r31, r32, r33;
+		float d = m.determinant();
+		if(fabs(d-1.0f) > 0.0001)
+		{
+			UWARN("Created transform doesn't have normalized rotation. Any transformation with this transform can cause unexpected results!"
+				" Determinant([%f %f %f;%f %f %f;%f %f %f])=%f",
+				r11, r12, r13,
+				r21, r22, r23,
+				r31, r32, r33,
+				d);
+		}
+	}
 }
 
 Transform::Transform(const cv::Mat & transformationMatrix)
@@ -508,6 +528,11 @@ Transform Transform::fromString(const std::string & string)
 		t = Transform(numbers[0], numbers[1], numbers[2], numbers[3],
 					  numbers[4], numbers[5], numbers[6], numbers[7],
 					  numbers[8], numbers[9], numbers[10], numbers[11]);
+	}
+	// Always normalize
+	if(!t.isNull())
+	{
+		t.normalizeRotation();
 	}
 	return t;
 }

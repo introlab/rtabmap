@@ -187,11 +187,12 @@ public:
 	 * @brief Add a reference from a visual word to a signature
 	 * @param wordId ID of the visual word
 	 * @param signatureId ID of the signature (image)
+	 * @return true if the word exists in the dictionary and the reference has been added, false otherwise
 	 * 
 	 * Tracks which signatures use which visual words. If the word was unused,
 	 * it is removed from the unused words list.
 	 */
-	void addWordRef(int wordId, int signatureId);
+	bool addWordRef(int wordId, int signatureId);
 	
 	/**
 	 * @brief Remove all references from a visual word to a signature

@@ -83,6 +83,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rgbCompressionFormat(Parameters::defaultMemImageCompressionFormat()),
 	_depthCompressionFormat(Parameters::defaultMemDepthCompressionFormat()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
+	_localizationReadOnly(Parameters::defaultMemLocalizationReadOnly()),
 	_localizationDataSaved(Parameters::defaultMemLocalizationDataSaved()),
 	_flannIndexSaved(Parameters::defaultKpFlannIndexSaved()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
@@ -185,10 +186,6 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			_dbDriver = 0; // HACK for the clear() below to think that there is no db
 		}
 	}
-	else if(!_memoryChanged && _linksChanged)
-	{
-		_dbDriver->setTimestampUpdateEnabled(false); // update links only
-	}
 	this->clear();
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory, done!"));
 
@@ -212,10 +209,10 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	bool success = true;
 	if(_dbDriver)
 	{
-		_dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
+
 		success = false;
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\"..."));
-		if(_dbDriver->openConnection(dbUrl, dbOverwritten))
+		if(_dbDriver->openConnection(dbUrl, dbOverwritten, isReadOnly()))
 		{
 			success = true;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));
@@ -245,6 +242,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		if(loadAllNodesInWM)
 		{
+			UDEBUG("Loading all nodes to WM...");
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
 			std::set<int> ids;
 			_dbDriver->getAllNodeIds(ids, true);
@@ -252,6 +250,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		}
 		else
 		{
+			UDEBUG("Loading last nodes to WM...");
 			// load previous session working memory
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
 			_dbDriver->loadLastNodes(dbSignatures, !_loadVisualLocalFeaturesOnInit);
@@ -438,7 +437,8 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		UTimer timer;
 		// Enable loaded signatures
 		const std::map<int, Signature *> & signatures = this->getSignatures();
-		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+		bool corruptedDictionary = false;
+		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end() && !corruptedDictionary; ++i)
 		{
 			Signature * s = this->_getSignature(i->first);
 			UASSERT(s != 0);
@@ -451,12 +451,114 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				{
 					if(iter->first > 0)
 					{
-						_vwd->addWordRef(iter->first, i->first);
+						if(!_vwd->addWordRef(iter->first, s->id()))
+						{
+							corruptedDictionary = true;
+							break;
+						}
 					}
 				}
-				s->setEnabled(true);
+				s->setEnabled(!corruptedDictionary);
+				if(corruptedDictionary)
+				{
+					//revert all changes from that signature till it broke above
+					for(std::multimap<int, int>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
+					{
+						if(iter->first > 0)
+						{
+							_vwd->removeAllWordRef(iter->first, s->id());
+						}
+					}
+				}
 			}
 		}
+		if(corruptedDictionary)
+		{
+			if(!_vwd->isIncremental())
+			{
+				UERROR("The dictionary is empty or missing some words from nodes in WM, "
+					"we cannot repair it because it is a fixed dictionary. Make sure you "
+					"are using the right fixed dictionary that was used to generate the map.");
+			}
+			else
+			{
+				std::string msg = uFormat(
+					"The dictionary is empty or missing some words from nodes in WM, "
+					"we will try to repair it. This can be caused by rtabmap closing before it has time "
+					"to save the dictionary. Re-creating the dictionary from %ld nodes...",
+					signatures.size());
+				UWARN("%s", msg.c_str());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+
+				//remove all words ref
+
+				const std::map<int, VisualWord *> & addedWords = _vwd->getVisualWords();
+				int nodesRepaired = 0;
+				size_t oldSize = addedWords.size();
+				std::string assertMsg = 
+					"If we assert here, the problem is maybe deeper. Try "
+					"to use rtabmap-recovery tool instead to fix the database.";
+				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+				{
+					Signature * s = this->_getSignature(i->first);
+					UASSERT_MSG(s != 0, assertMsg.c_str());
+
+					if(s->isEnabled())
+					{
+						// Words already in dictionary and references added
+						continue;
+					}
+
+					const std::multimap<int, int> * words = &s->getWords();
+					if(words->size())
+					{
+						cv::Mat descriptors = s->getWordsDescriptors();
+						std::multimap<int, int> loadedWords;
+						if(descriptors.empty())
+						{
+							// We may have started rtabmap without loading features, check in the database
+							std::multimap<int, int> w;
+							std::vector<cv::KeyPoint> k;
+							std::vector<cv::Point3f> p;
+							_dbDriver->getLocalFeatures(s->id(), loadedWords, k, p, descriptors);
+							UASSERT_MSG(loadedWords.size() == words->size(), assertMsg.c_str()); // Just doublecheck
+							words = &loadedWords; // The index will be set
+							UASSERT_MSG(!descriptors.empty(), assertMsg.c_str());
+						}
+						bool repaired = false;
+						for(std::multimap<int, int>::const_iterator iter = words->begin(); iter!=words->end(); ++iter)
+						{
+							if(iter->first > 0)
+							{
+								if(addedWords.find(iter->first) == addedWords.end())
+								{
+									UASSERT_MSG(iter->second >= 0 && iter->second < descriptors.rows, 
+										uFormat("iter->second=%d descriptors.rows=%d (signature=%d word=%d). %s",
+										iter->second, descriptors.rows, s->id(), iter->first, assertMsg.c_str()).c_str());
+									_vwd->addWord(new VisualWord(iter->first, descriptors.row(iter->second).clone()));
+									repaired = true;
+								}
+								UASSERT_MSG(_vwd->addWordRef(iter->first, s->id()), assertMsg.c_str());
+							}
+						}
+						nodesRepaired += (repaired?1:0);
+						s->setEnabled(true);
+					}
+				}
+
+				msg = uFormat(
+					"Regenerated the dictionary with %ld missing words (%ld -> %ld) from %d nodes.",
+					addedWords.size() - oldSize,
+					oldSize,
+					addedWords.size(),
+					nodesRepaired);
+				UWARN("%s", msg.c_str());
+				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+				_memoryChanged = true; // This will force rtabmap to save back the dictionary even if we don't process any new data
+				_vwd->update();
+			}
+		}
+
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
 		if(_vwd->getUnusedWordsSize() && _vwd->isIncremental())
@@ -531,16 +633,23 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 
 	UDEBUG("_memoryChanged=%d _linksChanged=%d databaseNameChanged=%d", _memoryChanged?1:0, _linksChanged?1:0, databaseNameChanged?1:0);
 
-	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged))
+	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged) || this->isReadOnly())
 	{
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
 
 		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
-			saveFlannIndex(postInitClosingEvents);
+			if(!this->isReadOnly()) {
+				saveFlannIndex(postInitClosingEvents);
+			}
+			else if(_memoryChanged || _linksChanged || databaseNameChanged)
+			{
+				UWARN("Memory has been modified (nodes=%s links=%s name=%s) but the database is read-only, changes are not saved to database.",
+					_memoryChanged?"true":"false", _linksChanged?"true":"false", databaseNameChanged?"true":"false");
+			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-			_dbDriver->closeConnection(false, ouputDatabasePath);
+			_dbDriver->closeConnection(false);
 			delete _dbDriver;
 			_dbDriver = 0;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
@@ -556,12 +665,6 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		if(!_memoryChanged && _dbDriver)
 		{
 			saveFlannIndex(postInitClosingEvents);
-
-			if(_linksChanged) {
-				// don't update the time stamps!
-				UDEBUG("");
-				_dbDriver->setTimestampUpdateEnabled(false);
-			}
 		}
 		this->clear();
 		if(_dbDriver)
@@ -663,6 +766,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMarkerVarianceOrientationIgnored(), _markerOrientationIgnored);
 	Parameters::parse(params, Parameters::kMemLocalizationDataSaved(), _localizationDataSaved);
 	Parameters::parse(params, Parameters::kKpFlannIndexSaved(), _flannIndexSaved);
+	Parameters::parse(params, Parameters::kMemLocalizationReadOnly(), _localizationReadOnly);
 
 	if(_markerAngVariance>=9999)
 	{
@@ -1184,114 +1288,180 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	}
 }
 
-void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
+bool Memory::canBeReduced(const Link & link, float maxDistance, int direction)
 {
-	UDEBUG("Inserting node %d from STM in WM...", id);
-	UASSERT(_stMem.find(id) != _stMem.end());
+	return  link.to() != link.from() &&
+			link.type() != Link::kNeighbor &&
+			link.type() != Link::kNeighborMerged &&
+			link.userDataCompressed().empty() &&
+			link.type() != Link::kUndef &&
+			link.type() != Link::kVirtualClosure &&
+			(maxDistance == 0.0f || link.transform().getNorm() < maxDistance) &&
+			(direction == 0 || (direction==-1 && link.to() < link.from()) || (direction==1 && link.to() > link.from()));
+}
+
+int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direction)
+{
+	UDEBUG("Reducing %d (max distance=%f, keep linked in db=%s, direction=%d)",
+		id, maxDistance, keepLinkedInDb?"true":"false", direction);
 	Signature * s = this->_getSignature(id);
-	UASSERT(s!=0);
-
-	if(_reduceGraph)
+	if(s==0)
 	{
-		bool merge = false;
-		const std::multimap<int, Link> & links = s->getLinks();
-		std::map<int, Link> neighbors;
-		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
-		{
-			if(!merge)
-			{
-				merge = iter->second.to() < s->id() && // should be a parent->child link
-						iter->second.to() != iter->second.from() &&
-						iter->second.type() != Link::kNeighbor &&
-						iter->second.type() != Link::kNeighborMerged &&
-						iter->second.userDataCompressed().empty() &&
-						iter->second.type() != Link::kUndef &&
-						iter->second.type() != Link::kVirtualClosure;
-				if(merge)
-				{
-					UDEBUG("Reduce %d to %d", s->id(), iter->second.to());
-					if(reducedTo)
-					{
-						*reducedTo = iter->second.to();
-					}
-				}
+		UWARN("Node %d is not in WM/STM, cannot reduce it.", id);
+		return 0;
+	}
 
-			}
-			if(iter->second.type() == Link::kNeighbor)
+	if(!s->getLabel().empty())
+	{
+		// We currently not remove nodes with labels
+		return 0;
+	}
+
+	std::multimap<int, Link> links = s->getLinks();
+	std::map<int, Link> neighbors;
+	int reducedTo = 0;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(canBeReduced(iter->second, maxDistance, direction))
+		{
+			float distance = iter->second.transform().getNorm();
+			reducedTo = iter->second.to();
+			UDEBUG("Reduce %d to %d (distance=%f)",
+				s->id(), iter->second.to(), distance);
+		}
+		
+		if(iter->second.type() == Link::kNeighbor)
+		{
+			neighbors.insert(*iter);
+		}
+	}
+	if(reducedTo>0)
+	{
+		if(maxDistance > 0.0f)
+		{
+			// Only reduce if all neighbor merged links are also below maxDistance
+			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				neighbors.insert(*iter);
+				if( iter->second.type() == Link::kNeighborMerged &&
+					iter->second.transform().getNorm() > maxDistance)
+				{
+					return 0;
+				}
 			}
 		}
-		if(merge)
+
+		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
-			if(s->getLabel().empty())
+			Signature * sTo = this->_getSignature(iter->first);
+			if(sTo->id()!=s->id()) // Not Prior/Gravity links...
 			{
-				for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+				UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
+				sTo->removeLink(s->id());
+				if(iter->second.type() != Link::kNeighbor &&
+					iter->second.type() != Link::kUndef)
 				{
-					Signature * sTo = this->_getSignature(iter->first);
-					if(sTo->id()!=s->id()) // Not Prior/Gravity links...
+					if(iter->second.type() == Link::kNeighborMerged)
 					{
-						UASSERT_MSG(sTo!=0, uFormat("id=%d", iter->first).c_str());
-						sTo->removeLink(s->id());
-						if(iter->second.type() != Link::kNeighbor &&
-						   iter->second.type() != Link::kNeighborMerged &&
-						   iter->second.type() != Link::kUndef)
+						s->removeLink(sTo->id());
+						if(maxDistance == 0.0f)
 						{
-							// link to all neighbors
-							for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+							// online graph reduction, always skip these links
+							continue;
+						}
+					}
+					// link to all neighbors
+					for(std::map<int, Link>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+					{
+						if(!sTo->hasLink(jter->second.to()))
+						{
+							Link l = iter->second.inverse().merge(
+									jter->second,
+									iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
+							UDEBUG("Merging link %d->%d (type=%d) to with %d->%d (type %d). Adding %d->%d (type %d) to %d and %d",
+								iter->second.to(), iter->second.from(), iter->second.type(),
+								jter->second.from(), jter->second.to(), jter->second.type(),
+								l.from(), l.to(), l.type(), sTo->id(), l.to());
+							sTo->addLink(l);
+							Signature * sB = this->_getSignature(l.to());
+							UASSERT(sB!=0);
+							UASSERT_MSG(!sB->hasLink(l.from()), uFormat("%d->%d type=%d", sB->id(), l.to(), l.type()).c_str());
+							sB->addLink(l.inverse());
+						}
+					}
+					// link to all landmarks
+					for(std::map<int, Link>::const_iterator jter=s->getLandmarks().begin(); jter!=s->getLandmarks().end(); ++jter)
+					{
+						if(!uContains(sTo->getLandmarks(), jter->first))
+						{
+							UDEBUG("Move landmark observation %d from %d to %d",
+									jter->first, s->id(), sTo->id());
+							Link l = iter->second.inverse().merge(
+									jter->second,
+									jter->second.type());
+							sTo->addLandmark(l);
+							// Update landmark index
+							std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(jter->first);
+							if(nter!=_landmarksIndex.end())
 							{
-								if(!sTo->hasLink(jter->second.to()))
-								{
-									UDEBUG("Merging link %d->%d (type=%d) to link %d->%d (type %d)",
-											iter->second.from(), iter->second.to(), iter->second.type(),
-											jter->second.from(), jter->second.to(), jter->second.type());
-									Link l = iter->second.inverse().merge(
-											jter->second,
-											iter->second.userDataCompressed().empty() && iter->second.type() != Link::kVirtualClosure?Link::kNeighborMerged:iter->second.type());
-									sTo->addLink(l);
-									Signature * sB = this->_getSignature(l.to());
-									UASSERT(sB!=0);
-									UASSERT_MSG(!sB->hasLink(l.from()), uFormat("%d->%d", sB->id(), l.to()).c_str());
-									sB->addLink(l.inverse());
-								}
+								nter->second.insert(sTo->id());
+							}
+							else
+							{
+								std::set<int> tmp;
+								tmp.insert(sTo->id());
+								_landmarksIndex.insert(std::make_pair(jter->first, tmp));
 							}
 						}
 					}
 				}
+			}
+		}
 
-				//remove neighbor links
-				std::multimap<int, Link> linksCopy = links;
-				for(std::multimap<int, Link>::iterator iter=linksCopy.begin(); iter!=linksCopy.end(); ++iter)
+		this->moveToTrash(s, keepLinkedInDb);
+		s = 0;
+		_linksChanged = true;
+		_memoryChanged = true;
+	}
+	return reducedTo;
+}
+
+void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
+{
+	UDEBUG("Inserting node %d from STM in WM...", id);
+	UASSERT(_stMem.find(id) != _stMem.end());
+	int reducedId = 0;
+	if(_reduceGraph)
+	{
+		Signature * s = this->_getSignature(id);
+		UASSERT(s!=0);
+		std::multimap<int, Link> links = s->getLinks();
+		// Setting true to make sure we save all visual
+		// words that could be referenced in a previously
+		// transferred node in LTM (#979)
+		reducedId = reduceNode(s->id(), 0, true);
+		if(reducedToOut) {
+			*reducedToOut = reducedId;
+		}
+		if(reducedId>0)
+		{
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kNeighbor)
 				{
-					if(iter->second.type() == Link::kNeighborMerged)
+					if(_lastGlobalLoopClosureId == s->id())
 					{
-						// Removing only merged neighbor links, we keep original neighbor 
-						// links to be able to reprocess databases with correct odometry covariance.
-						s->removeLink(iter->first);
-					}
-					if(iter->second.type() == Link::kNeighbor)
-					{
-						if(_lastGlobalLoopClosureId == s->id())
-						{
-							_lastGlobalLoopClosureId = iter->first;
-						}
+						_lastGlobalLoopClosureId = iter->first;
 					}
 				}
-
-				// Setting true to make sure we save all visual
-				// words that could be referenced in a previously
-				// transferred node in LTM (#979)
-				this->moveToTrash(s, true);
-				s = 0;
 			}
 		}
 	}
-	if(s != 0)
+	if(reducedId == 0)
 	{
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
 		_stMem.erase(*_stMem.begin());
 	}
-	// else already removed from STM/WM in moveToTrash()
+	// else already removed from STM/WM in reduceNode()
 }
 
 const Signature * Memory::getSignature(int id) const
@@ -1865,6 +2035,7 @@ void Memory::clear()
 			uInsert(parameters, parameters_);
 			parameters.erase(Parameters::kRtabmapWorkingDirectory()); // don't save working directory as it is machine dependent
 			UDEBUG("");
+			_dbDriver->setTimestampUpdateEnabled(true); // Only re-stamp if we updated the memory
 			_dbDriver->addInfoAfterRun(memSize,
 					_lastSignature?_lastSignature->id():0,
 					UProcessInfo::getMemoryUsage(),
@@ -1938,6 +2109,7 @@ void Memory::clear()
 		_dbDriver->join(true);
 		cleanUnusedWords();
 		_dbDriver->emptyTrashes();
+		_dbDriver->setTimestampUpdateEnabled(false);
 	}
 	_vwd->clear(_dbDriver!=NULL);
 	UDEBUG("");
@@ -2504,9 +2676,10 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		// If not saved to database
 		if(!keepLinkedToGraph)
 		{
-			UASSERT_MSG(this->isInSTM(s->id()),
+			UASSERT_MSG(this->isInSTM(s->id()) || this->isInWM(s->id()),
 						uFormat("Deleting location (%d) outside the "
-								"STM is not implemented!", s->id()).c_str());
+								"WM/STM is not implemented! STM size=%ld WM size=%ld",
+								s->id(), this->getStMem().size(), this->getWorkingMem().size()).c_str());
 			const std::multimap<int, Link> & links = s->getLinks();
 			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
@@ -2517,7 +2690,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 					UASSERT_MSG(sTo!=0,
 								uFormat("A neighbor (%d) of the deleted location %d is "
 										"not found in WM/STM! Are you deleting a location "
-										"outside the STM?", iter->first, s->id()).c_str());
+										"outside the WM/STM?", iter->first, s->id()).c_str());
 
 					if(iter->first > s->id() && links.size()>1 && sTo->hasLink(s->id()))
 					{
@@ -2527,7 +2700,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 					}
 
 					// child
-					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id() && s->getWeight()>0)
+					if(iter->second.type() == Link::kGlobalClosure && s->getWeight()>0)
 					{
 						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
 					}
@@ -3626,7 +3799,7 @@ void Memory::updateLink(const Link & link, bool updateInDatabase)
 
 			if(oldType!=Link::kVirtualClosure || link.type()!=Link::kVirtualClosure)
 			{
-				_linksChanged = true;
+				_linksChanged = _incrementalMemory || (fromS->isSaved() && toS->isSaved());
 			}
 		}
 		else
@@ -5062,16 +5235,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					{
 						UASSERT(!decimatedData.cameraModels().empty());
 						UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
-						if(_maskFloorThreshold<0.0f)
-						{
-							cv::Mat depthBelow;
-							util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
-							depthMask = depthBelow;
-						}
-						else
-						{
-							depthMask = util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold);
-						}
+						depthMask = util3d::filterFloor(depthMask, decimatedData.cameraModels(), _maskFloorThreshold);
 						UDEBUG("Masking floor done.");
 					}
 
@@ -5121,6 +5285,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			else
 			{
 				int oldMaxFeatures = _feature2D->getMaxFeatures();
+				bool oldSSC = _feature2D->getSSC();
 				UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
 				ParametersMap tmpMaxFeatureParameter;
 				if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
@@ -5128,6 +5293,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					// The total extracted features should match the number of features used for transformation estimation
 					UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
 					tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
+					tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpSSC(), uNumber2Str(_visSSC)));
 					_feature2D->parseParameters(tmpMaxFeatureParameter);
 				}
 
@@ -5138,6 +5304,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				if(tmpMaxFeatureParameter.size())
 				{
 					tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
+					tmpMaxFeatureParameter.at(Parameters::kKpSSC()) = uBool2Str(oldSSC);
 					_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
 				}
 				t = timer.ticks();
@@ -5338,8 +5505,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		bool ssc = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visSSC:_feature2D->getSSC();
 		if((int)keypoints.size() > maxFeatures)
 		{
-			if(data.cameraModels().size()==1 || data.stereoCameraModels().size()==1)
-				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures, data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(), ssc);
+			if(data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
+				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures, data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()), ssc);
 			else
 				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures);
 		}
@@ -5572,13 +5739,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
 							Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
 				}
-				if(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
-					data.cameraModels().size()==1 || data.stereoCameraModels().size()==1)
+				if(decimatedData.cameraModels().size()>=1 || decimatedData.stereoCameraModels().size()>=1 ||
+					data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
 				{
-					Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(),
-						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
-						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
-						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+					Feature2D::limitKeypoints(
+						keypoints,
+						inliers,
+						_feature2D->getMaxFeatures(),
+						decimatedData.cameraModels().size()?cv::Size(decimatedData.cameraModels()[0].imageWidth()*decimatedData.cameraModels().size(), decimatedData.cameraModels()[0].imageHeight()):
+						decimatedData.stereoCameraModels().size()?cv::Size(decimatedData.stereoCameraModels()[0].left().imageWidth()*decimatedData.stereoCameraModels().size(), decimatedData.stereoCameraModels()[0].left().imageWidth()):
+						data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):
+						cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()),
 						_feature2D->getSSC());
 				}
 				else
@@ -5836,7 +6007,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		cameraModels.size() == 1 &&
 		words.size() &&
 		(words3D.size() == 0 || (words.size() == words3D.size() && words3DValid!=(int)words3D.size())) &&
-		_registrationPipeline->isImageRequired() &&
 		_signatures.size() &&
 		_signatures.rbegin()->second->mapId() == _idMapCount) // same map
 	{
@@ -5880,11 +6050,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 			// The following is used only to re-estimate the correspondences, the returned transform is ignored
 			Transform tmpt;
-			RegistrationVis reg(parameters_);
+			ParametersMap tmpParams = parameters_;
+			// Pure 2D-2D without guess would generate variance=1
+			uInsert(tmpParams, ParametersPair(Parameters::kVisEpipolarGeometryVar(), "1"));
+			RegistrationVis reg(tmpParams);
 			if(_registrationPipeline->isScanRequired())
 			{
 				// If icp is used, remove it to just do visual registration
-				RegistrationVis vis(parameters_);
+				RegistrationVis vis(tmpParams);
 				tmpt = vis.computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
 			}
 			else
@@ -5906,11 +6079,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				previousWords.insert(std::make_pair(iter->first, cpPrevious.getWordsKpts()[iter->second]));
 			}
+			float reprojError = Parameters::defaultVisPnPReprojError();
+			int varianceMedianRatio = Parameters::defaultVisPnPVarianceMedianRatio();
+			Parameters::parse(parameters_, Parameters::kVisPnPReprojError(), reprojError);
+			Parameters::parse(parameters_, Parameters::kVisPnPVarianceMedianRatio(), varianceMedianRatio);
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
 					currentWords,
 					previousWords,
 					cameraModels[0],
-					cameraTransform);
+					cameraTransform,
+					reprojError,
+					0.99f,
+					varianceMedianRatio);
 
 			UDEBUG("inliers=%d", (int)inliers.size());
 
@@ -6587,7 +6767,10 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 			{
 				if(keys.at(i)>0)
 				{
-					_vwd->addWordRef(keys.at(i), (*j)->id());
+					if(_vwd->addWordRef(keys.at(i), (*j)->id()))
+					{
+						UERROR("Could not add word ref %d to node %d!?", keys.at(i), (*j)->id());
+					}
 				}
 			}
 			(*j)->setEnabled(true);

@@ -32,18 +32,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTAB_G2O_EDGE_SBACAM_GRAVITY_H_
 #define RTAB_G2O_EDGE_SBACAM_GRAVITY_H_
 
+#ifdef RTABMAP_ORB_SLAM
+#include "g2o/types/types_six_dof_expmap.h"
+#else
 #include "g2o/types/sba/types_sba.h"
+#endif
 #include "g2o/core/base_unary_edge.h"
 namespace rtabmap {
   /**
    * \brief EdgeSBACamGravity
     * \brief g2o edge with gravity constraint
    */
-class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 1>, g2o::VertexCam> {
+class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 1>, VertexCam> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	EdgeSBACamGravity(){
     	information().setIdentity();
+      cameraInvLocalTransform_.setIdentity();
     }
     virtual bool read(std::istream& is) {return false;} // not implemented
     virtual bool write(std::ostream& os) const {return false;} // not implemented
@@ -55,30 +60,36 @@ class EdgeSBACamGravity : public g2o::BaseUnaryEdge<3, Eigen::Matrix<double, 6, 
 
     // return the error estimate as a 3-vector
     void computeError(){
-    	const g2o::VertexCam* v1 = static_cast<const g2o::VertexCam*>(_vertices[0]);
+    	const VertexCam* v = static_cast<const VertexCam*>(_vertices[0]);
 
-		Eigen::Vector3d direction = _measurement.head<3>();
-		Eigen::Vector3d measurement = _measurement.tail<3>();
+      Eigen::Vector3d direction = _measurement.head<3>();
+      Eigen::Vector3d measurement = _measurement.tail<3>();
 
-		Eigen::Vector3d ea;
+      g2o::SE3Quat estimate;
+#ifdef RTABMAP_ORB_SLAM
+      estimate = v->estimate().inverse();
+#else
+      estimate = v->estimate();
+#endif
 
-		// Transform pose from camera frame to world frame
-		Eigen::Matrix3d t = v1->estimate().rotation().toRotationMatrix() * cameraInvLocalTransform_;
-		ea[0] = atan2(t (2, 1), t (2, 2));
-		ea[1] = asin(-t (2, 0));
-		ea[2] = atan2(t (1, 0), t (0, 0));
+      // Transform pose from camera frame to world frame
+      Eigen::Matrix3d t = estimate.rotation().toRotationMatrix() * cameraInvLocalTransform_;
+      Eigen::Vector3d ea;
+      ea[0] = atan2(t (2, 1), t (2, 2));
+      ea[1] = asin(-t (2, 0));
+      ea[2] = atan2(t (1, 0), t (0, 0));
 
-		Eigen::Matrix3d rot =
-		   (Eigen::AngleAxisd(ea[1], Eigen::Vector3d::UnitY()) *
-			Eigen::AngleAxisd(ea[0], Eigen::Vector3d::UnitX())).toRotationMatrix();
+      Eigen::Matrix3d rot =
+        (Eigen::AngleAxisd(ea[1], Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(ea[0], Eigen::Vector3d::UnitX())).toRotationMatrix();
 
-		Eigen::Vector3d estimate = rot * -direction;
-		_error = estimate - measurement;
+      Eigen::Vector3d newEstimate = rot * -direction;
+      _error = newEstimate - measurement;
 
-		/*printf("%d : measured=%f %f %f est=%f %f %f error=%f %f %f\n", v1->id(),
-		  measurement[0], measurement[1], measurement[2],
-		  estimate[0], estimate[1], estimate[2],
-		  _error[0], _error[1], _error[2]);*/
+      /*printf("%d : measured=%f %f %f est=%f %f %f error=%f %f %f\n", v1->id(),
+        measurement[0], measurement[1], measurement[2],
+        estimate[0], estimate[1], estimate[2],
+        _error[0], _error[1], _error[2]);*/
     }
 
     // 6 values:

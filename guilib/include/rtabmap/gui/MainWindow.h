@@ -330,6 +330,7 @@ protected:
 			int iterations,
 			bool interSession,
 			bool intraSession,
+			int minGraphDistance,
 			// SBA params:
 			bool sba,
 			int sbaIterations,

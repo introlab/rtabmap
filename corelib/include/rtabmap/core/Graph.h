@@ -277,7 +277,8 @@ std::list<std::pair<int, Transform> > RTABMAP_CORE_EXPORT computePath(
 		bool lookInDatabase = true,
 		bool updateNewCosts = false,
 		float linearVelocity = 0.0f,   // m/sec
-		float angularVelocity = 0.0f); // rad/sec
+		float angularVelocity = 0.0f,  // rad/sec
+		bool ignoreDirectLinks = false); 
 
 /**
  * Find the nearest node of the target pose
@@ -336,9 +337,7 @@ RTABMAP_DEPRECATED std::map<int, Transform> RTABMAP_CORE_EXPORT getPosesInRadius
 RTABMAP_DEPRECATED std::map<int, Transform> RTABMAP_CORE_EXPORT getPosesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f);
 
 float RTABMAP_CORE_EXPORT computePathLength(
-		const std::vector<std::pair<int, Transform> > & path,
-		unsigned int fromIndex = 0,
-		unsigned int toIndex = 0);
+		const std::vector<std::pair<int, Transform> > & path);
 
 // assuming they are all linked in map order
 float RTABMAP_CORE_EXPORT computePathLength(

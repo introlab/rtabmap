@@ -1,5 +1,6 @@
 # Top-Level CmakeLists.txt
 cmake_minimum_required(VERSION 3.14)
+
 PROJECT( RTABMap )
 SET(PROJECT_PREFIX rtabmap)
 
@@ -11,6 +12,7 @@ IF(NOT MULTI_ARCH AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
 ENDIF(NOT MULTI_ARCH AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
 
 INCLUDE(GNUInstallDirs)
+INCLUDE(FetchContent)
 
 ####### local cmake modules #######
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
@@ -20,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 23)
-SET(RTABMAP_PATCH_VERSION 3)
+SET(RTABMAP_PATCH_VERSION 4)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
   
@@ -235,6 +237,7 @@ option(WITH_MADGWICK      "Include Madgwick IMU filtering support" ON)
 option(WITH_FASTCV        "Include FastCV support"               ON)
 option(WITH_OPENMP        "Include OpenMP support"               ON)
 option(WITH_OPENGV        "Include OpenGV support"               ON)
+option(BUILD_OPENGV       "Build OpenGV internally instead of using the system one" OFF)
 IF(MOBILE_BUILD)
 option(PCL_OMP            "With PCL OMP implementations"         OFF)
 ELSE()
@@ -656,7 +659,8 @@ IF(WITH_ZED)
        IF(CUDA_FOUND)
         MESSAGE(STATUS "Found CUDA: ${CUDA_INCLUDE_DIRS}")
        ELSE()
-        MESSAGE(FATAL_ERROR "CUDA is required to build with Zed sdk! Set -DWITH_ZED=OFF if you don't have CUDA.")
+        MESSAGE(WARNING "CUDA is required to build with Zed sdk! Set -DWITH_ZED=OFF if you don't have CUDA.")
+		SET(ZED_FOUND FALSE)
        ENDIF()
     ENDIF(ZED_FOUND)
 ENDIF(WITH_ZED)
@@ -801,8 +805,6 @@ IF(WITH_OKVIS)
        MESSAGE(STATUS "Found okvis: ${OKVIS_INCLUDE_DIRS}")
        find_package(brisk 2 REQUIRED)
        MESSAGE(STATUS "Found brisk: ${BRISK_INCLUDE_DIRS}")
-       find_package(opengv REQUIRED)
-       MESSAGE(STATUS "Found opengv: ${OPENGV_INCLUDE_DIRS}")
        find_package(Ceres 1.9.0 REQUIRED EXACT) # OKVIS requires this specific version
        MESSAGE(STATUS "Found ceres ${Ceres_VERSION}: ${CERES_INCLUDE_DIRS}")
     ENDIF(okvis_FOUND)
@@ -866,12 +868,58 @@ IF(WITH_FASTCV)
     ENDIF(FastCV_FOUND)
 ENDIF(WITH_FASTCV)
 
-IF(WITH_OPENGV)
-    FIND_PACKAGE(opengv QUIET)
-    IF(opengv_FOUND)
-       MESSAGE(STATUS "Found OpenGV: ${opengv_INCLUDE_DIRS}")
-    ENDIF(opengv_FOUND)
-ENDIF(WITH_OPENGV)
+IF(WITH_OPENGV OR okvis_FOUND)
+   if(NOT BUILD_OPENGV)
+      FIND_PACKAGE(opengv QUIET)
+   endif()
+
+   if(opengv_FOUND)
+      MESSAGE(STATUS "Found system-installed OpenGV: ${opengv_INCLUDE_DIRS}")
+   elseif(BUILD_OPENGV)
+      SET(PCL_USING_MARCHNATIVE OFF)
+      if(PCL_COMPILE_OPTIONS)
+         if("${PCL_COMPILE_OPTIONS}" MATCHES "-march=native")
+            set(PCL_USING_MARCHNATIVE ON)
+         endif()
+      elseif("${PCL_DEFINITIONS}" MATCHES "-march=native")
+         set(PCL_USING_MARCHNATIVE ON)
+      endif()
+      SET(MSG_EXTRA "without -march-native (not used by PCL)")
+      if(PCL_USING_MARCHNATIVE)
+         set(MSG_EXTRA "with -march-native (used by PCL)")
+      endif()
+   
+      message(STATUS "Download/Build OpenGV internally (BUILD_OPENGV=ON) ${MSG_EXTRA}.")     
+      function(add_submodule_opengv)
+         FetchContent_Declare(
+            opengv
+            GIT_REPOSITORY https://github.com/laurentkneip/opengv.git
+            GIT_TAG        91f4b19c73450833a40e463ad3648aae80b3a7f3
+            PATCH_COMMAND ${CMAKE_COMMAND} 
+                  -DPATCH_FILE=${CMAKE_CURRENT_LIST_DIR}/patches/opengv_91f4b19c.patch
+                  -P ${CMAKE_CURRENT_LIST_DIR}/patches/apply_patch.cmake
+         )
+         set(BUILD_SHARED_LIBS OFF)
+         set(BUILD_TESTS OFF)
+         set(CMAKE_BUILD_TYPE Release)
+         set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+         # Eigen should have been already added by PCL, just populate the compatible variables
+         IF(EIGEN_INCLUDE_DIRS)
+            set(EIGEN_INCLUDE_DIRS "${EIGEN_INCLUDE_DIRS}" CACHE PATH "Eigen include dirs" FORCE)
+            set(EIGEN_INCLUDE_DIR "${EIGEN_INCLUDE_DIRS}" CACHE PATH "Eigen include dir" FORCE)
+         ELSEIF(Eigen3_INCLUDE_DIRS)
+            set(EIGEN_INCLUDE_DIRS "${Eigen3_INCLUDE_DIRS}" CACHE PATH "Eigen include dirs" FORCE)
+            set(EIGEN_INCLUDE_DIR "${Eigen3_INCLUDE_DIRS}" CACHE PATH "Eigen include dir" FORCE)
+         ENDIF()
+         set(BUILD_WITH_MARCHNATIVE ${PCL_USING_MARCHNATIVE})
+         FetchContent_MakeAvailable(opengv)
+      endfunction()
+
+      add_submodule_opengv()
+      set(opengv_FOUND TRUE)
+      set(opengv_VERSION "internal")
+   endif()
+ENDIF()
 
 IF(WITH_ORB_SLAM AND NOT G2O_FOUND)
     FIND_PACKAGE(ORB_SLAM)
@@ -1302,7 +1350,17 @@ install(FILES package.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_PR
 #######################
 IF(BUILD_AS_BUNDLE)
   SET(CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT runtime)
+  IF(WIN32)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+	set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+      ExecWait '\\\"$INSTDIR\\\\vc_redist.x64.exe\\\" /quiet /norestart'
+    ")
+  ENDIF()
   INCLUDE(InstallRequiredSystemLibraries)
+  set(CPACK_NSIS_COMPONENT_INSTALL OFF)
+  set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+  set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
+  set(CPACK_COMPONENTS_ALL runtime)
 ENDIF(BUILD_AS_BUNDLE)
 
 SET(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
@@ -1622,7 +1680,11 @@ MESSAGE(STATUS "  With Open3D               = NO (Open3D not found)")
 ENDIF()
 
 IF(opengv_FOUND AND WITH_OPENGV)
+IF(opengv_VERSION STREQUAL "internal")
+MESSAGE(STATUS "  With OpenGV (internal)    = YES (License: BSD)")
+ELSE()
 MESSAGE(STATUS "  With OpenGV ${opengv_VERSION}           = YES (License: BSD)")
+ENDIF()
 ELSEIF(NOT WITH_OPENGV)
 MESSAGE(STATUS "  With OpenGV               = NO (WITH_OPENGV=OFF)")
 ELSE()
@@ -1737,7 +1799,7 @@ ELSE()
 MESSAGE(STATUS "  With FlyCapture2/Triclops = NO (Point Grey SDK not found)")
 ENDIF()
 
-IF(ZED_FOUND AND CUDA_FOUND)
+IF(ZED_FOUND)
 MESSAGE(STATUS "  With ZED                  = YES")
 ELSEIF(NOT WITH_ZED)
 MESSAGE(STATUS "  With ZED                  = NO (WITH_ZED=OFF)")
