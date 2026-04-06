@@ -58,6 +58,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/PythonInterface.h"
 #endif
 
+#ifdef RTABMAP_ONNXRUNTIME
+#include "rtabmap/core/OrtInterface.h"
+#endif
+
 #ifdef RTABMAP_MRPT
 // Used for odometry error propagation
 #include <mrpt/poses/CPose3DPDFGaussian.h>
@@ -181,6 +185,9 @@ Rtabmap::Rtabmap() :
 	_pathStuckDistance(0.0f)
 #ifdef RTABMAP_PYTHON
 	,_python(new PythonInterface())
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+	,_ort(new OrtInterface())
 #endif
 {
 }

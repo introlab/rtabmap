@@ -200,7 +200,7 @@ ELSE()
 		${SRC_FILES}
 		sqlite3/sqlite3.c
 	)
-	 SET(INCLUDE_DIRS
+	SET(INCLUDE_DIRS
 	    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
 		${INCLUDE_DIRS}
 	)
@@ -249,7 +249,7 @@ IF(WITH_PYTHON AND Python3_FOUND)
 		python/PyDetector.cpp
 		python/PyDescriptor.cpp
 	)
-	 SET(INCLUDE_DIRS
+	SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}
 	    ${CMAKE_CURRENT_SOURCE_DIR}/python
 		${INCLUDE_DIRS}
@@ -260,6 +260,14 @@ IF(onnxruntime_FOUND)
 	SET(PUBLIC_LIBRARIES
 		${PUBLIC_LIBRARIES}
 		onnxruntime::onnxruntime
+	)
+	SET(SRC_FILES
+		${SRC_FILES}
+		onnxruntime/OrtInterface.cpp
+	)
+	SET(INCLUDE_DIRS
+	    ${CMAKE_CURRENT_SOURCE_DIR}/onnxruntime
+		${INCLUDE_DIRS}
 	)
 ENDIF(onnxruntime_FOUND)
 
