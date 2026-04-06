@@ -24,6 +24,7 @@ CREATE TABLE Node (
 	label TEXT,
 	gps BLOB,                 -- 1x6 double: stamp, longitude (DD), latitude (DD), altitude (m), accuracy (m), bearing (North 0->360 deg clockwise)
 	env_sensors BLOB,         -- Variable 3xdouble: (sensorId1, value, stamp, sensorId2, value, stamp, ...)
+	features BLOB,            -- compressed serialized data (pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor)
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -46,8 +47,6 @@ CREATE TABLE Data (
 	view_point_y FLOAT,
 	view_point_z FLOAT,
 
-	features BLOB,            -- compressed serialized data (pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor)
-	
 	user_data BLOB,           -- compressed data (User data)
 	time_enter DATE,
 	PRIMARY KEY (id)
@@ -76,7 +75,7 @@ CREATE TABLE Word (
 CREATE TABLE Feature (
 	node_id INTEGER NOT NULL,
 	word_id INTEGER NOT NULL,
-	index INTEGER NOT NULL,   -- index of the feature in "features" field of Data
+	feature_index INTEGER NOT NULL,   -- index of the feature in "features" field of Node
 	FOREIGN KEY (node_id) REFERENCES Node(id)
 );
 

@@ -666,14 +666,14 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	}
 }
 
-void DBDriver::loadNodeData(Signature & signature, bool images, bool scan, bool userData, bool occupancyGrid, bool features) const
+void DBDriver::loadNodeData(Signature & signature, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	std::list<Signature *> signatures;
 	signatures.push_back(&signature);
-	this->loadNodeData(signatures, images, scan, userData, occupancyGrid, features);
+	this->loadNodeData(signatures, images, scan, userData, occupancyGrid);
 }
 
-void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid, bool features) const
+void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	// Don't look in the trash, we assume that if we want to load
 	// data of a signature, it is not in thrash! Print an error if so.
@@ -689,14 +689,14 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool images, bo
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid, features);
+	this->loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid);
 	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::getNodeData(
 		int signatureId,
 		SensorData & data,
-		bool images, bool scan, bool userData, bool occupancyGrid, bool features) const
+		bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	bool found = false;
 	// look in the trash
@@ -708,8 +708,7 @@ void DBDriver::getNodeData(
 			((!images || !s->sensorData().imageCompressed().empty()) &&
 			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
 			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
-			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f) &&
-			 (!features || !s->sensorData().keypoints().empty())))
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f)))
 		{
 			data = (SensorData)s->sensorData();
 			if(!images)
@@ -728,10 +727,6 @@ void DBDriver::getNodeData(
 			{
 				data.setOccupancyGrid(cv::Mat(), cv::Mat(), cv::Mat(), 0, cv::Point3f());
 			}
-			if(!features)
-			{
-				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-			}
 			found = true;
 		}
 	}
@@ -743,7 +738,7 @@ void DBDriver::getNodeData(
 		std::list<Signature *> signatures;
 		Signature tmp(signatureId);
 		signatures.push_back(&tmp);
-		loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid, features);
+		loadNodeDataQuery(signatures, images, scan, userData, occupancyGrid);
 		data = signatures.front()->sensorData();
 		_dbSafeAccessMutex.unlock();
 	}
@@ -1525,6 +1520,7 @@ std::vector<unsigned char> DBDriver::serializeFeatures(
 	const std::vector<cv::Point3f> & points3D,
 	const cv::Mat & descriptors) const
 {
+	UTimer timer;
 	const int headerSize = 13;
 	int header[headerSize] = {
 			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
@@ -1539,8 +1535,9 @@ std::vector<unsigned char> DBDriver::serializeFeatures(
 			keypoints.size()*sizeof(cv::KeyPoint) + // pos_x, pos_y, size, dir, response, octave
 			points3D.size()*sizeof(cv::Point3f) + // depth_x, depth_y, depth_z
 			descriptors.total()*descriptors.elemSize());
+	UDEBUG("Serialized total size = %ld bytes (header=%ld)", data.size(), sizeof(int)*headerSize);
 	memcpy(data.data(), header, sizeof(int)*headerSize);
-	int index = sizeof(int)*headerSize;
+	size_t index = sizeof(int)*headerSize;
 	if(!keypoints.empty())
 	{
 		memcpy(data.data()+index, keypoints.data(), sizeof(cv::KeyPoint)*keypoints.size());
@@ -1549,14 +1546,20 @@ std::vector<unsigned char> DBDriver::serializeFeatures(
 	if(!points3D.empty())
 	{
 		memcpy(data.data()+index, points3D.data(), sizeof(cv::Point3f)*points3D.size());
-		index += sizeof(cv::KeyPoint)*(points3D.size());
+		index += sizeof(cv::Point3f)*(points3D.size());
 	}
 	if(!descriptors.empty())
 	{
 		memcpy(data.data()+index, descriptors.data, descriptors.elemSize()*descriptors.total());
 		index+=descriptors.elemSize()*(descriptors.total());
 	}
-	return compressData(cv::Mat(1, data.size(), CV_8UC1, (void *)data.data()));
+	double serializationTime = timer.ticks();
+	UASSERT_MSG(index == data.size(), uFormat("wrote=%ld expected=%ld", index, data.size()).c_str());
+	std::vector<unsigned char> compressedData = compressData(cv::Mat(1, data.size(), CV_8UC1, (void *)data.data()));
+	UWARN("Serialized %ld bytes in %f ms, Compressed %ld bytes in %f ms",
+		data.size(), serializationTime*1000.0f,
+		compressedData.size(), timer.ticks()*1000.0f);
+	return compressedData;
 }
 
 bool DBDriver::deserializeFeatures(
@@ -1566,11 +1569,15 @@ bool DBDriver::deserializeFeatures(
 	std::vector<cv::Point3f> & points3D,
 	cv::Mat & descriptors) const
 {
+	UTimer timer;
 	cv::Mat serializedData = uncompressData(compressedData, compressedDataSize);
+	double uncompressionTime = timer.ticks();
 	if(serializedData.empty())
 	{
 		return false;
 	}
+	UDEBUG("Decompressed serialized data = %dx%d type=%d",
+		serializedData.cols, serializedData.rows, serializedData.type());
 	UASSERT(serializedData.type() == CV_8UC1);
 	int headerSize = 13;
 	if(serializedData.total() >= sizeof(int)*headerSize)
@@ -1581,8 +1588,15 @@ bool DBDriver::deserializeFeatures(
 		UASSERT(header[8] == sizeof(cv::Point3f));
 		int n_pts = header[9];
 		int d_type = header[10];
-		int d_rows = header[11];
-		int d_cols = header[12];
+		int d_cols = header[11];
+		int d_rows = header[12];
+
+		UDEBUG("Serialized features header: version %d.%d.%d cv=%d.%d.%d kpts=%d (size=%d) pts=%d (size=%d) descriptors=%dx%d type=%d",
+			header[0], header[1], header[2], 
+			header[3], header[4], header[5],
+			header[7], header[6],
+			header[9], header[8],
+			header[11], header[12], header[10]);
 
 		keypoints.resize(n_kpts);
 		points3D.resize(n_pts);
@@ -1617,6 +1631,11 @@ bool DBDriver::deserializeFeatures(
 			index+=descriptors.elemSize()*(descriptors.total());
 		}
 		UASSERT(index == serializedData.total());
+
+		UWARN("Uncompressed %ld bytes in %f ms, deserialized %ld bytes in %f ms",
+			compressedDataSize, uncompressionTime*1000.0f,
+			serializedData.total(), timer.ticks()*1000.0f);
+
 		return true;
 	}
 	UERROR("Wrong serialized features format detected (size in bytes=%ld)! Cannot deserialize the data.", serializedData.size());
