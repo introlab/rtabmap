@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_23_0_sql.h"
 #include "DatabaseSchema_0_22_0_sql.h"
 #include "DatabaseSchema_0_20_0_sql.h"
 #include "DatabaseSchema_0_18_3_sql.h"
@@ -406,6 +407,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
 			schemas.push_back(std::make_pair("0.20.0", DATABASESCHEMA_0_20_0_SQL));
 			schemas.push_back(std::make_pair("0.22.0", DATABASESCHEMA_0_22_0_SQL));
+			schemas.push_back(std::make_pair("0.23.0", DATABASESCHEMA_0_23_0_SQL));
 			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
 			for(size_t i=0; i<schemas.size(); ++i)
 			{
@@ -4117,7 +4119,7 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		}
 	}
-	UWARN("totalTime=%f", totalTime.ticks());
+	UWARN("totalTime=%f ms", totalTime.ticks() *1000.0f);
 }
 
 void DBDriverSqlite3::loadLinksQuery(
@@ -6084,7 +6086,7 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 	rc = sqlite3_reset(ppStmt);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-	UWARN("totalTime=%f", totalTime.ticks());
+	UWARN("totalTime=%f ms", totalTime.ticks()*1000.0f);
 }
 
 std::string DBDriverSqlite3::queryStepImage() const
