@@ -39,8 +39,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+static ParametersMap disableDeskewing(ParametersMap params) {
+	// LIO-SAM performs its own internal deskewing via imageProjection.
+	// The base-class deskew must be disabled so that the original per-point
+	// timestamps reach LIO-SAM intact.
+	params[Parameters::kOdomDeskewing()] = "false";
+	return params;
+}
+
 OdometryLIOSAM::OdometryLIOSAM(const ParametersMap & parameters) :
-	Odometry(parameters)
+	Odometry(disableDeskewing(parameters))
 #ifdef RTABMAP_LIOSAM
 	,lioSam_(0)
 	,lastPose_(Transform::getIdentity())
@@ -214,21 +222,42 @@ Transform OdometryLIOSAM::computeTransform(
 	cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999;
 	if(!lost_)
 	{
-		// Convert laser scan to PCL point cloud
-		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudIn = util3d::laserScanToPointCloudI(data.laserScanRaw());
-		UDEBUG("Scan conversion: %fs, points=%d", timer.ticks(), (int)laserCloudIn->size());
+		const LaserScan & scan = data.laserScanRaw();
+		if(scan.format() != LaserScan::kXYZIRT)
+		{
+			UERROR("LIO-SAM requires a scan in format %s (got %s). "
+			       "Populate the scan via util3d::laserScanFromPointCloud<PointXYZIRT>() "
+			       "so that per-point ring and time fields are available.",
+			       LaserScan::formatName(LaserScan::kXYZIRT).c_str(),
+			       scan.formatName().c_str());
+			return t;
+		}
 
-		// Extract ring and time channels if available
+		// Split the kXYZIRT scan into the three parallel buffers LIO-SAM expects.
+		const int numPoints = scan.size();
+		const int ringOffset = scan.getRingOffset();
+		const int timeOffset = scan.getTimeOffset();
+		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudIn(new pcl::PointCloud<pcl::PointXYZI>);
+		laserCloudIn->reserve(numPoints);
 		std::vector<int> rings;
 		std::vector<float> times;
-		const LaserScan & scan = data.laserScanRaw();
-
-		// Check if scan has ring channel
-		if(scan.hasRGB() || scan.channels() >= 6)
+		rings.reserve(numPoints);
+		times.reserve(numPoints);
+		for(int i=0; i<numPoints; ++i)
 		{
-			// Try to extract ring from the scan data
-			// Ring is typically channel 4 in XYZI+ring+time format
+			const int row = i / scan.data().cols;
+			const int col = i - row * scan.data().cols;
+			const float * ptr = scan.data().ptr<float>(row, col);
+			pcl::PointXYZI pt;
+			pt.x = ptr[0];
+			pt.y = ptr[1];
+			pt.z = ptr[2];
+			pt.intensity = ptr[3];
+			laserCloudIn->push_back(pt);
+			rings.push_back(static_cast<int>(ptr[ringOffset]));
+			times.push_back(ptr[timeOffset]);
 		}
+		UDEBUG("Scan split: %fs, points=%d", timer.ticks(), (int)laserCloudIn->size());
 
 		// Process scan
 		Eigen::Affine3f poseOut;
