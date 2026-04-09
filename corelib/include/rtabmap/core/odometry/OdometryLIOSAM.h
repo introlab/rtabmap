@@ -31,6 +31,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 
 #ifdef RTABMAP_LIOSAM
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <vector>
 namespace lio_sam { class LioSamCore; }
 #endif
 
@@ -49,6 +52,10 @@ public:
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
+#ifdef RTABMAP_LIOSAM
+	bool init(const Transform & imuLocalTransform, const Transform & lidarLocalTransform);
+#endif
+
 private:
 #ifdef RTABMAP_LIOSAM
 	lio_sam::LioSamCore * lioSam_;
@@ -56,6 +63,17 @@ private:
 	bool lost_;
 	float linVar_;
 	float angVar_;
+	ParametersMap parameters_;
+	Transform imuLocalTransform_; // base_link -> imu_link (cached for deferred init)
+
+	// Buffered IMU samples received before initialization
+	struct ImuSample {
+		double stamp;
+		Eigen::Vector3d acc;
+		Eigen::Vector3d gyro;
+		Eigen::Quaterniond orientation;
+	};
+	std::vector<ImuSample> imuBuffer_;
 #endif
 };
 

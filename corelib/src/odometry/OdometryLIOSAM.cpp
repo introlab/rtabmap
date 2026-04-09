@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UDirectory.h"
+#include "rtabmap/utilite/UFile.h"
 
 #ifdef RTABMAP_LIOSAM
 #include <LioSamCore.h>
@@ -55,6 +57,7 @@ OdometryLIOSAM::OdometryLIOSAM(const ParametersMap & parameters) :
 	,lost_(false)
 	,linVar_(Parameters::defaultOdomLIOSAMLinVar())
 	,angVar_(Parameters::defaultOdomLIOSAMAngVar())
+	,parameters_(parameters)
 #endif
 {
 #ifdef RTABMAP_LIOSAM
@@ -62,93 +65,6 @@ OdometryLIOSAM::OdometryLIOSAM(const ParametersMap & parameters) :
 	UASSERT(linVar_ > 0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLIOSAMAngVar(), angVar_);
 	UASSERT(angVar_ > 0.0f);
-
-	// Build ParamServer from rtabmap parameters
-	ParamServer config;
-
-	// Sensor type
-	int sensorType = Parameters::defaultOdomLIOSAMSensor();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMSensor(), sensorType);
-	if(sensorType == 1)
-		config.sensor = SensorType::OUSTER;
-	else if(sensorType == 2)
-		config.sensor = SensorType::LIVOX;
-	else
-		config.sensor = SensorType::VELODYNE;
-
-	config.N_SCAN = Parameters::defaultOdomLIOSAMNScan();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMNScan(), config.N_SCAN);
-
-	config.Horizon_SCAN = Parameters::defaultOdomLIOSAMHorizonScan();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMHorizonScan(), config.Horizon_SCAN);
-
-	config.imuAccNoise = Parameters::defaultOdomLIOSAMImuAccNoise();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMImuAccNoise(), config.imuAccNoise);
-
-	config.imuGyrNoise = Parameters::defaultOdomLIOSAMImuGyrNoise();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMImuGyrNoise(), config.imuGyrNoise);
-
-	config.imuAccBiasN = Parameters::defaultOdomLIOSAMImuAccBiasN();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMImuAccBiasN(), config.imuAccBiasN);
-
-	config.imuGyrBiasN = Parameters::defaultOdomLIOSAMImuGyrBiasN();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMImuGyrBiasN(), config.imuGyrBiasN);
-
-	config.imuGravity = Parameters::defaultOdomLIOSAMImuGravity();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMImuGravity(), config.imuGravity);
-
-	config.edgeThreshold = Parameters::defaultOdomLIOSAMEdgeThreshold();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMEdgeThreshold(), config.edgeThreshold);
-
-	config.surfThreshold = Parameters::defaultOdomLIOSAMSurfThreshold();
-	Parameters::parse(parameters, Parameters::kOdomLIOSAMSurfThreshold(), config.surfThreshold);
-
-	// Set reasonable defaults for params not exposed via rtabmap
-	config.downsampleRate = 1;
-	config.lidarMinRange = 1.0f;
-	config.lidarMaxRange = 1000.0f;
-	config.imuRPYWeight = 0.01f;
-	config.odometrySurfLeafSize = 0.2f;
-	config.mappingCornerLeafSize = 0.2f;
-	config.mappingSurfLeafSize = 0.4f;
-	config.z_tollerance = FLT_MAX;
-	config.rotation_tollerance = FLT_MAX;
-	config.numberOfCores = 4;
-	config.mappingProcessInterval = 0.01;
-	config.surroundingkeyframeAddingDistThreshold = 1.0f;
-	config.surroundingkeyframeAddingAngleThreshold = 0.2f;
-	config.surroundingKeyframeDensity = 1.0f;
-	config.surroundingKeyframeSearchRadius = 50.0f;
-	config.loopClosureEnableFlag = false;  // rtabmap handles loop closures
-	config.loopClosureFrequency = 1.0f;
-	config.surroundingKeyframeSize = 50;
-	config.historyKeyframeSearchRadius = 10.0f;
-	config.historyKeyframeSearchTimeDiff = 30.0f;
-	config.historyKeyframeSearchNum = 25;
-	config.historyKeyframeFitnessScore = 0.3f;
-	config.globalMapVisualizationSearchRadius = 1e3f;
-	config.globalMapVisualizationPoseDensity = 10.0f;
-	config.globalMapVisualizationLeafSize = 1.0f;
-	config.edgeFeatureMinValidNum = 10;
-	config.surfFeatureMinValidNum = 100;
-	config.savePCD = false;
-	config.useImuHeadingInitialization = false;
-	config.useGpsElevation = false;
-	config.gpsCovThreshold = 2.0f;
-	config.poseCovThreshold = 25.0f;
-
-	// Identity extrinsics (IMU data should already be in lidar frame)
-	config.extRotV = {1, 0, 0, 0, 1, 0, 0, 0, 1};
-	config.extRPYV = {1, 0, 0, 0, 1, 0, 0, 0, 1};
-	config.extTransV = {0, 0, 0};
-
-	// Set the global extrinsics used by imuConverter
-	extRot = Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor> >(config.extRotV.data());
-	extRPY = Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor> >(config.extRPYV.data());
-	extTrans = Eigen::Map<const Eigen::Matrix<double, 3, 1> >(config.extTransV.data());
-	extQRPY = Eigen::Quaterniond(extRPY).inverse();
-
-	lioSam_ = new lio_sam::LioSamCore(config);
 #endif
 }
 
@@ -169,8 +85,159 @@ void OdometryLIOSAM::reset(const Transform & initialPose)
 	}
 	lastPose_ = Transform::getIdentity();
 	lost_ = false;
+	imuLocalTransform_ = Transform();
+	imuBuffer_.clear();
 #endif
 }
+
+#ifdef RTABMAP_LIOSAM
+bool OdometryLIOSAM::init(const Transform & imuLocalTransform, const Transform & lidarLocalTransform)
+{
+	ParamServer config;
+
+	// Check if a config file path was provided
+	std::string configPath;
+	Parameters::parse(parameters_, Parameters::kOdomLIOSAMConfigPath(), configPath);
+	if(!configPath.empty())
+	{
+		configPath = uReplaceChar(configPath, '~', UDirectory::homeDir());
+		if(!UFile::exists(configPath))
+		{
+			UERROR("LIO-SAM config file not found: %s", configPath.c_str());
+			return false;
+		}
+		UINFO("Loading LIO-SAM parameters from config file: %s", configPath.c_str());
+		config = loadParamsFromYaml(configPath);
+	}
+	else
+	{
+		UINFO("No LIO-SAM config file provided, using rtabmap parameters");
+
+		// Build ParamServer from individual rtabmap parameters
+		int sensorType = Parameters::defaultOdomLIOSAMSensor();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMSensor(), sensorType);
+		if(sensorType == 1)
+			config.sensor = SensorType::OUSTER;
+		else if(sensorType == 2)
+			config.sensor = SensorType::LIVOX;
+		else
+			config.sensor = SensorType::VELODYNE;
+
+		config.N_SCAN = Parameters::defaultOdomLIOSAMNScan();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMNScan(), config.N_SCAN);
+
+		config.Horizon_SCAN = Parameters::defaultOdomLIOSAMHorizonScan();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMHorizonScan(), config.Horizon_SCAN);
+
+		config.imuAccNoise = Parameters::defaultOdomLIOSAMImuAccNoise();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMImuAccNoise(), config.imuAccNoise);
+
+		config.imuGyrNoise = Parameters::defaultOdomLIOSAMImuGyrNoise();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMImuGyrNoise(), config.imuGyrNoise);
+
+		config.imuAccBiasN = Parameters::defaultOdomLIOSAMImuAccBiasN();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMImuAccBiasN(), config.imuAccBiasN);
+
+		config.imuGyrBiasN = Parameters::defaultOdomLIOSAMImuGyrBiasN();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMImuGyrBiasN(), config.imuGyrBiasN);
+
+		config.imuGravity = Parameters::defaultOdomLIOSAMImuGravity();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMImuGravity(), config.imuGravity);
+
+		config.edgeThreshold = Parameters::defaultOdomLIOSAMEdgeThreshold();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMEdgeThreshold(), config.edgeThreshold);
+
+		config.surfThreshold = Parameters::defaultOdomLIOSAMSurfThreshold();
+		Parameters::parse(parameters_, Parameters::kOdomLIOSAMSurfThreshold(), config.surfThreshold);
+
+		// Set reasonable defaults for params not exposed via rtabmap
+		config.downsampleRate = 1;
+		config.lidarMinRange = 1.0f;
+		config.lidarMaxRange = 1000.0f;
+		config.imuRPYWeight = 0.01f;
+		config.odometrySurfLeafSize = 0.2f;
+		config.mappingCornerLeafSize = 0.2f;
+		config.mappingSurfLeafSize = 0.4f;
+		config.z_tollerance = FLT_MAX;
+		config.rotation_tollerance = FLT_MAX;
+		config.numberOfCores = 4;
+		config.mappingProcessInterval = 0.01;
+		config.surroundingkeyframeAddingDistThreshold = 1.0f;
+		config.surroundingkeyframeAddingAngleThreshold = 0.2f;
+		config.surroundingKeyframeDensity = 1.0f;
+		config.surroundingKeyframeSearchRadius = 50.0f;
+		config.loopClosureEnableFlag = false;  // rtabmap handles loop closures
+		config.loopClosureFrequency = 1.0f;
+		config.surroundingKeyframeSize = 50;
+		config.historyKeyframeSearchRadius = 10.0f;
+		config.historyKeyframeSearchTimeDiff = 30.0f;
+		config.historyKeyframeSearchNum = 25;
+		config.historyKeyframeFitnessScore = 0.3f;
+		config.globalMapVisualizationSearchRadius = 1e3f;
+		config.globalMapVisualizationPoseDensity = 10.0f;
+		config.globalMapVisualizationLeafSize = 1.0f;
+		config.edgeFeatureMinValidNum = 10;
+		config.surfFeatureMinValidNum = 100;
+		config.savePCD = false;
+		config.useImuHeadingInitialization = false;
+		config.useGpsElevation = false;
+		config.gpsCovThreshold = 2.0f;
+		config.poseCovThreshold = 25.0f;
+	}
+
+	// Always override extrinsics from sensor local transforms when available.
+	// This ensures the IMU-to-lidar transform matches the actual sensor setup
+	// regardless of what the config file says.
+	//   imuLocalTransform   = T_base_imu   (base_link -> imu_link)
+	//   lidarLocalTransform = T_base_lidar  (base_link -> lidar_link)
+	// LIO-SAM's imuConverter() expects T_lidar_imu:
+	//   T_lidar_imu = T_base_lidar^{-1} * T_base_imu
+	if(!imuLocalTransform.isNull() && !lidarLocalTransform.isNull())
+	{
+		Transform T_lidar_imu = lidarLocalTransform.inverse() * imuLocalTransform;
+		Eigen::Matrix4d T = T_lidar_imu.toEigen4d();
+		Eigen::Matrix3d rot = T.block<3,3>(0,0);
+		Eigen::Vector3d trans = T.block<3,1>(0,3);
+		config.extRotV = {rot(0,0), rot(0,1), rot(0,2),
+		                  rot(1,0), rot(1,1), rot(1,2),
+		                  rot(2,0), rot(2,1), rot(2,2)};
+		config.extRPYV = config.extRotV;
+		config.extTransV = {trans(0), trans(1), trans(2)};
+		UINFO("LIO-SAM extrinsics (T_lidar_imu) computed from sensor local transforms");
+	}
+	else if(config.extRotV.size() != 9 || config.extTransV.size() != 3)
+	{
+		// No valid extrinsics from sensor data or config file
+		UERROR("Cannot compute IMU-to-lidar extrinsics: IMU local transform %s, lidar local transform %s. "
+		       "Both must be valid, or the config file must contain valid extrinsics.",
+		       imuLocalTransform.isNull() ? "is null" : "is valid",
+		       lidarLocalTransform.isNull() ? "is null" : "is valid");
+		return false;
+	}
+	else
+	{
+		UINFO("Using extrinsics from config file (sensor local transforms not available)");
+	}
+
+	// Set the global extrinsics used by imuConverter
+	extRot = Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor> >(config.extRotV.data());
+	extRPY = Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::RowMajor> >(config.extRPYV.data());
+	extTrans = Eigen::Map<const Eigen::Matrix<double, 3, 1> >(config.extTransV.data());
+	extQRPY = Eigen::Quaterniond(extRPY).inverse();
+
+	lioSam_ = new lio_sam::LioSamCore(config);
+
+	// Replay buffered IMU samples
+	UINFO("Replaying %d buffered IMU samples into LIO-SAM", (int)imuBuffer_.size());
+	for(const ImuSample & s : imuBuffer_)
+	{
+		lioSam_->addImu(s.stamp, s.acc, s.gyro, s.orientation);
+	}
+	imuBuffer_.clear();
+
+	return true;
+}
+#endif
 
 Transform OdometryLIOSAM::computeTransform(
 		SensorData & data,
@@ -199,11 +266,73 @@ Transform OdometryLIOSAM::computeTransform(
 			data.imu().angularVelocity()[0],
 			data.imu().angularVelocity()[1],
 			data.imu().angularVelocity()[2]);
-		lioSam_->addImu(data.stamp(), acc, gyro, qd);
+
+		// Deferred initialization: need both IMU and lidar local transforms
+		// to compute T_lidar_imu extrinsics for LIO-SAM.
+		if(!lioSam_)
+		{
+			// Cache IMU local transform when first available
+			if(imuLocalTransform_.isNull() && !data.imu().localTransform().isNull())
+			{
+				imuLocalTransform_ = data.imu().localTransform();
+			}
+
+			// Try to initialize if we have both transforms
+			if(!imuLocalTransform_.isNull() && !data.laserScanRaw().isEmpty() &&
+			   !data.laserScanRaw().localTransform().isNull())
+			{
+				if(!init(imuLocalTransform_, data.laserScanRaw().localTransform()))
+				{
+					UERROR("Failed to initialize LIO-SAM");
+					return t;
+				}
+			}
+			else
+			{
+				// Buffer IMU until we can initialize
+				ImuSample s;
+				s.stamp = data.stamp();
+				s.acc = acc;
+				s.gyro = gyro;
+				s.orientation = qd;
+				imuBuffer_.push_back(s);
+
+				if(data.laserScanRaw().isEmpty())
+				{
+					return t;
+				}
+			}
+		}
+
+		if(lioSam_)
+		{
+			lioSam_->addImu(data.stamp(), acc, gyro, qd);
+		}
 
 		// IMU-only: no pose to return
 		if(data.laserScanRaw().isEmpty())
 		{
+			return t;
+		}
+	}
+
+	if(!lioSam_)
+	{
+		// A scan arrived without IMU in the same message.
+		// Try to init if the IMU local transform was already cached.
+		if(!imuLocalTransform_.isNull() && !data.laserScanRaw().isEmpty() &&
+		   !data.laserScanRaw().localTransform().isNull())
+		{
+			if(!init(imuLocalTransform_, data.laserScanRaw().localTransform()))
+			{
+				UERROR("Failed to initialize LIO-SAM");
+				return t;
+			}
+		}
+		else
+		{
+			UDEBUG("LIO-SAM not yet initialized, waiting for IMU (have=%s) and lidar (need scan) local transforms...",
+				imuLocalTransform_.isNull() ? "no" : "yes");
 			return t;
 		}
 	}

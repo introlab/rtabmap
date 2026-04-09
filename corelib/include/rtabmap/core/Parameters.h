@@ -688,6 +688,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomCuVSLAM, MulticamMode,        int, 0,  "cuVSLAM multicam_mode setting: 0=moderate, 1=performance, 2=precision.");
 
     // Odometry LIO-SAM
+    RTABMAP_PARAM(OdomLIOSAM, ConfigPath,   std::string, "", "Path to LIO-SAM params.yaml config file. When set, sensor/IMU/feature parameters are loaded from the file and the individual parameters below are ignored.");
     RTABMAP_PARAM(OdomLIOSAM, Sensor,       int,   0,     "LiDAR sensor: 0=Velodyne, 1=Ouster, 2=Livox");
     RTABMAP_PARAM(OdomLIOSAM, NScan,        int,   16,    "Number of LiDAR channels (16, 32, 64, 128).");
     RTABMAP_PARAM(OdomLIOSAM, HorizonScan,  int,   1800,  "Horizontal resolution (Velodyne:1800, Ouster:512/1024/2048).");
