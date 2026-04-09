@@ -32,14 +32,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RTAB_G2O_EDGE_SBACAM_PRIOR_H_
 #define RTAB_G2O_EDGE_SBACAM_PRIOR_H_
 
+#ifdef RTABMAP_ORB_SLAM
+#include "g2o/types/types_six_dof_expmap.h"
+#else
 #include "g2o/types/sba/types_sba.h"
+#endif
 #include "g2o/core/base_unary_edge.h"
 namespace rtabmap {
   /**
    * \brief EdgeSBACamPrior
     * \brief g2o edge with gravity constraint
    */
-class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCam> {
+class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, VertexCam> {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     EdgeSBACamPrior() {
@@ -54,8 +58,14 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
 
     // return the error estimate as a 3-vector
     void computeError() {
-      const g2o::VertexCam* v = static_cast<const g2o::VertexCam*>(_vertices[0]);
-      g2o::SE3Quat delta = _inverseMeasurement * v->estimate() * _cameraInvLocalTransform;
+      const VertexCam* v = static_cast<const VertexCam*>(_vertices[0]);
+      g2o::SE3Quat estimate;
+#ifdef RTABMAP_ORB_SLAM
+      estimate = v->estimate().inverse();
+#else
+      estimate = v->estimate();
+#endif
+      g2o::SE3Quat delta = _inverseMeasurement * estimate * _cameraInvLocalTransform;
       _error[0]=delta.translation().x();
       _error[1]=delta.translation().y();
       _error[2]=delta.translation().z();
@@ -97,10 +107,14 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, g2o::VertexCa
     }
 
     virtual void initialEstimate(const g2o::OptimizableGraph::VertexSet& from, g2o::OptimizableGraph::Vertex* to) {
-      g2o::VertexCam *v = static_cast<g2o::VertexCam*>(_vertices[0]);
+      VertexCam *v = static_cast<VertexCam*>(_vertices[0]);
       assert(v && "Vertex for the Prior edge is not set");
 
+#ifdef RTABMAP_ORB_SLAM
+      g2o::SE3Quat newEstimate = _cameraInvLocalTransform * _inverseMeasurement;
+#else
       g2o::SE3Quat newEstimate = measurement()*_cameraInvLocalTransform.inverse();
+#endif
       if (_information.block<3,3>(0,0).array().abs().sum() == 0){ // do not set translation, as that part of the information is all zero
         newEstimate.setTranslation(v->estimate().translation());
       }

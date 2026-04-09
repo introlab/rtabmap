@@ -57,7 +57,7 @@ void showUsage()
 			"   rtabmap-reprocess [options] \"input.db\" \"output.db\"\n"
 			"   rtabmap-reprocess [options] \"input1.db;input2.db;input3.db\" \"output.db\"\n"
 			"\n"
-			"   For the second example, only parameters from the first database are used.\n"
+			"   For the second example, only parameters from the first database are used (unless -params_last or -default are used).\n"
 			"   If Mem/IncrementalMemory is false, RTAB-Map is initialized with the first input database,\n"
 			"   then localization-only is done with next databases against the first one.\n"
 			"   To see warnings when loop closures are rejected, add \"--uwarn\" argument.\n"
@@ -71,6 +71,7 @@ void showUsage()
 			"                       from the database. If custom parameters are also set as \n"
 			"                       arguments, they overwrite those in config file and the database.\n"
 			"     -default    Input database's parameters are ignored, using default ones instead.\n"
+			"     -params_last  Parameters of the last database is used instead of the first one (ignored if -default is also used).\n"
 			"     -odom       Recompute odometry. See \"Odom/\" parameters with --params. If -skip option\n"
 			"                 is used, it will be applied to odometry frames, not rtabmap frames. Multi-session\n"
 			"                 may not be detected correctly if the input covariance between sessions doesn't have 9999.\n"
@@ -260,6 +261,7 @@ int main(int argc, char * argv[])
 	bool assemble3dOctoMap = false;
 	bool useDatabaseRate = false;
 	bool useDefaultParameters = false;
+	bool useLastDatabaseParameters = false;
 	bool recomputeOdometry = false;
 	bool useInputOdometryAsGuess = false;
 	double odomLinVarOverride = 0.0;
@@ -317,6 +319,10 @@ int main(int argc, char * argv[])
 		{
 			useDefaultParameters = true;
 			printf("Using default parameters.\n");
+		}
+		else if(strcmp(argv[i], "-params_last") == 0 || strcmp(argv[i], "--params_last") == 0)
+		{
+			useLastDatabaseParameters = true;
 		}
 		else if(strcmp(argv[i], "-odom") == 0 || strcmp(argv[i], "--odom") == 0)
 		{
@@ -683,11 +689,10 @@ int main(int argc, char * argv[])
 	}
 
 	// Get parameters of the first database
-	DBDriver * dbDriver = DBDriver::create();
+	std::shared_ptr<DBDriver> dbDriver(DBDriver::create());
 	if(!dbDriver->openConnection(databases.front(), false))
 	{
-		printf("Failed opening input database!\n");
-		delete dbDriver;
+		printf("Failed opening the input database!\n");
 		return 1;
 	}
 
@@ -695,13 +700,28 @@ int main(int argc, char * argv[])
 	std::string targetVersion;
 	if(!useDefaultParameters)
 	{
-		parameters = dbDriver->getLastParameters();
-		targetVersion = dbDriver->getDatabaseVersion();
-		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
+		if(databases.size() > 1 && useLastDatabaseParameters)
+		{
+			printf("Using last database's parameters.\n");
+			std::shared_ptr<DBDriver> lastDbDriver(DBDriver::create());
+			if(!lastDbDriver->openConnection(databases.back(), true))
+			{
+				printf("Failed opening the last input database!\n");
+				return 1;
+			}
+			parameters = lastDbDriver->getLastParameters();
+			targetVersion = lastDbDriver->getDatabaseVersion();
+		}
+		else
+		{
+			parameters = dbDriver->getLastParameters();
+			targetVersion = dbDriver->getDatabaseVersion();
+		}
 		if(parameters.empty())
 		{
-			printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", dbDriver->getDatabaseVersion().c_str());
+			printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", targetVersion.c_str());
 		}
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
 	}
 
 	if(customParameters.size())
@@ -800,7 +820,6 @@ int main(int argc, char * argv[])
 	{
 		printf("Input database doesn't have any nodes saved in it.\n");
 		dbDriver->closeConnection(false);
-		delete dbDriver;
 		return 1;
 	}
 	if(!((!incrementalMemory || appendMode) && databases.size() > 1))
@@ -822,7 +841,6 @@ int main(int argc, char * argv[])
 		if (!dbDriver->openConnection(*iter, false))
 		{
 			printf("Failed opening input database!\n");
-			delete dbDriver;
 			return 1;
 		}
 		ids.clear();
@@ -830,8 +848,7 @@ int main(int argc, char * argv[])
 		totalIds += ids.size();
 		dbDriver->closeConnection(false);
 	}
-	delete dbDriver;
-	dbDriver = 0;
+	dbDriver.reset();
 
 	std::string workingDirectory = UDirectory::getDir(outputDatabasePath);
 	printf("Set working directory to \"%s\".\n", workingDirectory.c_str());
@@ -1386,13 +1403,12 @@ int main(int argc, char * argv[])
 		{
 			if(save2DMap)
 			{
-				DBDriver * driver = DBDriver::create();
+				std::shared_ptr<DBDriver> driver(DBDriver::create());
 				if(driver->openConnection(outputDatabasePath))
 				{
 					driver->save2DMap(map, xMin, yMin, grid.getCellSize());
 					printf("Saving occupancy grid to database... done!\n");
 				}
-				delete driver;
 			}
 			else
 			{
@@ -1481,13 +1497,12 @@ int main(int argc, char * argv[])
 		{
 			if(save2DMap)
 			{
-				DBDriver * driver = DBDriver::create();
+				std::shared_ptr<DBDriver> driver(DBDriver::create());
 				if(driver->openConnection(outputDatabasePath))
 				{
 					driver->save2DMap(map, xMin, yMin, cellSize);
 					printf("Saving occupancy grid to database... done!\n");
 				}
-				delete driver;
 			}
 			else
 			{
