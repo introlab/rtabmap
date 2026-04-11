@@ -388,14 +388,36 @@ Transform OdometryLIOSAM::computeTransform(
 		}
 		UDEBUG("Scan split: %fs, points=%d", timer.ticks(), (int)laserCloudIn->size());
 
-		// Process scan
+		// Process scan. Retrieve the deskewed (motion-compensated) cloud
+		// produced by LIO-SAM's image projection stage so we can propagate
+		// it back into SensorData: otherwise downstream consumers such as
+		// loop closure registration would still see the raw pre-deskew scan.
 		Eigen::Affine3f poseOut;
 		Eigen::MatrixXd covOut;
-		bool ok = lioSam_->processScan(data.stamp(), laserCloudIn, rings, times, poseOut, covOut);
+		pcl::PointCloud<pcl::PointXYZI>::Ptr deskewedCloud(new pcl::PointCloud<pcl::PointXYZI>);
+		bool ok = lioSam_->processScan(data.stamp(), laserCloudIn, rings, times, poseOut, covOut, deskewedCloud);
 		UDEBUG("LIO-SAM process: %fs", timer.ticks());
 
 		if(ok)
 		{
+			// Replace the raw scan on SensorData with LIO-SAM's deskewed
+			// cloud so downstream stages (loop closure registration in
+			// particular) use the motion-compensated points instead of
+			// the raw pre-deskew scan. The deskewed cloud is still in the
+			// lidar frame, so the existing localTransform/rangeMax apply.
+			if(deskewedCloud && !deskewedCloud->empty())
+			{
+				const LaserScan & rawScan = data.laserScanRaw();
+				LaserScan deskewedScan(
+					util3d::laserScanFromPointCloud(*deskewedCloud),
+					rawScan.maxPoints(),
+					rawScan.rangeMax(),
+					rawScan.localTransform());
+				data.setLaserScan(deskewedScan);
+				UDEBUG("Replaced raw scan with deskewed cloud (%d -> %d points)",
+					(int)laserCloudIn->size(), (int)deskewedCloud->size());
+			}
+
 			Transform pose = Transform::fromEigen3f(poseOut);
 
 			if(!pose.isNull())
