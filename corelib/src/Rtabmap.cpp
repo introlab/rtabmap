@@ -1480,7 +1480,7 @@ bool Rtabmap::process(
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
 
-	ULOGGER_INFO("Processing signature %d w=%d map=%d", signature->id(), signature->getWeight(), signature->mapId());
+	ULOGGER_INFO("Processing signature %d (%f) w=%d map=%d", signature->id(), signature->getStamp(), signature->getWeight(), signature->mapId());
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
 
@@ -1523,8 +1523,8 @@ bool Rtabmap::process(
 					{
 						const Signature * s = _memory->getSignature(links.begin()->second.to());
 						UASSERT(s!=0);
-						// don't filter if the new node is not intermediate but previous one is
-						if(signature->getWeight() < 0 || s->getWeight() >= 0)
+						// Check small motion if previous node is not an intermediate node (consecutive intermediate nodes are merged later)
+						if(s->getWeight() >= 0)
 						{
 							t = links.begin()->second.transform();
 						}
@@ -2232,8 +2232,9 @@ bool Rtabmap::process(
 		maxLocalLocationsImmunized = _localImmunizationRatio * float(_memory->getWorkingMem().size());
 	}
 	// no need to do retrieval or immunization of locations if memory management
-	// is disabled and all nodes are in WM
-	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0))
+	// is disabled and all nodes are in WM.
+	// Also skip memory mangement on intermediate nodes
+	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0) && signature->getWeight()>=0)
 	{
 		if(retrievalId > 0)
 		{
@@ -2373,7 +2374,7 @@ bool Rtabmap::process(
 	// RETRIEVAL 2/3 : Update planned path and get next nodes to retrieve
 	//============================================================
 	std::list<int> retrievalLocalIds;
-	if(_rgbdSlamMode)
+	if(_rgbdSlamMode && signature->getWeight()>=0)
 	{
 		// Priority on locations on the planned path
 		if(_path.size())
@@ -3205,6 +3206,8 @@ bool Rtabmap::process(
 	UDEBUG("Not self ref links: %d", (int)graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size());
 
 	if(_rgbdSlamMode
+		&&
+		signature->getWeight() != -1 // Ignore graph optimization on intermediate nodes
 		&&
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
@@ -4282,6 +4285,7 @@ bool Rtabmap::process(
 	{
 		_memory->addLink(Link(signature->id(), signature->id(), Link::kPosePrior, odomPose, odomCovariance.inv()));
 	}
+	bool lastSignatureWasIntermediateNode = signature->getWeight() == -1;
 
 	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)
 	int signatureRemoved = _memory->cleanup();
@@ -4387,10 +4391,20 @@ bool Rtabmap::process(
 	//============================================================
 	double totalTime = timerTotal.ticks();
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
-	if((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
-		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
+	if(!lastSignatureWasIntermediateNode && // skip memory management on intermediate nodes
+		((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
+		 (_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)))
 	{
-		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMem().size(), _maxMemoryAllowed);
+		if(_maxTimeAllowed!=0 && totalTime*1000>_maxTimeAllowed)
+		{
+			ULOGGER_INFO("Removing old signatures because time limit is reached %f ms > %f ms...",
+				totalTime*1000, _maxTimeAllowed);
+		}
+		if(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)
+		{
+			ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
+				_memory->getWorkingMem().size(), _maxMemoryAllowed);
+		}
 		immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
 		std::list<int> transferred = _memory->forget(immunizedLocations);
 		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
@@ -5205,7 +5219,20 @@ void Rtabmap::optimizeCurrentMap(
 		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true, false);
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
-			id = ids.begin()->first;
+			for(auto pair: ids)
+			{
+				// Make sure fromId is not an intermediate node
+				const Signature * s = _memory->getSignature(pair.first);
+				if(s && s->getWeight() != -1)
+				{
+					id = pair.first;
+					break;
+				}
+				else if(!s)
+				{
+					UWARN("Not found node %d in memory?!", pair.first);
+				}
+			}
 		}
 		UINFO("get %d ids time %f s", (int)ids.size(), timer.ticks());
 
