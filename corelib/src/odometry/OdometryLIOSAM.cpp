@@ -203,7 +203,7 @@ bool OdometryLIOSAM::init(const Transform & imuLocalTransform, const Transform &
 		                  rot(2,0), rot(2,1), rot(2,2)};
 		config.extRPYV = config.extRotV;
 		config.extTransV = {trans(0), trans(1), trans(2)};
-		UINFO("LIO-SAM extrinsics (T_lidar_imu) computed from sensor local transforms");
+		UINFO("LIO-SAM extrinsics (T_lidar_imu) computed from sensor local transforms: %s", T_lidar_imu.prettyPrint().c_str());
 	}
 	else if(config.extRotV.size() != 9 || config.extTransV.size() != 3)
 	{
