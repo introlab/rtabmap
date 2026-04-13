@@ -2969,18 +2969,19 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				Eigen::Vector3f zAxis(cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
 				Eigen::Vector3f yAxis = zAxis.cross(vPosToFocal);
 				Eigen::Vector3f xAxis = yAxis.cross(zAxis);
-				Transform PR(xAxis[0], xAxis[1], xAxis[2],0,
-							yAxis[0], yAxis[1], yAxis[2],0,
-							zAxis[0], zAxis[1], zAxis[2],0);
 
-				PR.normalizeRotation();
+				Eigen::Matrix3f m;
+				m << xAxis[0], xAxis[1], xAxis[2],
+					yAxis[0], yAxis[1], yAxis[2],
+					zAxis[0], zAxis[1], zAxis[2];
 
-				Transform P(PR[0], PR[1], PR[2], cameras.front().pos[0],
-							PR[4], PR[5], PR[6], cameras.front().pos[1],
-							PR[8], PR[9], PR[10], cameras.front().pos[2]);
-				Transform F(PR[0], PR[1], PR[2], cameras.front().focal[0],
-							PR[4], PR[5], PR[6], cameras.front().focal[1],
-							PR[8], PR[9], PR[10], cameras.front().focal[2]);
+				// Make sure it is normalized
+				Eigen::Quaternionf q = Eigen::Quaternionf(m).normalized();
+
+				Transform P(cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
+							q.x(), q.y(), q.z(), q.w());
+				Transform F(cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
+							q.x(), q.y(), q.z(), q.w());
 				Transform N = pose;
 				Transform O = _lastPose;
 				Transform O2N = O.inverse()*N;
