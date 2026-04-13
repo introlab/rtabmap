@@ -657,7 +657,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UWARN("Could not find imu transform at %f", data.stamp());
 		}
 	}
-	else if(!guess.isNull()) {
+	else if(!guess.isNull() && (!data.imageRaw().empty() || !data.laserScanRaw().isEmpty())) {
 		UDEBUG("Using guess from motion %s", guess.prettyPrint().c_str());
 	}
 
