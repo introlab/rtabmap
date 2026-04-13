@@ -1762,6 +1762,55 @@ LaserScan laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud,
 	return laserScanFromPointCloud(cloud, pcl::IndicesPtr(), transform, filterNaNs);
 }
 
+LaserScan laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const Transform & transform, bool filterNaNs)
+{
+	return laserScanFromPointCloud(cloud, pcl::IndicesPtr(), transform, filterNaNs);
+}
+
+LaserScan laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const pcl::IndicesPtr & indices, const Transform & transform, bool filterNaNs)
+{
+	// Layout: [x, y, z, intensity, ring, time] (ring cast to float, values up to
+	// ~16M are exactly representable so all realistic laser line counts fit).
+	cv::Mat laserScan;
+	bool nullTransform = transform.isNull() || transform.isIdentity();
+	Eigen::Affine3f transform3f = transform.toEigen3f();
+	int oi = 0;
+	const int total = indices.get() ? (int)indices->size() : (int)cloud.size();
+	laserScan = cv::Mat(1, total, CV_32FC(6));
+	for(int i=0; i<total; ++i)
+	{
+		int index = indices.get() ? indices->at(i) : i;
+		const rtabmap::PointXYZIRT & src = cloud.at(index);
+		if(filterNaNs && !pcl::isFinite(src))
+		{
+			continue;
+		}
+		float * ptr = laserScan.ptr<float>(0, oi++);
+		if(!nullTransform)
+		{
+			pcl::PointXYZ pt(src.x, src.y, src.z);
+			pt = pcl::transformPoint(pt, transform3f);
+			ptr[0] = pt.x;
+			ptr[1] = pt.y;
+			ptr[2] = pt.z;
+		}
+		else
+		{
+			ptr[0] = src.x;
+			ptr[1] = src.y;
+			ptr[2] = src.z;
+		}
+		ptr[3] = src.intensity;
+		ptr[4] = static_cast<float>(src.ring);
+		ptr[5] = src.time;
+	}
+	if(oi == 0)
+	{
+		return LaserScan();
+	}
+	return LaserScan(laserScan(cv::Range::all(), cv::Range(0, oi)), 0, 0.0f, LaserScan::kXYZIRT);
+}
+
 LaserScan laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::IndicesPtr & indices, const Transform & transform, bool filterNaNs)
 {
 	cv::Mat laserScan;
@@ -2343,7 +2392,7 @@ pcl::PCLPointCloud2::Ptr laserScanToPointCloud2(const LaserScan & laserScan, con
 	{
 		pcl::toPCLPointCloud2(*laserScanToPointCloud(laserScan, transform), *cloud);
 	}
-	else if(laserScan.format() == LaserScan::kXYI || laserScan.format() == LaserScan::kXYZI || laserScan.format() == LaserScan::kXYZIT)
+	else if(laserScan.format() == LaserScan::kXYI || laserScan.format() == LaserScan::kXYZI || laserScan.format() == LaserScan::kXYZIT || laserScan.format() == LaserScan::kXYZIRT)
 	{
 		pcl::toPCLPointCloud2(*laserScanToPointCloudI(laserScan, transform), *cloud);
 	}
@@ -3807,9 +3856,11 @@ LaserScan deskew(
 		return LaserScan();
 	}
 
-	if(input.format() != LaserScan::kXYZIT)
+	if(!input.hasTime())
 	{
-		UERROR("input scan doesn't have \"time\" channel! Only format \"%s\" supported yet.", LaserScan::formatName(LaserScan::kXYZIT).c_str());
+		UERROR("input scan doesn't have a \"time\" channel! Supported formats: \"%s\", \"%s\".",
+			LaserScan::formatName(LaserScan::kXYZIT).c_str(),
+			LaserScan::formatName(LaserScan::kXYZIRT).c_str());
 		return LaserScan();
 	}
 
@@ -3865,7 +3916,14 @@ LaserScan deskew(
 	double stamp;
 	UTimer processingTime;
 	double scanTime = lastStamp - firstStamp;
-	cv::Mat output(1, input.size(), CV_32FC4); // XYZI - Dense
+	// Preserve ring when input carries it (kXYZIRT): the geometric channel is
+	// still meaningful after deskewing. Per-point time is zeroed because all
+	// points share the same pose after correction.
+	const bool preserveRing = input.hasRing();
+	const int offsetRing = input.getRingOffset();
+	const LaserScan::Format outputFormat = preserveRing ? LaserScan::kXYZIRT : LaserScan::kXYZI;
+	const int outputChannels = preserveRing ? 6 : 4;
+	cv::Mat output(1, input.size(), CV_32FC(outputChannels));
 	int offsetIntensity = input.getIntensityOffset();
 	bool isLocalTransformIdentity = input.localTransform().isIdentity();
 	Transform localTransformInv = input.localTransform().inverse();
@@ -3904,7 +3962,12 @@ LaserScan deskew(
 					dataPtr[0] = pt.x;
 					dataPtr[1] = pt.y;
 					dataPtr[2] = pt.z;
-					dataPtr[3] = input.data().ptr<float>(v, u)[offsetIntensity];
+					dataPtr[3] = inputPtr[offsetIntensity];
+					if(preserveRing)
+					{
+						dataPtr[4] = inputPtr[offsetRing];
+						dataPtr[5] = 0.0f;
+					}
 				}
 			}
 		}
@@ -3941,14 +4004,19 @@ LaserScan deskew(
 					dataPtr[0] = pt.x;
 					dataPtr[1] = pt.y;
 					dataPtr[2] = pt.z;
-					dataPtr[3] = input.data().ptr<float>(v, u)[offsetIntensity];
+					dataPtr[3] = inputPtr[offsetIntensity];
+					if(preserveRing)
+					{
+						dataPtr[4] = inputPtr[offsetRing];
+						dataPtr[5] = 0.0f;
+					}
 				}
 			}
 		}
 	}
 	output = cv::Mat(output, cv::Range::all(), cv::Range(0, oi));
 	UDEBUG("Lidar deskewing time=%fs", processingTime.elapsed());
-	return LaserScan(output, input.maxPoints(), input.rangeMax(), LaserScan::kXYZI, input.localTransform());
+	return LaserScan(output, input.maxPoints(), input.rangeMax(), outputFormat, input.localTransform());
 }
 
 

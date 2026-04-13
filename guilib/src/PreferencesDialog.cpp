@@ -243,6 +243,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_CUVSLAM
 	_ui->odom_strategy->setItemData(13, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_LIOSAM
+	_ui->odom_strategy->setItemData(14, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -1697,6 +1700,22 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Odometry CuVSLAM
 	_ui->odom_cuvslam_multicam_mode->setObjectName(Parameters::kOdomCuVSLAMMulticamMode().c_str());
+
+	// Odometry LIO-SAM
+	_ui->lineEdit_OdomLIOSAMPath->setObjectName(Parameters::kOdomLIOSAMConfigPath().c_str());
+	connect(_ui->toolButton_OdomLIOSAMPath, SIGNAL(clicked()), this, SLOT(changeOdometryLIOSAMConfigPath()));
+	_ui->odom_liosam_sensor->setObjectName(Parameters::kOdomLIOSAMSensor().c_str());
+	_ui->odom_liosam_nscan->setObjectName(Parameters::kOdomLIOSAMNScan().c_str());
+	_ui->odom_liosam_horizon_scan->setObjectName(Parameters::kOdomLIOSAMHorizonScan().c_str());
+	_ui->odom_liosam_imu_acc_noise->setObjectName(Parameters::kOdomLIOSAMImuAccNoise().c_str());
+	_ui->odom_liosam_imu_gyr_noise->setObjectName(Parameters::kOdomLIOSAMImuGyrNoise().c_str());
+	_ui->odom_liosam_imu_acc_bias_n->setObjectName(Parameters::kOdomLIOSAMImuAccBiasN().c_str());
+	_ui->odom_liosam_imu_gyr_bias_n->setObjectName(Parameters::kOdomLIOSAMImuGyrBiasN().c_str());
+	_ui->odom_liosam_imu_gravity->setObjectName(Parameters::kOdomLIOSAMImuGravity().c_str());
+	_ui->odom_liosam_edge_threshold->setObjectName(Parameters::kOdomLIOSAMEdgeThreshold().c_str());
+	_ui->odom_liosam_surf_threshold->setObjectName(Parameters::kOdomLIOSAMSurfThreshold().c_str());
+	_ui->odom_liosam_linvar->setObjectName(Parameters::kOdomLIOSAMLinVar().c_str());
+	_ui->odom_liosam_angvar->setObjectName(Parameters::kOdomLIOSAMAngVar().c_str());
 
 	//StereoDense
 	_ui->comboBox_stereoDense_strategy->setObjectName(Parameters::kStereoDenseStrategy().c_str());
@@ -5572,6 +5591,7 @@ void PreferencesDialog::updateOdometryStackedIndex(int index)
 	_ui->groupBox_odomOpenVINS->setVisible(index==10);
 	_ui->groupBox_odomOpen3D->setVisible(index==12);
 	_ui->groupBox_odomCuvslam->setVisible(index==13);
+	_ui->groupBox_odomLIOSAM->setVisible(index==14);
 }
 
 void PreferencesDialog::useOdomFeatures()
@@ -5674,6 +5694,23 @@ void PreferencesDialog::changeOdometryVINSFusionConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_OdomVinsFusionPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryLIOSAMConfigPath()
+{
+	QString path;
+	if(_ui->lineEdit_OdomLIOSAMPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("LIO-SAM Config"), this->getWorkingDirectory(), tr("LIO-SAM config (*.yaml)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("LIO-SAM Config"), _ui->lineEdit_OdomLIOSAMPath->text(), tr("LIO-SAM config (*.yaml)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomLIOSAMPath->setText(path);
 	}
 }
 

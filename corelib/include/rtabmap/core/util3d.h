@@ -39,11 +39,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/ProgressState.h>
+#include <cstdint>
 #include <map>
 #include <list>
 
 namespace rtabmap
 {
+
+// Point type carrying xyz + intensity + ring (laser line index) + time
+// (per-point acquisition offset, seconds from the scan start). Matches the
+// layout expected by LIO-SAM's Velodyne feature extractor so it can be fed
+// directly via util3d::laserScanFromPointCloud().
+struct EIGEN_ALIGN16 PointXYZIRT
+{
+	PCL_ADD_POINT4D;
+	float intensity;
+	std::uint16_t ring;
+	float time;
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
 
 namespace util3d
 {
@@ -297,6 +311,9 @@ LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl:
 // return CV_32FC4 (x,y,z,I)
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
+// return CV_32FC6 (x,y,z,I,ring,time)
+LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
+LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
 // return CV_32FC7 (x,y,z,rgb,normal_x,normal_y,normal_z)
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
@@ -511,6 +528,15 @@ LaserScan RTABMAP_CORE_EXPORT deskew(
 
 } // namespace util3d
 } // namespace rtabmap
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(rtabmap::PointXYZIRT,
+	(float, x, x)
+	(float, y, y)
+	(float, z, z)
+	(float, intensity, intensity)
+	(std::uint16_t, ring, ring)
+	(float, time, time)
+)
 
 #include "rtabmap/core/impl/util3d.hpp"
 

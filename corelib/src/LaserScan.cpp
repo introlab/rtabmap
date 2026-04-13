@@ -68,6 +68,9 @@ std::string LaserScan::formatName(const Format & format)
 		case kXYZIT:
 			name = "XYZIT";
 			break;
+		case kXYZIRT:
+			name = "XYZIRT";
+			break;
 		default:
 			name = "Unknown";
 			break;
@@ -96,6 +99,7 @@ int LaserScan::channels(const Format & format)
 			break;
 		case kXYZNormal:
 		case kXYINormal:
+		case kXYZIRT:
 			channels = 6;
 			break;
 		case kXYZINormal:
@@ -123,11 +127,15 @@ bool LaserScan::isScanHasRGB(const Format & format)
 }
 bool LaserScan::isScanHasIntensity(const Format & format)
 {
-	return format==kXYZI || format==kXYZINormal || format == kXYI || format == kXYINormal || format==kXYZIT;
+	return format==kXYZI || format==kXYZINormal || format == kXYI || format == kXYINormal || format==kXYZIT || format==kXYZIRT;
 }
 bool LaserScan::isScanHasTime(const Format & format)
 {
-	return format==kXYZIT;
+	return format==kXYZIT || format==kXYZIRT;
+}
+bool LaserScan::isScanHasRing(const Format & format)
+{
+	return format==kXYZIRT;
 }
 
 LaserScan LaserScan::backwardCompatibility(
@@ -404,7 +412,7 @@ void LaserScan::init(
 			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal || format == kXYZIT)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
-			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
+			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal || format == kXYZIRT)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%s", LaserScan::formatName(format).c_str()).c_str());
 		}
 	}

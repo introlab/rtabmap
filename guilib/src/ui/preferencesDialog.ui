@@ -16137,6 +16137,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>CuVSLAM</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>LIO-SAM</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="3" column="1">
@@ -21841,6 +21846,458 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <size>
                             <width>20</width>
                             <height>2069</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_103">
+                       <layout class="QVBoxLayout" name="verticalLayout_187">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomLIOSAM">
+                          <property name="title">
+                           <string>LIO-SAM</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_188" stretch="0,0">
+                           <item>
+                            <widget class="QLabel" name="label_odom_liosam_info">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;LIO-SAM: &lt;a href=&quot;https://github.com/TixiaoShan/LIO-SAM&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/TixiaoShan/LIO-SAM&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Tightly-coupled lidar-inertial odometry via smoothing and mapping. Requires 3D lidar with per-point ring and time fields (kXYZIRT scan format) and an IMU.&lt;/p&gt;&lt;p&gt;If a config file path is provided, the parameters below are ignored and read from the file instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_liosam" columnstretch="0,1">
+                             <item row="0" column="0">
+                              <layout class="QHBoxLayout" name="horizontalLayout_liosam_config">
+                               <item>
+                                <widget class="QLineEdit" name="lineEdit_OdomLIOSAMPath">
+                                 <property name="placeholderText">
+                                  <string>Optional: path to LIO-SAM config YAML</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QToolButton" name="toolButton_OdomLIOSAMPath">
+                                 <property name="text">
+                                  <string>...</string>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_config">
+                               <property name="text">
+                                <string>Config file path (overrides parameters below).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QComboBox" name="odom_liosam_sensor">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>Velodyne</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Ouster</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Livox</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_sensor">
+                               <property name="text">
+                                <string>LiDAR sensor type.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QSpinBox" name="odom_liosam_nscan">
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>256</number>
+                               </property>
+                               <property name="value">
+                                <number>16</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_nscan">
+                               <property name="text">
+                                <string>Number of LiDAR channels (16, 32, 64, 128).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="0">
+                              <widget class="QSpinBox" name="odom_liosam_horizon_scan">
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>10000</number>
+                               </property>
+                               <property name="value">
+                                <number>1800</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_horizon_scan">
+                               <property name="text">
+                                <string>Horizontal resolution (Velodyne:1800, Ouster:512/1024/2048).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="4" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_acc_noise">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="4" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_acc_noise">
+                               <property name="text">
+                                <string>IMU accelerometer white noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_gyr_noise">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.001000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_gyr_noise">
+                               <property name="text">
+                                <string>IMU gyroscope white noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_acc_bias_n">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000200000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_acc_bias_n">
+                               <property name="text">
+                                <string>IMU accelerometer bias noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="7" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_gyr_bias_n">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.000010000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000030000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="7" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_gyr_bias_n">
+                               <property name="text">
+                                <string>IMU gyroscope bias noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="8" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_gravity">
+                               <property name="decimals">
+                                <number>5</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>20.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>9.805110000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="8" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_gravity">
+                               <property name="text">
+                                <string>Gravity magnitude.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_edge_threshold">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>100.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>1.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_edge_threshold">
+                               <property name="text">
+                                <string>Edge feature curvature threshold.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="10" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_surf_threshold">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>100.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.100000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="10" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_surf_threshold">
+                               <property name="text">
+                                <string>Surface feature curvature threshold.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="11" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_linvar">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="11" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_linvar">
+                               <property name="text">
+                                <string>Linear output variance.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="12" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_angvar">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="12" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_angvar">
+                               <property name="text">
+                                <string>Angular output variance.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_93">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
