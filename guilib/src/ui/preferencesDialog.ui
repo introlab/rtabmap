@@ -23649,7 +23649,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             </widget>
                            </item>
                            <item row="2" column="1">
-                            <spacer name="verticalSpacer_93">
+                            <spacer name="verticalSpacer_931">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
                              </property>
