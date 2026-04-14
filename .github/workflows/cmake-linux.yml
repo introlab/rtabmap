@@ -44,7 +44,7 @@ jobs:
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev pybind11-dev libpython3-dev ${{ matrix.extra_deps }}
 
     - name: Configure CMake
       run: |
