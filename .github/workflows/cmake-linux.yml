@@ -27,15 +27,15 @@ jobs:
         - build_name: ubuntu-22.04
           os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
         - build_name: ubuntu-24.04
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
         - build_name: ubuntu-24.04-with-opengv
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DBUILD_OPENGV=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_OPENGV=ON"
 
     steps:
     - uses: actions/checkout@v4
