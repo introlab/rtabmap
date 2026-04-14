@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/DBDriverSqlite3.h"
+#include "rtabmap/core/Compression.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -703,11 +704,11 @@ void DBDriver::getNodeData(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
-		if((!s->isSaved() ||
+		if(!s->isSaved() ||
 			((!images || !s->sensorData().imageCompressed().empty()) &&
 			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
 			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
-			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
+			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f)))
 		{
 			data = (SensorData)s->sensorData();
 			if(!images)
@@ -1511,6 +1512,134 @@ void DBDriver::generateGraph(
 			 UINFO("Graph saved to \"%s\" (Tip: $ neato -Tpdf \"%s\" -o out.pdf)", fileName.c_str(), fileName.c_str());
 		}
 	}
+}
+
+
+std::vector<unsigned char> DBDriver::serializeFeatures(
+	const std::vector<cv::KeyPoint> & keypoints, 
+	const std::vector<cv::Point3f> & points3D,
+	const cv::Mat & descriptors) const
+{
+	UTimer timer;
+	const int headerSize = 13;
+	int header[headerSize] = {
+			RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
+			CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION,             // 3,4,5 (In case the format/order/size of KeyPoint and/or Point3f changes in the future)
+			sizeof(cv::KeyPoint), (int)keypoints.size(),                         // 6,7
+			sizeof(cv::Point3f), (int)points3D.size(),                           // 8,9
+			descriptors.type(), descriptors.cols, descriptors.rows};             // 10,11,12
+	UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d %d %d",
+		header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10],header[11],header[12]);
+	std::vector<unsigned char> data(
+			sizeof(int)*headerSize +
+			keypoints.size()*sizeof(cv::KeyPoint) + // pos_x, pos_y, size, dir, response, octave
+			points3D.size()*sizeof(cv::Point3f) + // depth_x, depth_y, depth_z
+			descriptors.total()*descriptors.elemSize());
+	UDEBUG("Serialized total size = %ld bytes (header=%ld)", data.size(), sizeof(int)*headerSize);
+	memcpy(data.data(), header, sizeof(int)*headerSize);
+	size_t index = sizeof(int)*headerSize;
+	if(!keypoints.empty())
+	{
+		memcpy(data.data()+index, keypoints.data(), sizeof(cv::KeyPoint)*keypoints.size());
+		index += sizeof(cv::KeyPoint)*(keypoints.size());
+	}
+	if(!points3D.empty())
+	{
+		memcpy(data.data()+index, points3D.data(), sizeof(cv::Point3f)*points3D.size());
+		index += sizeof(cv::Point3f)*(points3D.size());
+	}
+	if(!descriptors.empty())
+	{
+		memcpy(data.data()+index, descriptors.data, descriptors.elemSize()*descriptors.total());
+		index+=descriptors.elemSize()*(descriptors.total());
+	}
+	double serializationTime = timer.ticks();
+	UASSERT_MSG(index == data.size(), uFormat("wrote=%ld expected=%ld", index, data.size()).c_str());
+	std::vector<unsigned char> compressedData = compressData(cv::Mat(1, data.size(), CV_8UC1, (void *)data.data()));
+	UWARN("Serialized %ld bytes in %f ms, Compressed %ld bytes in %f ms",
+		data.size(), serializationTime*1000.0f,
+		compressedData.size(), timer.ticks()*1000.0f);
+	return compressedData;
+}
+
+bool DBDriver::deserializeFeatures(
+	const unsigned char * compressedData,
+	unsigned int compressedDataSize,
+	std::vector<cv::KeyPoint> & keypoints,
+	std::vector<cv::Point3f> & points3D,
+	cv::Mat & descriptors) const
+{
+	UTimer timer;
+	cv::Mat serializedData = uncompressData(compressedData, compressedDataSize);
+	double uncompressionTime = timer.ticks();
+	if(serializedData.empty())
+	{
+		return false;
+	}
+	UDEBUG("Decompressed serialized data = %dx%d type=%d",
+		serializedData.cols, serializedData.rows, serializedData.type());
+	UASSERT(serializedData.type() == CV_8UC1);
+	int headerSize = 13;
+	if(serializedData.total() >= sizeof(int)*headerSize)
+	{
+		const int * header = (const int *)serializedData.data;
+		UASSERT(header[6] == sizeof(cv::KeyPoint));
+		int n_kpts = header[7];
+		UASSERT(header[8] == sizeof(cv::Point3f));
+		int n_pts = header[9];
+		int d_type = header[10];
+		int d_cols = header[11];
+		int d_rows = header[12];
+
+		UDEBUG("Serialized features header: version %d.%d.%d cv=%d.%d.%d kpts=%d (size=%d) pts=%d (size=%d) descriptors=%dx%d type=%d",
+			header[0], header[1], header[2], 
+			header[3], header[4], header[5],
+			header[7], header[6],
+			header[9], header[8],
+			header[11], header[12], header[10]);
+
+		keypoints.resize(n_kpts);
+		points3D.resize(n_pts);
+		descriptors = cv::Mat(d_rows, d_cols, d_type);
+		unsigned int requiredDataSize = sizeof(int)*headerSize +
+				sizeof(cv::KeyPoint)*n_kpts +
+				sizeof(cv::Point3f)*n_pts +
+				descriptors.total() * descriptors.elemSize();
+		UASSERT_MSG(serializedData.total() == requiredDataSize,
+				uFormat("dataSize=%d != required=%d (header: version %d.%d.%d cv=%d.%d.%d kpts=%d (size=%d) pts=%d (size=%d) descriptors=%dx%d type=%d",
+						serializedData.total(),
+						requiredDataSize,
+						header[0], header[1], header[2], 
+						header[3], header[4], header[5],
+						header[7], header[6],
+						header[9], header[8],
+						header[11], header[12], header[10]).c_str());
+		unsigned int index = sizeof(int)*headerSize;
+		if(n_kpts != 0)
+		{
+			memcpy(keypoints.data(), (void*)(serializedData.data+index), n_kpts*sizeof(cv::KeyPoint));
+			index += n_kpts*sizeof(cv::KeyPoint);
+		}
+		if(n_pts != 0)
+		{
+			memcpy(points3D.data(), (void*)(serializedData.data+index), n_pts*sizeof(cv::Point3f));
+			index += n_pts*sizeof(cv::Point3f);
+		}
+		if(d_rows > 0)
+		{
+			cv::Mat(d_rows, d_cols, d_type, (void*)(serializedData.data+index)).copyTo(descriptors);
+			index+=descriptors.elemSize()*(descriptors.total());
+		}
+		UASSERT(index == serializedData.total());
+
+		UWARN("Uncompressed %ld bytes in %f ms, deserialized %ld bytes in %f ms",
+			compressedDataSize, uncompressionTime*1000.0f,
+			serializedData.total(), timer.ticks()*1000.0f);
+
+		return true;
+	}
+	UERROR("Wrong serialized features format detected (size in bytes=%ld)! Cannot deserialize the data.", serializedData.size());
+	return false;
 }
 
 } // namespace rtabmap

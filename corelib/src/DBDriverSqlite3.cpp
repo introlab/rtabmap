@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_23_0_sql.h"
 #include "DatabaseSchema_0_22_0_sql.h"
 #include "DatabaseSchema_0_20_0_sql.h"
 #include "DatabaseSchema_0_18_3_sql.h"
@@ -406,6 +407,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
 			schemas.push_back(std::make_pair("0.20.0", DATABASESCHEMA_0_20_0_SQL));
 			schemas.push_back(std::make_pair("0.22.0", DATABASESCHEMA_0_22_0_SQL));
+			schemas.push_back(std::make_pair("0.23.0", DATABASESCHEMA_0_23_0_SQL));
 			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
 			for(size_t i=0; i<schemas.size(); ++i)
 			{
@@ -881,7 +883,15 @@ long DBDriverSqlite3::getFeaturesMemoryUsedQuery() const
 	if(_ppDb)
 	{
 		std::string query;
-		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		if(uStrNumCmp(_version, "0.24.0") >= 0)
+		{
+			query = "SELECT ("
+					 "(SELECT sum(length(node_id) + length(word_id) + length(feature_index)) FROM Feature)"
+					 " + "
+					 "(SELECT total(length(features)) FROM Node)"
+					 ")";
+		}
+		else if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
 			query = "SELECT sum(length(node_id) + length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + ifnull(length(depth_x),0) + ifnull(length(depth_y),0) + ifnull(length(depth_z),0) + ifnull(length(descriptor_size),0) + ifnull(length(descriptor),0)) "
 					 "FROM Feature";
@@ -1319,6 +1329,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 		{
 			std::stringstream fields;
 
+			bool fieldAdded = false;
 			if(images)
 			{
 				if(uStrNumCmp(_version, "0.22.0") >= 0)
@@ -1329,30 +1340,33 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				{
 					fields << "image, depth, calibration";
 				}
-				
-				if(scan || userData || occupancyGrid)
-				{
-					fields << ", ";
-				}
+				fieldAdded = true;
 			}
 			if(scan)
 			{
-				fields << "scan_info, scan";
-				if(userData || occupancyGrid)
+				if(fieldAdded)
 				{
 					fields << ", ";
 				}
+				fieldAdded = true;
+				fields << "scan_info, scan";
 			}
 			if(userData)
 			{
-				fields << "user_data";
-				if(occupancyGrid)
+				if(fieldAdded)
 				{
 					fields << ", ";
 				}
+				fieldAdded = true;
+				fields << "user_data";
 			}
 			if(occupancyGrid)
 			{
+				if(fieldAdded)
+				{
+					fields << ", ";
+				}
+				fieldAdded = true;
 				if(uStrNumCmp(_version, "0.16.0") >= 0)
 				{
 					fields << "ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z";
@@ -3846,13 +3860,22 @@ void DBDriverSqlite3::loadWordIdsQuery(std::list<Signature *> & signatures) cons
 
 void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 {
+	UTimer totalTime;
 	if(_ppDb)
 	{
+		bool before_v0_24 = uStrNumCmp(_version, "0.24.0") < 0;
+		
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		if(uStrNumCmp(_version, "0.24.0") >= 0)
+		{
+			query << "SELECT word_id, feature_index "
+					 "FROM Feature "
+					 "WHERE node_id = ? ";
+		}
+		else if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
 			query << "SELECT word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor "
 					 "FROM Feature "
@@ -3876,7 +3899,6 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 					 "FROM Map_Node_Word "
 					 "WHERE node_id = ? ";
 		}
-
 		query << " ORDER BY word_id"; // Needed for fast insertion below
 		query << ";";
 
@@ -3884,7 +3906,7 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 		float nanFloat = std::numeric_limits<float>::quiet_NaN ();
-
+		std::vector<std::multimap<int, int> > allVisualWords;
 		for(std::list<Signature*>::const_iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
 			//ULOGGER_DEBUG("Loading words of %d...", (*iter)->id());
@@ -3893,6 +3915,7 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 			int visualWordId = 0;
+			int featureIndex = 0;
 			int descriptorSize = 0;
 			const void * descriptor = 0;
 			int dRealSize = 0;
@@ -3910,82 +3933,90 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 			{
 				int index = 0;
 				visualWordId = sqlite3_column_int(ppStmt, index++);
-				kpt.pt.x = sqlite3_column_double(ppStmt, index++);
-				kpt.pt.y = sqlite3_column_double(ppStmt, index++);
-				kpt.size = sqlite3_column_int(ppStmt, index++);
-				kpt.angle = sqlite3_column_double(ppStmt, index++);
-				kpt.response = sqlite3_column_double(ppStmt, index++);
-				if(uStrNumCmp(_version, "0.12.0") >= 0)
+				if(!before_v0_24)
 				{
-					kpt.octave = sqlite3_column_int(ppStmt, index++);
+					featureIndex = sqlite3_column_int(ppStmt, index++);
+					visualWords.insert(visualWords.end(), std::make_pair(visualWordId, featureIndex));
 				}
-
-				if(sqlite3_column_type(ppStmt, index) == SQLITE_NULL)
+				else if(before_v0_24)
 				{
-					depth.x = nanFloat;
-					++index;
-				}
-				else
-				{
-					depth.x = sqlite3_column_double(ppStmt, index++);
-				}
-
-				if(sqlite3_column_type(ppStmt, index) == SQLITE_NULL)
-				{
-					depth.y = nanFloat;
-					++index;
-				}
-				else
-				{
-					depth.y = sqlite3_column_double(ppStmt, index++);
-				}
-
-				if(sqlite3_column_type(ppStmt, index) == SQLITE_NULL)
-				{
-					depth.z = nanFloat;
-					++index;
-				}
-				else
-				{
-					depth.z = sqlite3_column_double(ppStmt, index++);
-				}
-
-				visualWordsKpts.push_back(kpt);
-				visualWords.insert(visualWords.end(), std::make_pair(visualWordId, visualWordsKpts.size()-1));
-				visualWords3.push_back(depth);
-
-				if(allWords3NaN && util3d::isFinite(depth))
-				{
-					allWords3NaN = false;
-				}
-
-				if(uStrNumCmp(_version, "0.11.2") >= 0)
-				{
-					descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
-					descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
-					dRealSize = sqlite3_column_bytes(ppStmt, index++);
-
-					if(descriptor && descriptorSize>0 && dRealSize>0)
+					kpt.pt.x = sqlite3_column_double(ppStmt, index++);
+					kpt.pt.y = sqlite3_column_double(ppStmt, index++);
+					kpt.size = sqlite3_column_int(ppStmt, index++);
+					kpt.angle = sqlite3_column_double(ppStmt, index++);
+					kpt.response = sqlite3_column_double(ppStmt, index++);
+					if(uStrNumCmp(_version, "0.12.0") >= 0)
 					{
-						cv::Mat d;
-						if(dRealSize == descriptorSize)
-						{
-							// CV_8U binary descriptors
-							d = cv::Mat(1, descriptorSize, CV_8U);
-						}
-						else if(dRealSize/int(sizeof(float)) == descriptorSize)
-						{
-							// CV_32F
-							d = cv::Mat(1, descriptorSize, CV_32F);
-						}
-						else
-						{
-							UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-						}
+						kpt.octave = sqlite3_column_int(ppStmt, index++);
+					}
 
-						memcpy(d.data, descriptor, dRealSize);
+					if(sqlite3_column_type(ppStmt, index) == SQLITE_NULL)
+					{
+						depth.x = nanFloat;
+						++index;
+					}
+					else
+					{
+						depth.x = sqlite3_column_double(ppStmt, index++);
+					}
 
-						descriptors.push_back(d);
+					if(sqlite3_column_type(ppStmt, index) == SQLITE_NULL)
+					{
+						depth.y = nanFloat;
+						++index;
+					}
+					else
+					{
+						depth.y = sqlite3_column_double(ppStmt, index++);
+					}
+
+					if(sqlite3_column_type(ppStmt, index) == SQLITE_NULL)
+					{
+						depth.z = nanFloat;
+						++index;
+					}
+					else
+					{
+						depth.z = sqlite3_column_double(ppStmt, index++);
+					}
+
+					visualWordsKpts.push_back(kpt);
+					visualWords.insert(visualWords.end(), std::make_pair(visualWordId, visualWordsKpts.size()-1));
+					visualWords3.push_back(depth);
+
+					if(allWords3NaN && util3d::isFinite(depth))
+					{
+						allWords3NaN = false;
+					}
+
+					if(uStrNumCmp(_version, "0.11.2") >= 0)
+					{
+						descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
+						descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
+						dRealSize = sqlite3_column_bytes(ppStmt, index++);
+
+						if(descriptor && descriptorSize>0 && dRealSize>0)
+						{
+							cv::Mat d;
+							if(dRealSize == descriptorSize)
+							{
+								// CV_8U binary descriptors
+								d = cv::Mat(1, descriptorSize, CV_8U);
+							}
+							else if(dRealSize/int(sizeof(float)) == descriptorSize)
+							{
+								// CV_32F
+								d = cv::Mat(1, descriptorSize, CV_32F);
+							}
+							else
+							{
+								UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
+							}
+
+							memcpy(d.data, descriptor, dRealSize);
+
+							descriptors.push_back(d);
+						}
 					}
 				}
 
@@ -3993,18 +4024,25 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 			}
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-			if(visualWords.size()==0)
+			if(before_v0_24)
 			{
-				UDEBUG("Empty signature detected! (id=%d)", (*iter)->id());
+				if(visualWords.size()==0)
+				{
+					UDEBUG("Empty signature detected! (id=%d)", (*iter)->id());
+				}
+				else
+				{
+					if(allWords3NaN)
+					{
+						visualWords3.clear();
+					}
+					(*iter)->setWords(visualWords, visualWordsKpts, visualWords3, descriptors);
+					//ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
+				}
 			}
 			else
 			{
-				if(allWords3NaN)
-				{
-					visualWords3.clear();
-				}
-				(*iter)->setWords(visualWords, visualWordsKpts, visualWords3, descriptors);
-				//ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), allWords3NaN?0:(int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
+				allVisualWords.push_back(visualWords);
 			}
 
 			//reset
@@ -4015,7 +4053,73 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		if(!before_v0_24)
+		{
+			// Features are now in compressed field "features" of table Node
+			std::string queryStr = "SELECT features FROM Node WHERE id = ?;";
+
+			rc = sqlite3_prepare_v2(_ppDb, queryStr.c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			UASSERT(allVisualWords.size() == signatures.size());
+			int w=0;
+			for(std::list<Signature*>::const_iterator iter=signatures.begin(); iter!=signatures.end(); ++iter, ++w)
+			{
+				if(allVisualWords[w].empty())
+				{
+					continue;
+				}
+				ULOGGER_DEBUG("Loading compressed features of %d...", (*iter)->id());
+				// bind id
+				rc = sqlite3_bind_int(ppStmt, 1, (*iter)->id());
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				std::multimap<int, int> & visualWords = allVisualWords[w];
+				std::vector<cv::KeyPoint> visualWordsKpts;
+				std::vector<cv::Point3f> visualWords3;
+				cv::Mat descriptors;
+
+				// Process the result if one
+				rc = sqlite3_step(ppStmt);
+				if(rc == SQLITE_ROW)
+				{
+					int index = 0;
+					const void * data = sqlite3_column_blob(ppStmt, index);
+					int dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize > 0 && data)
+					{
+						if(!deserializeFeatures((const unsigned char *)data, dataSize, visualWordsKpts, visualWords3, descriptors))
+						{
+							UERROR("Failed deserializing features for node %d! (dataSize=%d)", (*iter)->id(), dataSize);
+						}
+					}
+
+					rc = sqlite3_step(ppStmt);
+				}
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				UASSERT_MSG(visualWords.size() == visualWordsKpts.size(), 
+					uFormat("visualWords=%ld visualWordsKpts=%ld", visualWords.size(), visualWordsKpts.size()).c_str());
+				UASSERT_MSG(visualWords3.empty() || visualWords.size() == visualWords3.size(),
+					uFormat("visualWords=%ld visualWordsKpts=%ld", visualWords.size(), visualWords3.size()).c_str());
+				UASSERT_MSG(descriptors.empty() || (int)visualWords.size() == descriptors.rows,
+					uFormat("visualWords=%ld visualWordsKpts=%d", visualWords.size(), descriptors.rows).c_str());
+
+				(*iter)->setWords(visualWords, visualWordsKpts, visualWords3, descriptors);
+				ULOGGER_DEBUG("Add %d keypoints, %d 3d points and %d descriptors to node %d", (int)visualWords.size(), (int)visualWords3.size(), (int)descriptors.rows, (*iter)->id());
+
+				//reset
+				rc = sqlite3_reset(ppStmt);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+
+			// Finalize (delete) the statement
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
 	}
+	UWARN("totalTime=%f ms", totalTime.ticks() *1000.0f);
 }
 
 void DBDriverSqlite3::loadLinksQuery(
@@ -4599,24 +4703,35 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
 			UASSERT((*i)->getWords().size() == (*i)->getWordsKpts().size());
-			UASSERT((*i)->getWords3().empty() || (*i)->getWords().size() == (*i)->getWords3().size());
-			UASSERT((*i)->getWordsDescriptors().empty() || (int)(*i)->getWords().size() == (*i)->getWordsDescriptors().rows);
-
-			for(std::multimap<int, int>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
+			if(uStrNumCmp(_version, "0.24.0") >= 0)
 			{
-				cv::Point3f pt(nanFloat,nanFloat,nanFloat);
-				if(!(*i)->getWords3().empty())
+				// Only node -> word -> index are saved in Feature
+				for(std::multimap<int, int>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
 				{
-					pt = (*i)->getWords3()[w->second];
+					stepKeypoint(ppStmt, (*i)->id(), w->first, w->second);
 				}
+			}
+			else
+			{
+				UASSERT((*i)->getWords3().empty() || (*i)->getWords().size() == (*i)->getWords3().size());
+				UASSERT((*i)->getWordsDescriptors().empty() || (int)(*i)->getWords().size() == (*i)->getWordsDescriptors().rows);
 
-				cv::Mat descriptor;
-				if(!(*i)->getWordsDescriptors().empty())
+				for(std::multimap<int, int>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
 				{
-					descriptor = (*i)->getWordsDescriptors().row(w->second);
-				}
+					cv::Point3f pt(nanFloat,nanFloat,nanFloat);
+					if(!(*i)->getWords3().empty())
+					{
+						pt = (*i)->getWords3()[w->second];
+					}
 
-				stepKeypoint(ppStmt, (*i)->id(), w->first, (*i)->getWordsKpts()[w->second], pt, descriptor);
+					cv::Mat descriptor;
+					if(!(*i)->getWordsDescriptors().empty())
+					{
+						descriptor = (*i)->getWordsDescriptors().row(w->second);
+					}
+
+					stepKeypoint(ppStmt, (*i)->id(), w->first, (*i)->getWordsKpts()[w->second], pt, descriptor);
+				}
 			}
 		}
 		// Finalize (delete) the statement
@@ -5791,7 +5906,11 @@ void DBDriverSqlite3::saveFlannIndexQuery(const std::vector<unsigned char> & dat
 
 std::string DBDriverSqlite3::queryStepNode() const
 {
-	if(uStrNumCmp(_version, "0.18.0") >= 0)
+	if(uStrNumCmp(_version, "0.24.0") >= 0)
+	{
+		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label, ground_truth_pose, velocity, gps, env_sensors, features) VALUES(?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.18.0") >= 0)
 	{
 		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label, ground_truth_pose, velocity, gps, env_sensors) VALUES(?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -5823,6 +5942,7 @@ std::string DBDriverSqlite3::queryStepNode() const
 }
 void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 {
+	UTimer totalTime;
 	UDEBUG("Save node %d", s->id());
 	if(!ppStmt || !s)
 	{
@@ -5859,6 +5979,7 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 
 	std::vector<double> gps;
 	std::vector<double> envSensors;
+	std::vector<unsigned char> serializedFeatures;
 	if(uStrNumCmp(_version, "0.10.1") >= 0)
 	{
 		// ignore user_data
@@ -5942,12 +6063,30 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 		}
 	}
 
+	if(uStrNumCmp(_version, "0.24.0") >= 0)
+	{
+		//features
+		serializedFeatures = serializeFeatures(s->getWordsKpts(), s->getWords3(), s->getWordsDescriptors());
+		if(serializedFeatures.empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, serializedFeatures.data(), (int)serializedFeatures.size(), SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+
 	//step
 	rc=sqlite3_step(ppStmt);
 	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	rc = sqlite3_reset(ppStmt);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	UWARN("totalTime=%f ms", totalTime.ticks()*1000.0f);
 }
 
 std::string DBDriverSqlite3::queryStepImage() const
@@ -6893,7 +7032,11 @@ void DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int ol
 
 std::string DBDriverSqlite3::queryStepKeypoint() const
 {
-	if(uStrNumCmp(_version, "0.13.0") >= 0)
+	if(uStrNumCmp(_version, "0.24.0") >= 0)
+	{
+		return "INSERT INTO Feature(node_id, word_id, feature_index) VALUES(?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.13.0") >= 0)
 	{
 		return "INSERT INTO Feature(node_id, word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -6910,10 +7053,38 @@ std::string DBDriverSqlite3::queryStepKeypoint() const
 void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 		int nodeId,
 		int wordId,
+		int kptIndex) const
+{
+	// Used with version >= 0.24
+	UASSERT(uStrNumCmp(_version, "0.24.0") >= 0);
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+	int rc = SQLITE_OK;
+	int index = 1;
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, wordId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_double(ppStmt, index++, kptIndex);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
+void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
+		int nodeId,
+		int wordId,
 		const cv::KeyPoint & kp,
 		const cv::Point3f & pt,
 		const cv::Mat & descriptor) const
 {
+	// Used with version < 0.24
+	UASSERT(uStrNumCmp(_version, "0.24.0") < 0);
 	if(!ppStmt)
 	{
 		UFATAL("");

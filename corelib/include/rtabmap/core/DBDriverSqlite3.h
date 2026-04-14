@@ -182,6 +182,7 @@ private:
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
+	void stepKeypoint(sqlite3_stmt * ppStmt, int nodeId, int wordId, int kptIndex) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int nodeID, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
 	void stepGlobalDescriptor(sqlite3_stmt * ppStmt, int nodeId, const GlobalDescriptor & descriptor) const;
 	void stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
