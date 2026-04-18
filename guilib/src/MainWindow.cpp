@@ -3254,14 +3254,17 @@ void MainWindow::updateMapCloud(
 	}
 
 	std::map<int, Transform> posesWithOdomCache;
-
+	std::set<int> odomCachePosesIds;
 	if(_ui->graphicsView_graphView->isVisible() ||
 	   ((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown(0)) && _currentPosesMap.size()))
 	{
 		posesWithOdomCache = posesIn;
 		for(std::map<int, Transform>::const_iterator iter=odomCachePoses.begin(); iter!=odomCachePoses.end(); ++iter)
 		{
-			posesWithOdomCache.insert(std::make_pair(iter->first, _odometryCorrection*iter->second));
+			if(posesWithOdomCache.insert(std::make_pair(iter->first, _odometryCorrection*iter->second)).second)
+			{
+				odomCachePosesIds.insert(iter->first);
+			}
 		}
 	}
 
@@ -3520,7 +3523,7 @@ void MainWindow::updateMapCloud(
 		std::multimap<int, Link> constraintsWithOdomCache;
 		constraintsWithOdomCache = constraints;
 		constraintsWithOdomCache.insert(odomCacheConstraints.begin(), odomCacheConstraints.end());
-		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn, std::map<int, int>(), uKeysSet(odomCachePoses));
+		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn, std::map<int, int>(), odomCachePosesIds);
 		if(_preferencesDialog->isGroundTruthAligned() && !mapToGt.isIdentity())
 		{
 			std::map<int, Transform> gtPoses = _currentGTPosesMap;
