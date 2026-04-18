@@ -1436,7 +1436,7 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 		UASSERT(s!=0);
 		if(s->getWeight() == -1)
 		{
-			UERROR("Graph reduction with intermediate nodes is not supproted.");
+			UERROR("Graph reduction with intermediate nodes is not supported.");
 		}
 		else
 		{
@@ -4857,6 +4857,11 @@ void Memory::copyData(const Signature * from, Signature * to)
 			to->sensorData() = (SensorData)from->sensorData();
 		}
 		to->sensorData().setId(to->id());
+
+		if(!from->sensorData().globalDescriptors().empty())
+		{
+			to->sensorData().setGlobalDescriptors(from->sensorData().globalDescriptors());
+		}
 
 		to->setPose(from->getPose());
 	}
