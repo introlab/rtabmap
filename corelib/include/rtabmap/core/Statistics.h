@@ -76,6 +76,8 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Optimization_max_ang_error_ratio, );
 	RTABMAP_STATS(Loop, Optimization_error, );
 	RTABMAP_STATS(Loop, Optimization_iterations, );
+	RTABMAP_STATS(Loop, Optimization_max_error_from_id, );
+	RTABMAP_STATS(Loop, Optimization_max_error_to_id, );
 	RTABMAP_STATS(Loop, Linear_variance,);
 	RTABMAP_STATS(Loop, Angular_variance,);
 	RTABMAP_STATS(Loop, Landmark_detected,);

@@ -3187,6 +3187,8 @@ bool Rtabmap::process(
 	float maxLinearErrorRatio = 0.0f;
 	float maxAngularError = 0.0f;
 	float maxAngularErrorRatio = 0.0f;
+	int maxLinearErrorFromId = 0;
+	int maxLinearErrorToId = 0;
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	Transform previousMapCorrection;
@@ -3357,6 +3359,8 @@ bool Rtabmap::process(
 
 					if(maxLinearLink)
 					{
+						maxLinearErrorFromId = maxLinearLink->from();
+						maxLinearErrorToId = maxLinearLink->to();
 						UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
 								maxLinearError,
 								maxLinearLink->from(),
@@ -3507,6 +3511,8 @@ bool Rtabmap::process(
 
 							if(maxLinearLink)
 							{
+								maxLinearErrorFromId = maxLinearLink->from();
+								maxLinearErrorToId = maxLinearLink->to();
 								UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
 										maxLinearError,
 										maxLinearLink->from(),
@@ -3857,6 +3863,8 @@ bool Rtabmap::process(
 				bool reject = false;
 				if(maxLinearLink)
 				{
+					maxLinearErrorFromId = maxLinearLink->from();
+					maxLinearErrorToId = maxLinearLink->to();
 					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 					if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 					{
@@ -4078,6 +4086,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxLinearErrorRatio);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error(), maxAngularError*180.0f/M_PI);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_ratio(), maxAngularErrorRatio);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxLinearErrorFromId);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxLinearErrorToId);
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), landmarksDetected.empty()?0:-landmarksDetected.begin()->first);

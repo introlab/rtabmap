@@ -27,15 +27,15 @@ jobs:
         - build_name: ubuntu-22.04
           os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
         - build_name: ubuntu-24.04
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
         - build_name: ubuntu-24.04-with-opengv
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DBUILD_OPENGV=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_OPENGV=ON"
 
     steps:
     - uses: actions/checkout@v4
@@ -46,9 +46,19 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Python Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy pybind11
+
     - name: Configure CMake
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DPython3_EXECUTABLE=$(which python3) -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) ${{ matrix.extra_cmake_def }}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
