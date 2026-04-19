@@ -1681,7 +1681,7 @@ std::map<int, int> Memory::getNeighborsId(
 		) const
 {
 	UASSERT(maxGraphDepth >= 0);
-	//DEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
+	//UDEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
 	//		"ignoreLoopIds=%d ignoreIntermediateNodes=%d ignoreLocalSpaceLoopIds=%d",
 	//		signatureId, maxGraphDepth, maxCheckedInDatabase, incrementMarginOnLoop?1:0,
 	//		ignoreLoopIds?1:0, ignoreIntermediateNodes?1:0, ignoreLocalSpaceLoopIds?1:0);
@@ -1724,7 +1724,8 @@ std::map<int, int> Memory::getNeighborsId(
 					isIntermediateNode = s->getWeight() == -1;
 					if(!ignoreIntermediateNodes || !isIntermediateNode)
 					{
-						ids.insert(std::pair<int, int>(s->id(), m));
+						int effectiveMargin = m>0 && isIntermediateNode>0 ? m-1 : m;
+						ids.insert(std::pair<int, int>(s->id(), effectiveMargin));
 					}
 					else
 					{
@@ -1743,7 +1744,8 @@ std::map<int, int> Memory::getNeighborsId(
 					isIntermediateNode = weight == -1;
 					if(!ignoreIntermediateNodes || !isIntermediateNode)
 					{
-						ids.insert(std::pair<int, int>(*jter, m));
+						int effectiveMargin = m>0 && isIntermediateNode>0 ? m-1 : m;
+						ids.insert(std::pair<int, int>(*jter, effectiveMargin));
 						if(!isIntermediateNode)
 						{
 							++nbLoadedFromDb;
@@ -1796,7 +1798,7 @@ std::map<int, int> Memory::getNeighborsId(
 						if(iter->second.type() == Link::kNeighbor ||
 					       iter->second.type() == Link::kNeighborMerged)
 						{
-							if(ignoreIntermediateNodes && isIntermediateNode)
+							if(isIntermediateNode)
 							{
 								// stay on the same margin
 								if(currentMargin.insert(iter->first).second)
@@ -2653,7 +2655,8 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 					}
 					if(!foundInSTM && s->getWeight()>=0)
 					{
-						// less weighted signature priority to be transferred
+						// Less weighted signature priority to be transferred
+						// Ignore intermediate nodes
 						weightAgeIdMap.insert(std::make_pair(WeightAgeIdKey(s->getWeight(), _transferSortingByWeightId?0.0:memIter->second, s->id()), s));
 					}
 				}

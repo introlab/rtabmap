@@ -585,6 +585,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	// Apply state
 	this->changeState(kIdle);
 	this->applyPrefSettings(PreferencesDialog::kPanelAll);
+	applyPrefSettings(parameters, false);
 
 	_ui->statsToolBox->setNewFigureMaxItems(50);
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
@@ -708,10 +709,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	this->loadFigures();
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
-
-	// update loop closure viewer parameters
-	_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
-	_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
 	if (splash)
 	{

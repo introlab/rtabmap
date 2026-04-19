@@ -2379,6 +2379,8 @@ bool Rtabmap::process(
 		// Priority on locations on the planned path
 		if(_path.size())
 		{
+			// Note: retrieval on path with intermediate nodes is not supported. Note that the planned path would 
+			//       eventually fail anyway because intermediate nodes are not in _optimizedPoses.
 			updateGoalIndex();
 
 			float distanceSoFar = 0.0f;
@@ -2501,11 +2503,13 @@ bool Rtabmap::process(
 			{
 				nearNodesByDist.insert(std::make_pair(iter->second, iter->first));
 			}
-			UINFO("near nodes=%d, max local immunized=%d, ratio=%f WM=%d",
+			UINFO("near nodes=%d, max local immunized=%d (immunized by path so far=%d), ratio=%f WM=%d",
 					(int)nearNodesByDist.size(),
 					maxLocalLocationsImmunized,
+					immunizedLocally,
 					_localImmunizationRatio,
 					(int)_memory->getWorkingMem().size());
+			std::list<int> retrievalLocalIdsIntermediate;
 			for(std::multimap<float, int>::iterator iter=nearNodesByDist.begin();
 				iter!=nearNodesByDist.end() && (retrievalLocalIds.size() < _maxLocalRetrieved || immunizedLocally < maxLocalLocationsImmunized);
 				++iter)
@@ -2513,17 +2517,29 @@ bool Rtabmap::process(
 				const Signature * s = _memory->getSignature(iter->second);
 				if(s!=0)
 				{
-					// If there is a change of direction, better to be retrieving
-					// ALL nearest signatures than only newest neighbors
-					const std::multimap<int, Link> & links = s->getLinks();
-					for(std::multimap<int, Link>::const_reverse_iterator jter=links.rbegin();
-						jter!=links.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
-						++jter)
+					if(s->getWeight() != -1 && retrievalLocalIds.size() < _maxLocalRetrieved)
 					{
-						if(_memory->getSignature(jter->first) == 0)
+						// If there is a change of direction, better to be retrieving
+						// all nearest signatures than only newest neighbors.
+						// Use getNeighborsId instead of direct links to support intermediate nodes.
+						std::map<int, int> ids = _memory->getNeighborsId(s->id(), 2, _maxLocalRetrieved-retrievalLocalIds.size(), true, false, false);
+						for(std::map<int, int>::const_reverse_iterator jter=ids.rbegin();
+							jter!=ids.rend() && (retrievalLocalIds.size() < _maxLocalRetrieved || jter->second == 0);
+							++jter)
 						{
-							UINFO("retrieval of node %d on local map", jter->first);
-							retrievalLocalIds.push_back(jter->first);
+							if(_memory->getSignature(jter->first) == 0)
+							{
+								if(jter->second == 0)
+								{
+									UINFO("retrieval of intermediate node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, s->id());
+									retrievalLocalIdsIntermediate.push_back(jter->first);
+								}
+								else
+								{
+									UINFO("retrieval of node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, s->id());
+									retrievalLocalIds.push_back(jter->first);
+								}
+							}
 						}
 					}
 					if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
@@ -2540,20 +2556,29 @@ bool Rtabmap::process(
 			if(retrievalLocalIds.size() < _maxLocalRetrieved)
 			{
 				std::set<int> retrievalLocalIdsSet(retrievalLocalIds.begin(), retrievalLocalIds.end());
+				retrievalLocalIdsSet.insert(retrievalLocalIdsIntermediate.begin(), retrievalLocalIdsIntermediate.end());
 				for(std::list<int>::iterator iter=retrievalLocalIds.begin();
 					iter!=retrievalLocalIds.end() && retrievalLocalIds.size() < _maxLocalRetrieved;
 					++iter)
 				{
-					std::map<int, int> ids = _memory->getNeighborsId(*iter, 2, _maxLocalRetrieved - (unsigned int)retrievalLocalIds.size() + 1, true, false);
+					std::map<int, int> ids = _memory->getNeighborsId(*iter, 2, _maxLocalRetrieved - (unsigned int)retrievalLocalIds.size() + 1, true, false, false);
 					for(std::map<int, int>::reverse_iterator jter=ids.rbegin();
-						jter!=ids.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
+						jter!=ids.rend() && (retrievalLocalIds.size() < _maxLocalRetrieved || jter->second == 0);
 						++jter)
 					{
 						if(_memory->getSignature(jter->first) == 0 &&
 						   retrievalLocalIdsSet.find(jter->first) == retrievalLocalIdsSet.end())
 						{
-							UINFO("retrieval of node %d on local map", jter->first);
-							retrievalLocalIds.push_back(jter->first);
+							if(jter->second == 0)
+							{
+								UINFO("retrieval of intermediate node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, *iter);
+								retrievalLocalIdsIntermediate.push_back(jter->first);
+							}
+							else
+							{
+								UINFO("retrieval of node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, *iter);
+								retrievalLocalIds.push_back(jter->first);
+							}
 							retrievalLocalIdsSet.insert(jter->first);
 						}
 					}
@@ -2567,6 +2592,7 @@ bool Rtabmap::process(
 			}
 
 			// insert them first to make sure they are loaded.
+			reactivatedIds.insert(reactivatedIds.begin(), retrievalLocalIdsIntermediate.begin(), retrievalLocalIdsIntermediate.end());
 			reactivatedIds.insert(reactivatedIds.begin(), retrievalLocalIds.begin(), retrievalLocalIds.end());
 		}
 	}
