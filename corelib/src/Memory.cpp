@@ -5138,7 +5138,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	int treeSize= int(_workingMem.size() + _stMem.size());
 	int meanWordsPerLocation = _feature2D->getMaxFeatures()>0?_feature2D->getMaxFeatures():0;
-	if(treeSize > 1)
+	if(meanWordsPerLocation==0 && treeSize > 1)
 	{
 		meanWordsPerLocation = _vwd->getTotalActiveReferences() / (treeSize-1); // ignore virtual signature
 	}

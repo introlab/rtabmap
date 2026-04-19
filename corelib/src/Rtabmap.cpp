@@ -7068,12 +7068,17 @@ void Rtabmap::updateGoalIndex()
 	if( _memory && _path.size())
 	{
 		// remove all previous virtual links
+		bool hasIntermediateNodes = false;
 		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
 		{
 			const Signature * s = _memory->getSignature(_path[i].first);
 			if(s)
 			{
 				_memory->removeVirtualLinks(s->id());
+			}
+			if(s->getWeight() == -1)
+			{
+				hasIntermediateNodes = true;
 			}
 		}
 
@@ -7103,7 +7108,7 @@ void Rtabmap::updateGoalIndex()
 		// Make sure the next signatures on the path are linked together
 		float distanceSoFar = 0.0f;
 		for(unsigned int i=_pathCurrentIndex+1;
-			i<_path.size();
+			i<_path.size() && !hasIntermediateNodes;
 			++i)
 		{
 			if(i>0)
@@ -7118,6 +7123,11 @@ void Rtabmap::updateGoalIndex()
 					const Signature * s = _memory->getSignature(_path[i].first);
 					if(s)
 					{
+						if(s->getWeight() == -1)
+						{
+							hasIntermediateNodes = true;
+							break;
+						}
 						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
 						{
 							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
@@ -7133,6 +7143,13 @@ void Rtabmap::updateGoalIndex()
 					break;
 				}
 			}
+		}
+
+		if(hasIntermediateNodes)
+		{
+			UERROR("Cannot follow a path with a map containing intermediate nodes (not supported: don't use intermediate nodes if rtabmap's planner has to be used). Aborting current plan!");
+			this->clearPath(-1);
+			return;
 		}
 
 		UDEBUG("current node = %d current goal = %d", _path[_pathCurrentIndex].first, _path[_pathGoalIndex].first);
