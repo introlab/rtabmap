@@ -162,7 +162,7 @@ public:
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
 	int getLastSignatureId() const;
-	const Signature * getLastWorkingSignature() const;
+	const Signature * getLastWorkingSignature(bool ignoreIntermediateNodes) const;
 	std::map<int, Link> getNodesObservingLandmark(int landmarkId, bool lookInDatabase) const;
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);

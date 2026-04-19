@@ -1929,7 +1929,7 @@ int Memory::getNextId()
 int Memory::incrementMapId(std::map<int, int> * reducedIds)
 {
 	//don't increment if there is no location in the current map
-	const Signature * s = getLastWorkingSignature();
+	const Signature * s = getLastWorkingSignature(false);
 	if(s && s->mapId() == _idMapCount)
 	{
 		// New session! move all signatures from the STM to WM
@@ -2870,9 +2870,21 @@ int Memory::getLastSignatureId() const
 	return _idCount;
 }
 
-const Signature * Memory::getLastWorkingSignature() const
+const Signature * Memory::getLastWorkingSignature(bool ignoreIntermediateNodes) const
 {
-	UDEBUG("");
+	if(ignoreIntermediateNodes && _lastSignature && _lastSignature->getWeight()==-1)
+	{
+		for(std::map<int, Signature *>::const_reverse_iterator iter=_signatures.rbegin();
+			iter!=_signatures.rend();
+			++iter)
+		{
+			if(iter->second->getWeight() != -1)
+			{
+				return iter->second;
+			}
+		}
+		return 0;
+	}
 	return _lastSignature;
 }
 
@@ -6993,7 +7005,7 @@ void Memory::getMetricConstraints(
 	{
 		if(uContains(poses, *iter))
 		{
-			const Signature * s = this->getSignature(*iter);
+			const Signature * s = lookInDatabase?0:this->getSignature(*iter); // If we look in db, we don't ignore intermediate nodes
 			if(s && s->getWeight() == -1)
 			{
 				poses.erase(*iter);
