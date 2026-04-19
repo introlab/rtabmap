@@ -379,8 +379,8 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			int id1 = iter->second.from();
 			int id2 = iter->second.to();
 
-            UASSERT_MSG(poses.find(id1)!=poses.end(), uFormat("id1=%d", id1).c_str());
-            UASSERT_MSG(poses.find(id2)!=poses.end(), uFormat("id2=%d", id2).c_str());
+            UASSERT_MSG(poses.find(id1)!=poses.end(), uFormat("id1=%d for constraint %d->%d (type=%d)", id1, id1, id2, iter->second.type()).c_str());
+            UASSERT_MSG(poses.find(id2)!=poses.end(), uFormat("id2=%d for constraint %d->%d (type=%d)", id2, id1, id2, iter->second.type()).c_str());
 
 			UASSERT(!iter->second.transform().isNull());
 			if(id1 == id2)

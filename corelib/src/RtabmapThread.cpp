@@ -47,8 +47,7 @@ RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
 		_dataBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 		_rate(Parameters::defaultRtabmapDetectionRate()),
 		_createIntermediateNodes(Parameters::defaultRtabmapCreateIntermediateNodes()),
-		_frameRateTimer(new UTimer()),
-		_previousStamp(0.0),
+		_previousStamp(-1.0),
 		_rtabmap(rtabmap),
 		_paused(false),
 		lastPose_(Transform::getIdentity())
@@ -62,8 +61,6 @@ RtabmapThread::~RtabmapThread()
 	UEventsManager::removeHandler(this);
 
 	close(true);
-
-	delete _frameRateTimer;
 }
 
 void RtabmapThread::pushNewState(State newState, const RtabmapEventCmd & cmdEvent)
@@ -88,7 +85,7 @@ void RtabmapThread::clearBufferedData()
 		_newMapEvents.clear();
 		lastPose_.setIdentity();
 		covariance_ = cv::Mat();
-		_previousStamp = 0;
+		_previousStamp = -1;
 	}
 	_dataMutex.unlock();
 
@@ -500,9 +497,10 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		bool ignoreFrame = false;
 		if(_rate>0.0f)
 		{
-			if((_previousStamp>=0.0 && odomEvent.data().stamp()>_previousStamp && odomEvent.data().stamp() - _previousStamp < 1.0f/_rate) ||
-				((_previousStamp<=0.0 || odomEvent.data().stamp()<=_previousStamp) && _frameRateTimer->getElapsedTime() < 1.0f/_rate))
+			if((_previousStamp>=0.0 && odomEvent.data().stamp()>_previousStamp && odomEvent.data().stamp() - _previousStamp < 1.0f/_rate))
 			{
+				UDEBUG("Ignoring frame %f (previous stamp=%f, period=%f)",
+					odomEvent.data().stamp(), _previousStamp, 1.0/_rate);
 				ignoreFrame = true;
 			}
 		}
@@ -540,7 +538,6 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		}
 		else if(!ignoreFrame)
 		{
-			_frameRateTimer->start();
 			_previousStamp = odomEvent.data().stamp();
 		}
 

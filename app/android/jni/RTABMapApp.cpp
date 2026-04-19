@@ -3000,7 +3000,7 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
-	if((sensorCaptureThread_ == 0) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
+	if((sensorCaptureThread_ == 0) && rtabmap_ && rtabmap_->getMemory()->getLastWorkingSignature(false)!=0)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;

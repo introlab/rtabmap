@@ -382,7 +382,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 		{
 			cv::Mat cov;
 			this->optimizeCurrentMap(
-					!_optimizeFromGraphEnd?_memory->getWorkingMem().lower_bound(1)->first:_memory->getWorkingMem().rbegin()->first,
+					_memory->getLastWorkingSignature(true)->id(),
 					false, _optimizedPoses, cov, &_constraints);
 		}
 		if(_optimizedPoses.lower_bound(1) != _optimizedPoses.end())
@@ -845,7 +845,7 @@ int Rtabmap::getTotalMemSize() const
 {
 	if(_memory)
 	{
-		const Signature * s  =_memory->getLastWorkingSignature();
+		const Signature * s  =_memory->getLastWorkingSignature(false);
 		if(s)
 		{
 			return s->id();
@@ -896,11 +896,11 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 			_mapCorrection.setIdentity();
 			_mapCorrectionBackup.setNull();
 
-			if(_memory->getLastWorkingSignature()->id() &&
+			if(_memory->getLastWorkingSignature(true)->id() &&
 				_optimizedPoses.empty())
 			{
 				cv::Mat covariance;
-				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, covariance, &_constraints);
+				this->optimizeCurrentMap(_memory->getLastWorkingSignature(true)->id(), false, _optimizedPoses, covariance, &_constraints);
 			}
 		}
 		else
@@ -967,9 +967,9 @@ bool Rtabmap::labelLocation(int id, const std::string & label)
 		{
 			return _memory->labelSignature(id, label);
 		}
-		else if(_memory->isIncremental() && _memory->getLastWorkingSignature())
+		else if(_memory->isIncremental() && _memory->getLastWorkingSignature(true))
 		{
-			return _memory->labelSignature(_memory->getLastWorkingSignature()->id(), label);
+			return _memory->labelSignature(_memory->getLastWorkingSignature(true)->id(), label);
 		}
 		else if(!_memory->isIncremental() && !_lastLocalizationPose.isNull() && !_lastLocalizationPose.isIdentity())
 		{
@@ -1003,9 +1003,9 @@ bool Rtabmap::setUserData(int id, const cv::Mat & data)
 		{
 			return _memory->setUserData(id, data);
 		}
-		else if(_memory->getLastWorkingSignature())
+		else if(_memory->getLastWorkingSignature(true))
 		{
-			return _memory->setUserData(_memory->getLastWorkingSignature()->id(), data);
+			return _memory->setUserData(_memory->getLastWorkingSignature(true)->id(), data);
 		}
 		else
 		{
@@ -1049,7 +1049,7 @@ void Rtabmap::generateDOTGraph(const std::string & path, int id, int margin)
 
 void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global, int format)
 {
-	if(_memory && _memory->getLastWorkingSignature())
+	if(_memory && _memory->getLastWorkingSignature(!global))
 	{
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> constraints;
@@ -1057,11 +1057,11 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 		if(optimized)
 		{
 			cv::Mat covariance;
-			this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, covariance, &constraints);
+			this->optimizeCurrentMap(_memory->getLastWorkingSignature(!global)->id(), global, poses, covariance, &constraints);
 		}
 		else
 		{
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature(!global)->id(), 0, global?-1:0, true);
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
@@ -1112,11 +1112,15 @@ void Rtabmap::resetMemory()
 
 	if(_memory)
 	{
+		if(_memory->isReadOnly())
+		{
+			UWARN("Memory is reset but the database won't be cleared because read-only mode is enabled.");
+		}
 		_memory->init(_databasePath, true, _parameters, true);
-		if(_memory->getLastWorkingSignature())
+		if(_memory->getLastWorkingSignature(true))
 		{
 			cv::Mat covariance;
-			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, covariance, &_constraints);
+			optimizeCurrentMap(_memory->getLastWorkingSignature(true)->id(), false, _optimizedPoses, covariance, &_constraints);
 		}
 		if(_bayesFilter)
 		{
@@ -1424,9 +1428,9 @@ bool Rtabmap::process(
 		else if(_memory->isIncremental()) // only in mapping mode
 		{
 			// Detect if the odometry is reset. If yes, trigger a new map.
-			if(_memory->getLastWorkingSignature())
+			if(_memory->getLastWorkingSignature(false))
 			{
-				const Transform & lastPose = _memory->getLastWorkingSignature()->getPose(); // use raw odometry
+				const Transform & lastPose = _memory->getLastWorkingSignature(false)->getPose(); // use raw odometry
 
 				// look for identity
 				if(!lastPose.isIdentity() && odomPose.isIdentity())
@@ -1473,14 +1477,14 @@ bool Rtabmap::process(
 		}
 	}
 
-	signature = _memory->getLastWorkingSignature();
+	signature = _memory->getLastWorkingSignature(false);
 	_currentSessionHasGPS = _currentSessionHasGPS || signature->sensorData().gps().stamp() > 0.0;
 	if(!signature)
 	{
 		UFATAL("Not supposed to be here...last signature is null?!?");
 	}
 
-	ULOGGER_INFO("Processing signature %d w=%d map=%d", signature->id(), signature->getWeight(), signature->mapId());
+	ULOGGER_INFO("Processing signature %d (%f) w=%d map=%d", signature->id(), signature->getStamp(), signature->getWeight(), signature->mapId());
 	timeMemoryUpdate = timer.ticks();
 	ULOGGER_INFO("timeMemoryUpdate=%fs", timeMemoryUpdate);
 
@@ -1523,8 +1527,8 @@ bool Rtabmap::process(
 					{
 						const Signature * s = _memory->getSignature(links.begin()->second.to());
 						UASSERT(s!=0);
-						// don't filter if the new node is not intermediate but previous one is
-						if(signature->getWeight() < 0 || s->getWeight() >= 0)
+						// Check small motion if previous node is not an intermediate node (consecutive intermediate nodes are merged later)
+						if(s->getWeight() >= 0)
 						{
 							t = links.begin()->second.transform();
 						}
@@ -2232,8 +2236,9 @@ bool Rtabmap::process(
 		maxLocalLocationsImmunized = _localImmunizationRatio * float(_memory->getWorkingMem().size());
 	}
 	// no need to do retrieval or immunization of locations if memory management
-	// is disabled and all nodes are in WM
-	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0))
+	// is disabled and all nodes are in WM.
+	// Also skip memory mangement on intermediate nodes
+	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0) && signature->getWeight()>=0)
 	{
 		if(retrievalId > 0)
 		{
@@ -2373,11 +2378,13 @@ bool Rtabmap::process(
 	// RETRIEVAL 2/3 : Update planned path and get next nodes to retrieve
 	//============================================================
 	std::list<int> retrievalLocalIds;
-	if(_rgbdSlamMode)
+	if(_rgbdSlamMode && signature->getWeight()>=0)
 	{
 		// Priority on locations on the planned path
 		if(_path.size())
 		{
+			// Note: retrieval on path with intermediate nodes is not supported. Note that the planned path would 
+			//       eventually fail anyway because intermediate nodes are not in _optimizedPoses.
 			updateGoalIndex();
 
 			float distanceSoFar = 0.0f;
@@ -2500,11 +2507,13 @@ bool Rtabmap::process(
 			{
 				nearNodesByDist.insert(std::make_pair(iter->second, iter->first));
 			}
-			UINFO("near nodes=%d, max local immunized=%d, ratio=%f WM=%d",
+			UINFO("near nodes=%d, max local immunized=%d (immunized by path so far=%d), ratio=%f WM=%d",
 					(int)nearNodesByDist.size(),
 					maxLocalLocationsImmunized,
+					immunizedLocally,
 					_localImmunizationRatio,
 					(int)_memory->getWorkingMem().size());
+			std::list<int> retrievalLocalIdsIntermediate;
 			for(std::multimap<float, int>::iterator iter=nearNodesByDist.begin();
 				iter!=nearNodesByDist.end() && (retrievalLocalIds.size() < _maxLocalRetrieved || immunizedLocally < maxLocalLocationsImmunized);
 				++iter)
@@ -2512,17 +2521,29 @@ bool Rtabmap::process(
 				const Signature * s = _memory->getSignature(iter->second);
 				if(s!=0)
 				{
-					// If there is a change of direction, better to be retrieving
-					// ALL nearest signatures than only newest neighbors
-					const std::multimap<int, Link> & links = s->getLinks();
-					for(std::multimap<int, Link>::const_reverse_iterator jter=links.rbegin();
-						jter!=links.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
-						++jter)
+					if(s->getWeight() != -1 && retrievalLocalIds.size() < _maxLocalRetrieved)
 					{
-						if(_memory->getSignature(jter->first) == 0)
+						// If there is a change of direction, better to be retrieving
+						// all nearest signatures than only newest neighbors.
+						// Use getNeighborsId instead of direct links to support intermediate nodes.
+						std::map<int, int> ids = _memory->getNeighborsId(s->id(), 2, _maxLocalRetrieved-retrievalLocalIds.size(), true, false, false);
+						for(std::map<int, int>::const_reverse_iterator jter=ids.rbegin();
+							jter!=ids.rend() && (retrievalLocalIds.size() < _maxLocalRetrieved || jter->second == 0);
+							++jter)
 						{
-							UINFO("retrieval of node %d on local map", jter->first);
-							retrievalLocalIds.push_back(jter->first);
+							if(_memory->getSignature(jter->first) == 0)
+							{
+								if(jter->second == 0)
+								{
+									UINFO("retrieval of intermediate node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, s->id());
+									retrievalLocalIdsIntermediate.push_back(jter->first);
+								}
+								else
+								{
+									UINFO("retrieval of node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, s->id());
+									retrievalLocalIds.push_back(jter->first);
+								}
+							}
 						}
 					}
 					if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
@@ -2539,20 +2560,29 @@ bool Rtabmap::process(
 			if(retrievalLocalIds.size() < _maxLocalRetrieved)
 			{
 				std::set<int> retrievalLocalIdsSet(retrievalLocalIds.begin(), retrievalLocalIds.end());
+				retrievalLocalIdsSet.insert(retrievalLocalIdsIntermediate.begin(), retrievalLocalIdsIntermediate.end());
 				for(std::list<int>::iterator iter=retrievalLocalIds.begin();
 					iter!=retrievalLocalIds.end() && retrievalLocalIds.size() < _maxLocalRetrieved;
 					++iter)
 				{
-					std::map<int, int> ids = _memory->getNeighborsId(*iter, 2, _maxLocalRetrieved - (unsigned int)retrievalLocalIds.size() + 1, true, false);
+					std::map<int, int> ids = _memory->getNeighborsId(*iter, 2, _maxLocalRetrieved - (unsigned int)retrievalLocalIds.size() + 1, true, false, false);
 					for(std::map<int, int>::reverse_iterator jter=ids.rbegin();
-						jter!=ids.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
+						jter!=ids.rend() && (retrievalLocalIds.size() < _maxLocalRetrieved || jter->second == 0);
 						++jter)
 					{
 						if(_memory->getSignature(jter->first) == 0 &&
 						   retrievalLocalIdsSet.find(jter->first) == retrievalLocalIdsSet.end())
 						{
-							UINFO("retrieval of node %d on local map", jter->first);
-							retrievalLocalIds.push_back(jter->first);
+							if(jter->second == 0)
+							{
+								UINFO("retrieval of intermediate node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, *iter);
+								retrievalLocalIdsIntermediate.push_back(jter->first);
+							}
+							else
+							{
+								UINFO("retrieval of node %d (margin=%d) on local map (from=%d)", jter->first, jter->second, *iter);
+								retrievalLocalIds.push_back(jter->first);
+							}
 							retrievalLocalIdsSet.insert(jter->first);
 						}
 					}
@@ -2566,6 +2596,7 @@ bool Rtabmap::process(
 			}
 
 			// insert them first to make sure they are loaded.
+			reactivatedIds.insert(reactivatedIds.begin(), retrievalLocalIdsIntermediate.begin(), retrievalLocalIdsIntermediate.end());
 			reactivatedIds.insert(reactivatedIds.begin(), retrievalLocalIds.begin(), retrievalLocalIds.end());
 		}
 	}
@@ -3207,6 +3238,8 @@ bool Rtabmap::process(
 	UDEBUG("Not self ref links: %d", (int)graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size());
 
 	if(_rgbdSlamMode
+		&&
+		signature->getWeight() != -1 // Ignore graph optimization on intermediate nodes
 		&&
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
@@ -4292,6 +4325,7 @@ bool Rtabmap::process(
 	{
 		_memory->addLink(Link(signature->id(), signature->id(), Link::kPosePrior, odomPose, odomCovariance.inv()));
 	}
+	bool lastSignatureWasIntermediateNode = signature->getWeight() == -1;
 
 	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)
 	int signatureRemoved = _memory->cleanup();
@@ -4397,10 +4431,20 @@ bool Rtabmap::process(
 	//============================================================
 	double totalTime = timerTotal.ticks();
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
-	if((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
-		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
+	if(!lastSignatureWasIntermediateNode && // skip memory management on intermediate nodes
+		((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
+		 (_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)))
 	{
-		ULOGGER_INFO("Removing old signatures because time limit is reached %f>%f or memory is reached %d>%d...", totalTime*1000, _maxTimeAllowed, _memory->getWorkingMem().size(), _maxMemoryAllowed);
+		if(_maxTimeAllowed!=0 && totalTime*1000>_maxTimeAllowed)
+		{
+			ULOGGER_INFO("Removing old signatures because time limit is reached %f ms > %f ms...",
+				totalTime*1000, _maxTimeAllowed);
+		}
+		if(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)
+		{
+			ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
+				_memory->getWorkingMem().size(), _maxMemoryAllowed);
+		}
 		immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
 		std::list<int> transferred = _memory->forget(immunizedLocations);
 		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
@@ -4448,9 +4492,9 @@ bool Rtabmap::process(
 		}
 		else if(_memory->isIncremental() &&
 				_optimizedPoses.size() &&
-				_memory->getLastWorkingSignature())
+				_memory->getLastWorkingSignature(true))
 		{
-			id = _memory->getLastWorkingSignature()->id();
+			id = _memory->getLastWorkingSignature(true)->id();
 			UDEBUG("Refresh local map from %d", id);
 		}
 		UDEBUG("id=%d _optimizedPoses=%d", id, (int)_optimizedPoses.size());
@@ -4870,9 +4914,14 @@ void Rtabmap::setWorkingDirectory(std::string path)
 
 void Rtabmap::rejectLastLoopClosure()
 {
-	if(_memory && _memory->getStMem().find(getLastLocationId())!=_memory->getStMem().end())
+	if(!_memory)
 	{
-		std::multimap<int, Link> links = _memory->getLinks(getLastLocationId(), false);
+		return;
+	}
+	const Signature * lastS = _memory->getLastWorkingSignature(true); // last non-intermediate
+	if(lastS && _memory->getStMem().find(lastS->id())!=_memory->getStMem().end())
+	{
+		std::multimap<int, Link> links = _memory->getLinks(lastS->id(), false);
 		bool linksRemoved = false;
 		for(std::multimap<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
@@ -4908,7 +4957,7 @@ void Rtabmap::rejectLastLoopClosure()
 				std::map<int, Transform> poses = _optimizedPoses;
 				std::multimap<int, Link> constraints;
 				cv::Mat covariance;
-				optimizeCurrentMap(getLastLocationId(), false, poses, covariance, &constraints);
+				optimizeCurrentMap(lastS->id(), false, poses, covariance, &constraints);
 
 				if(poses.empty())
 				{
@@ -4919,7 +4968,7 @@ void Rtabmap::rejectLastLoopClosure()
 					UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
 					_optimizedPoses = poses;
 					_constraints = constraints;
-					_mapCorrection = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()) * _memory->getLastWorkingSignature()->getPose().inverse();
+					_mapCorrection = _optimizedPoses.at(lastS->id()) * lastS->getPose().inverse();
 				}
 			}
 		}
@@ -4931,6 +4980,13 @@ void Rtabmap::deleteLastLocation()
 	if(_memory && _memory->getStMem().size())
 	{
 		int lastId = *_memory->getStMem().rbegin();
+		const Signature * s = _memory->getSignature(lastId);
+		UASSERT(s);
+		if(s->getWeight() == -1)
+		{
+			UERROR("Deleting last location with inermediate nodes is not supported. Aborting.");
+			return;
+		}
 		_memory->deleteLocation(lastId);
 		// we have to re-optimize the graph without the deleted location
 		if(_memory->isIncremental() && _optimizedPoses.size())
@@ -4959,7 +5015,7 @@ void Rtabmap::deleteLastLocation()
 			{
 				std::multimap<int, Link> constraints;
 				cv::Mat covariance;
-				optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, poses, covariance, &constraints);
+				optimizeCurrentMap(_memory->getLastWorkingSignature(true)->id(), false, poses, covariance, &constraints);
 
 				if(poses.empty())
 				{
@@ -4969,7 +5025,7 @@ void Rtabmap::deleteLastLocation()
 				{
 					_optimizedPoses = poses;
 					_constraints = constraints;
-					_mapCorrection = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()) * _memory->getLastWorkingSignature()->getPose().inverse();
+					_mapCorrection = _optimizedPoses.at(_memory->getLastWorkingSignature(true)->id()) * _memory->getLastWorkingSignature(true)->getPose().inverse();
 				}
 			}
 		}
@@ -5211,11 +5267,43 @@ void Rtabmap::optimizeCurrentMap(
 	UINFO("Optimize map: around location %d (lookInDatabase=%s)", id, lookInDatabase?"true":"false");
 	if(_memory && id > 0)
 	{
+		if(!lookInDatabase && (!_memory->getSignature(id) || _memory->getSignature(id)->getWeight() == -1))
+		{
+			UERROR("When doing a local optimization, the root id (%d) must exist and not be an intermediate node! Aborting...", id);
+			optimizedPoses.clear();
+			if(constraints)
+			{
+				constraints->clear();
+			}
+			return;
+		}
+
 		UTimer timer;
 		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true, false);
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
-			id = ids.begin()->first;
+			if(lookInDatabase)
+			{
+				id = ids.begin()->first;
+			}
+			else
+			{
+				// Find first node that is not intermediate
+				for(auto pair: ids)
+				{
+					// Make sure fromId is not an intermediate node
+					const Signature * s = _memory->getSignature(pair.first);
+					if(s && s->getWeight() != -1)
+					{
+						id = pair.first;
+						break;
+					}
+					else if(!s)
+					{
+						UWARN("Not found node %d in memory?!", pair.first);
+					}
+				}
+			}
 		}
 		UINFO("get %d ids time %f s", (int)ids.size(), timer.ticks());
 
@@ -5569,7 +5657,7 @@ void Rtabmap::getGraph(
 		bool withWords,
 		bool withGlobalDescriptors) const
 {
-	if(_memory && _memory->getLastWorkingSignature())
+	if(_memory && _memory->getLastWorkingSignature(!global))
 	{
 		if(_rgbdSlamMode)
 		{
@@ -5577,7 +5665,7 @@ void Rtabmap::getGraph(
 			{
 				poses = _optimizedPoses; // guess
 				cv::Mat covariance;
-				this->optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), global, poses, covariance, &constraints);
+				this->optimizeCurrentMap(_memory->getLastWorkingSignature(!global)->id(), global, poses, covariance, &constraints);
 				if(!global && !_optimizedPoses.empty())
 				{
 					// We send directly the already optimized poses if they are set
@@ -5587,14 +5675,14 @@ void Rtabmap::getGraph(
 			}
 			else
 			{
-				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+				std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature(!global)->id(), 0, global?-1:0, true);
 				_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 			}
 		}
 		else
 		{
 			// no optimization on appearance-only mode
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, global?-1:0, true);
+			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature(!global)->id(), 0, global?-1:0, true);
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
@@ -6242,7 +6330,7 @@ bool Rtabmap::addLink(const Link & link)
 		std::map<int, Transform> poses = _optimizedPoses;
 		std::multimap<int, Link> links;
 		cv::Mat covariance;
-		optimizeCurrentMap(this->getLastLocationId(), false, poses, covariance, &links);
+		optimizeCurrentMap(_memory->getLastWorkingSignature(true)->id(), false, poses, covariance, &links);
 
 		if(poses.find(link.from()) == poses.end())
 		{
@@ -6664,12 +6752,12 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		int currentNode = 0;
 		if(_memory->isIncremental())
 		{
-			if(!_memory->getLastWorkingSignature())
+			if(!_memory->getLastWorkingSignature(true))
 			{
 				UWARN("Working memory is empty... cannot compute a path");
 				return false;
 			}
-			currentNode = _memory->getLastWorkingSignature()->id();
+			currentNode = _memory->getLastWorkingSignature(true)->id();
 		}
 		else
 		{
@@ -6821,12 +6909,12 @@ bool Rtabmap::computePath(const Transform & targetPose, float tolerance)
 	int currentNode = 0;
 	if(_memory->isIncremental())
 	{
-		if(!_memory->getLastWorkingSignature())
+		if(!_memory->getLastWorkingSignature(true))
 		{
 			UWARN("Working memory is empty... cannot compute a path");
 			return false;
 		}
-		currentNode = _memory->getLastWorkingSignature()->id();
+		currentNode = _memory->getLastWorkingSignature(true)->id();
 	}
 	else
 	{
@@ -6980,12 +7068,17 @@ void Rtabmap::updateGoalIndex()
 	if( _memory && _path.size())
 	{
 		// remove all previous virtual links
+		bool hasIntermediateNodes = false;
 		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
 		{
 			const Signature * s = _memory->getSignature(_path[i].first);
 			if(s)
 			{
 				_memory->removeVirtualLinks(s->id());
+			}
+			if(s->getWeight() == -1)
+			{
+				hasIntermediateNodes = true;
 			}
 		}
 
@@ -7015,7 +7108,7 @@ void Rtabmap::updateGoalIndex()
 		// Make sure the next signatures on the path are linked together
 		float distanceSoFar = 0.0f;
 		for(unsigned int i=_pathCurrentIndex+1;
-			i<_path.size();
+			i<_path.size() && !hasIntermediateNodes;
 			++i)
 		{
 			if(i>0)
@@ -7030,6 +7123,11 @@ void Rtabmap::updateGoalIndex()
 					const Signature * s = _memory->getSignature(_path[i].first);
 					if(s)
 					{
+						if(s->getWeight() == -1)
+						{
+							hasIntermediateNodes = true;
+							break;
+						}
 						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
 						{
 							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
@@ -7047,18 +7145,25 @@ void Rtabmap::updateGoalIndex()
 			}
 		}
 
+		if(hasIntermediateNodes)
+		{
+			UERROR("Cannot follow a path with a map containing intermediate nodes (not supported: don't use intermediate nodes if rtabmap's planner has to be used). Aborting current plan!");
+			this->clearPath(-1);
+			return;
+		}
+
 		UDEBUG("current node = %d current goal = %d", _path[_pathCurrentIndex].first, _path[_pathGoalIndex].first);
 		Transform currentPose;
 		if(_memory->isIncremental())
 		{
-			if(_memory->getLastWorkingSignature() == 0 ||
-			   !uContains(_optimizedPoses, _memory->getLastWorkingSignature()->id()))
+			if(_memory->getLastWorkingSignature(true) == 0 ||
+			   !uContains(_optimizedPoses, _memory->getLastWorkingSignature(true)->id()))
 			{
 				UERROR("Last node is null in memory or not in optimized poses. Aborting the plan...");
 				this->clearPath(-1);
 				return;
 			}
-			currentPose = _optimizedPoses.at(_memory->getLastWorkingSignature()->id());
+			currentPose = _optimizedPoses.at(_memory->getLastWorkingSignature(true)->id());
 		}
 		else
 		{

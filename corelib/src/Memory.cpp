@@ -1434,23 +1434,30 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 	{
 		Signature * s = this->_getSignature(id);
 		UASSERT(s!=0);
-		std::multimap<int, Link> links = s->getLinks();
-		// Setting true to make sure we save all visual
-		// words that could be referenced in a previously
-		// transferred node in LTM (#979)
-		reducedId = reduceNode(s->id(), 0, true);
-		if(reducedToOut) {
-			*reducedToOut = reducedId;
-		}
-		if(reducedId>0)
+		if(s->getWeight() == -1)
 		{
-			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+			UERROR("Graph reduction with intermediate nodes is not supported.");
+		}
+		else
+		{
+			std::multimap<int, Link> links = s->getLinks();
+			// Setting true to make sure we save all visual
+			// words that could be referenced in a previously
+			// transferred node in LTM (#979)
+			reducedId = reduceNode(s->id(), 0, true);
+			if(reducedToOut) {
+				*reducedToOut = reducedId;
+			}
+			if(reducedId>0)
 			{
-				if(iter->second.type() == Link::kNeighbor)
+				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					if(_lastGlobalLoopClosureId == s->id())
+					if(iter->second.type() == Link::kNeighbor)
 					{
-						_lastGlobalLoopClosureId = iter->first;
+						if(_lastGlobalLoopClosureId == s->id())
+						{
+							_lastGlobalLoopClosureId = iter->first;
+						}
 					}
 				}
 			}
@@ -1674,7 +1681,7 @@ std::map<int, int> Memory::getNeighborsId(
 		) const
 {
 	UASSERT(maxGraphDepth >= 0);
-	//DEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
+	//UDEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
 	//		"ignoreLoopIds=%d ignoreIntermediateNodes=%d ignoreLocalSpaceLoopIds=%d",
 	//		signatureId, maxGraphDepth, maxCheckedInDatabase, incrementMarginOnLoop?1:0,
 	//		ignoreLoopIds?1:0, ignoreIntermediateNodes?1:0, ignoreLocalSpaceLoopIds?1:0);
@@ -1711,17 +1718,19 @@ std::map<int, int> Memory::getNeighborsId(
 				std::map<int, Link> tmpLandmarks;
 				const std::multimap<int, Link> * links = &tmpLinks;
 				const std::map<int, Link> * landmarks = &tmpLandmarks;
+				bool isIntermediateNode = false;
 				if(s)
 				{
-					if(!ignoreIntermediateNodes || s->getWeight() != -1)
+					isIntermediateNode = s->getWeight() == -1;
+					if(!ignoreIntermediateNodes || !isIntermediateNode)
 					{
-						ids.insert(std::pair<int, int>(*jter, m));
+						int effectiveMargin = m>0 && isIntermediateNode>0 ? m-1 : m;
+						ids.insert(std::pair<int, int>(s->id(), effectiveMargin));
 					}
 					else
 					{
-						ignoredIds.insert(*jter);
+						ignoredIds.insert(s->id());
 					}
-
 					links = &s->getLinks();
 					if(!ignoreLoopIds)
 					{
@@ -1730,8 +1739,22 @@ std::map<int, int> Memory::getNeighborsId(
 				}
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
-					++nbLoadedFromDb;
-					ids.insert(std::pair<int, int>(*jter, m));
+					int weight = 0;
+					_dbDriver->getWeight(*jter, weight);
+					isIntermediateNode = weight == -1;
+					if(!ignoreIntermediateNodes || !isIntermediateNode)
+					{
+						int effectiveMargin = m>0 && isIntermediateNode>0 ? m-1 : m;
+						ids.insert(std::pair<int, int>(*jter, effectiveMargin));
+						if(!isIntermediateNode)
+						{
+							++nbLoadedFromDb;
+						}
+					}
+					else
+					{
+						ignoredIds.insert(*jter);
+					}
 
 					UTimer timer;
 					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kAllWithoutLandmarks:Link::kAllWithLandmarks);
@@ -1775,7 +1798,7 @@ std::map<int, int> Memory::getNeighborsId(
 						if(iter->second.type() == Link::kNeighbor ||
 					       iter->second.type() == Link::kNeighborMerged)
 						{
-							if(ignoreIntermediateNodes && s->getWeight()==-1)
+							if(isIntermediateNode)
 							{
 								// stay on the same margin
 								if(currentMargin.insert(iter->first).second)
@@ -1906,7 +1929,7 @@ int Memory::getNextId()
 int Memory::incrementMapId(std::map<int, int> * reducedIds)
 {
 	//don't increment if there is no location in the current map
-	const Signature * s = getLastWorkingSignature();
+	const Signature * s = getLastWorkingSignature(false);
 	if(s && s->mapId() == _idMapCount)
 	{
 		// New session! move all signatures from the STM to WM
@@ -2286,12 +2309,30 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 			std::list<Signature *> signatures = this->getRemovableSignatures(1, ignoredIds);
 			if(signatures.size())
 			{
-				Signature *  s = dynamic_cast<Signature *>(signatures.front());
+				Signature * s = dynamic_cast<Signature *>(signatures.front());
 				if(s)
 				{
-					signaturesRemoved.push_back(s->id());
+					int refId = s->id();
+					signaturesRemoved.push_back(refId);
+					std::multimap<int, Link> neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
 					this->moveToTrash(s);
 					wordsRemoved = _vwd->getUnusedWordsSize();
+
+					// Remove all linked intermediate nodes at the same time (in both direction)
+					std::list<int> idsToCheck(uKeysList(neighborLinks));
+					while(!idsToCheck.empty())
+					{
+						int id = idsToCheck.front();
+						idsToCheck.pop_front();
+						s = this->_getSignature(id);
+						if(s && s->getWeight() == -1)
+						{
+							neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
+							uAppend(idsToCheck, uKeysList(neighborLinks));
+							signaturesRemoved.push_back(s->id());
+							this->moveToTrash(s);
+						}
+					}
 				}
 				else
 				{
@@ -2310,22 +2351,56 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 		UDEBUG("");
 		// Remove one more than total added during the iteration
 		int signaturesAdded = _signaturesAdded;
-		std::list<Signature *> signatures = getRemovableSignatures(signaturesAdded+1, ignoredIds);
-		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		int intermediateNodesRemoved = 0;
+		while(int(signaturesRemoved.size()-intermediateNodesRemoved) < signaturesAdded+1)
 		{
-			signaturesRemoved.push_back((*iter)->id());
-			// When a signature is deleted, it notifies the memory
-			// and it is removed from the memory list
-			this->moveToTrash(*iter);
+			std::list<Signature *> signatures = this->getRemovableSignatures(1, ignoredIds);
+			if(signatures.size())
+			{
+				Signature * s = dynamic_cast<Signature *>(signatures.front());
+				if(s)
+				{
+					signaturesRemoved.push_back(s->id());
+					std::multimap<int, Link> neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
+					// When a signature is deleted, it notifies the memory
+					// and it is removed from the memory list
+					this->moveToTrash(s);
+
+					// Remove all linked intermediate nodes at the same time (in both direction)
+					std::list<int> idsToCheck(uKeysList(neighborLinks));
+					while(!idsToCheck.empty())
+					{
+						int id = idsToCheck.front();
+						idsToCheck.pop_front();
+						s = this->_getSignature(id);
+						if(s && s->getWeight() == -1)
+						{
+							++intermediateNodesRemoved;
+							neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
+							uAppend(idsToCheck, uKeysList(neighborLinks));
+							signaturesRemoved.push_back(s->id());
+							this->moveToTrash(s);
+						}
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
 		}
-		if((int)signatures.size() < signaturesAdded)
+		if(int(signaturesRemoved.size() - intermediateNodesRemoved) < signaturesAdded)
 		{
-			UWARN("Less signatures transferred (%d) than added (%d)! The working memory cannot decrease in size.",
-					(int)signatures.size(), signaturesAdded);
+			UWARN("Less signatures transferred (%d, inter=%d) than added (%d)! The working memory cannot decrease in size.",
+					int(signaturesRemoved.size()-intermediateNodesRemoved), intermediateNodesRemoved, signaturesAdded);
 		}
 		else
 		{
-			UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), signaturesAdded);
+			UDEBUG("signaturesRemoved=%d (inter=%d), _signaturesAdded=%d", int(signaturesRemoved.size()-intermediateNodesRemoved), intermediateNodesRemoved, signaturesAdded);
 		}
 	}
 	return signaturesRemoved;
@@ -2578,9 +2653,10 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 							break;
 						}
 					}
-					if(!foundInSTM)
+					if(!foundInSTM && s->getWeight()>=0)
 					{
-						// less weighted signature priority to be transferred
+						// Less weighted signature priority to be transferred
+						// Ignore intermediate nodes
 						weightAgeIdMap.insert(std::make_pair(WeightAgeIdKey(s->getWeight(), _transferSortingByWeightId?0.0:memIter->second, s->id()), s));
 					}
 				}
@@ -2794,9 +2870,21 @@ int Memory::getLastSignatureId() const
 	return _idCount;
 }
 
-const Signature * Memory::getLastWorkingSignature() const
+const Signature * Memory::getLastWorkingSignature(bool ignoreIntermediateNodes) const
 {
-	UDEBUG("");
+	if(ignoreIntermediateNodes && _lastSignature && _lastSignature->getWeight()==-1)
+	{
+		for(std::map<int, Signature *>::const_reverse_iterator iter=_signatures.rbegin();
+			iter!=_signatures.rend();
+			++iter)
+		{
+			if(iter->second->getWeight() != -1)
+			{
+				return iter->second;
+			}
+		}
+		return 0;
+	}
 	return _lastSignature;
 }
 
@@ -4785,6 +4873,11 @@ void Memory::copyData(const Signature * from, Signature * to)
 		}
 		to->sensorData().setId(to->id());
 
+		if(!from->sensorData().globalDescriptors().empty())
+		{
+			to->sensorData().setGlobalDescriptors(from->sensorData().globalDescriptors());
+		}
+
 		to->setPose(from->getPose());
 	}
 	else
@@ -4816,6 +4909,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	SensorData data = inputData;
 
 	bool isIntermediateNode = data.id() < 0;
+
+	if(this->getSignatures().empty() && isIntermediateNode)
+	{
+		UWARN("Ignoring input data with stamp %s because the first node in memory cannot be an intermediate node.", inputData.stamp());
+		return 0;
+	}
 
 	// uncompress data if needed
 	
@@ -5039,7 +5138,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	int treeSize= int(_workingMem.size() + _stMem.size());
 	int meanWordsPerLocation = _feature2D->getMaxFeatures()>0?_feature2D->getMaxFeatures():0;
-	if(treeSize > 1)
+	if(meanWordsPerLocation==0 && treeSize > 1)
 	{
 		meanWordsPerLocation = _vwd->getTotalActiveReferences() / (treeSize-1); // ignore virtual signature
 	}
@@ -6767,7 +6866,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 			{
 				if(keys.at(i)>0)
 				{
-					if(_vwd->addWordRef(keys.at(i), (*j)->id()))
+					if(!_vwd->addWordRef(keys.at(i), (*j)->id()))
 					{
 						UERROR("Could not add word ref %d to node %d!?", keys.at(i), (*j)->id());
 					}
@@ -6790,6 +6889,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	UDEBUG("");
 	UTimer timer;
 	std::list<int> idsToLoad;
+	std::list<int> idsInQueue;
 	std::map<int, int>::iterator wmIter;
 	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
 	{
@@ -6800,10 +6900,14 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 				idsToLoad.push_back(*i);
 				UINFO("Loading location %d from database...", *i);
 			}
+			else if(idsToLoad.size() >= maxLoaded)
+			{
+				idsInQueue.push_back(*i);
+			}
 		}
 	}
 
-	UDEBUG("idsToLoad = %d", idsToLoad.size());
+	UDEBUG("idsToLoad = %ld (in queue = %ld)", idsToLoad.size(), idsInQueue.size());
 
 	std::list<Signature *> reactivatedSigns;
 	if(_dbDriver)
@@ -6812,8 +6916,13 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	}
 	timeDbAccess = timer.getElapsedTime();
 	std::list<int> idsLoaded;
+	int intermediateNodesLoaded = 0;
 	for(std::list<Signature *>::iterator i=reactivatedSigns.begin(); i!=reactivatedSigns.end(); ++i)
 	{
+		if((*i)->getWeight() == -1)
+		{
+			++intermediateNodesLoaded;
+		}
 		if(!(*i)->getLandmarks().empty())
 		{
 			// Update landmark indexes
@@ -6857,10 +6966,23 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	}
 	this->enableWordsRef(idsLoaded);
 	UDEBUG("time = %fs", timer.ticks());
-	return std::set<int>(idsToLoad.begin(), idsToLoad.end());
+
+	std::set<int> totalLoaded(idsToLoad.begin(), idsToLoad.end());
+	
+	// Ignore intermediate nodes in the total count of signatures loaded, keep loading next in queue
+	if(intermediateNodesLoaded > 0 && (int)idsInQueue.size() >= intermediateNodesLoaded)
+	{
+		double queueTimeDbAccess = 0.0;
+		std::set<int> queueLoaded = reactivateSignatures(idsInQueue, maxLoaded-intermediateNodesLoaded, queueTimeDbAccess);
+		timeDbAccess += queueTimeDbAccess;
+		totalLoaded.insert(queueLoaded.begin(), queueLoaded.end());
+	}
+
+	return totalLoaded;
 }
 
-// return all non-null poses
+// returns all non-null poses and links
+// if lookInDatabase is false, intermediate nodes are ignored and new neighbor links between non-intermediate nodes are returned
 // return unique links between nodes (for neighbors: old->new, for loops: parent->child)
 void Memory::getMetricConstraints(
 		const std::set<int> & ids,
@@ -6883,6 +7005,13 @@ void Memory::getMetricConstraints(
 	{
 		if(uContains(poses, *iter))
 		{
+			const Signature * s = lookInDatabase?0:this->getSignature(*iter); // If we look in db, we don't ignore intermediate nodes
+			if(s && s->getWeight() == -1)
+			{
+				poses.erase(*iter);
+				continue;
+			}
+
 			std::multimap<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::multimap<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
@@ -6895,14 +7024,15 @@ void Memory::getMetricConstraints(
 					   (jter->second.type() == Link::kNeighbor ||
 					    jter->second.type() == Link::kNeighborMerged))
 					{
-						const Signature * s = this->getSignature(jter->first);
+						s = this->getSignature(jter->first);
 						UASSERT(s!=0);
 						if(s->getWeight() == -1)
 						{
+							bool validLink = false;
 							Link link = jter->second;
 							while(s && s->getWeight() == -1)
 							{
-								// skip to next neighbor, well we assume that bad signatures
+								// skip to next neighbor, well we assume that intermediate signatures
 								// are only linked by max 2 neighbor links.
 								std::multimap<int, Link> n = this->getNeighborLinks(s->id(), false);
 								UASSERT(n.size() <= 2);
@@ -6915,15 +7045,29 @@ void Memory::getMetricConstraints(
 										link = link.merge(uter->second, uter->second.type());
 										poses.erase(s->id());
 										s = s2;
+										validLink = s->getWeight() != -1;
+									}
+									else
+									{
+										validLink = false;
+										break;
 									}
 
 								}
 								else
 								{
+									validLink = false;
 									break;
 								}
 							}
-							links.insert(std::make_pair(*iter, link));
+							if(validLink)
+							{
+								links.insert(std::make_pair(*iter, link));
+							}
+							else
+							{
+								poses.erase(s->id());
+							}
 						}
 						else
 						{
