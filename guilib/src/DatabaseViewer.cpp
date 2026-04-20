@@ -9450,7 +9450,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		findIter = rtabmap::graph::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
-			UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			//UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue; // don't add this link
 		}
 
@@ -9467,7 +9467,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			{
 				links.insert(*findIter);
 			}
-			UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			//UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue;
 		}
 
@@ -9486,11 +9486,11 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			if(findIter->second.from() != findIter->second.to()) {
 				links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
 			}
-			UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
+			//UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
 			continue;
 		}
 
-		UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+		//UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
 		if(iter->second.from() != iter->second.to()) {
 			links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
