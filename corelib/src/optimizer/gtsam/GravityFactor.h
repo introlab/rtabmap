@@ -12,14 +12,14 @@
 /**
  * Author: Mathieu Labbe
  * This file is a copy of AttitudeFactor.h of gtsam library but
- * with attitudeError() function overridden to ignore yaw errors.
+ * with gravityError() function overridden to ignore yaw errors.
  * For the noise model, use Sigmas(Vector2(0.1, 10)) (with second sigma high!)
  */
 
 /**
  *  @file   Pose3GravityFactor.h
  *  @author Frank Dellaert
- *  @brief  Header file for Attitude factor
+ *  @brief  Header file for Gravity factor
  *  @date   January 28, 2014
  **/
 #pragma once
@@ -65,7 +65,7 @@ public:
   }
 
   /** vector of errors */
-  Vector attitudeError(const Rot3& p,
+  Vector gravityError(const Rot3& p,
 #if GTSAM_VERSION_NUMERIC >= 40300
       OptionalJacobian<2,3> H = {}) const;
 #else
@@ -146,7 +146,7 @@ public:
 #else
 	boost::optional<Matrix&> H = boost::none) const {
 #endif
-    return attitudeError(nRb, H);
+    return gravityError(nRb, H);
   }
   Unit3 nZ() const {
     return nZ_;
@@ -236,13 +236,15 @@ public:
 #else
       boost::optional<Matrix&> H = boost::none) const {
 #endif
-    Vector e = attitudeError(nTb.rotation(), H);
     if (H) {
-      Matrix H23 = *H;
-      *H = Matrix::Zero(2,6);
-      H->block<2,3>(0,0) = H23;
+      Matrix H_rotation_pose;
+      const Rot3 nRb = nTb.rotation(H_rotation_pose);
+      Matrix23 H_error_rotation;
+      const Vector e = gravityError(nRb, H_error_rotation);
+      *H = H_error_rotation * H_rotation_pose;
+      return e;
     }
-    return e;
+    return gravityError(nTb.rotation());
   }
   Unit3 nZ() const {
     return nZ_;

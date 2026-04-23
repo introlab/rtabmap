@@ -12,44 +12,41 @@
 /**
  * Author: Mathieu Labbe
  * This file is a copy of AttitudeFactor.cpp of gtsam library but
- * with attitudeError() function overridden to ignore yaw errors.
+ * with gravityError() function overridden to ignore yaw errors.
  * For the noise model, use Sigmas(Vector2(0.1, 10)) (with second sigma high!)
  */
 
 /**
  *  @file   GravityFactor.cpp
  *  @author Frank Dellaert
- *  @brief  Implementation file for Attitude factor
+ *  @brief  Implementation file for Gravity factor
  *  @date   January 28, 2014
  **/
 
 #include "GravityFactor.h"
+#include <gtsam/base/numericalDerivative.h>
 
 using namespace std;
 
 namespace rtabmap {
 
 //***************************************************************************
-Vector GravityFactor::attitudeError(const Rot3& nRb,
+Vector GravityFactor::gravityError(const Rot3& nRb,
     OptionalJacobian<2, 3> H) const {
+  auto errorFunction = [this](const Rot3& candidate) -> Vector {
+    Vector3 r = candidate.xyz();
+    Unit3 nRef = Rot3::RzRyRx(r.x(), r.y(), 0) * Unit3(-bRef_.point3());
+#if GTSAM_VERSION_NUMERIC >= 40300
+    return nZ_.errorVector(nRef);
+#else
+    return nZ_.error(nRef);
+#endif
+  };
+
   if (H) {
-    Matrix23 D_nRef_R;
-    Matrix22 D_e_nRef;
-    Vector3 r = nRb.xyz();
-    Unit3 nRef = Rot3::RzRyRx(r.x(), r.y(), 0).rotate(bRef_, D_nRef_R);
-    Vector e = nZ_.error(nRef, D_e_nRef);
-    (*H) = D_e_nRef * D_nRef_R;
-    //printf("ref=%f %f %f grav=%f %f %f e= %f %f H=%f %f %f, %f %f %f\n",
-    //		nRef.point3().x(), nRef.point3().y(), nRef.point3().z(), nZ_.point3().x(), nZ_.point3().y(), nZ_.point3().z(), e(0), e(1),
-	//		(*H)(0,0), (*H)(0,1), (*H)(0,2), (*H)(1,0), (*H)(1,1), (*H)(1,2));
-    return e;
-  } else {
-    Vector3 r = nRb.xyz();
-    Unit3 nRef = Rot3::RzRyRx(r.x(), r.y(), 0) * bRef_;
-    Vector e = nZ_.error(nRef);
-    //printf("ref=%f %f %f grav=%f %f %f e= %f %f\n", nRef.point3().x(), nRef.point3().y(), nRef.point3().z(), nZ_.point3().x(), nZ_.point3().y(), nZ_.point3().z(), e(0), e(1));
-    return e;
+    *H = gtsam::numericalDerivative11<Vector, Rot3>(errorFunction, nRb);
   }
+  return errorFunction(nRb);
 }
 
 //***************************************************************************
