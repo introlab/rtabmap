@@ -17,7 +17,7 @@
  */
 
 /**
- *  @file   Pose3GravityFactor.h
+ *  @file   GravityFactor.h
  *  @author Frank Dellaert
  *  @brief  Header file for Gravity factor
  *  @date   January 28, 2014
@@ -41,13 +41,13 @@ namespace rtabmap {
  * - measurement is direction of gravity in navigation frame nG
  * - reference is direction of z axis in body frame bF
  * This factor will give zero error if nG is opposite direction of bF
- * @addtogroup Navigation
+ * @ingroup navigation
  */
 class GravityFactor {
 
 protected:
 
-  const Unit3 nZ_, bRef_; ///< Position measurement in
+  Unit3 nZ_, bRef_; ///< Position measurement in
 
 public:
 
@@ -72,20 +72,27 @@ public:
   	  OptionalJacobian<2,3> H = boost::none) const;
 #endif
 
+  const Unit3& nZ() const {
+    return nZ_;
+  }
+  const Unit3& bRef() const {
+    return bRef_;
+  }
+
   /** Serialization function */
 #if defined(GTSAM_ENABLE_BOOST_SERIALIZATION) || GTSAM_VERSION_NUMERIC < 40300
   friend class boost::serialization::access;
   template<class ARCHIVE>
   void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
-    /*ar & boost::serialization::make_nvp("nZ_", const_cast<Unit3&>(nZ_));
-    ar & boost::serialization::make_nvp("bRef_", const_cast<Unit3&>(bRef_));*/
+    /*ar & boost::serialization::make_nvp("nZ_", nZ_);
+    ar & boost::serialization::make_nvp("bRef_", bRef_);*/
   }
 #endif
 };
 
 /**
  * Version of GravityFactor for Rot3
- * @addtogroup Navigation
+ * @ingroup navigation
  */
 class Rot3GravityFactor: public NoiseModelFactor1<Rot3>, public GravityFactor {
 
@@ -96,7 +103,7 @@ public:
   /// shorthand for a smart pointer to a factor
 #if GTSAM_VERSION_NUMERIC >= 40300
   typedef std::shared_ptr<Rot3GravityFactor> shared_ptr;
-  #else
+#else
   typedef boost::shared_ptr<Rot3GravityFactor> shared_ptr;
 #endif
 
@@ -107,7 +114,7 @@ public:
   Rot3GravityFactor() {
   }
 
-  virtual ~Rot3GravityFactor() {
+  ~Rot3GravityFactor() override {
   }
 
   /**
@@ -123,7 +130,7 @@ public:
   }
 
   /// @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
 #if GTSAM_VERSION_NUMERIC >= 40300
     return std::static_pointer_cast<gtsam::NonlinearFactor>(
 #else
@@ -133,26 +140,20 @@ public:
   }
 
   /** print */
-  virtual void print(const std::string& s, const KeyFormatter& keyFormatter =
-      DefaultKeyFormatter) const;
+  void print(const std::string& s = "", const KeyFormatter& keyFormatter =
+      DefaultKeyFormatter) const override;
 
   /** equals */
-  virtual bool equals(const NonlinearFactor& expected, double tol = 1e-9) const;
+  bool equals(const NonlinearFactor& expected, double tol = 1e-9) const override;
 
   /** vector of errors */
-  virtual Vector evaluateError(const Rot3& nRb, //
+  Vector evaluateError(const Rot3& nRb, //
 #if GTSAM_VERSION_NUMERIC >= 40300
-	OptionalMatrixType H = OptionalNone) const {
+	OptionalMatrixType H = OptionalNone) const override {
 #else
-	boost::optional<Matrix&> H = boost::none) const {
+	boost::optional<Matrix&> H = boost::none) const override {
 #endif
     return gravityError(nRb, H);
-  }
-  Unit3 nZ() const {
-    return nZ_;
-  }
-  Unit3 bRef() const {
-    return bRef_;
   }
 
 private:
@@ -197,7 +198,7 @@ public:
   Pose3GravityFactor() {
   }
 
-  virtual ~Pose3GravityFactor() {
+  ~Pose3GravityFactor() override {
   }
 
   /**
@@ -213,7 +214,7 @@ public:
   }
 
   /// @return a deep copy of this factor
-  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
 #if GTSAM_VERSION_NUMERIC >= 40300
     return std::static_pointer_cast<gtsam::NonlinearFactor>(
 #else
@@ -223,18 +224,18 @@ public:
   }
 
   /** print */
-  virtual void print(const std::string& s, const KeyFormatter& keyFormatter =
-      DefaultKeyFormatter) const;
+  void print(const std::string& s = "", const KeyFormatter& keyFormatter =
+      DefaultKeyFormatter) const override;
 
   /** equals */
-  virtual bool equals(const NonlinearFactor& expected, double tol = 1e-9) const;
+  bool equals(const NonlinearFactor& expected, double tol = 1e-9) const override;
 
   /** vector of errors */
-  virtual Vector evaluateError(const Pose3& nTb, //
+  Vector evaluateError(const Pose3& nTb, //
 #if GTSAM_VERSION_NUMERIC >= 40300
-      OptionalMatrixType H = OptionalNone) const {
+      OptionalMatrixType H = OptionalNone) const override {
 #else
-      boost::optional<Matrix&> H = boost::none) const {
+      boost::optional<Matrix&> H = boost::none) const override {
 #endif
     if (H) {
       Matrix H_rotation_pose;
@@ -245,12 +246,6 @@ public:
       return e;
     }
     return gravityError(nTb.rotation());
-  }
-  Unit3 nZ() const {
-    return nZ_;
-  }
-  Unit3 bRef() const {
-    return bRef_;
   }
 
 private:
