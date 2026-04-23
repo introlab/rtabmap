@@ -24,7 +24,6 @@
  **/
 
 #include "GravityFactor.h"
-#include <gtsam/base/numericalDerivative.h>
 
 using namespace std;
 
@@ -33,20 +32,27 @@ namespace rtabmap {
 //***************************************************************************
 Vector GravityFactor::gravityError(const Rot3& nRb,
     OptionalJacobian<2, 3> H) const {
-  auto errorFunction = [this](const Rot3& candidate) -> Vector {
-    Vector3 r = candidate.xyz();
-    Unit3 nRef = Rot3::RzRyRx(r.x(), r.y(), 0) * Unit3(-bRef_.point3());
-#if GTSAM_VERSION_NUMERIC >= 40300
-    return nZ_.errorVector(nRef);
-#else
-    return nZ_.error(nRef);
-#endif
-  };
-
   if (H) {
-    *H = gtsam::numericalDerivative11<Vector, Rot3>(errorFunction, nRb);
+    Matrix33 H_rpy_R;
+    Vector3 rpy = nRb.xyz(H_rpy_R);
+    Matrix23 D_rp_R = H_rpy_R.block<2, 3>(0, 0);
+
+    Matrix23 D_nRef_R;
+    Unit3 nRef = Rot3::RzRyRx(rpy.x(), rpy.y(), 0.0).rotate(Unit3(-bRef_.point3()), D_nRef_R);
+
+    Matrix22 D_e_nRef;
+    Vector e = nZ_.error(nRef, D_e_nRef);
+
+    Matrix32 D_R_rp;
+    D_R_rp << 1.0, 0.0, 0.0, cos(rpy.x()), 0.0, -sin(rpy.x());
+
+    (*H) = D_e_nRef * D_nRef_R * D_R_rp * D_rp_R;
+    return e;
+  } else {
+    Vector3 rpy = nRb.xyz();
+    Unit3 nRef = Rot3::RzRyRx(rpy.x(), rpy.y(), 0.0) * Unit3(-bRef_.point3());
+    return nZ_.error(nRef);
   }
-  return errorFunction(nRb);
 }
 
 //***************************************************************************
