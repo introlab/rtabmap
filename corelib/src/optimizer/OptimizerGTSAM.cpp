@@ -475,7 +475,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					gtsam::Unit3 nZ(0,0,1);
 					gtsam::Unit3 bGMeas = nRbMeas.unrotate(nZ);
 					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(2, gravitySigma());
+#if GTSAM_VERSION_NUMERIC <= 40300
+					// Note: till 40301 is officially released, version 40300 with "4.3a1" would fail here.
+					//       Just replace "<=" above by "<" to use AttitudeFactor<Pose3> below.
 					graph.add(gtsam::Pose3AttitudeFactor(iter->first, nZ, model, bGMeas));
+#else
+					graph.add(gtsam::AttitudeFactor<gtsam::Pose3>(iter->first, nZ, model, bGMeas));
+#endif
 					lastAddedConstraints_.push_back(ConstraintToFactor(iter->first, iter->first, -1));
 				}
 			}
