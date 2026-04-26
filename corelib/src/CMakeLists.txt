@@ -804,10 +804,6 @@ IF(CUVSLAM_FOUND)
 ENDIF(CUVSLAM_FOUND)
 
 IF(GTSAM_FOUND)
-	SET(SRC_FILES
-    	${SRC_FILES}
-		optimizer/gtsam/GravityFactor.cpp
-	)
 	SET(LIBRARIES
 		${LIBRARIES}
 		gtsam
