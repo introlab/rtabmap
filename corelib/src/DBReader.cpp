@@ -749,7 +749,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 					data.setStereoCameraModels(combinedStereoModels);
 				}
 			}
-			data.setId(seq);
+			data.setId(s->getWeight()==-1 ? -1 : seq);
 			data.setStamp(s->getStamp());
 			data.setGroundTruth(s->getGroundTruthPose());
 			if(!globalPose.isNull())
