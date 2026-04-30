@@ -173,6 +173,7 @@ Rtabmap::Rtabmap() :
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
 	_currentSessionHasGPS(false),
+	_lastRejectedLoopClosureIds(0,0),
 	_pathStatus(0),
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
@@ -936,6 +937,7 @@ int Rtabmap::triggerNewMap()
 		UINFO("New map triggered, new map = %d", mapId);
 		_optimizedPoses.clear();
 		_constraints.clear();
+		_lastRejectedLoopClosureIds = std::make_pair(0,0);
 
 		if(_bayesFilter)
 		{
@@ -1108,6 +1110,7 @@ void Rtabmap::resetMemory()
 	_globalScanMap.clear();
 	_globalScanMapPoses.clear();
 	_nodesToRepublish.clear();
+	_lastRejectedLoopClosureIds = std::make_pair(0,0);
 	this->clearPath(0);
 
 	if(_memory)
@@ -3217,8 +3220,9 @@ bool Rtabmap::process(
 	float maxLinearErrorRatio = 0.0f;
 	float maxAngularError = 0.0f;
 	float maxAngularErrorRatio = 0.0f;
-	int maxLinearErrorFromId = 0;
-	int maxLinearErrorToId = 0;
+	std::pair<int, int> maxLinearErrorIds(0,0);
+	std::pair<int, int> maxAngularErrorIds(0,0);
+	std::pair<int, int> maxLinearErrorRemovedIds(0,0);
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	Transform previousMapCorrection;
@@ -3389,8 +3393,7 @@ bool Rtabmap::process(
 
 					if(maxLinearLink)
 					{
-						maxLinearErrorFromId = maxLinearLink->from();
-						maxLinearErrorToId = maxLinearLink->to();
+						maxLinearErrorIds = std::make_pair(maxLinearLink->from(), maxLinearLink->to());
 						UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
 								maxLinearError,
 								maxLinearLink->from(),
@@ -3433,6 +3436,7 @@ bool Rtabmap::process(
 					}
 					if(maxAngularLink)
 					{
+						maxAngularErrorIds = std::make_pair(maxAngularLink->from(), maxAngularLink->to());
 						UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
 								maxAngularError*180.0f/CV_PI,
 								maxAngularLink->from(),
@@ -3541,8 +3545,7 @@ bool Rtabmap::process(
 
 							if(maxLinearLink)
 							{
-								maxLinearErrorFromId = maxLinearLink->from();
-								maxLinearErrorToId = maxLinearLink->to();
+								maxLinearErrorIds = std::make_pair(maxLinearLink->from(), maxLinearLink->to());
 								UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
 										maxLinearError,
 										maxLinearLink->from(),
@@ -3585,6 +3588,7 @@ bool Rtabmap::process(
 							}
 							if(maxAngularLink)
 							{
+								maxAngularErrorIds = std::make_pair(maxAngularLink->from(), maxAngularLink->to());
 								UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f, thr=%f)",
 										maxAngularError*180.0f/CV_PI,
 										maxAngularLink->from(),
@@ -3893,28 +3897,106 @@ bool Rtabmap::process(
 				bool reject = false;
 				if(maxLinearLink)
 				{
-					maxLinearErrorFromId = maxLinearLink->from();
-					maxLinearErrorToId = maxLinearLink->to();
+					maxLinearErrorIds = std::make_pair(maxLinearLink->from(), maxLinearLink->to());
 					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 					if(_optimizationMaxError > 0.0f && maxLinearErrorRatio > _optimizationMaxError)
 					{
-						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
-							  "iteration because a wrong loop closure has been "
-							  "detected after graph optimization, resulting in "
-							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
-							  "maximum error ratio parameter \"%s\" is %f of std deviation.",
-							  (int)loopClosureLinksAdded.size(),
-							  loopClosureLinksAdded.front().first,
-							  loopClosureLinksAdded.front().second,
-							  maxLinearErrorRatio,
-							  maxLinearLink->from(),
-							  maxLinearLink->to(),
-							  maxLinearLink->type(),
-							  maxLinearError,
-							  sqrt(maxLinearLink->transVariance()),
-							  Parameters::kRGBDOptimizeMaxError().c_str(),
-							  _optimizationMaxError);
-						reject = true;
+						if( maxLinearErrorIds == _lastRejectedLoopClosureIds &&
+							graph::findLink(constraints, maxLinearErrorIds.first, maxLinearErrorIds.second) != constraints.end())
+						{
+							UWARN("We detected 2 consecutive loop closure rejections because of the same loop closure link (%d->%d), trying optimization again without that link...",
+								maxLinearErrorIds.first, maxLinearErrorIds.second);
+							std::map<int, Transform> posesOut;
+							std::multimap<int, Link> edgeConstraintsOut;
+							int fromId = poses.lower_bound(1)->first;
+							_graphOptimizer->getConnectedGraph(fromId, poses, constraints, posesOut, edgeConstraintsOut);
+							cv::Mat subCovariance;
+							double subOptimizationError = 0.0;
+							int subOptimizationIterations = 0;
+							std::map<int, Transform> subPoses = _graphOptimizer->optimize(fromId, posesOut, edgeConstraintsOut, subCovariance, 0, &subOptimizationError, &subOptimizationIterations);
+							if(subPoses.empty())
+							{
+								UWARN("Optimization failed when trying to repair graph.");
+								reject = true;
+							}
+							else
+							{
+								const Link * subMaxLinearLink = 0;
+								float subMaxLinearErrorRatio = 0;
+								float subMaxAngularErrorRatio = 0;
+								float subMaxLinearError = 0;
+								float subMaxAngularError = 0;
+								graph::computeMaxGraphErrors(
+										subPoses,
+										edgeConstraintsOut,
+										subMaxLinearErrorRatio,
+										subMaxAngularErrorRatio,
+										subMaxLinearError,
+										subMaxAngularError,
+										&subMaxLinearLink,
+										0);
+								if(subMaxLinearLink == 0)
+								{
+									UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
+									reject = true;
+								}
+								else if(subMaxLinearErrorRatio > _optimizationMaxError)
+								{
+									UWARN("Optimization error is still high (%f, on link %d->%d) after removing loop closure with highest error.",
+										subMaxLinearErrorRatio, subMaxLinearLink->from(), subMaxLinearLink->to());
+									reject = true;
+								}
+								else
+								{
+									UWARN("Optimization error is lower (%f, on link %d->%d) after removing loop "
+										"closure with highest error. We will remove the old link (%d->%d) and accept the new one (%d->%d).",
+										subMaxLinearErrorRatio, subMaxLinearLink->from(), subMaxLinearLink->to(),
+										maxLinearLink->from(), maxLinearLink->to(),
+										loopClosureLinksAdded.front().first, loopClosureLinksAdded.front().second);
+										_memory->removeLink(maxLinearLink->from(), maxLinearLink->to());
+										maxLinearErrorRemovedIds = std::make_pair(maxLinearLink->from(), maxLinearLink->to()),
+										poses = subPoses;
+										constraints = edgeConstraintsOut;
+										maxLinearLink = subMaxLinearLink;
+										maxLinearErrorRatio = subMaxLinearErrorRatio;
+										maxAngularErrorRatio = subMaxAngularErrorRatio;
+										maxLinearError = subMaxLinearError;
+										maxAngularError = subMaxAngularError;
+										covariance = subCovariance;
+										optimizationError = subOptimizationError;
+										optimizationIterations = subOptimizationIterations;
+										maxLinearErrorIds = std::make_pair(maxLinearLink->from(), maxLinearLink->to());
+
+								}
+							}
+						}
+						else {
+							reject = true;
+						}
+
+						if(reject)
+						{
+							UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
+								"iteration because a wrong loop closure has been "
+								"detected after graph optimization, resulting in "
+								"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
+								"maximum error ratio parameter \"%s\" is %f of std deviation.",
+								(int)loopClosureLinksAdded.size(),
+								loopClosureLinksAdded.front().first,
+								loopClosureLinksAdded.front().second,
+								maxLinearErrorRatio,
+								maxLinearLink->from(),
+								maxLinearLink->to(),
+								maxLinearLink->type(),
+								maxLinearError,
+								sqrt(maxLinearLink->transVariance()),
+								Parameters::kRGBDOptimizeMaxError().c_str(),
+								_optimizationMaxError);
+						}
+						if(reject && maxLinearLink->type() != Link::kNeighbor)
+						{
+							_lastRejectedLoopClosureIds = maxLinearErrorIds;
+						}
 					}
 					else if(_optimizationMaxError == 0.0f && maxLinearErrorRatio>100 && !_graphOptimizer->isRobust())
 					{
@@ -3932,6 +4014,7 @@ bool Rtabmap::process(
 				}
 				if(maxAngularLink)
 				{
+					maxAngularErrorIds = std::make_pair(maxAngularLink->from(), maxAngularLink->to());
 					UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
 					if(_optimizationMaxError > 0.0f && maxAngularErrorRatio > _optimizationMaxError)
 					{
@@ -4116,8 +4199,21 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxLinearErrorRatio);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error(), maxAngularError*180.0f/M_PI);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_ratio(), maxAngularErrorRatio);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxLinearErrorFromId);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxLinearErrorToId);
+			if(maxLinearErrorIds.first>0)
+			{
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxLinearErrorIds.first);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxLinearErrorIds.second);
+			}
+			if(maxAngularErrorIds.first>0)
+			{
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_from_id(), maxAngularErrorIds.first);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_to_id(), maxAngularErrorIds.second);
+			}
+			if(maxLinearErrorRemovedIds.first > 0)
+			{
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_from_id(), maxLinearErrorRemovedIds.first);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_to_id(), maxLinearErrorRemovedIds.second);
+			}
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), landmarksDetected.empty()?0:-landmarksDetected.begin()->first);

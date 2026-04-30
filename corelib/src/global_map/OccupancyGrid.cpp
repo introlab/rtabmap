@@ -222,14 +222,14 @@ void OccupancyGrid::assemble(const std::list<std::pair<int, Transform> > & newPo
 
 	if(!cache().empty())
 	{
-		UDEBUG("Updating from cache");
+		UDEBUG("Updating %ld poses from cache", newPoses.size());
 		for(std::list<std::pair<int, Transform> >::const_iterator iter = newPoses.begin(); iter!=newPoses.end(); ++iter)
 		{
 			if(uContains(cache(), iter->first))
 			{
 				const LocalGrid & localGrid = cache().at(iter->first);
 
-				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.groundCells.cols, localGrid.obstacleCells.cols, localGrid.emptyCells.cols);
+				//UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, localGrid.groundCells.cols, localGrid.obstacleCells.cols, localGrid.emptyCells.cols);
 
 				//ground
 				cv::Mat ground;
