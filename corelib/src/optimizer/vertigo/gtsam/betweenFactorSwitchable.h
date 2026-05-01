@@ -31,9 +31,9 @@ namespace vertigo {
 
       gtsam::Vector evaluateError(const VALUE& p1, const VALUE& p2, const SwitchVariableLinear& s,
 #if GTSAM_VERSION_NUMERIC >= 40300
-		  OptionalMatrixType H1 = OptionalNone,
-		  OptionalMatrixType H2 = OptionalNone,
-		  OptionalMatrixType H3 = OptionalNone) const
+		  gtsam::OptionalMatrixType H1 = OptionalNone,
+		  gtsam::OptionalMatrixType H2 = OptionalNone,
+		  gtsam::OptionalMatrixType H3 = OptionalNone) const
 #else
           boost::optional<gtsam::Matrix&> H1 = boost::none,
           boost::optional<gtsam::Matrix&> H2 = boost::none,
@@ -71,9 +71,9 @@ namespace vertigo {
 
       gtsam::Vector evaluateError(const VALUE& p1, const VALUE& p2, const SwitchVariableSigmoid& s,
 #if GTSAM_VERSION_NUMERIC >= 40300
-		  OptionalMatrixType H1 = OptionalNone,
-		  OptionalMatrixType H2 = OptionalNone,
-		  OptionalMatrixType H3 = OptionalNone) const
+		  gtsam::OptionalMatrixType H1 = OptionalNone,
+		  gtsam::OptionalMatrixType H2 = OptionalNone,
+		  gtsam::OptionalMatrixType H3 = OptionalNone) const
 #else
           boost::optional<gtsam::Matrix&> H1 = boost::none,
           boost::optional<gtsam::Matrix&> H2 = boost::none,

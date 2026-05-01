@@ -13,6 +13,7 @@
 // DerivedValue.h removed from gtsam repo (Dec 2018): https://github.com/borglab/gtsam/commit/e550f4f2aec423cb3f2791b81cb5858b8826ebac
 #include "DerivedValue.h"
 #include <gtsam/base/Lie.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
 
 namespace vertigo {
 
@@ -77,8 +78,8 @@ namespace vertigo {
     /** between operation */
     inline SwitchVariableSigmoid between(const SwitchVariableSigmoid& l2,
 #if GTSAM_VERSION_NUMERIC >= 40300
-        OptionalMatrixType H1=OptionalNone,
-		OptionalMatrixType H2=OptionalNone) const {
+        gtsam::OptionalMatrixType H1=OptionalNone,
+		    gtsam::OptionalMatrixType H2=OptionalNone) const {
 #else
         boost::optional<gtsam::Matrix&> H1=boost::none,
         boost::optional<gtsam::Matrix&> H2=boost::none) const {

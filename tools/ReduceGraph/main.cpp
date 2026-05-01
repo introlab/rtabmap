@@ -37,6 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UStl.h>
+#ifdef RTABMAP_PYTHON
+#include <rtabmap/core/PythonInterface.h>
+#endif
 #include <pcl/filters/filter.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
@@ -115,6 +118,10 @@ int main(int argc, char * argv[])
 	printf("  keep_latest = %s\n", keepLatest?"true":"false");
 	printf("  keep_linked = %s\n", keepLinked?"true":"false");
 	printf("  pre_cleanup = %s\n", preCleanup?"true":"false");
+
+#ifdef RTABMAP_PYTHON
+	rtabmap::PythonInterface pythonInterface;
+#endif
 	
 	// Just parse logging options
 	Parameters::parseArguments(argc, argv);
