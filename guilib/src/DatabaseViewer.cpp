@@ -9163,9 +9163,9 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 			graph::MaxGraphErrors maxGraphErrors = graph::computeMaxGraphErrors(
 					poses,
 					links);
-			if(maxGraphErrors.linearLink)
+			if(maxGraphErrors.linearLink.isValid())
 			{
-				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.linear, maxGraphErrors.linearLink->from(), maxGraphErrors.linearLink->to(), maxGraphErrors.linearLink->transVariance(), maxGraphErrors.linear/sqrt(maxGraphErrors.linearLink->transVariance()));
+				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to(), maxGraphErrors.linearLink.transVariance(), maxGraphErrors.linear/sqrt(maxGraphErrors.linearLink.transVariance()));
 				if(maxGraphErrors.linearRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
@@ -9175,16 +9175,16 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 						  newLink.to(),
 						  maxGraphErrors.linear,
 						  maxGraphErrors.linearRatio,
-						  maxGraphErrors.linearLink->from(),
-						  maxGraphErrors.linearLink->to(),
-						  sqrt(maxGraphErrors.linearLink->transVariance()),
+						  maxGraphErrors.linearLink.from(),
+						  maxGraphErrors.linearLink.to(),
+						  sqrt(maxGraphErrors.linearLink.transVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 				}
 			}
-			if(maxGraphErrors.angularLink)
+			if(maxGraphErrors.angularLink.isValid())
 			{
-				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.angular*180.0f/CV_PI, maxGraphErrors.angularLink->from(), maxGraphErrors.angularLink->to(), maxGraphErrors.angularLink->rotVariance(), maxGraphErrors.angular/sqrt(maxGraphErrors.angularLink->rotVariance()));
+				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.angular*180.0f/CV_PI, maxGraphErrors.angularLink.from(), maxGraphErrors.angularLink.to(), maxGraphErrors.angularLink.rotVariance(), maxGraphErrors.angular/sqrt(maxGraphErrors.angularLink.rotVariance()));
 				if(maxGraphErrors.angularRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
@@ -9194,9 +9194,9 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 						  newLink.to(),
 						  maxGraphErrors.angular*180.0f/CV_PI,
 						  maxGraphErrors.angularRatio,
-						  maxGraphErrors.angularLink->from(),
-						  maxGraphErrors.angularLink->to(),
-						  sqrt(maxGraphErrors.angularLink->rotVariance()),
+						  maxGraphErrors.angularLink.from(),
+						  maxGraphErrors.angularLink.to(),
+						  sqrt(maxGraphErrors.angularLink.rotVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 				}

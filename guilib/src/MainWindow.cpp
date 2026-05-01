@@ -6879,9 +6879,9 @@ void MainWindow::postProcessing(
 													graph::MaxGraphErrors maxGraphErrors = graph::computeMaxGraphErrors(
 															poses,
 															links);
-													if(maxGraphErrors.linearLink)
+													if(maxGraphErrors.linearLink.isValid())
 													{
-														UINFO("Max optimization linear error = %f m (link %d->%d)", maxGraphErrors.linear, maxGraphErrors.linearLink->from(), maxGraphErrors.linearLink->to());
+														UINFO("Max optimization linear error = %f m (link %d->%d)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to());
 														if(maxGraphErrors.linearRatio > optimizeMaxError)
 														{
 															msg = uFormat("Rejecting edge %d->%d because "
@@ -6890,17 +6890,17 @@ void MainWindow::postProcessing(
 																	  from,
 																	  to,
 																	  maxGraphErrors.linear,
-																	  maxGraphErrors.linearLink->from(),
-																	  maxGraphErrors.linearLink->to(),
+																	  maxGraphErrors.linearLink.from(),
+																	  maxGraphErrors.linearLink.to(),
 																	  maxGraphErrors.linearRatio,
-																	  sqrt(maxGraphErrors.linearLink->transVariance()),
+																	  sqrt(maxGraphErrors.linearLink.transVariance()),
 																	  Parameters::kRGBDOptimizeMaxError().c_str(),
 																	  optimizeMaxError);
 														}
 													}
-													else if(maxGraphErrors.angularLink)
+													else if(maxGraphErrors.angularLink.isValid())
 													{
-														UINFO("Max optimization angular error = %f deg (link %d->%d)", maxGraphErrors.angular*180.0f/M_PI, maxGraphErrors.angularLink->from(), maxGraphErrors.angularLink->to());
+														UINFO("Max optimization angular error = %f deg (link %d->%d)", maxGraphErrors.angular*180.0f/M_PI, maxGraphErrors.angularLink.from(), maxGraphErrors.angularLink.to());
 														if(maxGraphErrors.angularRatio > optimizeMaxError)
 														{
 															msg = uFormat("Rejecting edge %d->%d because "
@@ -6909,10 +6909,10 @@ void MainWindow::postProcessing(
 																	  from,
 																	  to,
 																	  maxGraphErrors.angular*180.0f/M_PI,
-																	  maxGraphErrors.angularLink->from(),
-																	  maxGraphErrors.angularLink->to(),
+																	  maxGraphErrors.angularLink.from(),
+																	  maxGraphErrors.angularLink.to(),
 																	  maxGraphErrors.angularRatio,
-																	  sqrt(maxGraphErrors.angularLink->rotVariance()),
+																	  sqrt(maxGraphErrors.angularLink.rotVariance()),
 																	  Parameters::kRGBDOptimizeMaxError().c_str(),
 																	  optimizeMaxError);
 														}

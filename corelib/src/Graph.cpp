@@ -982,7 +982,7 @@ MaxGraphErrors computeMaxGraphErrors(
 			{
 				maxError.linear = linearError;
 				maxError.linearRatio = linearErrorRatio;
-				maxError.linearLink = &iter->second;
+				maxError.linearLink = iter->second;
 			}
 
 			// For landmark links, don't compute angular error if it doesn't estimate orientation
@@ -1011,7 +1011,7 @@ MaxGraphErrors computeMaxGraphErrors(
 				{
 					maxError.angular = angularError;
 					maxError.angularRatio = angularErrorRatio;
-					maxError.angularLink = &iter->second;
+					maxError.angularLink = iter->second;
 				}
 			}
 		}

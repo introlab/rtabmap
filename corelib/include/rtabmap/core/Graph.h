@@ -124,8 +124,8 @@ struct MaxGraphErrors
 	float angular=-1.0f;        // absolute error (rad)  of the link with maximum angular error
 	float linearRatio=-1.0f;    // Ratio = absolute error (m) / linear std (m), of the link with maximum linear error
 	float angularRatio=-1.0f;   // Ratio = absolute error (rad) / angular std (rad), of the link with maximum angular error
-	const Link * linearLink=0;  // link with maximum linear error
-	const Link * angularLink=0; // link with maximum angular error
+	Link linearLink;  // link with maximum linear error
+	Link angularLink; // link with maximum angular error
 };
 MaxGraphErrors RTABMAP_CORE_EXPORT computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,
