@@ -3419,10 +3419,6 @@ bool Rtabmap::process(
 									UWARN("Optimization failed when trying to repair the graph.");
 									rejectLocalization = true;
 								}
-								else
-								{
-									UWARN("Successfully repaired the graph.");
-								}
 							}
 							else {
 								rejectLocalization = true;
@@ -4195,25 +4191,17 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxGraphErrors.linearRatio);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error(), maxGraphErrors.angular*180.0f/M_PI);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_ratio(), maxGraphErrors.angularRatio);
-			if(maxGraphErrorsLinearIds.first>0)
-			{
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxGraphErrorsLinearIds.first);
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxGraphErrorsLinearIds.second);
-			}
-			if(maxGraphErrorsAngularIds.first>0)
-			{
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_from_id(), maxGraphErrorsAngularIds.first);
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_to_id(), maxGraphErrorsAngularIds.second);
-			}
-			if(maxGraphErrorsRemovedIds.first > 0)
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxGraphErrorsLinearIds.first);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxGraphErrorsLinearIds.second);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_from_id(), maxGraphErrorsAngularIds.first);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_to_id(), maxGraphErrorsAngularIds.second);
+			if(_optimizationMaxErrorRepairRadius > 0)
 			{
 				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_from_id(), maxGraphErrorsRemovedIds.first);
 				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_to_id(), maxGraphErrorsRemovedIds.second);
-			}
-			if(maxGraphErrorsRemovedCount > 0)
-			{
 				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_count(), maxGraphErrorsRemovedCount);
 			}
+
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), landmarksDetected.empty()?0:-landmarksDetected.begin()->first);
@@ -5537,28 +5525,51 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 	int originalMaxErrorLinkTo = maxGraphErrors.linearLink->to();
 
 	graph::MaxGraphErrors subMaxGraphErrors = maxGraphErrors;
-	std::multimap<int, Link> subConstraintsOut = constraints;
-	int fromId = poses.lower_bound(1)->first;
 	std::list<std::pair<int, int> > removedLinks;
+	std::map<int, Transform> subPoses = poses;
+	std::multimap<int, Link> subConstraints = constraints;
 	while(subMaxGraphErrors.linearLink!=0 && subMaxGraphErrors.linearRatio > _optimizationMaxError)
 	{
-		std::map<int, Transform> posesOut;
-		std::multimap<int, Link> subConstraintsIn = subConstraintsOut;
 		removedLinks.push_back(std::make_pair(subMaxGraphErrors.linearLink->from(), subMaxGraphErrors.linearLink->to()));
-		subConstraintsIn.erase(graph::findLink(subConstraintsIn, subMaxGraphErrors.linearLink->from(), subMaxGraphErrors.linearLink->to()));
+		subConstraints.erase(graph::findLink(subConstraints, subMaxGraphErrors.linearLink->from(), subMaxGraphErrors.linearLink->to()));
 		subMaxGraphErrors.linearLink = 0;
-		_graphOptimizer->getConnectedGraph(fromId, poses, subConstraintsIn, posesOut, subConstraintsOut);
+
+		// Get connected graph just to check if a node got disconnected (localization mode)
+		std::map<int, Transform> posesOut;
+		std::multimap<int, Link> subConstraintsOut;
+		_graphOptimizer->getConnectedGraph(subPoses.rbegin()->first, subPoses, subConstraints, posesOut, subConstraintsOut);
+		if(subPoses.size() - posesOut.size() > 1)
+		{
+			UWARN("More than one pose filtered in one iteration when trying to repair graph. Aborting repairing.");
+			break;
+		}
+		else if(subPoses.size() != posesOut.size())
+		{
+			for(std::map<int, Transform>::iterator pter=subPoses.begin(); pter!=subPoses.end(); ++pter)
+			{
+				if(posesOut.find(pter->first) == posesOut.end())
+				{
+					subPoses.erase(pter);
+					break; // should be only one if different, break now
+				}
+			}
+		}
 		cv::Mat subOptimizationCovariance;
 		double subOptimizationError = 0.0;
 		int subOptimizationIterations = 0;
-		std::map<int, Transform> subPoses = _graphOptimizer->optimize(fromId, posesOut, subConstraintsOut, subOptimizationCovariance, 0, &subOptimizationError, &subOptimizationIterations);
+
+		subPoses = _graphOptimizer->optimize(
+			_optimizeFromGraphEnd ? subPoses.rbegin()->first : subPoses.lower_bound(1)->first,
+			subPoses,
+			subConstraintsOut,
+			subOptimizationCovariance,
+			0,
+			&subOptimizationError,
+			&subOptimizationIterations);
+
 		if(subPoses.empty())
 		{
 			UWARN("Optimization failed when trying to repair graph.");
-		}
-		else if(subPoses.size() != poses.size())
-		{
-			UWARN("Graph split when trying to repair graph. Aborting repairing.");
 		}
 		else
 		{
