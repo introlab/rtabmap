@@ -117,6 +117,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_visSSC(Parameters::defaultVisSSC()),
+	_createIntermediateNodes(Parameters::defaultRtabmapCreateIntermediateNodes()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
 	_rectifyOnlyFeatures(Parameters::defaultRtabmapRectifyOnlyFeatures()),
 	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
@@ -757,6 +758,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
 	Parameters::parse(params, Parameters::kVisMaxFeatures(), _visMaxFeatures);
 	Parameters::parse(params, Parameters::kVisSSC(), _visSSC);
+	Parameters::parse(params, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
 	Parameters::parse(params, Parameters::kRtabmapRectifyOnlyFeatures(), _rectifyOnlyFeatures);
 	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
@@ -2413,7 +2415,7 @@ int Memory::cleanup()
 	int signatureRemoved = 0;
 
 	// bad signature
-	if(_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory))
+	if(_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !(_incrementalMemory || _createIntermediateNodes)))
 	{
 		if(_lastSignature->isBadSignature())
 		{
@@ -3040,6 +3042,16 @@ bool Memory::setUserData(int id, const cv::Mat & data)
 		UERROR("Node %d not found in RAM, failed to set user data (size=%d)!", id, data.total());
 	}
 	return false;
+}
+
+void Memory::convertToIntermediate(int locationId)
+{
+	UDEBUG("Converting location %d to intermediate node", locationId);
+	Signature * location = _getSignature(locationId);
+	if(location)
+	{
+		location->setWeight(-1);
+	}
 }
 
 void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
@@ -4226,8 +4238,8 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 						_rehearsalMaxDistance, _rehearsalMaxAngle);
 				return false;
 			}
-			fullMerge = !isMoving && newS->hasLink(oldS->id());
-			intermediateMerge = !isMoving && !newS->hasLink(oldS->id());
+			fullMerge = !isMoving && (newS->hasLink(oldS->id()) && !_createIntermediateNodes);
+			intermediateMerge = !isMoving && (!newS->hasLink(oldS->id()) || _createIntermediateNodes);
 		}
 		else
 		{

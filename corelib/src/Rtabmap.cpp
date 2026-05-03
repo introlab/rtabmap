@@ -92,6 +92,7 @@ namespace rtabmap
 {
 
 Rtabmap::Rtabmap() :
+	_createIntermediateNodes(Parameters::defaultRtabmapCreateIntermediateNodes()),
 	_publishStats(Parameters::defaultRtabmapPublishStats()),
 	_publishLastSignatureData(Parameters::defaultRtabmapPublishLastSignature()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
@@ -566,6 +567,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		this->setWorkingDirectory(iter->second.c_str());
 	}
 
+	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignatureData);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishPdf(), _publishPdf);
@@ -4455,22 +4457,30 @@ bool Rtabmap::process(
 			// Don't delete the location if a loop closure is detected
 			UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
 				  signature->id(), _rgbdLinearUpdate, _rgbdAngularUpdate);
-			// If there is a too small displacement, remove the node
-			signaturesRemoved.push_back(signature->id());
-			_memory->deleteLocation(signature->id());
-
-			// Update odom cache (if we just switched from mapping mode to localization mode)
-			_odomCachePoses.erase(signature->id());
-			for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end();)
+			if(!_createIntermediateNodes)
 			{
-				if(iter->second.from() == signature->id() || iter->second.to() == signature->id())
+				// If there is a too small displacement, remove the node
+				signaturesRemoved.push_back(signature->id());
+				_memory->deleteLocation(signature->id());
+
+				// Update odom cache (if we just switched from mapping mode to localization mode)
+				_odomCachePoses.erase(signature->id());
+				for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end();)
 				{
-					_odomCacheConstraints.erase(iter++);
+					if(iter->second.from() == signature->id() || iter->second.to() == signature->id())
+					{
+						_odomCacheConstraints.erase(iter++);
+					}
+					else
+					{
+						++iter;
+					}
 				}
-				else
-				{
-					++iter;
-				}
+			}
+			else if(!lastSignatureWasIntermediateNode)
+			{
+				_memory->convertToIntermediate(signature->id());
+				lastSignatureWasIntermediateNode = true;
 			}
 		}
 		else
