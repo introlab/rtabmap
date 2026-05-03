@@ -231,7 +231,8 @@ public:
 				const Transform & to,
 				const QColor & color,
 				bool arrow = false,
-				bool foreground = false);
+				bool foreground = false,
+				double width = 1.0);
 	void removeLine(const std::string & id);
 	void removeAllLines();
 	const std::set<std::string> & getAddedLines() const {return _lines;}

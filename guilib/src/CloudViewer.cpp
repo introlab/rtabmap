@@ -1732,7 +1732,8 @@ void CloudViewer::addOrUpdateLine(
 			const Transform & to,
 			const QColor & color,
 			bool arrow,
-			bool foreground)
+			bool foreground,
+			double width)
 {
 	if(id.empty())
 	{
@@ -1764,6 +1765,7 @@ void CloudViewer::addOrUpdateLine(
 			_visualizer->addLine(pt2, pt1, c.redF(), c.greenF(), c.blueF(), id, foreground?3:2);
 		}
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, width, id);
 	}
 }
 
