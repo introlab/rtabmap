@@ -4186,21 +4186,24 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopLinear_variance(), loopClosureLinearVariance);
 			statistics_.addStatistic(Statistics::kLoopAngular_variance(), loopClosureAngularVariance);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxGraphErrors.linear);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxGraphErrors.linearRatio);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error(), maxGraphErrors.angular*180.0f/M_PI);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_ratio(), maxGraphErrors.angularRatio);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxGraphErrorsLinearIds.first);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxGraphErrorsLinearIds.second);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_from_id(), maxGraphErrorsAngularIds.first);
-			statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_to_id(), maxGraphErrorsAngularIds.second);
-			if(_optimizationMaxErrorRepairRadius > 0)
+			if(maxGraphErrors.linear>=0 || maxGraphErrors.angular>=0)
 			{
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_from_id(), maxGraphErrorsRemovedIds.first);
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_to_id(), maxGraphErrorsRemovedIds.second);
-				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_count(), maxGraphErrorsRemovedCount);
-			}
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxGraphErrors.linear);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxGraphErrors.linearRatio);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error(), maxGraphErrors.angular*180.0f/M_PI);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_ratio(), maxGraphErrors.angularRatio);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_from_id(), maxGraphErrorsLinearIds.first);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_error_to_id(), maxGraphErrorsLinearIds.second);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_from_id(), maxGraphErrorsAngularIds.first);
+				statistics_.addStatistic(Statistics::kLoopOptimization_max_ang_error_to_id(), maxGraphErrorsAngularIds.second);
 
+				if(_optimizationMaxErrorRepairRadius > 0)
+				{
+					statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_from_id(), maxGraphErrorsRemovedIds.first);
+					statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_to_id(), maxGraphErrorsRemovedIds.second);
+					statistics_.addStatistic(Statistics::kLoopOptimization_max_error_removed_count(), maxGraphErrorsRemovedCount);
+				}
+			}
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), landmarksDetected.empty()?0:-landmarksDetected.begin()->first);
