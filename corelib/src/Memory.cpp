@@ -3051,6 +3051,14 @@ void Memory::convertToIntermediate(int locationId)
 	if(location)
 	{
 		location->setWeight(-1);
+		if(!_saveIntermediateNodeData)
+		{
+			this->disableWordsRef(locationId);
+			location->removeAllWords();
+			location->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			location->sensorData().clearCompressedData(true, false, false);
+			location->sensorData().clearRawData(true, false, false);
+		}
 	}
 }
 
@@ -4329,7 +4337,14 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				// just update weight
 				int w = oldS->getWeight()>=0?oldS->getWeight():0;
 				newS->setWeight(w + newS->getWeight() + 1);
-				oldS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+				if(intermediateMerge)
+				{
+					this->convertToIntermediate(oldS->id());
+				}
+				else
+				{
+					oldS->setWeight(0);
+				}
 
 				if(_lastGlobalLoopClosureId == oldS->id())
 				{
@@ -4340,7 +4355,14 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			{
 				int w = newS->getWeight()>=0?newS->getWeight():0;
 				oldS->setWeight(w + oldS->getWeight() + 1);
-				newS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+				if(intermediateMerge)
+				{
+					this->convertToIntermediate(newS->id());
+				}
+				else
+				{
+					newS->setWeight(0);
+				}
 			}
 		}
 	}
