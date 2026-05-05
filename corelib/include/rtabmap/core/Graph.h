@@ -118,15 +118,18 @@ Transform RTABMAP_CORE_EXPORT calcRMSE(
 		float & rotational_max,
 		bool align2D = false);
 
-void RTABMAP_CORE_EXPORT computeMaxGraphErrors(
+struct MaxGraphErrors
+{
+	float linear=-1.0f;         // absolute error (m) of the link with maximum linear error
+	float angular=-1.0f;        // absolute error (rad)  of the link with maximum angular error
+	float linearRatio=-1.0f;    // Ratio = absolute error (m) / linear std (m), of the link with maximum linear error
+	float angularRatio=-1.0f;   // Ratio = absolute error (rad) / angular std (rad), of the link with maximum angular error
+	Link linearLink;  // link with maximum linear error
+	Link angularLink; // link with maximum angular error
+};
+MaxGraphErrors RTABMAP_CORE_EXPORT computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		float & maxLinearErrorRatio,
-		float & maxAngularErrorRatio,
-		float & maxLinearError,
-		float & maxAngularError,
-		const Link ** maxLinearErrorLink = 0,
-		const Link ** maxAngularErrorLink = 0,
 		bool for3DoF = false);
 
 std::vector<double> RTABMAP_CORE_EXPORT getMaxOdomInf(const std::multimap<int, Link> & links);

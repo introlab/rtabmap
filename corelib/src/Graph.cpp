@@ -927,21 +927,12 @@ Transform calcRMSE (
 	return t;
 }
 
-void computeMaxGraphErrors(
+MaxGraphErrors computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		float & maxLinearErrorRatio,
-		float & maxAngularErrorRatio,
-		float & maxLinearError,
-		float & maxAngularError,
-		const Link ** maxLinearErrorLink,
-		const Link ** maxAngularErrorLink,
 		bool force3DoF)
 {
-	maxLinearErrorRatio = -1;
-	maxAngularErrorRatio = -1;
-	maxLinearError = -1;
-	maxAngularError = -1;
+	MaxGraphErrors maxError;
 
 	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
@@ -963,19 +954,7 @@ void computeMaxGraphErrors(
 					iter->second.to(),
 					t2.prettyPrint().c_str());
 
-				if(maxLinearErrorLink)
-				{
-					*maxLinearErrorLink = 0;
-				}
-				if(maxAngularErrorLink)
-				{
-					*maxAngularErrorLink = 0;
-				}
-				maxLinearErrorRatio = -1;
-				maxAngularErrorRatio = -1;
-				maxLinearError = -1;
-				maxAngularError = -1;
-				return;
+				return MaxGraphErrors();
 			}
 
 			Transform t;
@@ -999,14 +978,11 @@ void computeMaxGraphErrors(
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
-			if(linearErrorRatio > maxLinearErrorRatio)
+			if(linearErrorRatio > maxError.linearRatio)
 			{
-				maxLinearError = linearError;
-				maxLinearErrorRatio = linearErrorRatio;
-				if(maxLinearErrorLink)
-				{
-					*maxLinearErrorLink = &iter->second;
-				}
+				maxError.linear = linearError;
+				maxError.linearRatio = linearErrorRatio;
+				maxError.linearLink = iter->second;
 			}
 
 			// For landmark links, don't compute angular error if it doesn't estimate orientation
@@ -1031,18 +1007,16 @@ void computeMaxGraphErrors(
 				UASSERT(iter->second.rotVariance(false)>0.0);
 				float stddevAngular = sqrt(iter->second.rotVariance(false));
 				float angularErrorRatio = angularError/stddevAngular;
-				if(angularErrorRatio > maxAngularErrorRatio)
+				if(angularErrorRatio > maxError.angularRatio)
 				{
-					maxAngularError = angularError;
-					maxAngularErrorRatio = angularErrorRatio;
-					if(maxAngularErrorLink)
-					{
-						*maxAngularErrorLink = &iter->second;
-					}
+					maxError.angular = angularError;
+					maxError.angularRatio = angularErrorRatio;
+					maxError.angularLink = iter->second;
 				}
 			}
 		}
 	}
+	return maxError;
 }
 
 std::vector<double> getMaxOdomInf(const std::multimap<int, Link> & links)

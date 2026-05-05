@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>28</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -13813,6 +13813,152 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <string>Graph Optimization</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_81" columnstretch="0,1">
+                    <item row="2" column="0">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
+                      <property name="suffix">
+                       <string/>
+                      </property>
+                      <property name="decimals">
+                       <number>2</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.000000000000000</double>
+                      </property>
+                      <property name="maximum">
+                       <double>100.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>1.000000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>1.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="7" column="1">
+                     <widget class="Line" name="line">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="1">
+                     <widget class="QLabel" name="label_521">
+                      <property name="text">
+                       <string>Ignore landmarks.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_527">
+                      <property name="text">
+                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_priorsIgnored">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="8" column="1">
+                     <widget class="QLabel" name="label_151">
+                      <property name="text">
+                       <string>Optimize graph from the newest node.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_259">
+                      <property name="text">
+                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. If used with robust graph optimization, the disabled loop closure links will be removed.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_gravitySigma">
+                      <property name="suffix">
+                       <string/>
+                      </property>
+                      <property name="decimals">
+                       <number>4</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.000000000000000</double>
+                      </property>
+                      <property name="maximum">
+                       <double>10.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.100000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>0.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_45">
+                      <property name="text">
+                       <string>Graph optimization algorithm. See Optimizer panel.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="9" column="1">
+                     <widget class="QLabel" name="label_211">
+                      <property name="text">
+                       <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
+                     <widget class="QLabel" name="label_431">
+                      <property name="text">
+                       <string>Ignore pose priors.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="0" column="0">
                      <widget class="QComboBox" name="graphOptimization_type">
                       <item>
@@ -13837,18 +13983,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                      </widget>
                     </item>
-                    <item row="0" column="1">
-                     <widget class="QLabel" name="label_45">
-                      <property name="text">
-                       <string>Graph optimization algorithm. See Optimizer panel.</string>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_robust">
+                    <item row="6" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_landmarksIgnored">
                       <property name="text">
                        <string/>
                       </property>
@@ -13867,82 +14003,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="0">
-                     <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
-                      <property name="suffix">
+                    <item row="1" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_robust">
+                      <property name="text">
                        <string/>
                       </property>
-                      <property name="decimals">
-                       <number>2</number>
-                      </property>
-                      <property name="minimum">
-                       <double>0.000000000000000</double>
-                      </property>
-                      <property name="maximum">
-                       <double>100.000000000000000</double>
-                      </property>
-                      <property name="singleStep">
-                       <double>1.000000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>1.000000000000000</double>
-                      </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
-                     <widget class="QLabel" name="label_259">
-                      <property name="text">
-                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. If used with robust graph optimization, the disabled loop closure links will be removed.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="6" column="0" rowspan="2">
+                    <item row="7" column="0" rowspan="2">
                      <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
-                     <widget class="Line" name="line">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="7" column="1">
-                     <widget class="QLabel" name="label_151">
-                      <property name="text">
-                       <string>Optimize graph from the newest node.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="8" column="1">
-                     <widget class="QLabel" name="label_211">
-                      <property name="text">
-                       <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="1">
+                    <item row="10" column="1">
                      <widget class="QLabel" name="label_183">
                       <property name="text">
                        <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
@@ -13955,50 +14030,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="1">
-                     <widget class="QLabel" name="label_431">
-                      <property name="text">
-                       <string>Ignore pose priors.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_priorsIgnored">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_landmarksIgnored">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="1">
-                     <widget class="QLabel" name="label_521">
-                      <property name="text">
-                       <string>Ignore landmarks.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="3" column="1">
-                     <widget class="QLabel" name="label_527">
+                     <widget class="QLabel" name="label_795">
                       <property name="text">
-                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies.</string>
+                       <string>Repairing graph radius. If two consecutive loop closures are rejected by the optimization error ratio on the same old loop closure link, we will remove that old link, and other old links under that radius if necessary, until optimization is accepted. When optimization is accepted, the old loop closure links are removed from the graph. This feature is useful to reject bad loop closures that were accepted previously. Set to 0 to disable this feature.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -14009,24 +14044,24 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                      </widget>
                     </item>
                     <item row="3" column="0">
-                     <widget class="QDoubleSpinBox" name="graphOptimization_gravitySigma">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_maxErrorRepairRadius">
                       <property name="suffix">
                        <string/>
                       </property>
                       <property name="decimals">
-                       <number>4</number>
+                       <number>1</number>
                       </property>
                       <property name="minimum">
                        <double>0.000000000000000</double>
                       </property>
                       <property name="maximum">
-                       <double>10.000000000000000</double>
+                       <double>999.000000000000000</double>
                       </property>
                       <property name="singleStep">
-                       <double>0.100000000000000</double>
+                       <double>1.000000000000000</double>
                       </property>
                       <property name="value">
-                       <double>0.000000000000000</double>
+                       <double>1.000000000000000</double>
                       </property>
                      </widget>
                     </item>

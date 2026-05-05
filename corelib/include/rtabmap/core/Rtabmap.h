@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Link.h"
 #include "rtabmap/core/ProgressState.h"
+#include "rtabmap/core/Graph.h"
 
 #include <opencv2/core/core.hpp>
 #include <list>
@@ -264,6 +265,13 @@ private:
 			std::multimap<int, Link> * constraints = 0,
 			double * error = 0,
 			int * iterationsDone = 0) const;
+	std::list<std::pair<int, int> > repairGraph(
+		graph::MaxGraphErrors & maxGraphErrors,
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> & constraints,
+		double & optimizationError,
+		int & optimizationIterations,
+		cv::Mat & optimizationCovariance);
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
@@ -320,6 +328,7 @@ private:
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	float _optimizationMaxError;
+	float _optimizationMaxErrorRepairRadius;
 	bool _startNewMapOnLoopClosure;
 	bool _startNewMapOnGoodSignature;
 	float _goalReachedRadius; // meters
@@ -379,6 +388,7 @@ private:
 	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
 	std::map<int, Transform> _markerPriors;
+	std::pair<int, int> _lastRejectedLoopClosureIds;
 
 	std::set<int> _nodesToRepublish;
 
