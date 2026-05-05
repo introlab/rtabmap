@@ -59,7 +59,7 @@ jobs:
     - name: Point rosdep to latest Rolling on Noble until github runners support ubuntu 26.04
       if: matrix.ros_distribution == 'rolling'
       run: |
-        export ROSDISTRO_INDEX_URL=https://raw.githubusercontent.com/ros/rosdistro/6527fa694360d609c1491528ed50437bd853af5b/index-v4.yaml
+        echo "ROSDISTRO_INDEX_URL=https://raw.githubusercontent.com/ros/rosdistro/6527fa694360d609c1491528ed50437bd853af5b/index-v4.yaml" >> $GITHUB_ENV
 
     - name: Install dependencies
       run: |
