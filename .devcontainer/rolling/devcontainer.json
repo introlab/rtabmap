@@ -14,5 +14,17 @@
       "terminal.integrated.defaultProfile.linux": "bash"
     },
     "remoteUser": "vscode",
-    "runArgs": ["--privileged", "--network=host"]
+    "hostRequirements": {
+        "gpu": "optional"
+    },
+    "runArgs": ["--privileged",
+                "--network=host",
+                "--gpus=all",
+                //"--runtime=nvidia", // uncommment this if rtabmap doesn't show up in nvidia-smi on the host computer
+                "--env=DISPLAY",
+                "--env=QT_X11_NO_MITSHM=1",
+                "--volume=/tmp/.X11-unix:/tmp/.X11-unix"],
+    "containerEnv": {
+        "NVIDIA_VISIBLE_DEVICES": "all"
+    }
 }
