@@ -218,7 +218,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, ReduceGraph,                 bool, false,    uFormat("Reduce graph. Merge nodes when loop closures are added (ignoring those with user data). Note that this approach assumes that 100%% of the loop closures accepted are good, so it is highly recommended to enable \"%s\" at the same time.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(Mem, RecentWmRatio,               float, 0.2,     "Ratio of locations after the last loop closure in WM that cannot be transferred.");
     RTABMAP_PARAM(Mem, TransferSortingByWeightId,   bool, false,    "On transfer, signatures are sorted by weight->ID only (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight->Age->ID (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.");
-    RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne,  bool, false,    "On merge, update to new id. When false, no copy.");
+    RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne,  bool, false,    uFormat("On merge, update to new id. When false, no copy. Keep this disable if %s=true.", kRtabmapCreateIntermediateNodes().c_str()));
     RTABMAP_PARAM(Mem, RehearsalWeightIgnoredWhileMoving, bool, false, "When the robot is moving, weights are not updated on rehearsal.");
     RTABMAP_PARAM(Mem, GenerateIds,                 bool, true,     "True=Generate location IDs, False=use input image IDs.");
     RTABMAP_PARAM(Mem, BadSignaturesIgnored,        bool, false,    "Bad signatures are ignored.");
