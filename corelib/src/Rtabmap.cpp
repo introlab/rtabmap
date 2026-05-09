@@ -1533,7 +1533,7 @@ bool Rtabmap::process(
 						const Signature * s = _memory->getSignature(links.begin()->second.to());
 						UASSERT(s!=0);
 						// Check small motion if previous node is not an intermediate node (consecutive intermediate nodes are merged later)
-						if(s->getWeight() >= 0)
+						if(s->getWeight() >= 0 && signature->getWeight() >= 0)
 						{
 							t = links.begin()->second.transform();
 						}
