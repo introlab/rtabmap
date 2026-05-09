@@ -4330,7 +4330,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 					if(!warned)
 					{
 						UWARN("A rehearsal was accepted (%d->%d) while not moving but "
-							"there are intermediate nodes in between them the graph. "
+							"there are intermediate nodes between them in the graph. "
 							"Because %s=true, the node %d cannot be converted "
 							"into an intermediate node so it will be kept in the graph "
 							"even if we are not moving. Set %s=false to handle intermediate "
