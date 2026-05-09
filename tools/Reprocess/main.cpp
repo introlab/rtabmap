@@ -96,6 +96,7 @@ void showUsage()
 			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -noimu      Don't republish IMU contained in input database.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
+			"     -pub_inter_as_normal Republish intermediate nodes as normal nodes.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
 			"     -gt         When reprocessing a single database, load its original optimized graph, then \n"
 			"                 set it as ground truth for output database. If there was a ground truth in the input database, it will be ignored.\n"
@@ -279,6 +280,7 @@ int main(int argc, char * argv[])
 	bool ignorePriors = false;
 	bool ignoreImu = false;
 	bool republishLoopClosures = false;
+	bool pubInterNodesAsNormalNodes = false;
 	bool locNull = false;
 	bool originalGraphAsGT = false;
 	bool scanFromDepth = false;
@@ -509,6 +511,11 @@ int main(int argc, char * argv[])
 		{
 			republishLoopClosures = true;
 			printf("Republish loop closures from input database (-pub_loops option).\n");
+		}
+		else if(strcmp(argv[i], "-pub_inter_as_normal") == 0 || strcmp(argv[i], "--pub_inter_as_normal") == 0)
+		{
+			pubInterNodesAsNormalNodes = true;
+			printf("Republish intermdiate nodes as normal nodes (-pub_inter_as_normal option).\n");
 		}
 		else if(strcmp(argv[i], "-loc_null") == 0 || strcmp(argv[i], "--loc_null") == 0)
 		{
@@ -815,7 +822,7 @@ int main(int argc, char * argv[])
 
 	int totalIds = 0;
 	std::set<int> ids;
-	dbDriver->getAllNodeIds(ids, false, false, !intermediateNodes);
+	dbDriver->getAllNodeIds(ids, false, false, !pubInterNodesAsNormalNodes && !intermediateNodes);
 	if(ids.empty())
 	{
 		printf("Input database doesn't have any nodes saved in it.\n");
@@ -844,7 +851,7 @@ int main(int argc, char * argv[])
 			return 1;
 		}
 		ids.clear();
-		dbDriver->getAllNodeIds(ids, false, false, !intermediateNodes);
+		dbDriver->getAllNodeIds(ids, false, false, !pubInterNodesAsNormalNodes && !intermediateNodes);
 		totalIds += ids.size();
 		dbDriver->closeConnection(false);
 	}
@@ -920,13 +927,14 @@ int main(int argc, char * argv[])
 			startId,
 			cameraIndices,
 			stopId,
-			!intermediateNodes,
+			!pubInterNodesAsNormalNodes && !intermediateNodes,
 			ignoreLandmarks,
 			!useOdomFeatures,
 			startMapId,
 			stopMapId,
 			ignorePriors,
 			ignoreImu,
+			pubInterNodesAsNormalNodes,
 			cameraLocalTransformOverrides);
 
 	dbReader->init();

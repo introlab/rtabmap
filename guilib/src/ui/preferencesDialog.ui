@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-648</y>
             <width>684</width>
             <height>5218</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3469,7 +3469,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_src">
                          <property name="currentIndex">
-                          <number>0</number>
+                          <number>3</number>
                          </property>
                          <widget class="QWidget" name="page_41">
                           <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -7180,43 +7180,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <bool>false</bool>
                              </property>
                              <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,1,0">
-                              <item row="10" column="0">
-                               <widget class="QSpinBox" name="source_spinBox_databaseStopId">
-                                <property name="minimum">
-                                 <number>0</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>99999</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="0" column="1">
-                               <widget class="QLineEdit" name="source_database_lineEdit_path"/>
-                              </item>
-                              <item row="2" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_useDbStamps">
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_786">
                                 <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="3" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="6" column="1">
-                               <widget class="QLabel" name="label_644">
-                                <property name="text">
-                                 <string>Ignore features.</string>
+                                 <string>Ignore IMU (i.e., gravity links).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
                                 </property>
                                 <property name="textInteractionFlags">
                                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
+                                <property name="text">
+                                 <string/>
                                 </property>
                                </widget>
                               </item>
@@ -7227,120 +7207,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="12" column="1">
-                               <widget class="QLabel" name="label_784">
+                              <item row="10" column="1">
+                               <widget class="QLabel" name="label_58">
                                 <property name="text">
-                                 <string>Override camera local transform(s) with local transform(s) set above. For multi-cameras, use a &quot;;&quot; between each transform.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
+                                 <string>Start position (node ID).</string>
                                 </property>
                                 <property name="textInteractionFlags">
                                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="11" column="0">
-                               <widget class="QLineEdit" name="source_lineEdit_databaseCameraIndex"/>
-                              </item>
-                              <item row="4" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="13" column="0">
-                               <widget class="QLineEdit" name="source_lineEdit_databaseLocalTransformOffset"/>
-                              </item>
-                              <item row="0" column="2">
-                               <widget class="QToolButton" name="toolButton_dbViewer">
-                                <property name="toolTip">
-                                 <string>Open database viewer</string>
-                                </property>
-                                <property name="text">
-                                 <string/>
-                                </property>
-                                <property name="icon">
-                                 <iconset resource="../GuiLib.qrc">
-                                  <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="12" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_overrideLocalTransforms">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="6" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreFeatures">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="1">
-                               <widget class="QLabel" name="label_72">
-                                <property name="text">
-                                 <string>Ignore odometry saved in the database, so if RGB-D SLAM is activated, odometry will be recomputed.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="11" column="1">
-                               <widget class="QLabel" name="label_315">
-                                <property name="text">
-                                 <string>Camera index. If the database contains multi-camera data, you can choose which camera to use. Leave empty to use all cameras. Can also be multiple indices split by spaces in a string like &quot;0 2&quot; to stream cameras 0 and 2 only.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="7" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignorePriors">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="13" column="1">
-                               <widget class="QLabel" name="label_785">
-                                <property name="text">
-                                 <string>Add an y-axis offset before optical rotation on the overriden local transform(s). For multi-cameras,explicitly enumerate offsets if they are different (e.g., &quot;0.05 0.075&quot; for two cameras setup), or set single number to apply to all camera transforms.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="9" column="0">
-                               <widget class="QSpinBox" name="source_spinBox_databaseStartId">
-                                <property name="minimum">
-                                 <number>0</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>99999</number>
                                 </property>
                                </widget>
                               </item>
@@ -7357,25 +7230,8 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="5" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreLandmarks">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="9" column="1">
-                               <widget class="QLabel" name="label_58">
-                                <property name="text">
-                                 <string>Start position (node ID).</string>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="14" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_stereoToDepthDB">
+                              <item row="8" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreIMU">
                                 <property name="text">
                                  <string/>
                                 </property>
@@ -7394,6 +7250,139 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
+                              <item row="0" column="1">
+                               <widget class="QLineEdit" name="source_database_lineEdit_path"/>
+                              </item>
+                              <item row="15" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_stereoToDepthDB">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_644">
+                                <property name="text">
+                                 <string>Ignore features.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreFeatures">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="1">
+                               <widget class="QLabel" name="label_315">
+                                <property name="text">
+                                 <string>Camera index. If the database contains multi-camera data, you can choose which camera to use. Leave empty to use all cameras. Can also be multiple indices split by spaces in a string like &quot;0 2&quot; to stream cameras 0 and 2 only.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreLandmarks">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="2">
+                               <widget class="QToolButton" name="toolButton_dbViewer">
+                                <property name="toolTip">
+                                 <string>Open database viewer</string>
+                                </property>
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="icon">
+                                 <iconset resource="../GuiLib.qrc">
+                                  <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_263">
+                                <property name="text">
+                                 <string>Ignore goals saved in the database.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_797">
+                                <property name="text">
+                                 <string>Publish intermediate nodes as normal nodes.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="1">
+                               <widget class="QLabel" name="label_557">
+                                <property name="text">
+                                 <string>If the database contains stereo data, generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="0">
+                               <widget class="QSpinBox" name="source_spinBox_databaseStopId">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>99999</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="1">
+                               <widget class="QLabel" name="label_529">
+                                <property name="text">
+                                 <string>Stop position (node ID) is the last node to process. If 0, all nodes after start position are published.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_546">
                                 <property name="text">
@@ -7404,6 +7393,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                 <property name="textInteractionFlags">
                                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="14" column="0">
+                               <widget class="QLineEdit" name="source_lineEdit_databaseLocalTransformOffset"/>
+                              </item>
+                              <item row="10" column="0">
+                               <widget class="QSpinBox" name="source_spinBox_databaseStartId">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>99999</number>
                                 </property>
                                </widget>
                               </item>
@@ -7421,9 +7423,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </widget>
                               </item>
                               <item row="14" column="1">
-                               <widget class="QLabel" name="label_557">
+                               <widget class="QLabel" name="label_785">
                                 <property name="text">
-                                 <string>If the database contains stereo data, generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
+                                 <string>Add an y-axis offset before optical rotation on the overriden local transform(s). For multi-cameras,explicitly enumerate offsets if they are different (e.g., &quot;0.05 0.075&quot; for two cameras setup), or set single number to apply to all camera transforms.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -7433,10 +7435,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="10" column="1">
-                               <widget class="QLabel" name="label_529">
+                              <item row="13" column="1">
+                               <widget class="QLabel" name="label_784">
                                 <property name="text">
-                                 <string>Stop position (node ID) is the last node to process. If 0, all nodes after start position are published.</string>
+                                 <string>Override camera local transform(s) with local transform(s) set above. For multi-cameras, use a &quot;;&quot; between each transform.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -7446,10 +7448,34 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="1">
-                               <widget class="QLabel" name="label_263">
+                              <item row="13" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_overrideLocalTransforms">
                                 <property name="text">
-                                 <string>Ignore goals saved in the database.</string>
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_intermediateNodesAreNormalNodes">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignorePriors">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="0">
+                               <widget class="QLineEdit" name="source_lineEdit_databaseCameraIndex"/>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_72">
+                                <property name="text">
+                                 <string>Ignore odometry saved in the database, so if RGB-D SLAM is activated, odometry will be recomputed.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -7459,21 +7485,15 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="1">
-                               <widget class="QLabel" name="label_786">
+                              <item row="3" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
                                 <property name="text">
-                                 <string>Ignore IMU (i.e., gravity links).</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                 <string/>
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreIMU">
+                              <item row="2" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_useDbStamps">
                                 <property name="text">
                                  <string/>
                                 </property>

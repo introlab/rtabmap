@@ -57,6 +57,7 @@ DBReader::DBReader(const std::string & databasePath,
 				   int stopMapId,
 				   bool priorsIgnored,
 				   bool imuIgnored,
+				   bool intermediateNodesAreNormalNodes,
 				   const std::vector<Transform> & cameraLocalTransformOverrides) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
@@ -67,6 +68,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_stopId(stopId),
 	_cameraIndices(cameraIndices),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
+	_intermediateNodesAreNormalNodes(intermediateNodesAreNormalNodes),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
 	_priorsIgnored(priorsIgnored),
@@ -99,6 +101,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   int stopMapId,
 				   bool priorsIgnored,
 				   bool imuIgnored,
+				   bool intermediateNodesAreNormalNodes,
 				   const std::vector<Transform> & cameraLocalTransformOverrides) :
 	Camera(frameRate),
    _paths(databasePaths),
@@ -109,6 +112,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_stopId(stopId),
 	_cameraIndices(cameraIndices),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
+	_intermediateNodesAreNormalNodes(intermediateNodesAreNormalNodes),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
 	_priorsIgnored(priorsIgnored),
@@ -749,7 +753,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 					data.setStereoCameraModels(combinedStereoModels);
 				}
 			}
-			data.setId(s->getWeight()==-1 ? -1 : seq);
+			data.setId(!_intermediateNodesAreNormalNodes && s->getWeight()==-1 ? -1 : seq);
 			data.setStamp(s->getStamp());
 			data.setGroundTruth(s->getGroundTruthPose());
 			if(!globalPose.isNull())

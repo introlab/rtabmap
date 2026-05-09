@@ -761,6 +761,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreFeatures, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignorePriors, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreIMU, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_intermediateNodesAreNormalNodes, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStopId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2229,6 +2230,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreFeatures->setChecked(true);
 		_ui->source_checkBox_ignorePriors->setChecked(false);
 		_ui->source_checkBox_ignoreIMU->setChecked(false);
+		_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(false);
 		_ui->source_spinBox_databaseStartId->setValue(0);
 		_ui->source_spinBox_databaseStopId->setValue(0);
 		_ui->source_lineEdit_databaseCameraIndex->setText("");
@@ -2991,6 +2993,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreFeatures->setChecked(settings.value("ignoreFeatures", _ui->source_checkBox_ignoreFeatures->isChecked()).toBool());
 	_ui->source_checkBox_ignorePriors->setChecked(settings.value("ignorePriors", _ui->source_checkBox_ignorePriors->isChecked()).toBool());
 	_ui->source_checkBox_ignoreIMU->setChecked(settings.value("ignoreImu", _ui->source_checkBox_ignoreIMU->isChecked()).toBool());
+	_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(settings.value("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked()).toBool());
 	
 	_ui->source_spinBox_databaseStartId->setValue(settings.value("startId", _ui->source_spinBox_databaseStartId->value()).toInt());
 	_ui->source_spinBox_databaseStopId->setValue(settings.value("stopId", _ui->source_spinBox_databaseStopId->value()).toInt());
@@ -3611,6 +3614,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreFeatures",  _ui->source_checkBox_ignoreFeatures->isChecked());
 	settings.setValue("ignorePriors",  _ui->source_checkBox_ignorePriors->isChecked());
 	settings.setValue("ignoreImu",  _ui->source_checkBox_ignoreIMU->isChecked());
+	settings.setValue("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked());
 	settings.setValue("startId",          _ui->source_spinBox_databaseStartId->value());
 	settings.setValue("stopId",          _ui->source_spinBox_databaseStopId->value());
 	settings.setValue("cameraIndices",       _ui->source_lineEdit_databaseCameraIndex->text());
@@ -7303,13 +7307,14 @@ Camera * PreferencesDialog::createCamera(
 				_ui->source_spinBox_databaseStartId->value(),
 				cameraIndices,
 				_ui->source_spinBox_databaseStopId->value(),
-				!_ui->general_checkBox_createIntermediateNodes->isChecked(),
+				!_ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked() && !_ui->general_checkBox_createIntermediateNodes->isChecked(),
 				_ui->source_checkBox_ignoreLandmarks->isChecked(),
 				_ui->source_checkBox_ignoreFeatures->isChecked(),
 				0,
 				-1,
 				_ui->source_checkBox_ignorePriors->isChecked(),
 				_ui->source_checkBox_ignoreIMU->isChecked(),
+				_ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked(),
 				localTransformOverrides);
 	}
 	else

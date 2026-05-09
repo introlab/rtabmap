@@ -3166,7 +3166,7 @@ bool Rtabmap::process(
 	// Landmark
 	//============================================================
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
-	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored())
+	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
 		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
 		UDEBUG("hasGlobalLoopClosuresInOdomCache=%d", hasGlobalLoopClosuresInOdomCache?1:0);
