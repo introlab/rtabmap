@@ -22,14 +22,22 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [macos-15-intel, macos-15]
+        build_name: [macos-sequoia-intel, macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon]
         include:
-        - build_name: macos-15-intel
+        - build_name: macos-sequoia-intel
           os: macos-15-intel
           extra_deps: ""
           extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
-        - build_name: macos-15
+        - build_name: macos-sequoia-apple-silicon
           os: macos-15
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
+        - build_name: macos-tahoe-intel
+          os: macos-26-intel
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
+        - build_name: macos-tahoe-apple-silicon
+          os: macos-26
           extra_deps: ""
           extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
 
@@ -48,6 +56,8 @@ jobs:
       run: |
         # Update brew and install from Brewfile if present, or specific packages
         brew bundle || brew install pcl opencv octomap g2o pdal
+        ls -lh /opt/homebrew/include
+        ls -lh /opt/homebrew/lib
 
     - name: Configure CMake
       run: |
