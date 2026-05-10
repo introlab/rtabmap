@@ -27,19 +27,19 @@ jobs:
         - build_name: macos-sequoia-intel
           os: macos-15-intel
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
         - build_name: macos-sequoia-apple-silicon
           os: macos-15
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
         - build_name: macos-tahoe-intel
           os: macos-26-intel
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
         - build_name: macos-tahoe-apple-silicon
           os: macos-26
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=OFF'
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
 
     steps:
     - uses: actions/checkout@v4
@@ -64,14 +64,14 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Build MacOS Package
-      run: |
-        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
-
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
       run: |
         ./rtabmap-console --version
+
+    - name: Build MacOS Package
+      run: |
+        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
 
 #    - name: Upload RTABMap Artifacts (DMG)
 #      uses: actions/upload-artifact@v4
