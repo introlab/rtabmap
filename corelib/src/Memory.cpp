@@ -4352,6 +4352,9 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				newS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
 				if(intermediateMerge)
 				{
+					// We can safely remove the visual words from that signature
+					// because it will be ignored in likelihood and bayes filter (as now
+					// as an intermediate node).
 					this->disableWordsRef(newS->id());
 				}
 			}
