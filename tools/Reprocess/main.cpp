@@ -953,6 +953,11 @@ int main(int argc, char * argv[])
 
 	Odometry * odometry = 0;
 	float rtabmapUpdateRate = Parameters::defaultRtabmapDetectionRate();
+	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), rtabmapUpdateRate);
+	if(rtabmapUpdateRate!=0)
+	{
+		rtabmapUpdateRate = 1.0f/rtabmapUpdateRate;
+	}
 	double lastUpdateStamp = 0;
 	if(recomputeOdometry)
 	{
@@ -965,13 +970,16 @@ int main(int argc, char * argv[])
 		{
 			printf("Odometry will be recomputed (\"odom\" option is set)%s.\n",
 				useInputOdometryAsGuess?" with input odometry guess (\"odom_guess_input\" option is set)":"");
-			Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), rtabmapUpdateRate);
-			if(rtabmapUpdateRate!=0)
-			{
-				rtabmapUpdateRate = 1.0f/rtabmapUpdateRate;
-			}
 			odometry = Odometry::create(parameters);
 		}
+	}
+	else if(!intermediateNodes && framesToSkip == 0 &&
+		(configParameters.find(Parameters::kRtabmapDetectionRate())!=configParameters.end() ||
+	     customParameters.find(Parameters::kRtabmapDetectionRate())!=customParameters.end()))
+	{
+		printf("[Warning] Parameter %s is ignored because parameter %s=false.\n",
+				Parameters::kRtabmapDetectionRate().c_str(),
+				Parameters::kRtabmapCreateIntermediateNodes().c_str());
 	}
 
 	printf("Reprocessing data of \"%s\"...\n", inputDatabasePath.c_str());
@@ -1079,11 +1087,16 @@ int main(int argc, char * argv[])
 			info.odomPose = pose;
 			info.odomCovariance = odomCovariance;
 			odomCovariance = cv::Mat();
-			if(data.id() != -1)
-				lastUpdateStamp = data.stamp();
 
 			uInsert(globalMapStats, odomInfo.statistics(pose));
 		}
+		else if(framesToSkip==0 && intermediateNodes && lastUpdateStamp > 0.0 && (data.stamp() < lastUpdateStamp + rtabmapUpdateRate))
+		{
+			data.setId(-1); // intermediate node
+		}
+
+		if(data.id() != -1)
+			lastUpdateStamp = data.stamp();
 
 		UTimer iterationTime;
 		std::string status;
@@ -1274,15 +1287,19 @@ int main(int argc, char * argv[])
 			{
 				++loopIntra;
 			}
-			printf("Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms %s on %d [%d]\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
+			printf("[%f] Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms %s on %d [%d]\n", data.stamp(), ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
 		}
 		else if(landmarkId != 0)
 		{
-			printf("Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms Loop on landmark %d\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f),  int(iterationTime.ticks() * 1000), landmarkId);
+			printf("[%f] Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms Loop on landmark %d\n", data.stamp(), ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f),  int(iterationTime.ticks() * 1000), landmarkId);
+		}
+		else if(data.id() == -1)
+		{
+			printf("[%f] Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms Intermediate node\n", data.stamp(), ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f),  int(iterationTime.ticks() * 1000));
 		}
 		else
 		{
-			printf("Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms\n", ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000));
+			printf("[%f] Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms\n", data.stamp(), ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000));
 		}
 
 		// Here we accumulate statistics about distance from last localization
