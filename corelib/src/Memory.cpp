@@ -4325,7 +4325,6 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				}
 				if(intermediateMerge)
 				{
-					this->disableWordsRef(oldS->id());
 					static bool warned = false;
 					if(!warned)
 					{
