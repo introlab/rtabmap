@@ -69,9 +69,9 @@ jobs:
       run: |
         ./rtabmap-console --version
 
-    - name: Build MacOS Package
-      run: |
-        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+#    - name: Build MacOS Package
+#      run: |
+#        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
 
 #    - name: Upload RTABMap Artifacts (DMG)
 #      uses: actions/upload-artifact@v4
