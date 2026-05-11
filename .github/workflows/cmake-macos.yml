@@ -48,9 +48,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-brew-${{ hashFiles('**/Brewfile') }}
+        key: ${{ matrix.os }}-brew-${{ hashFiles('**/Brewfile') }}
         restore-keys: |
-          ${{ runner.os }}-brew-
+          ${{ matrix.os }}-brew-
 
     - name: Install Brew Dependencies
       run: |
