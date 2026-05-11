@@ -44,18 +44,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Cache Homebrew
-      uses: actions/cache@v4
-      with:
-        path: ~/Library/Caches/Homebrew
-        key: ${{ matrix.os }}-brew-${{ hashFiles('**/Brewfile') }}
-        restore-keys: |
-          ${{ matrix.os }}-brew-
-
     - name: Install Brew Dependencies
       run: |
         # Update brew and install from Brewfile if present, or specific packages
-        brew bundle || brew install pcl opencv octomap g2o pdal
+        brew install pcl opencv octomap g2o pdal
 
     - name: Configure CMake
       run: |
