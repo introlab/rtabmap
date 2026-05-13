@@ -29,16 +29,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 
+#ifdef RTABMAP_APRILTAG
+extern "C" {
+#include "apriltag/apriltag.h"
+#include "apriltag/apriltag_pose.h"
+#include "apriltag/tag36h11.h"
+}
+#endif
+
 namespace rtabmap {
 
-MarkerDetector::MarkerDetector(const ParametersMap & parameters)
+MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
+	strategy_((Strategy)Parameters::defaultMarkerStrategy()),
+	markerLength_(Parameters::defaultMarkerLength()),
+	maxDepthError_(Parameters::defaultMarkerMaxDepthError()),
+	maxRange_(Parameters::defaultMarkerMaxRange()),
+	minRange_(Parameters::defaultMarkerMinRange()),
+	dictionaryId_(Parameters::defaultMarkerDictionary()),
+	apriltagLibDetector_(NULL),
+	apriltagLibFamily_(NULL)
 {
 #ifdef HAVE_OPENCV_ARUCO
-	markerLength_ = Parameters::defaultMarkerLength();
-	maxDepthError_ = Parameters::defaultMarkerMaxDepthError();
-	maxRange_ = Parameters::defaultMarkerMaxRange();
-	minRange_ = Parameters::defaultMarkerMinRange();
-	dictionaryId_ = Parameters::defaultMarkerDictionary();
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
     detectorParams_.reset(new cv::aruco::DetectorParameters());
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
@@ -53,16 +64,35 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters)
 #else
 	detectorParams_->doCornerRefinement = Parameters::defaultMarkerCornerRefinementMethod()!=0;
 #endif
-	parseParameters(parameters);
 #endif
+
+	parseParameters(parameters);
 }
 
 MarkerDetector::~MarkerDetector() {
-
+#ifdef RTABMAP_APRILTAG
+	if(apriltagLibDetector_)
+	{
+		apriltag_detector_destroy(((apriltag_detector_t*)apriltagLibDetector_));
+	}
+	if(apriltagLibFamily_)
+	{
+		tag36h11_destroy((apriltag_family_t*)apriltagLibFamily_);
+	}
+#endif
 }
 
 void MarkerDetector::parseParameters(const ParametersMap & parameters)
 {
+	int strategy = strategy_;
+	Parameters::parse(parameters, Parameters::kMarkerStrategy(), strategy);
+	strategy_ = (Strategy)strategy;
+	Parameters::parse(parameters, Parameters::kMarkerLength(), markerLength_);
+	Parameters::parse(parameters, Parameters::kMarkerMaxDepthError(), maxDepthError_);
+	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
+	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
+	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
+
 #ifdef HAVE_OPENCV_ARUCO
 	detectorParams_->adaptiveThreshWinSizeMin = 3;
 	detectorParams_->adaptiveThreshWinSizeMax = 23;
@@ -95,13 +125,9 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	detectorParams_->minOtsuStdDev = 5.0;
 	detectorParams_->errorCorrectionRate = 0.6;
 
-	Parameters::parse(parameters, Parameters::kMarkerLength(), markerLength_);
-	Parameters::parse(parameters, Parameters::kMarkerMaxDepthError(), maxDepthError_);
-	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
-	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
-	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
+	
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
-	if(dictionaryId_ >= 17)
+	if(dictionaryId_ >= 17 && strategy_ == 0)
 	{
 		UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
 				"current version is %s. Setting %s to default (%d)",
@@ -120,6 +146,28 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	dictionary_.reset(new cv::aruco::Dictionary());
 	*dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId_));
 #endif
+#endif
+
+#ifdef RTABMAP_APRILTAG
+	if(apriltagLibDetector_)
+	{
+		apriltag_detector_destroy(((apriltag_detector_t*)apriltagLibDetector_));
+		apriltagLibDetector_ = NULL;
+	}
+	if(apriltagLibFamily_)
+	{
+		tag36h11_destroy((apriltag_family_t*)apriltagLibFamily_);
+		apriltagLibFamily_ = NULL;
+	}
+	apriltagLibDetector_ = apriltag_detector_create();
+	((apriltag_detector_t*)apriltagLibDetector_)->nthreads = 2;
+	((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate = 1;
+	apriltagLibFamily_  = tag36h11_create();
+	apriltag_detector_add_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
+
+	if (errno == ENOMEM) {
+		UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
+	}
 #endif
 }
 
@@ -207,18 +255,97 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
     std::map<int, MarkerInfo> detections;
 
-#ifdef HAVE_OPENCV_ARUCO
-
 	std::vector< int > ids;
 	std::vector< std::vector< cv::Point2f > > corners, rejected;
-	std::vector< cv::Vec3d > rvecs, tvecs;
+	std::vector<Transform> poses;
 
 	// detect markers and estimate pose
-#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
-	cv::aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams_, rejected);
+	if(strategy_ == kStrategyApriltag)
+	{
+#ifdef RTABMAP_APRILTAG
+		// Make an image_u8_t header for the Mat data
+		UASSERT(image.type() == CV_8UC1);
+		image_u8_t im = {image.cols, image.rows, (int)image.step, image.data};
+
+		zarray_t *apriltagDetections = apriltag_detector_detect(((apriltag_detector_t*)apriltagLibDetector_), &im);
+
+		if (errno == EAGAIN) {
+			UFATAL("Unable to create the %d threads requested.", ((apriltag_detector_t*)apriltagLibDetector_)->nthreads);
+			exit(-1);
+		}
+
+		for (int i = 0; i < zarray_size(apriltagDetections); i++) {
+            apriltag_detection_t *det;
+            zarray_get(apriltagDetections, i, &det);
+
+			apriltag_detection_info_t info;
+			info.det = det;
+			info.tagsize = markerLength_<=0.0?1.0f:markerLength_;
+			info.fx = model.fx();
+			info.fy = model.fy();
+			info.cx = model.cx();
+			info.cy = model.cy();
+
+			// Then call estimate_tag_pose.
+			apriltag_pose_t pose;
+			double err = estimate_tag_pose(&info, &pose);
+			if (pose.R && pose.t)
+			{
+				Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
+							MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
+							MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
+				poses.push_back(t);
+
+				corners.push_back(std::vector<cv::Point2f>(4));
+				for(int i=0; i<4; ++i)
+				{
+					corners.back()[i].x = det->p[i][0];
+					corners.back()[i].y = det->p[i][1];
+					UDEBUG("Marker %d corner %d : %f %f", det->id, i, corners.back()[i].x, corners.back()[i].y);
+				}
+				ids.push_back(det->id);
+				UDEBUG("Add marker %d (err = %f)", det->id, err);
+			}
+			else
+			{
+				UWARN("Failed to compute pose for marker %d, ignoring...", det->id);
+			}
+
+			// Free pose memory
+			if (pose.R) matd_destroy(pose.R);
+			if (pose.t) matd_destroy(pose.t);
+        }
+
+		apriltag_detections_destroy(apriltagDetections);
 #else
-	cv::aruco::detectMarkers(image, *dictionary_, corners, ids, *detectorParams_, rejected);
+		UERROR("RTAB-Map is not built with apriltag library.");
 #endif
+	}
+	else // opencv
+	{
+		std::vector< cv::Vec3d > rvecs, tvecs;
+#ifdef HAVE_OPENCV_ARUCO
+#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
+		cv::aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams_, rejected);
+#else
+		cv::aruco::detectMarkers(image, *dictionary_, corners, ids, *detectorParams_, rejected);
+#endif
+		cv::aruco::estimatePoseSingleMarkers(corners, markerLength_<=0.0?1.0f:markerLength_, model.K(), model.D(), rvecs, tvecs);
+
+		for(size_t i=0; i<ids.size(); ++i)
+		{
+			cv::Mat R;
+			cv::Rodrigues(rvecs[i], R);
+			Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[i].val[0],
+						R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[i].val[1],
+						R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[i].val[2]);
+			poses.push_back(t);
+		}
+#else
+	UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV.");
+#endif
+	}
+
 	UDEBUG("Markers detected=%d rejected=%d", (int)ids.size(), (int)rejected.size());
 	if(ids.size() > 0)
 	{
@@ -238,7 +365,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
             }
         }
 
-		cv::aruco::estimatePoseSingleMarkers(corners, markerLength_<=0.0?1.0f:markerLength_, model.K(), model.D(), rvecs, tvecs);
 		std::vector<float> scales;
 		for(size_t i=0; i<ids.size(); ++i)
 		{
@@ -256,7 +382,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				// best depth estimation)
 				if(d>0 && d1>0 && d2>0 && d3>0 && d4>0)
 				{
-                    float scale = d/tvecs[i].val[2];
+                    float scale = d / poses[i].z();
                     
 					if( fabs(d-d1) < maxDepthError_ &&
                         fabs(d-d2) < maxDepthError_ &&
@@ -265,8 +391,10 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 					{
                         length = scale;
 						scales.push_back(length);
-						tvecs[i] *= scales.back();
-						UWARN("Automatic marker length estimation: id=%d depth=%fm length=%fm", ids[i], d, scales.back());
+						poses[i].x() *= length;
+						poses[i].y() *= length;
+						poses[i].z() *= length;
+						UWARN("Automatic marker length estimation: id=%d depth=%fm length=%fm", ids[i], d, length);
 					}
 					else
 					{
@@ -297,7 +425,9 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
                 if(findIter!=markerLengths.end())
                 {
                     length = findIter->second;
-                    tvecs[i] *= length;
+                    poses[i].x() *= length;
+					poses[i].y() *= length;
+					poses[i].z() *= length;
                 }
                 else
                 {
@@ -316,17 +446,13 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 			// Limit the detection range to be between the min / max range.
 			// If the ranges are -1, allow any detection within that direction.
-			if((maxRange_ <= 0 || tvecs[i].val[2] < maxRange_) &&
-				(minRange_ <= 0 || tvecs[i].val[2] > minRange_))
+			if((maxRange_ <= 0 || poses[i].z() < maxRange_) &&
+				(minRange_ <= 0 || poses[i].z() > minRange_))
 			{
-				cv::Mat R;
-				cv::Rodrigues(rvecs[i], R);
-				Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[i].val[0],
-								 R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[i].val[1],
-								 R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[i].val[2]);
-				Transform pose = model.localTransform() * t;
+				Transform pose = model.localTransform() * poses[i];
 				detections.insert(std::make_pair(ids[i], MarkerInfo(ids[i], length, pose)));
-				UDEBUG("Marker %d detected in base_link: %s, optical_link=%s, local transform=%s", ids[i], pose.prettyPrint().c_str(), t.prettyPrint().c_str(), model.localTransform().prettyPrint().c_str());
+				UDEBUG("Marker %d detected in base_link: %s, optical_link=%s, local transform=%s",
+					ids[i], pose.prettyPrint().c_str(), poses[i].prettyPrint().c_str(), model.localTransform().prettyPrint().c_str());
 			}
 		}
 		if(markerLength_ == 0 && !scales.empty())
@@ -363,6 +489,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 	if(imageWithDetections)
 	{
+#ifdef HAVE_OPENCV_ARUCO
 		if(image.channels()==1)
 		{
 			cv::cvtColor(image, *imageWithDetections, cv::COLOR_GRAY2BGR);
@@ -380,19 +507,21 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
                 std::map<int, MarkerInfo>::iterator iter = detections.find(ids[i]);
                 if(iter!=detections.end())
                 {
+					cv::Vec3d rvec;
+					cv::Vec3d tvec(poses[i].x(), poses[i].y(), poses[i].z());
+					cv::Rodrigues(poses[i].rotationMatrix(), rvec);								
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION >1 || (CV_MINOR_VERSION==1 && CV_PATCH_VERSION>=1)))
-                    cv::drawFrameAxes(*imageWithDetections, model.K(), model.D(), rvecs[i], tvecs[i], iter->second.length() * 0.5f);
+                    cv::drawFrameAxes(*imageWithDetections, model.K(), model.D(), rvec, tvec, iter->second.length() * 0.5f);
 #else
-                    cv::aruco::drawAxis(*imageWithDetections, model.K(), model.D(), rvecs[i], tvecs[i], iter->second.length() * 0.5f);
+                    cv::aruco::drawAxis(*imageWithDetections, model.K(), model.D(), rvec, tvec, iter->second.length() * 0.5f);
 #endif
                 }
 			}
 		}
-	}
-
 #else
-	UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV.");
+		UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV. Cannot draw markers on image.");
 #endif
+	}
 
 	return detections;
 }
