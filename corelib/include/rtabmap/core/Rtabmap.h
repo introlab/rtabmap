@@ -125,6 +125,7 @@ public:
 	void close(bool databaseSaved = true, const std::string & ouputDatabasePath = "");
 
 	const std::string & getWorkingDir() const {return _wDir;}
+	bool isCreateIntermediateNodes() const { return _createIntermediateNodes; }
 	bool isRGBDMode() const { return _rgbdSlamMode; }
 	int getLoopClosureId() const {return _loopClosureHypothesis.first;}
 	float getLoopClosureValue() const {return _loopClosureHypothesis.second;}
@@ -282,6 +283,7 @@ private:
 
 private:
 	// Modifiable parameters
+	bool _createIntermediateNodes;
 	bool _publishStats;
 	bool _publishLastSignatureData;
 	bool _publishPdf;

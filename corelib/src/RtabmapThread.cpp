@@ -46,7 +46,6 @@ namespace rtabmap {
 RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
 		_dataBufferMaxSize(Parameters::defaultRtabmapImageBufferSize()),
 		_rate(Parameters::defaultRtabmapDetectionRate()),
-		_createIntermediateNodes(Parameters::defaultRtabmapCreateIntermediateNodes()),
 		_previousStamp(-1.0),
 		_rtabmap(rtabmap),
 		_paused(false),
@@ -105,11 +104,6 @@ void RtabmapThread::setDetectorRate(float rate)
 void RtabmapThread::setDataBufferSize(unsigned int size)
 {
 	_dataBufferMaxSize = size;
-}
-
-void RtabmapThread::createIntermediateNodes(bool enabled)
-{
-	_createIntermediateNodes = enabled;
 }
 
 void RtabmapThread::close(bool databaseSaved, const std::string & ouputDatabasePath)
@@ -207,7 +201,6 @@ void RtabmapThread::mainLoop()
 			ULOGGER_DEBUG("CMD_INIT");
 			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapDetectionRate(), _rate);
-			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 			UASSERT(_rate >= 0.0f);
 			_rtabmap->init(cmdEvent.getParameters(), cmdEvent.value1().toStr());
 		}
@@ -226,7 +219,6 @@ void RtabmapThread::mainLoop()
 			ULOGGER_DEBUG("CMD_UPDATE_PARAMS");
 			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapDetectionRate(), _rate);
-			Parameters::parse(cmdEvent.getParameters(), Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 			UASSERT(_rate >= 0.0f);
 			_rtabmap->parseParameters(cmdEvent.getParameters());
 			break;
@@ -532,7 +524,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			}
 		}
 
-		if(ignoreFrame && !_createIntermediateNodes)
+		if(ignoreFrame && !_rtabmap->isCreateIntermediateNodes())
 		{
 			return;
 		}

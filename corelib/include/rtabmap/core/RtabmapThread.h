@@ -66,11 +66,9 @@ public:
 	void clearBufferedData();
 	void setDetectorRate(float rate);
 	void setDataBufferSize(unsigned int bufferSize);
-	void createIntermediateNodes(bool enabled);
 
 	float getDetectorRate() const {return _rate;}
 	unsigned int getDataBufferSize() const {return _dataBufferMaxSize;}
-	bool getCreateIntermediateNodes() const {return _createIntermediateNodes;}
 
 	/**
 	 * Close rtabmap. This will delete rtabmap object if set.
@@ -105,7 +103,6 @@ private:
 	USemaphore _dataAdded;
 	unsigned int _dataBufferMaxSize;
 	float _rate;
-	bool _createIntermediateNodes;
 	double _previousStamp;
 
 	Rtabmap * _rtabmap;
