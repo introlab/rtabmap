@@ -1518,31 +1518,33 @@ bool Rtabmap::process(
 		}
 		else
 		{
+			bool linkedToIntermediateNode = false;
+			Transform t;
+			if(_memory->isIncremental())
+			{
+				const std::multimap<int, Link> & links = signature->getLinks();
+				if(links.size() && links.begin()->second.type() == Link::kNeighbor)
+				{
+					const Signature * s = _memory->getSignature(links.begin()->second.to());
+					UASSERT(s!=0);
+					// Check small motion if current node is not an intermediate node already
+					if(signature->getWeight() >= 0)
+					{
+						t = links.begin()->second.transform();
+						linkedToIntermediateNode = s->getWeight() == -1;
+					}
+				}
+			}
+			else if(!_odomCachePoses.empty())
+			{
+				t = _odomCachePoses.rbegin()->second.inverse() * signature->getPose();
+			}
+			
 			if(_rgbdLinearUpdate > 0.0f || _rgbdAngularUpdate > 0.0f)
 			{
 				//============================================================
 				// Minimum displacement required to add to Memory
 				//============================================================
-				Transform t;
-
-				if(_memory->isIncremental())
-				{
-					const std::multimap<int, Link> & links = signature->getLinks();
-					if(links.size() && links.begin()->second.type() == Link::kNeighbor)
-					{
-						const Signature * s = _memory->getSignature(links.begin()->second.to());
-						UASSERT(s!=0);
-						// Check small motion if previous node is not an intermediate node (consecutive intermediate nodes are merged later)
-						if(s->getWeight() >= 0 && signature->getWeight() >= 0)
-						{
-							t = links.begin()->second.transform();
-						}
-					}
-				}
-				else if(!_odomCachePoses.empty())
-				{
-					t = _odomCachePoses.rbegin()->second.inverse() * signature->getPose();
-				}
 				if(!t.isNull())
 				{
 					float x,y,z, roll,pitch,yaw;
@@ -1564,13 +1566,20 @@ bool Rtabmap::process(
 					}
 				}
 			}
-			if(odomVelocity.size() == 6)
+			if(odomVelocity.size() == 6 && signature->getWeight() != -1)
 			{
 				// This will disable global loop closure detection, only retrieval will be done.
 				// The location will also be deleted at the end.
 				tooFastMovement =
 						(_rgbdLinearSpeedUpdate>0.0f && uMax3(fabs(odomVelocity[0]), fabs(odomVelocity[1]), fabs(odomVelocity[2])) > _rgbdLinearSpeedUpdate) ||
 						(_rgbdAngularSpeedUpdate>0.0f && uMax3(fabs(odomVelocity[3]), fabs(odomVelocity[4]), fabs(odomVelocity[5])) > _rgbdAngularSpeedUpdate);
+			}
+			if(linkedToIntermediateNode && (smallDisplacement || tooFastMovement))
+			{
+				_memory->convertToIntermediate(signature->id());
+				// Intermediate nodes should stay in the graph to properly propagate loop closure hypotheses
+				smallDisplacement = false;
+				tooFastMovement = false;
 			}
 		}
 

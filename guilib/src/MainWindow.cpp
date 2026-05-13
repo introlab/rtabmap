@@ -2712,7 +2712,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			Signature & s = *_cachedSignatures.find(stat.refImageId());
 			_cachedMemoryUsage -= s.sensorData().getMemoryUsed();
 			s.sensorData().clearRawData();
-			s.sensorData().clearOccupancyGridRaw();
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
 		}
 

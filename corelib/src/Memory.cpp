@@ -2413,7 +2413,9 @@ int Memory::cleanup()
 	int signatureRemoved = 0;
 
 	// bad signature
-	if(_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory))
+	if(_lastSignature && 
+		((_lastSignature->isBadSignature() && _badSignaturesIgnored && _lastSignature->getWeight()!=-1) || 
+		 !_incrementalMemory))
 	{
 		if(_lastSignature->isBadSignature())
 		{
@@ -2744,7 +2746,11 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		}
 
 		// it is a bad signature (not saved), remove links!
-		if(keepLinkedToGraph && (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
+		if(keepLinkedToGraph && 
+		   !s->isSaved() && 
+		   s->isBadSignature() &&
+		   _badSignaturesIgnored && 
+		   s->getWeight()!=-1)
 		{
 			keepLinkedToGraph = false;
 		}
@@ -3040,6 +3046,29 @@ bool Memory::setUserData(int id, const cv::Mat & data)
 		UERROR("Node %d not found in RAM, failed to set user data (size=%d)!", id, data.total());
 	}
 	return false;
+}
+
+void Memory::convertToIntermediate(int locationId)
+{
+	UDEBUG("Converting location %d to intermediate node", locationId);
+	Signature * location = _getSignature(locationId);
+	if(location)
+	{
+		location->setWeight(-1);
+		location->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+		this->disableWordsRef(locationId); // won't be used for loop closure detection anymore
+		if(!_saveIntermediateNodeData)
+		{
+			location->removeAllWords();
+			location->sensorData().clearGlobalDescriptors();
+		}
+
+		location->sensorData().clearRawData();
+		if(!_saveIntermediateNodeData || !this->isBinDataKept())
+		{
+			location->sensorData().clearCompressedData();
+		}
+	}
 }
 
 void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
@@ -4349,13 +4378,13 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			{
 				int w = newS->getWeight()>=0?newS->getWeight():0;
 				oldS->setWeight(w + oldS->getWeight() + 1);
-				newS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
 				if(intermediateMerge)
 				{
-					// We can safely remove the visual words from that signature
-					// because it will be ignored in likelihood and bayes filter (as now
-					// as an intermediate node).
-					this->disableWordsRef(newS->id());
+					this->convertToIntermediate(newS->id());
+				}
+				else
+				{
+					newS->setWeight(0);
 				}
 			}
 		}
