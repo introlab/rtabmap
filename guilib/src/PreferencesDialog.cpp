@@ -1750,7 +1750,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereosgbm_mode->setObjectName(Parameters::kStereoSGBMMode().c_str());
 
 	// Aruco marker
-	_ui->ArucoDictionary->setObjectName(Parameters::kMarkerDictionary().c_str());
+	_ui->MarkerStrategy->setObjectName(Parameters::kMarkerStrategy().c_str());
+	_ui->MarkerDictionary->setObjectName(Parameters::kMarkerDictionary().c_str());
 	_ui->ArucoMarkerLength->setObjectName(Parameters::kMarkerLength().c_str());
 	_ui->ArucoMaxDepthError->setObjectName(Parameters::kMarkerMaxDepthError().c_str());
 	_ui->ArucoVarianceLinear->setObjectName(Parameters::kMarkerVarianceLinear().c_str());
