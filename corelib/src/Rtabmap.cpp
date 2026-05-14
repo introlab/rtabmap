@@ -1592,9 +1592,6 @@ bool Rtabmap::process(
 			if(linkedToIntermediateNode && (smallDisplacement || tooFastMovement))
 			{
 				_memory->convertToIntermediate(signature->id());
-				// Intermediate nodes should stay in the graph to properly propagate loop closure hypotheses
-				smallDisplacement = false;
-				tooFastMovement = false;
 			}
 		}
 
@@ -2231,7 +2228,7 @@ bool Rtabmap::process(
 			}
 		} // if(_memory->getWorkingMemSize())
 	}// !isBadSignature
-	else if(!signature->isBadSignature() && (smallDisplacement || tooFastMovement))
+	else if(!signature->isBadSignature() && signature->getWeight()>=0 && (smallDisplacement || tooFastMovement))
 	{
 		_highestHypothesis = lastHighestHypothesis;
 		UDEBUG("smallDisplacement=%d tooFastMovement=%d", smallDisplacement?1:0, tooFastMovement?1:0);
@@ -4470,7 +4467,8 @@ bool Rtabmap::process(
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
 		}
-		else if((smallDisplacement || tooFastMovement) &&
+		else if((!_memory->isIncremental() || signature->getWeight()>=0) &&
+				(smallDisplacement || tooFastMovement) &&
 				_loopClosureHypothesis.first == 0 &&
 				lastProximitySpaceClosureId == 0 &&
 				(rejectedLoopClosure || landmarksDetected.empty()) &&

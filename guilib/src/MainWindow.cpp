@@ -2459,6 +2459,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
 		}
+		else if(smallMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::gray);
+		}
+		else if(fastMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::magenta);
+		}
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
