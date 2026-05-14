@@ -1518,31 +1518,48 @@ bool Rtabmap::process(
 		}
 		else
 		{
+			bool linkedToIntermediateNode = false;
+			Transform t;
+			if(_memory->isIncremental())
+			{
+				// Check small motion if current node is not an intermediate node already
+				if(signature->getWeight() >= 0)
+				{
+					// It should contain only the query and its first (non-intermediate) neighbor (smaller id)
+					std::map<int, int> neighbors = _memory->getNeighborsId(signature->id(), 2, 0, true, true, true, true);
+					if(neighbors.size() == 2)
+					{
+						int nid = neighbors.begin()->first;
+						const std::multimap<int, Link> & links = signature->getLinks();
+						if(links.find(nid) != links.end())
+						{
+							// direct neighbor
+							t = links.find(nid)->second.transform();
+						}
+						else
+						{
+							// Use optimized poses to check how far it is from the latest non-intermediate node
+							std::map<int, Transform>::iterator niter = _optimizedPoses.find(nid);
+							if(niter != _optimizedPoses.end())
+							{
+								t = niter->second.inverse() * _mapCorrection * signature->getPose();
+							}
+							// not direct link, it means there are intermediate nodes
+							linkedToIntermediateNode = true; 
+						}
+					}
+				}
+			}
+			else if(!_odomCachePoses.empty())
+			{
+				t = _odomCachePoses.rbegin()->second.inverse() * signature->getPose();
+			}
+			
 			if(_rgbdLinearUpdate > 0.0f || _rgbdAngularUpdate > 0.0f)
 			{
 				//============================================================
 				// Minimum displacement required to add to Memory
 				//============================================================
-				Transform t;
-
-				if(_memory->isIncremental())
-				{
-					const std::multimap<int, Link> & links = signature->getLinks();
-					if(links.size() && links.begin()->second.type() == Link::kNeighbor)
-					{
-						const Signature * s = _memory->getSignature(links.begin()->second.to());
-						UASSERT(s!=0);
-						// Check small motion if previous node is not an intermediate node (consecutive intermediate nodes are merged later)
-						if(s->getWeight() >= 0)
-						{
-							t = links.begin()->second.transform();
-						}
-					}
-				}
-				else if(!_odomCachePoses.empty())
-				{
-					t = _odomCachePoses.rbegin()->second.inverse() * signature->getPose();
-				}
 				if(!t.isNull())
 				{
 					float x,y,z, roll,pitch,yaw;
@@ -1564,13 +1581,17 @@ bool Rtabmap::process(
 					}
 				}
 			}
-			if(odomVelocity.size() == 6)
+			if(odomVelocity.size() == 6 && signature->getWeight() != -1)
 			{
 				// This will disable global loop closure detection, only retrieval will be done.
 				// The location will also be deleted at the end.
 				tooFastMovement =
 						(_rgbdLinearSpeedUpdate>0.0f && uMax3(fabs(odomVelocity[0]), fabs(odomVelocity[1]), fabs(odomVelocity[2])) > _rgbdLinearSpeedUpdate) ||
 						(_rgbdAngularSpeedUpdate>0.0f && uMax3(fabs(odomVelocity[3]), fabs(odomVelocity[4]), fabs(odomVelocity[5])) > _rgbdAngularSpeedUpdate);
+			}
+			if(linkedToIntermediateNode && (smallDisplacement || tooFastMovement))
+			{
+				_memory->convertToIntermediate(signature->id());
 			}
 		}
 
@@ -2207,7 +2228,7 @@ bool Rtabmap::process(
 			}
 		} // if(_memory->getWorkingMemSize())
 	}// !isBadSignature
-	else if(!signature->isBadSignature() && (smallDisplacement || tooFastMovement))
+	else if(!signature->isBadSignature() && signature->getWeight()>=0 && (smallDisplacement || tooFastMovement))
 	{
 		_highestHypothesis = lastHighestHypothesis;
 		UDEBUG("smallDisplacement=%d tooFastMovement=%d", smallDisplacement?1:0, tooFastMovement?1:0);
@@ -3166,7 +3187,7 @@ bool Rtabmap::process(
 	// Landmark
 	//============================================================
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
-	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored())
+	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
 		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
 		UDEBUG("hasGlobalLoopClosuresInOdomCache=%d", hasGlobalLoopClosuresInOdomCache?1:0);
@@ -4446,7 +4467,8 @@ bool Rtabmap::process(
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
 		}
-		else if((smallDisplacement || tooFastMovement) &&
+		else if((!_memory->isIncremental() || signature->getWeight()>=0) &&
+				(smallDisplacement || tooFastMovement) &&
 				_loopClosureHypothesis.first == 0 &&
 				lastProximitySpaceClosureId == 0 &&
 				(rejectedLoopClosure || landmarksDetected.empty()) &&
