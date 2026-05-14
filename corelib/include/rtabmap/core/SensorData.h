@@ -212,6 +212,12 @@ public:
 			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
 			_descriptors.empty() &&
+			_groundCellsRaw.empty() &&
+			_groundCellsCompressed.empty() &&
+			_obstacleCellsRaw.empty() &&
+			_obstacleCellsCompressed.empty() &&
+			_emptyCellsRaw.empty() &&
+			_emptyCellsCompressed.empty() &&
 			imu_.empty());
 	}
 
@@ -309,8 +315,6 @@ public:
 			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewPoint);
-	// remove raw occupancy grids
-	void clearOccupancyGridRaw() {_groundCellsRaw = cv::Mat(); _obstacleCellsRaw = cv::Mat();}
 	const cv::Mat & gridGroundCellsRaw() const {return _groundCellsRaw;}
 	const cv::Mat & gridGroundCellsCompressed() const {return _groundCellsCompressed;}
 	const cv::Mat & gridObstacleCellsRaw() const {return _obstacleCellsRaw;}
@@ -355,12 +359,12 @@ public:
 	 * Clear compressed rgb/depth (left/right) images, compressed laser scan and compressed user data.
 	 * Raw data are kept is set.
 	 */
-	void clearCompressedData(bool images = true, bool scan = true, bool userData = true);
+	void clearCompressedData(bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 	/**
 	 * Clear raw rgb/depth (left/right) images, raw laser scan and raw user data.
 	 * Compressed data are kept is set.
 	 */
-	void clearRawData(bool images = true, bool scan = true, bool userData = true);
+	void clearRawData(bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 
 	bool isPointVisibleFromCameras(const cv::Point3f & pt) const; // assuming point is in robot frame
 

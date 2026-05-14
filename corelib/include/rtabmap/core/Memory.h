@@ -140,6 +140,7 @@ public:
 			float radius,
 			const std::map<int, Transform> & optimizedPoses,
 			int maxGraphDepth) const;
+	void convertToIntermediate(int locationId);
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
