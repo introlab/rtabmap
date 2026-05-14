@@ -1522,16 +1522,31 @@ bool Rtabmap::process(
 			Transform t;
 			if(_memory->isIncremental())
 			{
-				const std::multimap<int, Link> & links = signature->getLinks();
-				if(links.size() && links.begin()->second.type() == Link::kNeighbor)
+				// Check small motion if current node is not an intermediate node already
+				if(signature->getWeight() >= 0)
 				{
-					const Signature * s = _memory->getSignature(links.begin()->second.to());
-					UASSERT(s!=0);
-					// Check small motion if current node is not an intermediate node already
-					if(signature->getWeight() >= 0)
+					// It should contain only the query and its first (non-intermediate) neighbor (smaller id)
+					std::map<int, int> neighbors = _memory->getNeighborsId(signature->id(), 2, 0, true, true, true, true);
+					if(neighbors.size() == 2)
 					{
-						t = links.begin()->second.transform();
-						linkedToIntermediateNode = s->getWeight() == -1;
+						int nid = neighbors.begin()->first;
+						const std::multimap<int, Link> & links = signature->getLinks();
+						if(links.find(nid) != links.end())
+						{
+							// direct neighbor
+							t = links.find(nid)->second.transform();
+						}
+						else
+						{
+							// Use optimized poses to check how far it is from the latest non-intermediate node
+							std::map<int, Transform>::iterator niter = _optimizedPoses.find(nid);
+							if(niter != _optimizedPoses.end())
+							{
+								t = niter->second.inverse() * _mapCorrection * signature->getPose();
+							}
+							// not direct link, it means there are intermediate nodes
+							linkedToIntermediateNode = true; 
+						}
 					}
 				}
 			}
