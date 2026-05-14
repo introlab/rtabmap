@@ -2107,6 +2107,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		// For intermediate empty nodes, keep latest image shown
+		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 		if(signature.getWeight() >= 0)
 		{
 			_ui->imageView_source->clear();
@@ -2131,7 +2132,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_ui->label_matchId->clear();
 
-			bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 			int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
 			bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
 			_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
@@ -2455,6 +2455,18 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				UDEBUG("time= %d ms (update loop closure viewer)", time.restart());
 			}
 		}
+		else if(rehearsedSimilarity)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
+		}
+		else if(smallMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::gray);
+		}
+		else if(fastMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::magenta);
+		}
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
@@ -2712,7 +2724,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			Signature & s = *_cachedSignatures.find(stat.refImageId());
 			_cachedMemoryUsage -= s.sensorData().getMemoryUsed();
 			s.sensorData().clearRawData();
-			s.sensorData().clearOccupancyGridRaw();
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
 		}
 
