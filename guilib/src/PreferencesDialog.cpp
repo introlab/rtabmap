@@ -5616,7 +5616,7 @@ void PreferencesDialog::updateAvailableMarkerDictionaries()
 	{
 		// ARUCO_ORIGINAL not available with AprilTag lib
 		_ui->MarkerDictionary->setItemData(16, 0, Qt::UserRole - 1);
-#if !defined(RTABMAP_APRILTAG_WITH_ARUCO)
+#ifndef RTABMAP_APRILTAG_WITH_ARUCO
 		// disable all aruco dictionaries
 		for(int i=0;i<17;++i) {
 			_ui->MarkerDictionary->setItemData(i, 0, Qt::UserRole - 1); 
@@ -5631,7 +5631,7 @@ void PreferencesDialog::updateAvailableMarkerDictionaries()
 	else //if(_ui->MarkerStrategy->currentIndex() == 0) // OpenCV Strategy is selected
 	{
 		//if OpenCV < 3.4.2
-#if !defined(RTABMAP_APRILTAG) && (CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2))))
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
 		// disable all apriltag dictionaries
 		for(int i=17;i<21;++i) {
 			_ui->MarkerDictionary->setItemData(i, 0, Qt::UserRole - 1); 
@@ -5641,7 +5641,7 @@ void PreferencesDialog::updateAvailableMarkerDictionaries()
 			_ui->MarkerDictionary->setCurrentIndex(Parameters::defaultMarkerDictionary());
 		}
 #endif
-#if !defined(RTABMAP_APRILTAG_WITH_ARUCO) && (CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8))
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
 		// disable aruco MPI dictionary	
 		_ui->MarkerDictionary->setItemData(21, 0, Qt::UserRole - 1);
 		if(_ui->MarkerDictionary->currentIndex() == 21)
