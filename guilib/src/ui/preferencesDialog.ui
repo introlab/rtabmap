@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-526</y>
+            <y>0</y>
             <width>684</width>
             <height>5218</height>
            </rect>
@@ -15529,14 +15529,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="8" column="0">
-                       <widget class="QCheckBox" name="ArucoVarianceOrientationIgnored">
+                       <widget class="QCheckBox" name="MarkerVarianceOrientationIgnored">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
                       <item row="6" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoVarianceLinear">
+                       <widget class="QDoubleSpinBox" name="MarkerVarianceLinear">
                         <property name="suffix">
                          <string/>
                         </property>
@@ -15555,7 +15555,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="3" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMarkerLength">
+                       <widget class="QDoubleSpinBox" name="MarkerLength">
                         <property name="suffix">
                          <string> m</string>
                         </property>
@@ -15587,7 +15587,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="10" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMarkerRangeMax">
+                       <widget class="QDoubleSpinBox" name="MarkerRangeMax">
                         <property name="suffix">
                          <string> m</string>
                         </property>
@@ -15648,7 +15648,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="13" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoPriorsVarianceAngular">
+                       <widget class="QDoubleSpinBox" name="MarkerPriorsVarianceAngular">
                         <property name="suffix">
                          <string/>
                         </property>
@@ -15818,7 +15818,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="11" column="0">
-                       <widget class="QLineEdit" name="ArucoMarkerPriors">
+                       <widget class="QLineEdit" name="MarkerPriors">
                         <property name="placeholderText">
                          <string/>
                         </property>
@@ -15854,7 +15854,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="9" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMarkerRangeMin">
+                       <widget class="QDoubleSpinBox" name="MarkerRangeMin">
                         <property name="suffix">
                          <string> m</string>
                         </property>
@@ -15915,7 +15915,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="5" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoMaxDepthError">
+                       <widget class="QDoubleSpinBox" name="MarkerMaxDepthError">
                         <property name="suffix">
                          <string> m</string>
                         </property>
@@ -15941,7 +15941,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="12" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoPriorsVarianceLinear">
+                       <widget class="QDoubleSpinBox" name="MarkerPriorsVarianceLinear">
                         <property name="suffix">
                          <string/>
                         </property>
@@ -15962,7 +15962,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="1" column="1">
                        <widget class="QLabel" name="label_space2_24">
                         <property name="text">
-                         <string>Detector implementation. Note that both aruco and apriltag dictionaries can be used with either strategy.</string>
+                         <string>Detector implementation. Note that both aruco and apriltag dictionaries may be used with either strategy. Scroll down to see specific parameters for the strategy used.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -15973,7 +15973,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="7" column="0">
-                       <widget class="QDoubleSpinBox" name="ArucoVarianceAngular">
+                       <widget class="QDoubleSpinBox" name="MarkerVarianceAngular">
                         <property name="suffix">
                          <string/>
                         </property>
@@ -15995,7 +15995,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </widget>
                       </item>
                       <item row="4" column="0">
-                       <widget class="QLineEdit" name="ArucoMarkerLengths">
+                       <widget class="QLineEdit" name="MarkerLengths">
                         <property name="placeholderText">
                          <string/>
                         </property>
@@ -16019,7 +16019,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_markerStrategy">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_104">
                        <layout class="QVBoxLayout" name="verticalLayout_189">
@@ -16043,7 +16043,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             </widget>
                            </item>
                            <item row="1" column="0">
-                            <widget class="QComboBox" name="ArucoCornerRefinementMethod">
+                            <widget class="QComboBox" name="OpenCVCornerRefinementMethod">
                              <item>
                               <property name="text">
                                <string>None</string>
@@ -16070,6 +16070,12 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             <spacer name="verticalSpacer_94">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>0</width>
+                               <height>0</height>
+                              </size>
                              </property>
                             </spacer>
                            </item>
@@ -16230,12 +16236,15 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             </widget>
                            </item>
                            <item row="1" column="0">
-                            <widget class="QSpinBox" name="apriltag_quad_decimate">
-                             <property name="minimum">
+                            <widget class="QDoubleSpinBox" name="apriltag_quad_decimate">
+                             <property name="decimals">
                               <number>1</number>
                              </property>
+                             <property name="minimum">
+                              <double>1.000000000000000</double>
+                             </property>
                              <property name="value">
-                              <number>2</number>
+                              <double>2.000000000000000</double>
                              </property>
                             </widget>
                            </item>

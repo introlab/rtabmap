@@ -47,6 +47,7 @@ namespace cv{
 extern "C" {
 #include "apriltag/apriltag.h"
 #include "apriltag/apriltag_pose.h"
+#ifdef RTABMAP_APRILTAG_WITH_ARUCO
 #include "apriltag/aruco/tagAruco4x4_50.h"
 #include "apriltag/aruco/tagAruco4x4_100.h"
 #include "apriltag/aruco/tagAruco4x4_250.h"
@@ -63,11 +64,12 @@ extern "C" {
 #include "apriltag/aruco/tagAruco7x7_100.h"
 #include "apriltag/aruco/tagAruco7x7_250.h"
 #include "apriltag/aruco/tagAruco7x7_1000.h"
+#include "apriltag/aruco/tagArucoMIP36h12.h"
+#endif
 #include "apriltag/tag16h5.h"
 #include "apriltag/tag25h9.h"
 #include "apriltag/tag36h10.h"
 #include "apriltag/tag36h11.h"
-#include "apriltag/aruco/tagArucoMIP36h12.h"
 }
 
 #ifndef HAVE_OPENCV_ARUCO
@@ -121,6 +123,11 @@ apriltag_family_t * createAprilTagPredefinedDictionary(int opencvArucoDictionary
 	apriltag_family_t * af = NULL;
 	switch(opencvArucoDictionary)
 	{
+		APRILTAG_CASE(16, 5)
+		APRILTAG_CASE(25, 9)
+		APRILTAG_CASE(36, 10)
+		APRILTAG_CASE(36, 11)
+#ifdef RTABMAP_APRILTAG_WITH_ARUCO
 		ARUCO_CASE(4, 50)
 		ARUCO_CASE(4, 100)
 		ARUCO_CASE(4, 250)
@@ -137,14 +144,10 @@ apriltag_family_t * createAprilTagPredefinedDictionary(int opencvArucoDictionary
 		ARUCO_CASE(7, 100)
 		ARUCO_CASE(7, 250)
 		ARUCO_CASE(7, 1000)
-		APRILTAG_CASE(16, 5)
-		APRILTAG_CASE(25, 9)
-		APRILTAG_CASE(36, 10)
-		APRILTAG_CASE(36, 11)
 		case cv::aruco::DICT_ARUCO_MIP_36h12:
 			af = tagArucoMIP36h12_create();
 			break;
-
+#endif
 		default:
 			break;
 	}
@@ -157,7 +160,12 @@ void destroyAprilTagDictionary(apriltag_family_t * dictionary)
 		return;
 	}
 	const char* name = dictionary->name;
-	if(strcmp(name, "tagAruco4x4_50") == 0)	       tagAruco4x4_50_destroy(dictionary);
+	if(strcmp(name, "tag16h5") == 0)               tag16h5_destroy(dictionary);
+	else if(strcmp(name, "tag25h9") == 0)          tag25h9_destroy(dictionary);
+	else if(strcmp(name, "tag36h10") == 0)         tag36h10_destroy(dictionary);
+	else if(strcmp(name, "tag36h11") == 0)         tag36h11_destroy(dictionary);
+#ifdef RTABMAP_APRILTAG_WITH_ARUCO
+	else if(strcmp(name, "tagAruco4x4_50") == 0)   tagAruco4x4_50_destroy(dictionary);
 	else if(strcmp(name, "tagAruco4x4_100") == 0)  tagAruco4x4_100_destroy(dictionary);
 	else if(strcmp(name, "tagAruco4x4_250") == 0)  tagAruco4x4_250_destroy(dictionary);
 	else if(strcmp(name, "tagAruco4x4_1000") == 0) tagAruco4x4_1000_destroy(dictionary);
@@ -173,11 +181,8 @@ void destroyAprilTagDictionary(apriltag_family_t * dictionary)
 	else if(strcmp(name, "tagAruco7x7_100") == 0)  tagAruco7x7_100_destroy(dictionary);
 	else if(strcmp(name, "tagAruco7x7_250") == 0)  tagAruco7x7_250_destroy(dictionary);
 	else if(strcmp(name, "tagAruco7x7_1000") == 0) tagAruco7x7_1000_destroy(dictionary);
-	else if(strcmp(name, "tag16h5") == 0)          tag16h5_destroy(dictionary);
-	else if(strcmp(name, "tag25h9") == 0)          tag25h9_destroy(dictionary);
-	else if(strcmp(name, "tag36h10") == 0)         tag36h10_destroy(dictionary);
-	else if(strcmp(name, "tag36h11") == 0)         tag36h11_destroy(dictionary);
 	else if(strcmp(name, "tagArucoMIP_36h12") == 0) tagArucoMIP36h12_destroy(dictionary);
+#endif	
 	else
 	{
 		UFATAL("AprilTag: Didn't find the right desctructor for dictionary \"%s\"", name);
@@ -332,6 +337,16 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	dictionary_.reset(new cv::aruco::Dictionary());
 	*dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionaryId_));
 #endif
+#else
+	if(strategy_ == 0)
+	{
+#ifdef RTABMAP_APRILTAG
+		UERROR("RTAB-Map is not built with opencv-aruco library! Fallback to AprilTag strategy (%s=1).", Parameters::kMarkerStrategy().c_str());
+		strategy_ = 1;
+#else
+		UERROR("RTAB-Map is not built with opencv-aruco library!");
+#endif
+	}
 #endif
 
 #ifdef RTABMAP_APRILTAG
@@ -357,13 +372,26 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		Parameters::parse(parameters, Parameters::kMarkerAprilTagDebug(), ((apriltag_detector_t*)apriltagLibDetector_)->debug);
 
 		cv::aruco::PredefinedDictionaryType dictFamily = cv::aruco::PredefinedDictionaryType(dictionaryId_);
+#ifndef RTABMAP_APRILTAG_WITH_ARUCO
+		if((dictFamily >= cv::aruco::DICT_4X4_50 && dictFamily < cv::aruco::DICT_APRILTAG_16h5) || dictFamily==cv::aruco::DICT_ARUCO_MIP_36h12)
+		{
+			UERROR("Cannot set aruco dictionaries with current AprilTag library version. "
+					"Use opencv-aruco implementation instead or rebuild/install latest "
+					"AprilTag from source. Setting %s to default apriltag dictionary (%d)",
+					Parameters::kMarkerDictionary().c_str(),
+					cv::aruco::DICT_APRILTAG_36h11);
+			dictionaryId_ = cv::aruco::DICT_APRILTAG_36h11;
+			dictFamily = cv::aruco::PredefinedDictionaryType(dictionaryId_);
+		}
+#endif
 		if(dictFamily == cv::aruco::DICT_ARUCO_ORIGINAL)
 		{
-			UERROR("Cannot set ARUCO_ORIGINAL dictionary with AprilTag library implementation. "
-					"Use opencv-aruco implementation instead. Setting %s to default (%d)",
+			UERROR("Cannot set ARUCO_ORIGINAL (%d) dictionary with AprilTag library implementation. "
+					"Use opencv-aruco implementation instead. Setting %s to default apriltag dictionary (%d)",
+					dictionaryId_,
 					Parameters::kMarkerDictionary().c_str(),
-					Parameters::defaultMarkerDictionary());
-			dictionaryId_ = Parameters::defaultMarkerDictionary();
+					cv::aruco::DICT_APRILTAG_36h11);
+			dictionaryId_ = cv::aruco::DICT_APRILTAG_36h11;
 			dictFamily = cv::aruco::PredefinedDictionaryType(dictionaryId_);
 		}
 		apriltagLibFamily_  = createAprilTagPredefinedDictionary(dictFamily);
@@ -373,6 +401,16 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		if (errno == ENOMEM) {
 			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
 		}
+	}
+#else
+	if(strategy_ == 1)
+	{
+#ifdef HAVE_OPENCV_ARUCO
+		UERROR("RTAB-Map is not built with apriltag library! Fallback to OpenCV (%s=0).", Parameters::kMarkerStrategy().c_str());
+		strategy_ = 0;
+#else
+		UERROR("RTAB-Map is not built with apriltag library!");
+#endif
 	}
 #endif
 }
