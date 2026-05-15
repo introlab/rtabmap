@@ -476,14 +476,23 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 	//if OpenCV < 3.4.2
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
-	_ui->ArucoDictionary->setItemData(17, 0, Qt::UserRole - 1);
-	_ui->ArucoDictionary->setItemData(18, 0, Qt::UserRole - 1);
-	_ui->ArucoDictionary->setItemData(19, 0, Qt::UserRole - 1);
-	_ui->ArucoDictionary->setItemData(20, 0, Qt::UserRole - 1);
+#if !defined(RTABMAP_APRILTAG) && (CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2))))
+	_ui->MarkerDictionary->setItemData(17, 0, Qt::UserRole - 1);
+	_ui->MarkerDictionary->setItemData(18, 0, Qt::UserRole - 1);
+	_ui->MarkerDictionary->setItemData(19, 0, Qt::UserRole - 1);
+	_ui->MarkerDictionary->setItemData(20, 0, Qt::UserRole - 1);
+#endif
+#if !defined(RTABMAP_APRILTAG) && (CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8))
+	_ui->MarkerDictionary->setItemData(21, 0, Qt::UserRole - 1);
+#endif
+#if !defined(HAVE_OPENCV_ARUCO) && !defined(RTABMAP_APRILTAG)
+	_ui->label_markerDetection->setText(_ui->label_markerDetection->text()+" This option works only if OpenCV has been built with \"aruco\" module and/or RTAB-Map has been built with AprilTag library support.");
 #endif
 #ifndef HAVE_OPENCV_ARUCO
-	_ui->label_markerDetection->setText(_ui->label_markerDetection->text()+" This option works only if OpenCV has been built with \"aruco\" module.");
+	_ui->MarkerStrategy->setItemData(0, 0, Qt::UserRole - 1);
+#endif
+#ifndef RTABMAP_APRILTAG
+	_ui->MarkerStrategy->setItemData(1, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_MADGWICK
@@ -1752,6 +1761,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Aruco marker
 	_ui->MarkerStrategy->setObjectName(Parameters::kMarkerStrategy().c_str());
+	connect(_ui->MarkerStrategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_markerStrategy, SLOT(setCurrentIndex(int)));
+	_ui->MarkerStrategy->setCurrentIndex(Parameters::defaultMarkerStrategy());
 	_ui->MarkerDictionary->setObjectName(Parameters::kMarkerDictionary().c_str());
 	_ui->ArucoMarkerLength->setObjectName(Parameters::kMarkerLength().c_str());
 	_ui->ArucoMaxDepthError->setObjectName(Parameters::kMarkerMaxDepthError().c_str());
@@ -1763,7 +1774,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->ArucoMarkerPriors->setObjectName(Parameters::kMarkerPriors().c_str());
 	_ui->ArucoPriorsVarianceLinear->setObjectName(Parameters::kMarkerPriorsVarianceLinear().c_str());
 	_ui->ArucoPriorsVarianceAngular->setObjectName(Parameters::kMarkerPriorsVarianceAngular().c_str());
-	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kMarkerCornerRefinementMethod().c_str());
+	_ui->ArucoCornerRefinementMethod->setObjectName(Parameters::kMarkerOpenCVCornerRefinementMethod().c_str());
+	_ui->apriltag_nthreads->setObjectName(Parameters::kMarkerAprilTagNThreads().c_str());
+	_ui->apriltag_quad_decimate->setObjectName(Parameters::kMarkerAprilTagQuadDecimate().c_str());
+	_ui->apriltag_quad_sigma->setObjectName(Parameters::kMarkerAprilTagQuadSigma().c_str());
+	_ui->apriltag_refine_edges->setObjectName(Parameters::kMarkerAprilTagRefineEdges().c_str());
+	_ui->apriltag_decode_sharpening->setObjectName(Parameters::kMarkerAprilTagDecodeSharpening().c_str());
+	_ui->apriltag_debug->setObjectName(Parameters::kMarkerAprilTagDebug().c_str());
 
 	// IMU filter
 	_ui->doubleSpinBox_imuFilterMadgwickGain->setObjectName(Parameters::kImuFilterMadgwickGain().c_str());
@@ -3939,15 +3956,25 @@ bool PreferencesDialog::validateForm()
 		_ui->checkbox_odomDisabled->setChecked(false);
 	}
 
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
-	if(_ui->ArucoDictionary->currentIndex()>=17)
-	{
-		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("ArUco dictionary: cannot select AprilTag dictionary, OpenCV version should be at least 3.4.2. Setting back to 0."));
-		_ui->ArucoDictionary->setCurrentIndex(0);
-	}
-#endif
 
+	if(_ui->MarkerStrategy->currentIndex() == 0)
+	{
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
+		if(_ui->MarkerDictionary->currentIndex()>=17)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("opencv-aruco: cannot use the selected dictionary (%1), OpenCV version should be at least 3.4.2. Setting back to 0.").arg(_ui->MarkerDictionary->currentIndex()));
+			_ui->MarkerDictionary->setCurrentIndex(0);
+		}
+#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
+		if(_ui->MarkerDictionary->currentIndex()>=21)
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("opencv-aruco: cannot use selected dictionary (%1), OpenCV version should be at least 4.8.0. Setting back to 0.").arg(_ui->MarkerDictionary->currentIndex()));
+			_ui->MarkerDictionary->setCurrentIndex(0);
+		}
+#endif
+	}
 	return true;
 }
 

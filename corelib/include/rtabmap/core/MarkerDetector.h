@@ -92,6 +92,7 @@ public:
 private:
   Strategy strategy_;
   float markerLength_;
+  std::map<int, float> markerLengths_;
 	float maxDepthError_;
 	float maxRange_;
 	float minRange_;

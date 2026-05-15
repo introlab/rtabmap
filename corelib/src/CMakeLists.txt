@@ -534,8 +534,8 @@ IF(FastCV_FOUND)
 ENDIF(FastCV_FOUND)
 
 IF(apriltag_FOUND)
-	SET(LIBRARIES
-		${LIBRARIES}
+	SET(PUBLIC_LIBRARIES
+		${PUBLIC_LIBRARIES}
 		apriltag::apriltag
 	)
 ENDIF(apriltag_FOUND)

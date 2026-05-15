@@ -28,16 +28,162 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/MarkerDetector.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UStl.h>
+
+#ifdef HAVE_OPENCV_ARUCO
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
+namespace cv{
+	namespace aruco {
+		static const int DICT_ARUCO_MIP_36h12 = 21;
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <7)
+		typedef PREDEFINED_DICTIONARY_NAME PredefinedDictionaryType;
+#endif
+	}
+}
+#endif
+#endif
 
 #ifdef RTABMAP_APRILTAG
 extern "C" {
 #include "apriltag/apriltag.h"
 #include "apriltag/apriltag_pose.h"
+#include "apriltag/aruco/tagAruco4x4_50.h"
+#include "apriltag/aruco/tagAruco4x4_100.h"
+#include "apriltag/aruco/tagAruco4x4_250.h"
+#include "apriltag/aruco/tagAruco4x4_1000.h"
+#include "apriltag/aruco/tagAruco5x5_50.h"
+#include "apriltag/aruco/tagAruco5x5_100.h"
+#include "apriltag/aruco/tagAruco5x5_250.h"
+#include "apriltag/aruco/tagAruco5x5_1000.h"
+#include "apriltag/aruco/tagAruco6x6_50.h"
+#include "apriltag/aruco/tagAruco6x6_100.h"
+#include "apriltag/aruco/tagAruco6x6_250.h"
+#include "apriltag/aruco/tagAruco6x6_1000.h"
+#include "apriltag/aruco/tagAruco7x7_50.h"
+#include "apriltag/aruco/tagAruco7x7_100.h"
+#include "apriltag/aruco/tagAruco7x7_250.h"
+#include "apriltag/aruco/tagAruco7x7_1000.h"
+#include "apriltag/tag16h5.h"
+#include "apriltag/tag25h9.h"
+#include "apriltag/tag36h10.h"
 #include "apriltag/tag36h11.h"
+#include "apriltag/aruco/tagArucoMIP36h12.h"
 }
+
+#ifndef HAVE_OPENCV_ARUCO
+// To match opencv::aruco module, add opencv::aruco dictionary enum
+namespace cv{
+namespace aruco {
+enum PredefinedDictionaryType {
+	DICT_4X4_50 = 0,
+	DICT_4X4_100,
+	DICT_4X4_250,
+	DICT_4X4_1000,
+	DICT_5X5_50,
+	DICT_5X5_100,
+	DICT_5X5_250,
+	DICT_5X5_1000,
+	DICT_6X6_50,
+	DICT_6X6_100,
+	DICT_6X6_250,
+	DICT_6X6_1000,
+	DICT_7X7_50,
+	DICT_7X7_100,
+	DICT_7X7_250,
+	DICT_7X7_1000,
+	DICT_ARUCO_ORIGINAL,
+	DICT_APRILTAG_16h5,
+	DICT_APRILTAG_25h9,
+	DICT_APRILTAG_36h10,
+	DICT_APRILTAG_36h11,
+	DICT_ARUCO_MIP_36h12
+};
+}
+}
+#endif
 #endif
 
 namespace rtabmap {
+
+#ifdef RTABMAP_APRILTAG
+
+#define ARUCO_CASE(N, TOTAL) \
+case cv::aruco::DICT_##N##X##N##_##TOTAL: \
+	af = tagAruco##N##x##N##_##TOTAL##_create(); \
+	break;
+#define APRILTAG_CASE(N1, N2) \
+case cv::aruco::DICT_APRILTAG_##N1##h##N2: \
+	af = tag##N1##h##N2##_create(); \
+	break;
+
+apriltag_family_t * createAprilTagPredefinedDictionary(int opencvArucoDictionary)
+{
+	apriltag_family_t * af = NULL;
+	switch(opencvArucoDictionary)
+	{
+		ARUCO_CASE(4, 50)
+		ARUCO_CASE(4, 100)
+		ARUCO_CASE(4, 250)
+		ARUCO_CASE(4, 1000)
+		ARUCO_CASE(5, 50)
+		ARUCO_CASE(5, 100)
+		ARUCO_CASE(5, 250)
+		ARUCO_CASE(5, 1000)
+		ARUCO_CASE(6, 50)
+		ARUCO_CASE(6, 100)
+		ARUCO_CASE(6, 250)
+		ARUCO_CASE(6, 1000)
+		ARUCO_CASE(7, 50)
+		ARUCO_CASE(7, 100)
+		ARUCO_CASE(7, 250)
+		ARUCO_CASE(7, 1000)
+		APRILTAG_CASE(16, 5)
+		APRILTAG_CASE(25, 9)
+		APRILTAG_CASE(36, 10)
+		APRILTAG_CASE(36, 11)
+		case cv::aruco::DICT_ARUCO_MIP_36h12:
+			af = tagArucoMIP36h12_create();
+			break;
+
+		default:
+			break;
+	}
+	return af;
+}
+void destroyAprilTagDictionary(apriltag_family_t * dictionary)
+{
+	if(dictionary == NULL)
+	{
+		return;
+	}
+	const char* name = dictionary->name;
+	if(strcmp(name, "tagAruco4x4_50") == 0)	       tagAruco4x4_50_destroy(dictionary);
+	else if(strcmp(name, "tagAruco4x4_100") == 0)  tagAruco4x4_100_destroy(dictionary);
+	else if(strcmp(name, "tagAruco4x4_250") == 0)  tagAruco4x4_250_destroy(dictionary);
+	else if(strcmp(name, "tagAruco4x4_1000") == 0) tagAruco4x4_1000_destroy(dictionary);
+	else if(strcmp(name, "tagAruco5x5_50") == 0)   tagAruco5x5_50_destroy(dictionary);
+	else if(strcmp(name, "tagAruco5x5_100") == 0)  tagAruco5x5_100_destroy(dictionary);
+	else if(strcmp(name, "tagAruco5x5_250") == 0)  tagAruco5x5_250_destroy(dictionary);
+	else if(strcmp(name, "tagAruco5x5_1000") == 0) tagAruco5x5_1000_destroy(dictionary);
+	else if(strcmp(name, "tagAruco6x6_50") == 0)   tagAruco6x6_50_destroy(dictionary);
+	else if(strcmp(name, "tagAruco6x6_100") == 0)  tagAruco6x6_100_destroy(dictionary);
+	else if(strcmp(name, "tagAruco6x6_250") == 0)  tagAruco6x6_250_destroy(dictionary);
+	else if(strcmp(name, "tagAruco6x6_1000") == 0) tagAruco6x6_1000_destroy(dictionary);
+	else if(strcmp(name, "tagAruco7x7_50") == 0)   tagAruco7x7_50_destroy(dictionary);
+	else if(strcmp(name, "tagAruco7x7_100") == 0)  tagAruco7x7_100_destroy(dictionary);
+	else if(strcmp(name, "tagAruco7x7_250") == 0)  tagAruco7x7_250_destroy(dictionary);
+	else if(strcmp(name, "tagAruco7x7_1000") == 0) tagAruco7x7_1000_destroy(dictionary);
+	else if(strcmp(name, "tag16h5") == 0)          tag16h5_destroy(dictionary);
+	else if(strcmp(name, "tag25h9") == 0)          tag25h9_destroy(dictionary);
+	else if(strcmp(name, "tag36h10") == 0)         tag36h10_destroy(dictionary);
+	else if(strcmp(name, "tag36h11") == 0)         tag36h11_destroy(dictionary);
+	else if(strcmp(name, "tagArucoMIP_36h12") == 0) tagArucoMIP36h12_destroy(dictionary);
+	else
+	{
+		UFATAL("AprilTag: Didn't find the right desctructor for dictionary \"%s\"", name);
+	}
+}
+#endif
 
 MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
 	strategy_((Strategy)Parameters::defaultMarkerStrategy()),
@@ -58,11 +204,11 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
 	detectorParams_.reset(new cv::aruco::DetectorParameters());
 #endif
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
-    detectorParams_->cornerRefinementMethod = (cv::aruco::CornerRefineMethod) Parameters::defaultMarkerCornerRefinementMethod();
+    detectorParams_->cornerRefinementMethod = (cv::aruco::CornerRefineMethod) Parameters::defaultMarkerOpenCVCornerRefinementMethod();
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
-	detectorParams_->cornerRefinementMethod = Parameters::defaultMarkerCornerRefinementMethod();
+	detectorParams_->cornerRefinementMethod = Parameters::defaultMarkerOpenCVCornerRefinementMethod();
 #else
-	detectorParams_->doCornerRefinement = Parameters::defaultMarkerCornerRefinementMethod()!=0;
+	detectorParams_->doCornerRefinement = Parameters::defaultMarkerOpenCVCornerRefinementMethod()!=0;
 #endif
 #endif
 
@@ -77,7 +223,7 @@ MarkerDetector::~MarkerDetector() {
 	}
 	if(apriltagLibFamily_)
 	{
-		tag36h11_destroy((apriltag_family_t*)apriltagLibFamily_);
+		destroyAprilTagDictionary((apriltag_family_t*)apriltagLibFamily_);
 	}
 #endif
 }
@@ -92,6 +238,36 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
 	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
 	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
+	
+	if(parameters.find(Parameters::kMarkerLengths()) != parameters.end())
+	{
+		markerLengths_.clear();
+		std::string strLengths;
+		Parameters::parse(parameters, Parameters::kMarkerLengths(), strLengths);
+		std::list<std::string> strList = uSplit(strLengths, '|');
+		for(std::list<std::string>::iterator iter=strList.begin(); iter!=strList.end(); ++iter)
+		{
+			std::list<std::string> items = uSplit(*iter, ' ');
+			if(items.size() != 2)
+			{
+				UERROR("Invalid string format \"%s\" for parameter %s, make "
+					"sure the values are separated by single space and/or '|'. See "
+					"description of the parameter for example. That parameter "
+					"will be ignored.",
+					strLengths.c_str(),
+					Parameters::kMarkerLengths().c_str());
+				markerLengths_.clear();
+				break;
+			}
+			else
+			{
+				int id = uStr2Int(items.front());
+				float length = uStr2Float(items.back());
+				UDEBUG("Adding marker %d with length %f", id, length);
+				markerLengths_.insert(std::make_pair(id, length));
+			}
+		}
+	}
 
 #ifdef HAVE_OPENCV_ARUCO
 	detectorParams_->adaptiveThreshWinSizeMin = 3;
@@ -106,13 +282,13 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	detectorParams_->minMarkerDistanceRate = 0.05;
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
     int cornerRefinementMethod;
-    Parameters::parse(parameters, Parameters::kMarkerCornerRefinementMethod(), cornerRefinementMethod);
+    Parameters::parse(parameters, Parameters::kMarkerOpenCVCornerRefinementMethod(), cornerRefinementMethod);
     detectorParams_->cornerRefinementMethod = (cv::aruco::CornerRefineMethod)cornerRefinementMethod;
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=3)
-	Parameters::parse(parameters, Parameters::kMarkerCornerRefinementMethod(), detectorParams_->cornerRefinementMethod);
+	Parameters::parse(parameters, Parameters::kMarkerOpenCVCornerRefinementMethod(), detectorParams_->cornerRefinementMethod);
 #else
 	int doCornerRefinement = detectorParams_->doCornerRefinement?1:0;
-	Parameters::parse(parameters, Parameters::kMarkerCornerRefinementMethod(), doCornerRefinement);
+	Parameters::parse(parameters, Parameters::kMarkerOpenCVCornerRefinementMethod(), doCornerRefinement);
 	detectorParams_->doCornerRefinement = doCornerRefinement!=0;
 #endif
 	detectorParams_->cornerRefinementWinSize = 5;
@@ -127,9 +303,19 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 
 	
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
-	if(dictionaryId_ >= 17 && strategy_ == 0)
+	if(dictionaryId_ = 17 && strategy_ == 0)
 	{
 		UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
+				"current version is %s. Setting %s to default (%d)",
+				CV_VERSION,
+				Parameters::kMarkerDictionary().c_str(),
+				Parameters::defaultMarkerDictionary());
+		dictionaryId_ = Parameters::defaultMarkerDictionary();
+	}
+#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
+	if(dictionaryId_ == 21 && strategy_ == 0)
+	{
+		UERROR("Cannot set ARUCO_MIP_36h12 dictionary. OpenCV version should be at least 4.8.0, "
 				"current version is %s. Setting %s to default (%d)",
 				CV_VERSION,
 				Parameters::kMarkerDictionary().c_str(),
@@ -141,32 +327,52 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
     dictionary_.reset(new cv::aruco::Dictionary());
     *dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionaryId_));
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
-	dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId_));
+	dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionaryId_));
 #else
 	dictionary_.reset(new cv::aruco::Dictionary());
-	*dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId_));
+	*dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionaryId_));
 #endif
 #endif
 
 #ifdef RTABMAP_APRILTAG
-	if(apriltagLibDetector_)
-	{
-		apriltag_detector_destroy(((apriltag_detector_t*)apriltagLibDetector_));
-		apriltagLibDetector_ = NULL;
+	if(apriltagLibDetector_ && apriltagLibFamily_) {
+		apriltag_detector_remove_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
 	}
 	if(apriltagLibFamily_)
 	{
-		tag36h11_destroy((apriltag_family_t*)apriltagLibFamily_);
+		destroyAprilTagDictionary((apriltag_family_t*)apriltagLibFamily_);
 		apriltagLibFamily_ = NULL;
 	}
-	apriltagLibDetector_ = apriltag_detector_create();
-	((apriltag_detector_t*)apriltagLibDetector_)->nthreads = 2;
-	((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate = 1;
-	apriltagLibFamily_  = tag36h11_create();
-	apriltag_detector_add_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
+	if(strategy_ == 1)
+	{
+		if(apriltagLibDetector_ == NULL)
+		{
+			apriltagLibDetector_ = apriltag_detector_create();
+		}
+		Parameters::parse(parameters, Parameters::kMarkerAprilTagNThreads(), ((apriltag_detector_t*)apriltagLibDetector_)->nthreads);
+		Parameters::parse(parameters, Parameters::kMarkerAprilTagQuadDecimate(), ((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate);
+		Parameters::parse(parameters, Parameters::kMarkerAprilTagQuadSigma(), ((apriltag_detector_t*)apriltagLibDetector_)->quad_sigma);
+		Parameters::parse(parameters, Parameters::kMarkerAprilTagRefineEdges(), ((apriltag_detector_t*)apriltagLibDetector_)->refine_edges);
+		Parameters::parse(parameters, Parameters::kMarkerAprilTagDecodeSharpening(), ((apriltag_detector_t*)apriltagLibDetector_)->decode_sharpening);
+		Parameters::parse(parameters, Parameters::kMarkerAprilTagDebug(), ((apriltag_detector_t*)apriltagLibDetector_)->debug);
 
-	if (errno == ENOMEM) {
-		UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
+		cv::aruco::PredefinedDictionaryType dictFamily = cv::aruco::PredefinedDictionaryType(dictionaryId_);
+		if(dictFamily == cv::aruco::DICT_ARUCO_ORIGINAL)
+		{
+			UERROR("Cannot set ARUCO_ORIGINAL dictionary with AprilTag library implementation. "
+					"Use opencv-aruco implementation instead. Setting %s to default (%d)",
+					Parameters::kMarkerDictionary().c_str(),
+					Parameters::defaultMarkerDictionary());
+			dictionaryId_ = Parameters::defaultMarkerDictionary();
+			dictFamily = cv::aruco::PredefinedDictionaryType(dictionaryId_);
+		}
+		apriltagLibFamily_  = createAprilTagPredefinedDictionary(dictFamily);
+		UASSERT_MSG(apriltagLibFamily_ != NULL, uFormat("AprilTag library cannot be used with dictionary type %d", (int)dictionaryId_).c_str());
+		apriltag_detector_add_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
+
+		if (errno == ENOMEM) {
+			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
+		}
 	}
 #endif
 }
@@ -193,7 +399,7 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
 std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
                            const std::vector<CameraModel> & models,
                            const cv::Mat & depth,
-                           const std::map<int, float> & markerLengths,
+                           const std::map<int, float> & extraMarkerLengths,
                            cv::Mat * imageWithDetections)
 {
 	UASSERT(!models.empty() && !image.empty());
@@ -226,8 +432,12 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	if(strategy_ == kStrategyApriltag)
 	{
 #ifdef RTABMAP_APRILTAG
-		UASSERT(image.type() == CV_8UC1);
-		image_u8_t im = {image.cols, image.rows, (int)image.step, image.data};
+		cv::Mat grayImage = image;
+		if(image.channels() > 1)
+		{
+			cv::cvtColor(image, grayImage, cv::COLOR_BGR2GRAY);
+		}
+		image_u8_t im = {grayImage.cols, grayImage.rows, (int)grayImage.step, grayImage.data};
 
 		zarray_t *apriltagDetections = apriltag_detector_detect(((apriltag_detector_t*)apriltagLibDetector_), &im);
 
@@ -250,6 +460,15 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			int cameraIndex = int(det->c[0]) / subRGBWidth;
 			UASSERT(cameraIndex>=0 && cameraIndex<(int)models.size());
 
+			if(!markerLengths_.empty() &&
+				markerLengths_.find(det->id) == markerLengths_.end() && 
+				extraMarkerLengths.find(det->id) == extraMarkerLengths.end())
+			{
+				UDEBUG("Ignoring marker %d because it is not in the list of expected markers (see %s)",
+					det->id,
+					Parameters::kMarkerLengths().c_str());
+				continue;
+			}
 			if(idsAdded.find(det->id)!=idsAdded.end())
 			{
 				UWARN("Marker %d already added by another camera, ignoring detection from camera %d", det->id, cameraIndex);
@@ -337,6 +556,15 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			int cameraIndex = int(cvCorners[i][0].x) / subRGBWidth;
 			UASSERT(cameraIndex>=0 && cameraIndex<(int)models.size());
 
+			if(!markerLengths_.empty() &&
+				markerLengths_.find(id) == markerLengths_.end() && 
+				extraMarkerLengths.find(id) == extraMarkerLengths.end())
+			{
+				UDEBUG("Ignoring marker %d because it is not in the list of expected markers (see %s)",
+					id,
+					Parameters::kMarkerLengths().c_str());
+				continue;
+			}
 			if(idsAdded.find(id) != idsAdded.end())
 			{
 				UWARN("Marker %d already added by another camera, ignoring detection from camera %d", id, cameraIndex);
@@ -390,8 +618,8 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	for(size_t i=0; i<ids.size(); ++i)
 	{
 		float length = 0.0f;
-		std::map<int, float>::const_iterator findIter = markerLengths.find(ids[i]);
-		if(!depth.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==markerLengths.end())))
+		std::map<int, float>::const_iterator findIter = extraMarkerLengths.find(ids[i]);
+		if(markerLengths_.empty() && !depth.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==extraMarkerLengths.end())))
 		{
 			float d = util2d::getDepth(depth, (corners[i][0].x + (corners[i][2].x-corners[i][0].x)/2.0f)*rgbToDepthFactorX, (corners[i][0].y + (corners[i][2].y-corners[i][0].y)/2.0f)*rgbToDepthFactorY, true, 0.02f, true);
 			float d1 = util2d::getDepth(depth, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
@@ -438,17 +666,40 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				continue;
 			}
 		}
-		else if(markerLength_ < 0)
+		else if(!markerLengths_.empty() || findIter!=extraMarkerLengths.end())
 		{
-			if(findIter!=markerLengths.end())
+			std::map<int, float>::const_iterator paramIter = markerLengths_.find(ids[i]);
+			if(paramIter != markerLengths_.end())
+			{
+				if(findIter!=extraMarkerLengths.end() && findIter->second != paramIter->second)
+				{
+					UWARN("Marker's length of %d is defined both in extra lengths "
+						"(%f m) and the parameter %s (%f m), we will use the length "
+						"from extra lengths.",
+						findIter->second,
+						Parameters::kMarkerLengths().c_str(),
+						paramIter->second);
+					length = findIter->second;
+				}
+				else
+				{
+					length = paramIter->second;
+				}
+			}
+			else if(findIter!=extraMarkerLengths.end())
 			{
 				length = findIter->second;
 			}
 			else
 			{
-				UWARN("Cannot find marker length for marker %d, ignoring this marker (count=%d)", ids[i], (int)markerLengths.size());
+				UERROR("Not supposed to reach this case, ignoring detection %d", ids[i]);
 				continue;
 			}
+		}
+		else if(markerLength_ < 0)
+		{
+			UWARN("Cannot find marker length for marker %d, ignoring this marker (count=%d)", ids[i], (int)extraMarkerLengths.size());
+			continue;
 		}
 		else if(markerLength_ > 0)
 		{
