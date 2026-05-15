@@ -5296,6 +5296,9 @@ void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 							{
 								imagePoints[j].x += i*model.imageWidth();
 							}
+							// Make sure the frame origin is visible
+							valid = imagePoints[0].x >= i*model.imageWidth() && imagePoints[0].x < (i+1)*model.imageWidth() &&
+									imagePoints[0].y >= 0 && imagePoints[0].y < image.rows;
 						}
 					}
 					if(valid)
