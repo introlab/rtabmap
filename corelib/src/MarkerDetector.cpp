@@ -266,10 +266,46 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 			}
 			else
 			{
-				int id = uStr2Int(items.front());
 				float length = uStr2Float(items.back());
-				UDEBUG("Adding marker %d with length %f", id, length);
-				markerLengths_.insert(std::make_pair(id, length));
+				if(uStrContains(items.front(), ":"))
+				{
+					std::list<std::string> range = uSplit(items.front(), ':');
+					if(range.size() != 2)
+					{
+						UERROR("Invalid string format \"%s\" for parameter %s, make "
+							"sure the values are separated by single space and/or '|'. See "
+							"description of the parameter for example. That parameter "
+							"will be ignored.",
+							strLengths.c_str(),
+							Parameters::kMarkerLengths().c_str());
+						markerLengths_.clear();
+						break;
+					}
+					int id1 = uStr2Int(range.front());
+					int id2 = uStr2Int(range.back());
+					UDEBUG("Adding a range of markers %d -> %d with length %f", id1, id2, length);
+					for(int id=id1; id<=id2; ++id)
+					{
+						auto inserted = markerLengths_.insert(std::make_pair(id, length));
+						if(!inserted.second)
+						{
+							UWARN("Marker %d is already configured with length %f, not overwriting", inserted.first->first, inserted.first->second);
+						}
+					}
+				}
+				else {
+					int id = uStr2Int(items.front());
+					auto inserted = markerLengths_.insert(std::make_pair(id, length));
+					if(!inserted.second)
+					{
+						UWARN("Marker %d is already configured with length %f, overwriting with %f", inserted.first->first, inserted.first->second, length);
+						inserted.first->second = length;
+					}
+					else
+					{
+						UDEBUG("Added marker %d with length %f", id, length);
+					}
+				}
 			}
 		}
 	}
@@ -342,7 +378,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	{
 #ifdef RTABMAP_APRILTAG
 		UERROR("RTAB-Map is not built with opencv-aruco library! Fallback to AprilTag strategy (%s=1).", Parameters::kMarkerStrategy().c_str());
-		strategy_ = 1;
+		strategy_ = kStrategyApriltag;
 #else
 		UERROR("RTAB-Map is not built with opencv-aruco library!");
 #endif
@@ -407,7 +443,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	{
 #ifdef HAVE_OPENCV_ARUCO
 		UERROR("RTAB-Map is not built with apriltag library! Fallback to OpenCV (%s=0).", Parameters::kMarkerStrategy().c_str());
-		strategy_ = 0;
+		strategy_ = kStrategyOpencv;
 #else
 		UERROR("RTAB-Map is not built with apriltag library!");
 #endif
