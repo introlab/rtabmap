@@ -574,10 +574,10 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			double err = estimate_tag_pose(&info, &pose);
 			if (pose.R && pose.t)
 			{
-				Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 2, 0), MATD_EL(pose.t, 0, 0),
-							MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 2, 1), MATD_EL(pose.t, 1, 0),
-							MATD_EL(pose.R, 0, 2), MATD_EL(pose.R, 1, 2), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
-				poses.push_back(t);
+				Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
+							MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
+							MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
+				poses.push_back(t*Transform(-1,0,0,0, 0,1,0,0, 0,0,-1,0)); // Flip tag to match same frame than OpenCV (+x->-x, +z->-z)
 
 				corners.push_back(std::vector<cv::Point2f>(4));
 				for(int i=0; i<4; ++i)

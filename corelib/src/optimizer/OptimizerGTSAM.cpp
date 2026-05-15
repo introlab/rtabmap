@@ -501,7 +501,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						t = iter->second.transform().inverse();
 						std::swap(id1, id2); // should be node -> landmark
 					}
-
+					UASSERT(isLandmarkWithRotation.find(id2) != isLandmarkWithRotation.end());
 #ifdef RTABMAP_VERTIGO
 					if(this->isRobust() && isLandmarkWithRotation.at(id2))
 					{

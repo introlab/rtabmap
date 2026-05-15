@@ -5239,6 +5239,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 {
+	UDEBUG("%ld landmarks", signature.getLandmarks().size());
 	for(std::map<int, Link>::const_iterator iter=signature.getLandmarks().begin(); iter!=signature.getLandmarks().end(); ++iter)
 	{
 		// Project in all cameras in which the landmark is visible
