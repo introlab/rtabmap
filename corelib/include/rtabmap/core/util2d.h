@@ -728,9 +728,11 @@ void RTABMAP_CORE_EXPORT NMS(
  * using a square covering method and binary search optimization to achieve a desired number of keypoints.
  *
  * @param[in] keypoints    Input vector of keypoints to select from.
- * @param[in] maxKeypoints Desired number of output keypoints. The algorithm attempts to select this many,
- *                         within a tolerance range.
- * @param[in] tolerance    Relative tolerance for the number of output keypoints (e.g., 0.1 allows ±10%).
+ * @param[in] maxKeypoints Desired upper bound on the number of output keypoints. The internal target is
+ *                         first reduced by `round(maxKeypoints * tolerance)` so the result is always
+ *                         less than or equal to this value.
+ * @param[in] tolerance    Relative tolerance applied to the reduced target (e.g., 0.1 allows ±10% of the
+ *                         reduced target, not of `maxKeypoints`).
  * @param[in] cols         Width of the image in pixels.
  * @param[in] rows         Height of the image in pixels.
  * @param[in] indx         Optional vector of indices to use instead of the original keypoints ordering.
@@ -741,7 +743,9 @@ void RTABMAP_CORE_EXPORT NMS(
  *
  * @note The algorithm operates by covering the image with a grid of cells and retaining the most confident
  *       keypoint in each uncovered cell while suppressing nearby keypoints within a computed square radius.
- * @note Uses binary search to find the optimal suppression radius that yields `maxKeypoints` (± `tolerance`).
+ * @note Uses binary search to find the optimal suppression radius so the number of selected keypoints is
+ *       within [effectiveMax * (1 - tolerance), effectiveMax * (1 + tolerance)], where
+ *       effectiveMax = maxKeypoints - round(maxKeypoints * tolerance).
  * @note Works best when `keypoints` are pre-sorted by response strength (e.g., strongest first).
  * @note If the `indx` vector is provided, the returned indices refer to the original list, not just `indx`.
  */

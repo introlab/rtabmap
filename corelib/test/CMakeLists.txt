@@ -91,6 +91,11 @@ add_executable(test_statistics test_statistics.cpp)
 target_link_libraries(test_statistics gtest_main rtabmap_core)
 gtest_discover_tests(test_statistics)
 
+#BayesFilter.h
+add_executable(test_bayesfilter test_bayesfilter.cpp)
+target_link_libraries(test_bayesfilter gtest_main rtabmap_core)
+gtest_discover_tests(test_bayesfilter)
+
 #Signature.h
 add_executable(test_signature test_signature.cpp)
 target_link_libraries(test_signature gtest_main rtabmap_core)

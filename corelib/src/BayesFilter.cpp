@@ -269,7 +269,6 @@ float addNeighborProb(cv::Mat & prediction,
 	return sum;
 }
 
-
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
 	std::vector<int> oldIds = uKeys(_posterior);

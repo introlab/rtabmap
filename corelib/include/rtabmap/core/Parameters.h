@@ -359,8 +359,8 @@ class RTABMAP_CORE_EXPORT Parameters
 	RTABMAP_PARAM(PyDetector, Cuda,           bool, true,   "Use cuda.");
 
     // BayesFilter
-    RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");
-    RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}.");
+    RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior. Considering that we are at a new place, this is the prior probability to move again to a new place (unvisited location). The prior probability to move to a previously visited location is 1 - VirtualPlacePriorThr (split equally against all previously visited locations).");
+    RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}. Considering we are at a previously visited location, the first value is the probability to move to a new place (unvisited location), the second value is the probability to stay at the same location, the third value is the probability to move to a neighbor or loop closure at the first depth level, the fourth value is the probability to move to a neighbor or loop closure at the second depth level, etc. If the sum of the values is not 1, the difference is normalized against all remaining visited locations. Normally, the sum of these values should be 1.");
     RTABMAP_PARAM(Bayes, FullPredictionUpdate, bool, false, "Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).");
 
     // Verify hypotheses
