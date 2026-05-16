@@ -705,7 +705,7 @@ TEST(SensorDataTest, ClearOccupancyGridRaw)
     
     EXPECT_FALSE(data.gridGroundCellsRaw().empty());
     
-    data.clearOccupancyGridRaw();
+    data.clearRawData(false, false, false, true);
     
     EXPECT_TRUE(data.gridGroundCellsRaw().empty());
     EXPECT_TRUE(data.gridObstacleCellsRaw().empty());
