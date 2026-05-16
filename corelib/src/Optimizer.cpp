@@ -240,7 +240,8 @@ void Optimizer::getConnectedGraph(
 {
 	UDEBUG("IN: fromId=%d poses=%d links=%d priorsIgnored=%d landmarksIgnored=%d", fromId, (int)posesIn.size(), (int)linksIn.size(), priorsIgnored()?1:0, landmarksIgnored()?1:0);
 	UASSERT(fromId>0);
-	UASSERT(uContains(posesIn, fromId));
+	UASSERT_MSG(uContains(posesIn, fromId), uFormat("poses=%ld (first=%d last=%d) fromId=%d",
+		posesIn.size(), posesIn.empty()?0:posesIn.begin()->first, posesIn.empty()?0:posesIn.rbegin()->first, fromId).c_str());
 
 	posesOut.clear();
 	linksOut.clear();

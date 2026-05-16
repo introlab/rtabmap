@@ -904,6 +904,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With LIO-SAM:";
+#ifdef RTABMAP_LIOSAM
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With FOVIS:";
 #ifdef RTABMAP_FOVIS
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -1227,13 +1233,13 @@ void readINIImpl(const CSimpleIniA & ini, const std::string & configFilePath, Pa
 				std::vector<std::string> version = uListToVector(uSplit((*iter).second, '.'));
 				if(version.size() == 3)
 				{
-					if(!RTABMAP_VERSION_COMPARE(std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
+					if(RTABMAP_VERSION_COMPARE(<, std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
 					{
 						if(configFilePath.find(".rtabmap") != std::string::npos)
 						{
 							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
-								   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
-								   "to new version.",
+								   "current RTAB-Map version used (\"%s\"). The config file will be downgraded "
+								   "to current RTAB-Map version if saved.",
 								   configFilePath.c_str(),
 								   (*iter).second,
 								   RTABMAP_VERSION);

@@ -7930,8 +7930,7 @@ void DatabaseViewer::updateGraphView()
 
 		// remove intermediate nodes?
 		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
-		   ui_->checkBox_ignoreIntermediateNodes->isEnabled() &&
-		   ui_->checkBox_ignoreIntermediateNodes->isChecked())
+		   (ui_->checkBox_ignoreIntermediateNodes->isChecked() || ui_->comboBox_optimizationFlavor->currentIndex() == 2))
 		{
 			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
@@ -9129,10 +9128,6 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 		int fromId = newLink.from();
 		std::multimap<int, Link> linksIn = updateLinksWithModifications(links_);
 		linksIn.insert(std::make_pair(newLink.from(), newLink));
-		const Link * maxLinearLink = 0;
-		const Link * maxAngularLink = 0;
-		float maxLinearErrorRatio = 0.0f;
-		float maxAngularErrorRatio = 0.0f;
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
@@ -9165,51 +9160,43 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 		std::string msg;
 		if(poses.size())
 		{
-			float maxLinearError = 0.0f;
-			float maxAngularError = 0.0f;
-			graph::computeMaxGraphErrors(
+			graph::MaxGraphErrors maxGraphErrors = graph::computeMaxGraphErrors(
 					poses,
-					links,
-					maxLinearErrorRatio,
-					maxAngularErrorRatio,
-					maxLinearError,
-					maxAngularError,
-					&maxLinearLink,
-					&maxAngularLink);
-			if(maxLinearLink)
+					links);
+			if(maxGraphErrors.linearLink.isValid())
 			{
-				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
-				if(maxLinearErrorRatio > maxOptimizationError)
+				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to(), maxGraphErrors.linearLink.transVariance(), maxGraphErrors.linear/sqrt(maxGraphErrors.linearLink.transVariance()));
+				if(maxGraphErrors.linearRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
 						  "graph error is too large (abs=%f m) after optimization (ratio %f for edge %d->%d, stddev=%f m). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
-						  maxLinearError,
-						  maxLinearErrorRatio,
-						  maxLinearLink->from(),
-						  maxLinearLink->to(),
-						  sqrt(maxLinearLink->transVariance()),
+						  maxGraphErrors.linear,
+						  maxGraphErrors.linearRatio,
+						  maxGraphErrors.linearLink.from(),
+						  maxGraphErrors.linearLink.to(),
+						  sqrt(maxGraphErrors.linearLink.transVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 				}
 			}
-			if(maxAngularLink)
+			if(maxGraphErrors.angularLink.isValid())
 			{
-				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
-				if(maxAngularErrorRatio > maxOptimizationError)
+				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.angular*180.0f/CV_PI, maxGraphErrors.angularLink.from(), maxGraphErrors.angularLink.to(), maxGraphErrors.angularLink.rotVariance(), maxGraphErrors.angular/sqrt(maxGraphErrors.angularLink.rotVariance()));
+				if(maxGraphErrors.angularRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
 						  "graph error is too large (abs=%f deg) after optimization (ratio %f for edge %d->%d, stddev=%f deg). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
-						  maxAngularError*180.0f/CV_PI,
-						  maxAngularErrorRatio,
-						  maxAngularLink->from(),
-						  maxAngularLink->to(),
-						  sqrt(maxAngularLink->rotVariance()),
+						  maxGraphErrors.angular*180.0f/CV_PI,
+						  maxGraphErrors.angularRatio,
+						  maxGraphErrors.angularLink.from(),
+						  maxGraphErrors.angularLink.to(),
+						  sqrt(maxGraphErrors.angularLink.rotVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 				}
@@ -9451,7 +9438,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		findIter = rtabmap::graph::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
-			UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			//UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue; // don't add this link
 		}
 
@@ -9468,7 +9455,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			{
 				links.insert(*findIter);
 			}
-			UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			//UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue;
 		}
 
@@ -9487,11 +9474,11 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			if(findIter->second.from() != findIter->second.to()) {
 				links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
 			}
-			UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
+			//UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
 			continue;
 		}
 
-		UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+		//UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
 		if(iter->second.from() != iter->second.to()) {
 			links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 

@@ -19,9 +19,11 @@ PythonInterface::PythonInterface()
 	guard_ = new pybind11::scoped_interpreter();
 
 	// Tell Python to look in this directory for DLLs
+#ifdef _WIN32
 	std::string exe_dir = std::filesystem::current_path().string();
     pybind11::module_ os = pybind11::module_::import("os");
     os.attr("add_dll_directory")(exe_dir);
+#endif
 
 	pybind11::module::import("threading");
 	release_ = new pybind11::gil_scoped_release();

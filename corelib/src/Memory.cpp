@@ -1434,23 +1434,30 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 	{
 		Signature * s = this->_getSignature(id);
 		UASSERT(s!=0);
-		std::multimap<int, Link> links = s->getLinks();
-		// Setting true to make sure we save all visual
-		// words that could be referenced in a previously
-		// transferred node in LTM (#979)
-		reducedId = reduceNode(s->id(), 0, true);
-		if(reducedToOut) {
-			*reducedToOut = reducedId;
-		}
-		if(reducedId>0)
+		if(s->getWeight() == -1)
 		{
-			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+			UERROR("Graph reduction with intermediate nodes is not supported.");
+		}
+		else
+		{
+			std::multimap<int, Link> links = s->getLinks();
+			// Setting true to make sure we save all visual
+			// words that could be referenced in a previously
+			// transferred node in LTM (#979)
+			reducedId = reduceNode(s->id(), 0, true);
+			if(reducedToOut) {
+				*reducedToOut = reducedId;
+			}
+			if(reducedId>0)
 			{
-				if(iter->second.type() == Link::kNeighbor)
+				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					if(_lastGlobalLoopClosureId == s->id())
+					if(iter->second.type() == Link::kNeighbor)
 					{
-						_lastGlobalLoopClosureId = iter->first;
+						if(_lastGlobalLoopClosureId == s->id())
+						{
+							_lastGlobalLoopClosureId = iter->first;
+						}
 					}
 				}
 			}
@@ -1674,7 +1681,7 @@ std::map<int, int> Memory::getNeighborsId(
 		) const
 {
 	UASSERT(maxGraphDepth >= 0);
-	//DEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
+	//UDEBUG("signatureId=%d maxGraphDepth=%d maxCheckedInDatabase=%d incrementMarginOnLoop=%d "
 	//		"ignoreLoopIds=%d ignoreIntermediateNodes=%d ignoreLocalSpaceLoopIds=%d",
 	//		signatureId, maxGraphDepth, maxCheckedInDatabase, incrementMarginOnLoop?1:0,
 	//		ignoreLoopIds?1:0, ignoreIntermediateNodes?1:0, ignoreLocalSpaceLoopIds?1:0);
@@ -1711,17 +1718,19 @@ std::map<int, int> Memory::getNeighborsId(
 				std::map<int, Link> tmpLandmarks;
 				const std::multimap<int, Link> * links = &tmpLinks;
 				const std::map<int, Link> * landmarks = &tmpLandmarks;
+				bool isIntermediateNode = false;
 				if(s)
 				{
-					if(!ignoreIntermediateNodes || s->getWeight() != -1)
+					isIntermediateNode = s->getWeight() == -1;
+					if(!ignoreIntermediateNodes || !isIntermediateNode)
 					{
-						ids.insert(std::pair<int, int>(*jter, m));
+						int effectiveMargin = m>0 && isIntermediateNode>0 ? m-1 : m;
+						ids.insert(std::pair<int, int>(s->id(), effectiveMargin));
 					}
 					else
 					{
-						ignoredIds.insert(*jter);
+						ignoredIds.insert(s->id());
 					}
-
 					links = &s->getLinks();
 					if(!ignoreLoopIds)
 					{
@@ -1730,8 +1739,22 @@ std::map<int, int> Memory::getNeighborsId(
 				}
 				else if(maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
 				{
-					++nbLoadedFromDb;
-					ids.insert(std::pair<int, int>(*jter, m));
+					int weight = 0;
+					_dbDriver->getWeight(*jter, weight);
+					isIntermediateNode = weight == -1;
+					if(!ignoreIntermediateNodes || !isIntermediateNode)
+					{
+						int effectiveMargin = m>0 && isIntermediateNode>0 ? m-1 : m;
+						ids.insert(std::pair<int, int>(*jter, effectiveMargin));
+						if(!isIntermediateNode)
+						{
+							++nbLoadedFromDb;
+						}
+					}
+					else
+					{
+						ignoredIds.insert(*jter);
+					}
 
 					UTimer timer;
 					_dbDriver->loadLinks(*jter, tmpLinks, ignoreLoopIds?Link::kAllWithoutLandmarks:Link::kAllWithLandmarks);
@@ -1775,7 +1798,7 @@ std::map<int, int> Memory::getNeighborsId(
 						if(iter->second.type() == Link::kNeighbor ||
 					       iter->second.type() == Link::kNeighborMerged)
 						{
-							if(ignoreIntermediateNodes && s->getWeight()==-1)
+							if(isIntermediateNode)
 							{
 								// stay on the same margin
 								if(currentMargin.insert(iter->first).second)
@@ -1906,7 +1929,7 @@ int Memory::getNextId()
 int Memory::incrementMapId(std::map<int, int> * reducedIds)
 {
 	//don't increment if there is no location in the current map
-	const Signature * s = getLastWorkingSignature();
+	const Signature * s = getLastWorkingSignature(false);
 	if(s && s->mapId() == _idMapCount)
 	{
 		// New session! move all signatures from the STM to WM
@@ -2286,12 +2309,30 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 			std::list<Signature *> signatures = this->getRemovableSignatures(1, ignoredIds);
 			if(signatures.size())
 			{
-				Signature *  s = dynamic_cast<Signature *>(signatures.front());
+				Signature * s = dynamic_cast<Signature *>(signatures.front());
 				if(s)
 				{
-					signaturesRemoved.push_back(s->id());
+					int refId = s->id();
+					signaturesRemoved.push_back(refId);
+					std::multimap<int, Link> neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
 					this->moveToTrash(s);
 					wordsRemoved = _vwd->getUnusedWordsSize();
+
+					// Remove all linked intermediate nodes at the same time (in both direction)
+					std::list<int> idsToCheck(uKeysList(neighborLinks));
+					while(!idsToCheck.empty())
+					{
+						int id = idsToCheck.front();
+						idsToCheck.pop_front();
+						s = this->_getSignature(id);
+						if(s && s->getWeight() == -1)
+						{
+							neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
+							uAppend(idsToCheck, uKeysList(neighborLinks));
+							signaturesRemoved.push_back(s->id());
+							this->moveToTrash(s);
+						}
+					}
 				}
 				else
 				{
@@ -2310,22 +2351,56 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 		UDEBUG("");
 		// Remove one more than total added during the iteration
 		int signaturesAdded = _signaturesAdded;
-		std::list<Signature *> signatures = getRemovableSignatures(signaturesAdded+1, ignoredIds);
-		for(std::list<Signature *>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		int intermediateNodesRemoved = 0;
+		while(int(signaturesRemoved.size()-intermediateNodesRemoved) < signaturesAdded+1)
 		{
-			signaturesRemoved.push_back((*iter)->id());
-			// When a signature is deleted, it notifies the memory
-			// and it is removed from the memory list
-			this->moveToTrash(*iter);
+			std::list<Signature *> signatures = this->getRemovableSignatures(1, ignoredIds);
+			if(signatures.size())
+			{
+				Signature * s = dynamic_cast<Signature *>(signatures.front());
+				if(s)
+				{
+					signaturesRemoved.push_back(s->id());
+					std::multimap<int, Link> neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
+					// When a signature is deleted, it notifies the memory
+					// and it is removed from the memory list
+					this->moveToTrash(s);
+
+					// Remove all linked intermediate nodes at the same time (in both direction)
+					std::list<int> idsToCheck(uKeysList(neighborLinks));
+					while(!idsToCheck.empty())
+					{
+						int id = idsToCheck.front();
+						idsToCheck.pop_front();
+						s = this->_getSignature(id);
+						if(s && s->getWeight() == -1)
+						{
+							++intermediateNodesRemoved;
+							neighborLinks = graph::filterLinks(s->getLinks(), Link::kNeighbor, true);
+							uAppend(idsToCheck, uKeysList(neighborLinks));
+							signaturesRemoved.push_back(s->id());
+							this->moveToTrash(s);
+						}
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
 		}
-		if((int)signatures.size() < signaturesAdded)
+		if(int(signaturesRemoved.size() - intermediateNodesRemoved) < signaturesAdded)
 		{
-			UWARN("Less signatures transferred (%d) than added (%d)! The working memory cannot decrease in size.",
-					(int)signatures.size(), signaturesAdded);
+			UWARN("Less signatures transferred (%d, inter=%d) than added (%d)! The working memory cannot decrease in size.",
+					int(signaturesRemoved.size()-intermediateNodesRemoved), intermediateNodesRemoved, signaturesAdded);
 		}
 		else
 		{
-			UDEBUG("signaturesRemoved=%d, _signaturesAdded=%d", (int)signatures.size(), signaturesAdded);
+			UDEBUG("signaturesRemoved=%d (inter=%d), _signaturesAdded=%d", int(signaturesRemoved.size()-intermediateNodesRemoved), intermediateNodesRemoved, signaturesAdded);
 		}
 	}
 	return signaturesRemoved;
@@ -2338,7 +2413,9 @@ int Memory::cleanup()
 	int signatureRemoved = 0;
 
 	// bad signature
-	if(_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory))
+	if(_lastSignature && 
+		((_lastSignature->isBadSignature() && _badSignaturesIgnored && _lastSignature->getWeight()!=-1) || 
+		 !_incrementalMemory))
 	{
 		if(_lastSignature->isBadSignature())
 		{
@@ -2578,9 +2655,10 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 							break;
 						}
 					}
-					if(!foundInSTM)
+					if(!foundInSTM && s->getWeight()>=0)
 					{
-						// less weighted signature priority to be transferred
+						// Less weighted signature priority to be transferred
+						// Ignore intermediate nodes
 						weightAgeIdMap.insert(std::make_pair(WeightAgeIdKey(s->getWeight(), _transferSortingByWeightId?0.0:memIter->second, s->id()), s));
 					}
 				}
@@ -2668,7 +2746,11 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		}
 
 		// it is a bad signature (not saved), remove links!
-		if(keepLinkedToGraph && (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
+		if(keepLinkedToGraph && 
+		   !s->isSaved() && 
+		   s->isBadSignature() &&
+		   _badSignaturesIgnored && 
+		   s->getWeight()!=-1)
 		{
 			keepLinkedToGraph = false;
 		}
@@ -2794,9 +2876,21 @@ int Memory::getLastSignatureId() const
 	return _idCount;
 }
 
-const Signature * Memory::getLastWorkingSignature() const
+const Signature * Memory::getLastWorkingSignature(bool ignoreIntermediateNodes) const
 {
-	UDEBUG("");
+	if(ignoreIntermediateNodes && _lastSignature && _lastSignature->getWeight()==-1)
+	{
+		for(std::map<int, Signature *>::const_reverse_iterator iter=_signatures.rbegin();
+			iter!=_signatures.rend();
+			++iter)
+		{
+			if(iter->second->getWeight() != -1)
+			{
+				return iter->second;
+			}
+		}
+		return 0;
+	}
 	return _lastSignature;
 }
 
@@ -2952,6 +3046,29 @@ bool Memory::setUserData(int id, const cv::Mat & data)
 		UERROR("Node %d not found in RAM, failed to set user data (size=%d)!", id, data.total());
 	}
 	return false;
+}
+
+void Memory::convertToIntermediate(int locationId)
+{
+	UDEBUG("Converting location %d to intermediate node", locationId);
+	Signature * location = _getSignature(locationId);
+	if(location)
+	{
+		location->setWeight(-1);
+		location->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+		this->disableWordsRef(locationId); // won't be used for loop closure detection anymore
+		if(!_saveIntermediateNodeData)
+		{
+			location->removeAllWords();
+			location->sensorData().clearGlobalDescriptors();
+		}
+
+		location->sensorData().clearRawData();
+		if(!_saveIntermediateNodeData || !this->isBinDataKept())
+		{
+			location->sensorData().clearCompressedData();
+		}
+	}
 }
 
 void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
@@ -4229,18 +4346,46 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				// just update weight
 				int w = oldS->getWeight()>=0?oldS->getWeight():0;
 				newS->setWeight(w + newS->getWeight() + 1);
-				oldS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+				oldS->setWeight(0);
 
 				if(_lastGlobalLoopClosureId == oldS->id())
 				{
 					_lastGlobalLoopClosureId = newS->id();
+				}
+				if(intermediateMerge)
+				{
+					static bool warned = false;
+					if(!warned)
+					{
+						UWARN("A rehearsal was accepted (%d->%d) while not moving but "
+							"there are intermediate nodes between them in the graph. "
+							"Because %s=true, the node %d cannot be converted "
+							"into an intermediate node so it will be kept in the graph "
+							"even if we are not moving. Set %s=false to handle intermediate "
+							"nodes with rehearsal enabled so that loop closure hypotheses "
+							"are propagated correctly. This message is only "
+							"printed once.",
+							oldS->id(),
+							newS->id(),
+							Parameters::kMemRehearsalIdUpdatedToNewOne().c_str(),
+							oldS->id(),
+							Parameters::kMemRehearsalIdUpdatedToNewOne().c_str());
+						warned = true;
+					}
 				}
 			}
 			else // !_idUpdatedToNewOneRehearsal
 			{
 				int w = newS->getWeight()>=0?newS->getWeight():0;
 				oldS->setWeight(w + oldS->getWeight() + 1);
-				newS->setWeight(intermediateMerge?-1:0); // convert to intermediate node
+				if(intermediateMerge)
+				{
+					this->convertToIntermediate(newS->id());
+				}
+				else
+				{
+					newS->setWeight(0);
+				}
 			}
 		}
 	}
@@ -4785,6 +4930,11 @@ void Memory::copyData(const Signature * from, Signature * to)
 		}
 		to->sensorData().setId(to->id());
 
+		if(!from->sensorData().globalDescriptors().empty())
+		{
+			to->sensorData().setGlobalDescriptors(from->sensorData().globalDescriptors());
+		}
+
 		to->setPose(from->getPose());
 	}
 	else
@@ -4816,6 +4966,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	SensorData data = inputData;
 
 	bool isIntermediateNode = data.id() < 0;
+
+	if(this->getSignatures().empty() && isIntermediateNode)
+	{
+		UWARN("Ignoring input data with stamp %s because the first node in memory cannot be an intermediate node.", inputData.stamp());
+		return 0;
+	}
 
 	// uncompress data if needed
 	
@@ -5039,7 +5195,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	int treeSize= int(_workingMem.size() + _stMem.size());
 	int meanWordsPerLocation = _feature2D->getMaxFeatures()>0?_feature2D->getMaxFeatures():0;
-	if(treeSize > 1)
+	if(meanWordsPerLocation==0 && treeSize > 1)
 	{
 		meanWordsPerLocation = _vwd->getTotalActiveReferences() / (treeSize-1); // ignore virtual signature
 	}
@@ -5485,7 +5641,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UDEBUG("Intermediate node detected, don't extract features!");
 		}
 	}
-	else if(_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
+	else
 	{
 		_receivingOdometryFeatures = true;
 		UINFO("Use odometry features: kpts=%d 3d=%d desc=%d (dim=%d, type=%d)",
@@ -5501,133 +5657,75 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
 		UASSERT(keypoints3D.empty() || keypoints3D.size() == keypoints.size());
 
-		int maxFeatures = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visMaxFeatures:_feature2D->getMaxFeatures();
-		bool ssc = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visSSC:_feature2D->getSSC();
-		if((int)keypoints.size() > maxFeatures)
+		if(_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
 		{
-			if(data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
-				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures, data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()), ssc);
-			else
-				_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures);
-		}
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
-		UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
-
-		if(descriptors.empty())
-		{
-			cv::Mat imageMono;
-			if(data.imageRaw().channels() == 3)
+			int maxFeatures = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visMaxFeatures:_feature2D->getMaxFeatures();
+			if((int)keypoints.size() > maxFeatures)
 			{
-				cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
-			}
-			else
-			{
-				imageMono = data.imageRaw();
-			}
-
-			UASSERT_MSG(imagesRectified, "Cannot extract descriptors on not rectified image from keypoints which assumed to be undistorted");
-			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-		}
-		else if(!imagesRectified && !data.cameraModels().empty())
-		{
-			std::vector<cv::KeyPoint> keypointsValid;
-			keypointsValid.reserve(keypoints.size());
-			cv::Mat descriptorsValid;
-			descriptorsValid.reserve(descriptors.rows);
-			std::vector<cv::Point3f> keypoints3DValid;
-			keypoints3DValid.reserve(keypoints3D.size());
-
-			//undistort keypoints before projection (RGB-D)
-			if(data.cameraModels().size() == 1)
-			{
-				std::vector<cv::Point2f> pointsIn, pointsOut;
-				cv::KeyPoint::convert(keypoints,pointsIn);
-				if(data.cameraModels()[0].D_raw().cols == 6)
-				{
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
-					// Equidistant / FishEye
-					// get only k parameters (k1,k2,p1,p2,k3,k4)
-					cv::Mat D(1, 4, CV_64FC1);
-					D.at<double>(0,0) = data.cameraModels()[0].D_raw().at<double>(0,0);
-					D.at<double>(0,1) = data.cameraModels()[0].D_raw().at<double>(0,1);
-					D.at<double>(0,2) = data.cameraModels()[0].D_raw().at<double>(0,4);
-					D.at<double>(0,3) = data.cameraModels()[0].D_raw().at<double>(0,5);
-					cv::fisheye::undistortPoints(pointsIn, pointsOut,
-							data.cameraModels()[0].K_raw(),
-							D,
-							data.cameraModels()[0].R(),
-							data.cameraModels()[0].P());
-				}
+				bool ssc = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visSSC:_feature2D->getSSC();
+				if(data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
+					_feature2D->limitKeypoints(keypoints,
+						keypoints3D,
+						descriptors,
+						maxFeatures,
+						data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(),
+						data.cameraModels()[0].imageHeight()):cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(),
+						data.stereoCameraModels()[0].left().imageHeight()),
+						ssc);
 				else
-#else
-					UWARN("Too old opencv version (%d,%d,%d) to support fisheye model (min 2.4.10 required)!",
-							CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION);
-				}
-#endif
-				{
-					//RadialTangential
-					cv::undistortPoints(pointsIn, pointsOut,
-							data.cameraModels()[0].K_raw(),
-							data.cameraModels()[0].D_raw(),
-							data.cameraModels()[0].R(),
-							data.cameraModels()[0].P());
-				}
-				UASSERT(pointsOut.size() == keypoints.size());
-				for(unsigned int i=0; i<pointsOut.size(); ++i)
-				{
-					if(pointsOut.at(i).x>=0 && pointsOut.at(i).x<data.cameraModels()[0].imageWidth() &&
-					   pointsOut.at(i).y>=0 && pointsOut.at(i).y<data.cameraModels()[0].imageHeight())
-					{
-						keypointsValid.push_back(keypoints.at(i));
-						keypointsValid.back().pt.x = pointsOut.at(i).x;
-						keypointsValid.back().pt.y = pointsOut.at(i).y;
-						descriptorsValid.push_back(descriptors.row(i));
-						if(!keypoints3D.empty())
-						{
-							keypoints3DValid.push_back(keypoints3D.at(i));
-						}
-					}
-				}
+					_feature2D->limitKeypoints(keypoints,
+						keypoints3D,
+						descriptors,
+						maxFeatures);
 			}
-			else
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
+
+			if(descriptors.empty())
 			{
-				float subImageWidth;
-				if(!data.imageRaw().empty())
+				cv::Mat imageMono;
+				if(data.imageRaw().channels() == 3)
 				{
-					UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
-					subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+					cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
 				}
 				else
 				{
-					UASSERT(data.cameraModels()[0].imageWidth()>0);
-					subImageWidth = data.cameraModels()[0].imageWidth();
+					imageMono = data.imageRaw();
 				}
 
-				for(unsigned int i=0; i<keypoints.size(); ++i)
-				{
-					int cameraIndex = int(keypoints.at(i).pt.x / subImageWidth);
-					UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)data.cameraModels().size(),
-							uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
-									cameraIndex, (int)data.cameraModels().size(), keypoints[i].pt.x, subImageWidth, data.cameraModels()[0].imageWidth()).c_str());
+				UASSERT_MSG(imagesRectified, "Cannot extract descriptors on not rectified image from keypoints which assumed to be undistorted");
+				descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+			}
+			else if(!imagesRectified && !data.cameraModels().empty())
+			{
+				std::vector<cv::KeyPoint> keypointsValid;
+				keypointsValid.reserve(keypoints.size());
+				cv::Mat descriptorsValid;
+				descriptorsValid.reserve(descriptors.rows);
+				std::vector<cv::Point3f> keypoints3DValid;
+				keypoints3DValid.reserve(keypoints3D.size());
 
+				//undistort keypoints before projection (RGB-D)
+				if(data.cameraModels().size() == 1)
+				{
 					std::vector<cv::Point2f> pointsIn, pointsOut;
-					pointsIn.push_back(cv::Point2f(keypoints.at(i).pt.x-subImageWidth*cameraIndex, keypoints.at(i).pt.y));
-					if(data.cameraModels()[cameraIndex].D_raw().cols == 6)
+					cv::KeyPoint::convert(keypoints,pointsIn);
+					if(data.cameraModels()[0].D_raw().cols == 6)
 					{
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 						// Equidistant / FishEye
 						// get only k parameters (k1,k2,p1,p2,k3,k4)
 						cv::Mat D(1, 4, CV_64FC1);
-						D.at<double>(0,0) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,0);
-						D.at<double>(0,1) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
-						D.at<double>(0,2) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,4);
-						D.at<double>(0,3) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,5);
+						D.at<double>(0,0) = data.cameraModels()[0].D_raw().at<double>(0,0);
+						D.at<double>(0,1) = data.cameraModels()[0].D_raw().at<double>(0,1);
+						D.at<double>(0,2) = data.cameraModels()[0].D_raw().at<double>(0,4);
+						D.at<double>(0,3) = data.cameraModels()[0].D_raw().at<double>(0,5);
 						cv::fisheye::undistortPoints(pointsIn, pointsOut,
-								data.cameraModels()[cameraIndex].K_raw(),
+								data.cameraModels()[0].K_raw(),
 								D,
-								data.cameraModels()[cameraIndex].R(),
-								data.cameraModels()[cameraIndex].P());
+								data.cameraModels()[0].R(),
+								data.cameraModels()[0].P());
 					}
 					else
 #else
@@ -5638,57 +5736,128 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					{
 						//RadialTangential
 						cv::undistortPoints(pointsIn, pointsOut,
-								data.cameraModels()[cameraIndex].K_raw(),
-								data.cameraModels()[cameraIndex].D_raw(),
-								data.cameraModels()[cameraIndex].R(),
-								data.cameraModels()[cameraIndex].P());
+								data.cameraModels()[0].K_raw(),
+								data.cameraModels()[0].D_raw(),
+								data.cameraModels()[0].R(),
+								data.cameraModels()[0].P());
 					}
-
-					if(pointsOut[0].x>=0 && pointsOut[0].x<data.cameraModels()[cameraIndex].imageWidth() &&
-					   pointsOut[0].y>=0 && pointsOut[0].y<data.cameraModels()[cameraIndex].imageHeight())
+					UASSERT(pointsOut.size() == keypoints.size());
+					for(unsigned int i=0; i<pointsOut.size(); ++i)
 					{
-						keypointsValid.push_back(keypoints.at(i));
-						keypointsValid.back().pt.x = pointsOut[0].x + subImageWidth*cameraIndex;
-						keypointsValid.back().pt.y = pointsOut[0].y;
-						descriptorsValid.push_back(descriptors.row(i));
-						if(!keypoints3D.empty())
+						if(pointsOut.at(i).x>=0 && pointsOut.at(i).x<data.cameraModels()[0].imageWidth() &&
+						pointsOut.at(i).y>=0 && pointsOut.at(i).y<data.cameraModels()[0].imageHeight())
 						{
-							keypoints3DValid.push_back(keypoints3D.at(i));
+							keypointsValid.push_back(keypoints.at(i));
+							keypointsValid.back().pt.x = pointsOut.at(i).x;
+							keypointsValid.back().pt.y = pointsOut.at(i).y;
+							descriptorsValid.push_back(descriptors.row(i));
+							if(!keypoints3D.empty())
+							{
+								keypoints3DValid.push_back(keypoints3D.at(i));
+							}
 						}
 					}
 				}
+				else
+				{
+					float subImageWidth;
+					if(!data.imageRaw().empty())
+					{
+						UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+						subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+					}
+					else
+					{
+						UASSERT(data.cameraModels()[0].imageWidth()>0);
+						subImageWidth = data.cameraModels()[0].imageWidth();
+					}
+
+					for(unsigned int i=0; i<keypoints.size(); ++i)
+					{
+						int cameraIndex = int(keypoints.at(i).pt.x / subImageWidth);
+						UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)data.cameraModels().size(),
+								uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
+										cameraIndex, (int)data.cameraModels().size(), keypoints[i].pt.x, subImageWidth, data.cameraModels()[0].imageWidth()).c_str());
+
+						std::vector<cv::Point2f> pointsIn, pointsOut;
+						pointsIn.push_back(cv::Point2f(keypoints.at(i).pt.x-subImageWidth*cameraIndex, keypoints.at(i).pt.y));
+						if(data.cameraModels()[cameraIndex].D_raw().cols == 6)
+						{
+#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+							// Equidistant / FishEye
+							// get only k parameters (k1,k2,p1,p2,k3,k4)
+							cv::Mat D(1, 4, CV_64FC1);
+							D.at<double>(0,0) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,0);
+							D.at<double>(0,1) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,1);
+							D.at<double>(0,2) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,4);
+							D.at<double>(0,3) = data.cameraModels()[cameraIndex].D_raw().at<double>(0,5);
+							cv::fisheye::undistortPoints(pointsIn, pointsOut,
+									data.cameraModels()[cameraIndex].K_raw(),
+									D,
+									data.cameraModels()[cameraIndex].R(),
+									data.cameraModels()[cameraIndex].P());
+						}
+						else
+#else
+							UWARN("Too old opencv version (%d,%d,%d) to support fisheye model (min 2.4.10 required)!",
+									CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION);
+						}
+#endif
+						{
+							//RadialTangential
+							cv::undistortPoints(pointsIn, pointsOut,
+									data.cameraModels()[cameraIndex].K_raw(),
+									data.cameraModels()[cameraIndex].D_raw(),
+									data.cameraModels()[cameraIndex].R(),
+									data.cameraModels()[cameraIndex].P());
+						}
+
+						if(pointsOut[0].x>=0 && pointsOut[0].x<data.cameraModels()[cameraIndex].imageWidth() &&
+						pointsOut[0].y>=0 && pointsOut[0].y<data.cameraModels()[cameraIndex].imageHeight())
+						{
+							keypointsValid.push_back(keypoints.at(i));
+							keypointsValid.back().pt.x = pointsOut[0].x + subImageWidth*cameraIndex;
+							keypointsValid.back().pt.y = pointsOut[0].y;
+							descriptorsValid.push_back(descriptors.row(i));
+							if(!keypoints3D.empty())
+							{
+								keypoints3DValid.push_back(keypoints3D.at(i));
+							}
+						}
+					}
+				}
+
+				keypoints = keypointsValid;
+				descriptors = descriptorsValid;
+				keypoints3D = keypoints3DValid;
+
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemRectification(), t*1000.0f);
+				UDEBUG("time rectification = %fs", t);
 			}
-
-			keypoints = keypointsValid;
-			descriptors = descriptorsValid;
-			keypoints3D = keypoints3DValid;
-
 			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemRectification(), t*1000.0f);
-			UDEBUG("time rectification = %fs", t);
-		}
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-		UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
+			if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
-		if(keypoints3D.empty() &&
-			((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
-		   (!data.rightRaw().empty() && data.stereoCameraModels().size() && data.stereoCameraModels()[0].isValidForProjection())))
-		{
-			keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
-		}
-		if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
-		{
-			_feature2D->filterKeypointsByDepth(keypoints, descriptors, keypoints3D, _feature2D->getMinDepth(), _feature2D->getMaxDepth());
-		}
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-		UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
+			if(keypoints3D.empty() &&
+				((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
+			(!data.rightRaw().empty() && data.stereoCameraModels().size() && data.stereoCameraModels()[0].isValidForProjection())))
+			{
+				keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
+			}
+			if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
+			{
+				_feature2D->filterKeypointsByDepth(keypoints, descriptors, keypoints3D, _feature2D->getMinDepth(), _feature2D->getMaxDepth());
+			}
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
 
-		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
-		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
-		{
-			descriptors = cv::Mat();
+			UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
+			if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
+			{
+				descriptors = cv::Mat();
+			}
 		}
 	}
 
@@ -5711,107 +5880,117 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 
 	std::list<int> wordIds;
-	if(descriptors.rows)
+	bool addedToDictionary = false;
+	if(!keypoints.empty())
 	{
-		// In case the number of features we want to do quantization is lower
-		// than extracted ones (that would be used for transform estimation)
-		std::vector<bool> inliers;
-		cv::Mat descriptorsForQuantization = descriptors;
-		std::vector<int> quantizedToRawIndices;
-		if(_feature2D->getMaxFeatures()>0 && descriptors.rows > _feature2D->getMaxFeatures())
+		if(descriptors.rows && !isIntermediateNode)
 		{
-			UASSERT((int)keypoints.size() == descriptors.rows);
-			int inliersCount = 0;
-			if((_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1) &&
-				(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
-					data.cameraModels().size()==1 || data.stereoCameraModels().size()==1))
+			// In case the number of features we want to do quantization is lower
+			// than extracted ones (that would be used for transform estimation)
+			std::vector<bool> inliers;
+			cv::Mat descriptorsForQuantization = descriptors;
+			std::vector<int> quantizedToRawIndices;
+			if(_feature2D->getMaxFeatures()>0 && descriptors.rows > _feature2D->getMaxFeatures())
 			{
-				Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(),
-					decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
-					decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
-					data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
-					_feature2D->getGridRows(), _feature2D->getGridCols(), _feature2D->getSSC());
-			}
-			else
-			{
-				if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
+				UASSERT((int)keypoints.size() == descriptors.rows);
+				int inliersCount = 0;
+				if((_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1) &&
+					(decimatedData.cameraModels().size()==1 || decimatedData.stereoCameraModels().size()==1 ||
+						data.cameraModels().size()==1 || data.stereoCameraModels().size()==1))
 				{
-					UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
-							Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
-				}
-				if(decimatedData.cameraModels().size()>=1 || decimatedData.stereoCameraModels().size()>=1 ||
-					data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
-				{
-					Feature2D::limitKeypoints(
-						keypoints,
-						inliers,
-						_feature2D->getMaxFeatures(),
-						decimatedData.cameraModels().size()?cv::Size(decimatedData.cameraModels()[0].imageWidth()*decimatedData.cameraModels().size(), decimatedData.cameraModels()[0].imageHeight()):
-						decimatedData.stereoCameraModels().size()?cv::Size(decimatedData.stereoCameraModels()[0].left().imageWidth()*decimatedData.stereoCameraModels().size(), decimatedData.stereoCameraModels()[0].left().imageWidth()):
-						data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):
-						cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()),
-						_feature2D->getSSC());
+					Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures(),
+						decimatedData.cameraModels().size()?decimatedData.cameraModels()[0].imageSize():
+						decimatedData.stereoCameraModels().size()?decimatedData.stereoCameraModels()[0].left().imageSize():
+						data.cameraModels().size()?data.cameraModels()[0].imageSize():data.stereoCameraModels()[0].left().imageSize(),
+						_feature2D->getGridRows(), _feature2D->getGridCols(), _feature2D->getSSC());
 				}
 				else
 				{
-					Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
-				}
-			}
-			for(size_t i=0; i<inliers.size(); ++i)
-			{
-				if(inliers[i])
-					++inliersCount;
-			}
-
-			descriptorsForQuantization = cv::Mat(inliersCount, descriptors.cols, descriptors.type());
-			quantizedToRawIndices.resize(inliersCount);
-			unsigned int oi=0;
-			UASSERT((int)inliers.size() == descriptors.rows);
-			for(int k=0; k < descriptors.rows; ++k)
-			{
-				if(inliers[k])
-				{
-					UASSERT(oi < quantizedToRawIndices.size());
-					if(descriptors.type() == CV_32FC1)
+					if(_feature2D->getGridRows() > 1 || _feature2D->getGridCols() > 1)
 					{
-						memcpy(descriptorsForQuantization.ptr<float>(oi), descriptors.ptr<float>(k), descriptors.cols*sizeof(float));
+						UWARN("Ignored %s and %s parameters as they cannot be used for multi-cameras setup or uncalibrated camera.",
+								Parameters::kKpGridCols().c_str(), Parameters::kKpGridRows().c_str());
+					}
+					if(decimatedData.cameraModels().size()>=1 || decimatedData.stereoCameraModels().size()>=1 ||
+						data.cameraModels().size()>=1 || data.stereoCameraModels().size()>=1)
+					{
+						Feature2D::limitKeypoints(
+							keypoints,
+							inliers,
+							_feature2D->getMaxFeatures(),
+							decimatedData.cameraModels().size()?cv::Size(decimatedData.cameraModels()[0].imageWidth()*decimatedData.cameraModels().size(), decimatedData.cameraModels()[0].imageHeight()):
+							decimatedData.stereoCameraModels().size()?cv::Size(decimatedData.stereoCameraModels()[0].left().imageWidth()*decimatedData.stereoCameraModels().size(), decimatedData.stereoCameraModels()[0].left().imageWidth()):
+							data.cameraModels().size()?cv::Size(data.cameraModels()[0].imageWidth()*data.cameraModels().size(), data.cameraModels()[0].imageHeight()):
+							cv::Size(data.stereoCameraModels()[0].left().imageWidth()*data.stereoCameraModels().size(), data.stereoCameraModels()[0].left().imageHeight()),
+							_feature2D->getSSC());
 					}
 					else
 					{
-						memcpy(descriptorsForQuantization.ptr<char>(oi), descriptors.ptr<char>(k), descriptors.cols*sizeof(char));
+						Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
 					}
-					quantizedToRawIndices[oi] = k;
-					++oi;
 				}
-			}
-			UASSERT_MSG((int)oi == inliersCount,
-					uFormat("oi=%d inliersCount=%d (maxFeatures=%d, grid=%dx%d)",
-							oi, inliersCount, _feature2D->getMaxFeatures(), _feature2D->getGridCols(), _feature2D->getGridRows()).c_str());
-		}
-
-		// Quantization to vocabulary
-		wordIds = _vwd->addNewWords(descriptorsForQuantization, id);
-
-		// Set ID -1 to features not used for quantization
-		if(wordIds.size() < keypoints.size())
-		{
-			std::vector<int> allWordIds;
-			allWordIds.resize(keypoints.size(),-1);
-			int i=0;
-			for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
-			{
-				allWordIds[quantizedToRawIndices[i]] = *iter;
-				++i;
-			}
-			int negIndex = -1;
-			for(i=0; i<(int)allWordIds.size(); ++i)
-			{
-				if(allWordIds[i] < 0)
+				for(size_t i=0; i<inliers.size(); ++i)
 				{
-					allWordIds[i] = negIndex--;
+					if(inliers[i])
+						++inliersCount;
 				}
+
+				descriptorsForQuantization = cv::Mat(inliersCount, descriptors.cols, descriptors.type());
+				quantizedToRawIndices.resize(inliersCount);
+				unsigned int oi=0;
+				UASSERT((int)inliers.size() == descriptors.rows);
+				for(int k=0; k < descriptors.rows; ++k)
+				{
+					if(inliers[k])
+					{
+						UASSERT(oi < quantizedToRawIndices.size());
+						if(descriptors.type() == CV_32FC1)
+						{
+							memcpy(descriptorsForQuantization.ptr<float>(oi), descriptors.ptr<float>(k), descriptors.cols*sizeof(float));
+						}
+						else
+						{
+							memcpy(descriptorsForQuantization.ptr<char>(oi), descriptors.ptr<char>(k), descriptors.cols*sizeof(char));
+						}
+						quantizedToRawIndices[oi] = k;
+						++oi;
+					}
+				}
+				UASSERT_MSG((int)oi == inliersCount,
+						uFormat("oi=%d inliersCount=%d (maxFeatures=%d, grid=%dx%d)",
+								oi, inliersCount, _feature2D->getMaxFeatures(), _feature2D->getGridCols(), _feature2D->getGridRows()).c_str());
 			}
-			wordIds = uVectorToList(allWordIds);
+
+			// Quantization to vocabulary
+			wordIds = _vwd->addNewWords(descriptorsForQuantization, id);
+			addedToDictionary = true;
+
+			// Set ID -1 to features not used for quantization
+			if(wordIds.size() < keypoints.size())
+			{
+				std::vector<int> allWordIds;
+				allWordIds.resize(keypoints.size(),-1);
+				int i=0;
+				for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
+				{
+					allWordIds[quantizedToRawIndices[i]] = *iter;
+					++i;
+				}
+				int negIndex = -1;
+				for(i=0; i<(int)allWordIds.size(); ++i)
+				{
+					if(allWordIds[i] < 0)
+					{
+						allWordIds[i] = negIndex--;
+					}
+				}
+				wordIds = uVectorToList(allWordIds);
+			}
+		}
+		else
+		{
+			// Set all words as not used in dictionary
+			wordIds.resize(keypoints.size(),-1);
 		}
 
 		t = timer.ticks();
@@ -5831,6 +6010,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
+		UASSERT(descriptors.rows == 0 || descriptors.rows == (int)wordIds.size());
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
 		float decimationRatio = float(preDecimation) / float(_imagePostDecimation);
@@ -5838,7 +6018,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];
-			if(preDecimation != _imagePostDecimation)
+			if(preDecimation != _imagePostDecimation && !isIntermediateNode)
 			{
 				// remap keypoints to final image size
 				kpt.pt.x *= decimationRatio;
@@ -5857,7 +6037,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 					++words3DValid;
 				}
 			}
-			if(_rawDescriptorsKept)
+			if(!descriptors.empty() && _rawDescriptorsKept)
 			{
 				wordsDescriptors.push_back(descriptors.row(i));
 			}
@@ -5865,12 +6045,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	}
 
 	Landmarks landmarks = data.landmarks();
-	if(!landmarks.empty() && isIntermediateNode)
-	{
-		UDEBUG("Landmarks provided (size=%ld) are ignored because this signature is set as intermediate.", landmarks.size());
-		landmarks.clear();
-	}
-	else if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
+	if(_detectMarkers && !isIntermediateNode && !data.imageRaw().empty())
 	{
 		UDEBUG("Detecting markers...");
 		if(landmarks.empty())
@@ -6002,7 +6177,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("time post-decimation = %fs", t);
 	}
 
-	if(_stereoFromMotion &&
+	if(!isIntermediateNode &&
+		_stereoFromMotion &&
 		!pose.isNull() &&
 		cameraModels.size() == 1 &&
 		words.size() &&
@@ -6415,9 +6591,15 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						compressedUserData));
 	}
 
-	s->setWords(words, wordsKpts,
-			_reextractLoopClosureFeatures?std::vector<cv::Point3f>():words3D,
-			_reextractLoopClosureFeatures?cv::Mat():wordsDescriptors);
+	if(!isIntermediateNode || _saveIntermediateNodeData)
+	{
+		s->setWords(words, wordsKpts,
+				_reextractLoopClosureFeatures?std::vector<cv::Point3f>():words3D,
+				_reextractLoopClosureFeatures?cv::Mat():wordsDescriptors);
+
+		s->sensorData().setLaserScan(laserScan, false);
+		s->sensorData().setUserData(data.userDataRaw(), false);
+	}
 
 	// set raw data
 	if(!cameraModels.empty())
@@ -6428,8 +6610,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	{
 		s->sensorData().setStereoImage(image, depthOrRightImage, stereoCameraModels, false);
 	}
-	s->sensorData().setLaserScan(laserScan, false);
-	s->sensorData().setUserData(data.userDataRaw(), false);
 
 	UDEBUG("data.groundTruth()      =%s", data.groundTruth().prettyPrint().c_str());
 	UDEBUG("data.gps()              =%s", data.gps().stamp()?"true":"false");
@@ -6439,28 +6619,33 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	s->sensorData().setGPS(data.gps());
 	s->sensorData().setEnvSensors(data.envSensors());
 
-	if(!isIntermediateNode)
+	std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
+	if(!isIntermediateNode && _globalDescriptorExtractor)
 	{
-		std::vector<GlobalDescriptor> globalDescriptors = data.globalDescriptors();
-		if(_globalDescriptorExtractor)
+		GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
+		if(!gdescriptor.data().empty())
 		{
-			GlobalDescriptor gdescriptor = _globalDescriptorExtractor->extract(inputData);
-			if(!gdescriptor.data().empty())
-			{
-				globalDescriptors.push_back(gdescriptor);
-			}
+			globalDescriptors.push_back(gdescriptor);
 		}
-		s->sensorData().setGlobalDescriptors(globalDescriptors);
 	}
-	else if(!data.globalDescriptors().empty())
+	if(!globalDescriptors.empty())
 	{
-		UDEBUG("Global descriptors provided (size=%ld) are ignored because this signature is set as intermediate.", data.globalDescriptors().size());
+		if(!isIntermediateNode || _saveIntermediateNodeData)
+		{
+			s->sensorData().setGlobalDescriptors(globalDescriptors);
+		}
+		else
+		{
+			UDEBUG("Global descriptors provided (size=%ld) are ignored because this signature is set as intermediate and %s=false.",
+				globalDescriptors.size(),
+				Parameters::kMemIntermediateNodeDataKept().c_str());
+		}
 	}
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
 	UDEBUG("time compressing data (id=%d) %fs", id, t);
-	if(words.size())
+	if(words.size() && addedToDictionary)
 	{
 		s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
 	}
@@ -6600,16 +6785,19 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			s->addLandmark(landmark);
 
 			// Update landmark index
-			std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
-			if(nter!=_landmarksIndex.end())
+			if(!isIntermediateNode)
 			{
-				nter->second.insert(s->id());
-			}
-			else
-			{
-				std::set<int> tmp;
-				tmp.insert(s->id());
-				_landmarksIndex.insert(std::make_pair(landmarkId, tmp));
+				std::map<int, std::set<int> >::iterator nter = _landmarksIndex.find(landmarkId);
+				if(nter!=_landmarksIndex.end())
+				{
+					nter->second.insert(s->id());
+				}
+				else
+				{
+					std::set<int> tmp;
+					tmp.insert(s->id());
+					_landmarksIndex.insert(std::make_pair(landmarkId, tmp));
+				}
 			}
 		}
 		else
@@ -6767,7 +6955,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 			{
 				if(keys.at(i)>0)
 				{
-					if(_vwd->addWordRef(keys.at(i), (*j)->id()))
+					if(!_vwd->addWordRef(keys.at(i), (*j)->id()))
 					{
 						UERROR("Could not add word ref %d to node %d!?", keys.at(i), (*j)->id());
 					}
@@ -6790,6 +6978,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	UDEBUG("");
 	UTimer timer;
 	std::list<int> idsToLoad;
+	std::list<int> idsInQueue;
 	std::map<int, int>::iterator wmIter;
 	for(std::list<int>::const_iterator i=ids.begin(); i!=ids.end(); ++i)
 	{
@@ -6800,10 +6989,14 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 				idsToLoad.push_back(*i);
 				UINFO("Loading location %d from database...", *i);
 			}
+			else if(idsToLoad.size() >= maxLoaded)
+			{
+				idsInQueue.push_back(*i);
+			}
 		}
 	}
 
-	UDEBUG("idsToLoad = %d", idsToLoad.size());
+	UDEBUG("idsToLoad = %ld (in queue = %ld)", idsToLoad.size(), idsInQueue.size());
 
 	std::list<Signature *> reactivatedSigns;
 	if(_dbDriver)
@@ -6812,8 +7005,13 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	}
 	timeDbAccess = timer.getElapsedTime();
 	std::list<int> idsLoaded;
+	int intermediateNodesLoaded = 0;
 	for(std::list<Signature *>::iterator i=reactivatedSigns.begin(); i!=reactivatedSigns.end(); ++i)
 	{
+		if((*i)->getWeight() == -1)
+		{
+			++intermediateNodesLoaded;
+		}
 		if(!(*i)->getLandmarks().empty())
 		{
 			// Update landmark indexes
@@ -6857,10 +7055,23 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 	}
 	this->enableWordsRef(idsLoaded);
 	UDEBUG("time = %fs", timer.ticks());
-	return std::set<int>(idsToLoad.begin(), idsToLoad.end());
+
+	std::set<int> totalLoaded(idsToLoad.begin(), idsToLoad.end());
+	
+	// Ignore intermediate nodes in the total count of signatures loaded, keep loading next in queue
+	if(intermediateNodesLoaded > 0 && (int)idsInQueue.size() >= intermediateNodesLoaded)
+	{
+		double queueTimeDbAccess = 0.0;
+		std::set<int> queueLoaded = reactivateSignatures(idsInQueue, maxLoaded-intermediateNodesLoaded, queueTimeDbAccess);
+		timeDbAccess += queueTimeDbAccess;
+		totalLoaded.insert(queueLoaded.begin(), queueLoaded.end());
+	}
+
+	return totalLoaded;
 }
 
-// return all non-null poses
+// returns all non-null poses and links
+// if lookInDatabase is false, intermediate nodes are ignored and new neighbor links between non-intermediate nodes are returned
 // return unique links between nodes (for neighbors: old->new, for loops: parent->child)
 void Memory::getMetricConstraints(
 		const std::set<int> & ids,
@@ -6883,6 +7094,13 @@ void Memory::getMetricConstraints(
 	{
 		if(uContains(poses, *iter))
 		{
+			const Signature * s = lookInDatabase?0:this->getSignature(*iter); // If we look in db, we don't ignore intermediate nodes
+			if(s && s->getWeight() == -1)
+			{
+				poses.erase(*iter);
+				continue;
+			}
+
 			std::multimap<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::multimap<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
@@ -6895,14 +7113,15 @@ void Memory::getMetricConstraints(
 					   (jter->second.type() == Link::kNeighbor ||
 					    jter->second.type() == Link::kNeighborMerged))
 					{
-						const Signature * s = this->getSignature(jter->first);
+						s = this->getSignature(jter->first);
 						UASSERT(s!=0);
 						if(s->getWeight() == -1)
 						{
+							bool validLink = false;
 							Link link = jter->second;
 							while(s && s->getWeight() == -1)
 							{
-								// skip to next neighbor, well we assume that bad signatures
+								// skip to next neighbor, well we assume that intermediate signatures
 								// are only linked by max 2 neighbor links.
 								std::multimap<int, Link> n = this->getNeighborLinks(s->id(), false);
 								UASSERT(n.size() <= 2);
@@ -6915,15 +7134,29 @@ void Memory::getMetricConstraints(
 										link = link.merge(uter->second, uter->second.type());
 										poses.erase(s->id());
 										s = s2;
+										validLink = s->getWeight() != -1;
+									}
+									else
+									{
+										validLink = false;
+										break;
 									}
 
 								}
 								else
 								{
+									validLink = false;
 									break;
 								}
 							}
-							links.insert(std::make_pair(*iter, link));
+							if(validLink)
+							{
+								links.insert(std::make_pair(*iter, link));
+							}
+							else
+							{
+								poses.erase(s->id());
+							}
 						}
 						else
 						{

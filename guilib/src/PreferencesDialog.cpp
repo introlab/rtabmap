@@ -243,6 +243,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_CUVSLAM
 	_ui->odom_strategy->setItemData(13, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_LIOSAM
+	_ui->odom_strategy->setItemData(14, 0, Qt::UserRole - 1);
+#endif
 
 #if CV_MAJOR_VERSION < 3
 	_ui->stereosgbm_mode->setItemData(2, 0, Qt::UserRole - 1);
@@ -758,6 +761,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreFeatures, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignorePriors, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreIMU, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_intermediateNodesAreNormalNodes, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStopId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1269,6 +1273,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kOptimizerVarianceIgnored().c_str());
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
 	_ui->graphOptimization_maxError->setObjectName(Parameters::kRGBDOptimizeMaxError().c_str());
+	_ui->graphOptimization_maxErrorRepairRadius->setObjectName(Parameters::kRGBDOptimizeMaxErrorRepairRadius().c_str());
 	_ui->graphOptimization_gravitySigma->setObjectName(Parameters::kOptimizerGravitySigma().c_str());
 	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kOptimizerEpsilon().c_str());
 	_ui->graphOptimization_robust->setObjectName(Parameters::kOptimizerRobust().c_str());
@@ -1697,6 +1702,22 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Odometry CuVSLAM
 	_ui->odom_cuvslam_multicam_mode->setObjectName(Parameters::kOdomCuVSLAMMulticamMode().c_str());
+
+	// Odometry LIO-SAM
+	_ui->lineEdit_OdomLIOSAMPath->setObjectName(Parameters::kOdomLIOSAMConfigPath().c_str());
+	connect(_ui->toolButton_OdomLIOSAMPath, SIGNAL(clicked()), this, SLOT(changeOdometryLIOSAMConfigPath()));
+	_ui->odom_liosam_sensor->setObjectName(Parameters::kOdomLIOSAMSensor().c_str());
+	_ui->odom_liosam_nscan->setObjectName(Parameters::kOdomLIOSAMNScan().c_str());
+	_ui->odom_liosam_horizon_scan->setObjectName(Parameters::kOdomLIOSAMHorizonScan().c_str());
+	_ui->odom_liosam_imu_acc_noise->setObjectName(Parameters::kOdomLIOSAMImuAccNoise().c_str());
+	_ui->odom_liosam_imu_gyr_noise->setObjectName(Parameters::kOdomLIOSAMImuGyrNoise().c_str());
+	_ui->odom_liosam_imu_acc_bias_n->setObjectName(Parameters::kOdomLIOSAMImuAccBiasN().c_str());
+	_ui->odom_liosam_imu_gyr_bias_n->setObjectName(Parameters::kOdomLIOSAMImuGyrBiasN().c_str());
+	_ui->odom_liosam_imu_gravity->setObjectName(Parameters::kOdomLIOSAMImuGravity().c_str());
+	_ui->odom_liosam_edge_threshold->setObjectName(Parameters::kOdomLIOSAMEdgeThreshold().c_str());
+	_ui->odom_liosam_surf_threshold->setObjectName(Parameters::kOdomLIOSAMSurfThreshold().c_str());
+	_ui->odom_liosam_linvar->setObjectName(Parameters::kOdomLIOSAMLinVar().c_str());
+	_ui->odom_liosam_angvar->setObjectName(Parameters::kOdomLIOSAMAngVar().c_str());
 
 	//StereoDense
 	_ui->comboBox_stereoDense_strategy->setObjectName(Parameters::kStereoDenseStrategy().c_str());
@@ -2209,6 +2230,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreFeatures->setChecked(true);
 		_ui->source_checkBox_ignorePriors->setChecked(false);
 		_ui->source_checkBox_ignoreIMU->setChecked(false);
+		_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(false);
 		_ui->source_spinBox_databaseStartId->setValue(0);
 		_ui->source_spinBox_databaseStopId->setValue(0);
 		_ui->source_lineEdit_databaseCameraIndex->setText("");
@@ -2971,6 +2993,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreFeatures->setChecked(settings.value("ignoreFeatures", _ui->source_checkBox_ignoreFeatures->isChecked()).toBool());
 	_ui->source_checkBox_ignorePriors->setChecked(settings.value("ignorePriors", _ui->source_checkBox_ignorePriors->isChecked()).toBool());
 	_ui->source_checkBox_ignoreIMU->setChecked(settings.value("ignoreImu", _ui->source_checkBox_ignoreIMU->isChecked()).toBool());
+	_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(settings.value("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked()).toBool());
 	
 	_ui->source_spinBox_databaseStartId->setValue(settings.value("startId", _ui->source_spinBox_databaseStartId->value()).toInt());
 	_ui->source_spinBox_databaseStopId->setValue(settings.value("stopId", _ui->source_spinBox_databaseStopId->value()).toInt());
@@ -3591,6 +3614,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreFeatures",  _ui->source_checkBox_ignoreFeatures->isChecked());
 	settings.setValue("ignorePriors",  _ui->source_checkBox_ignorePriors->isChecked());
 	settings.setValue("ignoreImu",  _ui->source_checkBox_ignoreIMU->isChecked());
+	settings.setValue("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked());
 	settings.setValue("startId",          _ui->source_spinBox_databaseStartId->value());
 	settings.setValue("stopId",          _ui->source_spinBox_databaseStopId->value());
 	settings.setValue("cameraIndices",       _ui->source_lineEdit_databaseCameraIndex->text());
@@ -5572,6 +5596,7 @@ void PreferencesDialog::updateOdometryStackedIndex(int index)
 	_ui->groupBox_odomOpenVINS->setVisible(index==10);
 	_ui->groupBox_odomOpen3D->setVisible(index==12);
 	_ui->groupBox_odomCuvslam->setVisible(index==13);
+	_ui->groupBox_odomLIOSAM->setVisible(index==14);
 }
 
 void PreferencesDialog::useOdomFeatures()
@@ -5674,6 +5699,23 @@ void PreferencesDialog::changeOdometryVINSFusionConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_OdomVinsFusionPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryLIOSAMConfigPath()
+{
+	QString path;
+	if(_ui->lineEdit_OdomLIOSAMPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("LIO-SAM Config"), this->getWorkingDirectory(), tr("LIO-SAM config (*.yaml)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("LIO-SAM Config"), _ui->lineEdit_OdomLIOSAMPath->text(), tr("LIO-SAM config (*.yaml)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomLIOSAMPath->setText(path);
 	}
 }
 
@@ -7265,13 +7307,14 @@ Camera * PreferencesDialog::createCamera(
 				_ui->source_spinBox_databaseStartId->value(),
 				cameraIndices,
 				_ui->source_spinBox_databaseStopId->value(),
-				!_ui->general_checkBox_createIntermediateNodes->isChecked(),
+				!_ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked() && !_ui->general_checkBox_createIntermediateNodes->isChecked(),
 				_ui->source_checkBox_ignoreLandmarks->isChecked(),
 				_ui->source_checkBox_ignoreFeatures->isChecked(),
 				0,
 				-1,
 				_ui->source_checkBox_ignorePriors->isChecked(),
 				_ui->source_checkBox_ignoreIMU->isChecked(),
+				_ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked(),
 				localTransformOverrides);
 	}
 	else

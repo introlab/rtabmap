@@ -495,6 +495,12 @@ public:
 			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
 			_descriptors.empty() &&
+			_groundCellsRaw.empty() &&
+			_groundCellsCompressed.empty() &&
+			_obstacleCellsRaw.empty() &&
+			_obstacleCellsCompressed.empty() &&
+			_emptyCellsRaw.empty() &&
+			_emptyCellsCompressed.empty() &&
 			imu_.empty());
 	}
 
@@ -750,12 +756,6 @@ public:
 			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewPoint);
-	
-	/**
-	 * @brief Clears raw occupancy grid data (keeps compressed)
-	 */
-	void clearOccupancyGridRaw() {_groundCellsRaw = cv::Mat(); _obstacleCellsRaw = cv::Mat();}
-	
 	/**
 	 * @brief Returns raw ground cells
 	 * @return Const reference to raw ground cells matrix
@@ -959,12 +959,12 @@ public:
 	 * Clear compressed rgb/depth (left/right) images, compressed laser scan and compressed user data.
 	 * Raw data are kept is set.
 	 */
-	void clearCompressedData(bool images = true, bool scan = true, bool userData = true);
+	void clearCompressedData(bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 	/**
 	 * Clear raw rgb/depth (left/right) images, raw laser scan and raw user data.
 	 * Compressed data are kept is set.
 	 */
-	void clearRawData(bool images = true, bool scan = true, bool userData = true);
+	void clearRawData(bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 
 	/**
 	 * @brief Checks if a 3D point is visible from any camera

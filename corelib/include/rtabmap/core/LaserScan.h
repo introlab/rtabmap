@@ -64,7 +64,8 @@ public:
 		kXYZNormal=8,		/**< 3D points with X, Y, Z and normal vectors. */
 		kXYZINormal=9,		/**< 3D points with X, Y, Z, intensity and normal vectors. */
 		kXYZRGBNormal=10,	/**< 3D points with X, Y, Z, RGB color and normal vectors. */
-		kXYZIT=11			/**< 3D points with X, Y, Z, intensity and time. */
+		kXYZIT=11,			/**< 3D points with X, Y, Z, intensity and time. */
+		kXYZIRT=12			/**< 3D points with X, Y, Z, intensity, ring and time. */
 	};
 
 	/// @name Static Utility Functions
@@ -76,6 +77,7 @@ public:
 	static bool isScanHasRGB(const Format & format);
 	static bool isScanHasIntensity(const Format & format);
 	static bool isScanHasTime(const Format & format);
+	static bool isScanHasRing(const Format & format);
 	static float packRGB(unsigned char r, unsigned char g, unsigned char b);
 	static void unpackRGB(float rgb, unsigned char & r, unsigned char & g, unsigned char & b);
 
@@ -176,6 +178,7 @@ public:
 	bool hasRGB() const {return isScanHasRGB(format_);}
 	bool hasIntensity() const {return isScanHasIntensity(format_);}
 	bool hasTime() const {return isScanHasTime(format_);}
+	bool hasRing() const {return isScanHasRing(format_);}
 	bool isCompressed() const {return !data_.empty() && data_.type()==CV_8UC1;}
 	bool isOrganized() const {return data_.rows > 1;}
 	LaserScan clone() const;
@@ -187,7 +190,8 @@ public:
 	int getIntensityOffset() const {return hasIntensity()?(is2d()?2:3):-1;}
 	int getRGBOffset() const {return hasRGB()?(is2d()?2:3):-1;}
 	int getNormalsOffset() const {return hasNormals()?(2 + (is2d()?0:1) + ((hasRGB() || hasIntensity())?1:0)):-1;}
-	int getTimeOffset() const {return hasTime()?4:-1;}
+	int getRingOffset() const {return format_==kXYZIRT?4:-1;}
+	int getTimeOffset() const {return format_==kXYZIT?4:(format_==kXYZIRT?5:-1);}
 
 	/**
 	 * @brief Access a specific field value of a point.

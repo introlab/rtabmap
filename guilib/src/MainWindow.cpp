@@ -585,6 +585,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	// Apply state
 	this->changeState(kIdle);
 	this->applyPrefSettings(PreferencesDialog::kPanelAll);
+	applyPrefSettings(parameters, false);
 
 	_ui->statsToolBox->setNewFigureMaxItems(50);
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
@@ -708,10 +709,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 
 	this->loadFigures();
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
-
-	// update loop closure viewer parameters
-	_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
-	_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
 	if (splash)
 	{
@@ -2110,6 +2107,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		// For intermediate empty nodes, keep latest image shown
+		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 		if(signature.getWeight() >= 0)
 		{
 			_ui->imageView_source->clear();
@@ -2134,7 +2132,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_ui->label_matchId->clear();
 
-			bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 			int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
 			bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
 			_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
@@ -2458,6 +2455,18 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				UDEBUG("time= %d ms (update loop closure viewer)", time.restart());
 			}
 		}
+		else if(rehearsedSimilarity)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
+		}
+		else if(smallMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::gray);
+		}
+		else if(fastMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::magenta);
+		}
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
@@ -2715,7 +2724,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			Signature & s = *_cachedSignatures.find(stat.refImageId());
 			_cachedMemoryUsage -= s.sensorData().getMemoryUsed();
 			s.sensorData().clearRawData();
-			s.sensorData().clearOccupancyGridRaw();
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
 		}
 
@@ -3254,14 +3262,17 @@ void MainWindow::updateMapCloud(
 	}
 
 	std::map<int, Transform> posesWithOdomCache;
-
+	std::set<int> odomCachePosesIds;
 	if(_ui->graphicsView_graphView->isVisible() ||
 	   ((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown(0)) && _currentPosesMap.size()))
 	{
 		posesWithOdomCache = posesIn;
 		for(std::map<int, Transform>::const_iterator iter=odomCachePoses.begin(); iter!=odomCachePoses.end(); ++iter)
 		{
-			posesWithOdomCache.insert(std::make_pair(iter->first, _odometryCorrection*iter->second));
+			if(posesWithOdomCache.insert(std::make_pair(iter->first, _odometryCorrection*iter->second)).second)
+			{
+				odomCachePosesIds.insert(iter->first);
+			}
 		}
 	}
 
@@ -3520,7 +3531,7 @@ void MainWindow::updateMapCloud(
 		std::multimap<int, Link> constraintsWithOdomCache;
 		constraintsWithOdomCache = constraints;
 		constraintsWithOdomCache.insert(odomCacheConstraints.begin(), odomCacheConstraints.end());
-		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn, std::map<int, int>(), uKeysSet(odomCachePoses));
+		_ui->graphicsView_graphView->updateGraph(posesWithOdomCache, constraintsWithOdomCache, mapIdsIn, std::map<int, int>(), odomCachePosesIds);
 		if(_preferencesDialog->isGroundTruthAligned() && !mapToGt.isIdentity())
 		{
 			std::map<int, Transform> gtPoses = _currentGTPosesMap;
@@ -6862,10 +6873,6 @@ void MainWindow::postProcessing(
 												}
 												std::multimap<int, Link> linksIn = _currentLinksMap;
 												linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
-												const Link * maxLinearLink = 0;
-												const Link * maxAngularLink = 0;
-												float maxLinearError = 0.0f;
-												float maxAngularError = 0.0f;
 												std::map<int, Transform> poses;
 												std::multimap<int, Link> links;
 												UASSERT(_currentPosesMap.find(fromId) != _currentPosesMap.end());
@@ -6880,51 +6887,43 @@ void MainWindow::postProcessing(
 												std::string msg;
 												if(poses.size())
 												{
-													float maxLinearErrorRatio = 0.0f;
-													float maxAngularErrorRatio = 0.0f;
-													graph::computeMaxGraphErrors(
+													graph::MaxGraphErrors maxGraphErrors = graph::computeMaxGraphErrors(
 															poses,
-															links,
-															maxLinearErrorRatio,
-															maxAngularErrorRatio,
-															maxLinearError,
-															maxAngularError,
-															&maxLinearLink,
-															&maxAngularLink);
-													if(maxLinearLink)
+															links);
+													if(maxGraphErrors.linearLink.isValid())
 													{
-														UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-														if(maxLinearErrorRatio > optimizeMaxError)
+														UINFO("Max optimization linear error = %f m (link %d->%d)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to());
+														if(maxGraphErrors.linearRatio > optimizeMaxError)
 														{
 															msg = uFormat("Rejecting edge %d->%d because "
 																	  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
 																	  "\"%s\" is %f.",
 																	  from,
 																	  to,
-																	  maxLinearError,
-																	  maxLinearLink->from(),
-																	  maxLinearLink->to(),
-																	  maxLinearErrorRatio,
-																	  sqrt(maxLinearLink->transVariance()),
+																	  maxGraphErrors.linear,
+																	  maxGraphErrors.linearLink.from(),
+																	  maxGraphErrors.linearLink.to(),
+																	  maxGraphErrors.linearRatio,
+																	  sqrt(maxGraphErrors.linearLink.transVariance()),
 																	  Parameters::kRGBDOptimizeMaxError().c_str(),
 																	  optimizeMaxError);
 														}
 													}
-													else if(maxAngularLink)
+													else if(maxGraphErrors.angularLink.isValid())
 													{
-														UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-														if(maxAngularErrorRatio > optimizeMaxError)
+														UINFO("Max optimization angular error = %f deg (link %d->%d)", maxGraphErrors.angular*180.0f/M_PI, maxGraphErrors.angularLink.from(), maxGraphErrors.angularLink.to());
+														if(maxGraphErrors.angularRatio > optimizeMaxError)
 														{
 															msg = uFormat("Rejecting edge %d->%d because "
 																	  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
 																	  "\"%s\" is %f m.",
 																	  from,
 																	  to,
-																	  maxAngularError*180.0f/M_PI,
-																	  maxAngularLink->from(),
-																	  maxAngularLink->to(),
-																	  maxAngularErrorRatio,
-																	  sqrt(maxAngularLink->rotVariance()),
+																	  maxGraphErrors.angular*180.0f/M_PI,
+																	  maxGraphErrors.angularLink.from(),
+																	  maxGraphErrors.angularLink.to(),
+																	  maxGraphErrors.angularRatio,
+																	  sqrt(maxGraphErrors.angularLink.rotVariance()),
 																	  Parameters::kRGBDOptimizeMaxError().c_str(),
 																	  optimizeMaxError);
 														}

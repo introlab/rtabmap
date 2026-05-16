@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/ProgressState.h>
+#include <cstdint>
 #include <map>
 #include <list>
 
@@ -48,6 +49,20 @@ namespace rtabmap
 /** 
  * @brief This namespace contains 3D point cloud processing utilities.
  */
+
+// Point type carrying xyz + intensity + ring (laser line index) + time
+// (per-point acquisition offset, seconds from the scan start). Matches the
+// layout expected by LIO-SAM's Velodyne feature extractor so it can be fed
+// directly via util3d::laserScanFromPointCloud().
+struct EIGEN_ALIGN16 PointXYZIRT
+{
+	PCL_ADD_POINT4D;
+	float intensity;
+	std::uint16_t ring;
+	float time;
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
 namespace util3d
 {
 
@@ -704,7 +719,7 @@ LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl:
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
  /**
   * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZRGB` → (x, y, z, intensity) → LaserScan::kXYZI
+  * @brief `pcl::PointXYZI` → (x, y, z, intensity) → LaserScan::kXYZI
   */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
  /**
@@ -713,6 +728,16 @@ LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl:
   */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
  /**
+  * @ingroup LaserScanFromPointCloud
+  * @brief `rtabmap::PointXYZIRT` → (x, y, z, intensity, ring time) → LaserScan::kXYZIRT
+  */
+LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
+ /**
+  * @ingroup LaserScanFromPointCloud
+  * @brief `rtabmap::PointXYZIRT` → (x, y, z, intensity, ring time) → LaserScan::kXYZIRT
+  */
+LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
+/**
   * @ingroup LaserScanFromPointCloud
   * @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal
   */
@@ -1320,6 +1345,15 @@ LaserScan RTABMAP_CORE_EXPORT deskew(
 
 } // namespace util3d
 } // namespace rtabmap
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(rtabmap::PointXYZIRT,
+	(float, x, x)
+	(float, y, y)
+	(float, z, z)
+	(float, intensity, intensity)
+	(std::uint16_t, ring, ring)
+	(float, time, time)
+)
 
 #include "rtabmap/core/impl/util3d.hpp"
 

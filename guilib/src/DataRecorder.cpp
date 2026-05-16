@@ -140,7 +140,7 @@ void DataRecorder::addData(const rtabmap::SensorData & data, const Transform & p
 		//save to database
 		UTimer time;
 		memory_->update(data, pose, covariance);
-		const Signature * s = memory_->getLastWorkingSignature();
+		const Signature * s = memory_->getLastWorkingSignature(false);
 		totalSizeKB_ += (int)s->sensorData().imageCompressed().total()/1000;
 		totalSizeKB_ += (int)s->sensorData().depthOrRightCompressed().total()/1000;
 		totalSizeKB_ += (int)s->sensorData().laserScanCompressed().data().total()/1000;

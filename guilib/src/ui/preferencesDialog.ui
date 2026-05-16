@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-96</y>
+            <y>-700</y>
             <width>684</width>
             <height>5218</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>9</number>
+                <number>8</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3469,7 +3469,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_src">
                          <property name="currentIndex">
-                          <number>0</number>
+                          <number>3</number>
                          </property>
                          <widget class="QWidget" name="page_41">
                           <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -7180,43 +7180,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <bool>false</bool>
                              </property>
                              <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,1,0">
-                              <item row="10" column="0">
-                               <widget class="QSpinBox" name="source_spinBox_databaseStopId">
-                                <property name="minimum">
-                                 <number>0</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>99999</number>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="0" column="1">
-                               <widget class="QLineEdit" name="source_database_lineEdit_path"/>
-                              </item>
-                              <item row="2" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_useDbStamps">
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_786">
                                 <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="3" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="6" column="1">
-                               <widget class="QLabel" name="label_644">
-                                <property name="text">
-                                 <string>Ignore features.</string>
+                                 <string>Ignore IMU (i.e., gravity links).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
                                 </property>
                                 <property name="textInteractionFlags">
                                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
+                                <property name="text">
+                                 <string/>
                                 </property>
                                </widget>
                               </item>
@@ -7227,120 +7207,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="12" column="1">
-                               <widget class="QLabel" name="label_784">
+                              <item row="10" column="1">
+                               <widget class="QLabel" name="label_58">
                                 <property name="text">
-                                 <string>Override camera local transform(s) with local transform(s) set above. For multi-cameras, use a &quot;;&quot; between each transform.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
+                                 <string>Start position (node ID).</string>
                                 </property>
                                 <property name="textInteractionFlags">
                                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="11" column="0">
-                               <widget class="QLineEdit" name="source_lineEdit_databaseCameraIndex"/>
-                              </item>
-                              <item row="4" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreGoalDelay">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="13" column="0">
-                               <widget class="QLineEdit" name="source_lineEdit_databaseLocalTransformOffset"/>
-                              </item>
-                              <item row="0" column="2">
-                               <widget class="QToolButton" name="toolButton_dbViewer">
-                                <property name="toolTip">
-                                 <string>Open database viewer</string>
-                                </property>
-                                <property name="text">
-                                 <string/>
-                                </property>
-                                <property name="icon">
-                                 <iconset resource="../GuiLib.qrc">
-                                  <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="12" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_overrideLocalTransforms">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="6" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreFeatures">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="1" column="1">
-                               <widget class="QLabel" name="label_72">
-                                <property name="text">
-                                 <string>Ignore odometry saved in the database, so if RGB-D SLAM is activated, odometry will be recomputed.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="11" column="1">
-                               <widget class="QLabel" name="label_315">
-                                <property name="text">
-                                 <string>Camera index. If the database contains multi-camera data, you can choose which camera to use. Leave empty to use all cameras. Can also be multiple indices split by spaces in a string like &quot;0 2&quot; to stream cameras 0 and 2 only.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="7" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignorePriors">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="13" column="1">
-                               <widget class="QLabel" name="label_785">
-                                <property name="text">
-                                 <string>Add an y-axis offset before optical rotation on the overriden local transform(s). For multi-cameras,explicitly enumerate offsets if they are different (e.g., &quot;0.05 0.075&quot; for two cameras setup), or set single number to apply to all camera transforms.</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="9" column="0">
-                               <widget class="QSpinBox" name="source_spinBox_databaseStartId">
-                                <property name="minimum">
-                                 <number>0</number>
-                                </property>
-                                <property name="maximum">
-                                 <number>99999</number>
                                 </property>
                                </widget>
                               </item>
@@ -7357,25 +7230,8 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="5" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreLandmarks">
-                                <property name="text">
-                                 <string/>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="9" column="1">
-                               <widget class="QLabel" name="label_58">
-                                <property name="text">
-                                 <string>Start position (node ID).</string>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                </property>
-                               </widget>
-                              </item>
-                              <item row="14" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_stereoToDepthDB">
+                              <item row="8" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreIMU">
                                 <property name="text">
                                  <string/>
                                 </property>
@@ -7394,6 +7250,139 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
+                              <item row="0" column="1">
+                               <widget class="QLineEdit" name="source_database_lineEdit_path"/>
+                              </item>
+                              <item row="15" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_stereoToDepthDB">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_644">
+                                <property name="text">
+                                 <string>Ignore features.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreFeatures">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="1">
+                               <widget class="QLabel" name="label_315">
+                                <property name="text">
+                                 <string>Camera index. If the database contains multi-camera data, you can choose which camera to use. Leave empty to use all cameras. Can also be multiple indices split by spaces in a string like &quot;0 2&quot; to stream cameras 0 and 2 only.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreLandmarks">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="2">
+                               <widget class="QToolButton" name="toolButton_dbViewer">
+                                <property name="toolTip">
+                                 <string>Open database viewer</string>
+                                </property>
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="icon">
+                                 <iconset resource="../GuiLib.qrc">
+                                  <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_263">
+                                <property name="text">
+                                 <string>Ignore goals saved in the database.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_797">
+                                <property name="text">
+                                 <string>Publish intermediate nodes as normal nodes.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="1">
+                               <widget class="QLabel" name="label_557">
+                                <property name="text">
+                                 <string>If the database contains stereo data, generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="0">
+                               <widget class="QSpinBox" name="source_spinBox_databaseStopId">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>99999</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="1">
+                               <widget class="QLabel" name="label_529">
+                                <property name="text">
+                                 <string>Stop position (node ID) is the last node to process. If 0, all nodes after start position are published.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_546">
                                 <property name="text">
@@ -7404,6 +7393,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                 <property name="textInteractionFlags">
                                  <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="14" column="0">
+                               <widget class="QLineEdit" name="source_lineEdit_databaseLocalTransformOffset"/>
+                              </item>
+                              <item row="10" column="0">
+                               <widget class="QSpinBox" name="source_spinBox_databaseStartId">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>99999</number>
                                 </property>
                                </widget>
                               </item>
@@ -7421,9 +7423,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </widget>
                               </item>
                               <item row="14" column="1">
-                               <widget class="QLabel" name="label_557">
+                               <widget class="QLabel" name="label_785">
                                 <property name="text">
-                                 <string>If the database contains stereo data, generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
+                                 <string>Add an y-axis offset before optical rotation on the overriden local transform(s). For multi-cameras,explicitly enumerate offsets if they are different (e.g., &quot;0.05 0.075&quot; for two cameras setup), or set single number to apply to all camera transforms.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -7433,10 +7435,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="10" column="1">
-                               <widget class="QLabel" name="label_529">
+                              <item row="13" column="1">
+                               <widget class="QLabel" name="label_784">
                                 <property name="text">
-                                 <string>Stop position (node ID) is the last node to process. If 0, all nodes after start position are published.</string>
+                                 <string>Override camera local transform(s) with local transform(s) set above. For multi-cameras, use a &quot;;&quot; between each transform.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -7446,10 +7448,34 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="3" column="1">
-                               <widget class="QLabel" name="label_263">
+                              <item row="13" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_overrideLocalTransforms">
                                 <property name="text">
-                                 <string>Ignore goals saved in the database.</string>
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_intermediateNodesAreNormalNodes">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignorePriors">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="0">
+                               <widget class="QLineEdit" name="source_lineEdit_databaseCameraIndex"/>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_72">
+                                <property name="text">
+                                 <string>Ignore odometry saved in the database, so if RGB-D SLAM is activated, odometry will be recomputed.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -7459,21 +7485,15 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="1">
-                               <widget class="QLabel" name="label_786">
+                              <item row="3" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
                                 <property name="text">
-                                 <string>Ignore IMU (i.e., gravity links).</string>
-                                </property>
-                                <property name="wordWrap">
-                                 <bool>true</bool>
-                                </property>
-                                <property name="textInteractionFlags">
-                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                 <string/>
                                 </property>
                                </widget>
                               </item>
-                              <item row="8" column="0">
-                               <widget class="QCheckBox" name="source_checkBox_ignoreIMU">
+                              <item row="2" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_useDbStamps">
                                 <property name="text">
                                  <string/>
                                 </property>
@@ -11102,7 +11122,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_rehearsalIdUpdate">
                          <property name="text">
-                          <string>On merging, update to new id.</string>
+                          <string>On merging, update to new id. Keep this unchecked if intermediate nodes are created.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -13813,6 +13833,152 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <string>Graph Optimization</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_81" columnstretch="0,1">
+                    <item row="2" column="0">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
+                      <property name="suffix">
+                       <string/>
+                      </property>
+                      <property name="decimals">
+                       <number>2</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.000000000000000</double>
+                      </property>
+                      <property name="maximum">
+                       <double>100.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>1.000000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>1.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="7" column="1">
+                     <widget class="Line" name="line">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="1">
+                     <widget class="QLabel" name="label_521">
+                      <property name="text">
+                       <string>Ignore landmarks.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_527">
+                      <property name="text">
+                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_priorsIgnored">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="8" column="1">
+                     <widget class="QLabel" name="label_151">
+                      <property name="text">
+                       <string>Optimize graph from the newest node.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_259">
+                      <property name="text">
+                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. If used with robust graph optimization, the disabled loop closure links will be removed.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_gravitySigma">
+                      <property name="suffix">
+                       <string/>
+                      </property>
+                      <property name="decimals">
+                       <number>4</number>
+                      </property>
+                      <property name="minimum">
+                       <double>0.000000000000000</double>
+                      </property>
+                      <property name="maximum">
+                       <double>10.000000000000000</double>
+                      </property>
+                      <property name="singleStep">
+                       <double>0.100000000000000</double>
+                      </property>
+                      <property name="value">
+                       <double>0.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_45">
+                      <property name="text">
+                       <string>Graph optimization algorithm. See Optimizer panel.</string>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="9" column="1">
+                     <widget class="QLabel" name="label_211">
+                      <property name="text">
+                       <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
+                     <widget class="QLabel" name="label_431">
+                      <property name="text">
+                       <string>Ignore pose priors.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="0" column="0">
                      <widget class="QComboBox" name="graphOptimization_type">
                       <item>
@@ -13837,18 +14003,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                      </widget>
                     </item>
-                    <item row="0" column="1">
-                     <widget class="QLabel" name="label_45">
-                      <property name="text">
-                       <string>Graph optimization algorithm. See Optimizer panel.</string>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_robust">
+                    <item row="6" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_landmarksIgnored">
                       <property name="text">
                        <string/>
                       </property>
@@ -13867,82 +14023,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="0">
-                     <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
-                      <property name="suffix">
+                    <item row="1" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_robust">
+                      <property name="text">
                        <string/>
                       </property>
-                      <property name="decimals">
-                       <number>2</number>
-                      </property>
-                      <property name="minimum">
-                       <double>0.000000000000000</double>
-                      </property>
-                      <property name="maximum">
-                       <double>100.000000000000000</double>
-                      </property>
-                      <property name="singleStep">
-                       <double>1.000000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>1.000000000000000</double>
-                      </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
-                     <widget class="QLabel" name="label_259">
-                      <property name="text">
-                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. If used with robust graph optimization, the disabled loop closure links will be removed.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="6" column="0" rowspan="2">
+                    <item row="7" column="0" rowspan="2">
                      <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
-                     <widget class="Line" name="line">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="7" column="1">
-                     <widget class="QLabel" name="label_151">
-                      <property name="text">
-                       <string>Optimize graph from the newest node.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="8" column="1">
-                     <widget class="QLabel" name="label_211">
-                      <property name="text">
-                       <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="1">
+                    <item row="10" column="1">
                      <widget class="QLabel" name="label_183">
                       <property name="text">
                        <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
@@ -13955,50 +14050,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="1">
-                     <widget class="QLabel" name="label_431">
-                      <property name="text">
-                       <string>Ignore pose priors.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_priorsIgnored">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_landmarksIgnored">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="1">
-                     <widget class="QLabel" name="label_521">
-                      <property name="text">
-                       <string>Ignore landmarks.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="3" column="1">
-                     <widget class="QLabel" name="label_527">
+                     <widget class="QLabel" name="label_795">
                       <property name="text">
-                       <string>Gravity sigma value (&gt;=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies.</string>
+                       <string>Repairing graph radius. If two consecutive loop closures are rejected by the optimization error ratio on the same old loop closure link, we will remove that old link, and other old links under that radius if necessary, until optimization is accepted. When optimization is accepted, the old loop closure links are removed from the graph. This feature is useful to reject bad loop closures that were accepted previously. Set to 0 to disable this feature.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -14009,24 +14064,24 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                      </widget>
                     </item>
                     <item row="3" column="0">
-                     <widget class="QDoubleSpinBox" name="graphOptimization_gravitySigma">
+                     <widget class="QDoubleSpinBox" name="graphOptimization_maxErrorRepairRadius">
                       <property name="suffix">
                        <string/>
                       </property>
                       <property name="decimals">
-                       <number>4</number>
+                       <number>1</number>
                       </property>
                       <property name="minimum">
                        <double>0.000000000000000</double>
                       </property>
                       <property name="maximum">
-                       <double>10.000000000000000</double>
+                       <double>999.000000000000000</double>
                       </property>
                       <property name="singleStep">
-                       <double>0.100000000000000</double>
+                       <double>1.000000000000000</double>
                       </property>
                       <property name="value">
-                       <double>0.000000000000000</double>
+                       <double>1.000000000000000</double>
                       </property>
                      </widget>
                     </item>
@@ -16135,6 +16190,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <item>
                          <property name="text">
                           <string>CuVSLAM</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>LIO-SAM</string>
                          </property>
                         </item>
                        </widget>
@@ -21847,6 +21907,458 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </layout>
                       </widget>
+                      <widget class="QWidget" name="page_103">
+                       <layout class="QVBoxLayout" name="verticalLayout_187">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomLIOSAM">
+                          <property name="title">
+                           <string>LIO-SAM</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_188" stretch="0,0">
+                           <item>
+                            <widget class="QLabel" name="label_odom_liosam_info">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;LIO-SAM: &lt;a href=&quot;https://github.com/TixiaoShan/LIO-SAM&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/TixiaoShan/LIO-SAM&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Tightly-coupled lidar-inertial odometry via smoothing and mapping. Requires 3D lidar with per-point ring and time fields (kXYZIRT scan format) and an IMU.&lt;/p&gt;&lt;p&gt;If a config file path is provided, the parameters below are ignored and read from the file instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_liosam" columnstretch="0,1">
+                             <item row="0" column="0">
+                              <layout class="QHBoxLayout" name="horizontalLayout_liosam_config">
+                               <item>
+                                <widget class="QLineEdit" name="lineEdit_OdomLIOSAMPath">
+                                 <property name="placeholderText">
+                                  <string>Optional: path to LIO-SAM config YAML</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QToolButton" name="toolButton_OdomLIOSAMPath">
+                                 <property name="text">
+                                  <string>...</string>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_config">
+                               <property name="text">
+                                <string>Config file path (overrides parameters below).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QComboBox" name="odom_liosam_sensor">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>Velodyne</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Ouster</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>Livox</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_sensor">
+                               <property name="text">
+                                <string>LiDAR sensor type.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QSpinBox" name="odom_liosam_nscan">
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>256</number>
+                               </property>
+                               <property name="value">
+                                <number>16</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_nscan">
+                               <property name="text">
+                                <string>Number of LiDAR channels (16, 32, 64, 128).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="0">
+                              <widget class="QSpinBox" name="odom_liosam_horizon_scan">
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>10000</number>
+                               </property>
+                               <property name="value">
+                                <number>1800</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_horizon_scan">
+                               <property name="text">
+                                <string>Horizontal resolution (Velodyne:1800, Ouster:512/1024/2048).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="4" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_acc_noise">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="4" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_acc_noise">
+                               <property name="text">
+                                <string>IMU accelerometer white noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_gyr_noise">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.001000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_gyr_noise">
+                               <property name="text">
+                                <string>IMU gyroscope white noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_acc_bias_n">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000200000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_acc_bias_n">
+                               <property name="text">
+                                <string>IMU accelerometer bias noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="7" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_gyr_bias_n">
+                               <property name="decimals">
+                                <number>6</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000001000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.000010000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.000030000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="7" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_gyr_bias_n">
+                               <property name="text">
+                                <string>IMU gyroscope bias noise.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="8" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_imu_gravity">
+                               <property name="decimals">
+                                <number>5</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>20.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>9.805110000000001</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="8" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_imu_gravity">
+                               <property name="text">
+                                <string>Gravity magnitude.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_edge_threshold">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>100.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>1.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="9" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_edge_threshold">
+                               <property name="text">
+                                <string>Edge feature curvature threshold.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="10" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_surf_threshold">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>100.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.100000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="10" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_surf_threshold">
+                               <property name="text">
+                                <string>Surface feature curvature threshold.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="11" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_linvar">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="11" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_linvar">
+                               <property name="text">
+                                <string>Linear output variance.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="12" column="0">
+                              <widget class="QDoubleSpinBox" name="odom_liosam_angvar">
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000100000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="12" column="1">
+                              <widget class="QLabel" name="label_odom_liosam_angvar">
+                               <property name="text">
+                                <string>Angular output variance.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_93">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>0</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
                       <widget class="QWidget" name="page_26">
                        <layout class="QVBoxLayout" name="verticalLayout_88">
                         <item>
@@ -23192,7 +23704,7 @@ Lower the ratio -&gt; higher the precision.</string>
                             </widget>
                            </item>
                            <item row="2" column="1">
-                            <spacer name="verticalSpacer_93">
+                            <spacer name="verticalSpacer_931">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
                              </property>
@@ -26949,7 +27461,7 @@ Lower the ratio -&gt; higher the precision.</string>
                        <number>2</number>
                       </property>
                       <property name="minimum">
-                       <double>0.010000000000000</double>
+                       <double>0.000000000000000</double>
                       </property>
                       <property name="maximum">
                        <double>100.000000000000000</double>

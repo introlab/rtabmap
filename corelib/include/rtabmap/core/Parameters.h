@@ -218,7 +218,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, ReduceGraph,                 bool, false,    uFormat("Reduce graph. Merge nodes when loop closures are added (ignoring those with user data). Note that this approach assumes that 100%% of the loop closures accepted are good, so it is highly recommended to enable \"%s\" at the same time.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(Mem, RecentWmRatio,               float, 0.2,     "Ratio of locations after the last loop closure in WM that cannot be transferred.");
     RTABMAP_PARAM(Mem, TransferSortingByWeightId,   bool, false,    "On transfer, signatures are sorted by weight->ID only (i.e. the oldest of the lowest weighted signatures are transferred first). If false, the signatures are sorted by weight->Age->ID (i.e. the oldest inserted in WM of the lowest weighted signatures are transferred first). Note that retrieval updates the age, not the ID.");
-    RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne,  bool, false,    "On merge, update to new id. When false, no copy.");
+    RTABMAP_PARAM(Mem, RehearsalIdUpdatedToNewOne,  bool, false,    uFormat("On merge, update to new id. When false, no copy. Keep this disable if %s=true.", kRtabmapCreateIntermediateNodes().c_str()));
     RTABMAP_PARAM(Mem, RehearsalWeightIgnoredWhileMoving, bool, false, "When the robot is moving, weights are not updated on rehearsal.");
     RTABMAP_PARAM(Mem, GenerateIds,                 bool, true,     "True=Generate location IDs, False=use input image IDs.");
     RTABMAP_PARAM(Mem, BadSignaturesIgnored,        bool, false,    "Bad signatures are ignored.");
@@ -249,7 +249,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Kp, MinDepth,                 float, 0,     "Filter extracted keypoints by depth.");
     RTABMAP_PARAM(Kp, MaxFeatures,              int, 500,     "Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
     RTABMAP_PARAM(Kp, SSC,                      bool, false,  "If true, SSC (Suppression via Square Covering) is applied to limit keypoints.");
-    RTABMAP_PARAM(Kp, BadSignRatio,             float, 0.5,   "Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
+    RTABMAP_PARAM(Kp, BadSignRatio,             float, 0.5,   uFormat("Bad signature ratio. If %s=0, the ratio is computed from the average number of words per signature (less than Ratio x AverageWordsPerImage = bad).", kKpMaxFeatures().c_str()));
     RTABMAP_PARAM(Kp, NndrRatio,                float, 0.8,   "NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
@@ -379,6 +379,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
     RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest node of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
     RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 3.0,   uFormat("Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. If used with \"%s\", the disabled loop closure links will be removed.", kOptimizerRobust().c_str()));
+    RTABMAP_PARAM(RGBD, OptimizeMaxErrorRepairRadius, float, 0.0,   uFormat("If two consecutive loop closures are rejected by %s on the same old loop closure link, we will remove that old link, and other old links under that radius if necessary, until optimization is accepted. When optimization is accepted, the old loop closure links are removed from the graph. This feature is useful to reject bad loop closures that were accepted previously. Set to 0 to disable this feature.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(RGBD, MaxLoopClosureDistance,   float, 0.0,   "Reject loop closures/localizations if the distance from the map is over this distance (0=disabled).");
     RTABMAP_PARAM(RGBD, ForceOdom3DoF,            bool, true,  uFormat("Force odometry pose to be 3DoF if %s=true.", kRegForce3DoF().c_str()));
     RTABMAP_PARAM(RGBD, StartAtOrigin,            bool, false, uFormat("If true, rtabmap will assume the robot is starting from origin of the map. If false, rtabmap will assume the robot is restarting from the last saved localization pose from previous session (the place where it shut down previously). Used only in localization mode (%s=false).", kMemIncrementalMemory().c_str()));
@@ -465,7 +466,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(GTSAM, IncRelinearizeSkip,       int, 1, "Only relinearize any variables every X calls to ISAM2::update(). See GTSAM::ISAM2 doc for more info.");
 
     // Odometry
-    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM 6=OKVIS 7=LOAM 8=MSCKF_VIO 9=VINS-Fusion 10=OpenVINS 11=FLOAM 12=Open3D 13=cuVSLAM");
+    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM 6=OKVIS 7=LOAM 8=MSCKF_VIO 9=VINS-Fusion 10=OpenVINS 11=FLOAM 12=Open3D 13=cuVSLAM 14=LIO-SAM");
     RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,       "Automatically reset odometry after X consecutive images where odometry cannot be computed (a value of 0 disables auto-reset). When a reset occurs, odometry resumes from the last successfully computed pose with large covariance to trigger a new map. If external odometry is used, it will also be reset based on the motion estimated relative to the last computed pose but no large covariance will be received, so that a new map won't be triggered.");
     RTABMAP_PARAM(Odom, Holonomic,              bool, true,   "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
     RTABMAP_PARAM(Odom, FillInfoData,           bool, true,   "Fill info with data (inliers/outliers features).");
@@ -686,6 +687,21 @@ class RTABMAP_CORE_EXPORT Parameters
 
     // Odometry cuVSLAM
     RTABMAP_PARAM(OdomCuVSLAM, MulticamMode,        int, 0,  "cuVSLAM multicam_mode setting: 0=moderate, 1=performance, 2=precision.");
+
+    // Odometry LIO-SAM
+    RTABMAP_PARAM_STR(OdomLIOSAM, ConfigPath,  "", "Path to LIO-SAM params.yaml config file. When set, sensor/IMU/feature parameters are loaded from the file and the individual parameters below are ignored.");
+    RTABMAP_PARAM(OdomLIOSAM, Sensor,       int,   0,     "LiDAR sensor: 0=Velodyne, 1=Ouster, 2=Livox");
+    RTABMAP_PARAM(OdomLIOSAM, NScan,        int,   16,    "Number of LiDAR channels (16, 32, 64, 128).");
+    RTABMAP_PARAM(OdomLIOSAM, HorizonScan,  int,   1800,  "Horizontal resolution (Velodyne:1800, Ouster:512/1024/2048).");
+    RTABMAP_PARAM(OdomLIOSAM, ImuAccNoise,  float, 0.01,  "IMU accelerometer white noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuGyrNoise,  float, 0.001, "IMU gyroscope white noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuAccBiasN,  float, 0.0002,"IMU accelerometer bias noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuGyrBiasN,  float, 0.00003,"IMU gyroscope bias noise.");
+    RTABMAP_PARAM(OdomLIOSAM, ImuGravity,   float, 9.80511,"Gravity magnitude.");
+    RTABMAP_PARAM(OdomLIOSAM, EdgeThreshold,float, 1.0,   "Edge feature curvature threshold.");
+    RTABMAP_PARAM(OdomLIOSAM, SurfThreshold,float, 0.1,   "Surface feature curvature threshold.");
+    RTABMAP_PARAM(OdomLIOSAM, LinVar,       float, 0.01,  "Linear output variance.");
+    RTABMAP_PARAM(OdomLIOSAM, AngVar,       float, 0.01,  "Angular output variance.");
 
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");

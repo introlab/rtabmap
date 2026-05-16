@@ -2270,11 +2270,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aMouseTracking->setChecked(_mouseTracking);
 	aMouseTracking->setEnabled(_viewPlane == XY);
 	aShowHideGraph->setEnabled(_viewPlane == XY);
-	aShowHideGraphNodes->setEnabled(_graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
-	aShowHideGtGraph->setEnabled(_gtGraphRoot->isVisible());
-	aShowHideGPSGraph->setEnabled(_gpsGraphRoot->isVisible());
 	aShowHideOdomCacheOverlay->setEnabled(_odomCacheOverlay->rect().width()>0);
 
 	QMenu * viewPlaneMenu = menu.addMenu("View Plane...");

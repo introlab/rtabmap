@@ -591,7 +591,7 @@ inline std::list<std::string> uSplit(const std::string & str, char separator = '
  *      std::list<std::string> v;
  *      v.push_back("Hello");
  *      v.push_back("world!");
- * 	    std::string joined = split(v, " ");
+ * 	    std::string joined = uJoin(v, " ");
  * @endcode
  * The output string is "Hello world!"
  * @param strings a list of strings
