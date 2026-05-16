@@ -1194,8 +1194,13 @@ TEST(Util2dTest, SSCSelectsRoughlyCorrectNumber) {
 
     std::vector<int> selected = util2d::SSC(keypoints, maxKeypoints, tolerance, imgWidth, imgHeight, {});
 
-    EXPECT_GE(selected.size(), int(maxKeypoints * (1 - tolerance)));
-    EXPECT_LE(selected.size(), int(maxKeypoints * (1 + tolerance)));
+    // util2d::SSC() first reduces maxKeypoints by tolerance, then searches within ±tolerance of that.
+    const int effectiveMax = maxKeypoints - int(std::round(maxKeypoints * tolerance));
+    const int kMin = int(std::round(effectiveMax * (1.f - tolerance)));
+    const int kMax = int(std::round(effectiveMax * (1.f + tolerance)));
+    EXPECT_GE(selected.size(), kMin);
+    EXPECT_LE(selected.size(), kMax);
+    EXPECT_LE(selected.size(), maxKeypoints);
 }
 
 TEST(Util2dTest, SSCReturnsEmptyOnEmptyInput) {
