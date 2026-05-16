@@ -62,7 +62,9 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
+      run: |
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed
 
     - name: Build Windows Package
       shell: pwsh
@@ -103,10 +105,3 @@ jobs:
         compression-level: 0
         if-no-files-found: warn
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
-
-#    - name: Test
-#      working-directory: ${{github.workspace}}/build
-#      # Execute tests defined by the CMake configuration.  
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest -C ${{env.BUILD_TYPE}}
-      
