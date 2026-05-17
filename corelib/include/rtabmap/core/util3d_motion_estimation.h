@@ -126,7 +126,7 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
  *
  * @see https://github.com/laurentkneip/opengv
  */
-Transform estimateMotion3DTo2D(
+Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const std::vector<CameraModel> & cameraModels,
