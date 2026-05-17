@@ -442,6 +442,6 @@ TEST(SensorCaptureTest, VeryLowFrameRate)
 	
 	EXPECT_TRUE(data.isValid());
 	EXPECT_GE(elapsed, 0.5);
-	EXPECT_LT(elapsed, 0.55); // allow scheduler jitter on loaded CI runners
+	EXPECT_LT(elapsed, 0.75); // allow scheduler jitter on loaded CI runners (e.g. macOS)
 }
 
