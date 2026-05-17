@@ -126,6 +126,14 @@ add_executable(test_landmark test_landmark.cpp)
 target_link_libraries(test_landmark gtest_main rtabmap_core)
 add_test(NAME test_landmark COMMAND test_landmark)
 
+#LASWriter.h (optional libLAS)
+IF(libLAS_FOUND)
+	add_executable(test_laswriter test_laswriter.cpp)
+	target_link_libraries(test_laswriter gtest_main rtabmap_core ${libLAS_LIBRARIES})
+	target_include_directories(test_laswriter PRIVATE ${libLAS_INCLUDE_DIRS})
+	add_test(NAME test_laswriter COMMAND test_laswriter)
+ENDIF(libLAS_FOUND)
+
 #Graph.h
 add_executable(test_graph test_graph.cpp)
 target_link_libraries(test_graph gtest_main rtabmap_core)
