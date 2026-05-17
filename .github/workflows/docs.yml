@@ -1,0 +1,74 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  doxygen:
+    name: Doxygen (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y \
+            doxygen \
+            cmake \
+            libopencv-dev \
+            libpcl-dev \
+            libyaml-cpp-dev \
+            git
+
+      - name: Configure CMake (export headers for Doxygen)
+        run: |
+          cmake -B ${{ github.workspace }}/build-docs \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_APP=OFF \
+            -DBUILD_TOOLS=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DWITH_QT=OFF \
+            -DWITH_PYTHON=OFF \
+            -DWITH_CERES=OFF \
+            -DWITH_G2O=OFF \
+            -DWITH_GTSAM=OFF \
+            -DWITH_MRPT=OFF \
+            -DWITH_VERTIGO=OFF \
+            -DWITH_CVSBA=OFF \
+            -DWITH_POINTMATCHER=OFF \
+            -DWITH_CCCORELIB=OFF \
+            -DWITH_OPEN3D=OFF \
+            -DWITH_LOAM=OFF \
+            -DWITH_FLOAM=OFF \
+            -DWITH_LIOSAM=OFF \
+            -DWITH_FLYCAPTURE2=OFF \
+            -DWITH_ZED=OFF \
+            -DWITH_ZEDOC=OFF \
+            -DWITH_REALSENSE=OFF
+
+      - name: Generate Doxygen HTML
+        run: doxygen Doxyfile
+
+      - name: Upload Doxygen HTML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: doxygen-html
+          path: doc/html
+          retention-days: 14
