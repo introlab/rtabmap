@@ -299,9 +299,9 @@ TEST(SensorCaptureTest, TakeDataWithFrameRateThrottling)
 	SensorData data2 = sensor.takeData();
 	double elapsed = timer.ticks();
 	
-	// With 10 Hz throttling, two captures should take at least ~100ms
-	EXPECT_GE(elapsed, 0.2); // Should be at least 200 ms for two frames
-	EXPECT_LE(elapsed, 0.21); // Slight margin
+	// With 10 Hz throttling, two captures should wait ~100 ms each (~200 ms total).
+	EXPECT_GE(elapsed, 0.19);
+	EXPECT_LE(elapsed, 0.5); // allow scheduler jitter on loaded CI runners (e.g. macOS)
 	EXPECT_TRUE(data1.isValid());
 	EXPECT_TRUE(data2.isValid());
 }

@@ -159,6 +159,7 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DBasic) {
 
 // Same test than above, but with added noise on the points and pixels
 TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DWithNoise) {
+    srand(0); // fixed seed: rand() noise must be reproducible across CI platforms
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {
@@ -532,6 +533,7 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo3DBasic) {
 
 // Same as above but with noise
 TEST(Util3dMotionEstimationTest, EstimateMotion3DTo3DWithNoise) {
+    srand(0); // fixed seed: rand() noise must be reproducible across CI platforms
 
     // Three triangles in front of the camera at three different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {

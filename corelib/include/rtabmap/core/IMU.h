@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef IMU_H_
 #define IMU_H_
 
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 #include <opencv2/core/core.hpp>
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/core/Transform.h>
@@ -52,7 +53,7 @@ namespace rtabmap {
  * @see SensorData::imu()
  * @see IMUEvent
  */
-class IMU
+class RTABMAP_CORE_EXPORT IMU
 {
 public:
 	/** @brief Default-constructs an empty sample (null @ref localTransform()). */
