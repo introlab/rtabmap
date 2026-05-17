@@ -126,6 +126,11 @@ add_executable(test_dbdriver test_dbdriver.cpp)
 target_link_libraries(test_dbdriver gtest_main rtabmap_core)
 add_test(NAME test_dbdriver COMMAND test_dbdriver)
 
+#DBDriverSqlite3.h
+add_executable(test_dbdriversqlite3 test_dbdriversqlite3.cpp)
+target_link_libraries(test_dbdriversqlite3 gtest_main rtabmap_core)
+add_test(NAME test_dbdriversqlite3 COMMAND test_dbdriversqlite3)
+
 #Signature.h
 add_executable(test_signature test_signature.cpp)
 target_link_libraries(test_signature gtest_main rtabmap_core)

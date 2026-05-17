@@ -272,10 +272,26 @@ class RTABMAP_CORE_EXPORT Parameters
 
     //Database
     RTABMAP_PARAM(DbSqlite3, InMemory,     bool, false,      "Using database in the memory instead of a file on the hard disk.");
-    RTABMAP_PARAM(DbSqlite3, CacheSize, unsigned int, 10000, "Sqlite cache size (default is 2000).");
-    RTABMAP_PARAM(DbSqlite3, JournalMode,  int, 3,           "0=DELETE, 1=TRUNCATE, 2=PERSIST, 3=MEMORY, 4=OFF (see sqlite3 doc : \"PRAGMA journal_mode\")");
-    RTABMAP_PARAM(DbSqlite3, Synchronous,  int, 0,           "0=OFF, 1=NORMAL, 2=FULL (see sqlite3 doc : \"PRAGMA synchronous\")");
-    RTABMAP_PARAM(DbSqlite3, TempStore,    int, 2,           "0=DEFAULT, 1=FILE, 2=MEMORY (see sqlite3 doc : \"PRAGMA temp_store\")");
+    RTABMAP_PARAM(DbSqlite3, CacheSize, unsigned int, 10000,
+            "PRAGMA cache_size: number of database pages kept in SQLite's page cache (approx. cacheSize * page_size bytes, often ~4 KiB per page). "
+            "Larger values reduce disk I/O when the working set fits in RAM. SQLite built-in default is typically 2000 pages.");
+    RTABMAP_PARAM(DbSqlite3, JournalMode,  int, 3,
+            "PRAGMA journal_mode: rollback journal storage. See sqlite.org/pragma.html#pragma_journal_mode for more details. "
+            "0=DELETE (SQLite default): journal file deleted after each commit. "
+            "1=TRUNCATE: journal truncated to zero length. "
+            "2=PERSIST: journal file kept, header zeroed after commit. "
+            "3=MEMORY: journal in RAM only; faster, weaker crash safety. "
+            "4=OFF: no journal; fastest, risk of corruption on crash.");
+    RTABMAP_PARAM(DbSqlite3, Synchronous,  int, 0,
+            "PRAGMA synchronous: how aggressively SQLite syncs the database to disk. See sqlite.org/pragma.html#pragma_synchronous for more details. "
+            "0=OFF: no wait for persistent storage; fastest, corruption possible on power loss. "
+            "1=NORMAL: sync at critical moments (common SQLite default with WAL). "
+            "2=FULL (SQLite safest default): sync after every commit; slowest.");
+    RTABMAP_PARAM(DbSqlite3, TempStore,    int, 2,
+            "PRAGMA temp_store: where SQLite stores temporary tables and indices. See sqlite.org/pragma.html#pragma_temp_store for more details. "
+            "0=DEFAULT: SQLite compile-time default (often on-disk temp files). "
+            "1=FILE: temporary files in the system temp directory. "
+            "2=MEMORY: temporary data in RAM when possible.");
     RTABMAP_PARAM_STR(Db, TargetVersion,   "",               "Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., 0.19 vs 0.20 or 1.0 vs 2.0). Patch version is ignored (e.g., 0.20.1 and 0.20.3 will generate a 0.20 database).");
 
     // Keypoints descriptors/detectors
