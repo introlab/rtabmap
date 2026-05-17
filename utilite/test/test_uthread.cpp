@@ -291,7 +291,7 @@ TEST(UThreadTest, ThreadHandle)
     thread.start();
     
     UThread::Handle handle = thread.getThreadHandle();
-    EXPECT_NE(handle, 0);
+    EXPECT_NE(handle, static_cast<UThread::Handle>(InvalidHandle));
     
     thread.join();
 }
