@@ -13,7 +13,7 @@ float randomNoise(float max) {
     return ((static_cast<float>(rand()) / RAND_MAX) * 2.0f - 1.0f) * max;
 }
 
-TEST(Util3dMotionEstimation, estimateMotion3DTo2DBasic) {
+TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DBasic) {
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {
@@ -157,7 +157,7 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo2DBasic) {
 }
 
 // Same test than above, but with added noise on the points and pixels
-TEST(Util3dMotionEstimation, estimateMotion3DTo2DWithNoise) {
+TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DWithNoise) {
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {
@@ -240,7 +240,7 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo2DWithNoise) {
 
 }
 
-TEST(Util3dMotionEstimation, estimateMotion3DTo2DMultiCamBasic) {
+TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DMultiCamBasic) {
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {
@@ -349,7 +349,7 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo2DMultiCamBasic) {
 }
 
 // Same thing than above, but with noise
-TEST(Util3dMotionEstimation, estimateMotion3DTo2DMultiCamWithNoise) {
+TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DMultiCamWithNoise) {
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {
@@ -466,7 +466,7 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo2DMultiCamWithNoise) {
     }
 }
 
-TEST(Util3dMotionEstimation, estimateMotion3DTo3DBasic) {
+TEST(Util3dMotionEstimationTest, EstimateMotion3DTo3DBasic) {
 
     // Three triangles in front of the camera at three different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {
@@ -529,7 +529,7 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo3DBasic) {
 }
 
 // Same as above but with noise
-TEST(Util3dMotionEstimation, estimateMotion3DTo3DWithNoise) {
+TEST(Util3dMotionEstimationTest, EstimateMotion3DTo3DWithNoise) {
 
     // Three triangles in front of the camera at three different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {

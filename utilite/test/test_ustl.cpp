@@ -2,7 +2,7 @@
 #include "rtabmap/utilite/UStl.h"
 #include <map>
 
-TEST(UStlTest, uUniqueKeys)
+TEST(UStlTest, UUniqueKeys)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -17,7 +17,7 @@ TEST(UStlTest, uUniqueKeys)
     EXPECT_EQ(uniqueKeys.back(), 3);
 }
 
-TEST(UStlTest, uKeysMultimap)
+TEST(UStlTest, UKeysMultimap)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -31,7 +31,7 @@ TEST(UStlTest, uKeysMultimap)
     EXPECT_EQ(keysList.size(), 3u);
 }
 
-TEST(UStlTest, uValuesMultimap)
+TEST(UStlTest, UValuesMultimap)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -45,7 +45,7 @@ TEST(UStlTest, uValuesMultimap)
     EXPECT_EQ(valuesList.size(), 3u);
 }
 
-TEST(UStlTest, uValuesMultimapForKey)
+TEST(UStlTest, UValuesMultimapForKey)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -58,7 +58,7 @@ TEST(UStlTest, uValuesMultimapForKey)
     EXPECT_EQ(values.back(), "b");
 }
 
-TEST(UStlTest, uKeysMap)
+TEST(UStlTest, UKeysMap)
 {
     std::map<int, std::string> m;
     m[1] = "a";
@@ -75,7 +75,7 @@ TEST(UStlTest, uKeysMap)
     EXPECT_EQ(keysSet.size(), 3u);
 }
 
-TEST(UStlTest, uValuesMap)
+TEST(UStlTest, UValuesMap)
 {
     std::map<int, std::string> m;
     m[1] = "a";
@@ -89,7 +89,7 @@ TEST(UStlTest, uValuesMap)
     EXPECT_EQ(valuesList.size(), 3u);
 }
 
-TEST(UStlTest, uValueMap)
+TEST(UStlTest, UValueMap)
 {
     std::map<int, std::string> m;
     m[1] = "a";
@@ -102,7 +102,7 @@ TEST(UStlTest, uValueMap)
     EXPECT_EQ(defaultValue, "default");
 }
 
-TEST(UStlTest, uTake)
+TEST(UStlTest, UTake)
 {
     std::map<int, std::string> m;
     m[1] = "a";
@@ -114,7 +114,7 @@ TEST(UStlTest, uTake)
     EXPECT_EQ(m.find(1), m.end());
 }
 
-TEST(UStlTest, uIteratorAtList)
+TEST(UStlTest, UIteratorAtList)
 {
     std::list<int> list = {1, 2, 3, 4, 5};
     auto iter = uIteratorAt(list, 2);
@@ -125,14 +125,14 @@ TEST(UStlTest, uIteratorAtList)
     EXPECT_EQ(*constIter, 3);
 }
 
-TEST(UStlTest, uIteratorAtSet)
+TEST(UStlTest, UIteratorAtSet)
 {
     std::set<int> s = {1, 2, 3, 4, 5};
     auto iter = uIteratorAt(s, 2);
     EXPECT_NE(iter, s.end());
 }
 
-TEST(UStlTest, uIteratorAtVector)
+TEST(UStlTest, UIteratorAtVector)
 {
     std::vector<int> v = {1, 2, 3, 4, 5};
     auto iter = uIteratorAt(v, 2);
@@ -143,7 +143,7 @@ TEST(UStlTest, uIteratorAtVector)
     EXPECT_EQ(*constIter, 3);
 }
 
-TEST(UStlTest, uValueAtList)
+TEST(UStlTest, UValueAtList)
 {
     std::list<int> list = {1, 2, 3, 4, 5};
     int& value = uValueAt(list, 2);
@@ -156,14 +156,14 @@ TEST(UStlTest, uValueAtList)
     EXPECT_EQ(constValue, 10);
 }
 
-TEST(UStlTest, uContainsList)
+TEST(UStlTest, UContainsList)
 {
     std::list<int> list = {1, 2, 3, 4, 5};
     EXPECT_TRUE(uContains(list, 3));
     EXPECT_FALSE(uContains(list, 10));
 }
 
-TEST(UStlTest, uContainsMap)
+TEST(UStlTest, UContainsMap)
 {
     std::map<int, std::string> m;
     m[1] = "a";
@@ -172,7 +172,7 @@ TEST(UStlTest, uContainsMap)
     EXPECT_FALSE(uContains(m, 10));
 }
 
-TEST(UStlTest, uContainsMultimap)
+TEST(UStlTest, UContainsMultimap)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -181,7 +181,7 @@ TEST(UStlTest, uContainsMultimap)
     EXPECT_FALSE(uContains(mm, 10));
 }
 
-TEST(UStlTest, uInsert)
+TEST(UStlTest, UInsert)
 {
     std::map<int, std::string> m;
     uInsert(m, std::make_pair(1, std::string("a")));
@@ -197,7 +197,7 @@ TEST(UStlTest, uInsert)
     EXPECT_EQ(m.size(), 3u);
 }
 
-TEST(UStlTest, uListToVector)
+TEST(UStlTest, UListToVector)
 {
     std::list<int> list = {1, 2, 3, 4, 5};
     std::vector<int> v = uListToVector(list);
@@ -206,7 +206,7 @@ TEST(UStlTest, uListToVector)
     EXPECT_EQ(v[4], 5);
 }
 
-TEST(UStlTest, uVectorToList)
+TEST(UStlTest, UVectorToList)
 {
     std::vector<int> v = {1, 2, 3, 4, 5};
     std::list<int> list = uVectorToList(v);
@@ -215,7 +215,7 @@ TEST(UStlTest, uVectorToList)
     EXPECT_EQ(list.back(), 5);
 }
 
-TEST(UStlTest, uMultimapToMap)
+TEST(UStlTest, UMultimapToMap)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -226,7 +226,7 @@ TEST(UStlTest, uMultimapToMap)
     EXPECT_EQ(m.size(), 2u); // All entries
 }
 
-TEST(UStlTest, uMultimapToMapUnique)
+TEST(UStlTest, UMultimapToMapUnique)
 {
     std::multimap<int, std::string> mm;
     mm.insert({1, "a"});
@@ -238,7 +238,7 @@ TEST(UStlTest, uMultimapToMapUnique)
     EXPECT_EQ(m[2], "c");
 }
 
-TEST(UStlTest, uAppend)
+TEST(UStlTest, UAppend)
 {
     std::list<int> list1 = {1, 2, 3};
     std::list<int> list2 = {4, 5, 6};
@@ -247,14 +247,14 @@ TEST(UStlTest, uAppend)
     EXPECT_EQ(list1.back(), 6);
 }
 
-TEST(UStlTest, uIndexOf)
+TEST(UStlTest, UIndexOf)
 {
     std::vector<int> v = {1, 2, 3, 4, 5};
     EXPECT_EQ(uIndexOf(v, 3), 2);
     EXPECT_EQ(uIndexOf(v, 10), -1);
 }
 
-TEST(UStlTest, uSplit)
+TEST(UStlTest, USplit)
 {
     std::list<std::string> result = uSplit("Hello the world!", ' ');
     EXPECT_EQ(result.size(), 3u);
@@ -265,7 +265,7 @@ TEST(UStlTest, uSplit)
     EXPECT_EQ(result2.size(), 3u);
 }
 
-TEST(UStlTest, uJoin)
+TEST(UStlTest, UJoin)
 {
     std::list<std::string> strings;
     strings.push_back("Hello");
@@ -277,7 +277,7 @@ TEST(UStlTest, uJoin)
     EXPECT_EQ(joined2, "Helloworld!");
 }
 
-TEST(UStlTest, uIsDigit)
+TEST(UStlTest, UIsDigit)
 {
     EXPECT_TRUE(uIsDigit('0'));
     EXPECT_TRUE(uIsDigit('5'));
@@ -286,7 +286,7 @@ TEST(UStlTest, uIsDigit)
     EXPECT_FALSE(uIsDigit('A'));
 }
 
-TEST(UStlTest, uIsInteger)
+TEST(UStlTest, UIsInteger)
 {
     EXPECT_TRUE(uIsInteger("123"));
     EXPECT_TRUE(uIsInteger("-123"));
@@ -298,7 +298,7 @@ TEST(UStlTest, uIsInteger)
     EXPECT_FALSE(uIsInteger("-123", false));
 }
 
-TEST(UStlTest, uIsNumber)
+TEST(UStlTest, UIsNumber)
 {
     EXPECT_TRUE(uIsNumber("123"));
     EXPECT_TRUE(uIsNumber("12.3"));
@@ -307,35 +307,35 @@ TEST(UStlTest, uIsNumber)
     EXPECT_FALSE(uIsNumber("12.3.4"));
 }
 
-TEST(UStlTest, uSplitNumChar)
+TEST(UStlTest, USplitNumChar)
 {
     std::list<std::string> result = uSplitNumChar("Hello 03 my 65 world!");
     EXPECT_GT(result.size(), 0u);
     // Should contain numbers and characters separately
 }
 
-TEST(UStlTest, uStrNumCmp)
+TEST(UStlTest, UStrNumCmp)
 {
     EXPECT_LT(uStrNumCmp("Image9.jpg", "Image10.jpg"), 0);
     EXPECT_GT(uStrNumCmp("Image10.jpg", "Image9.jpg"), 0);
     EXPECT_EQ(uStrNumCmp("Image10.jpg", "Image10.jpg"), 0);
 }
 
-TEST(UStlTest, uStrContains)
+TEST(UStlTest, UStrContains)
 {
     EXPECT_TRUE(uStrContains("Hello World", "World"));
     EXPECT_TRUE(uStrContains("Hello World", "Hello"));
     EXPECT_FALSE(uStrContains("Hello World", "xyz"));
 }
 
-TEST(UStlTest, uCompareVersion)
+TEST(UStlTest, UCompareVersion)
 {
     EXPECT_GT(uCompareVersion("2.0.0", 1, 0, 0), 0);
     EXPECT_EQ(uCompareVersion("1.0.0", 1, 0, 0), 0);
     EXPECT_LT(uCompareVersion("0.9.0", 1, 0, 0), 0);
 }
 
-TEST(UStlTest, uPad)
+TEST(UStlTest, UPad)
 {
     std::string result = uPad("Hello", 10);
     EXPECT_GE(result.size(), 10u);

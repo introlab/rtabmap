@@ -8,7 +8,7 @@
 
 using namespace rtabmap;
 
-TEST(Util2dTest, ssdIdenticalImages)
+TEST(Util2dTest, SsdIdenticalImages)
 {
     cv::Mat img1 = (cv::Mat_<uint8_t>(3,3) << 10, 20, 30, 40, 50, 60, 70, 80, 90);
     cv::Mat img2 = img1.clone();
@@ -16,7 +16,7 @@ TEST(Util2dTest, ssdIdenticalImages)
     EXPECT_FLOAT_EQ(score, 0.0f);
 }
 
-TEST(Util2dTest, ssdDifferentImages)
+TEST(Util2dTest, SsdDifferentImages)
 {
     cv::Mat img1 = (cv::Mat_<uint8_t>(2,2) << 10, 20, 30, 40);
     cv::Mat img2 = (cv::Mat_<uint8_t>(2,2) << 11, 19, 31, 39);
@@ -25,7 +25,7 @@ TEST(Util2dTest, ssdDifferentImages)
     EXPECT_FLOAT_EQ(score, expected);
 }
 
-TEST(Util2dTest, ssdStereoLikeInput)
+TEST(Util2dTest, SsdStereoLikeInput)
 {
     cv::Mat left = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(10, 20));
     cv::Mat right = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(11, 19));
@@ -35,7 +35,7 @@ TEST(Util2dTest, ssdStereoLikeInput)
     EXPECT_FLOAT_EQ(util2d::ssd(left, right), expected);
 }
 
-TEST(Util2dTest, sadIdenticalImages)
+TEST(Util2dTest, SadIdenticalImages)
 {
     cv::Mat img1 = (cv::Mat_<float>(2,2) << 1.0, 2.0, 3.0, 4.0);
     cv::Mat img2 = img1.clone();
@@ -43,7 +43,7 @@ TEST(Util2dTest, sadIdenticalImages)
     EXPECT_FLOAT_EQ(score, 0.0f);
 }
 
-TEST(Util2dTest, sadDifferentImages)
+TEST(Util2dTest, SadDifferentImages)
 {
     cv::Mat img1 = (cv::Mat_<float>(2,2) << 1.0, 2.0, 3.0, 4.0);
     cv::Mat img2 = (cv::Mat_<float>(2,2) << 0.5, 2.5, 2.5, 5.0);
@@ -51,7 +51,7 @@ TEST(Util2dTest, sadDifferentImages)
     EXPECT_FLOAT_EQ(util2d::sad(img1, img2), score);
 }
 
-TEST(Util2dTest, sadStereoLikeInput)
+TEST(Util2dTest, SadStereoLikeInput)
 {
     cv::Mat left = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(5, 15));
     cv::Mat right = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(10, 10));
@@ -61,7 +61,7 @@ TEST(Util2dTest, sadStereoLikeInput)
     EXPECT_FLOAT_EQ(util2d::sad(left, right), expected);
 }
 
-TEST(Util2dTest, calcStereoCorrespondencesCheckInputs) {
+TEST(Util2dTest, CalcStereoCorrespondencesCheckInputs) {
 
     // Create synthetic images
     cv::Mat left = cv::Mat::zeros(100, 100, CV_8UC1);
@@ -84,7 +84,7 @@ TEST(Util2dTest, calcStereoCorrespondencesCheckInputs) {
     ASSERT_TRUE(util2d::calcStereoCorrespondences(left, right, emptyCorners, status).empty());
 }
 
-TEST(Util2dTest, calcStereoCorrespondencesSSD) {
+TEST(Util2dTest, CalcStereoCorrespondencesSSD) {
 
     // Create synthetic images
     cv::Mat left = cv::Mat::zeros(100, 100, CV_8UC1);
@@ -119,7 +119,7 @@ TEST(Util2dTest, calcStereoCorrespondencesSSD) {
     ASSERT_NEAR(leftCorners[1].x - rightCorners[1].x, 6.75f, 0.1f);
 }
 
-TEST(Util2dTest, calcStereoCorrespondencesSAD) {
+TEST(Util2dTest, CalcStereoCorrespondencesSAD) {
 
     // Create synthetic images
     cv::Mat left = cv::Mat::zeros(100, 100, CV_8UC1);
@@ -154,7 +154,7 @@ TEST(Util2dTest, calcStereoCorrespondencesSAD) {
     ASSERT_NEAR(leftCorners[1].x - rightCorners[1].x, 6.75f, 0.1f);
 }
 
-TEST(Util2dTest, calcOpticalFlowPyrLKStereo)
+TEST(Util2dTest, CalcOpticalFlowPyrLKStereo)
 {
     // Create synthetic images
     cv::Mat left = cv::Mat::zeros(100, 100, CV_8UC1);
@@ -189,7 +189,7 @@ TEST(Util2dTest, calcOpticalFlowPyrLKStereo)
     ASSERT_NEAR(leftPoint.x - nextPts[0].x, 5.0f, 0.1f) << "X displacement should be close to 5.";
 }
 
-TEST(Util2dTest, disparityFromStereoImages)
+TEST(Util2dTest, DisparityFromStereoImages)
 {
     // Check inputs
     ASSERT_THROW(util2d::disparityFromStereoImages(cv::Mat(), cv::Mat(2,2,CV_8UC1)), UException);
@@ -217,7 +217,7 @@ TEST(Util2dTest, disparityFromStereoImages)
     EXPECT_NEAR(maxVal, 388, 0.5);
 }
 
-TEST(Util2dTest, depthFromDisparityFloat32) {
+TEST(Util2dTest, DepthFromDisparityFloat32) {
     const int rows = 2;
     const int cols = 3;
     const float fx = 500.0f;         // focal length in pixels
@@ -239,7 +239,7 @@ TEST(Util2dTest, depthFromDisparityFloat32) {
     }
 }
 
-TEST(Util2dTest, depthFromDisparityUInt16) {
+TEST(Util2dTest, DepthFromDisparityUInt16) {
     const int rows = 2;
     const int cols = 3;
     const float fx = 500.0f;
@@ -261,7 +261,7 @@ TEST(Util2dTest, depthFromDisparityUInt16) {
     }
 }
 
-TEST(Util2dTest, depthFromStereoImages)
+TEST(Util2dTest, DepthFromStereoImages)
 {
     // Parameters
     const int width = 20;
@@ -305,7 +305,7 @@ TEST(Util2dTest, depthFromStereoImages)
     ASSERT_NEAR(actualDepth, expectedDepth, 1e-3);
 }
 
-TEST(Util2dTest, disparityFromStereoCorrespondencesDisparityComputation)
+TEST(Util2dTest, DisparityFromStereoCorrespondencesDisparityComputation)
 {
     // Test setup
     cv::Size disparitySize(5, 5);
@@ -340,7 +340,7 @@ TEST(Util2dTest, disparityFromStereoCorrespondencesDisparityComputation)
     EXPECT_EQ(disparity.at<float>(4, 0), 0.0f);
 }
 
-TEST(Util2dTest, disparityFromStereoCorrespondencesEmptyMask)
+TEST(Util2dTest, DisparityFromStereoCorrespondencesEmptyMask)
 {
     // Test with empty mask (all points should be included)
     cv::Size disparitySize(4, 4);
@@ -365,7 +365,7 @@ TEST(Util2dTest, disparityFromStereoCorrespondencesEmptyMask)
     EXPECT_EQ(disparity.at<float>(3, 1), 0.5f);  // 3.0f - 2.5f = 0.5f
 }
 
-TEST(Util2dTest, disparityFromStereoCorrespondencesInconsistentCornersSize)
+TEST(Util2dTest, DisparityFromStereoCorrespondencesInconsistentCornersSize)
 {
     // Test with inconsistent corners size (should fail)
     cv::Size disparitySize(5, 5);
@@ -388,7 +388,7 @@ TEST(Util2dTest, disparityFromStereoCorrespondencesInconsistentCornersSize)
     ASSERT_THROW(util2d::disparityFromStereoCorrespondences(disparitySize, leftCorners, rightCorners, mask), UException);
 }
 
-TEST(Util2dTest, depthFromStereoCorrespondences)
+TEST(Util2dTest, DepthFromStereoCorrespondences)
 {
     // Create a dummy left image (only used for size)
     cv::Mat leftImage = cv::Mat::zeros(10, 10, CV_8UC1);
@@ -418,7 +418,7 @@ TEST(Util2dTest, depthFromStereoCorrespondences)
     ASSERT_NEAR(actualDepth, expectedDepth, 1e-4);
 }
 
-TEST(Util2dTest, cvtDepthFromFloat) {
+TEST(Util2dTest, CvtDepthFromFloat) {
     // Create a simple 3x3 depth image in meters
     cv::Mat depth32F = (cv::Mat_<float>(3, 3) <<
         0.5f, 1.0f, 1.5f,
@@ -437,7 +437,7 @@ TEST(Util2dTest, cvtDepthFromFloat) {
     EXPECT_EQ(depth16U.at<unsigned short>(2, 2), 7000);  // 7.0m -> 7000mm
 }
 
-TEST(Util2dTest, cvtDepthToFloat) {
+TEST(Util2dTest, CvtDepthToFloat) {
     // Create a simple 3x3 depth image in millimeters
     cv::Mat depth16U = (cv::Mat_<unsigned short>(3, 3) <<
         500, 1000, 1500,
@@ -456,7 +456,7 @@ TEST(Util2dTest, cvtDepthToFloat) {
     EXPECT_FLOAT_EQ(depth32F.at<float>(2, 2), 7.0f);   // 7000mm -> 7.0m
 }
 
-TEST(Util2dTest, cvtDepthRoundTripConversion) {
+TEST(Util2dTest, CvtDepthRoundTripConversion) {
     // Test round-trip conversion
     cv::Mat original = (cv::Mat_<float>(2, 2) << 0.25f, 1.0f, 2.5f, 3.3f);
 
@@ -471,7 +471,7 @@ TEST(Util2dTest, cvtDepthRoundTripConversion) {
     }
 }
 
-TEST(Util2dTest, getDepthCenterDepthValue32FNoSmoothingNoEstimation) {
+TEST(Util2dTest, GetDepthCenterDepthValue32FNoSmoothingNoEstimation) {
     cv::Mat depth = cv::Mat::zeros(5, 5, CV_32FC1);
     depth.at<float>(2, 2) = 1.5f;
 
@@ -479,7 +479,7 @@ TEST(Util2dTest, getDepthCenterDepthValue32FNoSmoothingNoEstimation) {
     EXPECT_FLOAT_EQ(result, 1.5f);
 }
 
-TEST(Util2dTest, getDepthCenterDepthValue16UNoSmoothingNoEstimation) {
+TEST(Util2dTest, GetDepthCenterDepthValue16UNoSmoothingNoEstimation) {
     cv::Mat depth = cv::Mat::zeros(5, 5, CV_16UC1);
     depth.at<unsigned short>(2, 2) = 1500; // 1.5 meters
 
@@ -487,7 +487,7 @@ TEST(Util2dTest, getDepthCenterDepthValue16UNoSmoothingNoEstimation) {
     EXPECT_FLOAT_EQ(result, 1.5f);
 }
 
-TEST(Util2dTest, getDepthSmoothing32F) {
+TEST(Util2dTest, GetDepthSmoothing32F) {
     cv::Mat depth = cv::Mat::zeros(5, 5, CV_32FC1);
     depth.at<float>(2, 2) = 1.0f;
     depth.at<float>(2, 1) = 1.0f;
@@ -499,7 +499,7 @@ TEST(Util2dTest, getDepthSmoothing32F) {
     EXPECT_NEAR(result, 1.0f, 1e-5f);
 }
 
-TEST(Util2dTest, getDepthEstimationFromNeighbors16U) {
+TEST(Util2dTest, GetDepthEstimationFromNeighbors16U) {
     cv::Mat depth = cv::Mat::zeros(5, 5, CV_16UC1);
     depth.at<unsigned short>(2, 1) = 1500; // 1.5m
     depth.at<unsigned short>(1, 2) = 1500;
@@ -508,14 +508,14 @@ TEST(Util2dTest, getDepthEstimationFromNeighbors16U) {
     EXPECT_NEAR(result, 1.5f, 1e-3f);
 }
 
-TEST(Util2dTest, getDepthOutOfBounds) {
+TEST(Util2dTest, GetDepthOutOfBounds) {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
 
     float result = util2d::getDepth(depth, 5.5f, 5.5f, false, 0.1f, false);
     EXPECT_FLOAT_EQ(result, 0.0f);
 }
 
-TEST(Util2dTest, computeRoiValidStringInput)
+TEST(Util2dTest, ComputeRoiValidStringInput)
 {
     cv::Size imageSize(200, 100);
     cv::Mat image = cv::Mat::zeros(imageSize, CV_8UC1);
@@ -531,14 +531,14 @@ TEST(Util2dTest, computeRoiValidStringInput)
     EXPECT_EQ(roi.height, 60);
 }
 
-TEST(Util2dTest, computeRoiInvalidStringInput)
+TEST(Util2dTest, ComputeRoiInvalidStringInput)
 {
     cv::Mat image = cv::Mat::zeros(100, 200, CV_8UC1);
     cv::Rect roi = util2d::computeRoi(image, "0.5 0.6"); // Invalid format
     EXPECT_EQ(roi, cv::Rect()); // Expect empty ROI
 }
 
-TEST(Util2dTest, computeRoiValidVectorInput)
+TEST(Util2dTest, ComputeRoiValidVectorInput)
 {
     cv::Size imageSize(300, 150);
     cv::Mat image = cv::Mat::zeros(imageSize, CV_8UC1);
@@ -555,7 +555,7 @@ TEST(Util2dTest, computeRoiValidVectorInput)
     EXPECT_EQ(roi.height, 120);
 }
 
-TEST(Util2dTest, computeRoiInvalidVectorSize)
+TEST(Util2dTest, ComputeRoiInvalidVectorSize)
 {
     cv::Size imageSize(300, 150);
     std::vector<float> invalidRatios = {0.1f, 0.2f}; // Invalid size
@@ -563,7 +563,7 @@ TEST(Util2dTest, computeRoiInvalidVectorSize)
     EXPECT_EQ(roi, cv::Rect());
 }
 
-TEST(Util2dTest, computeRoiZeroImageSize)
+TEST(Util2dTest, ComputeRoiZeroImageSize)
 {
     cv::Size imageSize(0, 0);
     cv::Mat image = cv::Mat::zeros(imageSize, CV_8UC1);
@@ -574,7 +574,7 @@ TEST(Util2dTest, computeRoiZeroImageSize)
     EXPECT_EQ(roi, cv::Rect());
 }
 
-TEST(Util2dTest, decimateFloatDepthImage)
+TEST(Util2dTest, DecimateFloatDepthImage)
 {
     // Create a 4x4 depth image with increasing values
     cv::Mat depth = (cv::Mat_<float>(4, 4) <<
@@ -594,7 +594,7 @@ TEST(Util2dTest, decimateFloatDepthImage)
     EXPECT_FLOAT_EQ(decimated.at<float>(1,1), 11);
 }
 
-TEST(Util2dTest, decimate16UDepthImage)
+TEST(Util2dTest, Decimate16UDepthImage)
 {
     cv::Mat depth = (cv::Mat_<uint16_t>(4, 4) <<
         100, 200, 300, 400,
@@ -612,7 +612,7 @@ TEST(Util2dTest, decimate16UDepthImage)
     EXPECT_EQ(decimated.at<uint16_t>(1,1), 1100);
 }
 
-TEST(Util2dTest, interpolateFloatDepthImage)
+TEST(Util2dTest, InterpolateFloatDepthImage)
 {
     // Create a simple 2x2 image to interpolate into 4x4
     cv::Mat input = (cv::Mat_<float>(2,2) <<
@@ -637,7 +637,7 @@ TEST(Util2dTest, interpolateFloatDepthImage)
     }
 }
 
-TEST(Util2dTest, interpolate16UDepthImage)
+TEST(Util2dTest, Interpolate16UDepthImage)
 {
     cv::Mat input = (cv::Mat_<uint16_t>(2,2) <<
         1000, 1000,
@@ -660,7 +660,7 @@ TEST(Util2dTest, interpolate16UDepthImage)
     }
 }
 
-TEST(Util2dTest, registerDepth)
+TEST(Util2dTest, RegisterDepth)
 {
     // Create a 2x2 synthetic depth image in meters
     cv::Mat depth = (cv::Mat_<float>(2,2) << 1.0f, 1.0f,
@@ -693,7 +693,7 @@ TEST(Util2dTest, registerDepth)
     }
 }
 
-TEST(Util2dTest, registerDepthWithOverlap)
+TEST(Util2dTest, RegisterDepthWithOverlap)
 {
     cv::Mat depth = cv::Mat::ones(11,11,CV_32FC1);
     cv::Mat depthK = (cv::Mat_<double>(3,3) <<
@@ -724,7 +724,7 @@ TEST(Util2dTest, registerDepthWithOverlap)
     }
 }
 
-TEST(Util2dTest, fillDepthHoles) {
+TEST(Util2dTest, FillDepthHoles) {
     cv::Mat depth = (cv::Mat_<float>(3,3) <<
                       1, 0, 2,
                       0, 3, 0,
@@ -750,7 +750,7 @@ TEST(Util2dTest, fillDepthHoles) {
     }
 }
 
-TEST(Util2dTest, fillDepthHolesLargeHoleTest) {
+TEST(Util2dTest, FillDepthHolesLargeHoleTest) {
 
     cv::Mat depth = (cv::Mat_<float>(5,5) <<
                         1, 0, 2, 3, 5,
@@ -780,7 +780,7 @@ TEST(Util2dTest, fillDepthHolesLargeHoleTest) {
     }
 }
 
-TEST(Util2dTest, fillDepthHolesInvalidInputTest) {
+TEST(Util2dTest, FillDepthHolesInvalidInputTest) {
     cv::Mat depth(5, 5, CV_32FC1);
 
     // Test with invalid maximumHoleSize (<= 0)
@@ -800,7 +800,7 @@ cv::Mat createTestDepthImage()
     return img;
 }
 
-TEST(Util2dTest, fillRegisteredDepthHolesVerticalFilling)
+TEST(Util2dTest, FillRegisteredDepthHolesVerticalFilling)
 {
     cv::Mat input = createTestDepthImage();
     cv::Mat original = input.clone();
@@ -820,7 +820,7 @@ TEST(Util2dTest, fillRegisteredDepthHolesVerticalFilling)
     }
 }
 
-TEST(Util2dTest, fillRegisteredDepthHolesHorizontalFilling)
+TEST(Util2dTest, FillRegisteredDepthHolesHorizontalFilling)
 {
     cv::Mat input = createTestDepthImage();
     cv::Mat original = input.clone();
@@ -840,7 +840,7 @@ TEST(Util2dTest, fillRegisteredDepthHolesHorizontalFilling)
     }
 }
 
-TEST(Util2dTest, fillRegisteredDepthHolesDoubleHoleFilling)
+TEST(Util2dTest, FillRegisteredDepthHolesDoubleHoleFilling)
 {
     cv::Mat input = (cv::Mat_<unsigned short>(5, 5) <<
         1000, 1005,    0, 1020, 1030,
@@ -865,12 +865,12 @@ TEST(Util2dTest, fillRegisteredDepthHolesDoubleHoleFilling)
     }
 }
 
-TEST(Util2dTest, fastBilateralFilteringEmptyInput) {
+TEST(Util2dTest, FastBilateralFilteringEmptyInput) {
     cv::Mat empty;
     EXPECT_THROW(util2d::fastBilateralFiltering(empty, 2.0f, 0.1f, false), UException);
 }
 
-TEST(Util2dTest, fastBilateralFilteringAllZeroInput) {
+TEST(Util2dTest, FastBilateralFilteringAllZeroInput) {
     cv::Mat depth = cv::Mat::zeros(10, 10, CV_32FC1);
     cv::Mat result = util2d::fastBilateralFiltering(depth, 2.0f, 0.1f, false);
     // All values should still be 0
@@ -881,7 +881,7 @@ TEST(Util2dTest, fastBilateralFilteringAllZeroInput) {
     }
 }
 
-TEST(Util2dTest, fastBilateralFilteringSimpleFloatInput) {
+TEST(Util2dTest, FastBilateralFilteringSimpleFloatInput) {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1) * 1.0f;
     depth.at<float>(2,2) = 1.05f;
     cv::Mat result = util2d::fastBilateralFiltering(depth, 3.0f, 0.05f, false);
@@ -899,7 +899,7 @@ TEST(Util2dTest, fastBilateralFilteringSimpleFloatInput) {
     }
 }
 
-TEST(Util2dTest, fastBilateralFilteringSimpleUShortInput) {
+TEST(Util2dTest, FastBilateralFilteringSimpleUShortInput) {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_16UC1) * 1000; // 1 meter
     depth.at<unsigned short>(2,2) = 1050;
     cv::Mat result = util2d::fastBilateralFiltering(depth, 2.0f, 0.05f, true);
@@ -917,7 +917,7 @@ TEST(Util2dTest, fastBilateralFilteringSimpleUShortInput) {
 }
 
 // High Depth Variation (should preserve edge due to sigmaR)
-TEST(Util2dTest, fastBilateralFilteringPreservesEdgesWithLowSigmaR) {
+TEST(Util2dTest, FastBilateralFilteringPreservesEdgesWithLowSigmaR) {
     // Create a step edge: left side = 1.0f, right side = 3.0f
     cv::Mat depth = cv::Mat::ones(5, 10, CV_32FC1);
     depth.colRange(5, 10).setTo(3.0f);
@@ -938,7 +938,7 @@ TEST(Util2dTest, fastBilateralFilteringPreservesEdgesWithLowSigmaR) {
 }
 
 // High sigmaR (should blur across the edge)
-TEST(Util2dTest, fastBilateralFilteringBlursEdgesWithHighSigmaR) {
+TEST(Util2dTest, FastBilateralFilteringBlursEdgesWithHighSigmaR) {
     cv::Mat depth = cv::Mat::ones(5, 10, CV_32FC1);
     depth.colRange(5, 10).setTo(3.0f);
 
@@ -958,7 +958,7 @@ TEST(Util2dTest, fastBilateralFilteringBlursEdgesWithHighSigmaR) {
 }
 
 // Random Depth Values with NaNs or Invalids
-TEST(Util2dTest, fastBilateralFilteringHandlesInvalidDepthValues) {
+TEST(Util2dTest, FastBilateralFilteringHandlesInvalidDepthValues) {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
     depth.at<float>(2, 2) = std::numeric_limits<float>::quiet_NaN();
     depth.at<float>(1, 3) = -1.0f;
@@ -978,7 +978,7 @@ TEST(Util2dTest, fastBilateralFilteringHandlesInvalidDepthValues) {
 }
 
 // Early Division Toggle
-TEST(Util2dTest, fastBilateralFilteringEarlyDivisionOptionConsistency) {
+TEST(Util2dTest, FastBilateralFilteringEarlyDivisionOptionConsistency) {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1) * 2.0f;
     depth.at<float>(2,2) = 2.1f;
     cv::Mat result1 = util2d::fastBilateralFiltering(depth, 2.0f, 0.1f, true);
@@ -995,14 +995,14 @@ TEST(Util2dTest, fastBilateralFilteringEarlyDivisionOptionConsistency) {
 }
 
 // Test for empty input
-TEST(Util2dTest, depthBleedingFilteringHandlesEmptyInput)
+TEST(Util2dTest, DepthBleedingFilteringHandlesEmptyInput)
 {
     cv::Mat empty;
     EXPECT_NO_THROW(util2d::depthBleedingFiltering(empty, 0.1f));
 }
 
 // Test that borders are zeroed out
-TEST(Util2dTest, depthBleedingFilteringBordersAreZeroed)
+TEST(Util2dTest, DepthBleedingFilteringBordersAreZeroed)
 {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
     util2d::depthBleedingFiltering(depth, 0.1f);
@@ -1017,7 +1017,7 @@ TEST(Util2dTest, depthBleedingFilteringBordersAreZeroed)
 }
 
 // Test that valid depths are not removed
-TEST(Util2dTest, depthBleedingFilteringKeepsValidDepths)
+TEST(Util2dTest, DepthBleedingFilteringKeepsValidDepths)
 {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
     depth.at<float>(2,2) = 1.01f; // Within threshold of 0.1
@@ -1026,7 +1026,7 @@ TEST(Util2dTest, depthBleedingFilteringKeepsValidDepths)
 }
 
 // Test that invalid depth is removed
-TEST(Util2dTest, depthBleedingFilteringFiltersInvalidDepths)
+TEST(Util2dTest, DepthBleedingFilteringFiltersInvalidDepths)
 {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
     depth.at<float>(2,2) = 5.0f; // Large depth jump
@@ -1035,7 +1035,7 @@ TEST(Util2dTest, depthBleedingFilteringFiltersInvalidDepths)
 }
 
 // Repeat the above for CV_16UC1
-TEST(Util2dTest, depthBleedingFilteringFiltersInvalidDepths16U)
+TEST(Util2dTest, DepthBleedingFilteringFiltersInvalidDepths16U)
 {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_16UC1) * 1000; // 1.0m in mm
     depth.at<uint16_t>(2,2) = 5000; // 5.0m
@@ -1043,7 +1043,7 @@ TEST(Util2dTest, depthBleedingFilteringFiltersInvalidDepths16U)
     EXPECT_EQ(depth.at<uint16_t>(2,2), 0);
 }
 
-TEST(Util2dTest, depthBleedingFilteringKeepsValidDepths16U)
+TEST(Util2dTest, DepthBleedingFilteringKeepsValidDepths16U)
 {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_16UC1) * 1000;
     depth.at<uint16_t>(2,2) = 1090; // 0.09m difference, within 0.1m
@@ -1259,7 +1259,7 @@ cv::Mat createTestImage(int width, int height, uchar value = 100) {
     return cv::Mat(height, width, CV_8UC3, cv::Scalar(value, value, value));
 }
 
-TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryNoRotation) {
+TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryNoRotation) {
     CameraModel model(500, 500, 320, 240, CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480);
     cv::Mat depth = createTestImage(640, 480);
@@ -1278,7 +1278,7 @@ TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryNoRotation) {
     EXPECT_EQ(yaw, 0.0f);
 }
 
-TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryRotation90Degrees) {
+TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation90Degrees) {
     // Simulate 90° roll
     Transform rot = Transform(0,0,0, M_PI / 2, 0, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
@@ -1301,7 +1301,7 @@ TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryRotation90Degrees) {
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
 
-TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryRotation180Degrees) {
+TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation180Degrees) {
     Transform rot = Transform(0,0,0, M_PI, 0, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480, 123);
@@ -1323,7 +1323,7 @@ TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryRotation180Degrees) {
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
 
-TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryRotation270Degrees) {
+TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation270Degrees) {
     Transform rot = Transform(0,0,0, 3*M_PI/2, 0, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480, 90);
@@ -1345,7 +1345,7 @@ TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryRotation270Degrees) {
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
 
-TEST(Util2dTest, rotateImagesUpsideUpIfNecessaryPitchTooHighShouldSkip) {
+TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryPitchTooHighShouldSkip) {
     ULogger::setType(ULogger::kTypeConsole);
     ULogger::setLevel(ULogger::kDebug);
     // Simulate roll = 90°, but pitch = 90° too (invalid)

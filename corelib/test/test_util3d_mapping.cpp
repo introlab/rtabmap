@@ -9,7 +9,7 @@
 
 using namespace rtabmap;
 
-TEST(Util3dMapping, rayTraceClearsFreePathWithoutObstacle) {
+TEST(Util3dMappingTest, RayTraceClearsFreePathWithoutObstacle) {
     cv::Mat grid = cv::Mat::ones(10, 10, CV_8SC1) * 50; // Initial grid (non-zero for testing)
     cv::Point2i start(2, 2);
     cv::Point2i end(7, 7);
@@ -22,7 +22,7 @@ TEST(Util3dMapping, rayTraceClearsFreePathWithoutObstacle) {
     }
 }
 
-TEST(Util3dMapping, rayTraceStopsOnObstacleWhenFlagTrue) {
+TEST(Util3dMappingTest, RayTraceStopsOnObstacleWhenFlagTrue) {
     cv::Mat grid = cv::Mat::ones(10, 10, CV_8SC1) * 50;
     grid.at<signed char>(5, 5) = 100; // Add obstacle
     cv::Point2i start(2, 2);
@@ -38,7 +38,7 @@ TEST(Util3dMapping, rayTraceStopsOnObstacleWhenFlagTrue) {
     EXPECT_NE(grid.at<signed char>(6, 6), 0);   // Not cleared after obstacle
 }
 
-TEST(Util3dMapping, rayTraceIgnoresObstacleWhenFlagFalse) {
+TEST(Util3dMappingTest, RayTraceIgnoresObstacleWhenFlagFalse) {
     cv::Mat grid = cv::Mat::ones(10, 10, CV_8SC1) * 50;
     grid.at<signed char>(5, 5) = 100; // Add obstacle
     cv::Point2i start(2, 2);
@@ -52,7 +52,7 @@ TEST(Util3dMapping, rayTraceIgnoresObstacleWhenFlagFalse) {
     }
 }
 
-TEST(Util3dMapping, rayTraceHandlesSteepSlopeCorrectly) {
+TEST(Util3dMappingTest, RayTraceHandlesSteepSlopeCorrectly) {
     // Create a 10x10 grid filled with 50
     cv::Mat grid = cv::Mat::ones(10, 10, CV_8SC1) * 50;
 
@@ -96,7 +96,7 @@ TEST(Util3dMapping, rayTraceHandlesSteepSlopeCorrectly) {
     EXPECT_GE(clearedCount, 5) << "Steep slope did not clear expected cells.";
 }
 
-TEST(Util3dMapping, rayTraceHandlesHorizontalVerticalSlopesCorrectly) {
+TEST(Util3dMappingTest, RayTraceHandlesHorizontalVerticalSlopesCorrectly) {
     // Create a 10x10 grid filled with 50
     cv::Mat grid = cv::Mat::ones(10, 10, CV_8SC1) * 50;
 
@@ -119,7 +119,7 @@ TEST(Util3dMapping, rayTraceHandlesHorizontalVerticalSlopesCorrectly) {
     }
 }
 
-TEST(Util3dMapping, rayTraceClipsEndPointToBoundary) {
+TEST(Util3dMappingTest, RayTraceClipsEndPointToBoundary) {
     cv::Mat grid = cv::Mat::ones(10, 10, CV_8SC1) * 50;
     cv::Point2i start(3, 3);
     cv::Point2i end(20, 20); // Way outside bounds
@@ -132,7 +132,7 @@ TEST(Util3dMapping, rayTraceClipsEndPointToBoundary) {
     }
 }
 
-TEST(Util3dMapping, create2DMapBasicMapGeneration)
+TEST(Util3dMappingTest, Create2DMapBasicMapGeneration)
 {
     std::map<int, Transform> poses;
     std::map<int, std::pair<cv::Mat, cv::Mat>> scans;
@@ -206,7 +206,7 @@ TEST(Util3dMapping, create2DMapBasicMapGeneration)
         -1);
 }
 
-TEST(Util3dMapping, occupancy2DFromLaserScanBasicTest)
+TEST(Util3dMappingTest, Occupancy2DFromLaserScanBasicTest)
 {
     // Synthetic scan with 3 hits and 2 no-hits (in 2D)
     cv::Mat scanHit(1, 3, CV_32FC2);
@@ -236,7 +236,7 @@ TEST(Util3dMapping, occupancy2DFromLaserScanBasicTest)
     ASSERT_GT(empty.cols, 20) << "There should be some empty cells.";    
 }
 
-TEST(Util3dMapping, create2DMapFromOccupancyLocalMapsBasic)
+TEST(Util3dMappingTest, Create2DMapFromOccupancyLocalMapsBasic)
 {
     // Setup poses
     std::map<int, Transform> poses;
@@ -294,7 +294,7 @@ TEST(Util3dMapping, create2DMapFromOccupancyLocalMapsBasic)
     EXPECT_EQ(map.at<signed char>(rowEmpty, colEmpty2), 0); // Free
 }
 
-TEST(Util3dMapping, convertMap2Image8UBasicConversionNormalFormat)
+TEST(Util3dMappingTest, ConvertMap2Image8UBasicConversionNormalFormat)
 {
     // Create a simple 3x3 CV_8S occupancy grid
     cv::Mat map8S = (cv::Mat_<signed char>(3, 3) <<
@@ -321,7 +321,7 @@ TEST(Util3dMapping, convertMap2Image8UBasicConversionNormalFormat)
     EXPECT_EQ(result.at<uchar>(2, 2), 178);  // 0
 }
 
-TEST(Util3dMapping, convertMap2Image8UBasicConversionPGMFormat)
+TEST(Util3dMappingTest, ConvertMap2Image8UBasicConversionPGMFormat)
 {
     cv::Mat map8S = (cv::Mat_<signed char>(2, 2) <<
         -1, 0,
@@ -341,7 +341,7 @@ TEST(Util3dMapping, convertMap2Image8UBasicConversionPGMFormat)
     EXPECT_EQ(result.at<uchar>(1, 1), 254);  // -2
 }
 
-TEST(Util3dMapping, convertImage8U2MapNonPGMFormat)
+TEST(Util3dMappingTest, ConvertImage8U2MapNonPGMFormat)
 {
     // Create a 2x2 grayscale image using non-PGM expected values
     cv::Mat input = (cv::Mat_<uchar>(2, 2) << 178, 0, 200, 89);
@@ -360,7 +360,7 @@ TEST(Util3dMapping, convertImage8U2MapNonPGMFormat)
     EXPECT_EQ(map.at<signed char>(1, 1), -1);
 }
 
-TEST(Util3dMapping, convertImage8U2MapPGMFormat)
+TEST(Util3dMappingTest, ConvertImage8U2MapPGMFormat)
 {
     // Create a 2x2 grayscale image using PGM expected values
     cv::Mat input = (cv::Mat_<uchar>(2, 2) << 254, 0, 205, 205);
@@ -380,7 +380,7 @@ TEST(Util3dMapping, convertImage8U2MapPGMFormat)
     EXPECT_EQ(map.at<signed char>(1, 1), 100); // input(0, 1) = 0
 }
 
-TEST(Util3dMapping, erodeMapBasicErosion)
+TEST(Util3dMappingTest, ErodeMapBasicErosion)
 {
     // Create a 5x5 map with CV_8SC1 type
     // -1 = unknown, 0 = free, 100 = obstacle
@@ -407,7 +407,7 @@ TEST(Util3dMapping, erodeMapBasicErosion)
     
 }
 
-TEST(Util3dMapping, erodeMapNoErosionWithUnknown)
+TEST(Util3dMappingTest, ErodeMapNoErosionWithUnknown)
 {
     // Create a 3x3 map with obstacle touching unknown cell
     cv::Mat map = (cv::Mat_<signed char>(3,3) <<
@@ -421,7 +421,7 @@ TEST(Util3dMapping, erodeMapNoErosionWithUnknown)
     EXPECT_EQ(erodedMap.at<signed char>(1,1), 100);
 }
 
-TEST(Util3dMapping, projectCloudOnXYPlaneZCoordinatesAreZero)
+TEST(Util3dMappingTest, ProjectCloudOnXYPlaneZCoordinatesAreZero)
 {
     // Create a test point cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -444,7 +444,7 @@ TEST(Util3dMapping, projectCloudOnXYPlaneZCoordinatesAreZero)
     }
 }
 
-TEST(Util3dMapping, segmentObstaclesFromGround)
+TEST(Util3dMappingTest, SegmentObstaclesFromGround)
 {
     // Create a cloud of a floor, then elevate some part of it to make a flat obstacle
     pcl::IndicesPtr expected_ground(new std::vector<int>);
@@ -641,7 +641,7 @@ TEST(Util3dMapping, segmentObstaclesFromGround)
     }
 }
 
-TEST(Util3dMapping, occupancy2DFromGroundObstaclesBasic)
+TEST(Util3dMappingTest, Occupancy2DFromGroundObstaclesBasic)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);

@@ -37,7 +37,7 @@ TEST_F(VWDictionaryTest, Constructor)
     EXPECT_EQ(dict->getIndexedWordsCount(), 0u);
 }
 
-TEST_F(VWDictionaryTest, AddNewWords_Incremental)
+TEST_F(VWDictionaryTest, AddNewWordsIncremental)
 {
     // Test incremental mode - NNDR is applied, new words created if NNDR fails
     // Test with all NNStrategy values
@@ -166,7 +166,7 @@ TEST_F(VWDictionaryTest, AddNewWords_Incremental)
     }
 }
 
-TEST_F(VWDictionaryTest, AddNewWords_Fixed)
+TEST_F(VWDictionaryTest, AddNewWordsFixed)
 {
     // Test fixed mode - NNDR is not applied, closest match is always returned
     
@@ -250,7 +250,7 @@ TEST_F(VWDictionaryTest, AddWord)
     EXPECT_EQ(retrieved->id(), 100);
 }
 
-TEST_F(VWDictionaryTest, FindNN_Incremental)
+TEST_F(VWDictionaryTest, FindNNIncremental)
 {
     // Test incremental mode - NNDR is applied
     EXPECT_TRUE(dict->isIncremental());
@@ -293,7 +293,7 @@ TEST_F(VWDictionaryTest, FindNN_Incremental)
     EXPECT_EQ(secondId, VWDictionary::ID_INVALID);
 }
 
-TEST_F(VWDictionaryTest, FindNN_Fixed)
+TEST_F(VWDictionaryTest, FindNNFixed)
 {
     // Test fixed mode - NNDR is not applied, closest match is always returned
     
@@ -432,7 +432,7 @@ TEST_F(VWDictionaryTest, GetUnusedWords)
     EXPECT_EQ(unusedIds[0], wordId);
 }
 
-TEST_F(VWDictionaryTest, ConvertBinTo32F_ByteToFloat)
+TEST_F(VWDictionaryTest, ConvertBinTo32FByteToFloat)
 {
     // Test byteToFloat = true (simple conversion)
     cv::Mat input(2, 10, CV_8UC1);
@@ -445,7 +445,7 @@ TEST_F(VWDictionaryTest, ConvertBinTo32F_ByteToFloat)
     EXPECT_EQ(output.cols, 10); // Same dimensions
 }
 
-TEST_F(VWDictionaryTest, ConvertBinTo32F_BitExpansion)
+TEST_F(VWDictionaryTest, ConvertBinTo32FBitExpansion)
 {
     // Test byteToFloat = false (bit expansion)
     cv::Mat input(1, 4, CV_8UC1);
@@ -467,7 +467,7 @@ TEST_F(VWDictionaryTest, ConvertBinTo32F_BitExpansion)
     EXPECT_FLOAT_EQ(output.at<float>(0, 3), 1.0f); // bit 3
 }
 
-TEST_F(VWDictionaryTest, Convert32FToBin_ByteToFloat)
+TEST_F(VWDictionaryTest, Convert32FToBinByteToFloat)
 {
     // Test byteToFloat = true (simple conversion)
     cv::Mat input(2, 10, CV_32FC1);
@@ -480,7 +480,7 @@ TEST_F(VWDictionaryTest, Convert32FToBin_ByteToFloat)
     EXPECT_EQ(output.cols, 10); // Same dimensions
 }
 
-TEST_F(VWDictionaryTest, Convert32FToBin_BitPacking)
+TEST_F(VWDictionaryTest, Convert32FToBinBitPacking)
 {
     // Test byteToFloat = false (bit packing)
     cv::Mat input(1, 32, CV_32FC1);

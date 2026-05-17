@@ -1829,13 +1829,13 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT extractIndices(
  * @note If the `coefficientsOut` is not null, it will be filled with the model coefficients of the plane.
  * 
  */
-pcl::IndicesPtr extractPlane(
+pcl::IndicesPtr RTABMAP_CORE_EXPORT extractPlane(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float distanceThreshold,
 		int maxIterations = 100,
 		pcl::ModelCoefficients * coefficientsOut = 0);
-pcl::IndicesPtr extractPlane(
+pcl::IndicesPtr RTABMAP_CORE_EXPORT extractPlane(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float distanceThreshold,
 		int maxIterations = 100,

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <limits>
 
-TEST(UMathTest, uIsNan)
+TEST(UMathTest, UIsNan)
 {
     float nanValue = std::numeric_limits<float>::quiet_NaN();
     float normalValue = 3.14f;
@@ -17,7 +17,7 @@ TEST(UMathTest, uIsNan)
     EXPECT_FALSE(uIsNan(normalDouble));
 }
 
-TEST(UMathTest, uIsFinite)
+TEST(UMathTest, UIsFinite)
 {
     float infValue = std::numeric_limits<float>::infinity();
     float normalValue = 3.14f;
@@ -28,7 +28,7 @@ TEST(UMathTest, uIsFinite)
     EXPECT_FALSE(uIsFinite(nanValue));
 }
 
-TEST(UMathTest, uMin3)
+TEST(UMathTest, UMin3)
 {
     EXPECT_EQ(uMin3(3, 1, 2), 1);
     EXPECT_EQ(uMin3(1, 2, 3), 1);
@@ -36,7 +36,7 @@ TEST(UMathTest, uMin3)
     EXPECT_EQ(uMin3(1.5f, 2.5f, 0.5f), 0.5f);
 }
 
-TEST(UMathTest, uMax3)
+TEST(UMathTest, UMax3)
 {
     EXPECT_EQ(uMax3(3, 1, 2), 3);
     EXPECT_EQ(uMax3(1, 2, 3), 3);
@@ -44,7 +44,7 @@ TEST(UMathTest, uMax3)
     EXPECT_EQ(uMax3(1.5f, 2.5f, 0.5f), 2.5f);
 }
 
-TEST(UMathTest, uMaxArray)
+TEST(UMathTest, UMaxArray)
 {
     int arr[] = {1, 5, 3, 9, 2};
     unsigned int index;
@@ -56,7 +56,7 @@ TEST(UMathTest, uMaxArray)
     EXPECT_EQ(max2, 9);
 }
 
-TEST(UMathTest, uMaxVector)
+TEST(UMathTest, UMaxVector)
 {
     std::vector<int> v = {1, 5, 3, 9, 2};
     unsigned int index;
@@ -68,7 +68,7 @@ TEST(UMathTest, uMaxVector)
     EXPECT_EQ(max2, 9);
 }
 
-TEST(UMathTest, uMinArray)
+TEST(UMathTest, UMinArray)
 {
     int arr[] = {5, 1, 3, 9, 2};
     unsigned int index;
@@ -80,7 +80,7 @@ TEST(UMathTest, uMinArray)
     EXPECT_EQ(min2, 1);
 }
 
-TEST(UMathTest, uMinVector)
+TEST(UMathTest, UMinVector)
 {
     std::vector<int> v = {5, 1, 3, 9, 2};
     unsigned int index;
@@ -92,7 +92,7 @@ TEST(UMathTest, uMinVector)
     EXPECT_EQ(min2, 1);
 }
 
-TEST(UMathTest, uMinMaxArray)
+TEST(UMathTest, UMinMaxArray)
 {
     int arr[] = {5, 1, 3, 9, 2};
     int min, max;
@@ -104,7 +104,7 @@ TEST(UMathTest, uMinMaxArray)
     EXPECT_EQ(indexMax, 3u);
 }
 
-TEST(UMathTest, uMinMaxVector)
+TEST(UMathTest, UMinMaxVector)
 {
     std::vector<int> v = {5, 1, 3, 9, 2};
     int min, max;
@@ -116,7 +116,7 @@ TEST(UMathTest, uMinMaxVector)
     EXPECT_EQ(indexMax, 3u);
 }
 
-TEST(UMathTest, uMinMaxWithoutIndices)
+TEST(UMathTest, UMinMaxWithoutIndices)
 {
     int arr[] = {5, 1, 3, 9, 2};
     int min, max;
@@ -130,7 +130,7 @@ TEST(UMathTest, uMinMaxWithoutIndices)
     EXPECT_EQ(max, 9);
 }
 
-TEST(UMathTest, uSign)
+TEST(UMathTest, USign)
 {
     EXPECT_EQ(uSign(5), 1);
     EXPECT_EQ(uSign(-5), -1);
@@ -139,28 +139,28 @@ TEST(UMathTest, uSign)
     EXPECT_EQ(uSign(-3.14f), -1);
 }
 
-TEST(UMathTest, uSumList)
+TEST(UMathTest, USumList)
 {
     std::list<int> list = {1, 2, 3, 4, 5};
     int sum = uSum(list);
     EXPECT_EQ(sum, 15);
 }
 
-TEST(UMathTest, uSumArray)
+TEST(UMathTest, USumArray)
 {
     int arr[] = {1, 2, 3, 4, 5};
     int sum = uSum(arr, 5);
     EXPECT_EQ(sum, 15);
 }
 
-TEST(UMathTest, uSumVector)
+TEST(UMathTest, USumVector)
 {
     std::vector<int> v = {1, 2, 3, 4, 5};
     int sum = uSum(v);
     EXPECT_EQ(sum, 15);
 }
 
-TEST(UMathTest, uSumSquared)
+TEST(UMathTest, USumSquared)
 {
     int arr[] = {1, 2, 3};
     int sum = uSumSquared(arr, 3);
@@ -170,7 +170,7 @@ TEST(UMathTest, uSumSquared)
     EXPECT_EQ(sum2, 2); // (-1)*(-1) + 0*0 + 1*1 = 1 + 0 + 1 = 2
 }
 
-TEST(UMathTest, uMean)
+TEST(UMathTest, UMean)
 {
     int arr[] = {1, 2, 3, 4, 5};
     float mean = uMean(arr, 5);
@@ -185,7 +185,7 @@ TEST(UMathTest, uMean)
     EXPECT_FLOAT_EQ(mean3, 3.0f);
 }
 
-TEST(UMathTest, uMeanSquaredError)
+TEST(UMathTest, UMeanSquaredError)
 {
     float x[] = {1.0f, 2.0f, 3.0f};
     float y[] = {1.1f, 2.1f, 3.1f};
@@ -198,7 +198,7 @@ TEST(UMathTest, uMeanSquaredError)
     EXPECT_NEAR(mse2, 0.01f, 0.001f);
 }
 
-TEST(UMathTest, uVariance)
+TEST(UMathTest, UVariance)
 {
     float arr[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
     float mean = uMean(arr, 5);
@@ -209,7 +209,7 @@ TEST(UMathTest, uVariance)
     EXPECT_NEAR(variance2, 2.5f, 0.1f);
 }
 
-TEST(UMathTest, uNormSquared)
+TEST(UMathTest, UNormSquared)
 {
     std::vector<float> v = {3.0f, 4.0f};
     float normSq = uNormSquared(v);
@@ -222,7 +222,7 @@ TEST(UMathTest, uNormSquared)
     EXPECT_FLOAT_EQ(normSq3, 14.0f); // 1*1 + 2*2 + 3*3 = 1 + 4 + 9 = 14
 }
 
-TEST(UMathTest, uNorm)
+TEST(UMathTest, UNorm)
 {
     std::vector<float> v = {3.0f, 4.0f};
     float norm = uNorm(v);
@@ -235,7 +235,7 @@ TEST(UMathTest, uNorm)
     EXPECT_NEAR(norm3, 3.741657f, 0.001f); // sqrt(14)
 }
 
-TEST(UMathTest, uNormalize)
+TEST(UMathTest, UNormalize)
 {
     std::vector<float> v = {3.0f, 4.0f};
     std::vector<float> normalized = uNormalize(v);
@@ -249,7 +249,7 @@ TEST(UMathTest, uNormalize)
     EXPECT_FLOAT_EQ(normalizedZero[1], 0.0f);
 }
 
-TEST(UMathTest, uLocalMaxima)
+TEST(UMathTest, ULocalMaxima)
 {
     float arr[] = {1.0f, 3.0f, 2.0f, 5.0f, 4.0f, 6.0f, 3.0f};
     std::list<unsigned int> maxima = uLocalMaxima(arr, 7);
@@ -261,7 +261,7 @@ TEST(UMathTest, uLocalMaxima)
     EXPECT_GT(maxima2.size(), 0u);
 }
 
-TEST(UMathTest, uHamming)
+TEST(UMathTest, UHamming)
 {
     std::vector<float> window = uHamming(10);
     EXPECT_EQ(window.size(), 10u);
@@ -273,7 +273,7 @@ TEST(UMathTest, uHamming)
     }
 }
 
-TEST(UMathTest, uIsInBounds)
+TEST(UMathTest, UIsInBounds)
 {
     EXPECT_TRUE(uIsInBounds(5, 0, 10));
     EXPECT_FALSE(uIsInBounds(10, 0, 10));

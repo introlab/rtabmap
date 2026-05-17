@@ -8,7 +8,7 @@
 
 using namespace rtabmap;
 
-TEST(Util3dTest, rgbFromCloudGeneratesCorrectRGB)
+TEST(Util3dTest, RgbFromCloudGeneratesCorrectRGB)
 {
     // Create a 2x2 organized point cloud with known colors
     pcl::PointCloud<pcl::PointXYZRGBA> cloud;
@@ -40,7 +40,7 @@ TEST(Util3dTest, rgbFromCloudGeneratesCorrectRGB)
     EXPECT_EQ(rgb.at<cv::Vec3b>(1,1), cv::Vec3b(255,255,255)); // White
 }
 
-TEST(Util3dTest, depthFromCloudBasic32F)
+TEST(Util3dTest, DepthFromCloudBasic32F)
 {
     pcl::PointCloud<pcl::PointXYZRGBA> cloud;
     cloud.width = 3;
@@ -75,7 +75,7 @@ TEST(Util3dTest, depthFromCloudBasic32F)
     }
 }
 
-TEST(Util3dTest, depthFromCloudBasic16U)
+TEST(Util3dTest, DepthFromCloudBasic16U)
 {
     pcl::PointCloud<pcl::PointXYZRGBA> cloud;
     cloud.width = 2;
@@ -105,7 +105,7 @@ TEST(Util3dTest, depthFromCloudBasic16U)
     }
 }
 
-TEST(Util3dTest, rgbdFromCloudBasicConversion)
+TEST(Util3dTest, RgbdFromCloudBasicConversion)
 {
     // Create a 2x2 point cloud with synthetic values
     pcl::PointCloud<pcl::PointXYZRGBA> cloud;
@@ -146,7 +146,7 @@ TEST(Util3dTest, rgbdFromCloudBasicConversion)
     EXPECT_NEAR(d, 1.0f, 1e-5);
 }
 
-TEST(Util3dTest, projectDepthTo3D)
+TEST(Util3dTest, ProjectDepthTo3D)
 {
     // Create a synthetic 5x5 depth image with all values set to 1.0 meter
     cv::Mat depthImage = cv::Mat::ones(5, 5, CV_32FC1);
@@ -171,7 +171,7 @@ TEST(Util3dTest, projectDepthTo3D)
     EXPECT_FLOAT_EQ(pt.z, 1.0f);
 }
 
-TEST(Util3dTest, projectDepthTo3DRayBasicRayProjection)
+TEST(Util3dTest, ProjectDepthTo3DRayBasicRayProjection)
 {
     cv::Size imageSize(640, 480);
     float fx = 525.0f;
@@ -192,7 +192,7 @@ TEST(Util3dTest, projectDepthTo3DRayBasicRayProjection)
     EXPECT_NEAR(ray[2], 1.0f, 1e-5);
 }
 
-TEST(Util3dTest, cloudFromDepthWithCameraModel) {
+TEST(Util3dTest, CloudFromDepthWithCameraModel) {
     // Create a sample depth image (CV_32FC1 format)
     cv::Mat depthImage(4, 4, CV_32FC1);
     for(int j=0;j<depthImage.rows; ++j)
@@ -224,7 +224,7 @@ TEST(Util3dTest, cloudFromDepthWithCameraModel) {
     ASSERT_FLOAT_EQ(pt.z, 1.0f); // Check depth
 }
 
-TEST(Util3dTest, cloudFromDepthRGBValidInputCreatesPointCloud) {
+TEST(Util3dTest, CloudFromDepthRGBValidInputCreatesPointCloud) {
     // Create a simple test depth image (e.g., 5x5)
     cv::Mat imageRgb = cv::Mat::zeros(5, 5, CV_8UC3); // Black RGB image
     cv::Mat imageDepth = cv::Mat::ones(5, 5, CV_32FC1); // Depth image with all values 1.0
@@ -243,7 +243,7 @@ TEST(Util3dTest, cloudFromDepthRGBValidInputCreatesPointCloud) {
     ASSERT_EQ(validIndices.size(), cloud->size());
 }
 
-TEST(Util3dTest, cloudFromDepthRGBEmptyInput) {
+TEST(Util3dTest, CloudFromDepthRGBEmptyInput) {
     cv::Mat imageRgb = cv::Mat(); // Empty RGB image
     cv::Mat imageDepth = cv::Mat(); // Empty Depth image
 
@@ -253,7 +253,7 @@ TEST(Util3dTest, cloudFromDepthRGBEmptyInput) {
     ASSERT_THROW(util3d::cloudFromDepthRGB(imageRgb, imageDepth, model, 1, 10.0f, 0.1f, &validIndices), UException);
 }
 
-TEST(Util3dTest, cloudFromDepthRGBDecimationReducesPointCloudSize) {
+TEST(Util3dTest, CloudFromDepthRGBDecimationReducesPointCloudSize) {
     // Create a simple test depth image (e.g., 6x6) and RGB image
     cv::Mat imageRgb = cv::Mat::zeros(6, 6, CV_8UC3); 
     cv::Mat imageDepth = cv::Mat::ones(6, 6, CV_32FC1);
@@ -269,7 +269,7 @@ TEST(Util3dTest, cloudFromDepthRGBDecimationReducesPointCloudSize) {
 }
 
 // Test depth constraints: points outside the range should not be included in the cloud
-TEST(Util3dTest, cloudFromDepthRGBDepthConstraintsLimitPointCloud) {
+TEST(Util3dTest, CloudFromDepthRGBDepthConstraintsLimitPointCloud) {
     cv::Mat imageRgb = cv::Mat::zeros(5, 5, CV_8UC3);
     cv::Mat imageDepth = cv::Mat::ones(5, 5, CV_32FC1) * 0.05f; // Depth values smaller than the minimum
 
@@ -283,7 +283,7 @@ TEST(Util3dTest, cloudFromDepthRGBDepthConstraintsLimitPointCloud) {
     ASSERT_EQ(validIndices.size(), 0);
 }
 
-TEST(Util3dTest, cloudFromDepthRGBImageSizeMismatchThrowsError) {
+TEST(Util3dTest, CloudFromDepthRGBImageSizeMismatchThrowsError) {
     cv::Mat imageRgb = cv::Mat::zeros(6, 6, CV_8UC3);  // 6x6 RGB image
     cv::Mat imageDepth = cv::Mat::ones(6, 6, CV_32FC1); // 6x6 Depth image
 
@@ -293,7 +293,7 @@ TEST(Util3dTest, cloudFromDepthRGBImageSizeMismatchThrowsError) {
     ASSERT_THROW(util3d::cloudFromDepthRGB(imageRgb, imageDepth, model, 1, 10.0f, 0.1f, nullptr), UException);
 }
 
-TEST(Util3dTest, cloudFromDisparityValidInputs) {
+TEST(Util3dTest, CloudFromDisparityValidInputs) {
     cv::Mat imageDisparity = cv::Mat::ones(10, 10, CV_32FC1) * 50.0f;  // 50.0 as the disparity value
     StereoCameraModel model(10, 10, 4.5f, 4.5f, 0.05f, CameraModel::opticalRotation(), imageDisparity.size());
 
@@ -321,7 +321,7 @@ TEST(Util3dTest, cloudFromDisparityValidInputs) {
     ASSERT_EQ(validIndices.size(), imageDisparity.total());
 }
 
-TEST(Util3dTest, cloudFromDisparityRGBValidInputs) {
+TEST(Util3dTest, CloudFromDisparityRGBValidInputs) {
     cv::Mat imageRgb = cv::Mat(10, 10, CV_8UC3, cv::Scalar(255, 200, 150));  // BGR
     cv::Mat imageDisparity = cv::Mat::ones(10, 10, CV_32FC1) * 50.0f;  // 50.0 as the disparity value
     StereoCameraModel model(10, 10, 4.5f, 4.5f, 0.05f, CameraModel::opticalRotation(), imageDisparity.size());
@@ -350,7 +350,7 @@ TEST(Util3dTest, cloudFromDisparityRGBValidInputs) {
     }
 }
 
-TEST(Util3dTest, cloudFromDisparityInvalidDecimation) {
+TEST(Util3dTest, CloudFromDisparityInvalidDecimation) {
     // Create a mock disparity image (CV_32FC1)
     cv::Mat imageDisparity = cv::Mat::ones(10, 10, CV_32FC1) * 50.0f;
     StereoCameraModel model(10, 10, 4.5f, 4.5f, 0.05f, CameraModel::opticalRotation(), imageDisparity.size());
@@ -370,13 +370,13 @@ TEST(Util3dTest, cloudFromDisparityInvalidDecimation) {
     ASSERT_GT(cloud->size(), 0);
 }
 
-TEST(Util3dTest, cloudFromDisparityEmptyImages) {
+TEST(Util3dTest, CloudFromDisparityEmptyImages) {
     // Call the function with empty images
     ASSERT_THROW(util3d::cloudFromDisparity(cv::Mat(), StereoCameraModel()), UException);
     ASSERT_THROW(util3d::cloudFromDisparityRGB(cv::Mat(), cv::Mat(), StereoCameraModel()), UException);
 }
 
-TEST(Util3dTest, cloudFromStereoImagesBasicTest) {
+TEST(Util3dTest, CloudFromStereoImagesBasicTest) {
     cv::Mat imageLeft = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/stereo_rect/left/50.jpg", cv::IMREAD_UNCHANGED);
     cv::Mat imageRight = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/stereo_rect/right/50.jpg", cv::IMREAD_GRAYSCALE);
 
@@ -440,7 +440,7 @@ TEST(Util3dTest, cloudFromStereoImagesBasicTest) {
     }
 }
 
-TEST(Util3dTest, cloudsFromSensorDataBasicCloudGeneration) {
+TEST(Util3dTest, CloudsFromSensorDataBasicCloudGeneration) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -475,7 +475,7 @@ TEST(Util3dTest, cloudsFromSensorDataBasicCloudGeneration) {
     ASSERT_GT(clouds[0]->size(), 0) << "First point cloud is empty";
 }
 
-TEST(Util3dTest, cloudsFromSensorDataCloudGenerationWithDecimation) {
+TEST(Util3dTest, CloudsFromSensorDataCloudGenerationWithDecimation) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -508,7 +508,7 @@ TEST(Util3dTest, cloudsFromSensorDataCloudGenerationWithDecimation) {
     ASSERT_LT(clouds[0]->size(), 640 * 480) << "Cloud size should be smaller due to decimation";
 }
 
-TEST(Util3dTest, cloudsFromSensorDataCloudGenerationWithEmptyImages) {
+TEST(Util3dTest, CloudsFromSensorDataCloudGenerationWithEmptyImages) {
     // Create empty sensor data
     SensorData sensorData;
 
@@ -533,7 +533,7 @@ TEST(Util3dTest, cloudsFromSensorDataCloudGenerationWithEmptyImages) {
     ASSERT_EQ(clouds.size(), 0) << "Expected no point clouds for empty input images";
 }
 
-TEST(Util3dTest, cloudFromSensorDataGeneratesPointCloud) {
+TEST(Util3dTest, CloudFromSensorDataGeneratesPointCloud) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -568,7 +568,7 @@ TEST(Util3dTest, cloudFromSensorDataGeneratesPointCloud) {
     ASSERT_GT(validIndices.size(), 0);
 }
 
-TEST(Util3dTest, cloudsRGBFromSensorDataTestSingleCamera) {
+TEST(Util3dTest, CloudsRGBFromSensorDataTestSingleCamera) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -604,7 +604,7 @@ TEST(Util3dTest, cloudsRGBFromSensorDataTestSingleCamera) {
     ASSERT_GT(validIndices[0]->size(), 0);
 }
 
-TEST(Util3dTest, cloudsRGBFromSensorDataTestStereoCameras) {
+TEST(Util3dTest, CloudsRGBFromSensorDataTestStereoCameras) {
     cv::Mat imageLeft = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/stereo_rect/left/50.jpg", cv::IMREAD_UNCHANGED);
     cv::Mat imageRight = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/stereo_rect/right/50.jpg", cv::IMREAD_GRAYSCALE);
 
@@ -645,7 +645,7 @@ TEST(Util3dTest, cloudsRGBFromSensorDataTestStereoCameras) {
     ASSERT_GT(validIndices[0]->size(), 0);
 }
 
-TEST(Util3dTest, cloudsRGBFromSensorDataTestEmptySensorData) {
+TEST(Util3dTest, CloudsRGBFromSensorDataTestEmptySensorData) {
     SensorData sensorData;  // Create empty sensor data (or no data at all)
     int decimation = 1;
     float maxDepth = 10.0f;
@@ -669,7 +669,7 @@ TEST(Util3dTest, cloudsRGBFromSensorDataTestEmptySensorData) {
     ASSERT_TRUE(clouds.empty());
 }
 
-TEST(Util3dTest, cloudsRGBFromSensorDataTestInvalidROIRatios) {
+TEST(Util3dTest, CloudsRGBFromSensorDataTestInvalidROIRatios) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -704,7 +704,7 @@ TEST(Util3dTest, cloudsRGBFromSensorDataTestInvalidROIRatios) {
     ASSERT_GT(validIndices[0]->size(), 0);
 }
 
-TEST(Util3dTest, cloudRGBFromSensorDataGeneratesCloudWithValidData) {
+TEST(Util3dTest, CloudRGBFromSensorDataGeneratesCloudWithValidData) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -766,7 +766,7 @@ TEST(Util3dTest, cloudRGBFromSensorDataGeneratesCloudWithValidData) {
     }
 }
 
-TEST(Util3dTest, cloudRGBFromSensorDataHandlesEmptyData) {
+TEST(Util3dTest, CloudRGBFromSensorDataHandlesEmptyData) {
     SensorData sensorData;
     int decimation = 1;
     float maxDepth = 10.0f;
@@ -792,7 +792,7 @@ TEST(Util3dTest, cloudRGBFromSensorDataHandlesEmptyData) {
     EXPECT_EQ(validIndices.size(), 0);  // No valid indices due to empty cloud
 }
 
-TEST(Util3dTest, cloudRGBFromSensorDataHandlesInvalidROI) {
+TEST(Util3dTest, CloudRGBFromSensorDataHandlesInvalidROI) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     cv::Mat rgbImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/rgb/17.jpg", cv::IMREAD_COLOR);
     
@@ -827,7 +827,7 @@ TEST(Util3dTest, cloudRGBFromSensorDataHandlesInvalidROI) {
     EXPECT_GT(validIndices.size(), 0);
 }
 
-TEST(Util3dTest, laserScanFromDepthImage) {
+TEST(Util3dTest, LaserScanFromDepthImage) {
     cv::Mat depthImage = cv::imread(std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/17.png", cv::IMREAD_UNCHANGED);
     ASSERT_FALSE(depthImage.empty());
 
@@ -856,11 +856,11 @@ TEST(Util3dTest, laserScanFromDepthImage) {
         cv::Mat(), 0, 0, 0, 0, 0, 0, CameraModel::opticalRotation()), UException);
 }
 
-TEST(Util3dTest, laserScanFromDepthImageEmptyDepthImage) {
+TEST(Util3dTest, LaserScanFromDepthImageEmptyDepthImage) {
     
 }
 
-TEST(Util3dTest, laserScanFromDepthImages) {
+TEST(Util3dTest, LaserScanFromDepthImages) {
     int width = 640;
     int height = 480;
     cv::Mat depthImage(height, width*2, CV_32FC1, cv::Scalar(1.0)); // Depth set to 1.0 for all points
@@ -901,7 +901,7 @@ TEST(Util3dTest, laserScanFromDepthImages) {
     ASSERT_THROW(util3d::laserScanFromDepthImages(cv::Mat(), std::vector<CameraModel>(2),0,0), UException);
 }
 
-TEST(Util3dTest, laserScanFromPointCloudXYZ) {
+TEST(Util3dTest, LaserScanFromPointCloudXYZ) {
     pcl::PointCloud<pcl::PointXYZ> cloud;
     cloud.push_back(pcl::PointXYZ(1.0f, 2.0f, 3.0f));
 
@@ -915,7 +915,7 @@ TEST(Util3dTest, laserScanFromPointCloudXYZ) {
 }
 
 // Test for pcl::PointXYZRGB
-TEST(Util3dTest, laserScanFromPointCloudXYZRGB) {
+TEST(Util3dTest, LaserScanFromPointCloudXYZRGB) {
     pcl::PointCloud<pcl::PointXYZRGB> cloud;
     pcl::PointXYZRGB point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f;
@@ -936,7 +936,7 @@ TEST(Util3dTest, laserScanFromPointCloudXYZRGB) {
 }
 
 // Test for pcl::PointNormal
-TEST(Util3dTest, laserScanFromPointCloudNormal) {
+TEST(Util3dTest, LaserScanFromPointCloudNormal) {
     pcl::PointCloud<pcl::PointNormal> cloud;
     pcl::PointNormal point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f;
@@ -957,7 +957,7 @@ TEST(Util3dTest, laserScanFromPointCloudNormal) {
 }
 
 // Test for pcl::PointXYZI
-TEST(Util3dTest, laserScanFromPointCloudXYZI) {
+TEST(Util3dTest, LaserScanFromPointCloudXYZI) {
     pcl::PointCloud<pcl::PointXYZI> cloud;
     pcl::PointXYZI point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f; point.intensity = 100.0f;
@@ -975,7 +975,7 @@ TEST(Util3dTest, laserScanFromPointCloudXYZI) {
 }
 
 // Test for pcl::PointXYZRGBNormal
-TEST(Util3dTest, laserScanFromPointCloudXYZRGBNormal) {
+TEST(Util3dTest, LaserScanFromPointCloudXYZRGBNormal) {
     pcl::PointCloud<pcl::PointXYZRGBNormal> cloud;
     pcl::PointXYZRGBNormal point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f;
@@ -1001,7 +1001,7 @@ TEST(Util3dTest, laserScanFromPointCloudXYZRGBNormal) {
 }
 
 // Test for pcl::PointXYZINormal
-TEST(Util3dTest, laserScanFromPointCloudXYZINormal) {
+TEST(Util3dTest, LaserScanFromPointCloudXYZINormal) {
     pcl::PointCloud<pcl::PointXYZINormal> cloud;
     pcl::PointXYZINormal point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f;
@@ -1024,7 +1024,7 @@ TEST(Util3dTest, laserScanFromPointCloudXYZINormal) {
     EXPECT_FLOAT_EQ(pt.normal_z, 1.0f);
 }
 
-TEST(Util3dTest, laserScan2dFromPointCloudXYZ) {
+TEST(Util3dTest, LaserScan2dFromPointCloudXYZ) {
     pcl::PointCloud<pcl::PointXYZ> cloud;
     cloud.push_back(pcl::PointXYZ(1.0f, 2.0f, 3.0f));
 
@@ -1039,7 +1039,7 @@ TEST(Util3dTest, laserScan2dFromPointCloudXYZ) {
 }
 
 // Test for pcl::PointNormal
-TEST(Util3dTest, laserScan2dFromPointCloudNormal) {
+TEST(Util3dTest, LaserScan2dFromPointCloudNormal) {
     pcl::PointCloud<pcl::PointNormal> cloud;
     pcl::PointNormal point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f;
@@ -1061,7 +1061,7 @@ TEST(Util3dTest, laserScan2dFromPointCloudNormal) {
 }
 
 // Test for pcl::PointXYZI
-TEST(Util3dTest, laserScan2dFromPointCloudXYZI) {
+TEST(Util3dTest, LaserScan2dFromPointCloudXYZI) {
     pcl::PointCloud<pcl::PointXYZI> cloud;
     pcl::PointXYZI point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f; point.intensity = 100.0f;
@@ -1080,7 +1080,7 @@ TEST(Util3dTest, laserScan2dFromPointCloudXYZI) {
 }
 
 // Test for pcl::PointXYZINormal
-TEST(Util3dTest, laserScan2dFromPointCloudXYZINormal) {
+TEST(Util3dTest, LaserScan2dFromPointCloudXYZINormal) {
     pcl::PointCloud<pcl::PointXYZINormal> cloud;
     pcl::PointXYZINormal point;
     point.x = 1.0f; point.y = 2.0f; point.z = 3.0f;
@@ -1109,7 +1109,7 @@ TEST(Util3dTest, laserScan2dFromPointCloudXYZINormal) {
 
 
 
-TEST(Util3dTest, laserScanToPointCloud)
+TEST(Util3dTest, LaserScanToPointCloud)
 {
     // XYZ point
     cv::Mat dataXYZ = (cv::Mat_<float>(1, 3) << 1.0f, 2.0f, 3.0f);
@@ -1243,7 +1243,7 @@ TEST(Util3dTest, laserScanToPointCloud)
     }
 }
 
-TEST(Util3dTest, getMinMax3D) {
+TEST(Util3dTest, GetMinMax3D) {
     // Create a 3x3 CV matrix of type CV_32FC3 (3D points)
     cv::Mat laserScan(1, 3, CV_32FC3);
     float data[9] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, -1.0f, -2.0f, -3.0f};
@@ -1279,7 +1279,7 @@ TEST(Util3dTest, getMinMax3D) {
 }
 
 // Test with a laser scan that contains only 2D data (no Z values)
-TEST(Util3dTest, getMinMax3DCVPoint3f_2DData) {
+TEST(Util3dTest, GetMinMax3DCVPoint3f2DData) {
     // Create a 2x3 CV matrix of type CV_32FC2 (2D points)
     cv::Mat laserScan(1, 2, CV_32FC2);
     float data[6] = {1.0f, 2.0f, 4.0f, 5.0f};  // No Z values
@@ -1300,7 +1300,7 @@ TEST(Util3dTest, getMinMax3DCVPoint3f_2DData) {
 }
 
 // Test with a matrix where all points are the same (edge case)
-TEST(Util3dTest, getMinMax3DSamePoints) {
+TEST(Util3dTest, GetMinMax3DSamePoints) {
     // Create a 1x3 CV matrix of type CV_32FC3 where all points are the same
     cv::Mat laserScan(1, 3, CV_32FC3);
     float data[9] = {2.0f, 3.0f, 4.0f, 2.0f, 3.0f, 4.0f, 2.0f, 3.0f, 4.0f};
@@ -1321,7 +1321,7 @@ TEST(Util3dTest, getMinMax3DSamePoints) {
 }
 
 // Test with an empty laser scan (should trigger an error or assertion)
-TEST(Util3dTest, getMinMax3DEmptyLaserScan) {
+TEST(Util3dTest, GetMinMax3DEmptyLaserScan) {
     // Create an empty CV matrix
     cv::Mat laserScan;
 
@@ -1332,7 +1332,7 @@ TEST(Util3dTest, getMinMax3DEmptyLaserScan) {
 }
 
 // Test for projectDisparityTo3D with valid disparity
-TEST(Util3dTest, projectDisparityTo3DValidDisparity) {
+TEST(Util3dTest, ProjectDisparityTo3DValidDisparity) {
     StereoCameraModel model(525, 525, 319.5f, 219.5f, 0.05f, CameraModel::opticalRotation(), cv::Size(640,480));
     
     // Define a 2D point (u, v) in the left image
@@ -1350,7 +1350,7 @@ TEST(Util3dTest, projectDisparityTo3DValidDisparity) {
 }
 
 // Test for projectDisparityTo3D with invalid disparity (0.0f)
-TEST(Util3dTest, projectDisparityTo3DInvalidDisparityZero) {
+TEST(Util3dTest, ProjectDisparityTo3DInvalidDisparityZero) {
     StereoCameraModel model(525, 525, 319.5f, 219.5f, 0.05f, CameraModel::opticalRotation(), cv::Size(640,480));
     
     // Define a 2D point (u, v) in the left image
@@ -1367,7 +1367,7 @@ TEST(Util3dTest, projectDisparityTo3DInvalidDisparityZero) {
 }
 
 // Test for projectDisparityTo3D with disparity map (CV_32FC1 type)
-TEST(Util3dTest, projectDisparityTo3DDisparityMapValid) {
+TEST(Util3dTest, ProjectDisparityTo3DDisparityMapValid) {
     StereoCameraModel model(525, 525, 319.5f, 219.5f, 0.05f, CameraModel::opticalRotation(), cv::Size(640,480));
 
     // Create a sample disparity map (1 channel, float type)
@@ -1387,7 +1387,7 @@ TEST(Util3dTest, projectDisparityTo3DDisparityMapValid) {
 }
 
 // Test for projectDisparityTo3D with disparity map out of bounds (invalid pixel)
-TEST(Util3dTest, projectDisparityTo3DDisparityMapOutOfBounds) {
+TEST(Util3dTest, ProjectDisparityTo3DDisparityMapOutOfBounds) {
     StereoCameraModel model(525, 525, 319.5f, 219.5f, 0.05f, CameraModel::opticalRotation(), cv::Size(640,480));
 
     // Create a sample disparity map (1 channel, float type)
@@ -1406,7 +1406,7 @@ TEST(Util3dTest, projectDisparityTo3DDisparityMapOutOfBounds) {
 }
 
 // Test for projectDisparityTo3D with invalid disparity map type
-TEST(Util3dTest, projectDisparityTo3DInvalidDisparityMapType) {
+TEST(Util3dTest, ProjectDisparityTo3DInvalidDisparityMapType) {
     StereoCameraModel model(525, 525, 319.5f, 219.5f, 0.05f, CameraModel::opticalRotation(), cv::Size(640,480));
 
     // Create a sample disparity map with invalid type (CV_8UC1)
@@ -1419,7 +1419,7 @@ TEST(Util3dTest, projectDisparityTo3DInvalidDisparityMapType) {
     ASSERT_THROW(util3d::projectDisparityTo3D(pt, disparity_map, model), UException);
 }
 
-TEST(Util3dTest, projectCloudToCameraCvMatLaserScan) {
+TEST(Util3dTest, ProjectCloudToCameraCvMatLaserScan) {
     // Mock image size
     cv::Size imageSize(640, 480);
 
@@ -1448,7 +1448,7 @@ TEST(Util3dTest, projectCloudToCameraCvMatLaserScan) {
 }
 
 // Test for projectCloudToCamera with pcl::PointCloud<pcl::PointXYZ>
-TEST(Util3dTest, projectCloudToCameraPclPointCloud) {
+TEST(Util3dTest, ProjectCloudToCameraPclPointCloud) {
     // Mock image size
     cv::Size imageSize(640, 480);
 
@@ -1483,7 +1483,7 @@ TEST(Util3dTest, projectCloudToCameraPclPointCloud) {
 }
 
 // Test for projectCloudToCamera with pcl::PCLPointCloud2
-TEST(Util3dTest, projectCloudToCameraPCLPointCloud2) {
+TEST(Util3dTest, ProjectCloudToCameraPCLPointCloud2) {
     // Mock image size
     cv::Size imageSize(640, 480);
 
@@ -1544,7 +1544,7 @@ cv::Mat createTestDepthImage(int rows, int cols) {
     return depthImage;
 }
 
-TEST(Util3dTest, fillProjectedCloudHolesFillTest) {
+TEST(Util3dTest, FillProjectedCloudHolesFillTest) {
     cv::Mat depthImage = cv::Mat::zeros(10, 10, CV_32FC1);
     depthImage.at<float>(2, 3) = 10.0f;
     depthImage.at<float>(4, 3) = 10.0f;
@@ -1592,7 +1592,7 @@ TEST(Util3dTest, fillProjectedCloudHolesFillTest) {
     ASSERT_EQ(cv::mean(depthImage), cv::Scalar(1.0f));
 }
 
-TEST(Util3dTest, filterFloorThreshold) {
+TEST(Util3dTest, FilterFloorThreshold) {
     // Setup: Create a synthetic depth image and CameraModel
     cv::Mat depth = cv::Mat::zeros(4, 4, CV_16UC1);
     depth.at<unsigned short>(1, 1) = 1000;
@@ -1623,7 +1623,7 @@ TEST(Util3dTest, filterFloorThreshold) {
     EXPECT_EQ(filteredDepth.at<unsigned short>(3, 3), 0);
 }
 
-TEST(Util3dTest, filterFloorEmptyDepthImage) {
+TEST(Util3dTest, FilterFloorEmptyDepthImage) {
     // Test case with empty depth image
     cv::Mat emptyDepth = cv::Mat::zeros(0, 0, CV_16UC1);
     std::vector<CameraModel> cameraModels;
@@ -1637,7 +1637,7 @@ TEST(Util3dTest, filterFloorEmptyDepthImage) {
     EXPECT_TRUE(depthBelow.empty());
 }
 
-TEST(Util3dTest, projectCloudToCameras) {
+TEST(Util3dTest, ProjectCloudToCameras) {
 
     // Create mock point cloud
     pcl::PointCloud<pcl::PointXYZRGBNormal> cloud;
@@ -1739,7 +1739,7 @@ TEST(Util3dTest, projectCloudToCameras) {
     EXPECT_EQ(result[4].first.first, 0);  // Camera node ID (not found = 0)
 }
 
-TEST(Util3dTest, isFinite) {
+TEST(Util3dTest, IsFinite) {
     cv::Point3f pt1(1.0f, 2.0f, 3.0f);
     EXPECT_TRUE(util3d::isFinite(pt1));
 
@@ -1753,7 +1753,7 @@ TEST(Util3dTest, isFinite) {
     EXPECT_FALSE(util3d::isFinite(pt4));
 }
 
-TEST(Util3dTest, concatenateCloudsXYZ)
+TEST(Util3dTest, ConcatenateCloudsXYZ)
 {
     std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudList;
 
@@ -1774,7 +1774,7 @@ TEST(Util3dTest, concatenateCloudsXYZ)
     EXPECT_EQ(result->at(2).z, 9);
 }
 
-TEST(Util3dTest, concatenateCloudsXYZRGB)
+TEST(Util3dTest, ConcatenateCloudsXYZRGB)
 {
     std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloudList;
 
@@ -1800,7 +1800,7 @@ TEST(Util3dTest, concatenateCloudsXYZRGB)
 }
 
 
-TEST(Util3dTest, concatenateIndices)
+TEST(Util3dTest, ConcatenateIndices)
 {
     pcl::IndicesPtr indices1(new std::vector<int>({1, 2}));
     pcl::IndicesPtr indices2(new std::vector<int>({3, 4}));
@@ -1827,7 +1827,7 @@ TEST(Util3dTest, concatenateIndices)
     EXPECT_EQ((*result)[2], 30);
 }
 
-TEST(Util3dTest, savePCDWordsFromPCLPoints) {
+TEST(Util3dTest, SavePCDWordsFromPCLPoints) {
 	std::multimap<int, pcl::PointXYZ> words;
 	words.insert({0, pcl::PointXYZ(1, 2, 3)});
 	words.insert({1, pcl::PointXYZ(4, 5, 6)});
@@ -1845,7 +1845,7 @@ TEST(Util3dTest, savePCDWordsFromPCLPoints) {
 	std::remove(file.c_str());
 }
 
-TEST(Util3dTest, savePCDWordsFromCVPoints) {
+TEST(Util3dTest, SavePCDWordsFromCVPoints) {
 	std::multimap<int, cv::Point3f> words;
 	words.insert({0, cv::Point3f(1, 0, 0)});
 	words.insert({1, cv::Point3f(0, 1, 0)});
@@ -1865,7 +1865,7 @@ TEST(Util3dTest, savePCDWordsFromCVPoints) {
 	std::remove(file.c_str());
 }
 
-TEST(Util3dTest, loadBINScanValid) {
+TEST(Util3dTest, LoadBINScanValid) {
     std::string tmp_file = "test.bin";
     std::ofstream file(tmp_file, std::ios::binary);
     pcl::PointCloud<pcl::PointXYZI> cloud;
@@ -1905,7 +1905,7 @@ TEST(Util3dTest, loadBINScanValid) {
     std::remove(tmp_file.c_str());  // Clean up the test file
 }
 
-TEST(Util3dTest, loadBINScanEmpty) {
+TEST(Util3dTest, LoadBINScanEmpty) {
     std::string tmp_file = "empty_test.bin";
     std::ofstream(tmp_file, std::ios::binary).close();  // Create empty file
 
@@ -1918,7 +1918,7 @@ TEST(Util3dTest, loadBINScanEmpty) {
 }
 
 // Test case to check loading a binary scan
-TEST(Util3dTest, loadScanBINFile) {
+TEST(Util3dTest, LoadScanBINFile) {
     std::string tmp_file = "test.bin";
     std::ofstream file(tmp_file, std::ios::binary);
     pcl::PointCloud<pcl::PointXYZI> cloud;
@@ -1961,7 +1961,7 @@ TEST(Util3dTest, loadScanBINFile) {
 }
 
 // Test case to check loading a PCD file
-TEST(Util3dTest, loadScanPCDFile) {
+TEST(Util3dTest, LoadScanPCDFile) {
     std::string tmp_file = "test.pcd";
 
     // Create a dummy PCD file
@@ -1992,7 +1992,7 @@ TEST(Util3dTest, loadScanPCDFile) {
 }
 
 // Test case to check loading a PLY file
-TEST(Util3dTest, loadScanPLYFile) {
+TEST(Util3dTest, LoadScanPLYFile) {
     std::string tmp_file = "test.ply";
 
     // Create a dummy PLY file
@@ -2021,7 +2021,7 @@ TEST(Util3dTest, loadScanPLYFile) {
     std::remove(tmp_file.c_str());  // Clean up the test file
 }
 
-TEST(Util3dTest, deskewValidScan) {
+TEST(Util3dTest, DeskewValidScan) {
     // Prepare mock LaserScan data (simulating a 3x3 point cloud with time info)
     cv::Mat mockData = cv::Mat::zeros(1, 3, CV_32FC(5));
     float * dataPtr = (float*)mockData.data;

@@ -273,7 +273,7 @@ TEST_F(StereoTest, GetterMethods)
     }
 }
 
-TEST_F(StereoTest, StereoOpticalFlow_IsGpuEnabled)
+TEST_F(StereoTest, StereoOpticalFlowIsGpuEnabled)
 {
     // Test GPU enable/disable for optical flow
     ParametersMap params;
@@ -297,7 +297,7 @@ TEST_F(StereoTest, StereoOpticalFlow_IsGpuEnabled)
     (void)gpuEnabled; // Suppress unused variable warning
 }
 
-TEST_F(StereoTest, StereoOpticalFlow_Epsilon)
+TEST_F(StereoTest, StereoOpticalFlowEpsilon)
 {
     // Test epsilon parameter for optical flow
     ParametersMap params;

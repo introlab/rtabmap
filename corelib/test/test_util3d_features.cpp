@@ -7,7 +7,7 @@
 
 using namespace rtabmap;
 
-TEST(Util3dFeatures, generateKeypoints3DDepthBasicProjection) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DDepthBasicProjection) {
     // Arrange
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(10.0f, 10.0f, 1.0f),
@@ -50,7 +50,7 @@ TEST(Util3dFeatures, generateKeypoints3DDepthBasicProjection) {
     }
 }
 
-TEST(Util3dFeatures, generateKeypoints3DDepthMultiCameras) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DDepthMultiCameras) {
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(15.0f, 15.0f, 1.0f),
         cv::KeyPoint(45.0f, 15.0f, 1.0f),
@@ -86,7 +86,7 @@ TEST(Util3dFeatures, generateKeypoints3DDepthMultiCameras) {
     EXPECT_NEAR(keypoints3d[3].x, -2.0f, 1e-5);
 }
 
-TEST(Util3dFeatures, generateKeypoints3DDisparityValidDisparity) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DDisparityValidDisparity) {
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(5.0f, 5.0f, 1.0f),
         cv::KeyPoint(10.0f, 10.0f, 1.0f)
@@ -109,7 +109,7 @@ TEST(Util3dFeatures, generateKeypoints3DDisparityValidDisparity) {
     EXPECT_NEAR(keypoints3D[1].z, 1.0f, 1e-4);
 }
 
-TEST(Util3dFeatures, generateKeypoints3DDisparityInvalidDisparityReturnsNaN) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DDisparityInvalidDisparityReturnsNaN) {
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(5.0f, 5.0f, 1.0f),
         cv::KeyPoint(10.0f, 10.0f, 1.0f)
@@ -130,7 +130,7 @@ TEST(Util3dFeatures, generateKeypoints3DDisparityInvalidDisparityReturnsNaN) {
     }
 }
 
-TEST(Util3dFeatures, generateKeypoints3DDisparityDepthClipping) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DDisparityDepthClipping) {
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(5.0f, 5.0f, 1.0f),  // z = 2.0
         cv::KeyPoint(10.0f, 10.0f, 1.0f) // z = 0.5
@@ -152,7 +152,7 @@ TEST(Util3dFeatures, generateKeypoints3DDisparityDepthClipping) {
     EXPECT_NEAR(keypoints3D[0].z, 2.0f, 1e-4);      // z = 2.0, should be valid
 }
 
-TEST(Util3dFeatures, generateKeypoints3DStereoValidPointsWithDepthFilter) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DStereoValidPointsWithDepthFilter) {
     std::vector<cv::Point2f> leftCorners = {
         {100.0f, 100.0f},
         {120.0f, 120.0f}
@@ -178,7 +178,7 @@ TEST(Util3dFeatures, generateKeypoints3DStereoValidPointsWithDepthFilter) {
     }
 }
 
-TEST(Util3dFeatures, generateKeypoints3DStereoInvalidDisparityResultsInNaN) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DStereoInvalidDisparityResultsInNaN) {
     std::vector<cv::Point2f> leftCorners = {
         {100.0f, 100.0f}
     };
@@ -197,7 +197,7 @@ TEST(Util3dFeatures, generateKeypoints3DStereoInvalidDisparityResultsInNaN) {
     EXPECT_TRUE(std::isnan(result[0].z));
 }
 
-TEST(Util3dFeatures, generateKeypoints3DStereoAppliesMaskCorrectly) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DStereoAppliesMaskCorrectly) {
     std::vector<cv::Point2f> leftCorners = {
         {100.0f, 100.0f},
         {120.0f, 120.0f}
@@ -217,7 +217,7 @@ TEST(Util3dFeatures, generateKeypoints3DStereoAppliesMaskCorrectly) {
     EXPECT_TRUE(util3d::isFinite(result[1]));
 }
 
-TEST(Util3dFeatures, generateKeypoints3DStereoOutOfRangeDepthResultsInNaN) {
+TEST(Util3dFeaturesTest, GenerateKeypoints3DStereoOutOfRangeDepthResultsInNaN) {
     std::vector<cv::Point2f> leftCorners = {
         {100.0f, 100.0f}
     };
@@ -234,7 +234,7 @@ TEST(Util3dFeatures, generateKeypoints3DStereoOutOfRangeDepthResultsInNaN) {
     EXPECT_TRUE(std::isnan(result[0].x));
 }
 
-TEST(Util3dFeatures, aggregateBasicAggregation) {
+TEST(Util3dFeaturesTest, AggregateBasicAggregation) {
     std::list<int> wordIds = {101, 102, 103};
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(10.0f, 20.0f, 1.0f),
@@ -255,7 +255,7 @@ TEST(Util3dFeatures, aggregateBasicAggregation) {
     EXPECT_FLOAT_EQ(it->second.pt.x, 50.0f);
 }
 
-TEST(Util3dFeatures, aggregateHandlesDuplicateWordIds) {
+TEST(Util3dFeaturesTest, AggregateHandlesDuplicateWordIds) {
     std::list<int> wordIds = {200, 201, 200};
     std::vector<cv::KeyPoint> keypoints = {
         cv::KeyPoint(1.0f, 2.0f, 1.0f),
@@ -277,7 +277,7 @@ TEST(Util3dFeatures, aggregateHandlesDuplicateWordIds) {
     EXPECT_EQ(x_values[1], 5.0f);
 }
 
-TEST(Util3dFeatures, aggregateEmptyInputReturnsEmptyMapOrInvalid) {
+TEST(Util3dFeaturesTest, AggregateEmptyInputReturnsEmptyMapOrInvalid) {
     std::list<int> wordIds;
     std::vector<cv::KeyPoint> keypoints;
 

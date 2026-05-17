@@ -23,7 +23,7 @@ pcl::PointCloud<pcl::PointNormal> createFlatNormalCloud(int count, const cv::Poi
     return cloud;
 }
 
-TEST(Util3dSurface, computeNormalsComplexityVaryingNormals3D)
+TEST(Util3dSurfaceTest, ComputeNormalsComplexityVaryingNormals3D)
 {
     auto floor = createFlatNormalCloud(100, cv::Point3f(0.0f, 0.0f, 1.0f));
     auto wallA = createFlatNormalCloud(100, cv::Point3f(0.0f, 1.0f, 0.0f));
@@ -68,7 +68,7 @@ TEST(Util3dSurface, computeNormalsComplexityVaryingNormals3D)
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 }
 
-TEST(Util3dSurface, computeNormalsComplexityIdentityVsRotated)
+TEST(Util3dSurfaceTest, ComputeNormalsComplexityIdentityVsRotated)
 {
     auto cloud = createFlatNormalCloud(50, cv::Point3f(0.0f, 1.0f, 0.0f));
     Transform identity = Transform::getIdentity();
@@ -80,7 +80,7 @@ TEST(Util3dSurface, computeNormalsComplexityIdentityVsRotated)
     EXPECT_NEAR(c1, c2, 1e-5); // rotation should not affect complexity
 }
 
-TEST(Util3dSurface, computeNormalsComplexityEmptyOrInvalidNormals)
+TEST(Util3dSurfaceTest, ComputeNormalsComplexityEmptyOrInvalidNormals)
 {
     pcl::PointCloud<pcl::PointNormal> cloud;
     pcl::PointNormal pt;
@@ -93,7 +93,7 @@ TEST(Util3dSurface, computeNormalsComplexityEmptyOrInvalidNormals)
     EXPECT_EQ(complexity, 0.0f); // Should return 0 when all normals are invalid
 }
 
-TEST(Util3dSurface, computeNormalsComplexityVaryingNormals2D)
+TEST(Util3dSurfaceTest, ComputeNormalsComplexityVaryingNormals2D)
 {
     auto wallA = createFlatNormalCloud(100, cv::Point3f(0.0f, 1.0f, 0.0f));
     auto negWallA = createFlatNormalCloud(100, cv::Point3f(0.0f, -1.0f, 0.0f));

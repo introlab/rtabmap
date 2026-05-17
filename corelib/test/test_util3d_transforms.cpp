@@ -4,7 +4,7 @@
 
 using namespace rtabmap;
 
-TEST(Util3DTransforms, transformLaserScanBasicXYZTransform)
+TEST(Util3dTransformsTest, TransformLaserScanBasicXYZTransform)
 {
     // Create a simple 3D laser scan with 3 points
     cv::Mat scanData(1, 3, CV_32FC3); // 3D points (X,Y,Z)
@@ -38,7 +38,7 @@ TEST(Util3DTransforms, transformLaserScanBasicXYZTransform)
     }
 }
 
-TEST(Util3DTransforms, transformLaserScanXYZNormalTransform)
+TEST(Util3dTransformsTest, TransformLaserScanXYZNormalTransform)
 {
     // One point: position (1, 0, 0), normal (0, 1, 0)
     cv::Mat scanData(1, 1, CV_32FC(6)); // XYZ + normal_x, normal_y, normal_z
@@ -75,7 +75,7 @@ TEST(Util3DTransforms, transformLaserScanXYZNormalTransform)
     EXPECT_NEAR(out[5],  0.0f, 1e-5); // normal_z
 }
 
-TEST(Util3DTransforms, transformPointCloudXYZ)
+TEST(Util3dTransformsTest, TransformPointCloudXYZ)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointXYZ pt(1.0f, 2.0f, 3.0f);
@@ -103,7 +103,7 @@ TEST(Util3DTransforms, transformPointCloudXYZ)
     EXPECT_FLOAT_EQ(result->at(0).z, 9.0f);
 }
 
-TEST(Util3DTransforms, transformPointCloudXYZI)
+TEST(Util3dTransformsTest, TransformPointCloudXYZI)
 {
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
     pcl::PointXYZI pt;
@@ -128,7 +128,7 @@ TEST(Util3DTransforms, transformPointCloudXYZI)
     EXPECT_FLOAT_EQ(result->at(0).intensity, 52.0f);
 }
 
-TEST(Util3DTransforms, transformPointCloudXYZRGB)
+TEST(Util3dTransformsTest, TransformPointCloudXYZRGB)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointXYZRGB pt;
@@ -157,7 +157,7 @@ TEST(Util3DTransforms, transformPointCloudXYZRGB)
     EXPECT_EQ(result->at(0).b, 55);
 }
 
-TEST(Util3DTransforms, transformPointCloudPointNormal)
+TEST(Util3dTransformsTest, TransformPointCloudPointNormal)
 {
     pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
     pcl::PointNormal pt;
@@ -189,7 +189,7 @@ TEST(Util3DTransforms, transformPointCloudPointNormal)
     EXPECT_NEAR(result->at(0).normal_y, 1.0f, 1e-6);
 }
 
-TEST(Util3DTransforms, transformPointCloudXYZINormal)
+TEST(Util3dTransformsTest, TransformPointCloudXYZINormal)
 {
     pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
     pcl::PointXYZINormal pt;
@@ -216,7 +216,7 @@ TEST(Util3DTransforms, transformPointCloudXYZINormal)
     EXPECT_FLOAT_EQ(result->at(0).intensity, 52.0f);
 }
 
-TEST(Util3DTransforms, transformPointCloudXYZRGBNormal)
+TEST(Util3dTransformsTest, TransformPointCloudXYZRGBNormal)
 {
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     pcl::PointXYZRGBNormal pt;
@@ -248,7 +248,7 @@ TEST(Util3DTransforms, transformPointCloudXYZRGBNormal)
     EXPECT_EQ(result->at(0).b, 55);
 }
 
-TEST(Util3DTransforms, transformCVPointF)
+TEST(Util3dTransformsTest, TransformCVPointF)
 {
     cv::Point3f pt(1.0f, 2.0f, 3.0f);
 
@@ -263,7 +263,7 @@ TEST(Util3DTransforms, transformCVPointF)
     EXPECT_FLOAT_EQ(result.z, 6.0f);
 }
 
-TEST(Util3DTransforms, transformCVPointD)
+TEST(Util3dTransformsTest, TransformCVPointD)
 {
     cv::Point3d pt(1.0f, 2.0f, 3.0f);
 
@@ -278,7 +278,7 @@ TEST(Util3DTransforms, transformCVPointD)
     EXPECT_FLOAT_EQ(result.z, 6.0);
 }
 
-TEST(Util3DTransforms, transformPointXYZ)
+TEST(Util3dTransformsTest, TransformPointXYZ)
 {
     pcl::PointXYZ pt(1.0f, 2.0f, 3.0f);
 
@@ -293,7 +293,7 @@ TEST(Util3DTransforms, transformPointXYZ)
     EXPECT_FLOAT_EQ(result.z, 6.0f);
 }
 
-TEST(Util3DTransforms, transformPointXYZI)
+TEST(Util3dTransformsTest, TransformPointXYZI)
 {
     pcl::PointXYZI pt;
     pt.x = 1; pt.y = 1; pt.z = 1; pt.intensity = 42.0f;
@@ -307,7 +307,7 @@ TEST(Util3DTransforms, transformPointXYZI)
     EXPECT_FLOAT_EQ(result.intensity, 42.0f);
 }
 
-TEST(Util3DTransforms, transformPointXYZRGB)
+TEST(Util3dTransformsTest, TransformPointXYZRGB)
 {
     pcl::PointXYZRGB pt;
     pt.x = 0; pt.y = 0; pt.z = 0;
@@ -323,7 +323,7 @@ TEST(Util3DTransforms, transformPointXYZRGB)
     EXPECT_EQ(result.b, 50);
 }
 
-TEST(Util3DTransforms, transformPointPointNormal)
+TEST(Util3dTransformsTest, TransformPointPointNormal)
 {
     pcl::PointNormal pt;
     pt.x = 1; pt.y = 0; pt.z = 0;
@@ -340,7 +340,7 @@ TEST(Util3DTransforms, transformPointPointNormal)
     EXPECT_NEAR(result.normal_y, 0.0f, 1e-6);
 }
 
-TEST(Util3DTransforms, transformPointXYZINormal)
+TEST(Util3dTransformsTest, TransformPointXYZINormal)
 {
     pcl::PointXYZINormal pt;
     pt.x = 0; pt.y = 1; pt.z = 0; pt.intensity = 42.0f;
@@ -356,7 +356,7 @@ TEST(Util3DTransforms, transformPointXYZINormal)
     EXPECT_NEAR(result.normal_y, 1.0f, 1e-6);
 }
 
-TEST(Util3DTransforms, transformPointXYZRGBNormal)
+TEST(Util3dTransformsTest, TransformPointXYZRGBNormal)
 {
     pcl::PointXYZRGBNormal pt;
     pt.x = 0; pt.y = 1; pt.z = 0;

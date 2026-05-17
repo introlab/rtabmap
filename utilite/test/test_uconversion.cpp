@@ -1,49 +1,49 @@
 #include "gtest/gtest.h"
 #include "rtabmap/utilite/UConversion.h"
 
-TEST(UConversionTest, uReplaceCharChar)
+TEST(UConversionTest, UReplaceCharChar)
 {
     std::string str = "Hello";
     std::string result = uReplaceChar(str, 'l', 'p');
     EXPECT_EQ(result, "Heppo");
 }
 
-TEST(UConversionTest, uReplaceCharString)
+TEST(UConversionTest, UReplaceCharString)
 {
     std::string str = "Hello";
     std::string result = uReplaceChar(str, 'o', "oween");
     EXPECT_EQ(result, "Helloween");
 }
 
-TEST(UConversionTest, uToUpperCase)
+TEST(UConversionTest, UToUpperCase)
 {
     std::string str = "hello!";
     std::string result = uToUpperCase(str);
     EXPECT_EQ(result, "HELLO!");
 }
 
-TEST(UConversionTest, uToLowerCase)
+TEST(UConversionTest, UToLowerCase)
 {
     std::string str = "HELLO!";
     std::string result = uToLowerCase(str);
     EXPECT_EQ(result, "hello!");
 }
 
-TEST(UConversionTest, uNumber2StrUnsignedInt)
+TEST(UConversionTest, UNumber2StrUnsignedInt)
 {
     unsigned int number = 42;
     std::string result = uNumber2Str(number);
     EXPECT_EQ(result, "42");
 }
 
-TEST(UConversionTest, uNumber2StrInt)
+TEST(UConversionTest, UNumber2StrInt)
 {
     int number = -42;
     std::string result = uNumber2Str(number);
     EXPECT_EQ(result, "-42");
 }
 
-TEST(UConversionTest, uNumber2StrFloat)
+TEST(UConversionTest, UNumber2StrFloat)
 {
     float number = 0.14159f;
     std::string result = uNumber2Str(number, 2, false);
@@ -54,7 +54,7 @@ TEST(UConversionTest, uNumber2StrFloat)
     EXPECT_STREQ(result.c_str(), "3.1");
 }
 
-TEST(UConversionTest, uNumber2StrDouble)
+TEST(UConversionTest, UNumber2StrDouble)
 {
     double number = 0.14159;
     std::string result = uNumber2Str(number, 2, false);
@@ -65,49 +65,49 @@ TEST(UConversionTest, uNumber2StrDouble)
     EXPECT_STREQ(result.c_str(), "3.1");
 }
 
-TEST(UConversionTest, uStr2Int)
+TEST(UConversionTest, UStr2Int)
 {
     std::string str = "42";
     int result = uStr2Int(str);
     EXPECT_EQ(result, 42);
 }
 
-TEST(UConversionTest, uStr2IntNegative)
+TEST(UConversionTest, UStr2IntNegative)
 {
     std::string str = "-42";
     int result = uStr2Int(str);
     EXPECT_EQ(result, -42);
 }
 
-TEST(UConversionTest, uStr2Float)
+TEST(UConversionTest, UStr2Float)
 {
     std::string str = "3.14";
     float result = uStr2Float(str);
     EXPECT_NEAR(result, 3.14f, 0.001f);
 }
 
-TEST(UConversionTest, uStr2FloatComma)
+TEST(UConversionTest, UStr2FloatComma)
 {
     std::string str = "3,14";
     float result = uStr2Float(str);
     EXPECT_NEAR(result, 3.14f, 0.001f);
 }
 
-TEST(UConversionTest, uStr2Double)
+TEST(UConversionTest, UStr2Double)
 {
     std::string str = "3.14159";
     double result = uStr2Double(str);
     EXPECT_NEAR(result, 3.14159, 0.00001);
 }
 
-TEST(UConversionTest, uStr2DoubleComma)
+TEST(UConversionTest, UStr2DoubleComma)
 {
     std::string str = "3,14159";
     double result = uStr2Double(str);
     EXPECT_NEAR(result, 3.14159, 0.00001);
 }
 
-TEST(UConversionTest, uBool2Str)
+TEST(UConversionTest, UBool2Str)
 {
     std::string resultTrue = uBool2Str(true);
     std::string resultFalse = uBool2Str(false);
@@ -115,7 +115,7 @@ TEST(UConversionTest, uBool2Str)
     EXPECT_EQ(resultFalse, "false");
 }
 
-TEST(UConversionTest, uStr2Bool)
+TEST(UConversionTest, UStr2Bool)
 {
     EXPECT_TRUE(uStr2Bool("true"));
     EXPECT_TRUE(uStr2Bool("TRUE"));
@@ -127,7 +127,7 @@ TEST(UConversionTest, uStr2Bool)
     EXPECT_TRUE(uStr2Bool("anything"));
 }
 
-TEST(UConversionTest, uStr2Bytes)
+TEST(UConversionTest, UStr2Bytes)
 {
     std::string str = "Hello";
     std::vector<unsigned char> bytes = uStr2Bytes(str);
@@ -137,21 +137,21 @@ TEST(UConversionTest, uStr2Bytes)
     EXPECT_EQ(bytes[5], '\0');
 }
 
-TEST(UConversionTest, uBytes2Str)
+TEST(UConversionTest, UBytes2Str)
 {
     std::vector<unsigned char> bytes = {'H', 'e', 'l', 'l', 'o', '\0'};
     std::string result = uBytes2Str(bytes);
     EXPECT_EQ(result, "Hello");
 }
 
-TEST(UConversionTest, uBytes2Hex)
+TEST(UConversionTest, UBytes2Hex)
 {
     char bytes[] = {0x3F, 0x1A};
     std::string result = uBytes2Hex(bytes, 2);
     EXPECT_EQ(result, "3F1A");
 }
 
-TEST(UConversionTest, uHex2Bytes)
+TEST(UConversionTest, UHex2Bytes)
 {
     std::string hex = "1f3B";
     std::vector<char> bytes = uHex2Bytes(hex);
@@ -160,7 +160,7 @@ TEST(UConversionTest, uHex2Bytes)
     EXPECT_EQ(bytes[1], 0x3B);
 }
 
-TEST(UConversionTest, uHex2BytesWithLength)
+TEST(UConversionTest, UHex2BytesWithLength)
 {
     std::string hex = "1f3B";
     std::vector<char> bytes = uHex2Bytes(hex.c_str(), 4);
@@ -169,14 +169,14 @@ TEST(UConversionTest, uHex2BytesWithLength)
     EXPECT_EQ(bytes[1], 0x3B);
 }
 
-TEST(UConversionTest, uHex2Str)
+TEST(UConversionTest, UHex2Str)
 {
     std::string hex = "48656C6C6F21";
     std::string result = uHex2Str(hex);
     EXPECT_EQ(result, "Hello!");
 }
 
-TEST(UConversionTest, uHex2Ascii)
+TEST(UConversionTest, UHex2Ascii)
 {
     unsigned char c = 0xFA;
     unsigned char left = uHex2Ascii(c, false);
@@ -185,7 +185,7 @@ TEST(UConversionTest, uHex2Ascii)
     EXPECT_EQ(right, 'A');
 }
 
-TEST(UConversionTest, uAscii2Hex)
+TEST(UConversionTest, UAscii2Hex)
 {
     unsigned char result = uAscii2Hex('F');
     EXPECT_EQ(result, 0x0F);
@@ -193,7 +193,7 @@ TEST(UConversionTest, uAscii2Hex)
     EXPECT_EQ(result, 0x0A);
 }
 
-TEST(UConversionTest, uFormat)
+TEST(UConversionTest, UFormat)
 {
     std::string result = uFormat("Hello %s %d", "world", 42);
     EXPECT_NE(result.find("Hello"), std::string::npos);

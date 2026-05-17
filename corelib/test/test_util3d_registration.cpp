@@ -9,7 +9,7 @@
 
 using namespace rtabmap;
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDIdentityTransform)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesSVDIdentityTransform)
 {
     pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
     cloud1.push_back(pcl::PointXYZ(1, 2, 3));
@@ -26,7 +26,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDIdentityTransform)
     EXPECT_LT(result.getAngle(identity), 0.001f);
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDTranslationOnly)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesSVDTranslationOnly)
 {
     pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
     cloud1.push_back(pcl::PointXYZ(0, 0, 0));
@@ -45,7 +45,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDTranslationOnly)
     EXPECT_NEAR(result.z(), 3.0f, 1e-4f);
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDRotationAndTranslation)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesSVDRotationAndTranslation)
 {
     pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
 
@@ -79,7 +79,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDRotationAndTranslatio
     EXPECT_NEAR(result.z(), expected_t.z(), 1e-4f);
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDMismatchedSizes)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesSVDMismatchedSizes)
 {
     pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
     cloud1.push_back(pcl::PointXYZ(0, 0, 0));
@@ -89,7 +89,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesSVDMismatchedSizes)
     EXPECT_THROW(util3d::transformFromXYZCorrespondencesSVD(cloud1, cloud2), UException);
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesIdentityTransform)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesIdentityTransform)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     cloud1->push_back(pcl::PointXYZ(1, 0, 0));
@@ -113,7 +113,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesIdentityTransform)
     EXPECT_EQ(covariance.cols, 6);
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesTranslatedCloud)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesTranslatedCloud)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
@@ -139,7 +139,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesTranslatedCloud)
     EXPECT_EQ(inliers.size(), 10);
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesTooFewPoints)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesTooFewPoints)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
@@ -153,7 +153,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesTooFewPoints)
     EXPECT_TRUE(result.isNull());
 }
 
-TEST(Util3DRegistration, transformFromXYZCorrespondencesMismatchedPointCounts)
+TEST(Util3dRegistrationTest, TransformFromXYZCorrespondencesMismatchedPointCounts)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     auto cloud2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
@@ -170,7 +170,7 @@ TEST(Util3DRegistration, transformFromXYZCorrespondencesMismatchedPointCounts)
     EXPECT_TRUE(result.isNull());
 }
 
-TEST(Util3DRegistration, computeVarianceAndCorrespondencesPerfectMatchNoAngleCheck)
+TEST(Util3dRegistrationTest, ComputeVarianceAndCorrespondencesPerfectMatchNoAngleCheck)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
     auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
@@ -193,7 +193,7 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesPerfectMatchNoAngleChe
     EXPECT_DOUBLE_EQ(variance, 0.0);
 }
 
-TEST(Util3DRegistration, computeVarianceAndCorrespondencesNormalMismatchFilteredByAngle)
+TEST(Util3dRegistrationTest, ComputeVarianceAndCorrespondencesNormalMismatchFilteredByAngle)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
     auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
@@ -220,7 +220,7 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesNormalMismatchFiltered
     EXPECT_DOUBLE_EQ(variance, 1.0); // untouched default value
 }
 
-TEST(Util3DRegistration, computeVarianceAndCorrespondencesAnglePassWithLargeThreshold)
+TEST(Util3dRegistrationTest, ComputeVarianceAndCorrespondencesAnglePassWithLargeThreshold)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
     auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
@@ -247,7 +247,7 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesAnglePassWithLargeThre
     EXPECT_GE(variance, 0.0);
 }
 
-TEST(Util3DRegistration, computeVarianceAndCorrespondencesNoCorrespondencesDueToDistance)
+TEST(Util3dRegistrationTest, ComputeVarianceAndCorrespondencesNoCorrespondencesDueToDistance)
 {
     auto cloud1 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
     auto cloud2 = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
@@ -279,7 +279,7 @@ TEST(Util3DRegistration, computeVarianceAndCorrespondencesNoCorrespondencesDueTo
     EXPECT_DOUBLE_EQ(variance, 1.0); // default untouched
 }
 
-TEST(Util3DRegistration, icpIdentityTransformConverges)
+TEST(Util3dRegistrationTest, IcpIdentityTransformConverges)
 {
     auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float i = 0; i < 5; ++i)
@@ -308,7 +308,7 @@ TEST(Util3DRegistration, icpIdentityTransformConverges)
     EXPECT_TRUE(result.toEigen4f().isApprox(identity, 1e-4));
 }
 
-TEST(Util3DRegistration, icpTranslatedTransformConverges)
+TEST(Util3dRegistrationTest, IcpTranslatedTransformConverges)
 {
     auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (float i = 0; i < 5; ++i)
@@ -339,7 +339,7 @@ TEST(Util3DRegistration, icpTranslatedTransformConverges)
     EXPECT_TRUE(estimated.isApprox(expected, 1e-2));
 }
 
-TEST(Util3DRegistration, icp2DAlignsFlatClouds)
+TEST(Util3dRegistrationTest, Icp2DAlignsFlatClouds)
 {
     pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
     auto cloud_source = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
@@ -374,7 +374,7 @@ TEST(Util3DRegistration, icp2DAlignsFlatClouds)
     EXPECT_TRUE(estimated.isApprox(expected, 1e-4));
 }
 
-TEST(Util3DRegistration, icpPointToPlaneAlignsTranslatedPlane)
+TEST(Util3dRegistrationTest, IcpPointToPlaneAlignsTranslatedPlane)
 {
     // Create a plane point cloud
     auto cloud_source_raw = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());

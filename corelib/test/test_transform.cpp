@@ -12,14 +12,14 @@ static bool approxEqual(float a, float b, float epsilon = 1e-5f)
 
 // ---------- TEST CASES ----------
 
-TEST(TransformTests, DefaultConstructor)
+TEST(TransformTest, DefaultConstructor)
 {
     Transform t;
     EXPECT_TRUE(t.isNull());
     EXPECT_FALSE(t.isIdentity());
 }
 
-TEST(TransformTests, Identity)
+TEST(TransformTest, Identity)
 {
     Transform t = Transform::getIdentity();
     EXPECT_TRUE(t.isIdentity());
@@ -30,7 +30,7 @@ TEST(TransformTests, Identity)
     EXPECT_TRUE(result.isIdentity());
 }
 
-TEST(TransformTests, EqualityOperators)
+TEST(TransformTest, EqualityOperators)
 {
     Transform t1 = Transform::getIdentity();
     Transform t2 = Transform::getIdentity();
@@ -43,7 +43,7 @@ TEST(TransformTests, EqualityOperators)
     EXPECT_TRUE(t1 != t2);
 }
 
-TEST(TransformTests, TranslationConstructor)
+TEST(TransformTest, TranslationConstructor)
 {
     Transform t(1.0f, 2.0f, 3.0f, 0, 0, 0);
     EXPECT_TRUE(approxEqual(t.x(), 1.0f));
@@ -51,7 +51,7 @@ TEST(TransformTests, TranslationConstructor)
     EXPECT_TRUE(approxEqual(t.z(), 3.0f));
 }
 
-TEST(TransformTests, MatrixConstructor)
+TEST(TransformTest, MatrixConstructor)
 {
     cv::Mat mat = (cv::Mat_<float>(3, 4) <<
         1, 0, 0, 1,
@@ -63,7 +63,7 @@ TEST(TransformTests, MatrixConstructor)
     EXPECT_TRUE(approxEqual(t.z(), 3.0f));
 }
 
-TEST(TransformTests, Inverse)
+TEST(TransformTest, Inverse)
 {
     Transform t(1, 0, 0, 1,
                 0, 1, 0, 2,
@@ -73,7 +73,7 @@ TEST(TransformTests, Inverse)
     EXPECT_TRUE(id.isIdentity());
 }
 
-TEST(TransformTests, Interpolation)
+TEST(TransformTest, Interpolation)
 {
     Transform t1(0, 0, 0, 0, 0, 0);
     Transform t2(0, 0, 1, 0, 0, 0);
@@ -81,7 +81,7 @@ TEST(TransformTests, Interpolation)
     EXPECT_TRUE(approxEqual(mid.z(), 0.5f));
 }
 
-TEST(TransformTests, NormAndDistance)
+TEST(TransformTest, NormAndDistance)
 {
     Transform t1(0, 0, 0, 0, 0, 0);
     Transform t2(1, 2, 2, 0, 0, 0);
@@ -91,7 +91,7 @@ TEST(TransformTests, NormAndDistance)
     EXPECT_TRUE(approxEqual(t1.getDistanceSquared(t2), 9.0f));
 }
 
-TEST(TransformTests, EulerAndQuaternionConversion)
+TEST(TransformTest, EulerAndQuaternionConversion)
 {
     Transform t(1, 2, 3, 0.1f, 0.2f, 0.3f);
     float roll, pitch, yaw;
@@ -107,14 +107,14 @@ TEST(TransformTests, EulerAndQuaternionConversion)
     EXPECT_TRUE(std::isfinite(q.w()));
 }
 
-TEST(TransformTests, StringConversion)
+TEST(TransformTest, StringConversion)
 {
     Transform original(1.0f, 2.0f, 3.0f, 0.1f, 0.2f, 0.3f);
     Transform parsed = Transform::fromString("1.0 2.0 3.0 0.1 0.2 0.3");
     EXPECT_TRUE(original.getDistance(parsed) < 1e-4f);
 }
 
-TEST(TransformTests, DoFConversion)
+TEST(TransformTest, DoFConversion)
 {
     // 6DoF transform
     Transform t6(1, 2, 3, 0.1f, 0.2f, 0.3f);
@@ -135,7 +135,7 @@ TEST(TransformTests, DoFConversion)
     EXPECT_TRUE(approxEqual(t4dof.r33(), 1.0f));
 }
 
-TEST(TransformTests, OpenGLToRTABMap)
+TEST(TransformTest, OpenGLToRTABMap)
 {
     // Multiplying should return identity
     Transform result = Transform::opengl_T_rtabmap() * Transform::rtabmap_T_opengl();
@@ -152,7 +152,7 @@ TEST(TransformTests, OpenGLToRTABMap)
     EXPECT_NEAR((Transform::opengl_T_rtabmap() * Transform(0,0,1,0,0,0)).y(),  1, 1e-5);
 }
 
-TEST(TransformTests, EigenConversions)
+TEST(TransformTest, EigenConversions)
 {
     Transform t(1.0f, 2.0f, 3.0f, 0.1f, 0.2f, 0.3f);
 
@@ -184,7 +184,7 @@ TEST(TransformTests, EigenConversions)
     EXPECT_NEAR(qd.norm(), 1.0, 1e-5);
 }
 
-TEST(TransformTests, GetTransformFromBuffer)
+TEST(TransformTest, GetTransformFromBuffer)
 {
     std::map<double, Transform> tfBuffer;
 

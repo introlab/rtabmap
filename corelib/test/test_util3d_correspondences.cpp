@@ -8,7 +8,7 @@
 
 using namespace rtabmap;
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesValidOneToOneMatch) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesValidOneToOneMatch) {
     std::multimap<int, pcl::PointXYZ> words1 = {
         {1, pcl::PointXYZ(1, 2, 3)},
         {2, pcl::PointXYZ(4, 5, 6)}
@@ -27,7 +27,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesValidOneToOneMatch) {
     EXPECT_EQ(cloud2.points[1].z, 6.1f);
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesDuplicateKeysIgnored) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesDuplicateKeysIgnored) {
     std::multimap<int, pcl::PointXYZ> words1 = {
         {1, pcl::PointXYZ(0, 0, 0)},
         {1, pcl::PointXYZ(1, 1, 1)}, // duplicate
@@ -47,7 +47,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesDuplicateKeysIgnored) {
     EXPECT_EQ(cloud2[0].z, 2.1f);
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesInvalidPointsIgnored) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesInvalidPointsIgnored) {
     pcl::PointXYZ nanPt(std::numeric_limits<float>::quiet_NaN(), 0, 0);
     std::multimap<int, pcl::PointXYZ> words1 = {
         {1, pcl::PointXYZ(1, 2, 3)},
@@ -67,7 +67,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesInvalidPointsIgnored) {
     EXPECT_EQ(cloud2[0].y, 2.5f);
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesNoCommonIDs) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesNoCommonIDs) {
     std::multimap<int, pcl::PointXYZ> words1 = {
         {10, pcl::PointXYZ(1, 2, 3)}
     };
@@ -82,7 +82,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesNoCommonIDs) {
     EXPECT_TRUE(cloud2.empty());
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesRANSACAcceptsCleanMatches) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRANSACAcceptsCleanMatches) {
 	std::multimap<int, pcl::PointXYZ> words1;
 	std::multimap<int, pcl::PointXYZ> words2;
 
@@ -99,7 +99,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesRANSACAcceptsCleanMatches) 
 	EXPECT_GE(cloud1.size(), 8); // At least 8 inliers from 10 consistent matches
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesRANSACRejectsOutliers) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRANSACRejectsOutliers) {
 	std::multimap<int, pcl::PointXYZ> words1;
 	std::multimap<int, pcl::PointXYZ> words2;
 
@@ -122,7 +122,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesRANSACRejectsOutliers) {
 	EXPECT_EQ(cloud1.size(), 8);  // RANSAC should reject 2 outliers
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesRANSACFailsGracefullyOnTooFewMatches) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRANSACFailsGracefullyOnTooFewMatches) {
 	std::multimap<int, pcl::PointXYZ> words1 = {
 		{1, pcl::PointXYZ(0, 0, 0)},
 		{2, pcl::PointXYZ(1, 1, 1)},
@@ -142,7 +142,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesRANSACFailsGracefullyOnTooF
 	EXPECT_TRUE(cloud2.empty());
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesValidCorrespondencesAreExtracted) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesValidCorrespondencesAreExtracted) {
     // Create simple 5x5 depth images with valid depth
     cv::Mat depth1 = cv::Mat::ones(5, 5, CV_32FC1) * 1.0f;
     cv::Mat depth2 = cv::Mat::ones(5, 5, CV_32FC1) * 1.5f;
@@ -166,7 +166,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesValidCorrespondencesAreExtr
     EXPECT_FLOAT_EQ(cloud2[0].z, 1.5f);
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesFiltersInvalidDepth) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesFiltersInvalidDepth) {
     cv::Mat depth1 = cv::Mat::ones(5, 5, CV_32FC1) * 1.0f;
     cv::Mat depth2 = cv::Mat::ones(5, 5, CV_32FC1) * 1.5f;
     depth1.at<float>(2, 2) = 0.0f;  // Invalid
@@ -189,7 +189,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesFiltersInvalidDepth) {
     EXPECT_FLOAT_EQ(cloud2[0].z, 1.5f);
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesRespectsMaxDepthConstraint) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRespectsMaxDepthConstraint) {
     cv::Mat depth1 = cv::Mat::ones(5, 5, CV_32FC1) * 3.0f;  // Exceeds maxDepth
     cv::Mat depth2 = cv::Mat::ones(5, 5, CV_32FC1) * 1.0f;
 
@@ -207,7 +207,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesRespectsMaxDepthConstraint)
     EXPECT_TRUE(cloud2.empty());
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesOrgCloudsValidCorrespondencesAreExtracted) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesOrgCloudsValidCorrespondencesAreExtracted) {
     int width = 5, height = 5;
 
     // Create two organized point clouds
@@ -251,7 +251,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesOrgCloudsValidCorrespondenc
     EXPECT_FLOAT_EQ(inliers2[0].z, 1.5f);
 }
 
-TEST(Util3dCorrespondences, extractXYZCorrespondencesOrgCloudsInvalidPointsAreFilteredOut) {
+TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesOrgCloudsInvalidPointsAreFilteredOut) {
     int width = 3, height = 3;
 
     pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
@@ -292,7 +292,7 @@ TEST(Util3dCorrespondences, extractXYZCorrespondencesOrgCloudsInvalidPointsAreFi
     EXPECT_FLOAT_EQ(inliers2[0].x, 2.0f);
 }
 
-TEST(Util3dCorrespondences, countUniquePairsNoPairs) {
+TEST(Util3dCorrespondencesTest, CountUniquePairsNoPairs) {
     std::multimap<int, pcl::PointXYZ> wordsA, wordsB;
 
     wordsA.insert({1, pcl::PointXYZ(1, 2, 3)});
@@ -301,7 +301,7 @@ TEST(Util3dCorrespondences, countUniquePairsNoPairs) {
     EXPECT_EQ(util3d::countUniquePairs(wordsA, wordsB), 0);
 }
 
-TEST(Util3dCorrespondences, countUniquePairsOneUniquePair) {
+TEST(Util3dCorrespondencesTest, CountUniquePairsOneUniquePair) {
     std::multimap<int, pcl::PointXYZ> wordsA, wordsB;
 
     wordsA.insert({1, pcl::PointXYZ(1, 1, 1)});
@@ -310,7 +310,7 @@ TEST(Util3dCorrespondences, countUniquePairsOneUniquePair) {
     EXPECT_EQ(util3d::countUniquePairs(wordsA, wordsB), 1);
 }
 
-TEST(Util3dCorrespondences, countUniquePairsMultipleUniquePairs) {
+TEST(Util3dCorrespondencesTest, CountUniquePairsMultipleUniquePairs) {
     std::multimap<int, pcl::PointXYZ> wordsA, wordsB;
 
     wordsA.insert({1, pcl::PointXYZ(1, 1, 1)});
@@ -324,7 +324,7 @@ TEST(Util3dCorrespondences, countUniquePairsMultipleUniquePairs) {
     EXPECT_EQ(util3d::countUniquePairs(wordsA, wordsB), 3);
 }
 
-TEST(Util3dCorrespondences, countUniquePairsDuplicatedPointsNotCounted) {
+TEST(Util3dCorrespondencesTest, CountUniquePairsDuplicatedPointsNotCounted) {
     std::multimap<int, pcl::PointXYZ> wordsA, wordsB;
 
     wordsA.insert({1, pcl::PointXYZ(1, 1, 1)});
@@ -343,7 +343,7 @@ TEST(Util3dCorrespondences, countUniquePairsDuplicatedPointsNotCounted) {
     EXPECT_EQ(util3d::countUniquePairs(wordsA, wordsB), 0);
 }
 
-TEST(Util3dCorrespondences, filterMaxDepthFiltersByMaxDepthZ) {
+TEST(Util3dCorrespondencesTest, FilterMaxDepthFiltersByMaxDepthZ) {
     pcl::PointCloud<pcl::PointXYZ> cloud1;
     pcl::PointCloud<pcl::PointXYZ> cloud2;
 
@@ -366,7 +366,7 @@ TEST(Util3dCorrespondences, filterMaxDepthFiltersByMaxDepthZ) {
     }
 }
 
-TEST(Util3dCorrespondences, filterMaxDepthRemovesDuplicates) {
+TEST(Util3dCorrespondencesTest, FilterMaxDepthRemovesDuplicates) {
     pcl::PointCloud<pcl::PointXYZ> cloud1;
     pcl::PointCloud<pcl::PointXYZ> cloud2;
 
@@ -394,7 +394,7 @@ TEST(Util3dCorrespondences, filterMaxDepthRemovesDuplicates) {
     EXPECT_EQ(countPoint, 1);
 }
 
-TEST(Util3dCorrespondences, findCorrespondencesBasicMatching)
+TEST(Util3dCorrespondencesTest, FindCorrespondencesBasicMatching)
 {
     std::multimap<int, cv::KeyPoint> wordsA, wordsB;
     std::list<std::pair<cv::Point2f, cv::Point2f>> pairs;
@@ -417,7 +417,7 @@ TEST(Util3dCorrespondences, findCorrespondencesBasicMatching)
     EXPECT_EQ(pairs.front().second, cv::Point2f(20.5f, 20.5f));
 }
 
-TEST(Util3dCorrespondences, findCorrespondencesMatchesWithDepthCheck)
+TEST(Util3dCorrespondencesTest, FindCorrespondencesMatchesWithDepthCheck)
 {
     std::multimap<int, cv::Point3f> words1, words2;
     std::vector<cv::Point3f> inliers1, inliers2;
@@ -444,7 +444,7 @@ TEST(Util3dCorrespondences, findCorrespondencesMatchesWithDepthCheck)
     EXPECT_EQ(correspondences[1], 2);
 }
 
-TEST(Util3dCorrespondences, findCorrespondencesMatchesWithMaxDepth)
+TEST(Util3dCorrespondencesTest, FindCorrespondencesMatchesWithMaxDepth)
 {
     std::map<int, cv::Point3f> words1, words2;
     std::vector<cv::Point3f> inliers1, inliers2;

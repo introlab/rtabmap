@@ -6,11 +6,11 @@
 
 using namespace rtabmap;
 
-TEST(Util3dFiltering, commonFilteringEmpty) {
+TEST(Util3dFilteringTest, CommonFilteringEmpty) {
     ASSERT_TRUE(util3d::commonFiltering(LaserScan(), 1).isEmpty()); 
 }
 
-TEST(Util3dFiltering, commonFilteringDownsample) {
+TEST(Util3dFilteringTest, CommonFilteringDownsample) {
     for(int i=0; i<6; ++i)
     {
         // Dense
@@ -49,7 +49,7 @@ TEST(Util3dFiltering, commonFilteringDownsample) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringRange) {
+TEST(Util3dFilteringTest, CommonFilteringRange) {
     cv::Mat data = cv::Mat::zeros(1, 5, CV_32FC3);
     for(int i=0; i<(int)data.total(); ++i)
     {
@@ -65,7 +65,7 @@ TEST(Util3dFiltering, commonFilteringRange) {
     ASSERT_EQ(util3d::commonFiltering(scan, 1, 2.5f, 0.5f).size(), 0);
 }
 
-TEST(Util3dFiltering, commonFilteringVoxel) {
+TEST(Util3dFilteringTest, CommonFilteringVoxel) {
     cv::Mat data = cv::Mat::zeros(1, 5, CV_32FC3);
     data.at<cv::Vec3f>(0, 0)[0] = 0.1;
     data.at<cv::Vec3f>(0, 1)[0] = 0.11;
@@ -78,7 +78,7 @@ TEST(Util3dFiltering, commonFilteringVoxel) {
     ASSERT_EQ(util3d::commonFiltering(scan, 1, 0.0f, 0.0f, 1).size(), 2);
 }
 
-TEST(Util3dFiltering, commonFilteringNormal) {
+TEST(Util3dFilteringTest, CommonFilteringNormal) {
     cv::Mat data = cv::Mat::zeros(1, 100, CV_32FC3);
     // make points all on same plane (0,1,0);
     for(int i=0; i<10; ++i) {
@@ -109,7 +109,7 @@ TEST(Util3dFiltering, commonFilteringNormal) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringNormalRGB) {
+TEST(Util3dFilteringTest, CommonFilteringNormalRGB) {
     cv::Mat data = cv::Mat::zeros(1, 100, CV_32FC4);
     // make points all on same plane (0,1,0);
     for(int i=0; i<10; ++i) {
@@ -145,7 +145,7 @@ TEST(Util3dFiltering, commonFilteringNormalRGB) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringNormalI) {
+TEST(Util3dFilteringTest, CommonFilteringNormalI) {
     cv::Mat data = cv::Mat::zeros(1, 100, CV_32FC4);
     // make points all on same plane (0,1,0);
     for(int i=0; i<10; ++i) {
@@ -181,7 +181,7 @@ TEST(Util3dFiltering, commonFilteringNormalI) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringNormalVoxel) {
+TEST(Util3dFilteringTest, CommonFilteringNormalVoxel) {
     cv::Mat data = cv::Mat::zeros(1, 100, CV_32FC(6));
     // make points all on same plane (0,1,0);
     for(int i=0; i<10; ++i) {
@@ -242,7 +242,7 @@ TEST(Util3dFiltering, commonFilteringNormalVoxel) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringNormalVoxelRGB) {
+TEST(Util3dFilteringTest, CommonFilteringNormalVoxelRGB) {
     cv::Mat data = cv::Mat::zeros(1, 100, CV_32FC(7));
     // make points all on same plane (0,1,0);
     for(int i=0; i<10; ++i) {
@@ -313,7 +313,7 @@ TEST(Util3dFiltering, commonFilteringNormalVoxelRGB) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringNormalVoxelI) {
+TEST(Util3dFilteringTest, CommonFilteringNormalVoxelI) {
     cv::Mat data = cv::Mat::zeros(1, 100, CV_32FC(7));
     // make points all on same plane (0,1,0);
     for(int i=0; i<10; ++i) {
@@ -384,7 +384,7 @@ TEST(Util3dFiltering, commonFilteringNormalVoxelI) {
     }
 }
 
-TEST(Util3dFiltering, commonFilteringGroundNormalsUp) {
+TEST(Util3dFilteringTest, CommonFilteringGroundNormalsUp) {
     cv::Mat data = cv::Mat::zeros(1, 6, CV_32FC(6));
     data.at<cv::Vec6f>(0,0)[5] = 1; // nz
     
@@ -419,14 +419,14 @@ TEST(Util3dFiltering, commonFilteringGroundNormalsUp) {
     EXPECT_FLOAT_EQ(result.field(5, nz), -sin(M_PI/4));
 }
 
-TEST(Util3dFiltering, rangeFilteringNoFilteringAppliedWhenEmpty)
+TEST(Util3dFilteringTest, RangeFilteringNoFilteringAppliedWhenEmpty)
 {
     LaserScan emptyScan; // Assuming default constructor gives empty scan
     LaserScan result = util3d::rangeFiltering(emptyScan, 1.0f, 5.0f);
     EXPECT_TRUE(result.isEmpty());
 }
 
-TEST(Util3dFiltering, rangeFilteringNoFilteringWhenMinMaxZero)
+TEST(Util3dFilteringTest, RangeFilteringNoFilteringWhenMinMaxZero)
 {
     // Simulate a simple 2D scan with 3 points: (1,0), (3,0), (6,0)
     cv::Mat data = (cv::Mat_<float>(1, 3*2) << 1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f);
@@ -441,7 +441,7 @@ TEST(Util3dFiltering, rangeFilteringNoFilteringWhenMinMaxZero)
     EXPECT_EQ(result.data().at<cv::Vec2f>(0,2), scan.data().at<cv::Vec2f>(0,2));
 }
 
-TEST(Util3dFiltering, rangeFilteringFilteringRemovesOutOfRangePoints)
+TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
 {
     // 2D points: (1,0) [1m], (3,0) [3m], (6,0) [6m]
     cv::Mat data = (cv::Mat_<float>(1, 3*2) << 1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f);
@@ -467,7 +467,7 @@ TEST(Util3dFiltering, rangeFilteringFilteringRemovesOutOfRangePoints)
     EXPECT_FLOAT_EQ(result.data().at<cv::Vec3f>(0)[2], 3.0f); // z
 }
 
-TEST(Util3dFiltering, rangeFilteringFilteringWithOnlyMinOrMax)
+TEST(Util3dFilteringTest, RangeFilteringFilteringWithOnlyMinOrMax)
 {
     // 2D points: (1,0) [1m], (4,0) [4m]
     cv::Mat data = (cv::Mat_<float>(1, 2*2) << 1.0f, 0.0f, 4.0f, 0.0f);
@@ -486,7 +486,7 @@ TEST(Util3dFiltering, rangeFilteringFilteringWithOnlyMinOrMax)
     EXPECT_FLOAT_EQ(resultMax.data().at<float>(0, 0), 1.0f);
 }
 
-TEST(Util3dFiltering, rangeFilteringPointXYZ) {
+TEST(Util3dFilteringTest, RangeFilteringPointXYZ) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(1, 0, 0));   // Distance: 1
     cloud->push_back(pcl::PointXYZ(3, 0, 0));   // Distance: 3
@@ -499,7 +499,7 @@ TEST(Util3dFiltering, rangeFilteringPointXYZ) {
     EXPECT_EQ(filtered->at(0), 1); // Only point at index 1 is within range
 }
 
-TEST(Util3dFiltering, rangeFilteringPointXYZRGB) {
+TEST(Util3dFilteringTest, RangeFilteringPointXYZRGB) {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     cloud->push_back(pcl::PointXYZRGB()); cloud->back().x = 2; cloud->back().y = 0; cloud->back().z = 0; // Distance: 2
     cloud->push_back(pcl::PointXYZRGB()); cloud->back().x = 4; cloud->back().y = 0; cloud->back().z = 0; // Distance: 4
@@ -513,7 +513,7 @@ TEST(Util3dFiltering, rangeFilteringPointXYZRGB) {
     EXPECT_EQ(filtered->at(0), 0);
 }
 
-TEST(Util3dFiltering, rangeFilteringPointNormal) {
+TEST(Util3dFilteringTest, RangeFilteringPointNormal) {
     pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
     cloud->push_back(pcl::PointNormal()); cloud->back().x = 1.0f; // Distance: 1
     cloud->push_back(pcl::PointNormal()); cloud->back().x = 10.0f; // Distance: 10
@@ -524,7 +524,7 @@ TEST(Util3dFiltering, rangeFilteringPointNormal) {
     EXPECT_EQ(filtered->at(0), 0);
 }
 
-TEST(Util3dFiltering, rangeFilteringPointXYZRGBNormal) {
+TEST(Util3dFilteringTest, RangeFilteringPointXYZRGBNormal) {
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     pcl::PointXYZRGBNormal pt1; pt1.x = 0.5f; pt1.y = 0; pt1.z = 0;  // Distance: 0.5
     pcl::PointXYZRGBNormal pt2; pt2.x = 2.5f; pt2.y = 0; pt2.z = 0;  // Distance: 2.5
@@ -537,7 +537,7 @@ TEST(Util3dFiltering, rangeFilteringPointXYZRGBNormal) {
     EXPECT_EQ(filtered->at(0), 1);
 }
 
-TEST(Util3dFiltering, rangeSplitFilteringPointXYZ)
+TEST(Util3dFilteringTest, RangeSplitFilteringPointXYZ)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(1, 0, 0)); // dist = 1
@@ -566,7 +566,7 @@ TEST(Util3dFiltering, rangeSplitFilteringPointXYZ)
     EXPECT_EQ(farIndices->at(0), 1);
 }
 
-TEST(Util3dFiltering, rangeSplitFilteringPointXYZRGB)
+TEST(Util3dFilteringTest, RangeSplitFilteringPointXYZRGB)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointXYZRGB pt1, pt2;
@@ -594,7 +594,7 @@ TEST(Util3dFiltering, rangeSplitFilteringPointXYZRGB)
     EXPECT_EQ(farIndices->at(0), 1);
 }
 
-TEST(Util3dFiltering, rangeSplitFilteringPointNormal)
+TEST(Util3dFilteringTest, RangeSplitFilteringPointNormal)
 {
     auto cloud = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>);
     pcl::PointNormal pt1, pt2;
@@ -622,7 +622,7 @@ TEST(Util3dFiltering, rangeSplitFilteringPointNormal)
     EXPECT_EQ(farIndices->at(0), 1);
 }
 
-TEST(Util3dFiltering, rangeSplitFilteringPointXYZRGBNormal)
+TEST(Util3dFilteringTest, RangeSplitFilteringPointXYZRGBNormal)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     pcl::PointXYZRGBNormal pt1, pt2;
@@ -650,7 +650,7 @@ TEST(Util3dFiltering, rangeSplitFilteringPointXYZRGBNormal)
     EXPECT_EQ(farIndices->at(0), 1);
 }
 
-TEST(Util3dFiltering, downsampleImplUnorganizedCloud) {
+TEST(Util3dFilteringTest, DownsampleImplUnorganizedCloud) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
     // Create 10 points along X axis
@@ -685,7 +685,7 @@ TEST(Util3dFiltering, downsampleImplUnorganizedCloud) {
     }
 }
 
-TEST(Util3dFiltering, downsampleImplStepLargerThanCloudSize) {
+TEST(Util3dFilteringTest, DownsampleImplStepLargerThanCloudSize) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     for (int i = 0; i < 5; ++i)
         cloud->push_back(pcl::PointXYZ(float(i), 0, 0));
@@ -709,7 +709,7 @@ TEST(Util3dFiltering, downsampleImplStepLargerThanCloudSize) {
     }
 }
 
-TEST(Util3dFiltering, downsampleImplStepOne) {
+TEST(Util3dFilteringTest, DownsampleImplStepOne) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(1, 2, 3));
     auto result = util3d::downsample(cloud, 1);
@@ -731,7 +731,7 @@ TEST(Util3dFiltering, downsampleImplStepOne) {
     }
 }
 
-TEST(Util3dFiltering, downsampleImplOrganizedDepthImage) {
+TEST(Util3dFilteringTest, DownsampleImplOrganizedDepthImage) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->width = 4;
     cloud->height = 4;
@@ -781,7 +781,7 @@ TEST(Util3dFiltering, downsampleImplOrganizedDepthImage) {
     }
 }
 
-TEST(Util3dFiltering, downsampleImplInvalidStep) {
+TEST(Util3dFilteringTest, DownsampleImplInvalidStep) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0, 0, 0));
     EXPECT_THROW(util3d::downsample(cloud, 0), UException);
@@ -800,7 +800,7 @@ TEST(Util3dFiltering, downsampleImplInvalidStep) {
     EXPECT_THROW(util3d::downsample(LaserScan(), 0), UException);
 }
 
-TEST(Util3dFiltering, downsampleImplLiDARStyleRingsInRows) {
+TEST(Util3dFilteringTest, DownsampleImplLiDARStyleRingsInRows) {
     const int width = 8;
     const int height = 2; // 2 rings, 8 points per ring
     const int step = 2;
@@ -864,7 +864,7 @@ TEST(Util3dFiltering, downsampleImplLiDARStyleRingsInRows) {
     }
 }
 
-TEST(Util3dFiltering, downsampleImplLiDARStyleRingsInColumns) {
+TEST(Util3dFilteringTest, DownsampleImplLiDARStyleRingsInColumns) {
     const int width = 2;  // 2 columns = 2 rings
     const int height = 8; // 8 points per ring
     const int step = 2;
@@ -928,7 +928,7 @@ TEST(Util3dFiltering, downsampleImplLiDARStyleRingsInColumns) {
     }
 }
 
-TEST(Util3dFiltering, voxelizeFullCloud) {
+TEST(Util3dFilteringTest, VoxelizeFullCloud) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 
     // Create a 3D grid of points (e.g., 10x10x1)
@@ -944,7 +944,7 @@ TEST(Util3dFiltering, voxelizeFullCloud) {
     EXPECT_EQ(result->size(), 25);
 }
 
-TEST(Util3dFiltering, voxelizeWithIndices) {
+TEST(Util3dFilteringTest, VoxelizeWithIndices) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::IndicesPtr indices(new std::vector<int>);
 
@@ -962,7 +962,7 @@ TEST(Util3dFiltering, voxelizeWithIndices) {
     EXPECT_EQ(result->size(), 25);
 }
 
-TEST(Util3dFiltering, voxelizeSmallCloud) {
+TEST(Util3dFilteringTest, VoxelizeSmallCloud) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     for (int i = 0; i < 3; ++i) {
         cloud->push_back(pcl::PointXYZ(float(i), 0, 0));
@@ -974,7 +974,7 @@ TEST(Util3dFiltering, voxelizeSmallCloud) {
     EXPECT_EQ(result->size(), cloud->size());
 }
 
-TEST(Util3dFiltering, voxelizeEmptyInput) {
+TEST(Util3dFilteringTest, VoxelizeEmptyInput) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     float voxelSize = 1.0f;
 
@@ -986,7 +986,7 @@ TEST(Util3dFiltering, voxelizeEmptyInput) {
     EXPECT_TRUE(result2->empty());
 }
 
-TEST(Util3dFiltering, voxelizeInvalidVoxelSize) {
+TEST(Util3dFilteringTest, VoxelizeInvalidVoxelSize) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
     cloud->push_back(pcl::PointXYZ(0, 0, 0));
     pcl::IndicesPtr indices(new std::vector<int>{0});
@@ -1010,7 +1010,7 @@ TEST(Util3dFiltering, voxelizeInvalidVoxelSize) {
     EXPECT_THROW(util3d::voxelize(pcl::PointCloud<pcl::PointXYZINormal>::Ptr(new pcl::PointCloud<pcl::PointXYZINormal>()), indices, 0.0f), UException);
 }
 
-TEST(Util3dFiltering, randomSamplingSamplesCorrectNumberOfPoints)
+TEST(Util3dFilteringTest, RandomSamplingSamplesCorrectNumberOfPoints)
 {
     constexpr int total_points = 100;
     constexpr int sample_size = 10;
@@ -1042,14 +1042,14 @@ TEST(Util3dFiltering, randomSamplingSamplesCorrectNumberOfPoints)
     }
 }
 
-TEST(Util3dFiltering, randomSamplingThrowsAssertionForInvalidSampleSize)
+TEST(Util3dFilteringTest, RandomSamplingThrowsAssertionForInvalidSampleSize)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
     input_cloud->push_back(pcl::PointXYZ(1.0f, 2.0f, 3.0f));
     EXPECT_THROW(util3d::randomSampling(input_cloud, 0), UException);
 }
 
-TEST(Util3dFiltering, passThroughFiltersCorrectZRange)
+TEST(Util3dFilteringTest, PassThroughFiltersCorrectZRange)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1077,7 +1077,7 @@ TEST(Util3dFiltering, passThroughFiltersCorrectZRange)
     }
 }
 
-TEST(Util3dFiltering, passThroughFiltersOutsideZRangeWithNegative)
+TEST(Util3dFilteringTest, PassThroughFiltersOutsideZRangeWithNegative)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1099,7 +1099,7 @@ TEST(Util3dFiltering, passThroughFiltersOutsideZRangeWithNegative)
     }
 }
 
-TEST(Util3dFiltering, passThroughFiltersWithIndicesSubset)
+TEST(Util3dFilteringTest, PassThroughFiltersWithIndicesSubset)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1125,7 +1125,7 @@ TEST(Util3dFiltering, passThroughFiltersWithIndicesSubset)
     }
 }
 
-TEST(Util3dFiltering, passThroughInvalidAxisTriggersAssertion)
+TEST(Util3dFilteringTest, PassThroughInvalidAxisTriggersAssertion)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0.0f, 0.0f, 1.0f));
@@ -1134,7 +1134,7 @@ TEST(Util3dFiltering, passThroughInvalidAxisTriggersAssertion)
     EXPECT_THROW(util3d::passThrough(cloud, indices, "invalid_axis", 0.0f, 1.0f, false), UException);
 }
 
-TEST(Util3dFiltering, passThroughInvalidRangeTriggersAssertion)
+TEST(Util3dFilteringTest, PassThroughInvalidRangeTriggersAssertion)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0.0f, 0.0f, 1.0f));
@@ -1143,7 +1143,7 @@ TEST(Util3dFiltering, passThroughInvalidRangeTriggersAssertion)
     EXPECT_THROW(util3d::passThrough(cloud, indices, "z", 5.0f, 2.0f, false), UException);
 }
 
-TEST(Util3dFiltering, cropBoxIncludesPointsInBox)
+TEST(Util3dFilteringTest, CropBoxIncludesPointsInBox)
 {
     using PointT = pcl::PointXYZ;
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
@@ -1203,7 +1203,7 @@ TEST(Util3dFiltering, cropBoxIncludesPointsInBox)
     }
 }
 
-TEST(Util3dFiltering, cropBoxInvalidBoundsTriggerAssertion)
+TEST(Util3dFilteringTest, CropBoxInvalidBoundsTriggerAssertion)
 {
     using PointT = pcl::PointXYZ;
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
@@ -1220,7 +1220,7 @@ TEST(Util3dFiltering, cropBoxInvalidBoundsTriggerAssertion)
 }
 
 // Main test: filtering points inside a frustum
-TEST(Util3dFiltering, frustumFilteringIncludesPointsInFrustum)
+TEST(Util3dFilteringTest, FrustumFilteringIncludesPointsInFrustum)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1332,7 +1332,7 @@ TEST(Util3dFiltering, frustumFilteringIncludesPointsInFrustum)
 
 
 // Test assertion failure on invalid FOV
-TEST(Util3dFiltering, frustumFilteringInvalidFOVTriggersAssertion)
+TEST(Util3dFilteringTest, FrustumFilteringInvalidFOVTriggersAssertion)
 {
     using PointT = pcl::PointXYZ;
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
@@ -1345,7 +1345,7 @@ TEST(Util3dFiltering, frustumFilteringInvalidFOVTriggersAssertion)
 }
 
 // Test assertion failure on invalid clip plane distances
-TEST(Util3dFiltering, frustumFilteringInvalidClipPlaneTriggersAssertion)
+TEST(Util3dFilteringTest, FrustumFilteringInvalidClipPlaneTriggersAssertion)
 {
     using PointT = pcl::PointXYZ;
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
@@ -1356,7 +1356,7 @@ TEST(Util3dFiltering, frustumFilteringInvalidClipPlaneTriggersAssertion)
     EXPECT_THROW(util3d::frustumFiltering(cloud, indices, cameraPose, 60.0f, 45.0f, 5.0f, 1.0f, false), UException);
 }
 
-TEST(Util3dFiltering, removeNaNFromPointCloud)
+TEST(Util3dFilteringTest, RemoveNaNFromPointCloud)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1389,7 +1389,7 @@ TEST(Util3dFiltering, removeNaNFromPointCloud)
     EXPECT_FLOAT_EQ(filtered->points[1].z, 6.0f);
 }
 
-TEST(Util3dFiltering, removeNaNNormalsFromPointCloud)
+TEST(Util3dFilteringTest, RemoveNaNNormalsFromPointCloud)
 {
     auto cloud = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>);
 
@@ -1425,7 +1425,7 @@ TEST(Util3dFiltering, removeNaNNormalsFromPointCloud)
     EXPECT_FLOAT_EQ(filtered->points[0].normal_z, 0.0f);
 }
 
-TEST(Util3dFiltering, radiusFilteringWithFewNeighbors)
+TEST(Util3dFilteringTest, RadiusFilteringWithFewNeighbors)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1451,7 +1451,7 @@ TEST(Util3dFiltering, radiusFilteringWithFewNeighbors)
     EXPECT_EQ(filtered->at(2), 2);
 }
 
-TEST(Util3dFiltering, radiusFilteringProvidedIndicesSubset)
+TEST(Util3dFilteringTest, RadiusFilteringProvidedIndicesSubset)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1472,7 +1472,7 @@ TEST(Util3dFiltering, radiusFilteringProvidedIndicesSubset)
     EXPECT_EQ(filtered->at(1), 1);
 }
 
-TEST(Util3dFiltering, proportionalRadiusFilteringBasic)
+TEST(Util3dFilteringTest, ProportionalRadiusFilteringBasic)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1519,7 +1519,7 @@ TEST(Util3dFiltering, proportionalRadiusFilteringBasic)
     }
 }
 
-TEST(Util3dFiltering, proportionalRadiusFilteringUsingProvidedIndices)
+TEST(Util3dFilteringTest, ProportionalRadiusFilteringUsingProvidedIndices)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0, 0, 0));     // 0
@@ -1545,7 +1545,7 @@ TEST(Util3dFiltering, proportionalRadiusFilteringUsingProvidedIndices)
     ASSERT_EQ(result->size(), 0u);
 }
 
-TEST(Util3dFiltering, proportionalRadiusFilteringAllPointsNoNeighbors)
+TEST(Util3dFilteringTest, ProportionalRadiusFilteringAllPointsNoNeighbors)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0, 0, 0));
@@ -1569,7 +1569,7 @@ TEST(Util3dFiltering, proportionalRadiusFilteringAllPointsNoNeighbors)
     ASSERT_EQ(result->size(), 0u);
 }
 
-TEST(Util3dFiltering, proportionalRadiusFilteringInvalidViewpointID)
+TEST(Util3dFilteringTest, ProportionalRadiusFilteringInvalidViewpointID)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0, 0, 0));
@@ -1586,7 +1586,7 @@ TEST(Util3dFiltering, proportionalRadiusFilteringInvalidViewpointID)
     EXPECT_THROW(util3d::proportionalRadiusFiltering(cloud, indices, viewpointIndices, viewpoints, factor, neighborScale), UException);
 }
 
-TEST(Util3dFiltering, subtractFilteringBasicFiltering)
+TEST(Util3dFilteringTest, SubtractFilteringBasicFiltering)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->push_back(pcl::PointXYZ(0, 0, 0));
@@ -1616,7 +1616,7 @@ TEST(Util3dFiltering, subtractFilteringBasicFiltering)
     EXPECT_EQ(result->at(1), 2);
 }
 
-TEST(Util3dFiltering, subtractAdaptiveFilteringXYZRGB)
+TEST(Util3dFilteringTest, SubtractAdaptiveFilteringXYZRGB)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
     auto subtractCloud = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -1652,7 +1652,7 @@ TEST(Util3dFiltering, subtractAdaptiveFilteringXYZRGB)
     EXPECT_EQ(result->at(1), 2);
 }
 
-TEST(Util3dFiltering, subtractAdaptiveFilteringXYZRGBNormal)
+TEST(Util3dFilteringTest, SubtractAdaptiveFilteringXYZRGBNormal)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     auto subtractCloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -1710,7 +1710,7 @@ TEST(Util3dFiltering, subtractAdaptiveFilteringXYZRGBNormal)
     EXPECT_EQ(result->at(0), 0);
 }
 
-TEST(Util3dFiltering, normalFilteringBasic)
+TEST(Util3dFilteringTest, NormalFilteringBasic)
 {
     // Create a flat plane of points along XY plane (normals should be along Z)
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1750,7 +1750,7 @@ TEST(Util3dFiltering, normalFilteringBasic)
     }
 }
 
-TEST(Util3dFiltering, normalFilteringRejectNormalsWithLargeDeviation)
+TEST(Util3dFilteringTest, NormalFilteringRejectNormalsWithLargeDeviation)
 {
     // Construct a simple slanted surface so normals will not be vertical
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1781,7 +1781,7 @@ TEST(Util3dFiltering, normalFilteringRejectNormalsWithLargeDeviation)
 }
 
 // Test for PointXYZ type
-TEST(Util3dFiltering, extractClustersBasic)
+TEST(Util3dFilteringTest, ExtractClustersBasic)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1822,7 +1822,7 @@ TEST(Util3dFiltering, extractClustersBasic)
     ASSERT_EQ(clusters[biggestClusterIdx]->size(), 10);
 }
 
-TEST(Util3dFiltering, extractClustersMinClusterSize)
+TEST(Util3dFilteringTest, ExtractClustersMinClusterSize)
 {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1849,7 +1849,7 @@ TEST(Util3dFiltering, extractClustersMinClusterSize)
 }
 
 // Test case: Extract the points corresponding to the specified indices
-TEST(Util3dFiltering, extractIndices) {
+TEST(Util3dFilteringTest, ExtractIndices) {
 
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     cloud->resize(5);
@@ -1888,7 +1888,7 @@ TEST(Util3dFiltering, extractIndices) {
     EXPECT_NE(output->at(1), 3);   // Index 3 should not be in the output
 }
 
-TEST(Util3dFiltering, extractPlane) {
+TEST(Util3dFilteringTest, ExtractPlane) {
 
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
