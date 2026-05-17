@@ -131,6 +131,11 @@ add_executable(test_localgrid test_localgrid.cpp)
 target_link_libraries(test_localgrid gtest_main rtabmap_core)
 add_test(NAME test_localgrid COMMAND test_localgrid)
 
+#LocalGridMaker.h
+add_executable(test_localgridmaker test_localgridmaker.cpp)
+target_link_libraries(test_localgridmaker gtest_main rtabmap_core)
+add_test(NAME test_localgridmaker COMMAND test_localgridmaker)
+
 #LASWriter.h (optional libLAS)
 IF(libLAS_FOUND)
 	add_executable(test_laswriter test_laswriter.cpp)
