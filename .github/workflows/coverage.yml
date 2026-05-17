@@ -5,12 +5,11 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -23,6 +22,8 @@ jobs:
   coverage:
     name: Coverage (ubuntu-24.04)
     runs-on: ubuntu-24.04
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +74,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           find ${{ github.workspace }}/build -name '*.gcda' -delete
-          ctest --output-on-failure || true
+          ctest --output-on-failure
 
       - name: Generate LCOV report
         run: |
@@ -114,9 +115,9 @@ jobs:
           retention-days: 14
 
       - name: Upload to Codecov
-        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ env.CODECOV_TOKEN }}
           fail_ci_if_error: false

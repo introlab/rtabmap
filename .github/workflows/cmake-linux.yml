@@ -20,7 +20,8 @@ jobs:
     name: ${{ matrix.build_name }}
     runs-on: ${{ matrix.os }}
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}
+      # Use build_name, not os: ubuntu-24.04 and ubuntu-24.04-with-opengv share the same runner.
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.build_name }}
       cancel-in-progress: true
     strategy:
       fail-fast: true
