@@ -101,6 +101,16 @@ add_executable(test_link test_link.cpp)
 target_link_libraries(test_link gtest_main rtabmap_core)
 gtest_discover_tests(test_link)
 
+#GPS.h
+add_executable(test_gps test_gps.cpp)
+target_link_libraries(test_gps gtest_main rtabmap_core)
+gtest_discover_tests(test_gps)
+
+#GeodeticCoords.h
+add_executable(test_geodeticcoords test_geodeticcoords.cpp)
+target_link_libraries(test_geodeticcoords gtest_main rtabmap_core)
+gtest_discover_tests(test_geodeticcoords)
+
 #Signature.h
 add_executable(test_signature test_signature.cpp)
 target_link_libraries(test_signature gtest_main rtabmap_core)
