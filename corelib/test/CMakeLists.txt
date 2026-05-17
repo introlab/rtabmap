@@ -121,6 +121,11 @@ add_executable(test_odometry test_odometry.cpp)
 target_link_libraries(test_odometry gtest_main rtabmap_core)
 gtest_discover_tests(test_odometry)
 
+#DBDriver.h
+add_executable(test_dbdriver test_dbdriver.cpp)
+target_link_libraries(test_dbdriver gtest_main rtabmap_core)
+gtest_discover_tests(test_dbdriver)
+
 #Signature.h
 add_executable(test_signature test_signature.cpp)
 target_link_libraries(test_signature gtest_main rtabmap_core)
