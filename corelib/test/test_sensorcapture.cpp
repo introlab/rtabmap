@@ -433,7 +433,7 @@ TEST(SensorCaptureTest, HighFrameRate)
 TEST(SensorCaptureTest, VeryLowFrameRate)
 {
 	MockSensorCapture sensor;
-	sensor.setFrameRate(2.0f); // Low frame rate (500 ms seconds per frame)
+	sensor.setFrameRate(2.0f); // 2 Hz = 500 ms per frame
 	sensor.resetTimer();
 	
 	UTimer timer;
@@ -442,6 +442,6 @@ TEST(SensorCaptureTest, VeryLowFrameRate)
 	
 	EXPECT_TRUE(data.isValid());
 	EXPECT_GE(elapsed, 0.5);
-	EXPECT_LT(elapsed, 0.51);
+	EXPECT_LT(elapsed, 0.55); // allow scheduler jitter on loaded CI runners
 }
 

@@ -317,9 +317,9 @@ TEST_F(CameraModelTest, FieldOfView)
     // Horizontal FOV should be larger than vertical for typical cameras
     EXPECT_GT(fovX, fovY);
     
-    // Degrees should be approximately radians * 180 / PI
-    EXPECT_NEAR(hFOV, fovX * 180.0 / M_PI, 0.1);
-    EXPECT_NEAR(vFOV, fovY * 180.0 / M_PI, 0.1);
+    // Degrees should be approximately radians * 180 / PI (same as CameraModel.cpp)
+    EXPECT_NEAR(hFOV, fovX * 180.0 / CV_PI, 0.1);
+    EXPECT_NEAR(vFOV, fovY * 180.0 / CV_PI, 0.1);
 }
 
 // InFrame Tests
