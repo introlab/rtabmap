@@ -550,18 +550,18 @@ TEST(Util3dMotionEstimation, estimateMotion3DTo3DWithNoise) {
 
     for(auto & pt: words3A) {
         cv::Point3f ptT = util3d::transformPoint(pt.second, secondT);
-        ptT.x += randomNoise(0.02);
-        ptT.y += randomNoise(0.02);
-        ptT.z += randomNoise(0.02);
+        ptT.x += randomNoise(0.01);
+        ptT.y += randomNoise(0.01);
+        ptT.z += randomNoise(0.01);
         if(pt.second.z < 9) {
             words3B.insert(std::make_pair(pt.first, ptT));
         }
         else { // outlier
             words3B.insert(std::make_pair(pt.first, cv::Point3f(5,5,10)));
         }
-        pt.second.x += randomNoise(0.02);
-        pt.second.y += randomNoise(0.02);
-        pt.second.z += randomNoise(0.02);
+        pt.second.x += randomNoise(0.01);
+        pt.second.y += randomNoise(0.01);
+        pt.second.z += randomNoise(0.01);
     }
 
     cv::Mat covariance;

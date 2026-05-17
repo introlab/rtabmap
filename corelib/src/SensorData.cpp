@@ -36,6 +36,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+namespace {
+bool isOccupancyGridLayerFormatSupported(const cv::Mat & layer)
+{
+	if(layer.empty())
+	{
+		return true;
+	}
+	return layer.type() == CV_32FC2 ||
+			layer.type() == CV_32FC3 ||
+			layer.type() == CV_32FC(4) ||
+			layer.type() == CV_32FC(5) ||
+			layer.type() == CV_32FC(6) ||
+			layer.type() == CV_32FC(7) ||
+			(layer.type() == CV_8UC1 && layer.rows == 1);
+}
+} // namespace
+
 // empty constructor
 SensorData::SensorData() :
 		_id(0),
@@ -582,6 +599,19 @@ void SensorData::setOccupancyGrid(
 	_emptyCellsRaw = cv::Mat();
 	_emptyCellsCompressed = cv::Mat();
 
+	if(!ground.empty() && !isOccupancyGridLayerFormatSupported(ground))
+	{
+		UFATAL("Unsupported local occupancy grid format for ground cells: OpenCV type=%d size=%dx%d", ground.type(), ground.cols, ground.rows);
+	}
+	if(!obstacles.empty() && !isOccupancyGridLayerFormatSupported(obstacles))
+	{
+		UFATAL("Unsupported local occupancy grid format for obstacle cells: OpenCV type=%d size=%dx%d", obstacles.type(), obstacles.cols, obstacles.rows);
+	}
+	if(!empty.empty() && !isOccupancyGridLayerFormatSupported(empty))
+	{
+		UFATAL("Unsupported local occupancy grid format for empty cells: OpenCV type=%d size=%dx%d", empty.type(), empty.cols, empty.rows);
+	}
+
 	CompressionThread ctGround(ground);
 	CompressionThread ctObstacles(obstacles);
 	CompressionThread ctEmpty(empty);
@@ -593,13 +623,9 @@ void SensorData::setOccupancyGrid(
 			_groundCellsRaw = ground;
 			ctGround.start();
 		}
-		else if(ground.type() == CV_8UC1 && ground.rows == 1)
+		else // CV_8UC1 && rows == 1
 		{
 			_groundCellsCompressed = ground;
-		}
-		else
-		{
-			UFATAL("Unsupported local occupancy grid format for ground cells: OpenCV type=%d size=%dx%d", ground.type(), ground.cols, ground.rows);
 		}
 	}
 	if(!obstacles.empty())
@@ -609,13 +635,9 @@ void SensorData::setOccupancyGrid(
 			_obstacleCellsRaw = obstacles;
 			ctObstacles.start();
 		}
-		else if(obstacles.type() == CV_8UC1 && obstacles.rows == 1)
+		else // CV_8UC1 && rows == 1
 		{
 			_obstacleCellsCompressed = obstacles;
-		}
-		else
-		{
-			UFATAL("Unsupported local occupancy grid format for obstacle cells: OpenCV type=%d size=%dx%d", obstacles.type(), obstacles.cols, obstacles.rows);
 		}
 	}
 	if(!empty.empty())
@@ -625,13 +647,9 @@ void SensorData::setOccupancyGrid(
 			_emptyCellsRaw = empty;
 			ctEmpty.start();
 		}
-		else if(empty.type() == CV_8UC1 && empty.rows == 1)
+		else // CV_8UC1 && rows == 1
 		{
 			_emptyCellsCompressed = empty;
-		}
-		else
-		{
-			UFATAL("Unsupported local occupancy grid format for empty cells: OpenCV type=%d size=%dx%d", empty.type(), empty.cols, empty.rows);
 		}
 	}
 	ctGround.join();

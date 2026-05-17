@@ -1,0 +1,122 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  BUILD_TYPE: Debug
+
+jobs:
+  coverage:
+    name: Coverage (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y \
+            lcov \
+            libopencv-dev \
+            libpcl-dev \
+            git \
+            cmake \
+            software-properties-common \
+            libyaml-cpp-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -B ${{ github.workspace }}/build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DENABLE_COVERAGE=ON \
+            -DBUILD_TESTING=ON \
+            -DWITH_QT=OFF \
+            -DWITH_PYTHON=OFF \
+            -DWITH_CERES=OFF \
+            -DWITH_G2O=OFF \
+            -DWITH_GTSAM=OFF \
+            -DWITH_MRPT=OFF \
+            -DWITH_VERTIGO=OFF \
+            -DWITH_CVSBA=OFF \
+            -DWITH_POINTMATCHER=OFF \
+            -DWITH_CCCORELIB=OFF \
+            -DWITH_OPEN3D=OFF \
+            -DWITH_LOAM=OFF \
+            -DWITH_FLOAM=OFF \
+            -DWITH_LIOSAM=OFF \
+            -DWITH_FLYCAPTURE2=OFF \
+            -DWITH_ZED=OFF \
+            -DWITH_ZEDOC=OFF \
+            -DWITH_REALSENSE=OFF
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build -j$(nproc)
+
+      - name: Test
+        working-directory: ${{ github.workspace }}/build
+        run: |
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          find ${{ github.workspace }}/build -name '*.gcda' -delete
+          ctest --output-on-failure || true
+
+      - name: Generate LCOV report
+        run: |
+          GCOV_VER="$(gcc -dumpversion | cut -d. -f1)"
+          if command -v "gcov-${GCOV_VER}" >/dev/null 2>&1; then
+            GCOV_TOOL="gcov-${GCOV_VER}"
+          else
+            GCOV_TOOL="gcov"
+          fi
+          LCOV_IGNORE=(--ignore-errors gcov,source,graph)
+
+          lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
+            --capture \
+            --directory ${{ github.workspace }}/build \
+            --output-file lcov.info
+
+          lcov "${LCOV_IGNORE[@]}" --extract lcov.info \
+            '${{ github.workspace }}/*' \
+            --output-file lcov.info
+          lcov "${LCOV_IGNORE[@]}" --remove lcov.info \
+            '*/googletest/*' \
+            '*/_deps/*' \
+            '*/sqlite3/*' \
+            '*/corelib/test/*' \
+            '*/utilite/test/*' \
+            --output-file lcov.info
+
+          lcov --summary lcov.info
+
+      - name: HTML coverage report
+        run: genhtml lcov.info --output-directory coverage-html --legend --demangle-cpp
+
+      - name: Upload HTML coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html
+          retention-days: 14
+
+      - name: Upload to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

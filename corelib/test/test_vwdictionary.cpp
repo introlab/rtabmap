@@ -7,6 +7,7 @@
 #include "rtabmap/utilite/UFile.h"
 #include <vector>
 #include <list>
+#include <set>
 #include <iterator>
 #include <fstream>
 #include <cstdio>
@@ -769,15 +770,20 @@ TEST_F(VWDictionaryTest, SetLastWordId)
 
 TEST_F(VWDictionaryTest, DeleteUnusedWords)
 {
-    // Add words
-    cv::Mat descriptors(3, 32, CV_32F);
-    cv::randu(descriptors, cv::Scalar(0), cv::Scalar(1));
+    // Add words (orthogonal descriptors so each gets its own visual word)
+    cv::Mat descriptors(3, 32, CV_32F, cv::Scalar(0));
+    for(int i = 0; i < 3; ++i)
+    {
+        descriptors.at<float>(i, i) = 1.0f;
+    }
     std::list<int> wordIds = dict->addNewWords(descriptors, 1);
     
     ASSERT_EQ(wordIds.size(), 3u);
+    std::set<int> uniqueWordIds(wordIds.begin(), wordIds.end());
+    ASSERT_EQ(uniqueWordIds.size(), 3u);
     
     // Remove references to make words unused
-    for(int id : wordIds) {
+    for(int id : uniqueWordIds) {
         dict->removeAllWordRef(id, 1);
     }
     

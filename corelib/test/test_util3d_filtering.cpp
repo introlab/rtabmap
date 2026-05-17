@@ -451,8 +451,8 @@ TEST(Util3dFiltering, rangeFilteringFilteringRemovesOutOfRangePoints)
     LaserScan result = util3d::rangeFiltering(scan, 2.0f, 5.0f);
 
     ASSERT_EQ(result.size(), 1); // Only the (3,0) point should remain
-    EXPECT_FLOAT_EQ(result.data().at<cv::Vec3f>(0)[0], 3.0f); // x
-    EXPECT_FLOAT_EQ(result.data().at<cv::Vec3f>(0)[1], 0.0f); // y
+    EXPECT_FLOAT_EQ(result.data().at<cv::Vec2f>(0)[0], 3.0f); // x
+    EXPECT_FLOAT_EQ(result.data().at<cv::Vec2f>(0)[1], 0.0f); // y
 
     // 3D points: (1,0) [1m], (3,0) [3m], (6,0) [6m]
     data = (cv::Mat_<float>(1, 3*3) << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 6.0f);
@@ -697,9 +697,9 @@ TEST(Util3dFiltering, downsampleImplStepLargerThanCloudSize) {
 
     //LaserScan version
     {
-        cv::Mat data(1, 10, CV_32FC3);
+        cv::Mat data(1, 5, CV_32FC3, cv::Scalar(0));
         for (int i = 0; i < 5; ++i)
-            data.at<cv::Vec3f>(i)[0] = float(i); // x
+            data.at<cv::Vec3f>(0, i)[0] = float(i); // x
         
         auto scan = LaserScan(data, 0, 0, LaserScan::kXYZ);
         auto result = util3d::downsample(scan, 10);

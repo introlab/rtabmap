@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/mls.h>
 #include <pcl18/surface/texture_mapping.h>
 #include <pcl/features/integral_image_normal.h>
+#include <algorithm>
 
 #ifdef RTABMAP_ALICE_VISION
 #include <aliceVision/sfmData/SfMData.hpp>
@@ -90,6 +91,23 @@ namespace rtabmap
 
 namespace util3d
 {
+
+namespace {
+float pcaEigenvalueAt(const cv::Mat & eigenvalues, int index)
+{
+	if(eigenvalues.empty())
+	{
+		return 0.f;
+	}
+	if(eigenvalues.rows == 1)
+	{
+		index = std::min(index, eigenvalues.cols - 1);
+		return eigenvalues.at<float>(0, index);
+	}
+	index = std::min(index, eigenvalues.rows - 1);
+	return eigenvalues.at<float>(index, 0);
+}
+} // namespace
 
 void createPolygonIndexes(
 		const std::vector<pcl::Vertices> & polygons,
@@ -3218,7 +3236,7 @@ float computeNormalsComplexity(
 		}
 		if(oi>1)
 		{
-			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
 			if(pcaEigenVectors)
 			{
@@ -3230,7 +3248,7 @@ float computeNormalsComplexity(
 			}
 			UASSERT((is2d && pca_analysis.eigenvalues.total()>=2) || (!is2d && pca_analysis.eigenvalues.total()>=3));
 			// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-			return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+			return pcaEigenvalueAt(pca_analysis.eigenvalues, is2d?1:2)*(is2d?2.0f:3.0f);
 		}
 	}
 	else if(!scan.isEmpty())
@@ -3279,7 +3297,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3291,7 +3309,7 @@ float computeNormalsComplexity(
 		}
 
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return pcaEigenvalueAt(pca_analysis.eigenvalues, is2d?1:2)*(is2d?2.0f:3.0f);
 	}
 	return 0.0f;
 }
@@ -3335,7 +3353,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3347,7 +3365,7 @@ float computeNormalsComplexity(
 		}
 
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return pcaEigenvalueAt(pca_analysis.eigenvalues, is2d?1:2)*(is2d?2.0f:3.0f);
 	}
 	return 0.0f;
 }
@@ -3391,7 +3409,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3403,7 +3421,7 @@ float computeNormalsComplexity(
 		}
 
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return pcaEigenvalueAt(pca_analysis.eigenvalues, is2d?1:2)*(is2d?2.0f:3.0f);
 	}
 	return 0.0f;
 }
@@ -3447,7 +3465,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3459,7 +3477,7 @@ float computeNormalsComplexity(
 		}
 
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return pcaEigenvalueAt(pca_analysis.eigenvalues, is2d?1:2)*(is2d?2.0f:3.0f);
 	}
 	return 0.0f;
 }

@@ -377,7 +377,10 @@ unsigned long VWDictionary::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(VWDictionary);
 	memoryUsage += getIndexMemoryUsed();
-	memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	if(!_dataTree.empty())
+	{
+		memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	}
 	if(!_visualWords.empty())
 	{
 		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);

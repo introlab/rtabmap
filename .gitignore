@@ -12,3 +12,10 @@ compile_flags.txt
 tags
 build_*
 *.bak
+
+# Coverage (coverage-report.sh / .github/workflows/coverage.yml)
+build-coverage/
+coverage-html/
+lcov.info
+*.gcda
+*.gcno

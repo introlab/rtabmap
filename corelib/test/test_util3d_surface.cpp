@@ -53,7 +53,8 @@ TEST(Util3dSurface, computeNormalsComplexityVaryingNormals3D)
 #endif
     
     complexity = util3d::computeNormalsComplexity(cloudB);
-    EXPECT_NEAR(complexity, 0.25f, 1e-3);
+    // Smallest PCA eigenvalue is ~0 for discrete normals on orthogonal axes.
+    EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
     // Three perpendicular surfaces (one small)
     pcl::PointCloud<pcl::PointNormal> smallCloudB;
@@ -64,8 +65,7 @@ TEST(Util3dSurface, computeNormalsComplexityVaryingNormals3D)
 #endif
     
     complexity = util3d::computeNormalsComplexity(smallCloudB);
-    EXPECT_LT(complexity, 0.25f);
-    EXPECT_GT(complexity, 0.01f);
+    EXPECT_NEAR(complexity, 0.0f, 1e-3);
 }
 
 TEST(Util3dSurface, computeNormalsComplexityIdentityVsRotated)
@@ -115,7 +115,7 @@ TEST(Util3dSurface, computeNormalsComplexityVaryingNormals2D)
 #endif
     // Two perpendicular surfaces
     complexity = util3d::computeNormalsComplexity(cloud, Transform(), true);
-    EXPECT_NEAR(complexity, 0.25f, 1e-3);
+    EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
     pcl::PointCloud<pcl::PointNormal> cloudB;
 #if PCL_VERSION_COMPARE(>=, 1, 10, 0)
@@ -125,8 +125,7 @@ TEST(Util3dSurface, computeNormalsComplexityVaryingNormals2D)
 #endif
     // Two perpendicular surfaces (one small)
     complexity = util3d::computeNormalsComplexity(cloudB, Transform(), true);
-    EXPECT_LT(complexity, 0.25f);
-    EXPECT_GT(complexity, 0.01f);
+    EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
     pcl::PointCloud<pcl::PointNormal> corridorLikeCloud;
 #if PCL_VERSION_COMPARE(>=, 1, 10, 0)
