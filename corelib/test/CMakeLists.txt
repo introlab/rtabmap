@@ -111,6 +111,11 @@ add_executable(test_geodeticcoords test_geodeticcoords.cpp)
 target_link_libraries(test_geodeticcoords gtest_main rtabmap_core)
 gtest_discover_tests(test_geodeticcoords)
 
+#Compression.h
+add_executable(test_compression test_compression.cpp)
+target_link_libraries(test_compression gtest_main rtabmap_core)
+gtest_discover_tests(test_compression)
+
 #Signature.h
 add_executable(test_signature test_signature.cpp)
 target_link_libraries(test_signature gtest_main rtabmap_core)
