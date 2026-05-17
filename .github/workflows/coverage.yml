@@ -88,11 +88,12 @@ jobs:
           else
             GCOV_TOOL="gcov"
           fi
-          LCOV_IGNORE=(--ignore-errors gcov,source,graph)
+          LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch)
 
           lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
             --capture \
-            --directory ${{ github.workspace }}/build \
+            --directory ${{ github.workspace }}/build/corelib/src \
+            --directory ${{ github.workspace }}/build/utilite/src \
             --output-file lcov.info
 
           lcov "${LCOV_IGNORE[@]}" --extract lcov.info \
@@ -109,7 +110,7 @@ jobs:
           lcov --summary lcov.info
 
       - name: HTML coverage report
-        run: genhtml lcov.info --output-directory coverage-html --legend --demangle-cpp
+        run: genhtml --ignore-errors source,mismatch lcov.info --output-directory coverage-html --legend --demangle-cpp
 
       - name: Upload HTML coverage artifact
         uses: actions/upload-artifact@v4

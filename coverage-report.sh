@@ -32,7 +32,7 @@ detect_gcov_tool() {
 	fi
 }
 GCOV_TOOL="$(detect_gcov_tool)"
-LCOV_IGNORE=(--ignore-errors gcov,source,graph)
+LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch)
 
 configure_coverage_build() {
 	local -a gtest_args=()
@@ -94,7 +94,10 @@ echo "Running tests..."
 
 echo "Capturing coverage..."
 lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
-	--capture --directory "$BUILD_DIR" --output-file "$INFO_FILE"
+	--capture \
+	--directory "$BUILD_DIR/corelib/src" \
+	--directory "$BUILD_DIR/utilite/src" \
+	--output-file "$INFO_FILE"
 
 echo "Filtering coverage data (repo sources only)..."
 lcov "${LCOV_IGNORE[@]}" --extract "$INFO_FILE" \
@@ -110,7 +113,7 @@ lcov "${LCOV_IGNORE[@]}" --remove "$INFO_FILE" \
 
 echo "Generating HTML..."
 rm -rf "$HTML_DIR"
-genhtml "$INFO_FILE" --output-directory "$HTML_DIR" --legend --demangle-cpp
+genhtml --ignore-errors source,mismatch "$INFO_FILE" --output-directory "$HTML_DIR" --legend --demangle-cpp
 
 echo ""
 echo "Done: $HTML_DIR/index.html"
