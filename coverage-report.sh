@@ -32,7 +32,7 @@ detect_gcov_tool() {
 	fi
 }
 GCOV_TOOL="$(detect_gcov_tool)"
-LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch)
+LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch,unused)
 
 configure_coverage_build() {
 	local -a gtest_args=()
@@ -104,11 +104,8 @@ lcov "${LCOV_IGNORE[@]}" --extract "$INFO_FILE" \
 	"${ROOT}/*" \
 	--output-file "$INFO_FILE"
 lcov "${LCOV_IGNORE[@]}" --remove "$INFO_FILE" \
-	'*/googletest/*' \
-	'*/_deps/*' \
 	'*/sqlite3/*' \
-	'*/corelib/test/*' \
-	'*/utilite/test/*' \
+	'*/rtflann/*' \
 	--output-file "$INFO_FILE"
 
 echo "Generating HTML..."

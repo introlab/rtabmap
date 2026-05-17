@@ -88,7 +88,7 @@ jobs:
           else
             GCOV_TOOL="gcov"
           fi
-          LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch)
+          LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch,unused)
 
           lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
             --capture \
@@ -100,11 +100,8 @@ jobs:
             '${{ github.workspace }}/*' \
             --output-file lcov.info
           lcov "${LCOV_IGNORE[@]}" --remove lcov.info \
-            '*/googletest/*' \
-            '*/_deps/*' \
             '*/sqlite3/*' \
-            '*/corelib/test/*' \
-            '*/utilite/test/*' \
+            '*/rtflann/*' \
             --output-file lcov.info
 
           lcov --summary lcov.info
