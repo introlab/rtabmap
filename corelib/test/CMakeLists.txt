@@ -111,6 +111,16 @@ add_executable(test_imu test_imu.cpp)
 target_link_libraries(test_imu gtest_main rtabmap_core)
 add_test(NAME test_imu COMMAND test_imu)
 
+#IMUFilter.h
+add_executable(test_imufilter test_imufilter.cpp)
+target_link_libraries(test_imufilter gtest_main rtabmap_core)
+add_test(NAME test_imufilter COMMAND test_imufilter)
+
+#IMUThread.h
+add_executable(test_imuthread test_imuthread.cpp)
+target_link_libraries(test_imuthread gtest_main rtabmap_core)
+add_test(NAME test_imuthread COMMAND test_imuthread)
+
 #Graph.h
 add_executable(test_graph test_graph.cpp)
 target_link_libraries(test_graph gtest_main rtabmap_core)
