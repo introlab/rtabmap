@@ -106,6 +106,11 @@ add_executable(test_gps test_gps.cpp)
 target_link_libraries(test_gps gtest_main rtabmap_core)
 add_test(NAME test_gps COMMAND test_gps)
 
+#IMU.h
+add_executable(test_imu test_imu.cpp)
+target_link_libraries(test_imu gtest_main rtabmap_core)
+add_test(NAME test_imu COMMAND test_imu)
+
 #GeodeticCoords.h
 add_executable(test_geodeticcoords test_geodeticcoords.cpp)
 target_link_libraries(test_geodeticcoords gtest_main rtabmap_core)
