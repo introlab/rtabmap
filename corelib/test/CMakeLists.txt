@@ -111,6 +111,11 @@ add_executable(test_imu test_imu.cpp)
 target_link_libraries(test_imu gtest_main rtabmap_core)
 add_test(NAME test_imu COMMAND test_imu)
 
+#Graph.h
+add_executable(test_graph test_graph.cpp)
+target_link_libraries(test_graph gtest_main rtabmap_core)
+add_test(NAME test_graph COMMAND test_graph)
+
 #GeodeticCoords.h
 add_executable(test_geodeticcoords test_geodeticcoords.cpp)
 target_link_libraries(test_geodeticcoords gtest_main rtabmap_core)

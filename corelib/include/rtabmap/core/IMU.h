@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2018, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2026, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -130,7 +130,7 @@ public:
 	 * Applies @ref localTransform() rotation to vectors and covariances, then sets
 	 * rotational part of @ref localTransform() to identity (translation unchanged).
 	 * No-op if @ref localTransform() is null or rotation is identity.
-	 * Orientation is updated only when quaternion x, y, z are not all zero.
+	 * Orientation is updated only when quaternion qx, qy, qz, qw are not all zero.
 	 */
 	void convertToBaseFrame();
 
