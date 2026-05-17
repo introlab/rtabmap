@@ -121,6 +121,11 @@ add_executable(test_imuthread test_imuthread.cpp)
 target_link_libraries(test_imuthread gtest_main rtabmap_core)
 add_test(NAME test_imuthread COMMAND test_imuthread)
 
+#Landmark.h
+add_executable(test_landmark test_landmark.cpp)
+target_link_libraries(test_landmark gtest_main rtabmap_core)
+add_test(NAME test_landmark COMMAND test_landmark)
+
 #Graph.h
 add_executable(test_graph test_graph.cpp)
 target_link_libraries(test_graph gtest_main rtabmap_core)
