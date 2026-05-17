@@ -5,7 +5,8 @@ on:
     branches:
       - master
   pull_request:
-  workflow_dispatch:
+    branches: 
+      - '**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -47,6 +48,9 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DENABLE_COVERAGE=ON \
             -DBUILD_TESTING=ON \
+            -DBUILD_APP=OFF \
+            -DBUILD_TOOLS=OFF \
+            -DBUILD_EXAMPLES=OFF \
             -DWITH_QT=OFF \
             -DWITH_PYTHON=OFF \
             -DWITH_CERES=OFF \
