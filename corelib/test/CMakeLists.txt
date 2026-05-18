@@ -141,6 +141,11 @@ add_executable(test_globalmap test_globalmap.cpp)
 target_link_libraries(test_globalmap gtest_main rtabmap_core)
 add_test(NAME test_globalmap COMMAND test_globalmap)
 
+#Registration.h
+add_executable(test_registration test_registration.cpp)
+target_link_libraries(test_registration gtest_main rtabmap_core)
+add_test(NAME test_registration COMMAND test_registration)
+
 #LocalGridMaker.h
 add_executable(test_localgridmaker test_localgridmaker.cpp)
 target_link_libraries(test_localgridmaker gtest_main rtabmap_core)
