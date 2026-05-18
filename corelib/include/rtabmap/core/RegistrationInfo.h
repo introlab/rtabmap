@@ -31,6 +31,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+/**
+ * @class RegistrationInfo
+ * @brief Statistics and diagnostics returned by @ref Registration.
+ *
+ * Filled by @ref RegistrationVis and/or @ref RegistrationIcp during
+ * @ref Registration::computeTransformation(). The 6×6 @ref covariance matrix
+ * is clamped to @ref Registration::COVARIANCE_LINEAR_EPSILON and
+ * @ref Registration::COVARIANCE_ANGULAR_EPSILON on the diagonal when empty or
+ * too small.
+ *
+ * Visual fields are set by @ref RegistrationVis; ICP fields by @ref RegistrationIcp.
+ * In a combined Vis+ICP pipeline, both sets may be populated in the same object.
+ */
 class RegistrationInfo
 {
 public:
@@ -53,6 +66,7 @@ public:
 	{
 	}
 
+	/** @brief Copies scalar metrics and @ref covariance; omits correspondence ID vectors. */
 	RegistrationInfo copyWithoutData() const
 	{
 		RegistrationInfo output;
@@ -76,31 +90,31 @@ public:
 		return output;
 	}
 
-	cv::Mat covariance;
-	std::string rejectedMsg;
-	double totalTime;
+	cv::Mat covariance;           /**< 6×6 registration uncertainty (CV_64FC1). */
+	std::string rejectedMsg;      /**< Reason the registration was rejected, if any. */
+	double totalTime;             /**< Total registration time (seconds). */
 
 	// RegistrationVis
-	int inliers;
-	float inliersRatio;
-	float inliersMeanDistance;
-	float inliersDistribution;
-	std::vector<int> inliersIDs;
-	int matches;
-	float variance;
-	std::vector<int> matchesIDs;
-	std::vector<int> projectedIDs; // "From" IDs
-	std::vector<int> inliersPerCam;
-	std::vector<int> matchesPerCam;
+	int inliers;                  /**< Number of visual inliers. */
+	float inliersRatio;           /**< Ratio of inliers to matches. */
+	float inliersMeanDistance;    /**< Mean reprojection or descriptor distance of inliers. */
+	float inliersDistribution;  /**< Spatial spread of inliers in the image. */
+	std::vector<int> inliersIDs; /**< Indices of inlier keypoints. */
+	int matches;                  /**< Total visual matches before outlier rejection. */
+	float variance;               /**< Estimated variance of the visual constraint. */
+	std::vector<int> matchesIDs; /**< Indices of all matches. */
+	std::vector<int> projectedIDs; /**< Source ("from") feature IDs used in projection. */
+	std::vector<int> inliersPerCam; /**< Inlier count per camera (multi-camera). */
+	std::vector<int> matchesPerCam; /**< Match count per camera (multi-camera). */
 
 	// RegistrationIcp
-	float icpInliersRatio;
-	float icpTranslation;
-	float icpRotation;
-	float icpStructuralComplexity;
-	float icpStructuralDistribution;
-	int   icpCorrespondences;
-	float icpRMS;
+	float icpInliersRatio;        /**< Ratio of ICP inlier correspondences. */
+	float icpTranslation;         /**< Translation component of the ICP correction (m). */
+	float icpRotation;            /**< Rotation component of the ICP correction (rad). */
+	float icpStructuralComplexity; /**< Structural complexity of the scan overlap. */
+	float icpStructuralDistribution; /**< Distribution of structural features in the overlap. */
+	int   icpCorrespondences;     /**< Number of ICP point correspondences. */
+	float icpRMS;                 /**< Root-mean-square error of ICP correspondences (m). */
 };
 
 }
