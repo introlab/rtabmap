@@ -932,7 +932,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Marker, PriorsVarianceAngular,  float, 0.001, "Angular variance to set on marker priors.");
 
     RTABMAP_PARAM(MarkerAprilTag, NThreads,         int,     1,     "How many threads should be used?");
-    RTABMAP_PARAM(MarkerAprilTag, QuadDecimate,     float,   2.0,   "Detection of quads can be done on a lower-resolution image, improving speed at a cost of pose accuracy and a slight decrease in detection rate. Decoding the binary payload is still done at full resolution.");
+    RTABMAP_PARAM(MarkerAprilTag, QuadDecimate,     float,   1.0,   "Detection of quads can be done on a lower-resolution image, improving speed at a cost of pose accuracy and a slight decrease in detection rate. Decoding the binary payload is still done at full resolution.");
     RTABMAP_PARAM(MarkerAprilTag, QuadSigma,        float,   0.0,   "What Gaussian blur should be applied to the segmented image (used for quad detection?)  Parameter is the standard deviation in pixels.  Very noisy images benefit from non-zero values (e.g. 0.8).");
     RTABMAP_PARAM(MarkerAprilTag, RefineEdges,      bool,    true,   uFormat("When true, the edges of the each quad are adjusted to \"snap to\" strong gradients nearby. This is useful when decimation is employed, as it can increase the quality of the initial quad estimate substantially. Generally recommended to be on (true). Very computationally inexpensive. Option is ignored if %s = 1.", kMarkerAprilTagQuadDecimate().c_str()));
     RTABMAP_PARAM(MarkerAprilTag, DecodeSharpening, double,  0.25,  "How much sharpening should be done to decoded images? This can help decode small tags but may or may not help in odd lighting conditions or low light conditions.");
