@@ -131,6 +131,11 @@ add_executable(test_localgrid test_localgrid.cpp)
 target_link_libraries(test_localgrid gtest_main rtabmap_core)
 add_test(NAME test_localgrid COMMAND test_localgrid)
 
+#Features2d.h
+add_executable(test_features2d test_features2d.cpp)
+target_link_libraries(test_features2d gtest_main rtabmap_core)
+add_test(NAME test_features2d COMMAND test_features2d)
+
 #GlobalMap.h
 add_executable(test_globalmap test_globalmap.cpp)
 target_link_libraries(test_globalmap gtest_main rtabmap_core)

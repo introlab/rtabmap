@@ -111,9 +111,26 @@ class Stereo;
 class CV_ORB;
 #endif
 
-// Feature2D
+/**
+ * @class Feature2D
+ * @brief Abstract 2D feature detector and descriptor extractor for visual SLAM.
+ *
+ * Factory @ref create() builds a concrete detector from @ref Type or from
+ * **Kp/DetectorStrategy** in a @ref ParametersMap. Common tuning keys include
+ * **Kp/MaxFeatures**, **Kp/GridRows**, **Kp/GridCols**, **Kp/SSC**, depth filters
+ * (**Kp/MinDepth**, **Kp/MaxDepth**), ROI (**Kp/RoiRatios**), and sub-pixel refinement.
+ *
+ * Pipeline: @ref generateKeypoints() (grid + ROI + optional mask) then
+ * @ref generateDescriptors(). Static helpers filter or cap keypoints before/after
+ * matching. @ref generateKeypoints3D() projects features using stereo or depth when
+ * available in @ref SensorData.
+ *
+ * @see Memory
+ * @see RegistrationVis
+ */
 class RTABMAP_CORE_EXPORT Feature2D {
 public:
+	/** @brief Built-in detector/descriptor strategy (Kp/DetectorStrategy). */
 	enum Type {kFeatureUndef=-1,
 		kFeatureSurf=0,
 		kFeatureSift=1,
@@ -133,6 +150,7 @@ public:
 		kFeaturePyDetector=15, //new 0.20.8
 		kFeatureSuperPointRpautrat=16}; // new 0.23.3
 
+	/** @return Human-readable name for @p type (e.g. `"ORB"`, `"GFTT+BRIEF"`). */
 	static std::string typeName(Type type)
 	{
 		switch(type){
@@ -173,9 +191,12 @@ public:
 		}
 	}
 
+	/** @brief Creates a detector from **Kp/DetectorStrategy** in @p parameters. Caller owns the pointer. */
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
-	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
+	/** @brief Creates a detector of the given @p type. Caller owns the pointer. */
+	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap());
 
+	/** @brief Keeps keypoints whose depth at (u,v) is in (@p minDepth, @p maxDepth). */
 	static void filterKeypointsByDepth(
 				std::vector<cv::KeyPoint> & keypoints,
 				const cv::Mat & depth,
@@ -194,6 +215,7 @@ public:
 			float minDepth,
 			float maxDepth);
 
+	/** @brief Keeps keypoints with stereo disparity ≥ @p minDisparity. */
 	static void filterKeypointsByDisparity(
 				std::vector<cv::KeyPoint> & keypoints,
 				const cv::Mat & disparity,
@@ -204,12 +226,14 @@ public:
 			const cv::Mat & disparity,
 			float minDisparity);
 
+	/** @brief Reduces keypoint count (by response or SSC spatial distribution). */
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols, bool ssc = false);
 
+	/** @brief ROI from **Kp/RoiRatios** string (`"left top right bottom"` fractions). */
 	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
@@ -223,12 +247,15 @@ public:
 public:
 	virtual ~Feature2D();
 
+	/** @brief Detects keypoints in a grayscale @p image (CV_8UC1); optional depth or 8U mask. */
 	std::vector<cv::KeyPoint> generateKeypoints(
 			const cv::Mat & image,
 			const cv::Mat & mask = cv::Mat());
+	/** @brief Computes descriptors for @p keypoints (may shrink the list in some detectors). */
 	cv::Mat generateDescriptors(
 			const cv::Mat & image,
 			std::vector<cv::KeyPoint> & keypoints) const;
+	/** @brief Back-projects keypoints to 3D using depth or stereo in @p data. */
 	std::vector<cv::Point3f> generateKeypoints3D(
 			const SensorData & data,
 			const std::vector<cv::KeyPoint> & keypoints) const;
@@ -260,7 +287,7 @@ private:
 	Stereo * _stereo;
 };
 
-//SURF
+/** @brief SURF detector and descriptor (non-free / xfeatures2d depending on OpenCV build). */
 class RTABMAP_CORE_EXPORT SURF : public Feature2D
 {
 public:
@@ -287,7 +314,7 @@ private:
 	cv::Ptr<CV_SURF_GPU> _gpuSurf;
 };
 
-//SIFT
+/** @brief SIFT detector and descriptor (optional GPU / CudaSift). */
 class RTABMAP_CORE_EXPORT SIFT : public Feature2D
 {
 public:
@@ -321,7 +348,7 @@ private:
 	bool cudaSiftUpscaling_;
 };
 
-//ORB
+/** @brief ORB detector and descriptor (optional GPU). */
 class RTABMAP_CORE_EXPORT ORB : public Feature2D
 {
 public:
@@ -352,7 +379,7 @@ private:
 	cv::Ptr<CV_ORB_GPU> _gpuOrb;
 };
 
-//FAST
+/** @brief FAST corner detector only (no descriptor). */
 class RTABMAP_CORE_EXPORT FAST : public Feature2D
 {
 public:
@@ -388,7 +415,7 @@ private:
 	cv::Ptr<CV_FAST_GPU> _gpuFast;
 };
 
-//FAST_BRIEF
+/** @brief FAST corners + BRIEF descriptors. */
 class RTABMAP_CORE_EXPORT FAST_BRIEF : public FAST
 {
 public:
@@ -407,7 +434,7 @@ private:
 	cv::Ptr<CV_BRIEF> _brief;
 };
 
-//FAST_FREAK
+/** @brief FAST corners + FREAK descriptors. */
 class RTABMAP_CORE_EXPORT FAST_FREAK : public FAST
 {
 public:
@@ -429,7 +456,7 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
-//GFTT
+/** @brief Good-features-to-track detector (Shi–Tomasi / Harris). */
 class RTABMAP_CORE_EXPORT GFTT : public Feature2D
 {
 public:
@@ -453,7 +480,7 @@ private:
 	cv::Ptr<CV_GFTT_GPU> _gpuGftt;
 };
 
-//GFTT_BRIEF
+/** @brief GFTT corners + BRIEF descriptors. */
 class RTABMAP_CORE_EXPORT GFTT_BRIEF : public GFTT
 {
 public:
@@ -472,7 +499,7 @@ private:
 	cv::Ptr<CV_BRIEF> _brief;
 };
 
-//GFTT_FREAK
+/** @brief GFTT corners + FREAK descriptors. */
 class RTABMAP_CORE_EXPORT GFTT_FREAK : public GFTT
 {
 public:
@@ -494,7 +521,7 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
-//SURF_FREAK
+/** @brief SURF detector + FREAK descriptors. */
 class RTABMAP_CORE_EXPORT SURF_FREAK : public SURF
 {
 public:
@@ -516,7 +543,7 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
-//GFTT_ORB
+/** @brief GFTT corners + ORB descriptors (common default when SURF is unavailable). */
 class RTABMAP_CORE_EXPORT GFTT_ORB : public GFTT
 {
 public:
@@ -533,7 +560,7 @@ private:
 	ORB _orb;
 };
 
-//BRISK
+/** @brief BRISK detector and descriptor. */
 class RTABMAP_CORE_EXPORT BRISK : public Feature2D
 {
 public:
@@ -555,7 +582,7 @@ private:
 	cv::Ptr<CV_BRISK> brisk_;
 };
 
-//KAZE
+/** @brief KAZE detector and descriptor (OpenCV 3+). */
 class RTABMAP_CORE_EXPORT KAZE : public Feature2D
 {
 public:
@@ -582,7 +609,7 @@ private:
 #endif
 };
 
-//ORB OCTREE
+/** @brief ORB with octree spatial distribution (RTAB-Map must be built with OCTREE enabled). */
 class RTABMAP_CORE_EXPORT ORBOctree : public Feature2D
 {
 public:
@@ -608,7 +635,7 @@ private:
 	cv::Mat descriptors_;
 };
 
-//SuperPointTorch
+/** @brief SuperPoint via LibTorch (RTAB-Map must be built with libtorch support). */
 class RTABMAP_CORE_EXPORT SuperPointTorch : public Feature2D
 {
 public:
@@ -631,7 +658,7 @@ private:
 	bool cuda_;
 };
 
-//SuperPointRpautrat
+/** @brief SuperPoint (rpautrat) via Torch + Python (RTAB-Map must be built with libtorch and Python support). */
 class RTABMAP_CORE_EXPORT SuperPointRpautrat : public Feature2D
 {
 public:
@@ -656,7 +683,7 @@ private:
 	bool cuda_;
 };
 
-//GFTT_DAISY
+/** @brief GFTT corners + DAISY descriptors (OpenCV 3+ xfeatures2d). */
 class RTABMAP_CORE_EXPORT GFTT_DAISY : public GFTT
 {
 public:
@@ -680,7 +707,7 @@ private:
 #endif
 };
 
-//SURF_DAISY
+/** @brief SURF detector + DAISY descriptors (OpenCV 3+ xfeatures2d). */
 class RTABMAP_CORE_EXPORT SURF_DAISY : public SURF
 {
 public:
