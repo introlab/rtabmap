@@ -5640,6 +5640,17 @@ void PreferencesDialog::updateAvailableMarkerDictionaries()
 		{
 			_ui->MarkerDictionary->setCurrentIndex(Parameters::defaultMarkerDictionary());
 		}
+#else
+		if(_ui->MarkerDictionary->currentIndex() >=17 && _ui->MarkerDictionary->currentIndex() <= 20)
+		{
+			// If apriltag is selected, select apriltag refinement by default
+			_ui->OpenCVCornerRefinementMethod->setCurrentIndex(3);
+		}
+		else if(_ui->OpenCVCornerRefinementMethod->currentIndex() == 3)
+		{
+			// If not apriltag dictionary selected, reset refinement to default.
+			_ui->OpenCVCornerRefinementMethod->setCurrentIndex(Parameters::defaultMarkerOpenCVCornerRefinementMethod());
+		}
 #endif
 #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
 		// disable aruco MPI dictionary	

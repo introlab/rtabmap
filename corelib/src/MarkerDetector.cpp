@@ -432,8 +432,8 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		}
 		apriltagLibFamily_  = createAprilTagPredefinedDictionary(dictFamily);
 		UASSERT_MSG(apriltagLibFamily_ != NULL, uFormat("AprilTag library cannot be used with dictionary type %d", (int)dictionaryId_).c_str());
+		errno = 0;
 		apriltag_detector_add_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
-
 		if (errno == ENOMEM) {
 			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
 		}
@@ -454,6 +454,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 // deprecated
 std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth, float * markerLengthOut, cv::Mat * imageWithDetections)
 {
+	UDEBUG("");
     std::map<int, Transform> detections;
     std::map<int, MarkerInfo> infos = detect(image, model, depth, std::map<int, float>(), imageWithDetections);
     
@@ -513,8 +514,8 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 		}
 		image_u8_t im = {grayImage.cols, grayImage.rows, (int)grayImage.step, grayImage.data};
 
+		errno = 0;
 		zarray_t *apriltagDetections = apriltag_detector_detect(((apriltag_detector_t*)apriltagLibDetector_), &im);
-
 		if (errno == EAGAIN) {
 			UERROR("Unable to create the %d threads requested.", ((apriltag_detector_t*)apriltagLibDetector_)->nthreads);
 			if(apriltagDetections)
@@ -844,7 +845,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 	if(imageWithDetections)
 	{
-#ifdef HAVE_OPENCV_ARUCO
 		if(image.channels()==1)
 		{
 			cv::cvtColor(image, *imageWithDetections, cv::COLOR_GRAY2BGR);
@@ -853,32 +853,38 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 		{
 			image.copyTo(*imageWithDetections);
 		}
+
 		if(!ids.empty())
 		{
+#ifdef HAVE_OPENCV_ARUCO
 			cv::aruco::drawDetectedMarkers(*imageWithDetections, corners, ids);
-
+#else
+			UWARN("RTAB-Map is not built with \"aruco\" module from OpenCV. Cannot draw markers on image.");
+#endif
 			for(unsigned int i = 0; i < ids.size(); i++)
 			{
                 std::map<int, MarkerInfo>::iterator iter = detections.find(ids[i]);
                 if(iter!=detections.end())
                 {
 					int cam = cams[i];
+					UASSERT(cam >=0 && cam < (int)models.size());
 					const CameraModel & model = models[cam];
-					cv::Mat subImage(*imageWithDetections, cv::Rect(subRGBWidth*i, 0, subRGBWidth, imageWithDetections->rows));
+					int roix = subRGBWidth*cam;
+					UASSERT(roix >=0 && roix <= imageWithDetections->cols - subRGBWidth);
+					cv::Mat subImage(*imageWithDetections, cv::Rect(roix, 0, subRGBWidth, imageWithDetections->rows));
 					cv::Vec3d rvec;
 					cv::Vec3d tvec(poses[i].x(), poses[i].y(), poses[i].z());
-					cv::Rodrigues(poses[i].rotationMatrix(), rvec);								
+					cv::Mat R;
+					poses[i].rotationMatrix().convertTo(R, CV_64F);
+					cv::Rodrigues(R, rvec);			
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && (CV_MINOR_VERSION >1 || (CV_MINOR_VERSION==1 && CV_PATCH_VERSION>=1)))
                     cv::drawFrameAxes(subImage, model.K(), model.D(), rvec, tvec, iter->second.length() * 0.5f);
-#else
+#elif defined(HAVE_OPENCV_ARUCO)
                     cv::aruco::drawAxis(subImage, model.K(), model.D(), rvec, tvec, iter->second.length() * 0.5f);
 #endif
                 }
 			}
 		}
-#else
-		UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV. Cannot draw markers on image.");
-#endif
 	}
 
 	return detections;
@@ -890,6 +896,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
                            const std::map<int, float> & markerLengths,
                            cv::Mat * imageWithDetections)
 {
+	UDEBUG("");
 	if(!image.empty() && image.cols != model.imageWidth())
 	{
 		UERROR("This method cannot handle multi-camera marker detection, use the other function version supporting it.");

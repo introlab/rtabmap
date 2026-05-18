@@ -84,7 +84,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	showScanCheckbox_->setChecked(true);
 
 	markerCheckbox_ = new QCheckBox("Detect markers", this);
-#ifdef HAVE_OPENCV_ARUCO
+#if defined(HAVE_OPENCV_ARUCO) || defined(RTABMAP_APRILTAG)
 	markerCheckbox_->setEnabled(true);
 	markerDetector_ = new MarkerDetector(parameters);
 #else
@@ -165,12 +165,22 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 				}
 			}
 		}
+		else
+		{
+			_landmarksSize.clear();
+		}
 			
 		if(!models.empty() && models[0].isValidForProjection())
 		{
 			cv::Mat imageWithDetections;
-			detections = markerDetector_->detect(left, models, depthOrRight, std::map<int, float>(), &imageWithDetections);
+			detections = markerDetector_->detect(left, models, depthOrRight, _landmarksSize, &imageWithDetections);
 			imageView_->setImage(uCvMat2QImage(imageWithDetections));
+			for(std::map<int, MarkerInfo>::iterator iter=detections.begin(); iter!=detections.end(); ++iter)
+			{
+				if(iter->second.length() > 0.0f) {
+					_landmarksSize.insert(std::make_pair(iter->first, iter->second.length()));
+				}
+			}
 		}
 		else
 		{
@@ -236,7 +246,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 					cloudView_->addOrUpdateCoordinate(uFormat("landmark_%d", iter->first), iter->second.pose(), iter->second.length(), false);
 #endif
-					std::string num = uNumber2Str(iter->first);
+					std::string num = uFormat("%d (%.1f cm)", iter->first, iter->second.length()*100.0f);
 					cloudView_->addOrUpdateText(
 							std::string("landmark_str_") + num,
 							num,
