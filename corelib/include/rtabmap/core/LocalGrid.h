@@ -90,8 +90,8 @@ public:
  * @class LocalGridCache
  * @brief Cache of @ref LocalGrid entries keyed by map node id.
  *
- * Used by global mapping (e.g. @ref OccupancyGrid) to hold per-node local grids
- * before assembly. Node id `0` is stored as `-1` (temporary grid). Negative ids
+ * Used by @ref GlobalMap and its subclasses (e.g. @ref OccupancyGrid) to hold per-node
+ * local grids before assembly. Node id `0` is stored as `-1` (temporary grid). Negative ids
  * passed to @ref add() are rejected.
  */
 class RTABMAP_CORE_EXPORT LocalGridCache
