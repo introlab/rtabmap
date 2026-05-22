@@ -1978,11 +1978,12 @@ int main(int argc, char * argv[])
 					exportPosesFormat,
 					std::map<int, Transform>(robotPoses.lower_bound(1), robotPoses.end()),
 					links,
-					std::map<int, double>(robotStamps.lower_bound(1), robotStamps.end()));
+					std::map<int, double>(robotStamps.lower_bound(1), robotStamps.end()),
+					parameters);
 			}
 			else
 			{
-				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, robotPoses, links, robotStamps);
+				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, robotPoses, links, robotStamps, parameters);
 			}
 			cv::Vec3f vmin, vmax;
 			graph::computeMinMax(robotPoses, vmin, vmax);
@@ -2001,7 +2002,7 @@ int main(int argc, char * argv[])
 					outputPath = outputDirectory+"/"+baseName+"_camera_poses." + posesExt;
 				else
 					outputPath = outputDirectory+"/"+baseName+"_camera_poses_"+uNumber2Str((int)i)+"." + posesExt;
-				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, cameraPoses[i], std::multimap<int, Link>(), cameraStamps[i]);
+				rtabmap::graph::exportPoses(outputPath, exportPosesFormat, cameraPoses[i], std::multimap<int, Link>(), cameraStamps[i], parameters);
 				cv::Vec3f vmin, vmax;
 				graph::computeMinMax(cameraPoses[i], vmin, vmax);
 				printf("%d camera poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
@@ -2014,7 +2015,7 @@ int main(int argc, char * argv[])
 		if(exportPosesScan)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), scanStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), scanStamps, parameters);
 			cv::Vec3f min, max;
 			graph::computeMinMax(scanPoses, min, max);
 			printf("%d scan poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
@@ -2026,7 +2027,7 @@ int main(int argc, char * argv[])
 		if(exportPosesScan)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_scan_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), scanStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, scanPoses, std::multimap<int, Link>(), scanStamps, parameters);
 			cv::Vec3f min, max;
 			graph::computeMinMax(scanPoses, min, max);
 			printf("%d scan poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
@@ -2038,7 +2039,7 @@ int main(int argc, char * argv[])
 		if(exportPosesLandmarks)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_landmark_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, landmarkPoses, std::multimap<int, Link>(), landmarkStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, landmarkPoses, std::multimap<int, Link>(), landmarkStamps, parameters);
 			cv::Vec3f min, max;
 			graph::computeMinMax(landmarkPoses, min, max);
 			printf("%d landmark poses exported to \"%s\". (min=[%f,%f,%f] max=[%f,%f,%f])\n",
@@ -2050,7 +2051,7 @@ int main(int argc, char * argv[])
 		if(exportPosesGps)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_gps_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gpsPoses, std::multimap<int, Link>(), gpsStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gpsPoses, std::multimap<int, Link>(), gpsStamps, parameters);
 			printf("%d GPS poses exported to \"%s\".\n",
 					(int)gpsPoses.size(),
 					outputPath.c_str());
@@ -2058,7 +2059,7 @@ int main(int argc, char * argv[])
 		if(exportPosesGt)
 		{
 			std::string outputPath=outputDirectory+"/"+baseName+"_gt_poses." + posesExt;
-			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gtPoses, std::multimap<int, Link>(), gtStamps);
+			rtabmap::graph::exportPoses(outputPath, exportPosesFormat, gtPoses, std::multimap<int, Link>(), gtStamps, parameters);
 			printf("%d scan poses exported to \"%s\".\n",
 					(int)gtPoses.size(),
 					outputPath.c_str());
