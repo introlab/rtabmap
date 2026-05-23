@@ -4423,7 +4423,7 @@ bool Rtabmap::process(
 	}
 	if(!_rawDataKept)
 	{
-		_memory->removeRawData(signature->id(), true, !_neighborLinkRefining && !_proximityBySpace, true);
+		_memory->removeRawData(signature->id(), true, !_neighborLinkRefining && !_proximityBySpace, true, false);
 	}
 
 	// Localization mode and saving localization data: save odometry covariance in a prior link

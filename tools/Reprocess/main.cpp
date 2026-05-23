@@ -1090,7 +1090,7 @@ int main(int argc, char * argv[])
 
 			uInsert(globalMapStats, odomInfo.statistics(pose));
 		}
-		else if(framesToSkip==0 && intermediateNodes && lastUpdateStamp > 0.0 && (data.stamp() < lastUpdateStamp + rtabmapUpdateRate))
+		else if(framesToSkip==0 && intermediateNodes && lastUpdateStamp > 0.0 && data.stamp() > lastUpdateStamp && (data.stamp() < lastUpdateStamp + rtabmapUpdateRate))
 		{
 			data.setId(-1); // intermediate node
 		}

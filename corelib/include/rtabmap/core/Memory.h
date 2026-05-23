@@ -144,7 +144,7 @@ public:
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
-	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true);
+	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false, int direction = 0);
 
 	//getters

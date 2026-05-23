@@ -997,6 +997,14 @@ void SensorData::clearCompressedData(bool images, bool scan, bool userData, bool
 		_groundCellsCompressed=cv::Mat();
 		_emptyCellsCompressed=cv::Mat();
 		_obstacleCellsCompressed=cv::Mat();
+		
+		if( _groundCellsCompressed.empty()  && _groundCellsRaw.empty() &&
+			_obstacleCellsCompressed.empty()  && _obstacleCellsRaw.empty() &&
+			_emptyCellsCompressed.empty()  && _emptyCellsRaw.empty())
+		{
+			_cellSize = 0.0f;
+			_viewPoint = cv::Point3f();
+		}
 	}
 }
 void SensorData::clearRawData(bool images, bool scan, bool userData, bool occupancyGrid)
@@ -1024,6 +1032,14 @@ void SensorData::clearRawData(bool images, bool scan, bool userData, bool occupa
 		_groundCellsRaw=cv::Mat();
 		_emptyCellsRaw=cv::Mat();
 		_obstacleCellsRaw=cv::Mat();
+
+		if( _groundCellsCompressed.empty()  && _groundCellsRaw.empty() &&
+			_obstacleCellsCompressed.empty()  && _obstacleCellsRaw.empty() &&
+			_emptyCellsCompressed.empty()  && _emptyCellsRaw.empty())
+		{
+			_cellSize = 0.0f;
+			_viewPoint = cv::Point3f();
+		}
 	}
 }
 

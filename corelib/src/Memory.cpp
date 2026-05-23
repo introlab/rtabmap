@@ -3176,7 +3176,7 @@ void Memory::removeLink(int oldId, int newId)
 	}
 }
 
-void Memory::removeRawData(int id, bool image, bool scan, bool userData)
+void Memory::removeRawData(int id, bool image, bool scan, bool userData, bool occupancyGrid)
 {
 	UDEBUG("id=%d image=%d scan=%d userData=%d", id, image?1:0, scan?1:0, userData?1:0);
 	Signature * s = this->_getSignature(id);
@@ -3185,7 +3185,8 @@ void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 		s->sensorData().clearRawData(
 				image && (!_reextractLoopClosureFeatures || !_registrationPipeline->isImageRequired()),
 				scan && !_registrationPipeline->isScanRequired(),
-				userData && !_registrationPipeline->isUserDataRequired());
+				userData && !_registrationPipeline->isUserDataRequired(),
+				occupancyGrid);
 	}
 }
 
