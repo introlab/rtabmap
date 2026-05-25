@@ -32,7 +32,39 @@ detect_gcov_tool() {
 	fi
 }
 GCOV_TOOL="$(detect_gcov_tool)"
-LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch,unused)
+
+# lcov 1.14 (Ubuntu 22.04) only knows --ignore-errors gcov,source,graph.
+# lcov 1.15+ also accepts mismatch,unused,format,deprecated. The category
+# vocabulary is shared by lcov and geninfo so we parse the help output of
+# geninfo (the tool that actually fails first) and use the intersection
+# with what we want.
+detect_lcov_ignore_categories() {
+	local wanted=(gcov source graph mismatch unused)
+	local help_line
+	# geninfo prints the supported categories inline: "(gcov, source, graph)"
+	# on 1.14; newer versions list more. Pull whatever's between the parens.
+	help_line="$(geninfo --help 2>&1 | grep -m1 -- '--ignore-errors ERROR')"
+	local available=()
+	if [[ "$help_line" =~ \(([^\)]+)\) ]]; then
+		IFS=', ' read -r -a available <<<"${BASH_REMATCH[1]}"
+	fi
+	local supported=()
+	for w in "${wanted[@]}"; do
+		for a in "${available[@]}"; do
+			if [[ "$w" == "$a" ]]; then
+				supported+=("$w")
+				break
+			fi
+		done
+	done
+	# Fallback to the lcov-1.14 minimum if parsing failed.
+	if [[ ${#supported[@]} -eq 0 ]]; then
+		supported=(gcov source graph)
+	fi
+	(IFS=,; echo "${supported[*]}")
+}
+LCOV_IGNORE_CATEGORIES="$(detect_lcov_ignore_categories)"
+LCOV_IGNORE=(--ignore-errors "$LCOV_IGNORE_CATEGORIES")
 
 configure_coverage_build() {
 	local -a gtest_args=()
