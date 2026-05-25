@@ -2404,7 +2404,7 @@ bool rotateImagesUpsideUpIfNecessary(
 	Transform localTransform = model.localTransform()*CameraModel::opticalRotation().inverse();
 	localTransform.getEulerAngles(roll, pitch, yaw);
 	UDEBUG("roll=%f pitch=%f yaw=%f", roll, pitch, yaw);
-	if(fabs(pitch > M_PI/4))
+	if(fabs(pitch) > M_PI/4)
 	{
 		// Return original because of ambiguity for what would be considered up...
 		UDEBUG("Ignoring image rotation as pitch(%f)>Pi/4", pitch);
@@ -2416,29 +2416,49 @@ bool rotateImagesUpsideUpIfNecessary(
 	}
 	if(roll >= M_PI/4 && roll < 3*M_PI/4)
 	{
-		UDEBUG("ROTATION_90 (roll=%f)", roll);
+		// Body roll near +pi/2 (right side down): the world-up direction projects to
+		// the image's left, so rotate the image 90 degrees clockwise to bring it
+		// upright (transpose + horizontal flip). Image dimensions HxW become WxH.
+		//
+		// Marker X moves from top-left to top-right quadrant:
+		//   before (3x6):              after (6x3):
+		//   . X . . . .                . . .
+		//   . . . . . .                . . X
+		//   . . . . . .                . . .
+		//                              . . .
+		//                              . . .
+		//                              . . .
+		UDEBUG("Rotating image 90 deg clockwise to correct body roll (roll=%f)", roll);
 		if(!rgb.empty())
 		{
-			cv::flip(rgb,rgb,1);
 			cv::transpose(rgb,rgb);
+			cv::flip(rgb,rgb,1);
 		}
 		if(!depth.empty())
 		{
-			cv::flip(depth,depth,1);
 			cv::transpose(depth,depth);
+			cv::flip(depth,depth,1);
 		}
 		cv::Size sizet(model.imageHeight(), model.imageWidth());
 		model = CameraModel(
 				model.fy(),
 				model.fx(),
-				model.cy(),
-				model.cx()>0?model.imageWidth()-model.cx():0,
-				model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
+				model.cy()>0?model.imageHeight()-model.cy():0,
+				model.cx(),
+				model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
 		model.setImageSize(sizet);
 	}
 	else if(roll >= 3*M_PI/4 && roll < 5*M_PI/4)
 	{
-		UDEBUG("ROTATION_180 (roll=%f)", roll);
+		// Body roll near pi (upside down): rotate the image 180 degrees (horizontal
+		// flip + vertical flip). Image dimensions unchanged.
+		//
+		// Marker X moves from top-left to bottom-right quadrant:
+		//   before (3x6):              after (3x6):
+		//   . X . . . .                . . . . . .
+		//   . . . . . .                . . . . . .
+		//   . . . . . .                . . . . X .
+		UDEBUG("Rotating image 180 deg to correct body roll (roll=%f)", roll);
 		if(!rgb.empty())
 		{
 			cv::flip(rgb,rgb,1);
@@ -2460,29 +2480,42 @@ bool rotateImagesUpsideUpIfNecessary(
 	}
 	else if(roll >= 5*M_PI/4 && roll < 7*M_PI/4)
 	{
-		UDEBUG("ROTATION_270 (roll=%f)", roll);
+		// Body roll near -pi/2 / +3*pi/2 (left side down): the world-up direction
+		// projects to the image's right, so rotate the image 90 degrees counter-
+		// clockwise to bring it upright (horizontal flip + transpose). Image
+		// dimensions HxW become WxH.
+		//
+		// Marker X moves from top-left to bottom-left quadrant:
+		//   before (3x6):              after (6x3):
+		//   . X . . . .                . . .
+		//   . . . . . .                . . .
+		//   . . . . . .                . . .
+		//                              . . .
+		//                              X . .
+		//                              . . .
+		UDEBUG("Rotating image 90 deg counter-clockwise to correct body roll (roll=%f)", roll);
 		if(!rgb.empty())
 		{
-			cv::transpose(rgb,rgb);
 			cv::flip(rgb,rgb,1);
+			cv::transpose(rgb,rgb);
 		}
 		if(!depth.empty())
 		{
-			cv::transpose(depth,depth);
 			cv::flip(depth,depth,1);
+			cv::transpose(depth,depth);
 		}
 		cv::Size sizet(model.imageHeight(), model.imageWidth());
 		model = CameraModel(
 				model.fy(),
 				model.fx(),
-				model.cy()>0?model.imageHeight()-model.cy():0,
-				model.cx(),
-				model.localTransform()*rtabmap::Transform(0,1,0,0, -1,0,0,0, 0,0,1,0));
+				model.cy(),
+				model.cx()>0?model.imageWidth()-model.cx():0,
+				model.localTransform()*rtabmap::Transform(0,-1,0,0, 1,0,0,0, 0,0,1,0));
 		model.setImageSize(sizet);
 	}
 	else
 	{
-		UDEBUG("ROTATION_0 (roll=%f)", roll);
+		UDEBUG("Not rotating image, body roll within +/- pi/4 of upright (roll=%f)", roll);
 		return false;
 	}
 	return true;

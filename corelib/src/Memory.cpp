@@ -2588,7 +2588,9 @@ public:
 		}
 		return false;
 	}
-	int weight, age, id;
+	int weight;
+	double age;
+	int id;
 };
 std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
 {

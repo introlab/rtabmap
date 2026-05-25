@@ -96,6 +96,16 @@ add_executable(test_bayesfilter test_bayesfilter.cpp)
 target_link_libraries(test_bayesfilter gtest_main rtabmap_core)
 add_test(NAME test_bayesfilter COMMAND test_bayesfilter)
 
+#Memory.h
+add_executable(test_memory test_memory.cpp)
+target_link_libraries(test_memory gtest_main rtabmap_core)
+add_test(NAME test_memory COMMAND test_memory)
+
+#Rtabmap.h
+add_executable(test_rtabmap test_rtabmap.cpp)
+target_link_libraries(test_rtabmap gtest_main rtabmap_core)
+add_test(NAME test_rtabmap COMMAND test_rtabmap)
+
 #Link.h
 add_executable(test_link test_link.cpp)
 target_link_libraries(test_link gtest_main rtabmap_core)

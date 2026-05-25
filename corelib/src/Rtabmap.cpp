@@ -7004,6 +7004,33 @@ bool Rtabmap::computePath(int targetNode, bool global)
 			{
 				if(iter->first > 0)
 				{
+					// Skip intermediate nodes (weight==-1). They are not navigable
+					// waypoints and updateGoalIndex would otherwise abort the
+					// plan when it sees them. The poses of the remaining real
+					// nodes already account for cumulative transform through any
+					// intermediate chain (relative poses from graph::computePath).
+					int weight = 0;
+					const Signature * s = _memory->getSignature(iter->first);
+					if(s)
+					{
+						weight = s->getWeight();
+					}
+					else
+					{
+						// For nodes in LTM, fetch weight from the database.
+						Transform p, gt;
+						int mapId = 0;
+						std::string label;
+						double stamp = 0.0;
+						std::vector<float> vel;
+						GPS gps;
+						EnvSensors envs;
+						_memory->getNodeInfo(iter->first, p, mapId, weight, label, stamp, gt, vel, gps, envs, true);
+					}
+					if(weight == -1)
+					{
+						continue;
+					}
 					// just keep nodes in the path
 					_path[oi].first = iter->first;
 					_path[oi++].second = t * iter->second;
@@ -7277,17 +7304,13 @@ void Rtabmap::updateGoalIndex()
 	if( _memory && _path.size())
 	{
 		// remove all previous virtual links
-		bool hasIntermediateNodes = false;
 		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
 		{
 			const Signature * s = _memory->getSignature(_path[i].first);
 			if(s)
 			{
+				UASSERT_MSG(s->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i, _path[i].first).c_str());
 				_memory->removeVirtualLinks(s->id());
-			}
-			if(s->getWeight() == -1)
-			{
-				hasIntermediateNodes = true;
 			}
 		}
 
@@ -7314,51 +7337,42 @@ void Rtabmap::updateGoalIndex()
 			}
 		}
 
-		// Make sure the next signatures on the path are linked together
+		// Make sure the next signatures on the path are linked together.
+		// Intermediate nodes have been filtered out of _path by computePath, so
+		// every entry is a real node here.
 		float distanceSoFar = 0.0f;
-		for(unsigned int i=_pathCurrentIndex+1;
-			i<_path.size() && !hasIntermediateNodes;
-			++i)
+		for(unsigned int i=_pathCurrentIndex+1; i<_path.size(); ++i)
 		{
-			if(i>0)
+			if(_localRadius > 0.0f)
 			{
-				if(_localRadius > 0.0f)
+				distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
+			}
+
+			if(_path[i].first != _path[i-1].first)
+			{
+				const Signature * s = _memory->getSignature(_path[i].first);
+				if(s)
 				{
-					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
-				}
-				
-				if(_path[i].first != _path[i-1].first)
-				{
-					const Signature * s = _memory->getSignature(_path[i].first);
-					if(s)
+					UASSERT_MSG(s->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i, _path[i].first).c_str());
+					const Signature * sPrev = _memory->getSignature(_path[i-1].first);
+					if(sPrev)
 					{
-						if(s->getWeight() == -1)
-						{
-							hasIntermediateNodes = true;
-							break;
-						}
-						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
-						{
-							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
-							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
-						}
+						UASSERT_MSG(sPrev->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i-1, _path[i-1].first).c_str());
+					}
+					if(!s->hasLink(_path[i-1].first) && sPrev != 0)
+					{
+						Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
+						_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
+						UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 					}
 				}
-
-				if(distanceSoFar > _localRadius)
-				{
-					UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
-					break;
-				}
 			}
-		}
 
-		if(hasIntermediateNodes)
-		{
-			UERROR("Cannot follow a path with a map containing intermediate nodes (not supported: don't use intermediate nodes if rtabmap's planner has to be used). Aborting current plan!");
-			this->clearPath(-1);
-			return;
+			if(distanceSoFar > _localRadius)
+			{
+				UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
+				break;
+			}
 		}
 
 		UDEBUG("current node = %d current goal = %d", _path[_pathCurrentIndex].first, _path[_pathGoalIndex].first);

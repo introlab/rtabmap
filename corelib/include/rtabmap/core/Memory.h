@@ -211,12 +211,22 @@ public:
 	/**
 	 * @brief Transfers oldest signatures from WM to LTM to respect memory and/or time limits.
 	 *
-	 * The number of signatures removed depends on the visual word dictionary growth
-	 * since the previous iteration (including retrieved signatures). We remove signatures
-	 * until the number of visual words transferred is greater than the number of retrieved
-	 * ones on the last iteration. In the case that signatures don't have visual words (e.g., lidar-only mapping),
-	 * we remove at least one more signature than the total of signatures added/retrieved in the
-	 * previous iteration.
+	 * Two regimes are used depending on the visual word dictionary state:
+	 * - **Word-count regime**: active only when mapping mode is on, the @ref VWDictionary
+	 *   is in incremental mode, contains at least one word, and is *not* using incremental
+	 *   FLANN. In this regime, signatures are transferred until the number of visual words
+	 *   removed from the dictionary catches up with the number of new words indexed since
+	 *   the previous iteration.
+	 * - **Signature-count regime**: used in every other case (localization mode, dictionary
+	 *   not incremental, dictionary still empty -- e.g. lidar-only mapping or no feature
+	 *   extraction -- or incremental FLANN, where the word count is no longer the bottleneck).
+	 *   In this regime, at least one more signature than the count added/retrieved in the
+	 *   previous iteration is transferred, regardless of words.
+	 *
+	 * In both regimes, candidate selection (see @c getRemovableSignatures()) honors
+	 * @p ignoredIds, skips intermediate nodes, and excludes WM nodes linked to STM (to
+	 * preserve rehearsal). Intermediate (weight==-1) nodes linked to a transferred
+	 * signature are dragged out with it.
 	 *
 	 * @param ignoredIds Signatures that must not be transferred (e.g. STM, retrieved ids, on the planned path).
 	 * @return Ids of signatures moved to LTM, in transfer order.

@@ -1259,10 +1259,42 @@ cv::Mat createTestImage(int width, int height, uchar value = 100) {
     return cv::Mat(height, width, CV_8UC3, cv::Scalar(value, value, value));
 }
 
+namespace {
+// A 3-channel "marker" pixel that's distinguishable from the uniform base color.
+const cv::Vec3b kRgbMarker(255, 0, 0);
+const cv::Vec3b kDepthMarker(123, 45, 67);
+// Marker pixel position in the input 640x480 (cols x rows) image (top-left quadrant).
+const int kMarkerRow = 100;
+const int kMarkerCol = 200;
+
+void stampMarker(cv::Mat & rgb, cv::Mat & depth) {
+    rgb.at<cv::Vec3b>(kMarkerRow, kMarkerCol) = kRgbMarker;
+    depth.at<cv::Vec3b>(kMarkerRow, kMarkerCol) = kDepthMarker;
+}
+
+// Verifies the marker landed at (expectedRow, expectedCol) and that no other pixel
+// in the rotated image carries the marker color (i.e. the rotation is direction-
+// correct, not just dimension-correct).
+void expectMarkerAt(const cv::Mat & img, const cv::Vec3b & marker, int expectedRow, int expectedCol) {
+    EXPECT_EQ(img.at<cv::Vec3b>(expectedRow, expectedCol), marker);
+    int strays = 0;
+    for(int r = 0; r < img.rows; ++r)
+    {
+        for(int c = 0; c < img.cols; ++c)
+        {
+            if(r == expectedRow && c == expectedCol) continue;
+            if(img.at<cv::Vec3b>(r, c) == marker) ++strays;
+        }
+    }
+    EXPECT_EQ(strays, 0);
+}
+} // namespace
+
 TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryNoRotation) {
     CameraModel model(500, 500, 320, 240, CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480);
     cv::Mat depth = createTestImage(640, 480);
+    stampMarker(rgb, depth);
 
     bool rotated = util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
 
@@ -1271,6 +1303,9 @@ TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryNoRotation) {
     EXPECT_EQ(rgb.rows, 480);
     EXPECT_EQ(depth.cols, 640);
     EXPECT_EQ(depth.rows, 480);
+    // Marker stays in place when no rotation is applied.
+    expectMarkerAt(rgb,   kRgbMarker,   kMarkerRow, kMarkerCol);
+    expectMarkerAt(depth, kDepthMarker, kMarkerRow, kMarkerCol);
     float roll,pitch,yaw;
     (model.localTransform() * CameraModel::opticalRotation().inverse()).getEulerAngles(roll, pitch, yaw);
     EXPECT_EQ(roll, 0.0f);
@@ -1279,43 +1314,54 @@ TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryNoRotation) {
 }
 
 TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation90Degrees) {
-    // Simulate 90° roll
+    // Simulate +pi/2 roll (camera tilted right) -> upright correction is a 90 CW
+    // rotation of the image (transpose then flip(axis=1)). For an input marker at
+    // (row=100, col=200) in a 480x640 image:
+    //   transpose: (100, 200) -> (200, 100) in 640x480
+    //   flip(1):   (200, 100) -> (200, 480-1-100) = (200, 379)
     Transform rot = Transform(0,0,0, M_PI / 2, 0, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480, 150);
     cv::Mat depth = createTestImage(640, 480, 200);
+    stampMarker(rgb, depth);
 
     bool rotated = util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
 
     EXPECT_TRUE(rotated);
     EXPECT_EQ(rgb.cols, 480);  // Transposed
     EXPECT_EQ(rgb.rows, 640);
-    EXPECT_EQ(rgb.at<cv::Vec3b>(0, 0)[0], 150);  // Same pixel values
-    EXPECT_EQ(depth.cols, 480);  // Transposed
+    EXPECT_EQ(depth.cols, 480);
     EXPECT_EQ(depth.rows, 640);
-    EXPECT_EQ(depth.at<cv::Vec3b>(0, 0)[0], 200);
+    expectMarkerAt(rgb,   kRgbMarker,   /*row=*/200, /*col=*/379);
+    expectMarkerAt(depth, kDepthMarker, /*row=*/200, /*col=*/379);
+    // After correction the camera is upright (roll=0).
     float roll,pitch,yaw;
     (model.localTransform() * CameraModel::opticalRotation().inverse()).getEulerAngles(roll, pitch, yaw);
-    EXPECT_NEAR(roll, M_PI, 1e-5);
+    EXPECT_NEAR(roll, 0.0f, 1e-5);
     EXPECT_NEAR(pitch, 0.0f, 1e-5);
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
 
 TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation180Degrees) {
+    // Simulate pi roll (camera upside down) -> 180 rotation:
+    //   flip(1) + flip(0). For (100, 200) in 480x640:
+    //   flip(1): (100, 200) -> (100, 640-1-200) = (100, 439)
+    //   flip(0): (100, 439) -> (480-1-100, 439) = (379, 439)
     Transform rot = Transform(0,0,0, M_PI, 0, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480, 123);
     cv::Mat depth = createTestImage(640, 480, 77);
+    stampMarker(rgb, depth);
 
     bool rotated = util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
 
     EXPECT_TRUE(rotated);
     EXPECT_EQ(rgb.cols, 640);  // Same size
     EXPECT_EQ(rgb.rows, 480);
-    EXPECT_EQ(rgb.at<cv::Vec3b>(0, 0)[0], 123);
     EXPECT_EQ(depth.cols, 640);  // Same size
     EXPECT_EQ(depth.rows, 480);
-    EXPECT_EQ(depth.at<cv::Vec3b>(0, 0)[0], 77);
+    expectMarkerAt(rgb,   kRgbMarker,   /*row=*/379, /*col=*/439);
+    expectMarkerAt(depth, kDepthMarker, /*row=*/379, /*col=*/439);
     float roll,pitch,yaw;
     (model.localTransform() * CameraModel::opticalRotation().inverse()).getEulerAngles(roll, pitch, yaw);
     EXPECT_NEAR(roll, 0.0f, 1e-5);
@@ -1324,23 +1370,29 @@ TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation180Degrees) {
 }
 
 TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation270Degrees) {
+    // Simulate 3*pi/2 roll (camera tilted left) -> upright correction is a 90 CCW
+    // rotation of the image (flip(axis=1) then transpose). For (100, 200) in 480x640:
+    //   flip(1):   (100, 200) -> (100, 640-1-200) = (100, 439)
+    //   transpose: (100, 439) -> (439, 100) in 640x480
     Transform rot = Transform(0,0,0, 3*M_PI/2, 0, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
     cv::Mat rgb = createTestImage(640, 480, 90);
     cv::Mat depth = createTestImage(640, 480, 60);
+    stampMarker(rgb, depth);
 
     bool rotated = util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
 
     EXPECT_TRUE(rotated);
     EXPECT_EQ(rgb.cols, 480);
     EXPECT_EQ(rgb.rows, 640);
-    EXPECT_EQ(rgb.at<cv::Vec3b>(0, 0)[0], 90);
     EXPECT_EQ(depth.cols, 480);
     EXPECT_EQ(depth.rows, 640);
-    EXPECT_EQ(depth.at<cv::Vec3b>(0, 0)[0], 60);
+    expectMarkerAt(rgb,   kRgbMarker,   /*row=*/439, /*col=*/100);
+    expectMarkerAt(depth, kDepthMarker, /*row=*/439, /*col=*/100);
+    // After correction the camera is upright (roll=0).
     float roll,pitch,yaw;
     (model.localTransform() * CameraModel::opticalRotation().inverse()).getEulerAngles(roll, pitch, yaw);
-    EXPECT_NEAR(roll, M_PI, 1e-5);
+    EXPECT_NEAR(roll, 0.0f, 1e-5);
     EXPECT_NEAR(pitch, 0.0f, 1e-5);
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
