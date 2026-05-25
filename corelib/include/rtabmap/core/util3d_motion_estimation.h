@@ -74,6 +74,34 @@ namespace util3d
  *
  * @see cv::solvePnPRansac
  */
+/**
+ * @brief Toggle a deterministic seed for OpenGV's internal RANSAC RNG.
+ *
+ * OpenGV's @c SampleConsensusProblem (and its multi-camera sibling) seeds its
+ * internal @c std::mt19937 from the system clock when default-constructed,
+ * which makes every @ref estimateMotion3DTo2D() call non-reproducible across
+ * runs. Calling @c setRansacDeterministicSeed(true) reseeds OpenGV's RNG with
+ * the fixed value @c 12345 before each RANSAC pass so identical inputs always
+ * produce identical inlier sets, covariances and output transforms.
+ *
+ * Intended for tests; production code should leave this off (default).
+ *
+ * @param enable If true, force the deterministic seed; if false (default),
+ *               use OpenGV's system-clock seed.
+ *
+ * @todo Expose this through the @c Parameters layer (e.g.
+ *       @c kVisDeterministicRansacSeed) so production runs that need
+ *       bit-for-bit replayability - reproducing a reported failure on the
+ *       exact same input, or doing regression diffs across rtabmap versions -
+ *       can opt in without code edits. Production should default to the
+ *       wall-clock seed (occasional sample diversity still helps marginal
+ *       inputs).
+ */
+void RTABMAP_CORE_EXPORT setRansacDeterministicSeed(bool enable);
+
+/** @return Whether the deterministic-seed toggle is currently enabled. */
+bool RTABMAP_CORE_EXPORT ransacDeterministicSeedEnabled();
+
 Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,

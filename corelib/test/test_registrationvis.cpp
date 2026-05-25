@@ -35,6 +35,17 @@ static ParametersMap registrationVisTestParams(int estimationType = 1, int corTy
 	params[Parameters::kVisCorType()] = std::to_string(corType); // 0=feature matching, 1=optical flow
 	params[Parameters::kVisBundleAdjustment()] = "0";
 	params[Parameters::kVisRoiRatios()] = kRoiRatios;
+	if(corType == 1)
+	{
+		// Lucas-Kanade tracker defaults (win=16, levels=3) leave enough
+		// sub-pixel drift to push most correspondences past the 2 px
+		// reprojection bound on some OpenCV builds (SIMD/IPP differences in
+		// cv::calcOpticalFlowPyrLK). A larger window + more pyramid levels
+		// converge tighter and keep the OF test robust across platforms
+		// (~90% inlier ratio instead of ~5% on Ubuntu's DFSG OpenCV).
+		params[Parameters::kVisCorFlowWinSize()] = "21";
+		params[Parameters::kVisCorFlowMaxLevel()] = "5";
+	}
 	return params;
 }
 
@@ -132,15 +143,6 @@ static Transform computeRegistration(
 	RegistrationInfo info;
 	Transform nullGuess;
 	return reg.computeTransformation(from, to, nullGuess, infoOut ? infoOut : &info);
-}
-
-static Transform computeRegistration(
-		const SensorData & fromData,
-		const SensorData & toData,
-		int estimationType,
-		RegistrationInfo * infoOut = nullptr)
-{
-	return computeRegistration(fromData, toData, registrationVisTestParams(estimationType), infoOut);
 }
 
 // Golden transforms (GFTT/ORB, MinDistance=3, QualityLevel=0.01, MaxFeatures=3000, RoiRatios=0 0 0 0.3).

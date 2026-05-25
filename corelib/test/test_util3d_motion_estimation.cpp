@@ -243,6 +243,9 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DWithNoise) {
 }
 
 TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DMultiCamBasic) {
+    // OpenGV's RANSAC RNG defaults to a wall-clock seed, which makes the
+    // covariance / inlier outputs jitter across runs. Pin it for the test.
+    util3d::setRansacDeterministicSeed(true);
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
     std::map<int, cv::Point3f> words3A = {

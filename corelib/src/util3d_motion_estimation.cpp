@@ -56,6 +56,24 @@ namespace rtabmap
 namespace util3d
 {
 
+namespace {
+// When true, every newly-constructed OpenGV SAC problem inside this
+// translation unit gets its RNG reseeded with a fixed constant so that
+// RANSAC is bit-for-bit reproducible. Tests can flip this on via
+// setRansacDeterministicSeed(true); production code leaves it off.
+bool g_ransacDeterministicSeed = false;
+} // namespace
+
+void setRansacDeterministicSeed(bool enable)
+{
+	g_ransacDeterministicSeed = enable;
+}
+
+bool ransacDeterministicSeedEnabled()
+{
+	return g_ransacDeterministicSeed;
+}
+
 Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
@@ -517,6 +535,18 @@ Transform estimateMotion3DTo2D(
 			std::shared_ptr<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> absposeproblem_ptr(
 					new opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem(adapter));
 
+			// Opt-in deterministic RANSAC: OpenGV's default constructor seeds
+			// its internal mt19937 from the system clock, so without this
+			// override two calls with identical inputs can produce different
+			// inlier sets / covariances. Tests flip the toggle via
+			// setRansacDeterministicSeed(true).
+			if(g_ransacDeterministicSeed)
+			{
+				absposeproblem_ptr->rng_alg_.seed(12345u);
+				absposeproblem_ptr->rng_gen_.reset(new std::function<int()>(
+						std::bind(*absposeproblem_ptr->rng_dist_, absposeproblem_ptr->rng_alg_)));
+			}
+
 			ransac.sac_model_ = absposeproblem_ptr;
 			ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
 			ransac.max_iterations_ = iterations;
@@ -571,6 +601,14 @@ Transform estimateMotion3DTo2D(
 			opengv::sac::Ransac<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> ransac;
 			std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> absposeproblem_ptr(
 					new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(adapter, opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem::GP3P));
+
+			// Opt-in deterministic RANSAC (see comment on MultiRansac above).
+			if(g_ransacDeterministicSeed)
+			{
+				absposeproblem_ptr->rng_alg_.seed(12345u);
+				absposeproblem_ptr->rng_gen_.reset(new std::function<int()>(
+						std::bind(*absposeproblem_ptr->rng_dist_, absposeproblem_ptr->rng_alg_)));
+			}
 
 			ransac.sac_model_ = absposeproblem_ptr;
 			ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));

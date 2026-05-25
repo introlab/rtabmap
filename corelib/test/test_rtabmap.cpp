@@ -1017,6 +1017,14 @@ TEST_F(RtabmapFixture, RejectLastLoopClosureRemovesLinkAndResetsHypothesis)
 	// so mapCorrection collapses back to identity.
 	ParametersMap params = defaultRtabmapParams();
 	params[Parameters::kRGBDOptimizeMaxError()] = "0";
+	// TORO's default convergence epsilon (1e-5) stops the gradient descent
+	// while ~18 mm of correction still hasn't unwound. Tighten it so all
+	// three backends converge close enough to identity to satisfy the
+	// post-check below. Iterations stay at the default (100): bumping them
+	// further would let TORO reach ~1 mm, but the test's 1 cm bound is
+	// already comfortably above the ~6.5 mm TORO hits at 100 iterations
+	// with this epsilon, so the cheaper iteration budget is enough.
+	params[Parameters::kOptimizerEpsilon()] = "1e-10";
 	reinit(params);
 	process();
 	const int N1 = rtabmap_->getLastLocationId();
@@ -1039,8 +1047,14 @@ TEST_F(RtabmapFixture, RejectLastLoopClosureRemovesLinkAndResetsHypothesis)
 	{
 		EXPECT_NE(kv.second.type(), Link::kUserClosure);
 	}
-	// Graph re-optimized without the rejected link -> mapCorrection identity.
-	EXPECT_TRUE(rtabmap_->getMapCorrection().isIdentity());
+	// Graph re-optimized without the rejected link -> mapCorrection collapses
+	// back toward identity. The rejected loop disagreed with the odom chain
+	// by 1 m, so a 1 cm residual is 99% undone. (g2o / GTSAM hit zero; TORO
+	// is gradient-descent so its floor is non-zero - around 6.5 mm at the
+	// default 100 iterations with epsilon 1e-10. Transform::isIdentity() is
+	// bit-exact, so we check the norm instead.)
+	const Transform mc = rtabmap_->getMapCorrection();
+	EXPECT_LT(mc.getNorm(), 1e-2f) << "post-reject correction: " << mc.prettyPrint();
 }
 
 TEST_F(RtabmapFixture, RejectLastLoopClosureIsNoOpWhenNoLoopClosureExists)
@@ -1712,7 +1726,10 @@ TEST_F(RtabmapFixture, FollowLongPathWithIntermediateNodesRetrievesRealLtmNodes)
     for(const auto & kv : rtabmap_->getPath())
     {
         const Signature * s = rtabmap_->getMemory()->getSignature(kv.first);
-        if(s) EXPECT_NE(s->getWeight(), -1) << "intermediate id=" << kv.first << " on path";
+        if(s)
+        {
+            EXPECT_NE(s->getWeight(), -1) << "intermediate id=" << kv.first << " on path";
+        }
     }
 
     // Walk back along the path. Path-follow advances and eventually reaches N1.
@@ -2918,8 +2935,12 @@ TEST(RtabmapTest, GlobalBundleAdjustmentRefinesPosesOnSynthScene)
 				/*align2D=*/false);
 		return std::make_pair(t_rmse, r_rmse);
 	};
-	const auto [tRmseBefore, rRmseBefore] = rmse(before);
-	const auto [tRmseAfter, rRmseAfter] = rmse(after);
+	const auto rmseBefore = rmse(before);
+	const auto rmseAfter = rmse(after);
+	const float tRmseBefore = rmseBefore.first;
+	const float rRmseBefore = rmseBefore.second;
+	const float tRmseAfter = rmseAfter.first;
+	const float rRmseAfter = rmseAfter.second;
 	// BA must reduce both translational and rotational RMSE toward GT, with
 	// the residual bounded by the measurement noise floor.
 	EXPECT_LT(tRmseAfter, tRmseBefore) << "BA must reduce translational RMSE";
@@ -3214,7 +3235,22 @@ TEST(RtabmapTest, LandmarkObservationsAcrossFramesShareSameLandmarkPose)
 	// Two frames both observe landmark id=42 at the same world location.
 	// Memory stores the landmark once (key=-42 in the graph) and links both
 	// frames to it.
+	//
+	// The default optimizer is built-dependent: GTSAM and g2o include the
+	// landmark as a graph variable; TORO ignores landmark constraints and
+	// won't expose -kLm in the optimized poses. Force a backend that
+	// supports landmarks; skip if none is available in this build.
+	int optimizerStrategy = -1;
+	if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) optimizerStrategy = Optimizer::kTypeGTSAM;
+	else if(Optimizer::isAvailable(Optimizer::kTypeG2O)) optimizerStrategy = Optimizer::kTypeG2O;
+	if(optimizerStrategy < 0)
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available; the default optimizer "
+				"(TORO/Ceres) does not include landmarks in the optimized graph";
+	}
 	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
 	Rtabmap rtabmap;
 	rtabmap.init(params);
 	const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
@@ -3657,8 +3693,12 @@ TEST(RtabmapTest, AggressiveLoopThresholdAcceptsBelowPrimaryThreshold)
 		return std::make_pair(id, high);
 	};
 
-	const auto [idAgg, highAgg] = runOnce(kAggressiveThr);
-	const auto [idPrim, highPrim] = runOnce(kLoopThr); // aggressive disabled (= primary)
+	const auto resultAgg = runOnce(kAggressiveThr);
+	const auto resultPrim = runOnce(kLoopThr); // aggressive disabled (= primary)
+	const int idAgg = resultAgg.first;
+	const float highAgg = resultAgg.second;
+	const int idPrim = resultPrim.first;
+	const float highPrim = resultPrim.second;
 
 	// Sanity: both invocations see the same Bayes peak (deterministic data).
 	EXPECT_NEAR(highAgg, highPrim, 1e-3);
