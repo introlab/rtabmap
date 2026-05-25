@@ -33,17 +33,16 @@ detect_gcov_tool() {
 }
 GCOV_TOOL="$(detect_gcov_tool)"
 
-# lcov 1.14 (Ubuntu 22.04) only knows --ignore-errors gcov,source,graph.
-# lcov 1.15+ also accepts mismatch,unused,format,deprecated. The category
-# vocabulary is shared by lcov and geninfo so we parse the help output of
-# geninfo (the tool that actually fails first) and use the intersection
-# with what we want.
-detect_lcov_ignore_categories() {
+# lcov 1.14 (Ubuntu 22.04) supports different --ignore-errors vocabularies
+# per tool: geninfo (gcov,source,graph), genhtml (source only), lcov also
+# gcov,source,graph. lcov 1.15+ adds mismatch,unused,format,deprecated.
+# Probe each tool's own help and pick the intersection with what we want.
+detect_ignore_categories_for() {
+	local tool="$1"
 	local wanted=(gcov source graph mismatch unused)
 	local help_line
-	# geninfo prints the supported categories inline: "(gcov, source, graph)"
-	# on 1.14; newer versions list more. Pull whatever's between the parens.
-	help_line="$(geninfo --help 2>&1 | grep -m1 -- '--ignore-errors ERROR')"
+	# Each tool prints "(gcov, source, graph)" style inside its --help.
+	help_line="$("$tool" --help 2>&1 | grep -m1 -- '--ignore-errors')"
 	local available=()
 	if [[ "$help_line" =~ \(([^\)]+)\) ]]; then
 		IFS=', ' read -r -a available <<<"${BASH_REMATCH[1]}"
@@ -57,14 +56,14 @@ detect_lcov_ignore_categories() {
 			fi
 		done
 	done
-	# Fallback to the lcov-1.14 minimum if parsing failed.
+	# Fallback if parsing failed: source is the only one universally accepted.
 	if [[ ${#supported[@]} -eq 0 ]]; then
-		supported=(gcov source graph)
+		supported=(source)
 	fi
 	(IFS=,; echo "${supported[*]}")
 }
-LCOV_IGNORE_CATEGORIES="$(detect_lcov_ignore_categories)"
-LCOV_IGNORE=(--ignore-errors "$LCOV_IGNORE_CATEGORIES")
+LCOV_IGNORE=(--ignore-errors "$(detect_ignore_categories_for lcov)")
+GENHTML_IGNORE=(--ignore-errors "$(detect_ignore_categories_for genhtml)")
 
 configure_coverage_build() {
 	local -a gtest_args=()
@@ -142,7 +141,7 @@ lcov "${LCOV_IGNORE[@]}" --remove "$INFO_FILE" \
 
 echo "Generating HTML..."
 rm -rf "$HTML_DIR"
-genhtml --ignore-errors source,mismatch "$INFO_FILE" --output-directory "$HTML_DIR" --legend --demangle-cpp
+genhtml "${GENHTML_IGNORE[@]}" "$INFO_FILE" --output-directory "$HTML_DIR" --legend --demangle-cpp
 
 echo ""
 echo "Done: $HTML_DIR/index.html"
