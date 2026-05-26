@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/CloudViewer.h>
 #include <rtabmap/utilite/UCv2Qt.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
 #include <QtCore/QMetaType>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -151,6 +152,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 
 	imageView_->setVisible(!left.empty() || !left.empty());
 	std::map<int, MarkerInfo> detections;
+	UTimer markerDetectionTime;
 	if(!left.empty())
 	{
 		std::vector<CameraModel> models;
@@ -194,6 +196,10 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		sizes.append(QString(" Depth=%1x%2").arg(depthOrRight.cols).arg(depthOrRight.rows));
 	}
 	sizes.append(QString(" FPS capture=%1 render=%2").arg(lastCapturePeriod_>0.0?(int)round(1.0/lastCapturePeriod_):0).arg((int)round(1.0/fpsTimer_.restart()*1000)));
+	if(markerCheckbox_->isEnabled() && markerCheckbox_->isChecked())
+	{
+		sizes.append(QString(" Marker=%1ms").arg(int(markerDetectionTime.ticks()*1000)));
+	}
 	imageSizeLabel_->setText(sizes);
 
 	if(!depthOrRight.empty() &&
