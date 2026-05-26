@@ -15,7 +15,14 @@
 
 #include <gtest/gtest.h>
 #include <rtabmap/core/DBReader.h>
+#include <rtabmap/core/LocalGrid.h>
+#include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Version.h>
+#ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/OctoMap.h>
+#endif
 #include <rtabmap/core/OdometryInfo.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Rtabmap.h>
@@ -70,6 +77,16 @@ struct ReplayResult
 	int finalGlobalGraphSize = 0;  // poses returned by Rtabmap::getGraph(global=true)
 	std::map<int, Transform> finalLocalPoses;   // optimized, global=false
 	std::map<int, Transform> finalGlobalPoses;  // optimized, global=true
+	// Occupancy-grid cell counts after assembling the global grid from per-
+	// node local maps (only populated when RGBD/CreateOccupancyGrid=true).
+	int gridEmptyCells = 0;
+	int gridObstacleCells = 0;
+	// OctoMap leaf count (only populated when rtabmap is built with
+	// RTABMAP_OCTOMAP and RGBD/CreateOccupancyGrid=true). 0 means the
+	// build didn't have octomap support or the map was empty.
+	int octomapNodes = 0;
+	int octomapEmptyCells = 0;
+	int octomapObstacleCells = 0;
 };
 
 // Synchronous replay: DBReader -> Odometry::process -> Rtabmap::process.
@@ -283,6 +300,86 @@ ReplayResult replayDatabase(
 		result.finalGlobalGraphSize = (int)result.finalGlobalPoses.size();
 	}
 
+	// Assemble the global occupancy grid from the per-node local grids that
+	// rtabmap saved (only meaningful when RGBD/CreateOccupancyGrid=true).
+	// Pull poses + signatures with grids attached, prime a LocalGridCache,
+	// run OccupancyGrid::update, then count cells in the resulting cv::Mat
+	// (-1 = unknown, 0 = empty, 100 = obstacle).
+	bool createOccupancyGrid = Parameters::defaultRGBDCreateOccupancyGrid();
+	Parameters::parse(rtabmapParameters,
+			Parameters::kRGBDCreateOccupancyGrid(), createOccupancyGrid);
+	if(createOccupancyGrid)
+	{
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> constraints;
+		std::map<int, Signature> signatures;
+		rtabmap.getGraph(poses, constraints,
+				/*optimized=*/true, /*global=*/true, &signatures,
+				/*withImages=*/false, /*withScan=*/false, /*withUserData=*/false,
+				/*withGrid=*/true, /*withWords=*/false,
+				/*withGlobalDescriptors=*/false);
+
+		LocalGridCache mapCache;
+		for(auto & p : signatures)
+		{
+			cv::Mat ground, obstacles, empty;
+			p.second.sensorData().uncompressDataConst(
+					0, 0, 0, 0, &ground, &obstacles, &empty);
+			if(!ground.empty() || !obstacles.empty() || !empty.empty())
+			{
+				mapCache.add(p.first, ground, obstacles, empty,
+						p.second.sensorData().gridCellSize(),
+						p.second.sensorData().gridViewPoint());
+			}
+		}
+
+		OccupancyGrid grid(&mapCache, rtabmapParameters);
+		grid.update(poses);
+		float xMin = 0.0f, yMin = 0.0f;
+		const cv::Mat gridMat = grid.getMap(xMin, yMin);
+		for(int i = 0; i < gridMat.rows; ++i)
+		{
+			for(int j = 0; j < gridMat.cols; ++j)
+			{
+				const signed char v = gridMat.at<signed char>(i, j);
+				if(v == 0) ++result.gridEmptyCells;
+				else if(v == 100) ++result.gridObstacleCells;
+			}
+		}
+
+#ifdef RTABMAP_OCTOMAP
+		// Build a 3D OctoMap from the same cache+poses. Useful when
+		// Grid/RayTracing=true (which needs OctoMap support per the param
+		// doc) and a quick sanity check on the resulting tree size.
+		// Pin the OctoMap's resolution to the local grids' actual cell size
+		// (set when Memory built them at process() time) so the OcTree leaf
+		// size matches the data, regardless of any subsequent Grid/CellSize
+		// edits in `rtabmapParameters`.
+		ParametersMap octoMapParameters = rtabmapParameters;
+		for(const auto & p : signatures)
+		{
+			const float cs = p.second.sensorData().gridCellSize();
+			if(cs > 0.0f)
+			{
+				octoMapParameters[Parameters::kGridCellSize()] = uNumber2Str(cs);
+				break;
+			}
+		}
+		OctoMap octomap(&mapCache, octoMapParameters);
+		octomap.update(poses);
+		if(octomap.octree() != nullptr)
+		{
+			result.octomapNodes = (int)octomap.octree()->size();
+			std::vector<int> obstacleIdx, emptyIdx, groundIdx;
+			octomap.createCloud(/*treeDepth=*/0, &obstacleIdx, &emptyIdx, &groundIdx);
+			result.octomapObstacleCells = (int)obstacleIdx.size();
+			// Treat ground-classified cells as empty for the purposes of this
+			// test (they're free space, just labelled separately).
+			result.octomapEmptyCells = (int)emptyIdx.size() + (int)groundIdx.size();
+		}
+#endif
+	}
+
 	std::cout << "[          ] Replay summary:"
 			<< " framesRead=" << result.framesRead
 			<< " odomNonNull=" << result.odomNonNull
@@ -293,6 +390,11 @@ ReplayResult replayDatabase(
 			<< " proximity=" << result.proximityDetections
 			<< " localGraph=" << result.finalLocalGraphSize
 			<< " globalGraph=" << result.finalGlobalGraphSize
+			<< " gridEmpty=" << result.gridEmptyCells
+			<< " gridObstacle=" << result.gridObstacleCells
+			<< " octomap=" << result.octomapNodes
+			<< " octomapEmpty=" << result.octomapEmptyCells
+			<< " octomapObstacle=" << result.octomapObstacleCells
 			<< " rmse=" << result.translationalRmseFinal << "m"
 			<< std::endl;
 
@@ -360,7 +462,9 @@ TEST_F(RtabmapIntegrationFixture, NetherdroneLidar3D)
 	// Grid/GroundIsObstacle=true: UAV use case -- no ground segmentation,
 	// every point is an obstacle in the occupancy grid.
 	ParametersMap rtabmapParams = baseRtabmapParams();
+	rtabmapParams[Parameters::kGridCellSize()] = kVoxelSize;
 	rtabmapParams[Parameters::kGridGroundIsObstacle()] = "true";
+	rtabmapParams[Parameters::kGridRayTracing()] = "true";
 	rtabmapParams[Parameters::kGridSensor()] = "0";
 	rtabmapParams[Parameters::kIcpEpsilon()] = "0.001";
 	rtabmapParams[Parameters::kIcpIterations()] = "10";
@@ -435,6 +539,15 @@ TEST_F(RtabmapIntegrationFixture, NetherdroneLidar3D)
 	EXPECT_EQ(31, result.finalLocalGraphSize);
 	EXPECT_EQ(165, result.finalGlobalGraphSize);
 
+#ifdef RTABMAP_OCTOMAP
+	// Grid/RayTracing requires OctoMap support; verify the 3D map was
+	// actually assembled when the build has it. ICP-only replay is fully
+	// deterministic so the leaf counts are exact across runs.
+	EXPECT_EQ(21372, result.octomapNodes);
+	EXPECT_EQ(16178, result.octomapEmptyCells);
+	EXPECT_EQ(1845, result.octomapObstacleCells);
+#endif
+
 	// Replay is deterministic; matching golden GT was captured from a clean
 	// run of this exact configuration, so RMSE should be ~0.
 	ASSERT_GE(result.translationalRmseFinal, 0.0f)
@@ -466,6 +579,18 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Stereo)
 	EXPECT_EQ(27, result.finalGlobalGraphSize);
 	EXPECT_GE(result.proximityDetections, 1)
 			<< "PR2 2D-scan dataset should produce proximity detections";
+	// Observed across 5 runs: empty 531-553, obstacle 5074-5102.
+	EXPECT_GE(result.gridEmptyCells, 450);
+	EXPECT_LE(result.gridEmptyCells, 650);
+	EXPECT_GE(result.gridObstacleCells, 4900);
+	EXPECT_LE(result.gridObstacleCells, 5300);
+#ifdef RTABMAP_OCTOMAP
+	// Observed across 5 runs: empty 1834-1857, obstacle 21502-21671.
+	EXPECT_GE(result.octomapEmptyCells, 1700);
+	EXPECT_LE(result.octomapEmptyCells, 2000);
+	EXPECT_GE(result.octomapObstacleCells, 21000);
+	EXPECT_LE(result.octomapObstacleCells, 22000);
+#endif
 	// Stereo F2M visual odom + visual loop closure -- observed RMSE ~3 cm,
 	// 5 cm bound gives ~50% headroom for run-to-run feature variance.
 	ASSERT_GE(result.translationalRmseFinal, 0.0f)
@@ -497,6 +622,18 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD)
 	EXPECT_EQ(21, result.finalGlobalGraphSize);
 	EXPECT_GE(result.proximityDetections, 1)
 			<< "PR2 2D-scan dataset should produce proximity detections";
+	// Observed across 5 runs: empty 2900-3001, obstacle 4574-4698.
+	EXPECT_GE(result.gridEmptyCells, 2700);
+	EXPECT_LE(result.gridEmptyCells, 3200);
+	EXPECT_GE(result.gridObstacleCells, 4400);
+	EXPECT_LE(result.gridObstacleCells, 4900);
+#ifdef RTABMAP_OCTOMAP
+	// Observed across 5 runs: empty 6452-7474, obstacle 41125-42883.
+	EXPECT_GE(result.octomapEmptyCells, 6000);
+	EXPECT_LE(result.octomapEmptyCells, 8000);
+	EXPECT_GE(result.octomapObstacleCells, 40000);
+	EXPECT_LE(result.octomapObstacleCells, 44000);
+#endif
 	// RGB-D F2M visual odom + visual loop closure -- observed RMSE ~13 cm
 	// (less stable than the stereo/ICP paths), 20 cm bound gives ~50%
 	// headroom for visual-only loop-closure variability.
@@ -551,6 +688,16 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD_IcpReg)
 	EXPECT_EQ(21, result.finalGlobalGraphSize);
 	EXPECT_GE(result.proximityDetections, 1)
 			<< "PR2 2D-scan dataset should produce proximity detections";
+	// Observed across 5 runs: empty 22785-22850, obstacle 1308-1316.
+	EXPECT_GE(result.gridEmptyCells, 22500);
+	EXPECT_LE(result.gridEmptyCells, 23200);
+	EXPECT_GE(result.gridObstacleCells, 1250);
+	EXPECT_LE(result.gridObstacleCells, 1400);
+#ifdef RTABMAP_OCTOMAP
+	// 2D-laser-only signatures: nothing to assemble into a 3D OctoMap.
+	EXPECT_EQ(0, result.octomapEmptyCells);
+	EXPECT_EQ(0, result.octomapObstacleCells);
+#endif
 	// Scan-based ICP loop closure with the PR2's 2D laser should align the
 	// final trajectory to within 2 cm of the stored ground truth.
 	ASSERT_GE(result.translationalRmseFinal, 0.0f)
