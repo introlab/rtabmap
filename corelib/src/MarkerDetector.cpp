@@ -185,7 +185,7 @@ void destroyAprilTagDictionary(apriltag_family_t * dictionary)
 #endif	
 	else
 	{
-		UFATAL("AprilTag: Didn't find the right desctructor for dictionary \"%s\"", name);
+		UFATAL("AprilTag: Didn't find the right destructor for dictionary \"%s\"", name);
 	}
 }
 #endif
@@ -560,7 +560,15 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				det->p[i][0] -= offsetX;
 			}
 
-			// FIXME, homography needs to be updated
+			// Shift the homography to match the local-camera pixel frame:
+			// pre-multiply H by T = [[1,0,-offsetX],[0,1,0],[0,0,1]] so it
+			// stays consistent with the shifted corners. estimate_tag_pose()
+			// seeds its iterative refinement from H, so leaving it stale
+			// produces a bad initial guess (often triggers the AprilTag
+			// "more than one new minimum found" debug print).
+			MATD_EL(det->H, 0, 0) -= offsetX * MATD_EL(det->H, 2, 0);
+			MATD_EL(det->H, 0, 1) -= offsetX * MATD_EL(det->H, 2, 1);
+			MATD_EL(det->H, 0, 2) -= offsetX * MATD_EL(det->H, 2, 2);
 
 			apriltag_detection_info_t info;
 			info.det = det;
@@ -573,6 +581,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			// Then call estimate_tag_pose.
 			apriltag_pose_t pose;
 			double err = estimate_tag_pose(&info, &pose);
+
 			if (pose.R && pose.t)
 			{
 				Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
