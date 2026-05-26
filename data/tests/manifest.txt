@@ -1,0 +1,11 @@
+# Test data assets fetched by scripts/fetch_test_data.sh.
+# Format: <basename>\t<google_drive_file_id>\t<sha256>
+# - basename is the file's name on disk under data/tests/
+# - google_drive_file_id is the ID from the share link
+#     https://drive.google.com/file/d/<ID>/view?usp=drive_link
+# - sha256 must match the downloaded bytes (compute with `sha256sum file.db`)
+#
+# Lines starting with '#' and blank lines are ignored.
+netherdrone_lidar3d_sample_15s.db	1IBE8aMgY1_kmme_7Kb9W2wz6yBMLl63i	3fedb26d76d080e687d3926ab80cadee27d7c0115638562a75c1d9f08cc1c885
+pr2_scan2d_stereo_sample_15s.db	11GHZgwDzgC1Gv2hkmrPQQtP-dS9BGCA7	842fe941ce487b2109ae12ae796a9debf9e6a94df45cc2a0a9e4a47d41c5e878
+pr2_scan2d_rgbd_sample_15s.db	1vlFungKsdbnepgsuPHY-1h-mxdFxkZvI	1d8fd150a7f1d1e3dbb7cbb4f6ed66d0ac80cf06a6f5e859047e28bff2b96f14

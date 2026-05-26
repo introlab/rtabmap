@@ -106,6 +106,13 @@ add_executable(test_rtabmap test_rtabmap.cpp)
 target_link_libraries(test_rtabmap gtest_main rtabmap_core)
 add_test(NAME test_rtabmap COMMAND test_rtabmap)
 
+# Rtabmap end-to-end replay of sample DBs (test data fetched by
+# scripts/fetch_test_data.sh into data/tests/*.db). Skips at runtime if the
+# assets are absent, so the build stays green for contributors without them.
+add_executable(test_rtabmap_integration test_rtabmap_integration.cpp)
+target_link_libraries(test_rtabmap_integration gtest_main rtabmap_core)
+add_test(NAME test_rtabmap_integration COMMAND test_rtabmap_integration)
+
 #Link.h
 add_executable(test_link test_link.cpp)
 target_link_libraries(test_link gtest_main rtabmap_core)

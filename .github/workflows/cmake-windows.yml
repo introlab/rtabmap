@@ -36,6 +36,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Restore test data
+      id: cache-testdata
+      uses: actions/cache@v4
+      with:
+        # SQLite DBs are binary-portable -> share the cache across
+        # linux / macos / windows. Key omits runner.os on purpose so all
+        # three OSes hit the same entry.
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/fetch_test_data.sh
+
     - name: Install Windows Dependencies
       if: matrix.build_name == 'windows-2022'
       uses: ./.github/actions/install-windows-deps
