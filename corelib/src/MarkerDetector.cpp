@@ -501,7 +501,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	std::vector< int > ids;
 	std::vector< int > cams;
 	std::vector< std::vector< cv::Point2f > > corners; // in stitched image
-	std::vector<Transform> poses;
+	std::vector<Transform> poses; // in optical frame
 
 	// detect markers and estimate pose
 	if(strategy_ == kStrategyApriltag)
@@ -533,7 +533,12 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 			// Which camera?
 			int cameraIndex = int(det->c[0]) / subRGBWidth;
-			UASSERT(cameraIndex>=0 && cameraIndex<(int)models.size());
+			if(cameraIndex<0 || cameraIndex>=(int)models.size())
+			{
+				UWARN("Marker %d detected outside the image! camera index=%d (models=%ld subWidth=%d) marker center=(%f,%f). Ignoring...",
+					det->id, cameraIndex, models.size(), subRGBWidth, det->c[0], det->c[1]);
+				continue;
+			}
 
 			if(!markerLengths_.empty() &&
 				markerLengths_.find(det->id) == markerLengths_.end() && 
@@ -584,22 +589,29 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 			if (pose.R && pose.t)
 			{
-				Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
-							MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
-							MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
-				poses.push_back(t*Transform(-1,0,0,0, 0,1,0,0, 0,0,-1,0)); // Flip tag to match same frame than OpenCV (+x->-x, +z->-z)
-
-				corners.push_back(std::vector<cv::Point2f>(4));
-				for(int i=0; i<4; ++i)
+				if(MATD_EL(pose.t, 2, 0) > 0)
 				{
-					// reconvert in original stitched image
-					corners.back()[i].x = det->p[i][0]+offsetX;
-					corners.back()[i].y = det->p[i][1];
+					Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
+								MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
+								MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
+					poses.push_back(t*Transform(-1,0,0,0, 0,1,0,0, 0,0,-1,0)); // Flip tag to match same frame than OpenCV (+x->-x, +z->-z)
+
+					corners.push_back(std::vector<cv::Point2f>(4));
+					for(int i=0; i<4; ++i)
+					{
+						// reconvert in original stitched image
+						corners.back()[i].x = det->p[i][0]+offsetX;
+						corners.back()[i].y = det->p[i][1];
+					}
+					ids.push_back(det->id);
+					cams.push_back(cameraIndex);
+					UDEBUG("Add marker %d (err = %f)", det->id, err);
+					idsAdded.insert(det->id);
 				}
-				ids.push_back(det->id);
-				cams.push_back(cameraIndex);
-				UDEBUG("Add marker %d (err = %f)", det->id, err);
-				idsAdded.insert(det->id);
+				else
+				{
+					UWARN("Skipping %d because its estimated pose is behind the camera %d", det->id, cameraIndex);
+				}
 			}
 			else
 			{
@@ -638,7 +650,12 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 			// Which camera?
 			int cameraIndex = int(cvCorners[i][0].x) / subRGBWidth;
-			UASSERT(cameraIndex>=0 && cameraIndex<(int)models.size());
+			if(cameraIndex<0 || cameraIndex>=(int)models.size())
+			{
+				UWARN("Marker %d detected outside the image! camera index=%d (models=%ld subWidth=%d) marker center=(%f,%f). Ignoring...",
+					id, cameraIndex, models.size(), subRGBWidth, cvCorners[i][0].x, cvCorners[i][0].y);
+				continue;
+			}
 
 			if(!markerLengths_.empty() &&
 				markerLengths_.find(id) == markerLengths_.end() && 
@@ -675,6 +692,11 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			float offsetX = cam*subRGBWidth;
 			for(size_t i=0; i<cvIdsPerCam[cam].size(); ++i)
 			{
+				if(tvecs[i].val[2] <=0)
+				{
+					UWARN("Skipping %d because its estimated pose is behind the camera %d", cvIdsPerCam[cam][i], cam);
+					continue;
+				}
 				cv::Mat R;
 				cv::Rodrigues(rvecs[i], R);
 				Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[i].val[0],

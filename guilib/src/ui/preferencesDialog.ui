@@ -15780,6 +15780,11 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                           <string>APRILTAG_36h11</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>ARUCO_MIP_36h12</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
