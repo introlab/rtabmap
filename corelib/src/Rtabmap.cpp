@@ -181,10 +181,13 @@ Rtabmap::Rtabmap() :
 	_pathTransformToGoal(Transform::getIdentity()),
 	_pathStuckCount(0),
 	_pathStuckDistance(0.0f)
-#ifdef RTABMAP_PYTHON
-	,_python(new PythonInterface())
-#endif
 {
+#ifdef RTABMAP_PYTHON
+	// Ensure the embedded Python interpreter is up. The first call here will
+	// assert that it runs on the main thread; callers building Rtabmap on a
+	// worker thread should construct the singleton in main() beforehand.
+	PythonInterface::instance("Rtabmap");
+#endif
 }
 
 Rtabmap::~Rtabmap() {

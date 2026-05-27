@@ -24,6 +24,7 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 		path_(Parameters::defaultPyDetectorPath()),
 		cuda_(Parameters::defaultPyDetectorCuda())
 {
+	PythonInterface::instance("PyDetector");
 	this->parseParameters(parameters);
 
 	UDEBUG("path = %s", path_.c_str());

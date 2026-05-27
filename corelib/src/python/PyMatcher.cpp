@@ -30,6 +30,7 @@ PyMatcher::PyMatcher(
 				iterations_(iterations),
 				cuda_(cuda)
 {
+	PythonInterface::instance("PyMatcher");
 	path_ = uReplaceChar(pythonMatcherPath, '~', UDirectory::homeDir());
 	model_ = uReplaceChar(model, '~', UDirectory::homeDir());
 	UINFO("path = %s", path_.c_str());

@@ -23,6 +23,7 @@ PyDescriptor::PyDescriptor(
 		dim_(Parameters::defaultPyDescriptorDim())
 {
 	UDEBUG("");
+	PythonInterface::instance("PyDescriptor");
 	this->parseParameters(parameters);
 }
 

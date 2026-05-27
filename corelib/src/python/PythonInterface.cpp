@@ -8,14 +8,39 @@
 #include <rtabmap/core/PythonInterface.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UThread.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <pybind11/embed.h>
 #include <filesystem>
+#include <thread>
 
 namespace rtabmap {
 
-PythonInterface::PythonInterface()
+namespace {
+// Captured when librtabmap_core is loaded. The dynamic loader runs static
+// initializers on the main thread before main(), so this records the main
+// thread id (as long as the library isn't dlopen'd from a worker thread).
+const std::thread::id g_mainThreadId = std::this_thread::get_id();
+}
+
+PythonInterface & PythonInterface::instance(const std::string & caller)
 {
-	UINFO("Initialize python interpreter");
+	// Meyers singleton: thread-safe construction in C++11, destroyed at exit.
+	// The constructor asserts it runs on the main thread; the caller tag
+	// from the first invocation is captured into the assertion message.
+	static PythonInterface inst(caller);
+	return inst;
+}
+
+PythonInterface::PythonInterface(const std::string & caller)
+{
+	UASSERT_MSG(std::this_thread::get_id() == g_mainThreadId,
+			uFormat("PythonInterface must be created on the main thread "
+					"(first construction triggered by \"%s\"). Call "
+					"PythonInterface::instance() early in main() before "
+					"any worker thread touches a Python-backed class.",
+					caller.empty()?"<unspecified>":caller.c_str()).c_str());
+	UINFO("Initialize python interpreter (triggered by \"%s\")",
+			caller.empty()?"<unspecified>":caller.c_str());
 	guard_ = new pybind11::scoped_interpreter();
 
 	// Tell Python to look in this directory for DLLs
