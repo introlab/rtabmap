@@ -5607,7 +5607,7 @@ void PreferencesDialog::updateGlobalDescriptorVisibility()
 
 void PreferencesDialog::updateAvailableMarkerDictionaries()
 {
-	Qt::ItemFlags enableFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+	Qt::ItemFlags enableFlags = Qt::ItemFlags(Qt::ItemIsEnabled) | Qt::ItemIsSelectable;
 	for(int i=0;i<_ui->MarkerDictionary->count();++i) {
 		_ui->MarkerDictionary->setItemData(i, QVariant(static_cast<int>(enableFlags)), Qt::UserRole - 1); 
 	}
