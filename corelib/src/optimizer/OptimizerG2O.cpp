@@ -2135,6 +2135,390 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	return optimizedPoses;
 }
 
+bool OptimizerG2O::loadGraph(
+		const std::string & fileName,
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> & edgeConstraints)
+{
+	FILE * file = 0;
+#ifdef _MSC_VER
+	fopen_s(&file, fileName.c_str(), "r");
+#else
+	file = fopen(fileName.c_str(), "r");
+#endif
+
+	if(!file)
+	{
+		UERROR("Cannot open file %s", fileName.c_str());
+		return false;
+	}
+
+	// saveGraph() writes landmarks (originally negative ids, remapped to
+	// landmarkOffset - id) first in DESCENDING file-id order, then regular
+	// poses in ASCENDING file-id order. We recover landmarkOffset from this
+	// order to restore the original negative landmark ids.
+	struct VertexEntry {
+		int fileId;
+		Transform transform;
+		bool definitelyLandmark; // VERTEX_XY / VERTEX_TRACKXYZ
+	};
+	struct EdgeEntry {
+		int from;
+		int to;
+		Link::Type type;
+		Transform transform;
+		cv::Mat info;
+		bool isPrior;             // from==to, prior on a single vertex
+		bool hasLandmarkEndpoint; // tag implies a landmark on one side
+	};
+	std::vector<VertexEntry> verticesList;
+	std::vector<EdgeEntry> edgesList;
+
+	char line[2048];
+	while(fgets(line, 2048, file) != NULL)
+	{
+		std::list<std::string> tokenList = uSplit(uReplaceChar(uReplaceChar(line, '\n', ' '), '\r', ' '), ' ');
+		std::vector<std::string> v;
+		v.reserve(tokenList.size());
+		for(std::list<std::string>::const_iterator iter = tokenList.begin(); iter != tokenList.end(); ++iter)
+		{
+			if(!iter->empty())
+			{
+				v.push_back(*iter);
+			}
+		}
+		if(v.empty())
+		{
+			continue;
+		}
+		const std::string & tag = v[0];
+
+		// Skip parameters, switch helpers and unrelated entries
+		if(tag == "PARAMS_SE2OFFSET" || tag == "PARAMS_SE3OFFSET" ||
+		   tag == "VERTEX_SWITCH" || tag == "EDGE_SWITCH_PRIOR")
+		{
+			continue;
+		}
+
+		if(tag == "VERTEX_SE2" && v.size() == 5)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]));
+			e.definitelyLandmark = false;
+			verticesList.push_back(e);
+		}
+		else if(tag == "VERTEX_XY" && v.size() == 4)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), 0);
+			e.definitelyLandmark = true;
+			verticesList.push_back(e);
+		}
+		else if(tag == "VERTEX_SE3:QUAT" && v.size() == 9)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]),
+									uStr2Float(v[5]), uStr2Float(v[6]), uStr2Float(v[7]), uStr2Float(v[8]));
+			e.definitelyLandmark = false;
+			verticesList.push_back(e);
+		}
+		else if(tag == "VERTEX_TRACKXYZ" && v.size() == 5)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]), 0, 0, 0);
+			e.definitelyLandmark = true;
+			verticesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE2" && v.size() == 12)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), uStr2Float(v[5]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[6]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[7]);
+			e.info.at<double>(0, 5) = e.info.at<double>(5, 0) = uStr2Double(v[8]);
+			e.info.at<double>(1, 1) = uStr2Double(v[9]);
+			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[10]);
+			e.info.at<double>(5, 5) = uStr2Double(v[11]);
+			e.type = Link::kUndef; // disambiguated after we know landmarkOffset
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE2_XY" && v.size() == 8)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[5]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
+			e.info.at<double>(1, 1) = uStr2Double(v[7]);
+			e.type = Link::kLandmark;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = true;
+			edgesList.push_back(e);
+		}
+		else if((tag == "EDGE_SE3:QUAT" || tag == "EDGE_SE3") && v.size() == 31)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), uStr2Float(v[5]),
+									uStr2Float(v[6]), uStr2Float(v[7]), uStr2Float(v[8]), uStr2Float(v[9]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			int idx = 10;
+			for(int r = 0; r < 6; ++r)
+			{
+				for(int c = r; c < 6; ++c)
+				{
+					e.info.at<double>(r, c) = uStr2Double(v[idx++]);
+					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
+				}
+			}
+			// EDGE_SE3 (no :QUAT) is the landmark variant emitted by saveGraph
+			bool landmarkTag = (tag == "EDGE_SE3");
+			e.type = landmarkTag ? Link::kLandmark : Link::kUndef;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = landmarkTag;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE3_TRACKXYZ" && v.size() == 13)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			// v[3] = param_offset id, ignored
+			e.transform = Transform(uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]), 0, 0, 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[7]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[8]);
+			e.info.at<double>(0, 2) = e.info.at<double>(2, 0) = uStr2Double(v[9]);
+			e.info.at<double>(1, 1) = uStr2Double(v[10]);
+			e.info.at<double>(1, 2) = e.info.at<double>(2, 1) = uStr2Double(v[11]);
+			e.info.at<double>(2, 2) = uStr2Double(v[12]);
+			e.type = Link::kLandmark;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = true;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_PRIOR_SE2" && v.size() == 11)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[5]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
+			e.info.at<double>(0, 5) = e.info.at<double>(5, 0) = uStr2Double(v[7]);
+			e.info.at<double>(1, 1) = uStr2Double(v[8]);
+			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[9]);
+			e.info.at<double>(5, 5) = uStr2Double(v[10]);
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_PRIOR_SE2_XY" && v.size() == 7)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[4]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[5]);
+			e.info.at<double>(1, 1) = uStr2Double(v[6]);
+			// no orientation info on this prior
+			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE3_PRIOR" && v.size() == 31)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			// v[2] = param_offset id, ignored
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), uStr2Float(v[5]),
+									uStr2Float(v[6]), uStr2Float(v[7]), uStr2Float(v[8]), uStr2Float(v[9]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			int idx = 10;
+			for(int r = 0; r < 6; ++r)
+			{
+				for(int c = r; c < 6; ++c)
+				{
+					e.info.at<double>(r, c) = uStr2Double(v[idx++]);
+					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
+				}
+			}
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_POINTXYZ_PRIOR" && v.size() == 11)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]), 0, 0, 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[5]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
+			e.info.at<double>(0, 2) = e.info.at<double>(2, 0) = uStr2Double(v[7]);
+			e.info.at<double>(1, 1) = uStr2Double(v[8]);
+			e.info.at<double>(1, 2) = e.info.at<double>(2, 1) = uStr2Double(v[9]);
+			e.info.at<double>(2, 2) = uStr2Double(v[10]);
+			// no orientation info on this prior
+			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE2_SWITCHABLE" && v.size() == 13)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			// v[3] = switch vertex id, ignored
+			e.transform = Transform(uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[7]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[8]);
+			e.info.at<double>(0, 5) = e.info.at<double>(5, 0) = uStr2Double(v[9]);
+			e.info.at<double>(1, 1) = uStr2Double(v[10]);
+			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[11]);
+			e.info.at<double>(5, 5) = uStr2Double(v[12]);
+			e.type = Link::kUndef;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE3_SWITCHABLE" && v.size() == 32)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			// v[3] = switch vertex id, ignored
+			e.transform = Transform(uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]),
+									uStr2Float(v[7]), uStr2Float(v[8]), uStr2Float(v[9]), uStr2Float(v[10]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			int idx = 11;
+			for(int r = 0; r < 6; ++r)
+			{
+				for(int c = r; c < 6; ++c)
+				{
+					e.info.at<double>(r, c) = uStr2Double(v[idx++]);
+					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
+				}
+			}
+			e.type = Link::kUndef;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else
+		{
+			UWARN("Unsupported or malformed g2o line: \"%s\" (tag=%s, tokens=%d)", line, tag.c_str(), (int)v.size());
+		}
+	}
+	fclose(file);
+
+	// Recover landmarkOffset from vertex order:
+	//   file order = [landmarks with DESCENDING file_ids] + [regular poses with ASCENDING file_ids]
+	// Walk backwards from the end and take the longest ascending suffix as the regular poses.
+	// landmarkOffset = max regular pose id (= last fileId of that suffix).
+	int landmarkOffset = 0;
+	int firstRegularIdx = (int)verticesList.size();
+	if(!verticesList.empty())
+	{
+		firstRegularIdx = (int)verticesList.size() - 1;
+		while(firstRegularIdx > 0 &&
+			  verticesList[firstRegularIdx - 1].fileId < verticesList[firstRegularIdx].fileId)
+		{
+			--firstRegularIdx;
+		}
+		landmarkOffset = verticesList.back().fileId;
+
+		// If the alleged regular suffix actually starts on a definite landmark
+		// (VERTEX_XY / VERTEX_TRACKXYZ), then there are no regular poses and
+		// saveGraph used landmarkOffset = 0; restore that case.
+		if(verticesList[firstRegularIdx].definitelyLandmark)
+		{
+			landmarkOffset = 0;
+			firstRegularIdx = (int)verticesList.size();
+		}
+	}
+
+	// Insert vertices into poses, remapping landmark file ids back to negative.
+	for(int i = 0; i < (int)verticesList.size(); ++i)
+	{
+		int originalId;
+		if(i < firstRegularIdx)
+		{
+			originalId = landmarkOffset - verticesList[i].fileId; // negative
+		}
+		else
+		{
+			originalId = verticesList[i].fileId;
+		}
+		if(poses.find(originalId) == poses.end())
+		{
+			poses.insert(std::make_pair(originalId, verticesList[i].transform));
+		}
+		else
+		{
+			UWARN("Vertex %d (file id %d) already exists, ignoring duplicate", originalId, verticesList[i].fileId);
+		}
+	}
+
+	// Remap edge endpoints. Any file id > landmarkOffset (or, if landmarkOffset == 0
+	// and there are any landmarks at all, any id present in the landmark prefix)
+	// is a landmark and gets the negative id back.
+	bool allLandmarks = (landmarkOffset == 0 && firstRegularIdx == (int)verticesList.size() && !verticesList.empty());
+	auto remap = [&](int fileId) -> int {
+		if(landmarkOffset > 0 && fileId > landmarkOffset)
+		{
+			return landmarkOffset - fileId; // negative
+		}
+		if(allLandmarks)
+		{
+			return -fileId;
+		}
+		return fileId;
+	};
+
+	for(const EdgeEntry & e : edgesList)
+	{
+		int from = remap(e.from);
+		int to   = e.isPrior ? from : remap(e.to);
+		Link::Type type = e.type;
+		// Promote ambiguous edges (EDGE_SE2) to kLandmark when an endpoint
+		// turns out to be a landmark after remapping.
+		if(type == Link::kUndef && (from < 0 || to < 0))
+		{
+			type = Link::kLandmark;
+		}
+		edgeConstraints.insert(std::make_pair(from, Link(from, to, type, e.transform, e.info)));
+	}
+
+	UINFO("Graph loaded from %s (%d poses, %d edges, landmarkOffset=%d)",
+		  fileName.c_str(), (int)poses.size(), (int)edgeConstraints.size(), landmarkOffset);
+	return true;
+}
+
 bool OptimizerG2O::saveGraph(
 		const std::string & fileName,
 		const std::map<int, Transform> & poses,

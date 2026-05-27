@@ -364,6 +364,7 @@ private Q_SLOTS:
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
 	void updateGlobalDescriptorVisibility();
+	void updateAvailableMarkerDictionaries();
 	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
 	void changeWorkingDirectory();
