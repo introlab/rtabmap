@@ -78,6 +78,16 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 		{
 			return;
 		}
+		// Pre-validate the path: PyImport_Import on a non-existent script
+		// fails without setting a Python exception, after which
+		// getPythonTraceback() dereferences NULL pointers in Py_BuildValue
+		// and crashes. Mirrors the check in PyDetector::PyDetector().
+		if(!UFile::exists(path_) || UFile::getExtension(path_).compare("py") != 0)
+		{
+			UERROR("Cannot initialize Python descriptor, the path is not valid: \"%s\"=\"%s\"",
+					Parameters::kPyDescriptorPath().c_str(), path_.c_str());
+			return;
+		}
 		std::string matcherPythonDir = UDirectory::getDir(path_);
 		if(!matcherPythonDir.empty())
 		{

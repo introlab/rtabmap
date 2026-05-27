@@ -173,6 +173,36 @@ add_executable(test_localgridmaker test_localgridmaker.cpp)
 target_link_libraries(test_localgridmaker gtest_main rtabmap_core)
 add_test(NAME test_localgridmaker COMMAND test_localgridmaker)
 
+#PythonInterface / PyDetector / PyDescriptor / PyMatcher (optional Python
+# support; bridges to Python feature detectors (SuperPoint), global
+# descriptors (NetVLAD), and matchers (SuperGlue). Tests use numpy-only stub
+# scripts so no ML weights or extra packages are needed beyond what
+# WITH_PYTHON already pulls in.
+IF(WITH_PYTHON AND Python3_FOUND)
+	# Direct tests for PythonInterface / getPythonTraceback. Links pybind11
+	# and Python headers so the test can drive the Python C API directly.
+	add_executable(test_python_interface test_python_interface.cpp)
+	target_link_libraries(test_python_interface gtest_main rtabmap_core pybind11::embed)
+	target_include_directories(test_python_interface PRIVATE ${Python3_INCLUDE_DIRS})
+	add_test(NAME test_python_interface COMMAND test_python_interface)
+
+	add_executable(test_pydetector test_pydetector.cpp)
+	target_link_libraries(test_pydetector gtest_main rtabmap_core)
+	add_test(NAME test_pydetector COMMAND test_pydetector)
+
+	add_executable(test_pydescriptor test_pydescriptor.cpp)
+	target_link_libraries(test_pydescriptor gtest_main rtabmap_core)
+	add_test(NAME test_pydescriptor COMMAND test_pydescriptor)
+
+	# PyMatcher's header is internal (not in the public include tree);
+	# expose corelib/src so the test can `#include "python/PyMatcher.h"`.
+	add_executable(test_pymatcher test_pymatcher.cpp)
+	target_link_libraries(test_pymatcher gtest_main rtabmap_core)
+	target_include_directories(test_pymatcher PRIVATE
+			${CMAKE_SOURCE_DIR}/corelib/src)
+	add_test(NAME test_pymatcher COMMAND test_pymatcher)
+ENDIF(WITH_PYTHON AND Python3_FOUND)
+
 #LASWriter.h (optional libLAS)
 IF(libLAS_FOUND)
 	add_executable(test_laswriter test_laswriter.cpp)

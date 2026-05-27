@@ -65,12 +65,28 @@ std::string getPythonTraceback()
 {
 	// Author: https://stackoverflow.com/questions/41268061/c-c-python-exception-traceback-not-being-generated
 
+	// Early-exit when there is no active Python exception: callers commonly
+	// log this after any Python C-API failure, but some failures (notably
+	// PyImport_Import returning NULL after repeated load/unload cycles) do
+	// not set an exception. Without this guard, PyErr_Fetch returns NULL
+	// triples and Py_BuildValue("OOO", NULL, NULL, NULL) below crashes.
+	if(!PyErr_Occurred())
+	{
+		return "<no python exception set>";
+	}
+
 	PyObject* type;
 	PyObject* value;
 	PyObject* traceback;
 
 	PyErr_Fetch(&type, &value, &traceback);
 	PyErr_NormalizeException(&type, &value, &traceback);
+	// PyErr_Fetch may leave value/traceback NULL even when an exception was
+	// active. Py_BuildValue("OOO", ...) rejects NULL slots and raises
+	// SystemError, so substitute Py_None for any missing component.
+	if(!type)      { Py_INCREF(Py_None); type = Py_None; }
+	if(!value)     { Py_INCREF(Py_None); value = Py_None; }
+	if(!traceback) { Py_INCREF(Py_None); traceback = Py_None; }
 
 	std::string fcn = "";
 	fcn += "def get_pretty_traceback(exc_type, exc_value, exc_tb):\n";
@@ -85,13 +101,22 @@ std::string getPythonTraceback()
 	UASSERT(mod);
 	PyObject* method = PyObject_GetAttrString(mod, "get_pretty_traceback");
 	UASSERT(method);
-	PyObject* outStr = PyObject_CallObject(method, Py_BuildValue("OOO", type, value, traceback));
+	PyObject* args = Py_BuildValue("OOO", type, value, traceback);
+	PyObject* outStr = args ? PyObject_CallObject(method, args) : nullptr;
 	std::string pretty;
 	if(outStr)
-		pretty = PyBytes_AsString(PyUnicode_AsASCIIString(outStr));
+	{
+		PyObject* asciiStr = PyUnicode_AsASCIIString(outStr);
+		if(asciiStr)
+		{
+			pretty = PyBytes_AsString(asciiStr);
+			Py_DECREF(asciiStr);
+		}
+	}
 
+	Py_XDECREF(args);
 	Py_DECREF(method);
-	Py_DECREF(outStr);
+	Py_XDECREF(outStr);   // outStr may be NULL if PyObject_CallObject failed
 	Py_DECREF(mod);
 
 	return pretty;
