@@ -5239,6 +5239,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 {
+	UDEBUG("%ld landmarks", signature.getLandmarks().size());
 	for(std::map<int, Link>::const_iterator iter=signature.getLandmarks().begin(); iter!=signature.getLandmarks().end(); ++iter)
 	{
 		// Project in all cameras in which the landmark is visible
@@ -5295,6 +5296,9 @@ void MainWindow::drawLandmarks(cv::Mat & image, const Signature & signature)
 							{
 								imagePoints[j].x += i*model.imageWidth();
 							}
+							// Make sure the frame origin is visible
+							valid = imagePoints[0].x >= i*model.imageWidth() && imagePoints[0].x < (i+1)*model.imageWidth() &&
+									imagePoints[0].y >= 0 && imagePoints[0].y < image.rows;
 						}
 					}
 					if(valid)

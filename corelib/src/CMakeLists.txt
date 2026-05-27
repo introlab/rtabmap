@@ -533,6 +533,13 @@ IF(FastCV_FOUND)
 	)
 ENDIF(FastCV_FOUND)
 
+IF(apriltag_FOUND)
+	SET(LIBRARIES
+		apriltag::apriltag
+		${LIBRARIES}
+	)
+ENDIF(apriltag_FOUND)
+
 IF(opengv_FOUND)
     SET(LIBRARIES
         ${LIBRARIES}

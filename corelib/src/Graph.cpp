@@ -218,7 +218,14 @@ bool importPoses(
 	else if(format == 4) // g2o
 	{
 		std::multimap<int, Link> constraintsTmp;
-		UERROR("Cannot import from g2o format because it is not yet supported!");
+		if(OptimizerG2O::loadGraph(filePath, poses, constraintsTmp))
+		{
+			if(constraints)
+			{
+				*constraints = constraintsTmp;
+			}
+			return true;
+		}
 		return false;
 	}
 	else

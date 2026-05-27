@@ -4504,8 +4504,7 @@ bool Rtabmap::process(
 			(smallDisplacement || tooFastMovement) &&
 			_loopClosureHypothesis.first == 0 &&
 			lastProximitySpaceClosureId == 0 &&
-			!delayedLocalization &&
-			(rejectedLoopClosure || landmarksDetected.empty()))
+			!delayedLocalization)
 	{
 		_odomCachePoses.erase(signatureRemoved);
 		for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end();)

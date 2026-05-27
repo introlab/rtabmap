@@ -239,6 +239,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					isam2_ = new gtsam::ISAM2(params);
 					addedPoses_.clear();
 					lastAddedConstraints_.clear();
+					isLandmarkWithRotation_.clear();
 					lastRootFactorIndex_.first = 0;
 					lastSwitchId_ = 1000000000;
 				}
@@ -308,7 +309,13 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		UDEBUG("fill poses to gtsam... rootId=%d (priorsIgnored=%d landmarksIgnored=%d)",
 				rootId, priorsIgnored()?1:0, landmarksIgnored()?1:0);
 		gtsam::Values initialEstimate;
-		std::map<int, bool> isLandmarkWithRotation;
+		// In batch (non-iSAM2) mode each optimize() call is independent.
+		// In iSAM2 mode the map persists so we can resolve landmarks added
+		// in a previous incremental call but referenced by a new edge.
+		if(!isam2_)
+		{
+			isLandmarkWithRotation_.clear();
+		}
 		for(std::map<int, Transform>::const_iterator iter = newPoses.begin(); iter!=newPoses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());
@@ -328,12 +335,12 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					if (1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
 						initialEstimate.insert(iter->first, gtsam::Point2(iter->second.x(), iter->second.y()));
-						isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
+						isLandmarkWithRotation_.insert(std::make_pair(iter->first, false));
 					}
 					else
 					{
 						initialEstimate.insert(iter->first, gtsam::Pose2(iter->second.x(), iter->second.y(), iter->second.theta()));
-						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
+						isLandmarkWithRotation_.insert(std::make_pair(iter->first, true));
 					}
 					addedPoses_.insert(iter->first);
 				}
@@ -357,12 +364,12 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						1 / static_cast<double>(jter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 					{
 						initialEstimate.insert(iter->first, gtsam::Point3(iter->second.x(), iter->second.y(), iter->second.z()));
-						isLandmarkWithRotation.insert(std::make_pair(iter->first, false));
+						isLandmarkWithRotation_.insert(std::make_pair(iter->first, false));
 					}
 					else
 					{
 						initialEstimate.insert(iter->first, gtsam::Pose3(iter->second.toEigen4d()));
-						isLandmarkWithRotation.insert(std::make_pair(iter->first, true));
+						isLandmarkWithRotation_.insert(std::make_pair(iter->first, true));
 					}
 					addedPoses_.insert(iter->first);
 				}
@@ -390,7 +397,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					if(isSlam2d())
 					{
-						if(id1 < 0 && !isLandmarkWithRotation.at(id1))
+						if(id1 < 0 && !isLandmarkWithRotation_.at(id1))
 						{
 							gtsam::noiseModel::Diagonal::shared_ptr model = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector2(
 									1/iter->second.infMatrix().at<double>(0,0),
@@ -429,7 +436,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					}
 					else
 					{
-						if(id1 < 0 && !isLandmarkWithRotation.at(id1))
+						if(id1 < 0 && !isLandmarkWithRotation_.at(id1))
 						{
 							gtsam::noiseModel::Diagonal::shared_ptr model = gtsam::noiseModel::Diagonal::Precisions(gtsam::Vector3(
 										iter->second.infMatrix().at<double>(0,0),
@@ -501,9 +508,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						t = iter->second.transform().inverse();
 						std::swap(id1, id2); // should be node -> landmark
 					}
-
+					UASSERT(isLandmarkWithRotation_.find(id2) != isLandmarkWithRotation_.end());
 #ifdef RTABMAP_VERTIGO
-					if(this->isRobust() && isLandmarkWithRotation.at(id2))
+					if(this->isRobust() && isLandmarkWithRotation_.at(id2))
 					{
 						// create new switch variable
 						// Sunderhauf IROS 2012:
@@ -521,7 +528,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
 						graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',lastSwitchId_), vertigo::SwitchVariableLinear(prior), switchPriorModel));
 					}
-					else if(this->isRobust() && !isLandmarkWithRotation.at(id2))
+					else if(this->isRobust() && !isLandmarkWithRotation_.at(id2))
 					{
 						UWARN("%s cannot be used for landmark constraints without orientation.", Parameters::kOptimizerRobust().c_str());
 					}
@@ -529,7 +536,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 					if(isSlam2d())
 					{
-						if(isLandmarkWithRotation.at(id2))
+						if(isLandmarkWithRotation_.at(id2))
 						{
 							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
@@ -592,7 +599,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					}
 					else
 					{
-						if(isLandmarkWithRotation.at(id2))
+						if(isLandmarkWithRotation_.at(id2))
 						{
 							Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
 							if(!isCovarianceIgnored())
@@ -807,9 +814,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
 								tmpPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), p.theta())));
 							}
-							else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
+							else if(!landmarksIgnored() && isLandmarkWithRotation_.find(key)!=isLandmarkWithRotation_.end())
 							{
-								if(isLandmarkWithRotation.at(key))
+								if(isLandmarkWithRotation_.at(key))
 								{
 									newPoses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 									gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
@@ -830,9 +837,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
 								tmpPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
 							}
-							else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
+							else if(!landmarksIgnored() && isLandmarkWithRotation_.find(key)!=isLandmarkWithRotation_.end())
 							{
-								if(isLandmarkWithRotation.at(key))
+								if(isLandmarkWithRotation_.at(key))
 								{
 									gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
 									tmpPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
@@ -1000,9 +1007,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
 						optimizedPoses.insert(std::make_pair(key, Transform(p.x(), p.y(), z, roll, pitch, p.theta())));
 					}
-					else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
+					else if(!landmarksIgnored() && isLandmarkWithRotation_.find(key)!=isLandmarkWithRotation_.end())
 					{
-						if(isLandmarkWithRotation.at(key))
+						if(isLandmarkWithRotation_.at(key))
 						{
 							poses.at(key).getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
 							gtsam::Pose2 p = iter->value.cast<gtsam::Pose2>();
@@ -1023,9 +1030,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
 						optimizedPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));
 					}
-					else if(!landmarksIgnored() && isLandmarkWithRotation.find(key)!=isLandmarkWithRotation.end())
+					else if(!landmarksIgnored() && isLandmarkWithRotation_.find(key)!=isLandmarkWithRotation_.end())
 					{
-						if(isLandmarkWithRotation.at(key))
+						if(isLandmarkWithRotation_.at(key))
 						{
 							gtsam::Pose3 p = iter->value.cast<gtsam::Pose3>();
 							optimizedPoses.insert(std::make_pair(key, Transform::fromEigen4d(p.matrix())));

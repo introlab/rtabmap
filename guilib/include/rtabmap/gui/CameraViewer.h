@@ -77,6 +77,7 @@ private:
 	QElapsedTimer fpsTimer_;
 	double lastCapturePeriod_;
 	double previousCaptureStamp_;
+	std::map<int, float> _landmarksSize;
 };
 
 } /* namespace rtabmap */

@@ -107,6 +107,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_fastcv->setText("No");
 	_ui->label_fastcv_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_APRILTAG
+	_ui->label_apriltag->setText("Yes");
+	_ui->label_apriltag_license->setEnabled(true);
+#else
+	_ui->label_apriltag->setText("No");
+	_ui->label_apriltag_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_PDAL
 	_ui->label_pdal->setText("Yes");
 	_ui->label_pdal_license->setEnabled(true);
