@@ -644,7 +644,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 						   hasConverged,
 						   *fromCloudNormalsRegistered,
 						   _epsilon,
-						   this->force3DoF());
+						   this->force3DoF(),
+						   _outlierRatio);
 				}
 
 				if(!icpT.isNull() && hasConverged)
@@ -778,7 +779,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 							   hasConverged,
 							   *fromCloudRegistered,
 							   _epsilon,
-							   this->force3DoF()); // icp2D
+							   this->force3DoF(), // icp2D
+							   _outlierRatio);
 					}
 				}
 

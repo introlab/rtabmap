@@ -214,10 +214,15 @@ Transform RTABMAP_CORE_EXPORT icp(
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
 		float epsilon = 0.0f,
-		bool icp2D = false);
+		bool icp2D = false,
+		float ransacOutlierRatio = 0.0f);
 /**
  * @brief Performs Iterative Closest Point (ICP) alignment between two point clouds and returns the resulting transform.
  * @see util3d::icp()
+ *
+ * @param ransacOutlierRatio If > 0 and < 1, install a PCL RANSAC
+ *   correspondence rejector with inlier threshold = ransacOutlierRatio *
+ *   maxCorrespondenceDistance. 0 disables the rejector (default).
  */
 Transform RTABMAP_CORE_EXPORT icp(
 		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloud_source,
@@ -227,7 +232,8 @@ Transform RTABMAP_CORE_EXPORT icp(
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointXYZI> & cloud_source_registered,
 		float epsilon = 0.0f,
-		bool icp2D = false);
+		bool icp2D = false,
+		float ransacOutlierRatio = 0.0f);
 
 /**
  * @brief Performs Iterative Closest Point (ICP) alignment using a point-to-plane error metric.
@@ -262,10 +268,15 @@ Transform RTABMAP_CORE_EXPORT icpPointToPlane(
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
 		float epsilon = 0.0f,
-		bool icp2D = false);
+		bool icp2D = false,
+		float ransacOutlierRatio = 0.0f);
 /**
  * @briefPerforms Iterative Closest Point (ICP) alignment using a point-to-plane error metric.
  * @see util3d::icpPointToPlane()
+ *
+ * @param ransacOutlierRatio If > 0 and < 1, install a PCL RANSAC
+ *   correspondence rejector with inlier threshold = ransacOutlierRatio *
+ *   maxCorrespondenceDistance. 0 disables the rejector (default).
  */
 Transform RTABMAP_CORE_EXPORT icpPointToPlane(
 		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloud_source,
@@ -275,7 +286,8 @@ Transform RTABMAP_CORE_EXPORT icpPointToPlane(
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointXYZINormal> & cloud_source_registered,
 		float epsilon = 0.0f,
-		bool icp2D = false);
+		bool icp2D = false,
+		float ransacOutlierRatio = 0.0f);
 
 } // namespace util3d
 } // namespace rtabmap
