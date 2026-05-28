@@ -6,6 +6,7 @@
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMutex.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <fstream>
 #include <cmath>
@@ -74,8 +75,36 @@ public:
 		bool valid;
 	};
 
-	void clear() { samples_.clear(); }
-	const std::vector<Sample> & samples() const { return samples_; }
+	// Dispatched on UEventsManager thread; reads (size/snapshot) come from the test
+	// thread, so all access to samples_ goes through mutex_.
+	void clear()
+	{
+		UScopeMutex lock(mutex_);
+		samples_.clear();
+	}
+	std::vector<Sample> snapshot() const
+	{
+		UScopeMutex lock(mutex_);
+		return samples_;
+	}
+	size_t size() const
+	{
+		UScopeMutex lock(mutex_);
+		return samples_.size();
+	}
+	size_t validCount() const
+	{
+		UScopeMutex lock(mutex_);
+		size_t count = 0;
+		for(size_t i = 0; i < samples_.size(); ++i)
+		{
+			if(samples_[i].valid)
+			{
+				++count;
+			}
+		}
+		return count;
+	}
 
 protected:
 	virtual bool handleEvent(UEvent * event)
@@ -87,12 +116,14 @@ protected:
 			sample.data = imuEvent->getData();
 			sample.stamp = imuEvent->getStamp();
 			sample.valid = !imuEvent->getData().empty();
+			UScopeMutex lock(mutex_);
 			samples_.push_back(sample);
 		}
 		return false;
 	}
 
 private:
+	mutable UMutex mutex_;
 	std::vector<Sample> samples_;
 };
 
@@ -112,20 +143,9 @@ static std::vector<IMUEventCollector::Sample> runThread(
 		{
 			break;
 		}
-		if(minValidSamples > 0)
+		if(minValidSamples > 0 && collector.validCount() >= minValidSamples)
 		{
-			size_t validCount = 0;
-			for(size_t i = 0; i < collector.samples().size(); ++i)
-			{
-				if(collector.samples()[i].valid)
-				{
-					++validCount;
-				}
-			}
-			if(validCount >= minValidSamples)
-			{
-				break;
-			}
+			break;
 		}
 		uSleep(5);
 	}
@@ -135,8 +155,11 @@ static std::vector<IMUEventCollector::Sample> runThread(
 		thread.kill();
 	}
 	thread.join(true);
+	// Remove handler before snapshot. removeHandler does not block in-flight
+	// dispatches, so take the snapshot under the collector's mutex to avoid a
+	// race with a still-running dispatch posting one final event.
 	UEventsManager::removeHandler(&collector);
-	return collector.samples();
+	return collector.snapshot();
 }
 
 } // namespace

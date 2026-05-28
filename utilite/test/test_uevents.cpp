@@ -462,17 +462,146 @@ TEST(UEventsTest, HandlerReceivesCorrectEvent)
 {
     TestHandler handler;
     UEventsManager::addHandler(&handler);
-    
+
     handler.reset();
-    
+
     TestEvent* event = new TestEvent(42);
     UEventsManager::post(event, true);
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    
+
     EXPECT_EQ(handler.getLastEventCode(), 42);
     EXPECT_STREQ(handler.getLastEventClassName().c_str(), "TestEvent");
-    
+
     UEventsManager::removeHandler(&handler);
+}
+
+// Handler that blocks inside handleEvent until released, used to observe
+// whether removeHandler() waits for an in-flight dispatch to finish.
+class BlockingHandler : public UEventsHandler
+{
+public:
+    BlockingHandler() : inHandler_(false), finishedHandler_(false), release_(false) {}
+
+    bool inHandler() const { return inHandler_.load(); }
+    bool finishedHandler() const { return finishedHandler_.load(); }
+    void release() { release_ = true; }
+
+protected:
+    virtual bool handleEvent(UEvent *)
+    {
+        inHandler_ = true;
+        while(!release_.load())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        finishedHandler_ = true;
+        return false;
+    }
+
+private:
+    std::atomic<bool> inHandler_;
+    std::atomic<bool> finishedHandler_;
+    std::atomic<bool> release_;
+};
+
+// Regression test: removeHandler() must not return while another thread is
+// inside handleEvent() for that handler. Otherwise the caller can destroy the
+// handler (or data it points at) while the dispatcher still uses it, causing
+// heap corruption.
+TEST(UEventsTest, RemoveHandlerBlocksUntilHandleEventCompletes)
+{
+    BlockingHandler handler;
+    UEventsManager::addHandler(&handler);
+
+    UEventsManager::post(new TestEvent(), true);
+
+    // Wait until the dispatcher thread is inside handleEvent.
+    UTimer waitEnter;
+    while(!handler.inHandler() && waitEnter.ticks() < 1.0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    ASSERT_TRUE(handler.inHandler())
+        << "Dispatcher never entered handleEvent within 1s";
+
+    // Call removeHandler from a separate thread; it must block until the
+    // dispatcher exits handleEvent.
+    std::atomic<bool> removeReturned(false);
+    std::thread remover([&]() {
+        UEventsManager::removeHandler(&handler);
+        removeReturned = true;
+    });
+
+    // Give the remover thread time to call into removeHandler and (correctly)
+    // get stuck waiting for the dispatcher.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_FALSE(removeReturned.load())
+        << "removeHandler returned while handleEvent was still running";
+    EXPECT_FALSE(handler.finishedHandler());
+
+    // Let the dispatcher finish; removeHandler should now complete promptly.
+    handler.release();
+
+    UTimer waitReturn;
+    while(!removeReturned.load() && waitReturn.ticks() < 1.0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    EXPECT_TRUE(removeReturned.load())
+        << "removeHandler did not return after handleEvent completed";
+    EXPECT_TRUE(handler.finishedHandler());
+    remover.join();
+}
+
+// Handler that removes itself from within handleEvent, exercising the
+// recursive-mutex behavior of handlersMutex_.
+class SelfRemovingHandler : public UEventsHandler
+{
+public:
+    SelfRemovingHandler() : called_(false) {}
+    bool called() const { return called_.load(); }
+
+protected:
+    virtual bool handleEvent(UEvent *)
+    {
+        called_ = true;
+        // Must not deadlock: handlersMutex_ is recursive, so the dispatcher
+        // thread can re-enter it via removeHandler() while still holding it
+        // for the surrounding dispatch.
+        UEventsManager::removeHandler(this);
+        return false;
+    }
+
+private:
+    std::atomic<bool> called_;
+};
+
+TEST(UEventsTest, HandlerCanRemoveItselfFromWithinHandleEvent)
+{
+    SelfRemovingHandler handler;
+    UEventsManager::addHandler(&handler);
+
+    UEventsManager::post(new TestEvent(), true);
+
+    UTimer t;
+    while(!handler.called() && t.ticks() < 1.0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    EXPECT_TRUE(handler.called())
+        << "Handler appears to be deadlocked inside handleEvent";
+
+    // After self-removal, further events must not reach the handler. Since
+    // handleEvent flipped 'called_' once, post again and confirm no further
+    // calls are observed (we can only verify via a second handler that the
+    // dispatcher is still alive afterwards).
+    TestHandler sentinel;
+    UEventsManager::addHandler(&sentinel);
+    UEventsManager::post(new TestEvent(), true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_GT(sentinel.getEventCount(), 0)
+        << "Dispatcher is no longer delivering events after self-removal";
+    UEventsManager::removeHandler(&sentinel);
 }
 
