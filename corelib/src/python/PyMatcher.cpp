@@ -53,6 +53,12 @@ PyMatcher::PyMatcher(
 
 	_import_array();
 
+	// Invalidate importlib's directory-listing caches so a script created
+	// after sys.path was first scanned in this process is still found.
+	// Without this, the second Py* instance pointing at a freshly-written
+	// script in an already-known directory fails with ModuleNotFoundError.
+	PyRun_SimpleString("import importlib; importlib.invalidate_caches()");
+
 	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());
 	UDEBUG("PyImport_Import");
