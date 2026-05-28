@@ -139,10 +139,12 @@ static std::vector<IMUEventCollector::Sample> runThread(
 	UTimer timer;
 	while(timer.ticks() < maxWaitSec)
 	{
-		if(thread.isKilled())
-		{
-			break;
-		}
+		// Wait for the events themselves, not for the IMU thread to die.
+		// On a fast machine the IMU thread can post all its events and
+		// self-kill before the UEventsManager dispatcher thread has had a
+		// chance to deliver them to the collector. Breaking on isKilled()
+		// here would race with that delivery and removeHandler() below
+		// would then drop the still-queued events on the floor.
 		if(minValidSamples > 0 && collector.validCount() >= minValidSamples)
 		{
 			break;
