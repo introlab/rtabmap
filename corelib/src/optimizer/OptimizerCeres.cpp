@@ -274,7 +274,11 @@ std::map<int, Transform> OptimizerCeres::optimize(
 		UINFO("Ceres optimizing begin (iterations=%d)", iterations());
 
 		ceres::Solver::Options options;
-		options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+		// SPARSE_NORMAL_CHOLESKY is the standard linear solver for
+		// pose-graph SLAM: the Hessian is a sparse symmetric positive
+		// definite matrix over pose blocks, which Cholesky factors
+		// directly and robustly.
+		options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 		options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 		options.max_num_iterations = iterations();
 		options.function_tolerance = this->epsilon();
