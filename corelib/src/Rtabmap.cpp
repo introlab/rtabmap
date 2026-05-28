@@ -4418,7 +4418,7 @@ bool Rtabmap::process(
 	}
 	if(!_publishLastSignatureData)
 	{
-		lastSignatureData.sensorData().clearCompressedData();
+		lastSignatureData.sensorData().clearCompressedData(true, true, true, false);
 		lastSignatureData.sensorData().clearRawData();
 	}
 	if(!_rawDataKept)
