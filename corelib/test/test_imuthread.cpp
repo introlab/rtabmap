@@ -8,14 +8,9 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMutex.h>
 #include <rtabmap/utilite/UTimer.h>
+#include "TestUtils.h"
 #include <fstream>
 #include <cmath>
-#ifdef _WIN32
-#include <process.h>
-#define getpid _getpid
-#else
-#include <unistd.h>
-#endif
 #include <vector>
 
 using namespace rtabmap;
@@ -26,7 +21,7 @@ static int g_fileCounter = 0;
 
 static std::string tempImuCsvPath()
 {
-	return uFormat("/tmp/rtabmap_imuthread_test_%d_%d.csv", getpid(), ++g_fileCounter);
+	return test::tempPath(uFormat("rtabmap_imuthread_test_%d_%d.csv", test::getPid(), ++g_fileCounter));
 }
 
 static bool writeImuCsv(const std::string & path, const std::vector<std::string> & rows)
@@ -174,7 +169,7 @@ static std::vector<IMUEventCollector::Sample> runThread(
 TEST(IMUThreadTest, InitFailsOnMissingFile)
 {
 	IMUThread thread(0, Transform::getIdentity());
-	EXPECT_FALSE(thread.init("/tmp/rtabmap_imuthread_missing_file.csv"));
+	EXPECT_FALSE(thread.init(test::tempPath("rtabmap_imuthread_missing_file.csv")));
 }
 
 TEST(IMUThreadTest, InitFailsOnHeaderOnly)

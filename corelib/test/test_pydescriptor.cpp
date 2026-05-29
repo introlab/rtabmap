@@ -22,15 +22,10 @@
 
 #include <opencv2/core.hpp>
 
+#include "TestUtils.h"
 #include <fstream>
 #include <memory>
 #include <string>
-#ifdef _WIN32
-#include <process.h>
-#define getpid _getpid
-#else
-#include <unistd.h>
-#endif
 
 using namespace rtabmap;
 
@@ -48,8 +43,7 @@ namespace {
 // reloads fresh content on each TEST().
 std::string writeStubScript(int tag)
 {
-	const std::string path = uFormat(
-			"/tmp/rtabmap_test_pydescriptor_%d_%d.py", getpid(), tag);
+	const std::string path = test::tempPath(uFormat("rtabmap_test_pydescriptor_%d_%d.py", test::getPid(), tag));
 	std::ofstream out(path);
 	out <<
 		"import numpy as np\n"
@@ -173,8 +167,7 @@ TEST(PyDescriptor, EmptyPathReturnsEmpty)
 // an empty descriptor.
 TEST(PyDescriptor, MissingPathReturnsEmpty)
 {
-	const std::string scriptPath = uFormat(
-			"/tmp/rtabmap_test_pydescriptor_does_not_exist_%d.py", getpid());
+	const std::string scriptPath = test::tempPath(uFormat("rtabmap_test_pydescriptor_does_not_exist_%d.py", test::getPid()));
 	std::unique_ptr<GlobalDescriptorExtractor> extractor(
 			GlobalDescriptorExtractor::create(
 					GlobalDescriptorExtractor::kPyDescriptor,

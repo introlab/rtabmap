@@ -5,6 +5,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include "TestUtils.h"
 
 using namespace rtabmap;
 
@@ -13,7 +14,7 @@ namespace {
 std::string uniqueDbPath()
 {
 	static int counter = 0;
-	return uFormat("/tmp/rtabmap_dbdriversqlite3_test_%d_%d.db", getpid(), ++counter);
+	return test::tempPath(uFormat("rtabmap_dbdriversqlite3_test_%d_%d.db", test::getPid(), ++counter));
 }
 
 class DBDriverSqlite3Fixture : public ::testing::Test

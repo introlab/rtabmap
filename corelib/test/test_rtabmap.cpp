@@ -22,12 +22,7 @@
 #include <set>
 #include <sstream>
 #include <string>
-#ifdef _WIN32
-#include <process.h>
-#define getpid _getpid
-#else
-#include <unistd.h>
-#endif
+#include "TestUtils.h"
 #include <vector>
 
 using namespace rtabmap;
@@ -55,7 +50,7 @@ ParametersMap defaultRtabmapParams(bool rgbdMode = true)
 std::string uniqueDbPath()
 {
 	static int counter = 0;
-	return uFormat("/tmp/rtabmap_test_%d_%d.db", getpid(), ++counter);
+	return test::tempPath(uFormat("rtabmap_test_%d_%d.db", test::getPid(), ++counter));
 }
 
 class RtabmapFixture : public ::testing::Test
@@ -2642,7 +2637,7 @@ TEST_F(RtabmapFixture, GenerateDOTGraphWritesDotFile)
 {
 	for(int i = 0; i < 4; ++i) process();
 
-	const std::string dotPath = uFormat("/tmp/rtabmap_test_dot_%d.dot", getpid());
+	const std::string dotPath = test::tempPath(uFormat("rtabmap_test_dot_%d.dot", test::getPid()));
 	UFile::erase(dotPath.c_str());
 	rtabmap_->generateDOTGraph(dotPath, /*id=*/0, /*margin=*/5);
 
@@ -2667,7 +2662,7 @@ TEST_F(RtabmapFixture, ExportPosesRawFormatRoundTripsViaImport)
 	// poses back. This covers the local/optimized export path.
 	for(int i = 0; i < 4; ++i) process();
 
-	const std::string outPath = uFormat("/tmp/rtabmap_test_poses_raw_%d.txt", getpid());
+	const std::string outPath = test::tempPath(uFormat("rtabmap_test_poses_raw_%d.txt", test::getPid()));
 	UFile::erase(outPath.c_str());
 	rtabmap_->exportPoses(outPath, /*optimized=*/true, /*global=*/false, /*format=*/0);
 	ASSERT_TRUE(UFile::exists(outPath));
@@ -2690,7 +2685,7 @@ TEST_F(RtabmapFixture, ExportPosesRawFormatRoundTripsViaImport)
 TEST_F(RtabmapFixture, ExportPosesKittiFormatWritesOneMatrixPerLine)
 {
 	for(int i = 0; i < 3; ++i) process();
-	const std::string outPath = uFormat("/tmp/rtabmap_test_poses_kitti_%d.txt", getpid());
+	const std::string outPath = test::tempPath(uFormat("rtabmap_test_poses_kitti_%d.txt", test::getPid()));
 	UFile::erase(outPath.c_str());
 	rtabmap_->exportPoses(outPath, /*optimized=*/true, /*global=*/false, /*format=*/2);
 	ASSERT_TRUE(UFile::exists(outPath));
@@ -3041,7 +3036,7 @@ TEST(RtabmapTest, GlobalBundleAdjustmentRefinesPosesOnSynthScene)
 TEST_F(RtabmapFixture, ExportPosesTumFormatIncludesStampPerLine)
 {
 	for(int i = 0; i < 3; ++i) process();
-	const std::string outPath = uFormat("/tmp/rtabmap_test_poses_tum_%d.txt", getpid());
+	const std::string outPath = test::tempPath(uFormat("rtabmap_test_poses_tum_%d.txt", test::getPid()));
 	UFile::erase(outPath.c_str());
 	// Format 1 = RGBD-SLAM / TUM: stamp x y z qw qx qy qz (8 fields).
 	rtabmap_->exportPoses(outPath, /*optimized=*/true, /*global=*/false, /*format=*/1);

@@ -33,6 +33,7 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 
+#include "TestUtils.h"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -47,14 +48,14 @@ std::string testDataPath(const std::string & basename)
 }
 
 // Output DB path named after the running test so manual inspection is easy
-// (rtabmap-databaseViewer /tmp/rtabmap_integration_<TestName>.db). The file
-// is overwritten on each run and NOT deleted at teardown.
+// (rtabmap-databaseViewer <tempdir>/rtabmap_integration_<TestName>.db). The
+// file is overwritten on each run and NOT deleted at teardown.
 std::string workDbForCurrentTest()
 {
 	const ::testing::TestInfo * info =
 			::testing::UnitTest::GetInstance()->current_test_info();
 	const std::string testName = info != nullptr ? info->name() : "unknown";
-	return uFormat("/tmp/rtabmap_integration_%s.db", testName.c_str());
+	return test::tempPath(uFormat("rtabmap_integration_%s.db", testName.c_str()));
 }
 
 // Result bundle populated by replayDatabase(). Extend as the assertions in the

@@ -2,13 +2,8 @@
 #include <rtabmap/core/Version.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include "TestUtils.h"
 #include <fstream>
-#ifdef _WIN32
-#include <process.h>
-#define getpid _getpid
-#else
-#include <unistd.h>
-#endif
 
 #ifdef RTABMAP_LIBLAS
 #include <rtabmap/core/LASWriter.h>
@@ -23,7 +18,7 @@ static int g_fileCounter = 0;
 
 static std::string tempLasPath(const std::string & extension)
 {
-	return uFormat("/tmp/rtabmap_laswriter_test_%d_%d.%s", getpid(), ++g_fileCounter, extension.c_str());
+	return test::tempPath(uFormat("rtabmap_laswriter_test_%d_%d.%s", test::getPid(), ++g_fileCounter, extension.c_str()));
 }
 
 #ifdef RTABMAP_LIBLAS

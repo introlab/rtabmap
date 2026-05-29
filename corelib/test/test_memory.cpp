@@ -13,6 +13,7 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/ULogger.h>
+#include "TestUtils.h"
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -38,7 +39,7 @@ ParametersMap defaultMemoryParams(int stmSize = 5)
 std::string uniqueDbPath()
 {
 	static int counter = 0;
-	return uFormat("/tmp/rtabmap_memory_test_%d_%d.db", getpid(), ++counter);
+	return test::tempPath(uFormat("rtabmap_memory_test_%d_%d.db", test::getPid(), ++counter));
 }
 
 class MemoryFixture : public ::testing::Test

@@ -14,6 +14,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include "TestUtils.h"
 #include <opencv2/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <chrono>
@@ -35,7 +36,7 @@ namespace {
 std::string uniqueDbPath()
 {
 	static int counter = 0;
-	return uFormat("/tmp/rtabmap_dbdriver_test_%d_%d.db", getpid(), ++counter);
+	return test::tempPath(uFormat("rtabmap_dbdriver_test_%d_%d.db", test::getPid(), ++counter));
 }
 
 class DbDriverFixture : public ::testing::Test
