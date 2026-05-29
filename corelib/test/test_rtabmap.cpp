@@ -2142,14 +2142,23 @@ TEST(RtabmapTest, ProcessRejectsBadLoopClosureWhenMaxErrorExceeded)
 	ASSERT_TRUE(rtabmap.process(makeFeaturesData(10, /*featSlot=*/kMatchSlot), Transform(9.0f, 0, 0, 0, 0, 0), cov));
 
 	// Verify the rejection specifically came from the OptimizeMaxError path:
-	// the kLoopOptimization_max_error_ratio statistic reflects the max-error
-	// edge ratio measured by the optimizer. It exists only when the optimizer
-	// ran AND found a high error -- if the rejection had been earlier (e.g.,
-	// failed registration), this stat would not be populated above the gate.
+	// kLoopOptimization_max_error_ratio (linear) and ..._max_ang_error_ratio
+	// (angular) reflect the per-edge residuals after optimization. The gate
+	// rejects if EITHER exceeds kRGBDOptimizeMaxError, so the test asserts
+	// at least one fired. g2o/GTSAM/Ceres on this graph can satisfy the bad
+	// loop closure by rotating the chain edges (each chain edge still has
+	// ~1m translation in its local frame even when the chain curls back to
+	// N4) -- the linear residuals stay tight but the angular residuals
+	// explode. TORO's gradient solver leaves the linear residual exposed
+	// instead. Either path is a valid rejection.
 	const auto & stats = rtabmap.getStatistics().data();
 	auto itRatio = stats.find(Statistics::kLoopOptimization_max_error_ratio());
+	auto itAngRatio = stats.find(Statistics::kLoopOptimization_max_ang_error_ratio());
 	ASSERT_NE(itRatio, stats.end());
-	EXPECT_GT(itRatio->second, 1.0f) << "optimizer max-error ratio must exceed kRGBDOptimizeMaxError";
+	ASSERT_NE(itAngRatio, stats.end());
+	EXPECT_TRUE(itRatio->second > 1.0f || itAngRatio->second > 1.0f)
+			<< "linear or angular max-error ratio must exceed kRGBDOptimizeMaxError"
+			<< " (linear=" << itRatio->second << ", angular=" << itAngRatio->second << ")";
 	auto itRej = stats.find(Statistics::kLoopRejectedHypothesis());
 	ASSERT_NE(itRej, stats.end());
 	EXPECT_FLOAT_EQ(itRej->second, 1.0f);
@@ -2249,10 +2258,16 @@ TEST(RtabmapTest, ProcessRejectsBadLoopClosureInLocalizationModeViaOptimizeMaxEr
 		// odom-cache chain and the proposed loop edge -> rejected.
 		ASSERT_TRUE(rtabmap.process(makeFeaturesData(20, /*featSlot=*/kMatchSlot), Transform(12.0f, 0, 0, 0, 0, 0), cov));
 
+		// Either linear or angular ratio can trigger rejection (see comment
+		// on ProcessRejectsBadLoopClosureWhenMaxErrorExceeded).
 		const auto & stats = rtabmap.getStatistics().data();
 		auto itRatio = stats.find(Statistics::kLoopOptimization_max_error_ratio());
+		auto itAngRatio = stats.find(Statistics::kLoopOptimization_max_ang_error_ratio());
 		ASSERT_NE(itRatio, stats.end());
-		EXPECT_GT(itRatio->second, 1.0f) << "optimizer max-error ratio must exceed kRGBDOptimizeMaxError";
+		ASSERT_NE(itAngRatio, stats.end());
+		EXPECT_TRUE(itRatio->second > 1.0f || itAngRatio->second > 1.0f)
+				<< "linear or angular max-error ratio must exceed kRGBDOptimizeMaxError"
+				<< " (linear=" << itRatio->second << ", angular=" << itAngRatio->second << ")";
 		auto itRej = stats.find(Statistics::kLoopRejectedHypothesis());
 		ASSERT_NE(itRej, stats.end());
 		EXPECT_FLOAT_EQ(itRej->second, 1.0f);

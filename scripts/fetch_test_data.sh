@@ -43,6 +43,13 @@ verify_sha() {
 }
 
 while IFS=$'\t' read -r name file_id expected_sha; do
+	# Strip trailing CR so the script works when manifest.txt is checked out
+	# with CRLF line endings (default on Windows Git unless core.autocrlf=input).
+	# Without this, expected_sha keeps a trailing \r and even a byte-for-byte
+	# match looks like "expected <sha>\r, got <sha>".
+	name="${name%$'\r'}"
+	file_id="${file_id%$'\r'}"
+	expected_sha="${expected_sha%$'\r'}"
 	# Skip comments and blank lines.
 	[[ -z "${name// }" || "$name" =~ ^# ]] && continue
 
