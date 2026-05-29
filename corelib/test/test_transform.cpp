@@ -189,8 +189,8 @@ TEST(TransformTest, GetTransformFromBuffer)
     std::map<double, Transform> tfBuffer;
 
     tfBuffer[1.0] = Transform(0, 0, 0, 0, 0, 0);         // t=1.0
-    tfBuffer[2.0] = Transform(1, 0, 0, 0, 0, M_PI/2.0);  // t=2.0
-    tfBuffer[3.0] = Transform(2, 0, 0, 0, 0, M_PI);      // t=3.0
+    tfBuffer[2.0] = Transform(1, 0, 0, 0, 0, CV_PI/2.0);  // t=2.0
+    tfBuffer[3.0] = Transform(2, 0, 0, 0, 0, CV_PI);      // t=3.0
 
     // Test exact timestamp
     Transform tExact = Transform::getTransform(tfBuffer, 2.0);
@@ -199,12 +199,12 @@ TEST(TransformTest, GetTransformFromBuffer)
     // Test below
     Transform tBelow = Transform::getTransform(tfBuffer, 1.5);
     EXPECT_NEAR(tBelow.x(), 0.5f, 1e-5);
-    EXPECT_NEAR(tBelow.theta(), M_PI/4.0, 1e-5);
+    EXPECT_NEAR(tBelow.theta(), CV_PI/4.0, 1e-5);
 
     // Test above
     Transform tAbove = Transform::getTransform(tfBuffer, 2.5);
     EXPECT_NEAR(tAbove.x(), 1.5f, 1e-5);
-    EXPECT_NEAR(tAbove.theta(), 3.0*M_PI/4.0, 1e-5);
+    EXPECT_NEAR(tAbove.theta(), 3.0*CV_PI/4.0, 1e-5);
 
     // Test very close to a border
     Transform tNear = Transform::getTransform(tfBuffer, 2.0001);

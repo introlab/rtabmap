@@ -12,12 +12,13 @@
 #include <vector>
 
 #include "rtabmap/core/PythonInterface.h"
+#include "rtabmap/core/rtabmap_core_export.h"
 #include <Python.h>
 
 namespace rtabmap
 {
 
-class PyDetector : public Feature2D
+class RTABMAP_CORE_EXPORT PyDetector : public Feature2D
 {
 public:
 	PyDetector(const ParametersMap & parameters = ParametersMap());
