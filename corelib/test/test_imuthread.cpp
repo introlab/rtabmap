@@ -10,7 +10,12 @@
 #include <rtabmap/utilite/UTimer.h>
 #include <fstream>
 #include <cmath>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
 #include <unistd.h>
+#endif
 #include <vector>
 
 using namespace rtabmap;

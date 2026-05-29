@@ -3,7 +3,12 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <fstream>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
 #include <unistd.h>
+#endif
 
 #ifdef RTABMAP_LIBLAS
 #include <rtabmap/core/LASWriter.h>

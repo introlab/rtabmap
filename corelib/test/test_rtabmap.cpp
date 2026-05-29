@@ -22,7 +22,12 @@
 #include <set>
 #include <sstream>
 #include <string>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
 #include <unistd.h>
+#endif
 #include <vector>
 
 using namespace rtabmap;
