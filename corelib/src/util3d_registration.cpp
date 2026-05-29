@@ -33,6 +33,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/icp.h>
+
+// Explicitly instantiate pcl::RandomSampleConsensus and
+// pcl::SampleConsensusModelRegistration for pcl::PointXYZINormal. PCL itself
+// only ships precompiled symbols for the types listed in PCL_XYZ_POINT_TYPES
+// when built without PCL_ONLY_CORE_POINT_TYPES; the Windows pre-built PCL
+// (and any "core point types" build) omits PointXYZINormal, so without this
+// rtabmap_core.dll fails to link when the rejector is used with that type.
+#include <pcl/sample_consensus/impl/ransac.hpp>
+#include <pcl/sample_consensus/impl/sac_model_registration.hpp>
+template class pcl::RandomSampleConsensus<pcl::PointXYZINormal>;
+template class pcl::SampleConsensusModelRegistration<pcl::PointXYZINormal>;
+
 #include <pcl/registration/transformation_estimation_2D.h>
 #include <pcl/registration/transformation_estimation_svd.h>
 #include <pcl/sample_consensus/sac_model_registration.h>
@@ -394,6 +406,28 @@ void computeVarianceAndCorrespondences(
 	computeVarianceAndCorrespondencesImpl<pcl::PointXYZI>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut, reciprocal);
 }
 
+// RANSAC-based correspondence rejector: fits a rigid transform on random
+// 3-pair subsets and discards pairs that disagree. PCL's
+// IterativeClosestPoint::setRANSACOutlierRejectionThreshold and
+// setRANSACIterations are NOT honored by ICP itself (only by NDT and
+// k-4PCS), so we install the rejector explicitly here.
+template<typename PointT>
+void addRansacRejector(
+		pcl::IterativeClosestPoint<PointT, PointT> & icp,
+		const typename pcl::PointCloud<PointT>::ConstPtr & cloud_source,
+		const typename pcl::PointCloud<PointT>::ConstPtr & cloud_target,
+		double maxCorrespondenceDistance,
+		float ransacOutlierRatio)
+{
+	typename pcl::registration::CorrespondenceRejectorSampleConsensus<PointT>::Ptr
+			rejector(new pcl::registration::CorrespondenceRejectorSampleConsensus<PointT>());
+	rejector->setInlierThreshold(maxCorrespondenceDistance * ransacOutlierRatio);
+	rejector->setMaximumIterations(50);
+	rejector->setInputSource(cloud_source);
+	rejector->setInputTarget(cloud_target);
+	icp.addCorrespondenceRejector(rejector);
+}
+
 // return transform from source to target (All points must be finite!!!)
 template<typename PointT>
 Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_source,
@@ -429,18 +463,8 @@ Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_sourc
 
 	if(ransacOutlierRatio > 0.0f && ransacOutlierRatio < 1.0f)
 	{
-		// RANSAC-based correspondence rejector: fits a rigid transform on
-		// random 3-pair subsets and discards pairs that disagree. Note that
-		// PCL's IterativeClosestPoint::setRANSACOutlierRejectionThreshold and
-		// setRANSACIterations are NOT honored by ICP itself (only by NDT and
-		// k-4PCS), so we install the rejector explicitly.
-		typename pcl::registration::CorrespondenceRejectorSampleConsensus<PointT>::Ptr
-				ransacRejector(new pcl::registration::CorrespondenceRejectorSampleConsensus<PointT>());
-		ransacRejector->setInlierThreshold(maxCorrespondenceDistance * ransacOutlierRatio);
-		ransacRejector->setMaximumIterations(50);
-		ransacRejector->setInputSource(cloud_source);
-		ransacRejector->setInputTarget(cloud_target);
-		icp.addCorrespondenceRejector(ransacRejector);
+		addRansacRejector<PointT>(icp, cloud_source, cloud_target,
+				maxCorrespondenceDistance, ransacOutlierRatio);
 	}
 
 	// Perform the alignment
@@ -510,15 +534,8 @@ Transform icpPointToPlaneImpl(
 
 	if(ransacOutlierRatio > 0.0f && ransacOutlierRatio < 1.0f)
 	{
-		// See icpImpl: install a RANSAC correspondence rejector since PCL's
-		// setRANSAC*-on-ICP is a no-op.
-		typename pcl::registration::CorrespondenceRejectorSampleConsensus<PointNormalT>::Ptr
-				ransacRejector(new pcl::registration::CorrespondenceRejectorSampleConsensus<PointNormalT>());
-		ransacRejector->setInlierThreshold(maxCorrespondenceDistance * ransacOutlierRatio);
-		ransacRejector->setMaximumIterations(50);
-		ransacRejector->setInputSource(cloud_source);
-		ransacRejector->setInputTarget(cloud_target);
-		icp.addCorrespondenceRejector(ransacRejector);
+		addRansacRejector<PointNormalT>(icp, cloud_source, cloud_target,
+				maxCorrespondenceDistance, ransacOutlierRatio);
 	}
 
 	// Perform the alignment
