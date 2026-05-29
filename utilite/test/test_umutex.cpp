@@ -66,7 +66,12 @@ TEST(UMutexTest, ThreadSafety)
             {
                 mutex.lock();
                 int val = counter.load();
-                std::this_thread::sleep_for(std::chrono::microseconds(1));
+                // yield() instead of sleep_for(1us): the original sleep was
+                // ~1us intended (negligible on Linux/macOS) but ~15ms on
+                // Windows because of the default 15.6ms timer tick -- that
+                // turned this test into a 60s test on Windows CI. yield()
+                // still scrambles interleaving without the wall-clock cost.
+                std::this_thread::yield();
                 counter.store(val + 1);
                 mutex.unlock();
             }
