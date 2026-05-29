@@ -1108,6 +1108,72 @@ TEST_F(RtabmapFixture, DeleteLastLocationIsNoOpWhenStmEmpty)
 	EXPECT_EQ(rtabmap_->getSTMSize(), 0);
 }
 
+// Regression: Rtabmap/PublishLastSignature=false instructs process() to strip
+// the bulky raw/compressed payloads (image, scan, user data) from the
+// published Statistics signature, but it must NOT drop the occupancy grid --
+// downstream consumers (e.g. ROS occupancy-grid publishers) rely on it even
+// when binary image data isn't republished. Compounded with Mem/BinDataKept
+// =false the bug previously cleared the grid in the published copy (the
+// default-arg clearCompressedData() / clearRawData() both wiped all four
+// payload kinds). Fixed by passing occupancyGrid=false to both calls.
+TEST(RtabmapTest, ProcessKeepsOccupancyGridWhenPublishLastSignatureDataDisabled)
+{
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kRtabmapPublishLastSignature()] = "false";
+	params[Parameters::kMemBinDataKept()] = "false";
+	// Memory only stores the user-attached grid if local occupancy grid
+	// creation is enabled (otherwise the grid set on the input SensorData is
+	// dropped during Memory::createSignature).
+	params[Parameters::kRGBDCreateOccupancyGrid()] = "true";
+	Rtabmap rtabmap;
+	rtabmap.init(params);
+
+	cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	SensorData data(image);
+	data.setId(1);
+	// Attach a small synthetic occupancy grid -- setOccupancyGrid compresses
+	// internally, so the compressed cells are populated immediately.
+	const cv::Mat ground = cv::Mat::ones(1, 16, CV_32FC2);
+	const cv::Mat obstacles = cv::Mat::ones(1, 16, CV_32FC2) * 2.0f;
+	const cv::Mat empty = cv::Mat::ones(1, 16, CV_32FC2) * 3.0f;
+	const float cellSize = 0.05f;
+	const cv::Point3f viewPoint(0.0f, 0.0f, 0.0f);
+	data.setOccupancyGrid(ground, obstacles, empty, cellSize, viewPoint);
+	ASSERT_FALSE(data.gridGroundCellsCompressed().empty());
+
+	const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	ASSERT_TRUE(rtabmap.process(data, Transform(0, 0, 0, 0, 0, 0), cov));
+
+	const Signature & published = rtabmap.getStatistics().getLastSignatureData();
+	ASSERT_GT(published.id(), 0) << "Statistics should still hold a signature even when PublishLastSignature=false";
+
+	// PublishLastSignature=false strips image/scan/user data (raw and
+	// compressed)...
+	EXPECT_TRUE(published.sensorData().imageCompressed().empty());
+	EXPECT_TRUE(published.sensorData().laserScanCompressed().isEmpty());
+	EXPECT_TRUE(published.sensorData().userDataCompressed().empty());
+	EXPECT_TRUE(published.sensorData().imageRaw().empty());
+	EXPECT_TRUE(published.sensorData().laserScanRaw().isEmpty());
+	EXPECT_TRUE(published.sensorData().userDataRaw().empty());
+
+	// ...but the occupancy grid (compressed AND raw) must survive.
+	EXPECT_FALSE(published.sensorData().gridGroundCellsCompressed().empty())
+			<< "compressed ground grid was cleared (regression)";
+	EXPECT_FALSE(published.sensorData().gridObstacleCellsCompressed().empty())
+			<< "compressed obstacle grid was cleared (regression)";
+	EXPECT_FALSE(published.sensorData().gridEmptyCellsCompressed().empty())
+			<< "compressed empty grid was cleared (regression)";
+	EXPECT_FALSE(published.sensorData().gridGroundCellsRaw().empty())
+			<< "raw ground grid was cleared (regression)";
+	EXPECT_FALSE(published.sensorData().gridObstacleCellsRaw().empty())
+			<< "raw obstacle grid was cleared (regression)";
+	EXPECT_FALSE(published.sensorData().gridEmptyCellsRaw().empty())
+			<< "raw empty grid was cleared (regression)";
+	EXPECT_FLOAT_EQ(published.sensorData().gridCellSize(), cellSize);
+
+	rtabmap.close(false);
+}
+
 // ---------------------------------------------------------------------------
 // getSignatureCopy
 // ---------------------------------------------------------------------------

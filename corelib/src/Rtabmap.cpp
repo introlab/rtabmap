@@ -4421,8 +4421,13 @@ bool Rtabmap::process(
 	}
 	if(!_publishLastSignatureData)
 	{
+		// Keep the occupancy grid (compressed AND raw) on the published copy:
+		// downstream consumers rely on it to generate global occupancy grid
+		// in the same process (e.g. the raw occupancy grid used by the MainWindow 
+		// or ROS rtabmap_slam) or on an external process (the compressed occupancy
+		// grid published over ROS rtabmap_msgs/MapData).
 		lastSignatureData.sensorData().clearCompressedData(true, true, true, false);
-		lastSignatureData.sensorData().clearRawData();
+		lastSignatureData.sensorData().clearRawData(true, true, true, false);
 	}
 	if(!_rawDataKept)
 	{
