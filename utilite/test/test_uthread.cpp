@@ -130,20 +130,26 @@ TEST(UThreadTest, Start)
 
     EXPECT_TRUE(thread.isRunning() || thread.isCreating());
 
-    // Wait up to 500 ms for mainLoop to actually execute. We can't reliably
+    // Wait up to 1 s for mainLoop to actually execute. We can't reliably
     // assert isRunning() at a fixed offset: SimpleThread sleeps ~10 ms then
     // self-kills, so on a slow CI VM the thread can already be in kSKilled
     // by the time we poll. hasStarted() flips to true on first entry to
     // mainLoop and stays true, so it's race-free.
     UTimer waitForStart;
-    while(!thread.hasStarted() && waitForStart.ticks() < 0.5)
+    while(!thread.hasStarted() && waitForStart.ticks() < 1.0)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     EXPECT_TRUE(thread.hasStarted());
 
-    // Give the thread time to finish its single iteration + cleanup.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // Poll for cleanup. SimpleThread sleeps ~10 ms then self-kills; on slow
+    // CI VMs the kSRunning -> kSKilled -> kSIdle settle can take longer than
+    // a single fixed sleep, so wait up to 1 s.
+    UTimer waitForFinish;
+    while(!(thread.isKilled() || thread.isIdle()) && waitForFinish.ticks() < 1.0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
     EXPECT_TRUE(thread.isKilled() || thread.isIdle());
 
     thread.join();
