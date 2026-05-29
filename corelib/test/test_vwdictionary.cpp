@@ -1,5 +1,12 @@
 #include <gtest/gtest.h>
 #include <opencv2/core.hpp>
+#if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
+#include <opencv2/gpu/gpu.hpp>
+#endif
+#else
+#include <opencv2/core/cuda.hpp>
+#endif
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Parameters.h"

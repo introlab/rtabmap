@@ -175,7 +175,12 @@ TEST(USemaphoreTest, ThreadSafety)
         for(int i = 0; i < numThreads * iterations; ++i)
         {
             sem.release();
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
+            // yield() instead of sleep_for(10us): Windows's default 15.6ms
+            // timer tick turns "10us" into ~15ms, blowing this 400-iter loop
+            // up to ~6s on Windows CI for no benefit. yield() still lets the
+            // waiting acquirers run between releases without the wall-clock
+            // cost.
+            std::this_thread::yield();
         }
     });
     
