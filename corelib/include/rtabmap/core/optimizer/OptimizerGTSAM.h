@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OPTIMIZERGTSAM_H_
 
 #include <rtabmap/core/Optimizer.h>
+#include <tuple>
 
 namespace gtsam {
 	class ISAM2;
@@ -62,22 +63,15 @@ private:
 	int internalOptimizerType_;
 
 	gtsam::ISAM2 * isam2_;
-	struct ConstraintToFactor {
-		ConstraintToFactor(int _from, int _to, std::uint64_t _factorIndice)
-		{
-			from = _from;
-			to = _to;
-			factorIndice = _factorIndice;
-		}
-		int from;
-		int to;
-		std::uint64_t factorIndice;
-	};
-
-	std::vector<ConstraintToFactor> lastAddedConstraints_;
 	int lastSwitchId_;
 	std::set<int> addedPoses_;
 	std::map<int, bool> isLandmarkWithRotation_; // persists across iSAM2 incremental calls
+	// Persistent map of non-self-referring constraints currently live in iSAM2,
+	// keyed by (min(from,to), max(from,to), type) -> factor index. Same
+	// (from,to) with a different Link::Type counts as a distinct constraint;
+	// direction flips of the same logical edge are folded together by the
+	// min/max normalization.
+	std::map<std::tuple<int, int, int>, std::uint64_t> trackedFactors_;
 	std::pair<int, std::uint64_t> lastRootFactorIndex_;
 };
 
