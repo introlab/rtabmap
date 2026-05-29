@@ -59,6 +59,17 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 
+	// True when iSAM2 (incremental) backend is active.
+	bool isIncremental() const {return isam2_ != 0;}
+
+	// Number of factors we believe are live in iSAM2.
+	std::size_t getTrackedFactorsCount() const {
+		return trackedFactors_.size() + (lastRootFactorIndex_.first != 0 ? 1 : 0);
+	}
+
+	// Live factor count reported by iSAM2 itself (should match getTrackedFactorsCount()).
+	std::size_t getISAM2LiveFactorsCount() const;
+
 private:
 	int internalOptimizerType_;
 
@@ -66,12 +77,7 @@ private:
 	int lastSwitchId_;
 	std::set<int> addedPoses_;
 	std::map<int, bool> isLandmarkWithRotation_; // persists across iSAM2 incremental calls
-	// Persistent map of non-self-referring constraints currently live in iSAM2,
-	// keyed by (min(from,to), max(from,to), type) -> factor index. Same
-	// (from,to) with a different Link::Type counts as a distinct constraint;
-	// direction flips of the same logical edge are folded together by the
-	// min/max normalization.
-	std::map<std::tuple<int, int, int>, std::uint64_t> trackedFactors_;
+	std::map<std::tuple<int, int, int>, std::uint64_t> trackedFactors_; // iSAM2 tracked constraints
 	std::pair<int, std::uint64_t> lastRootFactorIndex_;
 };
 

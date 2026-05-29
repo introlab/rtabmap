@@ -90,6 +90,27 @@ bool OptimizerGTSAM::available()
 #endif
 }
 
+std::size_t OptimizerGTSAM::getISAM2LiveFactorsCount() const
+{
+#ifdef RTABMAP_GTSAM
+	if(isam2_ == 0)
+	{
+		return 0;
+	}
+	// iSAM2 keeps removed factors as null entries to preserve factor indices,
+	// so we have to skip nulls to get the actual live count.
+	const gtsam::NonlinearFactorGraph & factors = isam2_->getFactorsUnsafe();
+	std::size_t live = 0;
+	for(const gtsam::NonlinearFactorGraph::sharedFactor & f : factors)
+	{
+		if(f) ++live;
+	}
+	return live;
+#else
+	return 0;
+#endif
+}
+
 void OptimizerGTSAM::parseParameters(const ParametersMap & parameters)
 {
 	Optimizer::parseParameters(parameters);
@@ -941,6 +962,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					UDEBUG("Update iSAM with the new factors");
 					result = isam2_->update(graph, initialEstimate, removeFactorIndices);
+
 #if BOOST_VERSION >= 106800
 					UASSERT(result.errorBefore.has_value());
 					UASSERT(result.errorAfter.has_value());
