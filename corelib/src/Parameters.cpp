@@ -113,11 +113,14 @@ ParametersMap Parameters::deserialize(const std::string & parameters)
 	std::list<std::string> tuplets = uSplit(parameters, ';');
 	for(std::list<std::string>::iterator iter=tuplets.begin(); iter!=tuplets.end(); ++iter)
 	{
-		std::list<std::string> p = uSplit(*iter, ':');
-		if(p.size() == 2)
+		// Split on the FIRST ':' only. Using uSplit() here would discard
+		// empty tokens, so a tuplet like "Marker/Lengths:" (legitimate empty
+		// string value) would lose the value side and be dropped entirely.
+		size_t colonPos = iter->find(':');
+		if(colonPos != std::string::npos && colonPos > 0)
 		{
-			std::string key = p.front();
-			std::string value = p.back();
+			std::string key = iter->substr(0, colonPos);
+			std::string value = iter->substr(colonPos + 1);
 
 			// look for old parameter name
 			bool addParameter = true;
