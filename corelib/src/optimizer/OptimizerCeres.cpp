@@ -395,7 +395,18 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 	ceres::BAProblem baProblem;
 
-	baProblem.num_cameras_ = poses.size();
+	// Multi-camera support: each (pose, camera-in-rig) pair becomes its
+	// own parameter block. Total camera blocks = sum over poses of rig
+	// size. Single-cam rigs (the common case) reduce to 1 block per pose.
+	int totalCameras = 0;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
+		UASSERT(iterModel != models.end() && !iterModel->second.empty());
+		totalCameras += static_cast<int>(iterModel->second.size());
+	}
+
+	baProblem.num_cameras_ = totalCameras;
 	baProblem.num_points_ = points3DMap.size();
 	baProblem.num_observations_ = 0;
 	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
@@ -411,43 +422,45 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	baProblem.cameras_ = new double[6 * baProblem.num_cameras_];
 	baProblem.points_ = new double[3 * baProblem.num_points_];
 
-	// Each camera is a set of 6 parameters: R and t. The rotation R is specified as a Rodrigues' vector.
+	// Each camera is a set of 6 parameters: R and t. The rotation R is
+	// specified as a Rodrigues' vector. The map is keyed on
+	// (poseId, camIdx-in-rig) so multi-camera observations can look up
+	// the correct vertex.
 	int oi=0;
 	int camIndex=0;
-	std::map<int, int> camIdToIndex;
+	std::map<std::pair<int,int>, int> camIdxByKey;
 	for(std::map<int, Transform>::const_iterator iter=poses.begin();
 		iter!=poses.end();
 		++iter)
 	{
-		// Get camera model
 		std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
 		UASSERT(iterModel != models.end());
-		if(iterModel->second.size() != 1)
+
+		for(size_t c = 0; c < iterModel->second.size(); ++c)
 		{
-			UERROR("Multi-camera BA not implemented for Ceres, only single camera.");
-			return std::map<int, Transform>();
+			const CameraModel & m = iterModel->second[c];
+			UASSERT(m.isValidForProjection());
+
+			const Transform t = (iter->second * m.localTransform()).inverse();
+			cv::Mat R = (cv::Mat_<double>(3,3) <<
+					(double)t.r11(), (double)t.r12(), (double)t.r13(),
+					(double)t.r21(), (double)t.r22(), (double)t.r23(),
+					(double)t.r31(), (double)t.r32(), (double)t.r33());
+
+			cv::Mat rvec(1,3, CV_64FC1);
+			cv::Rodrigues(R, rvec);
+
+			UASSERT(oi+6 <= baProblem.num_cameras_*6);
+
+			baProblem.cameras_[oi++] = rvec.at<double>(0,0);
+			baProblem.cameras_[oi++] = rvec.at<double>(0,1);
+			baProblem.cameras_[oi++] = rvec.at<double>(0,2);
+			baProblem.cameras_[oi++] = t.x();
+			baProblem.cameras_[oi++] = t.y();
+			baProblem.cameras_[oi++] = t.z();
+
+			camIdxByKey.insert(std::make_pair(std::make_pair(iter->first, (int)c), camIndex++));
 		}
-		UASSERT(iterModel->second[0].isValidForProjection());
-
-		const Transform & t = (iter->second * iterModel->second[0].localTransform()).inverse();
-		cv::Mat R = (cv::Mat_<double>(3,3) <<
-				(double)t.r11(), (double)t.r12(), (double)t.r13(),
-				(double)t.r21(), (double)t.r22(), (double)t.r23(),
-				(double)t.r31(), (double)t.r32(), (double)t.r33());
-
-		cv::Mat rvec(1,3, CV_64FC1);
-		cv::Rodrigues(R, rvec);
-
-		UASSERT(oi+6 <= baProblem.num_cameras_*6);
-
-		baProblem.cameras_[oi++] = rvec.at<double>(0,0);
-		baProblem.cameras_[oi++] = rvec.at<double>(0,1);
-		baProblem.cameras_[oi++] = rvec.at<double>(0,2);
-		baProblem.cameras_[oi++] = t.x();
-		baProblem.cameras_[oi++] = t.y();
-		baProblem.cameras_[oi++] = t.z();
-
-		camIdToIndex.insert(std::make_pair(iter->first, camIndex++));
 	}
 	UASSERT(oi == baProblem.num_cameras_*6);
 
@@ -481,21 +494,24 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			jter!=iter->second.end();
 			++jter)
 		{
-			std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(jter->first);
+			const int poseId = jter->first;
+			const int camIdx = jter->second.cameraIndex;
+			std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(poseId);
 			UASSERT(iterModel != models.end());
-			if(iterModel->second.size() != 1)
-			{
-				UERROR("Multi-camera BA not implemented for Ceres, only single camera.");
-				return std::map<int, Transform>();
-			}
-			UASSERT(iterModel->second[0].isValidForProjection());
+			UASSERT(camIdx >= 0 && camIdx < (int)iterModel->second.size());
+			const CameraModel & m = iterModel->second[camIdx];
+			UASSERT(m.isValidForProjection());
 
-			baProblem.camera_index_[oi] = camIdToIndex.at(jter->first);
+			std::map<std::pair<int,int>, int>::const_iterator camIt =
+					camIdxByKey.find(std::make_pair(poseId, camIdx));
+			UASSERT(camIt != camIdxByKey.end());
+
+			baProblem.camera_index_[oi] = camIt->second;
 			baProblem.point_index_[oi] = pointIdToIndex.at(iter->first);
-			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - iterModel->second[0].cx();
-			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - iterModel->second[0].cy();
-			baProblem.observations_[4*oi+2] = iterModel->second[0].fx();
-			baProblem.observations_[4*oi+3] = iterModel->second[0].fy();
+			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - m.cx();
+			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - m.cy();
+			baProblem.observations_[4*oi+2] = m.fx();
+			baProblem.observations_[4*oi+3] = m.fy();
 
 			// Stereo path: if a baseline is encoded in the camera model
 			// (Tx<0, the rtabmap convention) AND we have a finite positive
@@ -506,8 +522,8 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			// depth observations as stereo disparity. depth==0 or
 			// effective baseline==0 -> mono observation; the second loop
 			// will pick SnavelyReprojectionError instead.
-			const double Tx    = iterModel->second[0].Tx();
-			const double fx    = iterModel->second[0].fx();
+			const double Tx    = m.Tx();
+			const double fx    = m.fx();
 			const double depth = jter->second.depth;
 			const double baseline = Tx < 0.0 ? (-Tx / fx) : baseline_;
 			if(baseline > 0.0 && uIsFinite(depth) && depth > 0.0)
@@ -580,9 +596,11 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		{
 			continue;
 		}
-		std::map<int, int>::const_iterator itA = camIdToIndex.find(link.from());
-		std::map<int, int>::const_iterator itB = camIdToIndex.find(link.to());
-		if(itA == camIdToIndex.end() || itB == camIdToIndex.end())
+		std::map<std::pair<int,int>, int>::const_iterator itA =
+				camIdxByKey.find(std::make_pair(link.from(), 0));
+		std::map<std::pair<int,int>, int>::const_iterator itB =
+				camIdxByKey.find(std::make_pair(link.to(),   0));
+		if(itA == camIdxByKey.end() || itB == camIdxByKey.end())
 		{
 			continue;
 		}
@@ -634,17 +652,76 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		UDEBUG("Ceres BA: %d pose-graph links", linkObsCount);
 	}
 
-	// 2D / planar BA mode: lock each non-root camera to its initial body-z
-	// (lateral motion + yaw stay free). Root pose is fixed entirely so the
-	// gauge has no remaining z-DOF. Mirrors the g2o EdgeSBACamPrior path.
+	// Multi-camera rigid edges: for each pose with >1 cameras in its rig,
+	// constrain cam 0 -> cam i with a high-info BetweenCamerasError (same
+	// idiom as g2o's Identity*1e7 edge and GTSAM's high-info BetweenFactor
+	// inside their multicam loops). The measurement is the constant
+	// cam0->cami transform derived from the localTransforms.
+	int rigEdgeCount = 0;
+	for(std::map<int, std::vector<CameraModel> >::const_iterator iter=models.begin(); iter!=models.end(); ++iter)
+	{
+		if(!uContains(poses, iter->first))
+		{
+			continue;
+		}
+		if(iter->second.size() < 2)
+		{
+			continue;
+		}
+		std::map<std::pair<int,int>, int>::const_iterator cam0It =
+				camIdxByKey.find(std::make_pair(iter->first, 0));
+		if(cam0It == camIdxByKey.end())
+		{
+			continue;
+		}
+		const Transform & lt0 = iter->second[0].localTransform();
+		// Tight info matrix (matches g2o's 9999999 diagonal).
+		Eigen::Matrix<double, 6, 6> rigInfo = Eigen::Matrix<double, 6, 6>::Identity() * 9999999.0;
+		const Eigen::Matrix<double, 6, 6> rigSqrtInfo = rigInfo.llt().matrixU();
+		for(size_t c = 1; c < iter->second.size(); ++c)
+		{
+			std::map<std::pair<int,int>, int>::const_iterator camCIt =
+					camIdxByKey.find(std::make_pair(iter->first, (int)c));
+			if(camCIt == camIdxByKey.end())
+			{
+				continue;
+			}
+			const Transform camLink = lt0.inverse() * iter->second[c].localTransform();
+			const cv::Mat R = (cv::Mat_<double>(3, 3) <<
+					(double)camLink.r11(), (double)camLink.r12(), (double)camLink.r13(),
+					(double)camLink.r21(), (double)camLink.r22(), (double)camLink.r23(),
+					(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33());
+			cv::Mat rvec(1, 3, CV_64FC1);
+			cv::Rodrigues(R, rvec);
+			const Eigen::Vector3d aa(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
+			const Eigen::Vector3d tm(camLink.x(), camLink.y(), camLink.z());
+			ceres::CostFunction * cost = ceres::BetweenCamerasError::Create(tm, aa, rigSqrtInfo);
+			problem.AddResidualBlock(cost,
+					nullptr,
+					baProblem.cameras_ + cam0It->second * 6,
+					baProblem.cameras_ + camCIt->second * 6);
+			++rigEdgeCount;
+		}
+	}
+	if(rigEdgeCount > 0)
+	{
+		UDEBUG("Ceres BA: %d multi-cam rigid edges", rigEdgeCount);
+	}
+
+	// 2D / planar BA mode: lock each non-root pose's primary (cam 0)
+	// vertex to its initial body-z (lateral motion + yaw stay free).
+	// Other cameras of a multi-cam rig follow via the rigid edges above.
+	// Root pose's cam 0 is fixed entirely so the gauge has no remaining
+	// z-DOF. Mirrors the g2o EdgeSBACamPrior path.
 	if(isSlam2d())
 	{
 		const double sqrtInfo = std::sqrt(1e9);  // matches g2o pinfo(2,2) = 1e9
 		int planarObsCount = 0;
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			std::map<int, int>::const_iterator camIt = camIdToIndex.find(iter->first);
-			if(camIt == camIdToIndex.end())
+			std::map<std::pair<int,int>, int>::const_iterator camIt =
+					camIdxByKey.find(std::make_pair(iter->first, 0));
+			if(camIt == camIdxByKey.end())
 			{
 				continue;
 			}
@@ -712,11 +789,18 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		return poses;
 	}
 
-	//update poses
+	//update poses (read back from cam 0 of each rig -- the other cameras
+	//are rigidly constrained to it).
 	std::map<int, Transform> newPoses = poses;
-	oi=0;
 	for(std::map<int, Transform>::iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
 	{
+		std::map<std::pair<int,int>, int>::const_iterator camIt =
+				camIdxByKey.find(std::make_pair(iter->first, 0));
+		if(camIt == camIdxByKey.end())
+		{
+			continue;
+		}
+		const int oi = camIt->second * 6;
 		cv::Mat rvec = (cv::Mat_<double>(1,3) <<
 				baProblem.cameras_[oi], baProblem.cameras_[oi+1], baProblem.cameras_[oi+2]);
 
@@ -725,8 +809,6 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), baProblem.cameras_[oi+3],
 				    R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), baProblem.cameras_[oi+4],
 				    R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), baProblem.cameras_[oi+5]);
-
-		oi+=6;
 
 		if(this->isSlam2d())
 		{

@@ -2643,12 +2643,13 @@ TEST_P(MultiCamBundleAdjustmentTest, FourCameraRigRecoversPosesAndPoints)
 INSTANTIATE_TEST_SUITE_P(
 		Backends,
 		MultiCamBundleAdjustmentTest,
-		// Only g2o and GTSAM support multi-camera BA in rtabmap. Cross
-		// every FOV regime (wide 100° / narrow 60°) with mono / stereo
-		// (15 cm baseline + noisy disparity-derived depth) with /
-		// without the pose-graph chain. 16 variants total.
+		// g2o, GTSAM, and Ceres all support multi-camera BA. CVSBA
+		// doesn't (its underlying Sba::run() API is single-camera).
+		// Cross every FOV regime (wide 100° / narrow 60°) with mono /
+		// stereo (15 cm baseline + noisy disparity-derived depth) with
+		// or without the pose-graph chain. 24 variants total.
 		::testing::Combine(
-				::testing::Values(Optimizer::kTypeG2O, Optimizer::kTypeGTSAM),
+				::testing::Values(Optimizer::kTypeG2O, Optimizer::kTypeGTSAM, Optimizer::kTypeCeres),
 				::testing::Values(MultiCamFov::kWide, MultiCamFov::kNarrow),
 				::testing::Values(MultiCamMode::kMono, MultiCamMode::kStereo),
 				::testing::Values(MultiCamLinks::kWithLinks, MultiCamLinks::kNoLinks)),
