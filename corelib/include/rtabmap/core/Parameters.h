@@ -517,9 +517,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomF2M, ScanRange,           float, 0,     "[Geometry] Distance Range used to filter points of local map (when > 0). 0 means local map is updated using time and not range.");
     RTABMAP_PARAM(OdomF2M, ValidDepthRatio,     float, 0.75,  "If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.");
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
-    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, uFormat("Local bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #else
-    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, uFormat("Local bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #endif
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 10, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMinMotion, float, 0.0, "To create a new keyframe with bundle adjustment, a minimum motion (in pixels) can be required. The motion is computed by the average distance between inliers of the previous keyframe and new frame.");
@@ -780,9 +780,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, CorFlowErrorThreshold,     float, 20,    uFormat("[%s=false] Filter out features with error greater than this threshold.", kVisCorFlowUseMinEigenVals().c_str()));
     RTABMAP_PARAM(Vis, CorFlowGpu,                bool,  false, uFormat("[%s=1] Enable GPU version of the optical flow approach (only available if OpenCV is built with CUDA). Note that %s is not used in the GPU implementation.", kVisCorType().c_str(), kVisCorFlowUseMinEigenVals().c_str()));
     #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
-    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   1,     "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   1,     uFormat("Optimization with bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #else
-    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   0,     "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   0,     uFormat("Optimization with bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #endif
 
     // Features matching approaches
