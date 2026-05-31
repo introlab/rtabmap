@@ -10,7 +10,6 @@
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Parameters.h"
-#include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UFile.h"
 #include <vector>
 #include <list>
@@ -60,9 +59,6 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
     ParametersMap params;
     params.insert(ParametersPair(Parameters::kKpNndrRatio(), "0.4"));
     dict->parseParameters(params);
-
-    ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kDebug);
 
     for(VWDictionary::NNStrategy strategy : strategies)
     {
@@ -683,6 +679,14 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         
         // Serialize
         std::vector<unsigned char> data = dict->serializeIndex();
+#ifdef _WIN32
+        // FlannIndex::serializeIndex() is not implemented on Windows
+        // (see corelib/src/FlannIndex.cpp), so it always returns empty
+        // data regardless of the strategy. Skip the rest of the
+        // round-trip assertions on Windows.
+        EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+        continue;
+#else
         if(strategy < VWDictionary::kNNBruteForce)
         {
             // flann strategies
@@ -691,6 +695,7 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         else {
             EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         }
+#endif
         
         // Create new dictionary and deserialize
         VWDictionary dict2;

@@ -29,6 +29,7 @@
 
 #ifdef _WIN32
 #include "rtabmap/utilite/Win32/UWin32.h"
+#include <atomic>
 #define SEM_VALUE_MAX ((int) ((~0u) >> 1))
 #else
 #include <pthread.h>
@@ -59,6 +60,9 @@ public:
 	 * @param n number to initialize
 	 */
 	USemaphore( int initValue = 0 )
+#ifdef _WIN32
+		: _count(initValue)
+#endif
 	{
 #ifdef _WIN32
 		S = CreateSemaphore(0,initValue,SEM_VALUE_MAX,0);
@@ -94,6 +98,9 @@ public:
 		while(n-- > 0 && rt==0)
 		{
 			rt = WaitForSingleObject((HANDLE)S, ms<=0?INFINITE:ms);
+			if(rt == 0) {
+				--_count;
+			}
 		}
 		return rt == 0;
 	}
@@ -138,7 +145,15 @@ public:
 #ifdef _WIN32
 	bool acquireTry() const
 	{
-		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?true:false);
+		// Non-blocking try-acquire: timeout 0, not INFINITE. INFINITE here
+		// turned this into a blocking acquire and hung tests when the count
+		// reached 0.
+		if(WaitForSingleObject((HANDLE)S, 0) == WAIT_OBJECT_0)
+		{
+			--_count;
+			return true;
+		}
+		return false;
 	}
 #else
 	bool acquireTry(int n)
@@ -163,7 +178,12 @@ public:
 #ifdef _WIN32
 	bool release(int n = 1) const
 	{
-		return (ReleaseSemaphore((HANDLE)S,n,0)?true:false);
+		if(ReleaseSemaphore((HANDLE)S, n, 0))
+		{
+			_count += n;
+			return true;
+		}
+		return false;
 	}
 #else
 	bool release(int n = 1)
@@ -183,7 +203,11 @@ public:
 #ifdef _WIN32
 	int value() const
 	{
-		LONG V = -1; ReleaseSemaphore((HANDLE)S,0,&V); return V;
+		// ReleaseSemaphore(S, 0, &V) returns FALSE on Windows (release count
+		// must be >= 1) and never writes V, so we mirror the count in an atomic
+		// instead. The value is eventually-consistent under concurrent
+		// acquire/release but accurate at quiescence.
+		return (int)_count.load();
 	}
 #else
 	int value()
@@ -206,6 +230,7 @@ public:
 	{
 		CloseHandle(S);
 		S = CreateSemaphore(0,init,SEM_VALUE_MAX,0);
+		_count = init;
 	}
 #endif
 
@@ -214,6 +239,7 @@ private:
 #ifdef _WIN32
 	USemaphore(const USemaphore &S){}
 	HANDLE S;
+	mutable std::atomic<long> _count;
 #else
 	USemaphore(const USemaphore &):_available(0){}
 	pthread_mutex_t _waitMutex;

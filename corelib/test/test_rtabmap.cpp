@@ -827,8 +827,17 @@ TEST_F(RtabmapFixture, ParseParametersUpdatesSettings)
 
 TEST_F(RtabmapFixture, SetWorkingDirectoryReflectsInGetter)
 {
-	rtabmap_->setWorkingDirectory("/tmp");
-	EXPECT_EQ(rtabmap_->getWorkingDir(), std::string("/tmp"));
+	// setWorkingDirectory() silently no-ops if the path doesn't exist on disk,
+	// so use the platform's temp dir (which exists) instead of a hardcoded
+	// POSIX-only "/tmp". tempPath("") returns "<tempdir>/"; strip the trailing
+	// separator so the assertion compares the dir itself.
+	std::string wd = test::tempPath("");
+	if(!wd.empty() && (wd.back() == '/' || wd.back() == '\\'))
+	{
+		wd.pop_back();
+	}
+	rtabmap_->setWorkingDirectory(wd);
+	EXPECT_EQ(rtabmap_->getWorkingDir(), wd);
 }
 
 // ---------------------------------------------------------------------------

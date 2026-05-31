@@ -460,13 +460,29 @@ TEST(ULoggerTest, ThreadIdFilterVector)
     ULogger::registerCurrentThread("FilterThread");
     OtherThread otherThread;
     otherThread.start();
-    
+
+    // OtherThread registers itself from inside mainLoopBegin(), which runs
+    // asynchronously after start(). setTreadIdFilter() resolves names against
+    // the current registeredThreads_ map, so we have to wait for the other
+    // thread to register before applying the filter -- otherwise only
+    // "FilterThread" ends up in the filter set (intermittent failure on slow
+    // Windows runners).
+    for(int i = 0; i < 200; ++i)
+    {
+        const std::map<std::string, unsigned long> regs = ULogger::getRegisteredThreads();
+        if(regs.find(otherThread.name()) != regs.end())
+        {
+            break;
+        }
+        uSleep(10);
+    }
+
     std::vector<std::string> threadNames;
     threadNames.push_back(otherThread.name());
     threadNames.push_back("FilterThread");
-    
+
     ULogger::setTreadIdFilter(threadNames);
-    
+
     const std::set<unsigned long>& retrieved = ULogger::getTreadIdFilter();
     EXPECT_EQ(retrieved.size(), 2u);
 

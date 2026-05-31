@@ -116,8 +116,9 @@ TEST(USemaphoreTest, AcquireTry)
     result = sem.acquireTry();
     EXPECT_TRUE(result);
     EXPECT_EQ(sem.value(), 0);
+    // Semaphore is exhausted: the next non-blocking try must fail.
     result = sem.acquireTry();
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 #else
     int result = sem.acquireTry(1);
     EXPECT_TRUE(result);
