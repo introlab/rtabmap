@@ -15,9 +15,11 @@
 
 #include <gtest/gtest.h>
 #include <rtabmap/core/DBReader.h>
+#include <rtabmap/core/Graph.h>
 #include <rtabmap/core/LocalGrid.h>
 #include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Version.h>
 #ifdef RTABMAP_OCTOMAP
@@ -738,4 +740,151 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD_IcpReg)
 			<< "No Gt/translational_rmse in stats (ground truth missing?)";
 	EXPECT_LT(result.translationalRmseFinal, 0.05f)
 			<< "Final trajectory RMSE = " << result.translationalRmseFinal << " m";
+}
+
+// ---------------------------------------------------------------------------
+// Two-loop workspace mapping session (Texture tutorial DB). Loads the
+// pre-built session, runs global bundle adjustment, and asserts the
+// resulting poses against a captured golden trajectory.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, TwoLoopsWorkspaceGlobalBA)
+{
+	const std::string srcPath = testDataPath("2loops_workspace_3IT.db");
+	SKIP_IF_MISSING(srcPath);
+
+	// Golden trajectory was captured from a known-good BA run, verified
+	// in rtabmap-databaseViewer, then exported to
+	// data/tests/2loops_workspace_3IT_gt.g2o. To regenerate after a
+	// deliberate BA-algorithm change: rerun BA on the source DB, eyeball
+	// it in the viewer, and re-export the graph from there.
+	const std::string goldenPath = testDataPath("2loops_workspace_3IT_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	// BA-capable optimizers (excluding cvsba — observed ~4× worse RMSE
+	// than the others on this dataset) × rematchFeatures on/off.
+	// rematchFeatures rebuilds visual-word correspondences via FLANN
+	// before BA, which is closer to what offline tools do but introduces
+	// ~3.5 cm run-to-run non-determinism; rematchFeatures=false reuses
+	// the correspondences already stored in the DB and is bit-exact
+	// across runs. Both modes should still produce comparable RMSE
+	// against the golden trajectory after Umeyama alignment.
+	struct Variant { Optimizer::Type type; const char * name; bool rematch; };
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O,   "g2o",            false},
+		{Optimizer::kTypeG2O,   "g2o-rematch",    true },
+		{Optimizer::kTypeGTSAM, "gtsam",          false},
+		{Optimizer::kTypeGTSAM, "gtsam-rematch",  true },
+		{Optimizer::kTypeCeres, "ceres",          false},
+		{Optimizer::kTypeCeres, "ceres-rematch",  true },
+	};
+
+	// Pre-BA snapshot (pose-graph only) — same for every variant since
+	// they all start from the same source DB. Captured once below.
+	float preTRmse = -1.0f;
+
+	int variantsTested = 0;
+	for(const Variant & v : variants)
+	{
+		if(!Optimizer::isAvailable(v.type))
+		{
+			std::cerr << "[skip] optimizer " << v.name << " not available in this build\n";
+			continue;
+		}
+		SCOPED_TRACE(std::string("variant=") + v.name);
+
+		// Open the source DB read-only. BA runs entirely against
+		// _optimizedPoses in working memory, so no writes hit the DB; the
+		// readonly flag also prevents accidental persistence if a future
+		// change adds a write path.
+		ParametersMap params;
+		uInsert(params, ParametersPair(Parameters::kMemIncrementalMemory(),    "false"));
+		uInsert(params, ParametersPair(Parameters::kMemLocalizationReadOnly(), "true"));
+
+		Rtabmap rtabmap;
+		rtabmap.init(params, srcPath, /*loadDatabaseParameters=*/true);
+
+		// Count links before and after running detectMoreLoopClosures so
+		// we can assert it actually expanded the graph. In read-only mode
+		// the new links live in working memory only; the source DB is
+		// untouched.
+		std::map<int, Transform> initPoses;
+		std::multimap<int, Link> initLinks;
+		rtabmap.getGraph(initPoses, initLinks, /*optimized=*/true, /*global=*/false);
+		const int linksBeforeDetect = static_cast<int>(initLinks.size());
+
+		const int added = rtabmap.detectMoreLoopClosures(
+				/*clusterRadiusMax=*/1.0f,
+				/*clusterAngle=*/static_cast<float>(CV_PI)/6.0f,
+				/*iterations=*/3,
+				/*intraSession=*/true);
+		ASSERT_GE(added, 0) << v.name << " detectMoreLoopClosures failed";
+
+		std::map<int, Transform> preBaPoses;
+		std::multimap<int, Link> preBaLinks;
+		rtabmap.getGraph(preBaPoses, preBaLinks, /*optimized=*/true, /*global=*/false);
+		const int linksAfterDetect = static_cast<int>(preBaLinks.size());
+		std::cerr << "[" << v.name << "] links: " << linksBeforeDetect
+				  << " -> " << linksAfterDetect
+				  << " (detectMoreLoopClosures added " << added << ")\n";
+		EXPECT_GT(linksAfterDetect, linksBeforeDetect)
+				<< v.name << " detectMoreLoopClosures did not increase link count";
+
+		if(preTRmse < 0.0f)
+		{
+			// Pre-BA RMSE captured once; same source DB and same
+			// detectMoreLoopClosures result for every variant.
+			float tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+			float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+			graph::calcRMSE(goldenPoses, preBaPoses,
+					preTRmse, tMean, tMed, tStd, tMin, tMax,
+					rRmse, rMean, rMed, rStd, rMin, rMax,
+					/*align2D=*/false);
+			std::cerr << "Pre-BA vs golden (aligned): "
+					  << "trans rmse=" << preTRmse << "m max=" << tMax << "m, "
+					  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
+		}
+
+		const bool baOk = rtabmap.globalBundleAdjustment(
+				/*optimizerType=*/v.type,
+				/*rematchFeatures=*/v.rematch,
+				/*iterations=*/30,
+				/*pixelVariance=*/0.0f);
+		ASSERT_TRUE(baOk) << "globalBundleAdjustment failed for " << v.name;
+
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> links;
+		// global=false reads BA poses straight from _optimizedPoses;
+		// global=true would re-run pose-graph optimization and clobber BA.
+		rtabmap.getGraph(poses, links, /*optimized=*/true, /*global=*/false);
+		// DB is read-only — close without attempting to write back.
+		rtabmap.close(false);
+
+		ASSERT_EQ(poses.size(), goldenPoses.size())
+				<< v.name << " BA result has " << poses.size()
+				<< " poses, golden has " << goldenPoses.size();
+
+		// SVD-aligned RMSE — golden was captured with different BA
+		// settings, so a Umeyama-style alignment is what's meaningful.
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, poses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << v.name << "] BA vs golden (aligned): "
+				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
+				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
+
+		EXPECT_GT(preTRmse, tRmse)
+				<< v.name << " BA did not improve translational RMSE";
+		EXPECT_LT(tRmse, 0.05f)
+				<< v.name << " translational RMSE too large after alignment";
+		EXPECT_LT(rRmse, 1.5f)
+				<< v.name << " rotational RMSE too large after alignment";
+		++variantsTested;
+	}
+	ASSERT_GT(variantsTested, 0) << "no BA-capable optimizer was available";
 }

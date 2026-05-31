@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Fetch test data assets listed in data/tests/manifest.txt from Google Drive.
+# Fetch test data assets listed in data/tests/manifest.txt. Each entry's
+# source can be either a bare Google Drive file ID (assembled into the
+# uc?export=download&id=... URL) or a full http(s):// URL (used as-is).
 # Skips files that are already present and whose SHA-256 matches the manifest.
 # Intended for CI and local first-time setup.
 #
 # All linked files are public and under ~100 MB, so the direct GDrive download
-# URL (uc?export=download&id=...) streams the bytes directly without the
-# virus-scan interstitial that would otherwise need a tool like gdown.
+# URL streams the bytes directly without the virus-scan interstitial that
+# would otherwise need a tool like gdown.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -42,13 +44,13 @@ verify_sha() {
 	fi
 }
 
-while IFS=$'\t' read -r name file_id expected_sha; do
+while IFS=$'\t' read -r name source expected_sha; do
 	# Strip trailing CR so the script works when manifest.txt is checked out
 	# with CRLF line endings (default on Windows Git unless core.autocrlf=input).
 	# Without this, expected_sha keeps a trailing \r and even a byte-for-byte
 	# match looks like "expected <sha>\r, got <sha>".
 	name="${name%$'\r'}"
-	file_id="${file_id%$'\r'}"
+	source="${source%$'\r'}"
 	expected_sha="${expected_sha%$'\r'}"
 	# Skip comments and blank lines.
 	[[ -z "${name// }" || "$name" =~ ^# ]] && continue
@@ -59,7 +61,13 @@ while IFS=$'\t' read -r name file_id expected_sha; do
 		continue
 	fi
 
-	url="https://drive.google.com/uc?export=download&id=${file_id}"
+	# If the source already looks like a URL, use it as-is. Otherwise treat
+	# it as a Google Drive file ID and assemble the direct-download URL.
+	if [[ "$source" =~ ^https?:// ]]; then
+		url="$source"
+	else
+		url="https://drive.google.com/uc?export=download&id=${source}"
+	fi
 	echo "Fetching $name <- $url"
 	mkdir -p "$(dirname "$target")"
 	# -L follows the redirect, -f fails on HTTP errors, -S shows errors on stderr.

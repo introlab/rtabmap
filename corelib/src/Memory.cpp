@@ -2494,9 +2494,15 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 
 void Memory::save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const
 {
-	if(_dbDriver)
+	if(_dbDriver && !this->isReadOnly())
 	{
 		_dbDriver->save2DMap(map, xMin, yMin, cellSize);
+	}
+	else
+	{
+		UERROR("Attempting to write back 2D map but the database "
+			"is opened in read-only mode (%s=true), skipping.",
+			Parameters::kMemLocalizationReadOnly().c_str());
 	}
 }
 
