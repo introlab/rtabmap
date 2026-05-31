@@ -77,6 +77,14 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
+      # PYTHONNOUSERSITE=1: prevent the embedded Python interpreter from
+      # loading numpy / other site-packages from %APPDATA%\Python that
+      # were compiled against a different ABI than the build-time Python
+      # (causes "Could not find platform independent libraries <prefix>"
+      # + numpy 1.x/2.x mismatch crashes in test_pydetector / test_pydescriptor
+      # / test_pymatcher).
+      env:
+        PYTHONNOUSERSITE: 1
       run: |
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed

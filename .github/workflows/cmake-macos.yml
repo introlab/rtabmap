@@ -92,6 +92,11 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
+      # PYTHONNOUSERSITE=1: prevent the embedded Python interpreter from
+      # loading numpy / other site-packages from the user's site that were
+      # compiled against a different ABI than the build-time Python.
+      env:
+        PYTHONNOUSERSITE: 1
       run: |
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure --rerun-failed
