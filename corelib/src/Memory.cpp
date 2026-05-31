@@ -6086,7 +6086,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						{
 							// Bearing/Range in 2D, set X as bearing and Y as range (see OptimizerGTSAM)
 							covariance(cv::Range(0,1), cv::Range(0,1)) *= _markerAngVariance;
-							covariance(cv::Range(1,3), cv::Range(1,3)) *= _markerLinVariance;
+							covariance(cv::Range(1,2), cv::Range(1,2)) *= _markerLinVariance;
 						}
 						else
 						{

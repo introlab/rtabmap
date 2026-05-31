@@ -912,6 +912,17 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
             optimizer/toro3d/treeoptimizer2.cpp
             PROPERTIES COMPILE_OPTIONS "-Wno-use-after-free")
     endif()
+
+    # GCC 12 -Wmaybe-uninitialized false positive: Eigen's SSE codepath
+    # _mm_loadu_pd's an uninitialized-by-design Eigen::Matrix<double,3,3>
+    # inside g2o::SBACam. GCC follows the SIMD load through and flags it as
+    # potentially uninitialized; Eigen relies on the caller to assign before
+    # reading. Only OptimizerG2O.cpp instantiates SBACam.
+    if(G2O_FOUND)
+        set_source_files_properties(
+            optimizer/OptimizerG2O.cpp
+            PROPERTIES COMPILE_OPTIONS "-Wno-maybe-uninitialized")
+    endif()
 endif()
 
 TARGET_LINK_LIBRARIES(rtabmap_core

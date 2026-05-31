@@ -118,6 +118,11 @@ add_executable(test_link test_link.cpp)
 target_link_libraries(test_link gtest_main rtabmap_core)
 add_test(NAME test_link COMMAND test_link)
 
+#Optimizer.h
+add_executable(test_optimizer test_optimizer.cpp)
+target_link_libraries(test_optimizer gtest_main rtabmap_core)
+add_test(NAME test_optimizer COMMAND test_optimizer)
+
 #GPS.h
 add_executable(test_gps test_gps.cpp)
 target_link_libraries(test_gps gtest_main rtabmap_core)

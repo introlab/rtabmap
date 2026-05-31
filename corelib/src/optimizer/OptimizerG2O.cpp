@@ -161,6 +161,7 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
 		pixelVariance_(Parameters::defaultg2oPixelVariance()),
+		disparityVariance_(Parameters::defaultg2oDisparityVariance()),
 		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
 		baseline_(Parameters::defaultg2oBaseline())
 {
@@ -185,9 +186,11 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kg2oSolver(), solver_);
 	Parameters::parse(parameters, Parameters::kg2oOptimizer(), optimizer_);
 	Parameters::parse(parameters, Parameters::kg2oPixelVariance(), pixelVariance_);
+	Parameters::parse(parameters, Parameters::kg2oDisparityVariance(), disparityVariance_);
 	Parameters::parse(parameters, Parameters::kg2oRobustKernelDelta(), robustKernelDelta_);
 	Parameters::parse(parameters, Parameters::kg2oBaseline(), baseline_);
 	UASSERT(pixelVariance_ > 0.0);
+	UASSERT(disparityVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
 
 #ifdef RTABMAP_ORB_SLAM
@@ -1861,14 +1864,22 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						double variance = pixelVariance_;
 						if(uIsFinite(depth) && depth > 0.0 && baseline > 0.0)
 						{
+							// Stereo edge: per-axis info -- u, v use pixelVariance,
+							// disparity (u - u_right) uses disparityVariance.
+							// This keeps the depth measurement channel from being
+							// over-trusted relative to the u/v feature detector
+							// precision (or vice versa).
+							Eigen::Matrix3d stereoInfo = Eigen::Matrix3d::Zero();
+							stereoInfo(0, 0) = 1.0 / variance;
+							stereoInfo(1, 1) = 1.0 / variance;
+							stereoInfo(2, 2) = 1.0 / disparityVariance_;
 							// stereo edge
 #ifdef RTABMAP_ORB_SLAM
 							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
 							float disparity = baseline * iterModel->second[camIndex].fx() / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
-							//variance *= log(exp(1)+disparity);
-							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->setInformation(stereoInfo);
 							es->fx = iterModel->second[camIndex].fx();
 							es->fy = iterModel->second[camIndex].fy();
 							es->cx = iterModel->second[camIndex].cx();
@@ -1880,8 +1891,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							float disparity = baseline * vcam->estimate().Kcam(0,0) / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
-							//variance *= log(exp(1)+disparity);
-							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->setInformation(stereoInfo);
 							e = es;
 #endif
 						}

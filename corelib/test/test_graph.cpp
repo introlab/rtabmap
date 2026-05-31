@@ -303,21 +303,22 @@ static std::list<std::pair<int, Transform> > computeAStarPath(
 
 TEST(GraphTest, ComputePathAStarUpdateNewCostsChangesPath)
 {
-	// Detour 1→2→5→6→3 vs shortcut 1→2→4→6→3. No 5→3 edge so h(5,3) < cost(5→6→3).
-	// Node 5 is expanded before 4 (lower f-score). Node 6 is first reached from 5;
-	// expanding 4 relaxes the parent of 6 when updateNewCosts=true.
-	//
-	//        3  goal (10, 0)
-	//        |
-	//        6  (2, -5)
-	//       / \
-	//      5   4   (1,-2)  (1.5,-4)
-	//       \ /
-	//        2  (1, 0)
-	//        |
-	//        1  start (0, 0)
-	//
-	// Links: 1—2, 2—5, 2—4, 5—6, 4—6, 6—3  (no 5—3)
+	/* Detour 1→2→5→6→3 vs shortcut 1→2→4→6→3. No 5→3 edge so h(5,3) < cost(5→6→3).
+	   Node 5 is expanded before 4 (lower f-score). Node 6 is first reached from 5;
+	   expanding 4 relaxes the parent of 6 when updateNewCosts=true.
+	  
+	          3  goal (10, 0)
+	          |
+	          6  (2, -5)
+	         / \
+	        5   4   (1,-2)  (1.5,-4)
+	         \ /
+	          2  (1, 0)
+	          |
+	          1  start (0, 0)
+	  
+	   Links: 1—2, 2—5, 2—4, 5—6, 4—6, 6—3  (no 5—3)
+	*/
 	const std::map<int, Transform> poses = {
 		{1, Transform(0, 0, 0, 0, 0, 0)},
 		{2, Transform(1, 0, 0, 0, 0, 0)},
@@ -784,13 +785,13 @@ TEST(GraphTest, ComputeMaxGraphErrorsLandmarkSkipsUnconstrainedYaw)
 
 TEST(GraphTest, ComputeMaxGraphErrorsLandmarkTwoPoseObservations)
 {
-	// Same landmark -10 observed from poses 1 and 2 (two links sharing the landmark id).
-	//
-	//     -10  (1, 1)
-	//    /   \
-	//   1     2
-	// (0,0) (2,0)
-	//
+	/* Same landmark -10 observed from poses 1 and 2 (two links sharing the landmark id).
+	  
+	       -10  (1, 1)
+	      /   \
+	     1     2
+	   (0,0) (2,0)
+	*/
 	std::map<int, Transform> poses;
 	poses.insert(std::make_pair(1, Transform(0, 0, 0, 0, 0, 0)));
 	poses.insert(std::make_pair(2, Transform(2, 0, 0, 0, 0, 0)));
