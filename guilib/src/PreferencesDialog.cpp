@@ -1281,9 +1281,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
-	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kg2oPixelVariance().c_str());
-	_ui->doubleSpinBox_g2o_robustKernelDelta->setObjectName(Parameters::kg2oRobustKernelDelta().c_str());
-	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kg2oBaseline().c_str());
+	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kOptimizerPixelVariance().c_str());
+	_ui->doubleSpinBox_g2o_robustKernelDelta->setObjectName(Parameters::kOptimizerRobustKernelDelta().c_str());
+	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kOptimizerBaseline().c_str());
 
 	_ui->comboBox_gtsam_optimizer->setObjectName(Parameters::kGTSAMOptimizer().c_str());
 	_ui->gtsam_incremental->setObjectName(Parameters::kGTSAMIncremental().c_str());

@@ -6401,17 +6401,17 @@ bool Rtabmap::globalBundleAdjustment(
 	if(!_optimizedPoses.empty() && !_constraints.empty())
 	{
 		int iterations = Parameters::defaultOptimizerIterations();
-		float pixelVariance = Parameters::defaultg2oPixelVariance();
+		float pixelVariance = Parameters::defaultOptimizerPixelVariance();
 		ParametersMap params = _parameters;
 		Parameters::parse(params, Parameters::kOptimizerIterations(), iterations);
-		Parameters::parse(params, Parameters::kg2oPixelVariance(), pixelVariance);
+		Parameters::parse(params, Parameters::kOptimizerPixelVariance(), pixelVariance);
 		if(iterations > 0)
 		{
 			uInsert(params, ParametersPair(Parameters::kOptimizerIterations(), uNumber2Str(iterations)));
 		}
 		if(pixelVariance > 0.0f)
 		{
-			uInsert(params, ParametersPair(Parameters::kg2oPixelVariance(), uNumber2Str(pixelVariance)));
+			uInsert(params, ParametersPair(Parameters::kOptimizerPixelVariance(), uNumber2Str(pixelVariance)));
 		}
 
 		std::map<int, Signature> signatures;

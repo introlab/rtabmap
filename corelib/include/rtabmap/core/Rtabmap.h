@@ -678,7 +678,7 @@ public:
 	 *        before BA (otherwise reuse existing word-id correspondences).
 	 * @param iterations Solver iterations (0 falls back to @ref Parameters::kOptimizerIterations()).
 	 * @param pixelVariance Pixel reprojection variance used by the cost (0 falls back
-	 *        to @ref Parameters::kg2oPixelVariance()).
+	 *        to @ref Parameters::kOptimizerPixelVariance()).
 	 * @return True if BA was run and improved poses were stored.
 	 */
 	bool globalBundleAdjustment(

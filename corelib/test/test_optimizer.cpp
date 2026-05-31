@@ -1727,11 +1727,11 @@ BundleGraph buildBundleGraph(bool noisy = false, bool roundPixels = false, int n
 //     stereo BA path.
 enum class BaVariant {
 	kDefault,
-	kG2ONoLinks,
-	kG2OWithDepth,
-	kG2OWithDepthNoLinks,
-	kG2OWithDepthNoLinksTuned,         // WithDepth + per-axis info calibrated to actual noise
-	kG2OWithLidarDepthNoLinksTuned,    // Accurate depth source (LiDAR-fused, 1 cm sigma) + tight DisparityVariance
+	kNoLinks,
+	kWithDepth,
+	kWithDepthNoLinks,
+	kWithDepthNoLinksTuned,         // WithDepth + per-axis info calibrated to actual noise
+	kWithLidarDepthNoLinksTuned,    // Accurate depth source (LiDAR-fused, 1 cm sigma) + tight DisparityVariance
 };
 
 // (backend, variant, roundPixels). roundPixels=true simulates discrete
@@ -1745,11 +1745,11 @@ const char * baVariantName(BaVariant v)
 	switch(v)
 	{
 		case BaVariant::kDefault:             return "Default";
-		case BaVariant::kG2ONoLinks:          return "NoLinks";
-		case BaVariant::kG2OWithDepth:        return "WithDepth";
-		case BaVariant::kG2OWithDepthNoLinks: return "WithDepthNoLinks";
-		case BaVariant::kG2OWithDepthNoLinksTuned:      return "WithDepthNoLinksTuned";
-		case BaVariant::kG2OWithLidarDepthNoLinksTuned: return "WithLidarDepthNoLinksTuned";
+		case BaVariant::kNoLinks:          return "NoLinks";
+		case BaVariant::kWithDepth:        return "WithDepth";
+		case BaVariant::kWithDepthNoLinks: return "WithDepthNoLinks";
+		case BaVariant::kWithDepthNoLinksTuned:      return "WithDepthNoLinksTuned";
+		case BaVariant::kWithLidarDepthNoLinksTuned: return "WithLidarDepthNoLinksTuned";
 	}
 	return "?";
 }
@@ -1781,8 +1781,8 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 	// For the stereo BA variants we set Tx on the CameraModel below, which
 	// g2o picks up directly. Set g2o/Baseline to the same 0.15 m for
 	// consistency (used as a fallback when Tx isn't set on the model).
-	params[Parameters::kg2oBaseline()]         = "0.15";
-	if(variant == BaVariant::kG2OWithLidarDepthNoLinksTuned)
+	params[Parameters::kOptimizerBaseline()]         = "0.15";
+	if(variant == BaVariant::kWithLidarDepthNoLinksTuned)
 	{
 		// Accurate-depth scenario (LiDAR-fused / structured-light): the
 		// depth measurement is *more* precise than a typical feature
@@ -1794,10 +1794,10 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		// (e.g. 0.01 gives same residuals) but g2o's Hessian becomes
 		// ill-conditioned around info=10000, so we stay comfortably
 		// within the stable range.
-		params[Parameters::kg2oPixelVariance()]     = "1.0";
-		params[Parameters::kg2oDisparityVariance()] = "0.1";
+		params[Parameters::kOptimizerPixelVariance()]     = "1.0";
+		params[Parameters::kOptimizerDisparityVariance()] = "0.1";
 	}
-	else if(variant == BaVariant::kG2OWithDepthNoLinksTuned)
+	else if(variant == BaVariant::kWithDepthNoLinksTuned)
 	{
 		// Sub-pixel feature detector + standard stereo block matcher tuning:
 		// PixelVariance=0.1 (sigma_uv ~ 0.3 px), DisparityVariance=1
@@ -1807,8 +1807,8 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		// because the optimizer over-trusts noisy disparity and pushes points
 		// along the depth axis to fit it). With this tuning the points
 		// converge to ~4 mm.
-		params[Parameters::kg2oPixelVariance()]     = "0.1";
-		params[Parameters::kg2oDisparityVariance()] = "1.0";
+		params[Parameters::kOptimizerPixelVariance()]     = "0.1";
+		params[Parameters::kOptimizerDisparityVariance()] = "1.0";
 	}
 	std::unique_ptr<Optimizer> opt(Optimizer::create(params));
 	ASSERT_NE(opt.get(), nullptr);
@@ -1816,19 +1816,19 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 
 	BundleGraph g = buildBundleGraph(/*noisy=*/true, /*roundPixels=*/roundPixels);
 
-	if(variant == BaVariant::kG2ONoLinks
-			|| variant == BaVariant::kG2OWithDepthNoLinks
-			|| variant == BaVariant::kG2OWithDepthNoLinksTuned
-			|| variant == BaVariant::kG2OWithLidarDepthNoLinksTuned)
+	if(variant == BaVariant::kNoLinks
+			|| variant == BaVariant::kWithDepthNoLinks
+			|| variant == BaVariant::kWithDepthNoLinksTuned
+			|| variant == BaVariant::kWithLidarDepthNoLinksTuned)
 	{
 		// Drop the noisy neighbor links so g2o BA is reduced to a pure
 		// reprojection problem (like Ceres/CVSBA).
 		g.links.clear();
 	}
-	if(variant == BaVariant::kG2OWithDepth
-			|| variant == BaVariant::kG2OWithDepthNoLinks
-			|| variant == BaVariant::kG2OWithDepthNoLinksTuned
-			|| variant == BaVariant::kG2OWithLidarDepthNoLinksTuned)
+	if(variant == BaVariant::kWithDepth
+			|| variant == BaVariant::kWithDepthNoLinks
+			|| variant == BaVariant::kWithDepthNoLinksTuned
+			|| variant == BaVariant::kWithLidarDepthNoLinksTuned)
 	{
 		// Switch to a stereo camera model: baseline = 0.15 m (a common
 		// medium-baseline value e.g. ZED Mini / RealSense D435i). Tx =
@@ -1858,7 +1858,7 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		// a small constant sigma on depth (range-independent, as a depth
 		// sensor / fused range source would produce). DisparityVariance is
 		// set tight in the params block to reflect this higher precision.
-		const bool lidarDepth = (variant == BaVariant::kG2OWithLidarDepthNoLinksTuned);
+		const bool lidarDepth = (variant == BaVariant::kWithLidarDepthNoLinksTuned);
 		std::mt19937 dispRng(13);
 		std::normal_distribution<double> dispNoise (0.0, 1.0);   // 1 px on disparity (stereo / RGB-D)
 		std::normal_distribution<double> depthLidarNoise(0.0, 0.01);  // 1 cm on depth (LiDAR / structured-light)
@@ -1945,12 +1945,12 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 	float pointDistMax  = 0.025f;
 	if(backend == Optimizer::kTypeG2O)
 	{
-		if(variant == BaVariant::kG2ONoLinks)
+		if(variant == BaVariant::kNoLinks)
 		{
 			poseDistMax  = 0.015f;
 			pointDistMax = 0.015f;
 		}
-		else if(variant == BaVariant::kG2OWithDepth)
+		else if(variant == BaVariant::kWithDepth)
 		{
 			poseDistMax  = 0.02f;
 			// With realistic stereo noise (1 px on disparity), point recovery
@@ -1963,12 +1963,12 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 			// 8x tighter points.
 			pointDistMax = roundPixels ? 0.025f : 0.15f;
 		}
-		else if(variant == BaVariant::kG2OWithDepthNoLinks)
+		else if(variant == BaVariant::kWithDepthNoLinks)
 		{
 			poseDistMax  = 0.015f;
 			pointDistMax = roundPixels ? 0.025f : 0.15f;
 		}
-		else if(variant == BaVariant::kG2OWithDepthNoLinksTuned)
+		else if(variant == BaVariant::kWithDepthNoLinksTuned)
 		{
 			// Calibrated per-axis info matrix + no noisy chain. Tightest
 			// case of all the WithDepth variants: both pose AND point
@@ -1976,7 +1976,7 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 			poseDistMax  = 0.015f;
 			pointDistMax = 0.015f;
 		}
-		else if(variant == BaVariant::kG2OWithLidarDepthNoLinksTuned)
+		else if(variant == BaVariant::kWithLidarDepthNoLinksTuned)
 		{
 			// Accurate depth (1 cm sigma) + tight DisparityVariance: the
 			// tightest of all WithDepth variants on both pose and point.
@@ -1988,6 +1988,47 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 			// Default: chain pulled by noisy links.
 			poseDistMax  = 0.10f;
 			pointDistMax = 0.09f;
+		}
+	}
+	else if(backend == Optimizer::kTypeGTSAM)
+	{
+		// GTSAM soft-fixes the root via a tight PriorFactor (no native
+		// "setFixed" like g2o), so the gauge is slightly looser; the LM
+		// solver also stops at a relativeErrorTol that leaves a tiny bit of
+		// residual on the longest-range points. Both effects are sub-cm on
+		// the pose, ~few-cm on point cloud points that are 7-8 m from the
+		// root. Stereo variants converge to the same bounds as g2o because
+		// the depth constraint pins the gauge.
+		if(variant == BaVariant::kWithDepthNoLinksTuned)
+		{
+			poseDistMax  = 0.015f;
+			pointDistMax = 0.015f;
+		}
+		else if(variant == BaVariant::kWithLidarDepthNoLinksTuned)
+		{
+			poseDistMax  = 0.005f;
+			pointDistMax = 0.005f;
+		}
+		else if(variant == BaVariant::kWithDepth || variant == BaVariant::kWithDepthNoLinks)
+		{
+			poseDistMax  = 0.03f;
+			pointDistMax = roundPixels ? 0.025f : 0.15f;
+		}
+		else if(variant == BaVariant::kNoLinks)
+		{
+			// Pure mono reprojection. Mono BA has a 7-DOF gauge -- the
+			// recovered geometry is only correct up to scale -- but we
+			// solve for that scale against truth below before checking
+			// bounds, so the bounds match the clean-converged case.
+			poseDistMax  = 0.015f;
+			pointDistMax = 0.02f;
+		}
+		else
+		{
+			// kDefault: mono BA + noisy chain. Scale handled below; the
+			// chain noise still pulls poses ~few cm.
+			poseDistMax  = 0.04f;
+			pointDistMax = 0.04f;
 		}
 	}
 	else if(backend == Optimizer::kTypeCVSBA)
@@ -2003,6 +2044,48 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		pointDistMax = std::max(pointDistMax, 0.02f);
 	}
 
+	// Mono BA gauge: fixing one pose leaves a 1-DOF scale ambiguity that the
+	// optimizer is free to land anywhere on. Solve for the scale that maps
+	// recovered geometry onto truth (closed-form LS on camera positions in
+	// the root-relative frame:
+	//   s = Σ(d_out · d_truth) / Σ(d_out · d_out)
+	// ) and apply it to BOTH poses and points before comparing. This is
+	// the test-side counterpart to the brute-force scale scan in
+	// tools/Report/main.cpp; here we know the relationship is quadratic
+	// so the closed form is exact.
+	//
+	// Applied when:
+	//   * the variant is pure-mono (no depth in observations), OR
+	//   * the BACKEND is mono-only -- rtabmap's CVSBA path uses cvsba's
+	//     Sba::run() which takes 2D image points only and so cannot use
+	//     depth; it runs mono BA even when handed stereo-style
+	//     observations and is gauge-ambiguous regardless of the variant.
+	// g2o, GTSAM, and Ceres switch to a stereo cost function when
+	// depth+baseline are available, so on stereo variants their scale is
+	// pinned by geometry and we leave it alone.
+	const bool monoVariant = (variant == BaVariant::kDefault || variant == BaVariant::kNoLinks);
+	const bool monoOnlyBackend = (backend == Optimizer::kTypeCVSBA);
+	const bool monoBA = monoVariant || monoOnlyBackend;
+	float scale = 1.0f;
+	if(monoBA)
+	{
+		double num = 0.0;
+		double den = 0.0;
+		for(const auto & kv : g.truePoses)
+		{
+			if(kv.first == 1) continue;
+			if(!outPoses.count(kv.first)) continue;
+			const Transform truthRel = truthRootInv * kv.second;
+			const Transform outRel   = outRootInv   * outPoses.at(kv.first);
+			num += outRel.x()*truthRel.x() + outRel.y()*truthRel.y() + outRel.z()*truthRel.z();
+			den += outRel.x()*outRel.x()   + outRel.y()*outRel.y()   + outRel.z()*outRel.z();
+		}
+		if(den > 1e-12)
+		{
+			scale = static_cast<float>(num / den);
+		}
+	}
+
 	// Recovered poses (relative to root).
 	for(const auto & kv : g.truePoses)
 	{
@@ -2010,7 +2093,13 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		if(id == 1) continue;  // root is its own reference (delta = identity in both frames)
 		ASSERT_TRUE(outPoses.count(id));
 		const Transform truthRel = truthRootInv * kv.second;
-		const Transform outRel   = outRootInv   * outPoses.at(id);
+		Transform outRel         = outRootInv   * outPoses.at(id);
+		if(monoBA)
+		{
+			outRel.x() *= scale;
+			outRel.y() *= scale;
+			outRel.z() *= scale;
+		}
 		EXPECT_LT(outRel.getDistance(truthRel), poseDistMax)
 				<< optimizerTypeName(backend) << " pose " << id
 				<< " got(rel)=" << outRel.prettyPrint()
@@ -2026,7 +2115,13 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		const int id = kv.first;
 		ASSERT_TRUE(outPoints.count(id));
 		const cv::Point3f truthRel = util3d::transformPoint(kv.second, truthRootInv);
-		const cv::Point3f outRel   = util3d::transformPoint(outPoints.at(id), outRootInv);
+		cv::Point3f outRel         = util3d::transformPoint(outPoints.at(id), outRootInv);
+		if(monoBA)
+		{
+			outRel.x *= scale;
+			outRel.y *= scale;
+			outRel.z *= scale;
+		}
 		const cv::Point3f diff     = outRel - truthRel;
 		const float d = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
 		EXPECT_LT(d, pointDistMax)
@@ -2042,20 +2137,38 @@ INSTANTIATE_TEST_SUITE_P(
 		::testing::Values(
 				// Continuous-pixel observations (the test's original setup).
 				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kDefault,             false),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2ONoLinks,          false),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2OWithDepth,        false),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2OWithDepthNoLinks, false),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2OWithDepthNoLinksTuned,      false),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2OWithLidarDepthNoLinksTuned, false),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kNoLinks,          false),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kWithDepth,        false),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kWithDepthNoLinks, false),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kWithDepthNoLinksTuned,      false),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kWithLidarDepthNoLinksTuned, false),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kDefault,             false),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kNoLinks,          false),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kWithDepth,        false),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kWithDepthNoLinks, false),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kWithDepthNoLinksTuned,      false),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kWithLidarDepthNoLinksTuned, false),
 				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kDefault,             false),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kNoLinks,          false),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kWithDepth,        false),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kWithDepthNoLinks, false),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kWithDepthNoLinksTuned,      false),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kWithLidarDepthNoLinksTuned, false),
 				std::make_tuple(Optimizer::kTypeCVSBA, BaVariant::kDefault,             false),
 				// Same setups but with keypoints rounded to integer pixel
 				// coordinates (simulates a real detector).
 				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kDefault,             true),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2ONoLinks,          true),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2OWithDepth,        true),
-				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kG2OWithDepthNoLinks, true),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kNoLinks,          true),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kWithDepth,        true),
+				std::make_tuple(Optimizer::kTypeG2O,   BaVariant::kWithDepthNoLinks, true),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kDefault,             true),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kNoLinks,          true),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kWithDepth,        true),
+				std::make_tuple(Optimizer::kTypeGTSAM, BaVariant::kWithDepthNoLinks, true),
 				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kDefault,             true),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kNoLinks,             true),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kWithDepth,           true),
+				std::make_tuple(Optimizer::kTypeCeres, BaVariant::kWithDepthNoLinks,    true),
 				std::make_tuple(Optimizer::kTypeCVSBA, BaVariant::kDefault,             true)),
 		[](const ::testing::TestParamInfo<BaParam> & info)
 		{
@@ -2064,6 +2177,82 @@ INSTANTIATE_TEST_SUITE_P(
 			name += baVariantName(std::get<1>(info.param));
 			if(std::get<2>(info.param)) name += "_Rounded";
 			return name;
+		});
+
+// ---------------------------------------------------------------------------
+// PlanarBundleAdjustmentTest -- verifies that isSlam2d() in BA locks the
+// recovered trajectory to its initial Z plane. g2o has supported this since
+// forever via EdgeSBACamPrior; GTSAM and Ceres got matching planar
+// constraints in this rev.
+// ---------------------------------------------------------------------------
+
+class PlanarBundleAdjustmentTest : public ::testing::TestWithParam<Optimizer::Type>
+{
+protected:
+	void SetUp() override
+	{
+		if(!Optimizer::isAvailable(GetParam()))
+		{
+			GTEST_SKIP() << optimizerTypeName(GetParam()) << " not built in";
+		}
+	}
+};
+
+TEST_P(PlanarBundleAdjustmentTest, RecoveredTrajectoryStaysOnInitialPlane)
+{
+	const Optimizer::Type backend = GetParam();
+
+	ParametersMap params;
+	params[Parameters::kOptimizerStrategy()]   = uNumber2Str(static_cast<int>(backend));
+	params[Parameters::kOptimizerIterations()] = "200";
+	params[Parameters::kRegForce3DoF()]        = "true";  // → isSlam2d() == true
+	std::unique_ptr<Optimizer> opt(Optimizer::create(params));
+	ASSERT_NE(opt.get(), nullptr);
+	ASSERT_TRUE(opt->isSlam2d());
+
+	BundleGraph g = buildBundleGraph(/*noisy=*/true, /*roundPixels=*/false);
+	// Planar test: initial poses reflect a real 2D-SLAM gauge -- the robot
+	// lives on a single horizontal plane at some non-zero height (z=0.5 m
+	// here, e.g. a camera mounted on a robot half a meter off the floor)
+	// with no roll/pitch. Strip the z/roll/pitch noise from the noisy
+	// initial poses and keep only the x/y/yaw noise. Using a non-zero
+	// reference z verifies the constraint locks to the INITIAL plane,
+	// not to z=0 by accident.
+	const float planeZ = 0.5f;
+	for(auto & kv : g.initialPoses)
+	{
+		float x, y, z, roll, pitch, yaw;
+		kv.second.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		kv.second = Transform(x, y, planeZ, 0.0f, 0.0f, yaw);
+	}
+
+	std::map<int, cv::Point3f> outPoints = g.initialPoints3D;
+	std::map<int, Transform> outPoses = opt->optimizeBA(
+			/*rootId=*/1, g.initialPoses, g.links, g.models, outPoints, g.wordReferences);
+
+	ASSERT_FALSE(outPoses.empty()) << "optimizeBA returned no poses";
+	ASSERT_EQ(outPoses.size(), g.truePoses.size());
+
+	// With the planar constraint locking every camera to its initial
+	// z = planeZ (weight 1e9 = sub-mm tolerance), no recovered pose
+	// should drift off the plane. Without the constraint, a 3D BA on
+	// this dataset can drift up to a few mm in z due to reprojection /
+	// chain residuals.
+	for(const auto & kv : outPoses)
+	{
+		EXPECT_NEAR(kv.second.z(), planeZ, 0.0005f)  // 0.5 mm
+				<< optimizerTypeName(backend) << " pose " << kv.first
+				<< " drifted off the z=" << planeZ << " plane: z=" << kv.second.z();
+	}
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		Backends,
+		PlanarBundleAdjustmentTest,
+		::testing::Values(Optimizer::kTypeG2O, Optimizer::kTypeGTSAM, Optimizer::kTypeCeres),
+		[](const ::testing::TestParamInfo<Optimizer::Type> & info)
+		{
+			return optimizerTypeName(info.param);
 		});
 
 TEST(OptimizerTest, CvsbaPoseGraphOptimizeReturnsEmpty)

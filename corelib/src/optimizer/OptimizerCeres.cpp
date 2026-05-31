@@ -52,6 +52,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ceres/pose_graph_3d/pose_graph_3d_error_term.h"
 #include "ceres/bundle/BAProblem.h"
 #include "ceres/bundle/snavely_reprojection_error.h"
+#include "ceres/bundle/snavely_stereo_reprojection_error.h"
+#include "ceres/bundle/between_cameras_error.h"
+#include "ceres/bundle/planar_constraint_error.h"
 
 #if not(CERES_VERSION_MAJOR > 1 || (CERES_VERSION_MAJOR == 1 && CERES_VERSION_MINOR >= 12))
 #include "ceres/pose_graph_3d/eigen_quaternion_manifold.h"
@@ -86,6 +89,28 @@ bool OptimizerCeres::available()
 #else
 	return false;
 #endif
+}
+
+OptimizerCeres::OptimizerCeres(const ParametersMap & parameters) :
+		Optimizer(parameters),
+		pixelVariance_(Parameters::defaultOptimizerPixelVariance()),
+		disparityVariance_(Parameters::defaultOptimizerDisparityVariance()),
+		robustKernelDelta_(Parameters::defaultOptimizerRobustKernelDelta()),
+		baseline_(Parameters::defaultOptimizerBaseline())
+{
+	parseParameters(parameters);
+}
+
+void OptimizerCeres::parseParameters(const ParametersMap & parameters)
+{
+	Optimizer::parseParameters(parameters);
+	Parameters::parse(parameters, Parameters::kOptimizerPixelVariance(),     pixelVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerDisparityVariance(), disparityVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerRobustKernelDelta(), robustKernelDelta_);
+	Parameters::parse(parameters, Parameters::kOptimizerBaseline(),          baseline_);
+	UASSERT(pixelVariance_ > 0.0);
+	UASSERT(disparityVariance_ > 0.0);
+	UASSERT(baseline_ >= 0.0);
 }
 
 std::map<int, Transform> OptimizerCeres::optimize(
@@ -178,7 +203,7 @@ std::map<int, Transform> OptimizerCeres::optimize(
 					}
 
 					float yaw_radians = ceres::examples::NormalizeAngle(iter->second.transform().theta());
-					const Eigen::Matrix3d sqrt_information = information.llt().matrixL();
+					const Eigen::Matrix3d sqrt_information = information.llt().matrixU();
 
 					// Ceres will take ownership of the pointer.
 					ceres::CostFunction* cost_function = ceres::examples::PoseGraph2dErrorTerm::Create(
@@ -219,7 +244,7 @@ std::map<int, Transform> OptimizerCeres::optimize(
 					t.p.z() = iter->second.transform().z();
 					t.q = iter->second.transform().getQuaterniond();
 
-					const Eigen::Matrix<double, 6, 6> sqrt_information = information.llt().matrixL();
+					const Eigen::Matrix<double, 6, 6> sqrt_information = information.llt().matrixU();
 					// Ceres will take ownership of the pointer.
 					ceres::CostFunction* cost_function = ceres::examples::PoseGraph3dErrorTerm::Create(t, sqrt_information);
 					problem.AddResidualBlock(cost_function, loss_function,
@@ -441,6 +466,12 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	}
 	UASSERT(oi == baProblem.num_points_*3);
 
+	// Per-observation stereo metadata. For mono observations
+	// observed_disparity[i] = 0 and baseline_fx[i] = 0 -- the second-loop
+	// branch picks the mono cost function in that case.
+	std::vector<double> observed_disparity(baProblem.num_observations_, 0.0);
+	std::vector<double> baseline_fx(baProblem.num_observations_, 0.0);
+
 	oi = 0;
 	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
 		iter!=wordReferences.end();
@@ -465,6 +496,25 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - iterModel->second[0].cy();
 			baProblem.observations_[4*oi+2] = iterModel->second[0].fx();
 			baProblem.observations_[4*oi+3] = iterModel->second[0].fy();
+
+			// Stereo path: if a baseline is encoded in the camera model
+			// (Tx<0, the rtabmap convention) AND we have a finite positive
+			// depth from the observation, derive the observed disparity
+			// and cache baseline*fx for the cost function. For RGB-D /
+			// mono-with-depth (Tx==0) we fall back on the configurable
+			// Optimizer/Baseline -- a "fake baseline" that lets BA treat
+			// depth observations as stereo disparity. depth==0 or
+			// effective baseline==0 -> mono observation; the second loop
+			// will pick SnavelyReprojectionError instead.
+			const double Tx    = iterModel->second[0].Tx();
+			const double fx    = iterModel->second[0].fx();
+			const double depth = jter->second.depth;
+			const double baseline = Tx < 0.0 ? (-Tx / fx) : baseline_;
+			if(baseline > 0.0 && uIsFinite(depth) && depth > 0.0)
+			{
+				baseline_fx[oi]        = baseline * fx;
+				observed_disparity[oi] = baseline_fx[oi] / depth;
+			}
 			++oi;
 		}
 	}
@@ -476,21 +526,160 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// parameters for cameras and points are added automatically.
 	ceres::Problem problem;
 
+	// Per-axis weighting mirrors g2o's stereo information matrix:
+	// 1/pixelVariance on u/v, 1/disparityVariance on disparity. Pure
+	// loop-invariant, hoisted out.
+	const double inv_sigma_uv = 1.0 / std::sqrt(pixelVariance_);
+	const double inv_sigma_d  = 1.0 / std::sqrt(disparityVariance_);
+	int monoObsCount   = 0;
+	int stereoObsCount = 0;
 	for (int i = 0; i < baProblem.num_observations(); ++i) {
-		// Each Residual block takes a point and a camera as input and outputs a 2
-		// dimensional residual. Internally, the cost function stores the observed
-		// image location and compares the reprojection against the observation.
-		ceres::CostFunction* cost_function =
-			ceres::SnavelyReprojectionError::Create(
-					observations[4 * i],      //u
-					observations[4 * i + 1],  //v
-					observations[4 * i + 2],  //fx
-					observations[4 * i + 3]); //fy
-		ceres::LossFunction* loss_function = new ceres::HuberLoss(8.0);
+		const double u  = observations[4 * i];
+		const double v  = observations[4 * i + 1];
+		const double fx = observations[4 * i + 2];
+		const double fy = observations[4 * i + 3];
+
+		ceres::CostFunction* cost_function = 0;
+		if(baseline_fx[i] > 0.0 && observed_disparity[i] > 0.0)
+		{
+			// Stereo (3 residuals: u, v, disparity). The disparity channel
+			// pins z relative to the observing camera, which collapses the
+			// mono BA gauge from 7 DOF to 6 (scale becomes observable).
+			cost_function = ceres::SnavelyStereoReprojectionError::Create(
+					u, v, observed_disparity[i], fx, fy, baseline_fx[i],
+					inv_sigma_uv, inv_sigma_d);
+			++stereoObsCount;
+		}
+		else
+		{
+			// Mono (2 residuals: u, v).
+			cost_function = ceres::SnavelyReprojectionError::Create(u, v, fx, fy);
+			++monoObsCount;
+		}
+		// Pass nullptr when robustKernelDelta_ <= 0 -- Ceres treats that as
+		// identity (no kernel). A new loss instance per block is required:
+		// Ceres takes ownership and deletes each.
+		ceres::LossFunction* loss_function =
+				robustKernelDelta_ > 0.0 ? new ceres::HuberLoss(robustKernelDelta_) : nullptr;
 		problem.AddResidualBlock(cost_function,
 								 loss_function,
 								 baProblem.mutable_camera_for_observation(i),
 								 baProblem.mutable_point_for_observation(i));
+	}
+	UDEBUG("Ceres BA: %d mono + %d stereo observations", monoObsCount, stereoObsCount);
+
+	// Pose-graph constraints (kNeighbor / etc.) between cameras. Same role
+	// as the EdgeSBACam edges in OptimizerG2O and the BetweenFactor<Pose3>
+	// factors in OptimizerGTSAM -- folds the relative-pose chain into the
+	// BA cost so chains pulled by odometry don't drift freely.
+	int linkObsCount = 0;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		const Link & link = iter->second;
+		if(link.from() <= 0 || link.to() <= 0 || link.from() == link.to())
+		{
+			continue;
+		}
+		std::map<int, int>::const_iterator itA = camIdToIndex.find(link.from());
+		std::map<int, int>::const_iterator itB = camIdToIndex.find(link.to());
+		if(itA == camIdToIndex.end() || itB == camIdToIndex.end())
+		{
+			continue;
+		}
+		// Convert link from body-to-body into camera-to-camera using the
+		// localTransforms of both endpoints (same idiom as g2o / GTSAM).
+		const Transform camLink = models.at(link.from())[0].localTransform().inverse() *
+		                          link.transform() *
+		                          models.at(link.to())[0].localTransform();
+
+		// Decompose camLink (cam_b in cam_a's frame) into (angle-axis, translation).
+		const cv::Mat R = (cv::Mat_<double>(3, 3) <<
+				(double)camLink.r11(), (double)camLink.r12(), (double)camLink.r13(),
+				(double)camLink.r21(), (double)camLink.r22(), (double)camLink.r23(),
+				(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33());
+		cv::Mat rvec(1, 3, CV_64FC1);
+		cv::Rodrigues(R, rvec);
+		const Eigen::Vector3d aa_meas(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
+		const Eigen::Vector3d t_meas(camLink.x(), camLink.y(), camLink.z());
+
+		// Information matrix from the link covariance. rtabmap stores it as
+		// [linear|angular] -- same axis order as our residual [t; rot], so
+		// no block swap is needed (unlike the GTSAM path which expects
+		// [angular|linear]). cv::Mat is row-major; copying into Eigen
+		// (column-major) effectively transposes, which is a no-op for the
+		// symmetric info matrix.
+		Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+		if(!isCovarianceIgnored())
+		{
+			memcpy(information.data(), link.infMatrix().data, link.infMatrix().total()*sizeof(double));
+		}
+		// Whitening matrix: we want sqrt_info such that
+		// sqrt_info^T * sqrt_info = info. LLT gives info = L*L^T with L lower
+		// triangular, so the upper-triangular U = L^T (matrixU()) satisfies
+		// U^T*U = info. Then ||U*r||² = r^T*info*r as desired.
+		const Eigen::Matrix<double, 6, 6> sqrt_info =
+				information.llt().matrixU();
+
+		ceres::CostFunction * cost = ceres::BetweenCamerasError::Create(t_meas, aa_meas, sqrt_info);
+		// No robust kernel on between-camera constraints (matches g2o/GTSAM:
+		// only projection edges carry the Huber kernel in BA).
+		problem.AddResidualBlock(cost,
+				nullptr,
+				baProblem.cameras_ + itA->second * 6,
+				baProblem.cameras_ + itB->second * 6);
+		++linkObsCount;
+	}
+	if(linkObsCount > 0)
+	{
+		UDEBUG("Ceres BA: %d pose-graph links", linkObsCount);
+	}
+
+	// 2D / planar BA mode: lock each non-root camera to its initial body-z
+	// (lateral motion + yaw stay free). Root pose is fixed entirely so the
+	// gauge has no remaining z-DOF. Mirrors the g2o EdgeSBACamPrior path.
+	if(isSlam2d())
+	{
+		const double sqrtInfo = std::sqrt(1e9);  // matches g2o pinfo(2,2) = 1e9
+		int planarObsCount = 0;
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			std::map<int, int>::const_iterator camIt = camIdToIndex.find(iter->first);
+			if(camIt == camIdToIndex.end())
+			{
+				continue;
+			}
+			double * cam_block = baProblem.cameras_ + camIt->second * 6;
+			const bool fixNode = (rootId >= 0 && iter->first == rootId) ||
+			                     (rootId <  0 && iter->first != -rootId);
+			if(fixNode)
+			{
+				problem.SetParameterBlockConstant(cam_block);
+				continue;
+			}
+			// Unary planar constraint on the BODY z (the camera vertex is in
+			// world-to-camera; we extract body z by composing with the
+			// inverse localTransform inside the cost function).
+			std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
+			if(iterModel == models.end() || iterModel->second.empty())
+			{
+				continue;
+			}
+			const Transform & localTransform = iterModel->second[0].localTransform();
+			const Eigen::Matrix3d R_bc = (Eigen::Matrix3d() <<
+					(double)localTransform.r11(), (double)localTransform.r12(), (double)localTransform.r13(),
+					(double)localTransform.r21(), (double)localTransform.r22(), (double)localTransform.r23(),
+					(double)localTransform.r31(), (double)localTransform.r32(), (double)localTransform.r33()).finished();
+			const Eigen::Vector3d t_bc(localTransform.x(), localTransform.y(), localTransform.z());
+
+			ceres::CostFunction * planar = ceres::PlanarConstraintError::Create(
+					R_bc, t_bc, iter->second.z(), sqrtInfo);
+			problem.AddResidualBlock(planar, nullptr, cam_block);
+			++planarObsCount;
+		}
+		if(planarObsCount > 0)
+		{
+			UDEBUG("Ceres BA: %d planar-constraint blocks (2D mode)", planarObsCount);
+		}
 	}
 
 	// SBA
@@ -502,7 +691,14 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 	options.max_num_iterations = iterations();
 	//options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-	options.function_tolerance = this->epsilon();
+	options.function_tolerance  = this->epsilon();
+	// Force the LM to run to max_num_iterations rather than stopping early
+	// on Ceres' default parameter/gradient tolerances. Matters in particular
+	// for high-weight unary constraints (e.g. the 2D planar lock at sqrt(1e9))
+	// whose residual can stall the parameter step below the default 1e-8
+	// before the constraint is fully satisfied.
+	options.parameter_tolerance = 0.0;
+	options.gradient_tolerance  = 0.0;
 	ceres::Solver::Summary summary;
 	ceres::Solve(options, &problem, &summary);
 	if(ULogger::level() == ULogger::kDebug)
@@ -534,9 +730,26 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 		if(this->isSlam2d())
 		{
-			t = (models.at(iter->first)[0].localTransform() * t).inverse();
-			t = iter->second.inverse() * t;
-			iter->second *= t.to3DoF();
+			// Body pose recovered by BA (with the planar constraint that locks
+			// each non-root body z to its initial value). If the constraint held,
+			// z is already within ~mm of the initial; snap it back exactly.
+			// Otherwise the optimizer's planar lock didn't bite -- fall back to
+			// projecting the BA delta onto SE(2) and applying it to the initial.
+			Transform body = (models.at(iter->first)[0].localTransform() * t).inverse();
+			if(std::fabs(body.z() - iter->second.z()) < 0.001f)
+			{
+				body.z() = iter->second.z();
+				iter->second = body;
+			}
+			else
+			{
+				UWARN("Planar constraints didn't work!? original pose (%d), pose %s -> %s. Falling back to old approach.",
+						iter->first,
+						iter->second.prettyPrint().c_str(),
+						body.prettyPrint().c_str());
+				const Transform delta = iter->second.inverse() * body;
+				iter->second = iter->second * delta.to3DoF();
+			}
 		}
 		else
 		{

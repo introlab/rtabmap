@@ -160,10 +160,10 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
-		pixelVariance_(Parameters::defaultg2oPixelVariance()),
-		disparityVariance_(Parameters::defaultg2oDisparityVariance()),
-		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
-		baseline_(Parameters::defaultg2oBaseline())
+		pixelVariance_(Parameters::defaultOptimizerPixelVariance()),
+		disparityVariance_(Parameters::defaultOptimizerDisparityVariance()),
+		robustKernelDelta_(Parameters::defaultOptimizerRobustKernelDelta()),
+		baseline_(Parameters::defaultOptimizerBaseline())
 {
 #ifdef RTABMAP_G2O
 	// Issue on android, have to explicitly register this type when using fixed root prior below
@@ -185,10 +185,10 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kg2oSolver(), solver_);
 	Parameters::parse(parameters, Parameters::kg2oOptimizer(), optimizer_);
-	Parameters::parse(parameters, Parameters::kg2oPixelVariance(), pixelVariance_);
-	Parameters::parse(parameters, Parameters::kg2oDisparityVariance(), disparityVariance_);
-	Parameters::parse(parameters, Parameters::kg2oRobustKernelDelta(), robustKernelDelta_);
-	Parameters::parse(parameters, Parameters::kg2oBaseline(), baseline_);
+	Parameters::parse(parameters, Parameters::kOptimizerPixelVariance(), pixelVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerDisparityVariance(), disparityVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerRobustKernelDelta(), robustKernelDelta_);
+	Parameters::parse(parameters, Parameters::kOptimizerBaseline(), baseline_);
 	UASSERT(pixelVariance_ > 0.0);
 	UASSERT(disparityVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
