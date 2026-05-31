@@ -57,10 +57,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/base/numericalDerivative.h>
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <optimizer/gtsam/XYFactor.h>
 #include <optimizer/gtsam/XYZFactor.h>
+#include <optimizer/gtsam/PlanarBodyZFactor.h>
 #include <gtsam/nonlinear/ISAM2.h>
 
 #ifdef RTABMAP_VERTIGO
@@ -1139,48 +1139,6 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 // Multi-camera offset: same convention as OptimizerG2O.cpp so per-rig camera
 // vertex keys stay disjoint from pose keys (max 10 cameras per pose).
 #define GTSAM_BA_MULTICAM_OFFSET 10
-
-namespace {
-
-// Unary planar constraint mirroring g2o's EdgeSBACamPrior (pinfo(2,2) = 1e9):
-// locks the BODY-frame z of the camera vertex to its initial value, leaving
-// lateral motion + yaw free. Used when isSlam2d() is true in BA.
-class PlanarBodyZFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3>
-{
-public:
-	PlanarBodyZFactor(gtsam::Key key,
-	                  const gtsam::Pose3 & camera_to_body,
-	                  double initial_body_z,
-	                  const gtsam::SharedNoiseModel & model)
-		: gtsam::NoiseModelFactor1<gtsam::Pose3>(model, key),
-		  camera_to_body_(camera_to_body),
-		  initial_body_z_(initial_body_z) {}
-
-	gtsam::Vector evaluateError(const gtsam::Pose3 & camPose,
-#if GTSAM_VERSION_NUMERIC >= 40300
-	                            gtsam::OptionalMatrixType H = OptionalNone) const override
-#else
-	                            boost::optional<gtsam::Matrix &> H = boost::none) const override
-#endif
-	{
-		const auto error_fn = [this](const gtsam::Pose3 & p) {
-			gtsam::Vector1 e;
-			e(0) = p.compose(camera_to_body_).translation().z() - initial_body_z_;
-			return e;
-		};
-		if(H)
-		{
-			*H = gtsam::numericalDerivative11<gtsam::Vector1, gtsam::Pose3>(error_fn, camPose);
-		}
-		return error_fn(camPose);
-	}
-
-private:
-	gtsam::Pose3 camera_to_body_;
-	double initial_body_z_;
-};
-
-}  // namespace
 
 std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		int rootId,
