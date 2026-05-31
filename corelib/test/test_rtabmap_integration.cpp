@@ -70,6 +70,7 @@ struct ReplayResult
 	int odomNonNull = 0;         // odometry returned a non-null pose
 	int odomLost = 0;            // odometry returned a null pose
 	int loopClosuresAccepted = 0;
+	int loopClosuresRejected = 0;  // sum of frames with Loop/RejectedHypothesis=1
 	int proximityDetections = 0;
 	Transform lastOdomPose;
 	// Latest Gt/translational_rmse from Rtabmap statistics (negative = never
@@ -402,6 +403,116 @@ ReplayResult replayDatabase(
 
 	// close(true) flushes the in-memory session to the output DB so the file
 	// at workDb is a complete, openable database after the test returns.
+	rtabmap.close(true);
+	return result;
+}
+
+// Replay variant that feeds the stored odometry pose straight to Rtabmap
+// without re-running an Odometry stage. Used for datasets where the DB
+// already carries a known-good odom track and the test only cares about
+// the back-end (loop closure detection + graph optimization).
+ReplayResult replayDatabaseWithStoredOdom(
+		const std::string & dbPath,
+		const std::string & workDb,
+		const ParametersMap & rtabmapParameters)
+{
+	ReplayResult result;
+
+	// odometryIgnored=false so DBReader populates info.odomPose.
+	// featuresIgnored=false so DBReader replays the stored keypoints /
+	// descriptors instead of forcing Rtabmap to re-extract — paired with
+	// Mem/UseOdomFeatures=true in the per-variant parameters so Rtabmap
+	// actually reuses them rather than recomputing on every frame.
+	DBReader dbReader(
+			dbPath,
+			0.0f,             // frameRate: 0 = process as fast as possible
+			false,            // odometryIgnored
+			true,             // ignoreGoalDelay
+			true,             // goalsIgnored
+			0,                // startId
+			std::vector<unsigned int>(),  // cameraIndices
+			0,                // stopId
+			false,            // intermediateNodesIgnored
+			false,            // landmarksIgnored
+			false);           // featuresIgnored
+	if(!dbReader.init())
+	{
+		ADD_FAILURE() << "Failed to init DBReader for " << dbPath;
+		return result;
+	}
+
+	UFile::erase(workDb);
+	Rtabmap rtabmap;
+	rtabmap.init(rtabmapParameters, workDb);
+	std::cout << "[          ] Output DB: " << workDb << std::endl;
+
+	SensorCaptureInfo info;
+	SensorData data = dbReader.takeData(&info);
+	while(data.isValid())
+	{
+		++result.framesRead;
+		// In this replay mode the DB is expected to carry a stored odom
+		// pose and covariance on every frame; treat either being missing
+		// as a malformed asset rather than silently skipping.
+		if(info.odomPose.isNull())
+		{
+			ADD_FAILURE() << "Frame " << result.framesRead
+					<< " has no stored odometry pose";
+			return result;
+		}
+		if(info.odomCovariance.empty() || info.odomCovariance.total() != 36)
+		{
+			ADD_FAILURE() << "Frame " << result.framesRead
+					<< " has no stored odometry covariance";
+			return result;
+		}
+		result.lastOdomPose = info.odomPose;
+
+		rtabmap.process(data, info.odomPose, info.odomCovariance);
+		++result.framesProcessed;
+		const Statistics & stats = rtabmap.getStatistics();
+		if(stats.loopClosureId() > 0)
+		{
+			++result.loopClosuresAccepted;
+		}
+		if(stats.proximityDetectionId() > 0)
+		{
+			++result.proximityDetections;
+		}
+		// Loop/RejectedHypothesis is published as 1.0f on frames where a
+		// loop closure (or proximity link) was discarded — either by the
+		// addLink path or by the RGBD/OptimizeMaxError post-optimization
+		// rejection. Robust + MaxError-enabled variants are expected to
+		// reject more than the unguarded variants.
+		const auto rejIt = stats.data().find(Statistics::kLoopRejectedHypothesis());
+		if(rejIt != stats.data().end() && rejIt->second > 0.5f)
+		{
+			++result.loopClosuresRejected;
+		}
+		data = dbReader.takeData(&info);
+	}
+
+	{
+		std::multimap<int, Link> constraints;
+		rtabmap.getGraph(result.finalLocalPoses, constraints,
+				/*optimized=*/true, /*global=*/false);
+		result.finalLocalGraphSize = (int)result.finalLocalPoses.size();
+		constraints.clear();
+		rtabmap.getGraph(result.finalGlobalPoses, constraints,
+				/*optimized=*/true, /*global=*/true);
+		result.finalGlobalGraphSize = (int)result.finalGlobalPoses.size();
+	}
+
+	std::cout << "[          ] Replay summary:"
+			<< " framesRead=" << result.framesRead
+			<< " framesProcessed=" << result.framesProcessed
+			<< " loops=" << result.loopClosuresAccepted
+			<< " loopsRejected=" << result.loopClosuresRejected
+			<< " proximity=" << result.proximityDetections
+			<< " localGraph=" << result.finalLocalGraphSize
+			<< " globalGraph=" << result.finalGlobalGraphSize
+			<< std::endl;
+
 	rtabmap.close(true);
 	return result;
 }
@@ -887,4 +998,130 @@ TEST_F(RtabmapIntegrationFixture, TwoLoopsWorkspaceGlobalBA)
 		++variantsTested;
 	}
 	ASSERT_GT(variantsTested, 0) << "no BA-capable optimizer was available";
+}
+
+// ---------------------------------------------------------------------------
+// Robust-graph-optimization tutorial DB (stereo). Replays the session frame
+// by frame, feeding the stored odom pose straight to Rtabmap (no odometry
+// recomputation). Sweeps the 2x2x2 grid:
+//   Optimizer/Strategy   in {g2o, GTSAM}
+//   Optimizer/Robust     in {true, false}
+//   RGBD/OptimizeMaxError in {3.0, 0.0}
+// The full robust combo (g2o + Robust=true + MaxError=3) is the golden;
+// runs with both safeguards off should produce a visibly wrong graph.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
+{
+	const std::string srcPath = testDataPath("robust_graph_optimization_stereo.db");
+	SKIP_IF_MISSING(srcPath);
+
+	struct Variant {
+		Optimizer::Type optType;
+		bool robust;
+		float maxError;
+		const char * label;
+	};
+	// Ceres only appears in Robust=false variants; Optimizer/Robust is
+	// implemented via Vertigo switches that only g2o and GTSAM support.
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O,   true,  3.0f, "g2o-robust-maxerr3"     },
+		{Optimizer::kTypeG2O,   true,  0.0f, "g2o-robust-maxerr0"     },
+		{Optimizer::kTypeG2O,   false, 3.0f, "g2o-norobust-maxerr3"   },
+		{Optimizer::kTypeG2O,   false, 0.0f, "g2o-norobust-maxerr0"   },
+		{Optimizer::kTypeGTSAM, true,  3.0f, "gtsam-robust-maxerr3"   },
+		{Optimizer::kTypeGTSAM, true,  0.0f, "gtsam-robust-maxerr0"   },
+		{Optimizer::kTypeGTSAM, false, 3.0f, "gtsam-norobust-maxerr3" },
+		{Optimizer::kTypeGTSAM, false, 0.0f, "gtsam-norobust-maxerr0" },
+		{Optimizer::kTypeCeres, false, 3.0f, "ceres-norobust-maxerr3" },
+		{Optimizer::kTypeCeres, false, 0.0f, "ceres-norobust-maxerr0" },
+	};
+
+	// Golden trajectory captured from the g2o-robust-maxerr3 variant and
+	// committed under data/tests/. Regenerate by uncommenting the
+	// exportPoses block below and rerunning the test.
+	const std::string goldenPath = testDataPath("robust_graph_optimization_stereo_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	int variantsTested = 0;
+	for(const Variant & v : variants)
+	{
+		if(!Optimizer::isAvailable(v.optType))
+		{
+			std::cerr << "[skip] " << v.label << " (optimizer unavailable)\n";
+			continue;
+		}
+		SCOPED_TRACE(std::string(v.label));
+
+		ParametersMap params = baseRtabmapParams();
+		uInsert(params, ParametersPair(Parameters::kOptimizerStrategy(),
+				uNumber2Str(static_cast<int>(v.optType))));
+		uInsert(params, ParametersPair(Parameters::kOptimizerRobust(),
+				v.robust ? "true" : "false"));
+		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(),
+				uNumber2Str(v.maxError)));
+		// Reuse the keypoints/descriptors that DBReader replays from the
+		// source DB; skip Rtabmap's own feature extraction step.
+		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+
+		const std::string workDb = test::tempPath(uFormat(
+				"rtabmap_integration_RobustGraphOptimizationStereo_%s.db", v.label));
+		std::cerr << "Working DB for " << v.label << ": " << workDb << "\n";
+
+		const ReplayResult result =
+				replayDatabaseWithStoredOdom(srcPath, workDb, params);
+
+		// Sanity: every variant must produce some optimized graph.
+		ASSERT_GT(result.framesProcessed, 0) << v.label << " produced no frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0)
+				<< v.label << " produced empty graph";
+
+		// Regenerate golden from the most robust combo. Toggled on for a
+		// one-shot capture; re-comment after the file is committed.
+		// if(v.optType == Optimizer::kTypeG2O && v.robust && v.maxError > 0.0f)
+		// {
+		//     std::multimap<int, Link> links;
+		//     rtabmap::graph::exportPoses(goldenPath, /*format=*/4,
+		//             result.finalGlobalPoses, links);
+		// }
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << v.label << "] vs golden (aligned): "
+				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
+				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
+
+		// Either safeguard (robust optimizer or MaxError-gated link
+		// rejection) is enough to keep the graph close to the golden
+		// trajectory. With BOTH disabled, the bad loop closure(s) in
+		// this dataset destroy the graph — translational drift jumps
+		// to >1 m and rotation to >40°. The bounds below encode that
+		// "either safeguard alone is enough; neither is catastrophic"
+		// invariant.
+		const bool isSuperWrong = !v.robust && v.maxError == 0.0f;
+		if(isSuperWrong)
+		{
+			EXPECT_GT(tRmse, 0.5f)
+					<< v.label << " expected to be visibly wrong "
+					<< "(neither Robust nor MaxError enabled)";
+		}
+		else
+		{
+			EXPECT_LT(tRmse, 0.05f)
+					<< v.label << " translational RMSE too large; "
+					<< "expected near golden";
+			EXPECT_LT(rRmse, 1.5f)
+					<< v.label << " rotational RMSE too large; "
+					<< "expected near golden";
+		}
+		++variantsTested;
+	}
+	ASSERT_GT(variantsTested, 0) << "no compatible optimizer was available";
 }
