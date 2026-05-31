@@ -2255,6 +2255,411 @@ INSTANTIATE_TEST_SUITE_P(
 			return optimizerTypeName(info.param);
 		});
 
+// ---------------------------------------------------------------------------
+// MultiCamBundleAdjustmentTest -- 4 cameras at body origin pointing
+// forward/left/backward/right, 30 poses on the same hilly 10 m circle as
+// CircleGraphTest, random 3D points in a 20 m x 20 m x 1.5 m box. Each
+// camera only "sees" points within 10 m of the body (avoids projecting
+// across-trajectory points). Verifies that g2o and GTSAM multi-camera BA
+// recovers the chain + point cloud. Ceres / CVSBA explicitly reject
+// multi-cam (`models.size() > 1` in their optimizeBA) so they're not
+// instantiated here.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+constexpr int   kMultiCamNumPoses        = 30;
+constexpr float kMultiCamCircleRadius    = 10.0f;
+constexpr float kMultiCamHillAmp         = 0.5f;
+constexpr float kMultiCamHillFreq        = 3.0f;
+constexpr int   kMultiCamNumPoints       = 750;
+constexpr float kMultiCamPointBoxXY      = 20.0f;
+constexpr float kMultiCamPointBoxZ       = 1.5f;
+constexpr float kMultiCamVisibilityRange = 10.0f;
+constexpr int   kMultiCamNumCameras      = 4;
+// Realistic robot body: vacuum-sized round chassis. Each side-facing
+// camera sits on the rim at ±17.5 cm from the body center, on a small
+// stalk 5 cm above the chassis plane. Opposite cameras are 35 cm apart
+// (a real translational baseline that adds triangulation strength
+// independent of the body's motion along the chain).
+constexpr float kMultiCamRobotRadius     = 0.175f;
+constexpr float kMultiCamCameraZ         = 0.05f;
+
+// Narrow-FOV intrinsics: fx = 376 / tan(30°) ≈ 651 gives ~60° HFOV. With
+// 4 cameras 90° apart this leaves ~15° gaps each side between neighbours
+// -- no FOV overlap, so points are only ever observed by one camera per
+// frame. Scale ambiguity returns (mono BA behavior) and the test has to
+// fall back on scale-recovery + looser bounds. Used by the kNarrowFov
+// variant below.
+constexpr double kMultiCamNarrowFx       = 651.0;
+constexpr double kMultiCamNarrowFy       = 651.0;
+
+enum class MultiCamFov   { kWide, kNarrow };
+enum class MultiCamMode  { kMono, kStereo };
+enum class MultiCamLinks { kWithLinks, kNoLinks };
+
+// Stereo baseline used when MultiCamMode::kStereo is set: 15 cm (e.g.
+// ZED Mini / RealSense D435i tier). Each of the 4 cameras becomes its
+// own stereo pair, so every observation carries a noisy disparity-derived
+// depth in its FeatureBA (1 px sigma on the disparity channel).
+constexpr double kMultiCamStereoBaseline = 0.15;
+
+const char * multiCamFovName(MultiCamFov f)
+{
+	return f == MultiCamFov::kWide ? "WideFov" : "NarrowFov";
+}
+
+const char * multiCamModeName(MultiCamMode m)
+{
+	return m == MultiCamMode::kMono ? "Mono" : "Stereo";
+}
+
+const char * multiCamLinksName(MultiCamLinks l)
+{
+	return l == MultiCamLinks::kWithLinks ? "WithLinks" : "NoLinks";
+}
+
+struct MultiCamBundleGraph
+{
+	std::map<int, Transform>                       truePoses;
+	std::map<int, Transform>                       initialPoses;
+	std::map<int, cv::Point3f>                     truePoints3D;
+	std::map<int, cv::Point3f>                     initialPoints3D;
+	std::map<int, std::vector<CameraModel>>        models;
+	std::multimap<int, Link>                       links;
+	std::map<int, std::map<int, FeatureBA>>        wordReferences;
+};
+
+MultiCamBundleGraph buildMultiCamBundleGraph(MultiCamFov fov = MultiCamFov::kWide,
+                                              MultiCamMode mode = MultiCamMode::kMono)
+{
+	MultiCamBundleGraph g;
+	const double fx = fov == MultiCamFov::kNarrow ? kMultiCamNarrowFx : kBaFx;
+	const double fy = fov == MultiCamFov::kNarrow ? kMultiCamNarrowFy : kBaFy;
+	// Negative Tx triggers the stereo-edge path in g2o / GTSAM BA; mono
+	// keeps it at 0 so depth observations are ignored.
+	const double Tx = mode == MultiCamMode::kStereo ? -kMultiCamStereoBaseline * fx : 0.0;
+
+	// 1) Hilly circular trajectory (matches buildCircleGraph's hill profile).
+	for(int i = 1; i <= kMultiCamNumPoses; ++i)
+	{
+		const float theta = 2.0f * static_cast<float>(CV_PI) * static_cast<float>(i - 1) / static_cast<float>(kMultiCamNumPoses);
+		const float x     = kMultiCamCircleRadius * std::cos(theta);
+		const float y     = kMultiCamCircleRadius * std::sin(theta);
+		const float z     = kMultiCamHillAmp * std::sin(kMultiCamHillFreq * theta);
+		const float yaw   = theta + static_cast<float>(CV_PI) / 2.0f;          // tangent CCW
+		const float pitch = -kMultiCamHillAmp * kMultiCamHillFreq / kMultiCamCircleRadius
+		                    * std::cos(kMultiCamHillFreq * theta);
+		g.truePoses[i] = Transform(x, y, z, 0.0f, pitch, yaw);
+	}
+
+	// 2) Four cameras mounted on the round-robot rim pointing forward /
+	//    left / backward / right. localTransform per camera =
+	//        (rim offset in body frame) * (body-frame yaw) * opticalRotation
+	//    so each camera's optical +Z aligns with the indicated body
+	//    direction while sitting ~17.5 cm out from the body center.
+	const float R = kMultiCamRobotRadius;
+	const float Z = kMultiCamCameraZ;
+	const float multicamYaws[kMultiCamNumCameras] = {
+			0.0f,                                  // 0: forward (body +X)
+			static_cast<float>(CV_PI) / 2.0f,      // 1: left    (body +Y)
+			static_cast<float>(CV_PI),             // 2: back    (body -X)
+			-static_cast<float>(CV_PI) / 2.0f      // 3: right   (body -Y)
+	};
+	const float multicamOffsetX[kMultiCamNumCameras] = {  R, 0, -R, 0 };
+	const float multicamOffsetY[kMultiCamNumCameras] = {  0, R,  0, -R };
+	for(auto & kv : g.truePoses)
+	{
+		std::vector<CameraModel> rig;
+		for(int c = 0; c < kMultiCamNumCameras; ++c)
+		{
+			const Transform localTransform =
+					Transform(multicamOffsetX[c], multicamOffsetY[c], Z,
+					          0.0f, 0.0f, multicamYaws[c])
+					* CameraModel::opticalRotation();
+			rig.emplace_back(fx, fy, kBaCx, kBaCy,
+					localTransform, Tx,
+					cv::Size(kBaImageWidth, kBaImageHeight));
+		}
+		g.models[kv.first] = std::move(rig);
+	}
+
+	// 3) Random points uniformly in a 20 m x 20 m x 1.5 m box. The box is
+	//    wider than the 10 m trajectory radius, so points sit both inside
+	//    the circle (mid-frame visibility) and in the outer annulus
+	//    (back/side visibility from the nearer poses).
+	std::mt19937 rng(7);
+	std::uniform_real_distribution<float> distXY(-kMultiCamPointBoxXY, kMultiCamPointBoxXY);
+	std::uniform_real_distribution<float> distZ (-kMultiCamPointBoxZ,  kMultiCamPointBoxZ);
+	for(int p = 1; p <= kMultiCamNumPoints; ++p)
+	{
+		g.truePoints3D[p] = cv::Point3f(distXY(rng), distXY(rng), distZ(rng));
+	}
+
+	// 4) Project. Visibility filter: body-to-point distance < 10 m
+	//    (suppresses projecting points from the far side of the circle
+	//    through the robot), point in front of camera (z > 0.1 m), pixel
+	//    in image bounds. In stereo mode each observation also gets a
+	//    depth derived from a noisy disparity (1 px sigma) -- so depth
+	//    error grows quadratically with range, matching a real stereo
+	//    block matcher / SGM at long range.
+	std::mt19937 dispRng(13);
+	std::normal_distribution<double> dispNoise(0.0, 1.0);
+	for(const auto & ptkv : g.truePoints3D)
+	{
+		const int pointId = ptkv.first;
+		for(const auto & posekv : g.truePoses)
+		{
+			const int frameId = posekv.first;
+			const float dx = ptkv.second.x - posekv.second.x();
+			const float dy = ptkv.second.y - posekv.second.y();
+			const float dz = ptkv.second.z - posekv.second.z();
+			if(std::sqrt(dx*dx + dy*dy + dz*dz) > kMultiCamVisibilityRange)
+			{
+				continue;
+			}
+			for(int c = 0; c < kMultiCamNumCameras; ++c)
+			{
+				const CameraModel & m = g.models.at(frameId)[c];
+				const Transform world_to_optical = (posekv.second * m.localTransform()).inverse();
+				const cv::Point3f pc = util3d::transformPoint(ptkv.second, world_to_optical);
+				if(pc.z <= 0.1f)
+				{
+					continue;
+				}
+				float u, v;
+				m.reproject(pc.x, pc.y, pc.z, u, v);
+				if(u < 0.0f || u >= kBaImageWidth || v < 0.0f || v >= kBaImageHeight)
+				{
+					continue;
+				}
+				float depthForObs = 0.0f;
+				if(mode == MultiCamMode::kStereo)
+				{
+					// Realistic stereo depth: noisy disparity → depth via
+					// d = b*fx / disparity. 1 px sigma on disparity gives
+					// σ_depth ≈ z² / (b*fx) * σ_disp, so depth error
+					// grows quadratically with range.
+					const double dispTrue  = kMultiCamStereoBaseline * fx / pc.z;
+					const double dispNoisy = dispTrue + dispNoise(dispRng);
+					depthForObs = static_cast<float>(
+							kMultiCamStereoBaseline * fx / std::max(dispNoisy, 0.1));
+				}
+				g.wordReferences[pointId].insert(
+						{frameId, FeatureBA(cv::KeyPoint(u, v, 1.0f), depthForObs, cv::Mat(), c)});
+			}
+		}
+	}
+
+	// 5) Neighbor links 1->2->...->N (no loop closure; the existing BA
+	//    test scenes are open chains).
+	const cv::Mat info = cv::Mat::eye(6, 6, CV_64FC1);
+	for(int i = 1; i < kMultiCamNumPoses; ++i)
+	{
+		const Transform t = g.truePoses[i].inverse() * g.truePoses[i + 1];
+		g.links.insert({i, Link(i, i + 1, Link::kNeighbor, t, info)});
+	}
+
+	// 6) Noisy initial guess: 5 cm linear / 1 deg angular per pose (root
+	//    held at truth), 5 cm linear per point.
+	std::mt19937 nRng(42);
+	std::normal_distribution<float> linNoise(0.0f, 0.05f);
+	std::normal_distribution<float> angNoise(0.0f, 1.0f * static_cast<float>(CV_PI) / 180.0f);
+	for(const auto & kv : g.truePoses)
+	{
+		if(kv.first == 1)
+		{
+			g.initialPoses[kv.first] = kv.second;
+			continue;
+		}
+		float x, y, z, roll, pitch, yaw;
+		kv.second.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		g.initialPoses[kv.first] = Transform(
+				x + linNoise(nRng), y + linNoise(nRng), z + linNoise(nRng),
+				roll + angNoise(nRng), pitch + angNoise(nRng), yaw + angNoise(nRng));
+	}
+	for(const auto & kv : g.truePoints3D)
+	{
+		g.initialPoints3D[kv.first] = cv::Point3f(
+				kv.second.x + linNoise(nRng),
+				kv.second.y + linNoise(nRng),
+				kv.second.z + linNoise(nRng));
+	}
+
+	return g;
+}
+
+}  // namespace
+
+using MultiCamParam = std::tuple<Optimizer::Type, MultiCamFov, MultiCamMode, MultiCamLinks>;
+
+class MultiCamBundleAdjustmentTest : public ::testing::TestWithParam<MultiCamParam>
+{
+protected:
+	void SetUp() override
+	{
+		if(!Optimizer::isAvailable(std::get<0>(GetParam())))
+		{
+			GTEST_SKIP() << optimizerTypeName(std::get<0>(GetParam())) << " not built in";
+		}
+	}
+};
+
+TEST_P(MultiCamBundleAdjustmentTest, FourCameraRigRecoversPosesAndPoints)
+{
+	const Optimizer::Type backend = std::get<0>(GetParam());
+	const MultiCamFov     fov     = std::get<1>(GetParam());
+	const MultiCamMode    mode    = std::get<2>(GetParam());
+	const MultiCamLinks   links   = std::get<3>(GetParam());
+
+	ParametersMap params;
+	params[Parameters::kOptimizerStrategy()]   = uNumber2Str(static_cast<int>(backend));
+	params[Parameters::kOptimizerIterations()] = "200";
+	if(mode == MultiCamMode::kStereo)
+	{
+		// Sub-pixel u/v + ~1 px disparity tuning, same recipe as the
+		// kWithDepthNoLinksTuned single-cam BA variant. Default
+		// pv = dispVar = 1 falls into the info-matrix asymmetry trap at
+		// long range (10 m): observed u/v residuals are ~0 px but
+		// disparity has 1 px sigma; the optimizer over-trusts the
+		// noisier disparity channel and pushes points along the depth
+		// axis (multi-meter residuals). pv = 0.1 calibrates u/v as
+		// sub-pixel so both channels carry similar relative weight.
+		params[Parameters::kOptimizerPixelVariance()]     = "0.1";
+		params[Parameters::kOptimizerDisparityVariance()] = "1.0";
+	}
+	std::unique_ptr<Optimizer> opt(Optimizer::create(params));
+	ASSERT_NE(opt.get(), nullptr);
+	ASSERT_EQ(opt->type(), backend);
+
+	MultiCamBundleGraph g = buildMultiCamBundleGraph(fov, mode);
+	if(links == MultiCamLinks::kNoLinks)
+	{
+		// Drop the pose-graph chain so BA has to recover the trajectory
+		// purely from reprojection (mono) or reprojection+disparity
+		// (stereo). For multi-cam mono this still converges to truth
+		// because the cross-camera, cross-frame triangulation pins
+		// scale; for stereo it's the disparity that anchors the gauge.
+		g.links.clear();
+	}
+
+	// Sanity: with 360° coverage + 10 m visibility, every point should be
+	// observed by many camera-frame pairs across the chain.
+	int totalObs = 0;
+	for(const auto & wkv : g.wordReferences) totalObs += static_cast<int>(wkv.second.size());
+	// Narrow FOV sees ~half the area of wide FOV per camera, so we relax
+	// the sanity floor accordingly.
+	const int minObs = fov == MultiCamFov::kWide ? 3000 : 1500;
+	ASSERT_GT(totalObs, minObs) << "Too few observations: " << totalObs;
+
+	std::map<int, cv::Point3f> outPoints = g.initialPoints3D;
+	std::map<int, Transform>   outPoses  = opt->optimizeBA(
+			/*rootId=*/1, g.initialPoses, g.links, g.models, outPoints, g.wordReferences);
+
+	ASSERT_FALSE(outPoses.empty()) << "optimizeBA returned no poses";
+	ASSERT_EQ(outPoses.size(), g.truePoses.size());
+
+	// Multi-camera BA is fully observable in BOTH FOV regimes -- even when
+	// adjacent cameras' fields of view don't overlap (narrow mode), the
+	// chain of 30 poses with rigidly-attached 4-camera rigs is enough to
+	// pin scale: a point first observed by the forward camera at pose K
+	// is observed by the left camera at some later pose K+n once the body
+	// has yawed, providing cross-camera triangulation across frames. No
+	// scale recovery needed -- both backends converge to µm-scale pose
+	// residuals against truth in MONO mode. STEREO loosens to ~2 cm
+	// because 1-px disparity noise on the 15 cm baseline propagates
+	// quadratically with range (σ_depth ≈ z²/(b·fx)·σ_disp = ~2 m at
+	// 10 m range per observation) and biases the pose estimates.
+	const Transform truthRootInv = g.truePoses.at(1).inverse();
+	const Transform outRootInv   = outPoses.at(1).inverse();
+	// Stereo loosens to ~2 cm regardless of chain. Mono converges to µm
+	// with the chain anchor; without links the BA has to lock the gauge
+	// purely from reprojection, which costs a few mm of pose precision.
+	float poseBound;
+	if(mode == MultiCamMode::kStereo)         poseBound = 0.03f;
+	else if(links == MultiCamLinks::kNoLinks) poseBound = 0.005f;
+	else                                       poseBound = 0.001f;
+	const float angBound = mode == MultiCamMode::kStereo ? 0.05f : 0.01f;
+	for(const auto & kv : g.truePoses)
+	{
+		if(kv.first == 1) continue;
+		ASSERT_TRUE(outPoses.count(kv.first));
+		const Transform truthRel = truthRootInv * kv.second;
+		const Transform outRel   = outRootInv   * outPoses.at(kv.first);
+		EXPECT_LT(outRel.getDistance(truthRel), poseBound)
+				<< optimizerTypeName(backend) << " pose " << kv.first
+				<< " got(rel)=" << outRel.prettyPrint()
+				<< " truth(rel)=" << truthRel.prettyPrint();
+		const float angDeg = outRel.getAngle(truthRel) * 180.0f / static_cast<float>(CV_PI);
+		EXPECT_LT(angDeg, angBound)
+				<< optimizerTypeName(backend) << " pose " << kv.first << " angle=" << angDeg << " deg";
+	}
+
+	int verifiedPoints = 0;
+	for(const auto & kv : g.truePoints3D)
+	{
+		// Only check points that are well-triangulated -- the random
+		// scatter includes far-corner points that no camera sees within
+		// the 10 m visibility cap (NaN-filled by g2o / left at noisy
+		// initial by GTSAM), plus single-observation points that BA
+		// can't constrain in any meaningful way (mono: stays at noisy
+		// initial; stereo: ~σ_depth ≈ z²/(b·fx)·σ_disp ≈ 8 m at 20 m
+		// range from one disparity sample). Require ≥3 obs.
+		const auto wkv = g.wordReferences.find(kv.first);
+		if(wkv == g.wordReferences.end() || wkv->second.size() < 3) continue;
+		if(!outPoints.count(kv.first)) continue;
+		const cv::Point3f outRaw = outPoints.at(kv.first);
+		if(!std::isfinite(outRaw.x) || !std::isfinite(outRaw.y) || !std::isfinite(outRaw.z)) continue;
+		const cv::Point3f truthRel = util3d::transformPoint(kv.second, truthRootInv);
+		const cv::Point3f outRel   = util3d::transformPoint(outRaw, outRootInv);
+		const cv::Point3f diff     = outRel - truthRel;
+		const float d = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+		// Point residuals are dominated by triangulation noise at the
+		// edge of the visibility cone (~10 m from the observing pose).
+		// Mono Wide: ~9 cm worst; Mono Narrow: ~11 cm worst (slightly
+		// weaker triangulation -- no simultaneous overlap means each
+		// point is effectively reconstructed from inter-frame baselines
+		// only). Stereo direct depth tightens both.
+		float pointBound;
+		if(mode == MultiCamMode::kStereo)
+		{
+			pointBound = fov == MultiCamFov::kWide ? 0.08f : 0.10f;
+		}
+		else
+		{
+			pointBound = fov == MultiCamFov::kWide ? 0.10f : 0.12f;
+		}
+		EXPECT_LT(d, pointBound)
+				<< optimizerTypeName(backend) << " point " << kv.first
+				<< " got(rel)=(" << outRel.x << "," << outRel.y << "," << outRel.z << ")"
+				<< " truth(rel)=(" << truthRel.x << "," << truthRel.y << "," << truthRel.z << ")";
+		++verifiedPoints;
+	}
+	// Sanity that we're actually verifying something -- if the visibility
+	// filter is too aggressive, we'd silently pass with no point checks.
+	EXPECT_GT(verifiedPoints, 200);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		Backends,
+		MultiCamBundleAdjustmentTest,
+		// Only g2o and GTSAM support multi-camera BA in rtabmap. Cross
+		// every FOV regime (wide 100° / narrow 60°) with mono / stereo
+		// (15 cm baseline + noisy disparity-derived depth) with /
+		// without the pose-graph chain. 16 variants total.
+		::testing::Combine(
+				::testing::Values(Optimizer::kTypeG2O, Optimizer::kTypeGTSAM),
+				::testing::Values(MultiCamFov::kWide, MultiCamFov::kNarrow),
+				::testing::Values(MultiCamMode::kMono, MultiCamMode::kStereo),
+				::testing::Values(MultiCamLinks::kWithLinks, MultiCamLinks::kNoLinks)),
+		[](const ::testing::TestParamInfo<MultiCamParam> & info)
+		{
+			return std::string(optimizerTypeName(std::get<0>(info.param))) + "_"
+					+ multiCamFovName(std::get<1>(info.param)) + "_"
+					+ multiCamModeName(std::get<2>(info.param)) + "_"
+					+ multiCamLinksName(std::get<3>(info.param));
+		});
+
 TEST(OptimizerTest, CvsbaPoseGraphOptimizeReturnsEmpty)
 {
 	// CVSBA only overrides optimizeBA() -- it doesn't implement pose-graph
