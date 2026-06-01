@@ -1140,6 +1140,23 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 // vertex keys stay disjoint from pose keys (max 10 cameras per pose).
 #define GTSAM_BA_MULTICAM_OFFSET 10
 
+// Build a gtsam::Symbol for a 3D point (BA "landmark" in the optimization
+// sense — NOT the same as Link::kLandmark used in pose-graph land).
+// wordReferences can mix positive ids (features quantized to a visual
+// vocabulary word) with negative ids (features that weren't matched to
+// any vocabulary entry — see Memory.cpp's "Set ID -1 to features not
+// used for quantization"). gtsam::Symbol packs the index into 56
+// unsigned bits, so a signed int with the high bit set trips
+// "Symbol index is too large". Use distinct prefix characters for the
+// two cases so the numeric index is always non-negative AND
+// positive/negative ids cannot collide on the same Symbol.
+static inline gtsam::Symbol point3dSymbol(int id)
+{
+    return id < 0
+        ? gtsam::Symbol('L', static_cast<std::uint64_t>(-id))
+        : gtsam::Symbol('l', static_cast<std::uint64_t>(id));
+}
+
 std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
@@ -1345,7 +1362,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 			UWARN("Ignoring 3D point %d because it has nan value(s)!", wordId);
 			continue;
 		}
-		const gtsam::Symbol pkey('l', wordId);
+		const gtsam::Symbol pkey = point3dSymbol(wordId);
 		initial.insert(pkey, gtsam::Point3(pt3d.x, pt3d.y, pt3d.z));
 		insertedPoints.insert(pkey);
 
@@ -1508,7 +1525,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	// 8) Read back 3D points.
 	for(std::map<int, cv::Point3f>::iterator iter = points3DMap.begin(); iter != points3DMap.end(); ++iter)
 	{
-		const gtsam::Symbol pkey('l', iter->first);
+		const gtsam::Symbol pkey = point3dSymbol(iter->first);
 		if(insertedPoints.count(pkey) && result.exists(pkey))
 		{
 			const gtsam::Point3 p = result.at<gtsam::Point3>(pkey);

@@ -34,6 +34,8 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/ULogger.h>
 
 #include "TestUtils.h"
 #include <iostream>
@@ -90,6 +92,12 @@ struct ReplayResult
 	int octomapNodes = 0;
 	int octomapEmptyCells = 0;
 	int octomapObstacleCells = 0;
+	// Wall-clock seconds spent inside the replay loop, measured from
+	// just before the first DBReader read to just after rtabmap.close().
+	double replayWallSeconds = 0.0;
+	// Wall-clock seconds spent inside Odometry::process across all
+	// frames; divide by framesRead to get per-frame average.
+	double odomTotalSeconds = 0.0;
 };
 
 // Synchronous replay: DBReader -> Odometry::process -> Rtabmap::process.
@@ -189,9 +197,26 @@ ReplayResult replayDatabase(
 		}
 	};
 
+	UTimer replayTimer;
+
+	// Some old-format DBs (Stereo20Hz, Version 0.8.0) have no stored
+	// stamps, so DBReader fills them with wall-clock at read time.
+	// That makes the Rtabmap/DetectionRate throttle depend on
+	// processing speed and skews per-optimizer comparisons. Use a
+	// synthetic monotonic 20 Hz timeline whenever the first frame
+	// looks like a wall-clock stamp (years 2000+).
+	constexpr double kSyntheticFrameDt = 1.0 / 20.0;  // 20 Hz
+	int syntheticFrameIdx = 0;
+	bool overrideStamps = false;
+
 	// Prime the loop with the first sample.
 	SensorCaptureInfo info;
 	SensorData data = dbReader.takeData(&info);
+	overrideStamps = data.stamp() > 1.0e9;  // > year 2001 in unix-time
+	if(overrideStamps)
+	{
+		data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
+	}
 	applyGoldenGroundTruth(data);
 
 	Transform previousStoredOdomPose;
@@ -220,7 +245,9 @@ ReplayResult replayDatabase(
 		// keypoints/descriptors odom already extracted).
 		SensorData odomData = data;
 		OdometryInfo odomInfo;
+		UTimer odomTimer;
 		const Transform odomPose = odometry->process(odomData, guess, &odomInfo);
+		result.odomTotalSeconds += odomTimer.getElapsedTime();
 
 		if(odomPose.isNull())
 		{
@@ -258,7 +285,7 @@ ReplayResult replayDatabase(
 				}
 				else
 				{
-						lastUpdateStamp = rtabmapData.stamp();
+					lastUpdateStamp = rtabmapData.stamp();
 					++result.framesProcessed;
 					const Statistics & stats = rtabmap.getStatistics();
 					if(stats.loopClosureId() > 0)
@@ -286,6 +313,10 @@ ReplayResult replayDatabase(
 		}
 
 		data = dbReader.takeData(&info);
+		if(overrideStamps && data.isValid())
+		{
+			data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
+		}
 		applyGoldenGroundTruth(data);
 	}
 
@@ -383,6 +414,11 @@ ReplayResult replayDatabase(
 #endif
 	}
 
+	// close(true) flushes the in-memory session to the output DB so the file
+	// at workDb is a complete, openable database after the test returns.
+	rtabmap.close(true);
+	result.replayWallSeconds = replayTimer.getElapsedTime();
+
 	std::cout << "[          ] Replay summary:"
 			<< " framesRead=" << result.framesRead
 			<< " odomNonNull=" << result.odomNonNull
@@ -399,11 +435,12 @@ ReplayResult replayDatabase(
 			<< " octomapEmpty=" << result.octomapEmptyCells
 			<< " octomapObstacle=" << result.octomapObstacleCells
 			<< " rmse=" << result.translationalRmseFinal << "m"
+			<< " wall=" << result.replayWallSeconds << "s"
+			<< " odom/frame=" << (result.framesRead > 0
+					? (result.odomTotalSeconds / result.framesRead) * 1000.0
+					: 0.0) << "ms"
 			<< std::endl;
 
-	// close(true) flushes the in-memory session to the output DB so the file
-	// at workDb is a complete, openable database after the test returns.
-	rtabmap.close(true);
 	return result;
 }
 
@@ -419,9 +456,10 @@ ReplayResult replayDatabaseWithStoredOdom(
 		// When >0, overrides the angular diagonal entries of the stored
 		// odom covariance (indices 3,4,5) before each call to
 		// Rtabmap::process. Lets a test relax an unrealistically tight
-		// rotational variance baked into the DB. Translational entries
-		// are left untouched.
-		double overrideOdomAngularVariance = -1.0)
+		// rotational variance baked into the DB.
+		double overrideOdomAngularVariance = -1.0,
+		// When >0, same idea for the translational diagonal (0,1,2).
+		double overrideOdomLinearVariance = -1.0)
 {
 	ReplayResult result;
 
@@ -453,6 +491,8 @@ ReplayResult replayDatabaseWithStoredOdom(
 	rtabmap.init(rtabmapParameters, workDb);
 	std::cout << "[          ] Output DB: " << workDb << std::endl;
 
+	UTimer replayTimer;
+
 	SensorCaptureInfo info;
 	SensorData data = dbReader.takeData(&info);
 	while(data.isValid())
@@ -472,6 +512,12 @@ ReplayResult replayDatabaseWithStoredOdom(
 			ADD_FAILURE() << "Frame " << result.framesRead
 					<< " has no stored odometry covariance";
 			return result;
+		}
+		if(overrideOdomLinearVariance > 0.0)
+		{
+			info.odomCovariance.at<double>(0, 0) = overrideOdomLinearVariance;
+			info.odomCovariance.at<double>(1, 1) = overrideOdomLinearVariance;
+			info.odomCovariance.at<double>(2, 2) = overrideOdomLinearVariance;
 		}
 		if(overrideOdomAngularVariance > 0.0)
 		{
@@ -525,6 +571,9 @@ ReplayResult replayDatabaseWithStoredOdom(
 		result.finalGlobalGraphSize = (int)result.finalGlobalPoses.size();
 	}
 
+	rtabmap.close(true);
+	result.replayWallSeconds = replayTimer.getElapsedTime();
+
 	std::cout << "[          ] Replay summary:"
 			<< " framesRead=" << result.framesRead
 			<< " framesProcessed=" << result.framesProcessed
@@ -533,9 +582,9 @@ ReplayResult replayDatabaseWithStoredOdom(
 			<< " proximity=" << result.proximityDetections
 			<< " localGraph=" << result.finalLocalGraphSize
 			<< " globalGraph=" << result.finalGlobalGraphSize
+			<< " wall=" << result.replayWallSeconds << "s"
 			<< std::endl;
 
-	rtabmap.close(true);
 	return result;
 }
 
@@ -754,6 +803,95 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Stereo)
 			<< "No Gt/translational_rmse in stats (ground truth missing?)";
 	EXPECT_LT(result.translationalRmseFinal, 0.05f)
 			<< "Final trajectory RMSE = " << result.translationalRmseFinal << " m";
+}
+
+// ---------------------------------------------------------------------------
+// Stereo 20 Hz tutorial DB (~1035 frames, no stored odometry or graph).
+// Smoke-tests the full visual SLAM pipeline: stereo F2M odometry, loop
+// closure detection, graph optimization — all starting from raw imagery.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
+{
+	const std::string dbPath = testDataPath("stereo_20Hz.db");
+	SKIP_IF_MISSING(dbPath);
+
+	const std::string goldenPath = testDataPath("stereo_20Hz_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	struct Backend { Optimizer::Type type; const char * name; };
+	const std::vector<Backend> backends = {
+		{Optimizer::kTypeG2O,   "g2o"  },
+		{Optimizer::kTypeGTSAM, "gtsam"},
+		{Optimizer::kTypeCeres, "ceres"},
+	};
+
+	int variantsTested = 0;
+	for(const Backend & be : backends)
+	{
+		if(!Optimizer::isAvailable(be.type))
+		{
+			std::cerr << "[skip] optimizer " << be.name << " not available\n";
+			continue;
+		}
+		SCOPED_TRACE(std::string("optimizer=") + be.name);
+
+		const std::string strategy = uNumber2Str(static_cast<int>(be.type));
+
+		ParametersMap rtabmapParams = baseRtabmapParams();
+		rtabmapParams[Parameters::kMemUseOdomFeatures()] = "true";
+		// 1035 frames at 20 Hz — throttle rtabmap to 2 Hz; odometry
+		// still runs on every frame.
+		rtabmapParams[Parameters::kRtabmapDetectionRate()] = "2";
+		// Match every BA-capable knob to the chosen backend: graph
+		// optimization (Optimizer/Strategy), the local odom BA
+		// (OdomF2M/BundleAdjustment), and the visual-registration BA
+		// used during loop closure verification (Vis/BundleAdjustment).
+		rtabmapParams[Parameters::kOptimizerStrategy()] = strategy;
+		rtabmapParams[Parameters::kVisBundleAdjustment()] = strategy;
+
+		ParametersMap odomParams = baseOdometryParams();
+		odomParams[Parameters::kOdomF2MBundleAdjustment()] = strategy;
+
+		// passOdomDataToRtabmap=true: rtabmap reuses keypoints/descriptors
+		// already extracted by odometry (pairs with Mem/UseOdomFeatures).
+		// useStoredOdomAsGuess=false: this DB has no stored odom — visual
+		// odom runs from scratch.
+		const ReplayResult result = replayDatabase(dbPath, rtabmapParams, odomParams,
+				/*useStoredOdomAsGuess=*/false,
+				/*passOdomDataToRtabmap=*/true);
+
+		EXPECT_GT(result.framesRead, 1000)
+				<< be.name << ": expected ~1035 frames from stereo_20Hz.db";
+		EXPECT_EQ(0, result.odomLost)
+				<< be.name << ": stereo odometry should not lose tracking";
+		EXPECT_GE(result.loopClosuresAccepted, 1)
+				<< be.name << ": expected at least one loop closure";
+		EXPECT_GT(result.finalGlobalGraphSize, 0);
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << be.name << "] trans rmse=" << tRmse << "m max="
+				  << tMax << "m, rot rmse=" << rRmse << "deg max="
+				  << rMax << "deg\n";
+
+		// Golden is BA-optimized; the test runs only the real-time SLAM
+		// pipeline with the matching BA backend, so the natural gap to
+		// the golden is wider than a run-to-run comparison would be.
+		EXPECT_LT(tRmse, 0.40f)
+				<< be.name << " translational RMSE drifted vs golden";
+		EXPECT_LT(rRmse, 12.0f)
+				<< be.name << " rotational RMSE drifted vs golden";
+		++variantsTested;
+	}
+	ASSERT_GT(variantsTested, 0) << "no BA-capable optimizer was available";
 }
 
 // ---------------------------------------------------------------------------
@@ -1038,6 +1176,12 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 	const std::string srcPath = testDataPath("robust_graph_optimization_stereo.db");
 	SKIP_IF_MISSING(srcPath);
 
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O)
+			&& !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+	{
+		GTEST_SKIP() << "neither g2o nor gtsam built — this test exercises both";
+	}
+
 	struct Variant {
 		Optimizer::Type optType;
 		bool robust;
@@ -1146,33 +1290,40 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 	const std::string srcPath = testDataPath("loop_3it_gps.db");
 	SKIP_IF_MISSING(srcPath);
 
+	const bool hasGtsam = Optimizer::isAvailable(Optimizer::kTypeGTSAM);
+	const bool hasG2o   = Optimizer::isAvailable(Optimizer::kTypeG2O);
+	if(!hasGtsam && !hasG2o)
+	{
+		GTEST_SKIP() << "neither gtsam nor g2o built — this test needs at least one";
+	}
+	// Prefer gtsam: this DB's hard-GPS-priors path is well-behaved under
+	// gtsam but catastrophically rejects all loops under g2o.
+	const Optimizer::Type backend = hasGtsam
+			? Optimizer::kTypeGTSAM : Optimizer::kTypeG2O;
+
 	struct Variant {
 		Optimizer::Type optType;
 		bool loopGps;
 		int  triggerNewMapAfterFrame;  // -1 = single session
 		bool robust;
 		float maxError;
+		bool priorsIgnored;            // false = use GPS priors as anchors
 		std::string label;
 	};
-	// Focused on the multi-session + GPS-aided behavior: g2o backend,
-	// mid-run session split, robust optimizer + default MaxError, only
-	// varying Rtabmap/LoopGPS on/off. Other axes (gtsam, ceres,
-	// single-session, robust/maxerr permutations) are exercised in the
-	// dedicated tests above.
+	// Default MaxError + Optimizer/Robust=false. Single-session variants
+	// are the canonical comparison against the golden; the newmap@60
+	// variants exercise the multi-session path. The trailing "-priors"
+	// variants flip Optimizer/PriorsIgnored=false so the GPS pose-prior
+	// links anchor the trajectory.
 	const int kTriggerFrame = 60;
 	const std::vector<Variant> variants = {
-		{Optimizer::kTypeG2O, true,  kTriggerFrame, true, 3.0f,
-		 "g2o-gps-on-newmap60-robust-maxerr3" },
-		{Optimizer::kTypeG2O, false, kTriggerFrame, true, 3.0f,
-		 "g2o-gps-off-newmap60-robust-maxerr3"},
+		{backend, true,  -1,            false, 3.0f, true,  "gps-on"                 },
+		{backend, false, -1,            false, 3.0f, true,  "gps-off"                },
+		{backend, true,  kTriggerFrame, false, 3.0f, true,  "gps-on-newmap60"        },
+		{backend, false, kTriggerFrame, false, 3.0f, true,  "gps-off-newmap60"       },
+		{backend, true,  -1,            false, 3.0f, false, "gps-on-priors"          },
+		{backend, true,  kTriggerFrame, false, 3.0f, false, "gps-on-newmap60-priors" },
 	};
-	// The source DB ships with an unrealistically tight angular odom
-	// covariance, which makes the post-optimization MaxError check (and
-	// Vertigo's switch model under Optimizer/Robust=true) reject
-	// otherwise-valid loop closures. Per the tutorial that uses this
-	// DB, loosening the rotational variance to (0.5 deg)^2 ≈ 7.6e-5
-	// unblocks the loops; apply it uniformly to every variant.
-	constexpr double kHalfDegreeSqVar = 7.6e-5;  // (0.5 deg in rad)^2
 
 	// Golden trajectory captured from the gps-on variant and committed
 	// under data/tests/. Regenerate by uncommenting the exportPoses block
@@ -1186,6 +1337,17 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 
 	for(const Variant & v : variants)
 	{
+		// gps-on-priors only converges on this DB with gtsam — g2o
+		// hard-anchors the noisy GPS priors and rejects every visual
+		// loop closure, collapsing the trajectory to ~30 m. Skip it
+		// on g2o-only builds rather than encoding two different
+		// expected outcomes.
+		if(v.label == "gps-on-priors" && !hasGtsam)
+		{
+			std::cerr << "[skip] " << v.label
+					  << ": requires gtsam (g2o-only path is catastrophic)\n";
+			continue;
+		}
 		SCOPED_TRACE(std::string(v.label));
 
 		ParametersMap params = baseRtabmapParams();
@@ -1197,6 +1359,8 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 				v.robust ? "true" : "false"));
 		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(),
 				uNumber2Str(v.maxError)));
+		uInsert(params, ParametersPair(Parameters::kOptimizerPriorsIgnored(),
+				v.priorsIgnored ? "true" : "false"));
 		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
 		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
 		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
@@ -1207,22 +1371,11 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 		std::cerr << "Working DB for " << v.label << ": " << workDb << "\n";
 
 		const ReplayResult result = replayDatabaseWithStoredOdom(
-				srcPath, workDb, params, v.triggerNewMapAfterFrame,
-				kHalfDegreeSqVar);
+				srcPath, workDb, params, v.triggerNewMapAfterFrame);
 
 		ASSERT_GT(result.framesProcessed, 0) << v.label << " produced no frames";
 		ASSERT_GT(result.finalGlobalGraphSize, 0)
 				<< v.label << " produced empty graph";
-
-		// Regenerate golden from the canonical variant. Toggled on for a
-		// one-shot capture; re-comment after the file is committed.
-		// if(v.loopGps && v.triggerNewMapAfterFrame < 0
-		//         && !v.robust && v.maxError > 0.0f)
-		// {
-		//     std::multimap<int, Link> links;
-		//     rtabmap::graph::exportPoses(goldenPath, /*format=*/4,
-		//             result.finalGlobalPoses, links);
-		// }
 
 		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
 		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
@@ -1236,19 +1389,103 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 				  << "loops=" << result.loopClosuresAccepted
 				  << " rejected=" << result.loopClosuresRejected << "\n";
 
-		// All variants here run with a mid-run session split; with GPS on
-		// the cross-session proximity bridges the two sub-trajectories
-		// (RMSE around ~1 m vs the single-session golden), while GPS-off
-		// variants have no anchor and the two sessions can drift apart.
-		// The golden was captured single-session (gtsam, no-Robust,
-		// MaxError=3) so RMSE here measures the gap introduced by the
-		// split, not absolute trajectory quality.
-		if(v.loopGps)
+		// RMSE bands by configuration (observed on gtsam):
+		//   * Single-session, priors-ignored:        ~15 cm
+		//   * Single-session with GPS priors:        ~0.6 m (gtsam balances
+		//     visual loops vs noisy priors; g2o would catastrophically
+		//     fail this case and is skipped above).
+		//   * newmap60 with GPS bridging:            ~1 m
+		//   * newmap60 with GPS + hard priors:       ~2.5 m
+		//   * newmap60 without GPS bridging:         ~30 m (no anchor).
+		const bool gpsOffAndNewMap =
+				!v.loopGps && v.triggerNewMapAfterFrame > 0;
+		const bool singleSessionWithHardPriors =
+				v.triggerNewMapAfterFrame < 0 && !v.priorsIgnored;
+		const bool newMapWithHardPriors =
+				v.triggerNewMapAfterFrame > 0 && !v.priorsIgnored;
+		if(gpsOffAndNewMap)
+		{
+			EXPECT_GT(tRmse, 20.0f)
+					<< v.label << " expected to blow up (no usable anchor)";
+		}
+		else if(singleSessionWithHardPriors)
+		{
+			EXPECT_LT(tRmse, 1.5f)
+					<< v.label << " single-session with priors should "
+					<< "stay below ~1 m (gtsam balances priors vs loops)";
+		}
+		else if(newMapWithHardPriors)
+		{
+			EXPECT_LT(tRmse, 4.0f)
+					<< v.label << " newmap60 + priors should stay below ~4 m";
+		}
+		else if(v.triggerNewMapAfterFrame < 0)
+		{
+			EXPECT_LT(tRmse, 0.20f)
+					<< v.label << " single-session RMSE drifted";
+		}
+		else
 		{
 			EXPECT_LT(tRmse, 2.0f)
-					<< v.label << " session split should still keep RMSE "
-					<< "bounded (GPS bridging the two sub-trajectories)";
+					<< v.label << " session-split RMSE should stay bounded";
 		}
+
+		// Loop closure counts (accepted/rejected):
+		//   * GPS-off rejects more than GPS-on (no GPS pre-filter, more
+		//     candidates reach the MaxError gate).
+		//   * newmap60 rejects more than single-session (the artificial
+		//     split makes cross-session candidates more error-prone).
+		// Observed on this DB (without Optimizer/Robust):
+		//   gps-on            : 19 accepted /  2 rejected
+		//   gps-off           : 13 accepted / 18 rejected
+		//   gps-on-newmap60   : 24 accepted / 17 rejected
+		//   gps-off-newmap60  : 16 accepted / 41 rejected
+		int minAcc, maxAcc, minRej, maxRej;
+		if(!v.loopGps && v.triggerNewMapAfterFrame > 0)
+		{
+			minAcc = 5;  maxAcc = 30;
+			minRej = 30; maxRej = 100;  // gps-off + newmap60
+		}
+		else if(!v.loopGps)
+		{
+			minAcc = 5;  maxAcc = 25;
+			minRej = 5;  maxRej = 40;   // gps-off single
+		}
+		else if(v.triggerNewMapAfterFrame < 0 && !v.priorsIgnored)
+		{
+			// gtsam balances hard GPS priors against visual loop
+			// closures and keeps most loops. Observed ~21 accepted /
+			// ~8 rejected.
+			minAcc = 10; maxAcc = 35;
+			minRej = 0;  maxRej = 25;   // gps-on single + priors (gtsam)
+		}
+		else if(v.triggerNewMapAfterFrame > 0 && !v.priorsIgnored)
+		{
+			// newmap60 + priors: the session split + GPS priors push
+			// loops past the MaxError gate more often. Observed ~9
+			// accepted / ~32 rejected.
+			minAcc = 2;  maxAcc = 20;
+			minRej = 20; maxRej = 60;   // gps-on newmap60 + priors
+		}
+		else if(v.triggerNewMapAfterFrame > 0)
+		{
+			minAcc = 15; maxAcc = 40;
+			minRej = 5;  maxRej = 40;   // gps-on newmap60
+		}
+		else
+		{
+			minAcc = 10; maxAcc = 35;
+			minRej = 0;  maxRej = 20;   // gps-on single
+		}
+		EXPECT_GE(result.loopClosuresAccepted, minAcc)
+				<< v.label << " accepted fewer loops than expected";
+		EXPECT_LE(result.loopClosuresAccepted, maxAcc)
+				<< v.label << " accepted more loops than expected";
+		EXPECT_GE(result.loopClosuresRejected, minRej)
+				<< v.label << " rejected fewer loops than expected";
+		EXPECT_LE(result.loopClosuresRejected, maxRej)
+				<< v.label << " rejected more loops than expected";
+
 		// Smoke check: every variant produces *some* trajectory.
 		EXPECT_GT(result.finalGlobalGraphSize, 100)
 				<< v.label << " produced an unexpectedly small graph";

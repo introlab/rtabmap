@@ -2180,6 +2180,84 @@ INSTANTIATE_TEST_SUITE_P(
 		});
 
 // ---------------------------------------------------------------------------
+// Regression test: wordReferences with negative ids. Memory.cpp assigns
+// sequential negative ids (-1, -2, -3, ...) to features that aren't
+// quantized into the visual vocabulary, and OdometryF2M forwards them
+// straight into optimizeBA(). gtsam::Symbol packs the index into 56
+// unsigned bits and used to overflow on these ("Symbol index is too
+// large"); g2o remaps them via negVertexOffset; Ceres handles them too.
+// Build the standard BA scenario, then negate every point id so the
+// optimizer sees what F2M's wordReferences actually looks like in
+// production.
+// ---------------------------------------------------------------------------
+class NegativeWordIdBaTest : public ::testing::TestWithParam<Optimizer::Type>
+{
+protected:
+	void SetUp() override
+	{
+		const Optimizer::Type t = GetParam();
+		if(!Optimizer::isAvailable(t))
+		{
+			GTEST_SKIP() << optimizerTypeName(t) << " not built in";
+		}
+	}
+};
+
+TEST_P(NegativeWordIdBaTest, OptimizeBaHandlesNegativeIds)
+{
+	const Optimizer::Type backend = GetParam();
+	ParametersMap params;
+	params[Parameters::kOptimizerStrategy()]   = uNumber2Str(static_cast<int>(backend));
+	params[Parameters::kOptimizerIterations()] = "200";
+	std::unique_ptr<Optimizer> opt(Optimizer::create(params));
+	ASSERT_NE(opt.get(), nullptr);
+
+	BundleGraph g = buildBundleGraph(/*noisy=*/true, /*roundPixels=*/false);
+
+	// Remap every point id p -> -p in truePoints3D, initialPoints3D, and
+	// wordReferences. Pose ids stay positive — the bug only triggers on
+	// the landmark/feature side of the BA graph.
+	std::map<int, cv::Point3f>                     truePoints3D;
+	std::map<int, cv::Point3f>                     initialPoints3D;
+	std::map<int, std::map<int, FeatureBA>>        wordReferences;
+	for(const auto & kv : g.truePoints3D)    truePoints3D[-kv.first]    = kv.second;
+	for(const auto & kv : g.initialPoints3D) initialPoints3D[-kv.first] = kv.second;
+	for(const auto & kv : g.wordReferences)  wordReferences[-kv.first]  = kv.second;
+
+	std::map<int, cv::Point3f> outPoints = initialPoints3D;
+	std::map<int, Transform> outPoses = opt->optimizeBA(
+			/*rootId=*/1, g.initialPoses, g.links, g.models, outPoints,
+			wordReferences);
+
+	ASSERT_FALSE(outPoses.empty())
+			<< optimizerTypeName(backend) << " optimizeBA returned no poses "
+			<< "with negative word ids";
+	ASSERT_EQ(outPoses.size(), g.truePoses.size());
+
+	// Sanity: optimized points should still match the (negated) ids in
+	// outPoints — i.e. the optimizer round-tripped the ids without
+	// dropping or aliasing them.
+	for(const auto & kv : truePoints3D)
+	{
+		EXPECT_TRUE(outPoints.count(kv.first))
+				<< optimizerTypeName(backend)
+				<< " dropped point id " << kv.first;
+	}
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		BABackends,
+		NegativeWordIdBaTest,
+		::testing::Values(
+				Optimizer::kTypeG2O,
+				Optimizer::kTypeGTSAM,
+				Optimizer::kTypeCeres),
+		[](const ::testing::TestParamInfo<Optimizer::Type> & info)
+		{
+			return optimizerTypeName(info.param);
+		});
+
+// ---------------------------------------------------------------------------
 // PlanarBundleAdjustmentTest -- verifies that isSlam2d() in BA locks the
 // recovered trajectory to its initial Z plane. g2o has supported this since
 // forever via EdgeSBACamPrior; GTSAM and Ceres got matching planar

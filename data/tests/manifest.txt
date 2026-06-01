@@ -17,3 +17,4 @@ pr2_scan2d_rgbd_sample_15s.db	1vlFungKsdbnepgsuPHY-1h-mxdFxkZvI	1d8fd150a7f1d1e3
 2loops_workspace_3IT.db	https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/Texture/2loops_workspace_3IT_updated.db	68f113fed7228d9081314f08b54240966c295cda0fb42046567edcf714445755
 robust_graph_optimization_stereo.db	https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/RobustGraphOptimization/robust_graph_optimization_stereo.db	247694b5bdb82168ebe88bb6bb5bc31c7142234f8c64567afd93e464418cf02e
 loop_3it_gps.db	https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/RobustGraphOptimization/loop_3it_gps.db	7aefeb573107a27b0a7826cb87ea03db495367aa56868b4d2b2543e6cacad3c8
+stereo_20Hz.db	https://github.com/introlab/rtabmap/releases/download/0.23.1/stereo_20Hz.db	94e219e1c96e540cbb1490cc23c81c65b9e7b132e8d61eda05e7990bc13393b7
