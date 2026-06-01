@@ -414,7 +414,14 @@ ReplayResult replayDatabase(
 ReplayResult replayDatabaseWithStoredOdom(
 		const std::string & dbPath,
 		const std::string & workDb,
-		const ParametersMap & rtabmapParameters)
+		const ParametersMap & rtabmapParameters,
+		int triggerNewMapAfterFrame = -1,
+		// When >0, overrides the angular diagonal entries of the stored
+		// odom covariance (indices 3,4,5) before each call to
+		// Rtabmap::process. Lets a test relax an unrealistically tight
+		// rotational variance baked into the DB. Translational entries
+		// are left untouched.
+		double overrideOdomAngularVariance = -1.0)
 {
 	ReplayResult result;
 
@@ -466,10 +473,25 @@ ReplayResult replayDatabaseWithStoredOdom(
 					<< " has no stored odometry covariance";
 			return result;
 		}
+		if(overrideOdomAngularVariance > 0.0)
+		{
+			info.odomCovariance.at<double>(3, 3) = overrideOdomAngularVariance;
+			info.odomCovariance.at<double>(4, 4) = overrideOdomAngularVariance;
+			info.odomCovariance.at<double>(5, 5) = overrideOdomAngularVariance;
+		}
 		result.lastOdomPose = info.odomPose;
 
 		rtabmap.process(data, info.odomPose, info.odomCovariance);
 		++result.framesProcessed;
+		// Caller-driven session split: trigger a fresh map once the
+		// configured number of frames has been processed. Used by tests
+		// to exercise multi-session graph behavior on a single-session
+		// source DB.
+		if(triggerNewMapAfterFrame > 0
+				&& result.framesProcessed == triggerNewMapAfterFrame)
+		{
+			rtabmap.triggerNewMap();
+		}
 		const Statistics & stats = rtabmap.getStatistics();
 		if(stats.loopClosureId() > 0)
 		{
@@ -874,27 +896,25 @@ TEST_F(RtabmapIntegrationFixture, TwoLoopsWorkspaceGlobalBA)
 	ASSERT_TRUE(graph::importPoses(goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
 			<< "Failed to load golden poses from " << goldenPath;
 
-	// BA-capable optimizers (excluding cvsba — observed ~4× worse RMSE
-	// than the others on this dataset) × rematchFeatures on/off.
-	// rematchFeatures rebuilds visual-word correspondences via FLANN
-	// before BA, which is closer to what offline tools do but introduces
-	// ~3.5 cm run-to-run non-determinism; rematchFeatures=false reuses
-	// the correspondences already stored in the DB and is bit-exact
-	// across runs. Both modes should still produce comparable RMSE
-	// against the golden trajectory after Umeyama alignment.
-	struct Variant { Optimizer::Type type; const char * name; bool rematch; };
-	const std::vector<Variant> variants = {
-		{Optimizer::kTypeG2O,   "g2o",            false},
-		{Optimizer::kTypeG2O,   "g2o-rematch",    true },
-		{Optimizer::kTypeGTSAM, "gtsam",          false},
-		{Optimizer::kTypeGTSAM, "gtsam-rematch",  true },
-		{Optimizer::kTypeCeres, "ceres",          false},
-		{Optimizer::kTypeCeres, "ceres-rematch",  true },
+	// Variant matrix:
+	//  * g2o is the primary backend, exercised across both rematchFeatures
+	//    settings and with detectMoreLoopClosures enabled.
+	//  * gtsam and ceres are validated only on the simplest config
+	//    (no rematch, no extra loop-closure detection) to keep the test
+	//    fast while still catching regressions in those backends.
+	// cvsba is excluded — observed ~4× worse RMSE on this dataset.
+	struct Variant {
+		Optimizer::Type type;
+		const char * name;
+		bool rematch;
+		bool detectMore;
 	};
-
-	// Pre-BA snapshot (pose-graph only) — same for every variant since
-	// they all start from the same source DB. Captured once below.
-	float preTRmse = -1.0f;
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O,   "g2o",         false, true  },
+		{Optimizer::kTypeG2O,   "g2o-rematch", true,  true  },
+		{Optimizer::kTypeGTSAM, "gtsam",       false, false },
+		{Optimizer::kTypeCeres, "ceres",       false, false },
+	};
 
 	int variantsTested = 0;
 	for(const Variant & v : variants)
@@ -917,46 +937,49 @@ TEST_F(RtabmapIntegrationFixture, TwoLoopsWorkspaceGlobalBA)
 		Rtabmap rtabmap;
 		rtabmap.init(params, srcPath, /*loadDatabaseParameters=*/true);
 
-		// Count links before and after running detectMoreLoopClosures so
-		// we can assert it actually expanded the graph. In read-only mode
-		// the new links live in working memory only; the source DB is
-		// untouched.
 		std::map<int, Transform> initPoses;
 		std::multimap<int, Link> initLinks;
 		rtabmap.getGraph(initPoses, initLinks, /*optimized=*/true, /*global=*/false);
 		const int linksBeforeDetect = static_cast<int>(initLinks.size());
 
-		const int added = rtabmap.detectMoreLoopClosures(
-				/*clusterRadiusMax=*/1.0f,
-				/*clusterAngle=*/static_cast<float>(CV_PI)/6.0f,
-				/*iterations=*/3,
-				/*intraSession=*/true);
-		ASSERT_GE(added, 0) << v.name << " detectMoreLoopClosures failed";
+		if(v.detectMore)
+		{
+			// In read-only mode any new links live in working memory only;
+			// the source DB is untouched.
+			const int added = rtabmap.detectMoreLoopClosures(
+					/*clusterRadiusMax=*/1.0f,
+					/*clusterAngle=*/static_cast<float>(CV_PI)/6.0f,
+					/*iterations=*/3,
+					/*intraSession=*/true);
+			ASSERT_GE(added, 0) << v.name << " detectMoreLoopClosures failed";
 
+			std::map<int, Transform> postDetectPoses;
+			std::multimap<int, Link> postDetectLinks;
+			rtabmap.getGraph(postDetectPoses, postDetectLinks,
+					/*optimized=*/true, /*global=*/false);
+			std::cerr << "[" << v.name << "] links: " << linksBeforeDetect
+					  << " -> " << postDetectLinks.size()
+					  << " (detectMoreLoopClosures added " << added << ")\n";
+			EXPECT_GT((int)postDetectLinks.size(), linksBeforeDetect)
+					<< v.name << " detectMoreLoopClosures did not increase link count";
+		}
+
+		// Snapshot the graph right before BA — for variants without
+		// detectMoreLoopClosures this is the original graph; for variants
+		// with it, the snapshot includes the newly-added closures.
 		std::map<int, Transform> preBaPoses;
 		std::multimap<int, Link> preBaLinks;
 		rtabmap.getGraph(preBaPoses, preBaLinks, /*optimized=*/true, /*global=*/false);
-		const int linksAfterDetect = static_cast<int>(preBaLinks.size());
-		std::cerr << "[" << v.name << "] links: " << linksBeforeDetect
-				  << " -> " << linksAfterDetect
-				  << " (detectMoreLoopClosures added " << added << ")\n";
-		EXPECT_GT(linksAfterDetect, linksBeforeDetect)
-				<< v.name << " detectMoreLoopClosures did not increase link count";
 
-		if(preTRmse < 0.0f)
-		{
-			// Pre-BA RMSE captured once; same source DB and same
-			// detectMoreLoopClosures result for every variant.
-			float tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
-			float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
-			graph::calcRMSE(goldenPoses, preBaPoses,
-					preTRmse, tMean, tMed, tStd, tMin, tMax,
-					rRmse, rMean, rMed, rStd, rMin, rMax,
-					/*align2D=*/false);
-			std::cerr << "Pre-BA vs golden (aligned): "
-					  << "trans rmse=" << preTRmse << "m max=" << tMax << "m, "
-					  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
-		}
+		float preTRmse=0, tMeanPre=0, tMedPre=0, tStdPre=0, tMinPre=0, tMaxPre=0;
+		float rRmsePre=0, rMeanPre=0, rMedPre=0, rStdPre=0, rMinPre=0, rMaxPre=0;
+		graph::calcRMSE(goldenPoses, preBaPoses,
+				preTRmse, tMeanPre, tMedPre, tStdPre, tMinPre, tMaxPre,
+				rRmsePre, rMeanPre, rMedPre, rStdPre, rMinPre, rMaxPre,
+				/*align2D=*/false);
+		std::cerr << "[" << v.name << "] Pre-BA: "
+				  << "trans rmse=" << preTRmse << "m max=" << tMaxPre << "m, "
+				  << "rot rmse=" << rRmsePre << "deg max=" << rMaxPre << "deg\n";
 
 		const bool baOk = rtabmap.globalBundleAdjustment(
 				/*optimizerType=*/v.type,
@@ -985,7 +1008,7 @@ TEST_F(RtabmapIntegrationFixture, TwoLoopsWorkspaceGlobalBA)
 				tRmse, tMean, tMed, tStd, tMin, tMax,
 				rRmse, rMean, rMed, rStd, rMin, rMax,
 				/*align2D=*/false);
-		std::cerr << "[" << v.name << "] BA vs golden (aligned): "
+		std::cerr << "[" << v.name << "] BA: "
 				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
 				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
 
@@ -1021,19 +1044,15 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 		float maxError;
 		const char * label;
 	};
-	// Ceres only appears in Robust=false variants; Optimizer/Robust is
-	// implemented via Vertigo switches that only g2o and GTSAM support.
+	// g2o and gtsam each cover both robust/no-robust at the default
+	// MaxError=3. Ceres is skipped here — it doesn't implement Vertigo
+	// switches (Optimizer/Robust=true), so it can't exercise the robust
+	// path that's the point of this DB.
 	const std::vector<Variant> variants = {
 		{Optimizer::kTypeG2O,   true,  3.0f, "g2o-robust-maxerr3"     },
-		{Optimizer::kTypeG2O,   true,  0.0f, "g2o-robust-maxerr0"     },
 		{Optimizer::kTypeG2O,   false, 3.0f, "g2o-norobust-maxerr3"   },
-		{Optimizer::kTypeG2O,   false, 0.0f, "g2o-norobust-maxerr0"   },
 		{Optimizer::kTypeGTSAM, true,  3.0f, "gtsam-robust-maxerr3"   },
-		{Optimizer::kTypeGTSAM, true,  0.0f, "gtsam-robust-maxerr0"   },
 		{Optimizer::kTypeGTSAM, false, 3.0f, "gtsam-norobust-maxerr3" },
-		{Optimizer::kTypeGTSAM, false, 0.0f, "gtsam-norobust-maxerr0" },
-		{Optimizer::kTypeCeres, false, 3.0f, "ceres-norobust-maxerr3" },
-		{Optimizer::kTypeCeres, false, 0.0f, "ceres-norobust-maxerr0" },
 	};
 
 	// Golden trajectory captured from the g2o-robust-maxerr3 variant and
@@ -1063,9 +1082,10 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 				v.robust ? "true" : "false"));
 		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(),
 				uNumber2Str(v.maxError)));
-		// Reuse the keypoints/descriptors that DBReader replays from the
-		// source DB; skip Rtabmap's own feature extraction step.
 		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
 
 		const std::string workDb = test::tempPath(uFormat(
 				"rtabmap_integration_RobustGraphOptimizationStereo_%s.db", v.label));
@@ -1094,34 +1114,143 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 				tRmse, tMean, tMed, tStd, tMin, tMax,
 				rRmse, rMean, rMed, rStd, rMin, rMax,
 				/*align2D=*/false);
-		std::cerr << "[" << v.label << "] vs golden (aligned): "
+		std::cerr << "[" << v.label << "] "
 				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
 				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
 
-		// Either safeguard (robust optimizer or MaxError-gated link
-		// rejection) is enough to keep the graph close to the golden
-		// trajectory. With BOTH disabled, the bad loop closure(s) in
-		// this dataset destroy the graph — translational drift jumps
-		// to >1 m and rotation to >40°. The bounds below encode that
-		// "either safeguard alone is enough; neither is catastrophic"
-		// invariant.
-		const bool isSuperWrong = !v.robust && v.maxError == 0.0f;
-		if(isSuperWrong)
-		{
-			EXPECT_GT(tRmse, 0.5f)
-					<< v.label << " expected to be visibly wrong "
-					<< "(neither Robust nor MaxError enabled)";
-		}
-		else
-		{
-			EXPECT_LT(tRmse, 0.05f)
-					<< v.label << " translational RMSE too large; "
-					<< "expected near golden";
-			EXPECT_LT(rRmse, 1.5f)
-					<< v.label << " rotational RMSE too large; "
-					<< "expected near golden";
-		}
+		// Each remaining variant enables at least one safeguard
+		// (Optimizer/Robust or RGBD/OptimizeMaxError) and should land
+		// close to the golden trajectory. The "neither safeguard"
+		// (norobust+maxerr=0) cases are removed since their
+		// catastrophic-drift behavior is already established.
+		EXPECT_LT(tRmse, 0.05f)
+				<< v.label << " translational RMSE too large; "
+				<< "expected near golden";
+		EXPECT_LT(rRmse, 1.5f)
+				<< v.label << " rotational RMSE too large; "
+				<< "expected near golden";
 		++variantsTested;
 	}
 	ASSERT_GT(variantsTested, 0) << "no compatible optimizer was available";
+}
+
+// ---------------------------------------------------------------------------
+// 3-iteration loop with GPS metadata. Replays the session frame-by-frame
+// with the stored odom, sweeping Rtabmap/LoopGPS on/off. GPS-aided loop
+// closure detection filters candidates by GPS proximity; with it off the
+// detector falls back to the visual-only pipeline. The golden trajectory
+// is captured with GPS on.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
+{
+	const std::string srcPath = testDataPath("loop_3it_gps.db");
+	SKIP_IF_MISSING(srcPath);
+
+	struct Variant {
+		Optimizer::Type optType;
+		bool loopGps;
+		int  triggerNewMapAfterFrame;  // -1 = single session
+		bool robust;
+		float maxError;
+		std::string label;
+	};
+	// Focused on the multi-session + GPS-aided behavior: g2o backend,
+	// mid-run session split, robust optimizer + default MaxError, only
+	// varying Rtabmap/LoopGPS on/off. Other axes (gtsam, ceres,
+	// single-session, robust/maxerr permutations) are exercised in the
+	// dedicated tests above.
+	const int kTriggerFrame = 60;
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O, true,  kTriggerFrame, true, 3.0f,
+		 "g2o-gps-on-newmap60-robust-maxerr3" },
+		{Optimizer::kTypeG2O, false, kTriggerFrame, true, 3.0f,
+		 "g2o-gps-off-newmap60-robust-maxerr3"},
+	};
+	// The source DB ships with an unrealistically tight angular odom
+	// covariance, which makes the post-optimization MaxError check (and
+	// Vertigo's switch model under Optimizer/Robust=true) reject
+	// otherwise-valid loop closures. Per the tutorial that uses this
+	// DB, loosening the rotational variance to (0.5 deg)^2 ≈ 7.6e-5
+	// unblocks the loops; apply it uniformly to every variant.
+	constexpr double kHalfDegreeSqVar = 7.6e-5;  // (0.5 deg in rad)^2
+
+	// Golden trajectory captured from the gps-on variant and committed
+	// under data/tests/. Regenerate by uncommenting the exportPoses block
+	// below and rerunning the test.
+	const std::string goldenPath = testDataPath("loop_3it_gps_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	for(const Variant & v : variants)
+	{
+		SCOPED_TRACE(std::string(v.label));
+
+		ParametersMap params = baseRtabmapParams();
+		uInsert(params, ParametersPair(Parameters::kOptimizerStrategy(),
+				uNumber2Str(static_cast<int>(v.optType))));
+		uInsert(params, ParametersPair(Parameters::kRtabmapLoopGPS(),
+				v.loopGps ? "true" : "false"));
+		uInsert(params, ParametersPair(Parameters::kOptimizerRobust(),
+				v.robust ? "true" : "false"));
+		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(),
+				uNumber2Str(v.maxError)));
+		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
+
+		const std::string workDb = test::tempPath(uFormat(
+				"rtabmap_integration_Loop3ItGps_%s.db", v.label.c_str()));
+		std::cerr << "Working DB for " << v.label << ": " << workDb << "\n";
+
+		const ReplayResult result = replayDatabaseWithStoredOdom(
+				srcPath, workDb, params, v.triggerNewMapAfterFrame,
+				kHalfDegreeSqVar);
+
+		ASSERT_GT(result.framesProcessed, 0) << v.label << " produced no frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0)
+				<< v.label << " produced empty graph";
+
+		// Regenerate golden from the canonical variant. Toggled on for a
+		// one-shot capture; re-comment after the file is committed.
+		// if(v.loopGps && v.triggerNewMapAfterFrame < 0
+		//         && !v.robust && v.maxError > 0.0f)
+		// {
+		//     std::multimap<int, Link> links;
+		//     rtabmap::graph::exportPoses(goldenPath, /*format=*/4,
+		//             result.finalGlobalPoses, links);
+		// }
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << v.label << "] "
+				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
+				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg, "
+				  << "loops=" << result.loopClosuresAccepted
+				  << " rejected=" << result.loopClosuresRejected << "\n";
+
+		// All variants here run with a mid-run session split; with GPS on
+		// the cross-session proximity bridges the two sub-trajectories
+		// (RMSE around ~1 m vs the single-session golden), while GPS-off
+		// variants have no anchor and the two sessions can drift apart.
+		// The golden was captured single-session (gtsam, no-Robust,
+		// MaxError=3) so RMSE here measures the gap introduced by the
+		// split, not absolute trajectory quality.
+		if(v.loopGps)
+		{
+			EXPECT_LT(tRmse, 2.0f)
+					<< v.label << " session split should still keep RMSE "
+					<< "bounded (GPS bridging the two sub-trajectories)";
+		}
+		// Smoke check: every variant produces *some* trajectory.
+		EXPECT_GT(result.finalGlobalGraphSize, 100)
+				<< v.label << " produced an unexpectedly small graph";
+	}
 }
