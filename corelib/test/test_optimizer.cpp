@@ -20,6 +20,7 @@
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UTimer.h>
 #include <memory>
 #include <random>
 
@@ -1900,8 +1901,14 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 	}
 
 	std::map<int, cv::Point3f> outPoints = g.initialPoints3D;
+	UTimer baTimer;
 	std::map<int, Transform> outPoses = opt->optimizeBA(
 			/*rootId=*/1, g.initialPoses, g.links, g.models, outPoints, g.wordReferences);
+	const double baSeconds = baTimer.getElapsedTime();
+	std::cerr << "[BA-timing] backend=" << optimizerTypeName(backend)
+			  << " variant=" << baVariantName(variant)
+			  << " roundPixels=" << (roundPixels?1:0)
+			  << " seconds=" << baSeconds << "\n";
 
 	ASSERT_FALSE(outPoses.empty()) << "optimizeBA returned no poses";
 

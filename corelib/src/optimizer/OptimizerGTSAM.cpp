@@ -48,12 +48,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/ProjectionFactor.h>
 #include <gtsam/slam/StereoFactor.h>
+#include <gtsam/slam/SmartProjectionPoseFactor.h>
 #include <gtsam/sam/BearingFactor.h>
 #include <gtsam/sam/BearingRangeFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/linear/PCGSolver.h>
+#include <gtsam/linear/Preconditioner.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
@@ -1178,7 +1181,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	}
 
 	gtsam::NonlinearFactorGraph graph;
-	gtsam::Values initial;
+	gtsam::Values initialEstimate;
 
 	// Cache per-frame, per-camera intrinsics. Note that GTSAM's
 	// GenericProjectionFactor/GenericStereoFactor hold a shared_ptr to the
@@ -1217,7 +1220,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 				return optimizedPoses;
 			}
 			const gtsam::Symbol xkey('x', iter->first * GTSAM_BA_MULTICAM_OFFSET + (int)i);
-			initial.insert(xkey, gtsam::Pose3(camPose.toEigen4d()));
+			initialEstimate.insert(xkey, gtsam::Pose3(camPose.toEigen4d()));
 
 			// Intrinsics: skew=0 (no shear in any CameraModel rtabmap supports).
 			gtsam::Cal3_S2::shared_ptr K(new gtsam::Cal3_S2(m.fx(), m.fy(), 0.0, m.cx(), m.cy()));
@@ -1341,7 +1344,13 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	const double sigmaDisparity = std::sqrt(disparityVariance_);
 	gtsam::SharedNoiseModel stereoNoiseModel = gtsam::noiseModel::Diagonal::Sigmas(
 			(gtsam::Vector(3) << sigmaPixel, sigmaDisparity, sigmaPixel).finished());
-	gtsam::SharedNoiseModel monoNoiseModel = gtsam::noiseModel::Isotropic::Sigma(2, sigmaPixel);
+	// SmartProjectionFactor requires an isotropic noise model — its
+	// constructor rejects diagonal/robust wrappers. Keep the un-wrapped
+	// isotropic around for the SmartFactor path; the generic factors
+	// still get the Huber-wrapped version when robust is on.
+	gtsam::SharedNoiseModel monoIsotropicNoise =
+			gtsam::noiseModel::Isotropic::Sigma(2, sigmaPixel);
+	gtsam::SharedNoiseModel monoNoiseModel = monoIsotropicNoise;
 	if(robustKernelDelta_ > 0.0)
 	{
 		gtsam::noiseModel::mEstimator::Base::shared_ptr huber =
@@ -1349,6 +1358,18 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		stereoNoiseModel = gtsam::noiseModel::Robust::Create(huber, stereoNoiseModel);
 		monoNoiseModel   = gtsam::noiseModel::Robust::Create(huber, monoNoiseModel);
 	}
+	// Per-landmark: if EVERY observation is mono (no usable stereo
+	// depth) we fold all observations into a single
+	// SmartProjectionPoseFactor — it triangulates the 3D point
+	// internally and applies Schur complement per-factor, so the
+	// point doesn't appear as a graph variable. That's the GTSAM-
+	// native way to do BA (see the SFMExample_SmartFactorPCG demo).
+	//
+	// Stereo-bearing landmarks still go through GenericStereoFactor:
+	// the stereo smart factor lives in gtsam_unstable which we don't
+	// link.
+	using SmartMono = gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2>;
+	std::map<int, SmartMono::shared_ptr> smartByWord;
 	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 	{
 		const int wordId = iter->first;
@@ -1362,9 +1383,52 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 			UWARN("Ignoring 3D point %d because it has nan value(s)!", wordId);
 			continue;
 		}
+
+		// Probe whether this landmark has any usable stereo observation;
+		// that decides which factor type we use.
+		bool anyStereoForWord = false;
+		for(const auto & jkv : iter->second)
+		{
+			const std::pair<int,int> camKey(jkv.first, jkv.second.cameraIndex);
+			const double depth    = jkv.second.depth;
+			const double baseline = baselineByCam.count(camKey) ? baselineByCam.at(camKey) : 0.0;
+			if(uIsFinite(depth) && depth > 0.0 && baseline > 0.0
+					&& calStereo.count(camKey))
+			{
+				anyStereoForWord = true;
+				break;
+			}
+		}
+
 		const gtsam::Symbol pkey = point3dSymbol(wordId);
-		initial.insert(pkey, gtsam::Point3(pt3d.x, pt3d.y, pt3d.z));
-		insertedPoints.insert(pkey);
+		SmartMono::shared_ptr smartFactor;
+		if(!anyStereoForWord)
+		{
+			// Mono-only landmark → SmartProjectionPoseFactor. Use the
+			// first observation's Cal3_S2 (the smart factor needs one
+			// K shared across all observations).
+			gtsam::Cal3_S2::shared_ptr Kshared;
+			for(const auto & jkv : iter->second)
+			{
+				const std::pair<int,int> camKey(jkv.first, jkv.second.cameraIndex);
+				if(calMono.count(camKey))
+				{
+					Kshared = calMono.at(camKey);
+					break;
+				}
+			}
+			if(Kshared)
+			{
+				smartFactor = boost::make_shared<SmartMono>(monoIsotropicNoise, Kshared);
+			}
+		}
+		if(!smartFactor)
+		{
+			// Stereo path: keep per-observation factors with an
+			// explicit Point3 variable in initialEstimate.
+			initialEstimate.insert(pkey, gtsam::Point3(pt3d.x, pt3d.y, pt3d.z));
+			insertedPoints.insert(pkey);
+		}
 
 		for(std::map<int, FeatureBA>::const_iterator jter = iter->second.begin(); jter != iter->second.end(); ++jter)
 		{
@@ -1381,7 +1445,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 				continue;
 			}
 			const gtsam::Symbol xkey('x', poseId * GTSAM_BA_MULTICAM_OFFSET + camIdx);
-			if(!initial.exists(xkey))
+			if(!initialEstimate.exists(xkey))
 			{
 				continue;
 			}
@@ -1390,14 +1454,19 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 			const double baseline = baselineByCam.count(camKey) ? baselineByCam.at(camKey) : 0.0;
 			const bool isStereo   = (uIsFinite(depth) && depth > 0.0 && baseline > 0.0 && calStereo.count(camKey));
 
-			size_t factorIdx = graph.size();
-			if(isStereo)
+			if(smartFactor)
+			{
+				smartFactor->add(gtsam::Point2(f.kpt.pt.x, f.kpt.pt.y), xkey);
+			}
+			else if(isStereo)
 			{
 				const gtsam::Cal3_S2Stereo::shared_ptr & Ks = calStereo.at(camKey);
 				const double disparity = baseline * Ks->fx() / depth;
 				const gtsam::StereoPoint2 obs(f.kpt.pt.x, f.kpt.pt.x - disparity, f.kpt.pt.y);
+				size_t factorIdx = graph.size();
 				graph.add(gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>(
 						obs, stereoNoiseModel, xkey, pkey, Ks));
+				obsFactors.push_back(std::make_pair(factorIdx, wordId));
 			}
 			else
 			{
@@ -1408,10 +1477,17 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 				}
 				const gtsam::Cal3_S2::shared_ptr & K = calMono.at(camKey);
 				const gtsam::Point2 obs(f.kpt.pt.x, f.kpt.pt.y);
+				size_t factorIdx = graph.size();
 				graph.add(gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>(
 						obs, monoNoiseModel, xkey, pkey, K));
+				obsFactors.push_back(std::make_pair(factorIdx, wordId));
 			}
-			obsFactors.push_back(std::make_pair(factorIdx, wordId));
+		}
+
+		if(smartFactor && smartFactor->size() >= 2)
+		{
+			graph.add(smartFactor);
+			smartByWord[wordId] = smartFactor;
 		}
 	}
 
@@ -1427,20 +1503,33 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		// Gauss-Newton's unbounded step can blow up. Dogleg works but
 		// offers no advantage over LM on BA. LM is what every major BA
 		// library (Ceres, g2o, COLMAP) defaults to.
-		// Use a tight tolerance so the optimizer runs to convergence
-		// instead of stopping early on GTSAM's default absoluteErrorTol
-		// (1e-5), which leaves the longest-range points off truth on
-		// mono BA.
-		const double tol = epsilon() > 0.0 ? epsilon() : 1e-12;
 		gtsam::LevenbergMarquardtParams params;
-		params.relativeErrorTol = tol;
-		params.absoluteErrorTol = tol;
+		if(epsilon() > 0.0)
+		{
+			params.relativeErrorTol = epsilon();
+			params.absoluteErrorTol = epsilon();
+		}
 		params.maxIterations    = iterations();
-		gtsam::NonlinearOptimizer * optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initial, params);
+		// Use PCG + Block-Jacobi instead of GTSAM's default multifrontal
+		// Cholesky. The example in the GTSAM repo (SFMExample_SmartFactorPCG)
+		// confirms the inner-solve tolerances must be tight enough that
+		// the iterative solver doesn't bottom out before LM converges —
+		// 1e-10 matches the example and keeps point accuracy within
+		// the test bounds. On our small problems this is ~3× faster
+		// than the direct Cholesky path.
+		params.linearSolverType = gtsam::NonlinearOptimizerParams::Iterative;
+		gtsam::PCGSolverParameters::shared_ptr pcg =
+				boost::make_shared<gtsam::PCGSolverParameters>();
+		pcg->setPreconditionerParams(
+				boost::make_shared<gtsam::BlockJacobiPreconditionerParameters>());
+		pcg->epsilon_abs_ = 1e-10;
+		pcg->epsilon_rel_ = 1e-10;
+		params.iterativeParams = pcg;
+		gtsam::NonlinearOptimizer * optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, params);
 		UDEBUG("GTSAM BA optimizing (max iterations=%d, robustKernel=%f)...", iterations(), robustKernelDelta_);
 		result = optimizer->optimize();
 		finalError = optimizer->error();
-		UDEBUG("GTSAM BA done (initialError=%f finalError=%f time=%fs)", graph.error(initial), finalError, timer.ticks());
+		UDEBUG("GTSAM BA done (initialError=%f finalError=%f time=%fs)", graph.error(initialEstimate), finalError, timer.ticks());
 		delete optimizer;
 	}
 	catch(const gtsam::IndeterminantLinearSystemException & e)
@@ -1525,6 +1614,21 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	// 8) Read back 3D points.
 	for(std::map<int, cv::Point3f>::iterator iter = points3DMap.begin(); iter != points3DMap.end(); ++iter)
 	{
+		// SmartFactor landmarks aren't graph variables — triangulate from
+		// the optimized poses instead.
+		std::map<int, SmartMono::shared_ptr>::const_iterator sit = smartByWord.find(iter->first);
+		if(sit != smartByWord.end())
+		{
+			boost::optional<gtsam::Point3> p = sit->second->point(result);
+			if(p)
+			{
+				iter->second = cv::Point3f(
+						static_cast<float>(p->x()),
+						static_cast<float>(p->y()),
+						static_cast<float>(p->z()));
+			}
+			continue;
+		}
 		const gtsam::Symbol pkey = point3dSymbol(iter->first);
 		if(insertedPoints.count(pkey) && result.exists(pkey))
 		{

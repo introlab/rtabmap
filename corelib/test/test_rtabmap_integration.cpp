@@ -132,7 +132,12 @@ ReplayResult replayDatabase(
 		const ParametersMap & odometryParameters,
 		bool useStoredOdomAsGuess = false,
 		bool passOdomDataToRtabmap = false,
-		const std::map<double, Transform> * goldenStampedGroundTruth = nullptr)
+		const std::map<double, Transform> * goldenStampedGroundTruth = nullptr,
+		// When >1, drop (stride-1) frames out of every `stride` reads
+		// before any odometry/rtabmap work — halves work at stride=2,
+		// thirds at stride=3, etc. The throttle inside rtabmap still
+		// applies on top.
+		int frameStride = 1)
 {
 	ReplayResult result;
 
@@ -202,9 +207,11 @@ ReplayResult replayDatabase(
 	// Some old-format DBs (Stereo20Hz, Version 0.8.0) have no stored
 	// stamps, so DBReader fills them with wall-clock at read time.
 	// That makes the Rtabmap/DetectionRate throttle depend on
-	// processing speed and skews per-optimizer comparisons. Use a
-	// synthetic monotonic 20 Hz timeline whenever the first frame
-	// looks like a wall-clock stamp (years 2000+).
+	// processing speed and skews per-optimizer comparisons. Detect
+	// that case by checking whether the first frame's stamp is
+	// suspiciously close to "right now" (within the last hour); if
+	// so, rewrite every frame's stamp to a synthetic monotonic 20 Hz
+	// timeline.
 	constexpr double kSyntheticFrameDt = 1.0 / 20.0;  // 20 Hz
 	int syntheticFrameIdx = 0;
 	bool overrideStamps = false;
@@ -212,7 +219,7 @@ ReplayResult replayDatabase(
 	// Prime the loop with the first sample.
 	SensorCaptureInfo info;
 	SensorData data = dbReader.takeData(&info);
-	overrideStamps = data.stamp() > 1.0e9;  // > year 2001 in unix-time
+	overrideStamps = data.stamp() > UTimer::now() - 3600.0;
 	if(overrideStamps)
 	{
 		data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
@@ -223,6 +230,22 @@ ReplayResult replayDatabase(
 	while(data.isValid())
 	{
 		++result.framesRead;
+
+		// Drop (stride-1) of every `stride` frames before any
+		// odom/rtabmap processing. Note: lastUpdateStamp /
+		// previousStoredOdomPose advance only on processed frames,
+		// so the throttle window still measures against the last
+		// frame we actually fed in.
+		if(frameStride > 1 && (result.framesRead - 1) % frameStride != 0)
+		{
+			data = dbReader.takeData(&info);
+			if(overrideStamps && data.isValid())
+			{
+				data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
+			}
+			applyGoldenGroundTruth(data);
+			continue;
+		}
 
 		// Build the motion guess from the stored odom delta if requested.
 		// Null Transform = no guess.
