@@ -69,6 +69,69 @@ std::string writeStubScript(int tag)
 	return path;
 }
 
+// Variant stubs to exercise the edge cases that previously triggered
+// asserts in PyDetector / generateDescriptorsImpl. Each returns shapes
+// that violate the (Nx3, NxDIM) contract that the happy path expects.
+
+// Returns 3 keypoints but a (0,0) descriptor array -- the original
+// SuperPoint-style failure: nDesc=0, dim=0, but nKpts>0.
+std::string writeStubScriptEmptyDescriptors(int tag)
+{
+	const std::string path = test::tempPath(uFormat("rtabmap_test_pydetector_emptydesc_%d_%d.py", test::getPid(), tag));
+	std::ofstream out(path);
+	out <<
+		"import numpy as np\n"
+		"def init(cuda):\n"
+		"    pass\n"
+		"def detect(image):\n"
+		"    h, w = image.shape\n"
+		"    pts = np.array([\n"
+		"        [w * 0.25, h * 0.25, 0.9],\n"
+		"        [w * 0.50, h * 0.50, 0.8],\n"
+		"        [w * 0.75, h * 0.75, 0.7],\n"
+		"    ], dtype=np.float32)\n"
+		"    desc = np.zeros((0, 0), dtype=np.float32)\n"
+		"    return pts, desc\n";
+	return path;
+}
+
+// 3 keypoints but only 2 descriptors -- mismatched row count.
+std::string writeStubScriptMismatchedCounts(int tag)
+{
+	const std::string path = test::tempPath(uFormat("rtabmap_test_pydetector_mismatch_%d_%d.py", test::getPid(), tag));
+	std::ofstream out(path);
+	out <<
+		"import numpy as np\n"
+		"def init(cuda):\n"
+		"    pass\n"
+		"def detect(image):\n"
+		"    h, w = image.shape\n"
+		"    pts = np.array([\n"
+		"        [w * 0.25, h * 0.25, 0.9],\n"
+		"        [w * 0.50, h * 0.50, 0.8],\n"
+		"        [w * 0.75, h * 0.75, 0.7],\n"
+		"    ], dtype=np.float32)\n"
+		"    desc = np.zeros((2, 8), dtype=np.float32)\n"
+		"    return pts, desc\n";
+	return path;
+}
+
+// Both arrays empty -- the well-behaved "I found nothing" return.
+std::string writeStubScriptBothEmpty(int tag)
+{
+	const std::string path = test::tempPath(uFormat("rtabmap_test_pydetector_bothempty_%d_%d.py", test::getPid(), tag));
+	std::ofstream out(path);
+	out <<
+		"import numpy as np\n"
+		"def init(cuda):\n"
+		"    pass\n"
+		"def detect(image):\n"
+		"    pts  = np.zeros((0, 3), dtype=np.float32)\n"
+		"    desc = np.zeros((0, 8), dtype=np.float32)\n"
+		"    return pts, desc\n";
+	return path;
+}
+
 ParametersMap baseParams(const std::string & scriptPath)
 {
 	ParametersMap p;
@@ -173,6 +236,91 @@ TEST(PyDetector, MaxFeaturesCap)
 	cv::Mat image = makeImage(64, 64);
 	std::vector<cv::KeyPoint> kpts = detector->generateKeypoints(image);
 	EXPECT_EQ(2u, kpts.size());
+
+	UFile::erase(scriptPath);
+}
+
+// Regression: a Python script returned non-empty (Nx3) keypoints but an
+// empty (0x0) descriptor array (observed with SuperPoint when its descriptor
+// head short-circuits). The old code wrote `UASSERT(nDesc = nKpts)` -- a
+// typo that assigned instead of compared -- and then silently produced
+// keypoints with no descriptors, tripping generateDescriptorsImpl's
+// `keypoints.size() == descriptors_.rows` assert downstream. Contract now:
+// detector logs and returns empty keypoints + empty descriptors.
+TEST(PyDetector, EmptyDescriptorsWithKeypoints)
+{
+	const std::string scriptPath = writeStubScriptEmptyDescriptors(1);
+	std::unique_ptr<Feature2D> detector(Feature2D::create(
+			Feature2D::kFeaturePyDetector, baseParams(scriptPath)));
+	ASSERT_NE(detector.get(), nullptr);
+
+	cv::Mat image = makeImage(64, 64);
+	std::vector<cv::KeyPoint> kpts = detector->generateKeypoints(image);
+	EXPECT_TRUE(kpts.empty());
+
+	cv::Mat descriptors = detector->generateDescriptors(image, kpts);
+	EXPECT_EQ(0, descriptors.rows);
+
+	UFile::erase(scriptPath);
+}
+
+// If the script returns mismatched row counts (e.g. 3 keypoints, 2
+// descriptors), the previous code would silently walk past the descriptor
+// buffer (UB read) using nDesc clobbered to nKpts. Now we detect the
+// mismatch and return empty.
+TEST(PyDetector, MismatchedKeypointAndDescriptorCounts)
+{
+	const std::string scriptPath = writeStubScriptMismatchedCounts(1);
+	std::unique_ptr<Feature2D> detector(Feature2D::create(
+			Feature2D::kFeaturePyDetector, baseParams(scriptPath)));
+	ASSERT_NE(detector.get(), nullptr);
+
+	cv::Mat image = makeImage(64, 64);
+	std::vector<cv::KeyPoint> kpts = detector->generateKeypoints(image);
+	EXPECT_TRUE(kpts.empty());
+
+	cv::Mat descriptors = detector->generateDescriptors(image, kpts);
+	EXPECT_EQ(0, descriptors.rows);
+}
+
+// A script that returns (0x3, 0x8) -- the polite "I found nothing" case.
+// Must not assert and must produce an empty result.
+TEST(PyDetector, BothArraysEmpty)
+{
+	const std::string scriptPath = writeStubScriptBothEmpty(1);
+	std::unique_ptr<Feature2D> detector(Feature2D::create(
+			Feature2D::kFeaturePyDetector, baseParams(scriptPath)));
+	ASSERT_NE(detector.get(), nullptr);
+
+	cv::Mat image = makeImage(64, 64);
+	std::vector<cv::KeyPoint> kpts = detector->generateKeypoints(image);
+	EXPECT_TRUE(kpts.empty());
+
+	cv::Mat descriptors = detector->generateDescriptors(image, kpts);
+	EXPECT_EQ(0, descriptors.rows);
+
+	UFile::erase(scriptPath);
+}
+
+// Full-zero mask drops every keypoint via keep_kpt. The keypoint loop pushes
+// nothing, but the descriptor loop still iterates over the python-returned
+// rows -- previously this could leave keypoints.size() != descriptors_.rows
+// if the keep_kpt logic and descriptor-read loop disagreed on what to skip.
+// Verify both stay empty.
+TEST(PyDetector, AllKeypointsMaskedOut)
+{
+	const std::string scriptPath = writeStubScript(4);
+	std::unique_ptr<Feature2D> detector(Feature2D::create(
+			Feature2D::kFeaturePyDetector, baseParams(scriptPath)));
+	ASSERT_NE(detector.get(), nullptr);
+
+	cv::Mat image = makeImage(64, 64);
+	cv::Mat mask(image.size(), CV_8UC1, cv::Scalar(0));
+	std::vector<cv::KeyPoint> kpts = detector->generateKeypoints(image, mask);
+	EXPECT_TRUE(kpts.empty());
+
+	cv::Mat descriptors = detector->generateDescriptors(image, kpts);
+	EXPECT_EQ(0, descriptors.rows);
 
 	UFile::erase(scriptPath);
 }
