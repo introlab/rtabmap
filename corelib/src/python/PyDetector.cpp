@@ -208,7 +208,7 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 
 					if(nDesc != nKpts || dim <= 0)
 					{
-						UWARN("Python detector returned mismatched arrays: "
+						UERROR("Python detector returned mismatched arrays: "
 								"%d keypoints vs %d descriptors (dim=%d). "
 								"Returning empty features.",
 								nKpts, nDesc, dim);
