@@ -1968,9 +1968,11 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 			// adds ~0.5 px noise that *can* balance the info matrix and
 			// recover ~8x tighter points (observed on Linux/OpenBLAS), but
 			// the pattern doesn't reproduce on macOS/Accelerate, where
-			// recovery still sits around the continuous-pixel spread -- so
-			// the rounded bounds are widened to cover that.
-			poseDistMax  = roundPixels ? 0.06f : 0.02f;
+			// recovery sits around the continuous-pixel spread regardless
+			// of rounding -- so both the pose bound and the rounded point
+			// bound are widened to cover that. The continuous-pixel point
+			// bound was already loose (0.15) for the info-matrix reason.
+			poseDistMax  = 0.06f;
 			pointDistMax = roundPixels ? 0.06f : 0.15f;
 		}
 		else if(variant == BaVariant::kWithDepthNoLinks)
