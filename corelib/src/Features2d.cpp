@@ -889,7 +889,7 @@ cv::Mat Feature2D::generateDescriptors(
 		descriptors = generateDescriptorsImpl(image, keypoints);
 		if(descriptors.rows != (int)keypoints.size())
 		{
-			UERROR("Descriptor extraction returned %d rows for %d keypoints — "
+			UWARN("Descriptor extraction returned %d rows for %d keypoints — "
 					"clearing keypoints to keep them in sync.",
 					descriptors.rows, (int)keypoints.size());
 			keypoints.clear();
