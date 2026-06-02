@@ -202,18 +202,30 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 
 					arrayPtr = reinterpret_cast<PyArrayObject*>(descPtr);
 					int nDesc = PyArray_SHAPE(arrayPtr)[0];
-					UASSERT(nDesc = nKpts);
 					int dim = PyArray_SHAPE(arrayPtr)[1];
 					type = PyArray_TYPE(arrayPtr);
 					UDEBUG("Desc array %dx%d (type=%d)", nDesc, dim, type);
-					UASSERT_MSG(type == NPY_FLOAT, uFormat("Returned matches should type FLOAT=11, received type=%d", type).c_str());
 
-					c_out = reinterpret_cast<float*>(PyArray_DATA(arrayPtr));
-					for (int i = 0, kpt_idx = 0; i < nDesc*dim; i+=dim, kpt_idx++)
+					if(nDesc != nKpts || dim <= 0)
 					{
-						if(keep_kpt[kpt_idx]) {
-							cv::Mat descriptor = cv::Mat(1, dim, CV_32FC1, &c_out[i]).clone();
-							descriptors_.push_back(descriptor);
+						UWARN("Python detector returned mismatched arrays: "
+								"%d keypoints vs %d descriptors (dim=%d). "
+								"Returning empty features.",
+								nKpts, nDesc, dim);
+						keypoints.clear();
+						descriptors_ = cv::Mat();
+					}
+					else
+					{
+						UASSERT_MSG(type == NPY_FLOAT, uFormat("Returned matches should type FLOAT=11, received type=%d", type).c_str());
+
+						c_out = reinterpret_cast<float*>(PyArray_DATA(arrayPtr));
+						for (int i = 0, kpt_idx = 0; i < nDesc*dim; i+=dim, kpt_idx++)
+						{
+							if(keep_kpt[kpt_idx]) {
+								cv::Mat descriptor = cv::Mat(1, dim, CV_32FC1, &c_out[i]).clone();
+								descriptors_.push_back(descriptor);
+							}
 						}
 					}
 				}
