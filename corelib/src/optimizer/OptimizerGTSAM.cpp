@@ -1143,22 +1143,16 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 // vertex keys stay disjoint from pose keys (max 10 cameras per pose).
 #define GTSAM_BA_MULTICAM_OFFSET 10
 
-// Build a gtsam::Symbol for a 3D point (BA "landmark" in the optimization
-// sense — NOT the same as Link::kLandmark used in pose-graph land).
-// wordReferences can mix positive ids (features quantized to a visual
-// vocabulary word) with negative ids (features that weren't matched to
-// any vocabulary entry — see Memory.cpp's "Set ID -1 to features not
-// used for quantization"). gtsam::Symbol packs the index into 56
-// unsigned bits, so a signed int with the high bit set trips
-// "Symbol index is too large". Use distinct prefix characters for the
-// two cases so the numeric index is always non-negative AND
-// positive/negative ids cannot collide on the same Symbol.
+#ifdef RTABMAP_GTSAM
+// Build a gtsam::Symbol for a 3D point. Word ids can be negative,
+// but gtsam symbol cannot.
 static inline gtsam::Symbol point3dSymbol(int id)
 {
     return id < 0
         ? gtsam::Symbol('L', static_cast<std::uint64_t>(-id))
         : gtsam::Symbol('l', static_cast<std::uint64_t>(id));
 }
+#endif
 
 std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		int rootId,
@@ -1419,7 +1413,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 			}
 			if(Kshared)
 			{
-				smartFactor = boost::make_shared<SmartMono>(monoIsotropicNoise, Kshared);
+				smartFactor = SmartMono::shared_ptr(new SmartMono(monoIsotropicNoise, Kshared));
 			}
 		}
 		if(!smartFactor)
@@ -1518,12 +1512,19 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		// the test bounds. On our small problems this is ~3× faster
 		// than the direct Cholesky path.
 		params.linearSolverType = gtsam::NonlinearOptimizerParams::Iterative;
-		gtsam::PCGSolverParameters::shared_ptr pcg =
-				boost::make_shared<gtsam::PCGSolverParameters>();
-		pcg->setPreconditionerParams(
-				boost::make_shared<gtsam::BlockJacobiPreconditionerParameters>());
+		gtsam::PCGSolverParameters::shared_ptr pcg(new gtsam::PCGSolverParameters());
+		gtsam::PreconditionerParameters::shared_ptr preconditioner(
+				new gtsam::BlockJacobiPreconditionerParameters());
+#if GTSAM_VERSION_NUMERIC >= 40300
+		// 4.3+: setter removed, fields renamed (epsilon_abs_ -> epsilon_abs).
+		pcg->preconditioner = preconditioner;
+		pcg->epsilon_abs = 1e-10;
+		pcg->epsilon_rel = 1e-10;
+#else
+		pcg->setPreconditionerParams(preconditioner);
 		pcg->epsilon_abs_ = 1e-10;
 		pcg->epsilon_rel_ = 1e-10;
+#endif
 		params.iterativeParams = pcg;
 		gtsam::NonlinearOptimizer * optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, params);
 		UDEBUG("GTSAM BA optimizing (max iterations=%d, robustKernel=%f)...", iterations(), robustKernelDelta_);
@@ -1619,7 +1620,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		std::map<int, SmartMono::shared_ptr>::const_iterator sit = smartByWord.find(iter->first);
 		if(sit != smartByWord.end())
 		{
-			boost::optional<gtsam::Point3> p = sit->second->point(result);
+			auto p = sit->second->point(result);
 			if(p)
 			{
 				iter->second = cv::Point3f(
