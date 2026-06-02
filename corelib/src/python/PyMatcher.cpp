@@ -31,8 +31,13 @@ PyMatcher::PyMatcher(
 				cuda_(cuda)
 {
 	PythonInterface::instance("PyMatcher");
-	path_ = uReplaceChar(pythonMatcherPath, '~', UDirectory::homeDir());
-	model_ = uReplaceChar(model, '~', UDirectory::homeDir());
+	auto expandTilde = [](const std::string & p) -> std::string {
+		if(!p.empty() && p[0] == '~' && (p.size() == 1 || p[1] == '/' || p[1] == '\\'))
+			return UDirectory::homeDir() + p.substr(1);
+		return p;
+	};
+	path_  = expandTilde(pythonMatcherPath);
+	model_ = expandTilde(model);
 	UINFO("path = %s", path_.c_str());
 	UINFO("model = %s", model_.c_str());
 
