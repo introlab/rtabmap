@@ -1282,6 +1282,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
 	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kOptimizerPixelVariance().c_str());
+	_ui->doubleSpinBox_optimizer_disparityVariance->setObjectName(Parameters::kOptimizerDisparityVariance().c_str());
 	_ui->doubleSpinBox_g2o_robustKernelDelta->setObjectName(Parameters::kOptimizerRobustKernelDelta().c_str());
 	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kOptimizerBaseline().c_str());
 

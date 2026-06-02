@@ -54,12 +54,17 @@ std::string testDataPath(const std::string & basename)
 // Output DB path named after the running test so manual inspection is easy
 // (rtabmap-databaseViewer <tempdir>/rtabmap_integration_<TestName>.db). The
 // file is overwritten on each run and NOT deleted at teardown.
-std::string workDbForCurrentTest()
+std::string workDbForCurrentTest(const std::string & suffix = "")
 {
 	const ::testing::TestInfo * info =
 			::testing::UnitTest::GetInstance()->current_test_info();
 	const std::string testName = info != nullptr ? info->name() : "unknown";
-	return test::tempPath(uFormat("rtabmap_integration_%s.db", testName.c_str()));
+	if(suffix.empty())
+	{
+		return test::tempPath(uFormat("rtabmap_integration_%s.db", testName.c_str()));
+	}
+	return test::tempPath(uFormat("rtabmap_integration_%s_%s.db",
+			testName.c_str(), suffix.c_str()));
 }
 
 // Result bundle populated by replayDatabase(). Extend as the assertions in the
@@ -133,11 +138,8 @@ ReplayResult replayDatabase(
 		bool useStoredOdomAsGuess = false,
 		bool passOdomDataToRtabmap = false,
 		const std::map<double, Transform> * goldenStampedGroundTruth = nullptr,
-		// When >1, drop (stride-1) frames out of every `stride` reads
-		// before any odometry/rtabmap work — halves work at stride=2,
-		// thirds at stride=3, etc. The throttle inside rtabmap still
-		// applies on top.
-		int frameStride = 1)
+		int frameStride = 1,
+		const std::string & runLabel = "")
 {
 	ReplayResult result;
 
@@ -158,11 +160,12 @@ ReplayResult replayDatabase(
 
 	std::unique_ptr<Odometry> odometry(Odometry::create(odometryParameters));
 
-	// Output DB at a discoverable path named after the test. We erase any
-	// previous run's file so each invocation starts fresh, but we deliberately
-	// do NOT delete it at the end -- callers can inspect it with
-	// rtabmap-databaseViewer to verify the run looks sensible.
-	const std::string workDb = workDbForCurrentTest();
+	// Output DB at a discoverable path named after the test (with optional
+	// runLabel suffix to disambiguate per-backend / per-variant runs). We
+	// erase any previous file so each invocation starts fresh but we
+	// deliberately do NOT delete it at the end -- callers can inspect it
+	// with rtabmap-databaseViewer to verify the run looks sensible.
+	const std::string workDb = workDbForCurrentTest(runLabel);
 	UFile::erase(workDb);
 	Rtabmap rtabmap;
 	rtabmap.init(rtabmapParameters, workDb);
@@ -879,13 +882,12 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 		ParametersMap odomParams = baseOdometryParams();
 		odomParams[Parameters::kOdomF2MBundleAdjustment()] = strategy;
 
-		// passOdomDataToRtabmap=true: rtabmap reuses keypoints/descriptors
-		// already extracted by odometry (pairs with Mem/UseOdomFeatures).
-		// useStoredOdomAsGuess=false: this DB has no stored odom — visual
-		// odom runs from scratch.
 		const ReplayResult result = replayDatabase(dbPath, rtabmapParams, odomParams,
 				/*useStoredOdomAsGuess=*/false,
-				/*passOdomDataToRtabmap=*/true);
+				/*passOdomDataToRtabmap=*/true,
+				/*goldenStampedGroundTruth=*/nullptr,
+				/*frameStride=*/1,
+				/*runLabel=*/be.name);
 
 		EXPECT_GT(result.framesRead, 1000)
 				<< be.name << ": expected ~1035 frames from stereo_20Hz.db";
