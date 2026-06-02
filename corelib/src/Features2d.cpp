@@ -887,8 +887,17 @@ cv::Mat Feature2D::generateDescriptors(
 		UASSERT(!image.empty());
 		UASSERT(image.type() == CV_8UC1);
 		descriptors = generateDescriptorsImpl(image, keypoints);
-		UASSERT_MSG(descriptors.rows == (int)keypoints.size(), uFormat("descriptors=%d, keypoints=%d", descriptors.rows, (int)keypoints.size()).c_str());
-		UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+		if(descriptors.rows != (int)keypoints.size())
+		{
+			UWARN("Descriptor extraction returned %d rows for %d keypoints — "
+					"clearing keypoints to keep them in sync.",
+					descriptors.rows, (int)keypoints.size());
+			keypoints.clear();
+			descriptors = cv::Mat();
+		}
+		else {
+			UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+		}
 	}
 	return descriptors;
 }
