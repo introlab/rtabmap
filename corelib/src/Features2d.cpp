@@ -614,6 +614,69 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpDetectorStrategy(), type);
 	return create((Feature2D::Type)type, parameters);
 }
+
+bool Feature2D::isAvailable(Feature2D::Type type)
+{
+	// kFeatureUndef is a sentinel ("strategy not specified"); create() falls
+	// through to a default backend, so the type isn't really "available" as
+	// requested.
+	if(type == kFeatureUndef)
+	{
+		return false;
+	}
+
+	// SURF / SIFT / SURF-FREAK / SURF-DAISY require either OpenCV < 3.4.11
+	// (built-in) OR the xfeatures2d module + RTABMAP_NONFREE for OpenCV >= 3.4.11.
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+  #ifndef RTABMAP_NONFREE
+	if(type == kFeatureSurf || type == kFeatureSift || type == kFeatureSurfFreak || type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+  #endif
+#else
+  #ifndef RTABMAP_NONFREE
+	if(type == kFeatureSurf || type == kFeatureSurfFreak || type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+  #endif
+#endif
+
+#if !defined(HAVE_OPENCV_XFEATURES2D) && CV_MAJOR_VERSION >= 3
+	if(type == kFeatureFastBrief ||
+	   type == kFeatureFastFreak ||
+	   type == kFeatureGfttBrief ||
+	   type == kFeatureGfttFreak ||
+	   type == kFeatureSurfFreak ||
+	   type == kFeatureGfttDaisy ||
+	   type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+#elif CV_MAJOR_VERSION < 3
+	if(type == kFeatureKaze ||
+	   type == kFeatureGfttDaisy ||
+	   type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+#endif
+
+#ifndef RTABMAP_ORB_OCTREE
+	if(type == kFeatureOrbOctree) return false;
+#endif
+#ifndef RTABMAP_TORCH
+	if(type == kFeatureSuperPointTorch) return false;
+#endif
+#if !defined(RTABMAP_TORCH) || !defined(RTABMAP_PYTHON)
+	if(type == kFeatureSuperPointRpautrat) return false;
+#endif
+#ifndef RTABMAP_PYTHON
+	if(type == kFeaturePyDetector) return false;
+#endif
+	return true;
+}
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
 {
 
@@ -2173,7 +2236,21 @@ std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, con
 	{
 		_gftt->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 	}
-	
+
+	if(!_useHarrisDetector && _qualityLevel>0.0)
+	{
+		std::vector<cv::KeyPoint> bestKeypoints;
+		bestKeypoints.reserve(keypoints.size());
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			if(keypoints[i].response > _qualityLevel)
+			{
+				bestKeypoints.push_back(keypoints[i]);
+			}
+		}
+		
+		return bestKeypoints;
+	}
 	return keypoints;
 }
 

@@ -62,9 +62,28 @@ TEST(Feature2DTest, TypeNameKnownTypes)
 	EXPECT_EQ(Feature2D::typeName(Feature2D::kFeatureSurfFreak), "SURF+Freak");
 	EXPECT_EQ(Feature2D::typeName(Feature2D::kFeatureGfttDaisy), "GFTT+Daisy");
 	EXPECT_EQ(Feature2D::typeName(Feature2D::kFeatureSurfDaisy), "SURF+Daisy");
-	EXPECT_EQ(Feature2D::typeName(Feature2D::kFeaturePyDetector), "Unknown");
+	EXPECT_EQ(Feature2D::typeName(Feature2D::kFeaturePyDetector), "PyDetector");
 	EXPECT_EQ(Feature2D::typeName(Feature2D::kFeatureSuperPointRpautrat), "SUPERPOINT-RPAUTRAT");
 	EXPECT_EQ(Feature2D::typeName((Feature2D::Type)99), "Unknown");
+}
+
+// Invariant: every type in [kFeatureSurf, kFeatureEnd) is named explicitly in
+// the typeName() switch. If a new value is appended to Feature2D::Type
+// without adding a matching `case`, it falls through to the "Unknown"
+// default and this test fails -- forcing the new backend to ship with a
+// label like every other strategy.
+TEST(Feature2DTest, TypeNameCoverage)
+{
+	for(int strategy = Feature2D::kFeatureSurf; strategy < Feature2D::kFeatureEnd; ++strategy)
+	{
+		const Feature2D::Type t = static_cast<Feature2D::Type>(strategy);
+		const std::string name = Feature2D::typeName(t);
+		EXPECT_NE(name, "Unknown")
+				<< "Feature2D::typeName() returns \"Unknown\" for enum value "
+				<< strategy << " -- add a `case` for it in the switch.";
+		EXPECT_FALSE(name.empty())
+				<< "Feature2D::typeName() returns empty string for enum value " << strategy;
+	}
 }
 
 TEST(Feature2DTest, ComputeRoiFromRatios)
@@ -189,42 +208,23 @@ TEST(Feature2DTest, CreateOrbDetector)
 // Smoke test: create() must not crash or return null for every strategy (fallbacks allowed).
 TEST(Feature2DTest, CreateAllDetectorStrategiesSmoke)
 {
-	const Feature2D::Type strategies[] = {
-		Feature2D::kFeatureUndef,
-		Feature2D::kFeatureSurf,
-		Feature2D::kFeatureSift,
-		Feature2D::kFeatureOrb,
-		Feature2D::kFeatureFastFreak,
-		Feature2D::kFeatureFastBrief,
-		Feature2D::kFeatureGfttFreak,
-		Feature2D::kFeatureGfttBrief,
-		Feature2D::kFeatureBrisk,
-		Feature2D::kFeatureGfttOrb,
-		Feature2D::kFeatureKaze,
-		Feature2D::kFeatureOrbOctree,
-		Feature2D::kFeatureSuperPointTorch,
-		Feature2D::kFeatureSurfFreak,
-		Feature2D::kFeatureGfttDaisy,
-		Feature2D::kFeatureSurfDaisy,
-		Feature2D::kFeaturePyDetector,
-		Feature2D::kFeatureSuperPointRpautrat,
-	};
-	const ParametersMap params = orbTestParams();
-
-	for(size_t i = 0; i < sizeof(strategies) / sizeof(strategies[0]); ++i)
+	// kFeatureUndef passes through create()'s default branch; cover it too.
 	{
-		const Feature2D::Type requested = strategies[i];
-		std::unique_ptr<Feature2D> detector(Feature2D::create(requested, params));
-		ASSERT_TRUE(detector.get() != NULL)
-				<< "create() returned null for " << Feature2D::typeName(requested);
+		std::unique_ptr<Feature2D> detector(Feature2D::create(Feature2D::kFeatureUndef));
+		ASSERT_TRUE(detector.get() != NULL) << "create() returned null for kFeatureUndef";
 	}
 
-	for(int strategy = Feature2D::kFeatureSurf; strategy <= Feature2D::kFeatureSuperPointRpautrat; ++strategy)
+	for(int strategy = Feature2D::kFeatureSurf; strategy < Feature2D::kFeatureEnd; ++strategy)
 	{
-		ParametersMap paramsWithStrategy = params;
-		paramsWithStrategy[Parameters::kKpDetectorStrategy()] = uNumber2Str(strategy);
-		std::unique_ptr<Feature2D> detector(Feature2D::create(paramsWithStrategy));
+		const Feature2D::Type requested = static_cast<Feature2D::Type>(strategy);
+		std::unique_ptr<Feature2D> detector(Feature2D::create(requested));
 		ASSERT_TRUE(detector.get() != NULL)
+				<< "create() returned null for " << Feature2D::typeName(requested);
+
+		ParametersMap paramsWithStrategy;
+		paramsWithStrategy[Parameters::kKpDetectorStrategy()] = uNumber2Str(strategy);
+		std::unique_ptr<Feature2D> detectorFromParams(Feature2D::create(paramsWithStrategy));
+		ASSERT_TRUE(detectorFromParams.get() != NULL)
 				<< "create(ParametersMap) returned null for Kp/DetectorStrategy=" << strategy;
 	}
 }
@@ -236,6 +236,39 @@ TEST(Feature2DTest, CreateFromParametersMap)
 	std::unique_ptr<Feature2D> detector(Feature2D::create(params));
 	ASSERT_TRUE(detector.get() != NULL);
 	EXPECT_EQ(detector->getType(), Feature2D::kFeatureOrb);
+}
+
+// Invariant: Feature2D::isAvailable(T) is the negation of "create() would
+// silently substitute a different backend for T in this build". If anyone
+// adds a new build-flag fallback in Feature2D::create() without updating
+// isAvailable() (or vice versa), this test fails -- which is the whole point.
+// Iterates [kFeatureSurf, kFeatureEnd) so a new backend appended to the enum
+// is auto-covered without an extra edit here.
+TEST(Feature2DTest, IsAvailableMatchesCreate)
+{
+	for(int strategy = Feature2D::kFeatureSurf; strategy < Feature2D::kFeatureEnd; ++strategy)
+	{
+		const Feature2D::Type requested = static_cast<Feature2D::Type>(strategy);
+		std::unique_ptr<Feature2D> detector(Feature2D::create(requested));
+		ASSERT_TRUE(detector.get() != NULL)
+				<< Feature2D::typeName(requested) << ": create() returned null";
+		const bool available = Feature2D::isAvailable(requested);
+		const bool matched   = detector->getType() == requested;
+		EXPECT_EQ(available, matched)
+				<< Feature2D::typeName(requested)
+				<< ": isAvailable()=" << available
+				<< " but create()->getType()="
+				<< Feature2D::typeName(detector->getType())
+				<< " (matched=" << matched << "). "
+				<< "Update Feature2D::isAvailable() to match the new "
+				<< "fallback in Feature2D::create() (or vice versa).";
+	}
+
+	// kFeatureUndef is a sentinel ("strategy not specified"). create() falls
+	// through to a default backend (SURF or GFTT_ORB depending on
+	// RTABMAP_NONFREE), so isAvailable() must report it as unavailable.
+	EXPECT_FALSE(Feature2D::isAvailable(Feature2D::kFeatureUndef))
+			<< "kFeatureUndef should never be reported as available";
 }
 
 TEST(Feature2DTest, ParseParametersUpdatesMaxFeatures)

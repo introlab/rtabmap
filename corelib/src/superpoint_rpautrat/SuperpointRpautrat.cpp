@@ -48,7 +48,7 @@ static std::string exportSuperPointTorchScript(
 	const std::string weightsPath = superpointWeightsPath;
     const std::string modelPath = superpointModelPath;
 	const std::string output = std::string(outputDir + "/superpoint_v6_from_tf.pt");
-    
+
 	// Sanity checks
     if(!UFile::exists(weightsPath)) {
         UERROR("Weights not found: %s", weightsPath.c_str());

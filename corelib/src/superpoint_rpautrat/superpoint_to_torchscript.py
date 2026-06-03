@@ -5,10 +5,19 @@ Convert PyTorch weights to TorchScript format for C++ usage.
 
 import argparse
 import os
+import sys
+import warnings
 
 import torch
 import torch.nn as nn
-from superpoint_pytorch import SuperPoint
+
+# rpautrat's superpoint_pytorch.py uses Python control flow on tensor shapes
+# (`if image.shape[1] == 3`, `if b > 1`, ...) and arithmetic on shape ints
+# (`keypoints.new_tensor([w, h])`). torch.jit.trace warns on those because
+# the resulting TorchScript only generalises to inputs with the same shape.
+# That's exactly our use case (single grayscale image, fixed batch=1), so
+# silence the warnings to keep the C++ trace output clean.
+warnings.filterwarnings("ignore", category=torch.jit.TracerWarning)
 
 
 def wrap_model(model: nn.Module):
@@ -56,6 +65,10 @@ def generate_model(
 
     device = "cuda" if cuda else "cpu"
 
+    # Imported lazily so callers that pre-set sys.path via --model-dir don't
+    # need superpoint_pytorch on PYTHONPATH at module import time.
+    from superpoint_pytorch import SuperPoint  # noqa: E402
+
     # Load SuperPoint model and weights
     model = SuperPoint(
         nms_radius=nms_radius,
@@ -77,8 +90,8 @@ def generate_model(
     scripted = torch.jit.trace(wrapped, (dummy,), strict=False)
     print("Successfully traced SuperPoint model")
     
-    # Save output
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    # Save output (handle bare filenames where dirname == "")
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
     torch.jit.save(scripted, output_path)
     print(f"Converted SuperPoint weights to TorchScript: {output_path}")
 
@@ -88,6 +101,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert SuperPoint weights to TorchScript")
     parser.add_argument("--weights", required=True, help="Path to weights file")
     parser.add_argument("--output", required=True, help="Output TorchScript file")
+    parser.add_argument("--model-dir", default=None,
+            help="directory containing superpoint_pytorch.py (default: dir of --weights, then cwd)")
     parser.add_argument("--cuda", action="store_true", help="Use CUDA")
     parser.add_argument("--width", type=int, default=1920, help="Width of the input image")
     parser.add_argument("--height", type=int, default=288, help="Height of the input image")
@@ -95,7 +110,15 @@ if __name__ == "__main__":
     parser.add_argument("--threshold", type=float, default=0.005, help="Confidence threshold")
     args = parser.parse_args()
     print(f"Generating model from weights: {args.weights} to output: {args.output}")
-    
+
+    # Make superpoint_pytorch.py discoverable to the lazy import in
+    # generate_model(). Default to the weights' directory so a co-located
+    # model file Just Works in the fetch_test_data.sh flow.
+    candidates = [args.model_dir, os.path.dirname(os.path.abspath(args.weights)), os.getcwd()]
+    for path in candidates:
+        if path and path not in sys.path:
+            sys.path.insert(0, path)
+
     generate_model(
         weights_path=args.weights,
         output_path=args.output,

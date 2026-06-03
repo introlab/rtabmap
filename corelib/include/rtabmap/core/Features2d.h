@@ -148,7 +148,8 @@ public:
 		kFeatureGfttDaisy=13, //new 0.20.6
 		kFeatureSurfDaisy=14,  //new 0.20.6
 		kFeaturePyDetector=15, //new 0.20.8
-		kFeatureSuperPointRpautrat=16}; // new 0.23.3
+		kFeatureSuperPointRpautrat=16, // new 0.23.3
+		kFeatureEnd}; // Sentinel: always keep last. Used to iterate through types.
 
 	/** @return Human-readable name for @p type (e.g. `"ORB"`, `"GFTT+BRIEF"`). */
 	static std::string typeName(Type type)
@@ -184,6 +185,8 @@ public:
 			return "GFTT+Daisy";
 		case kFeatureSurfDaisy:
 			return "SURF+Daisy";
+		case kFeaturePyDetector:
+			return "PyDetector";
 		case kFeatureSuperPointRpautrat:
 			return "SUPERPOINT-RPAUTRAT";
 		default:
@@ -195,6 +198,9 @@ public:
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	/** @brief Creates a detector of the given @p type. Caller owns the pointer. */
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap());
+
+	/** @brief Returns true if @p type is available (RTAB-Map is built with it). */
+	static bool isAvailable(Feature2D::Type type);
 
 	/** @brief Keeps keypoints whose depth at (u,v) is in (@p minDepth, @p maxDepth). */
 	static void filterKeypointsByDepth(

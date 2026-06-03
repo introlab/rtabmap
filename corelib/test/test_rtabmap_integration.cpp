@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 #include <rtabmap/core/DBReader.h>
+#include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/camera/CameraImages.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/LocalGrid.h>
 #include <rtabmap/core/OccupancyGrid.h>
@@ -38,6 +40,8 @@
 #include <rtabmap/utilite/ULogger.h>
 
 #include "TestUtils.h"
+#include <opencv2/imgcodecs.hpp>
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -1523,4 +1527,327 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 		EXPECT_GT(result.finalGlobalGraphSize, 100)
 				<< v.label << " produced an unexpectedly small graph";
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Appearance-only loop closure on the 84-image `data/samples` set with the
+// shipped `data/samples_GT.bmp` ground truth. Measures recall at 100%
+// precision (the rtabmap "max recall while no false positive has appeared
+// yet" metric — same definition as the legacy MATLAB getPrecisionRecall.m
+// script) for every Features2D detector strategy that is available in this
+// build. Detector strategies for which Feature2D::create() silently
+// substitutes a different backend (e.g. SURF -> SIFT without nonfree,
+// SuperPointTorch -> GFTT/ORB without RTABMAP_TORCH) are skipped.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
+{
+	const std::string samplesDir = std::string(RTABMAP_TEST_DATA_ROOT) + "/samples";
+	const std::string gtPath     = std::string(RTABMAP_TEST_DATA_ROOT) + "/samples_GT.bmp";
+	SKIP_IF_MISSING(samplesDir);
+	SKIP_IF_MISSING(gtPath);
+
+	// 84x84 binary loop-closure ground truth. Pixel (i, j) == 255 means
+	// query frame i+1 has a true loop with past frame j+1. The
+	// gray-pixel "ignore" zone the MATLAB script handles is not present
+	// in this GT (only 0 / 255), so we skip that branch.
+	cv::Mat gt = cv::imread(gtPath, cv::IMREAD_GRAYSCALE);
+	ASSERT_EQ(84, gt.rows) << "unexpected samples_GT.bmp size";
+	ASSERT_EQ(84, gt.cols) << "unexpected samples_GT.bmp size";
+
+	const int kNumFrames = 84;
+
+	// Total GT positives = number of query rows with at least one true
+	// loop. Recall denominator in the standard rtabmap metric.
+	int gtTotalPositives = 0;
+	for(int i = 0; i < gt.rows; ++i)
+	{
+		for(int j = 0; j < gt.cols; ++j)
+		{
+			if(gt.at<unsigned char>(i, j) == 255)
+			{
+				++gtTotalPositives;
+				break;
+			}
+		}
+	}
+	ASSERT_GT(gtTotalPositives, 0) << "samples_GT.bmp has no positives";
+
+	// Iterate every backend listed in Feature2D::Type. kFeatureEnd is the
+	// sentinel kept at the back of the enum so a new strategy gets covered
+	// here automatically.
+
+	// SuperPoint asset paths. SuperPointTorch needs a pre-traced *.pt
+	// (produced by scripts/fetch_test_data.sh from *.pth when torch is
+	// installed). The Rpautrat backend takes the *.pth directly and traces
+	// to *.pt at runtime inside the C++ class, so we point it at the .pth
+	// + the python model file the runtime tracer needs.
+	const std::string superpointTorchModel      = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v1.pt";
+	const std::string superpointRpautratWeights = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v6_from_tf.pth";
+	const std::string superpointRpautratModel   = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_pytorch.py";
+
+	// Two BoW likelihood variants: the rtabmap default (raw word-count
+	// likelihood) and the TF-IDF-weighted variant. They produce different
+	// hypothesis distributions, so each detector is exercised under both.
+	const std::vector<bool> tfIdfVariants = {false, true};
+
+	int detectorsTested = 0;
+	for(bool tfIdfUsed : tfIdfVariants)
+	for(int strategy = Feature2D::kFeatureSurf; strategy < Feature2D::kFeatureEnd; ++strategy)
+	{
+		const Feature2D::Type detectorType = static_cast<Feature2D::Type>(strategy);
+		// Label includes the variant so per-detector logs / output BMPs /
+		// work DBs don't clobber each other across the two iterations.
+		const std::string     detectorLabel = Feature2D::typeName(detectorType)
+				+ (tfIdfUsed ? "[TfIdf]" : "[Likelihood]");
+
+		if(!Feature2D::isAvailable(detectorType))
+		{
+			std::cerr << "[skip] detector " << detectorLabel << " not available in this build\n";
+			continue;
+		}
+
+		if(detectorType == Feature2D::kFeaturePyDetector)
+		{
+			std::cerr << "[skip] detector " << detectorLabel
+					<< " requires a user-supplied Py/DetectorPath script\n";
+			continue;
+		}
+
+		// SuperPoint variants need traced *.pt weights (plus a Python
+		// model file for the Rpautrat backend). The fetch_test_data.sh
+		// script writes them under data/tests/; skip cleanly if absent.
+		if(detectorType == Feature2D::kFeatureSuperPointTorch && !UFile::exists(superpointTorchModel))
+		{
+			std::cerr << "[skip] detector " << detectorLabel
+					<< " missing weights: " << superpointTorchModel
+					<< " (run scripts/fetch_test_data.sh)\n";
+			continue;
+		}
+		if(detectorType == Feature2D::kFeatureSuperPointRpautrat &&
+				(!UFile::exists(superpointRpautratWeights) ||
+				 !UFile::exists(superpointRpautratModel)))
+		{
+			std::cerr << "[skip] detector " << detectorLabel
+					<< " missing assets: weights=" << superpointRpautratWeights
+					<< " model=" << superpointRpautratModel
+					<< " (run scripts/fetch_test_data.sh)\n";
+			continue;
+		}
+		SCOPED_TRACE(std::string("detector=") + detectorLabel);
+
+		ParametersMap params;
+		params[Parameters::kRGBDEnabled()]                = "false";
+		params[Parameters::kKpDetectorStrategy()]         = uNumber2Str(static_cast<int>(detectorType));
+		params[Parameters::kSURFHessianThreshold()]       = "150";
+		params[Parameters::kMemSTMSize()]                 = "20";
+		params[Parameters::kKpTfIdfLikelihoodUsed()]      = tfIdfUsed ? "true" : "false";
+		params[Parameters::kKpMaxFeatures()]              = "400";
+		params[Parameters::kKpBadSignRatio()]             = "0.1";
+		// SIFT-specific: lower the contrast threshold so more keypoints
+		// survive on the low-texture frames in data/samples.
+		params[Parameters::kSIFTContrastThreshold()]      = "0.01";
+		// BRISK-specific: lower FAST threshold so the detector keeps more
+		// candidates per frame; default is too strict for this dataset.
+		params[Parameters::kBRISKThresh()]                = "10";
+		// KAZE-specific: drop the response threshold an order of magnitude
+		// so more (weaker) keypoints survive on the low-texture frames.
+		params[Parameters::kKAZEThreshold()]              = "0.0001";
+		// GFTT-specific: tighten the minimum keypoint separation (default
+		// 7 px) so more candidates fit per frame.
+		params[Parameters::kGFTTMinDistance()]            = "5";
+		params[Parameters::kMemBadSignaturesIgnored()]    = "true";
+		params[Parameters::kMemRehearsalSimilarity()]     = "0.20";
+
+		// Backend-specific asset paths.
+		if(detectorType == Feature2D::kFeatureSuperPointTorch)
+		{
+			params[Parameters::kSuperPointModelPath()] = superpointTorchModel;
+			params[Parameters::kSuperPointCuda()]      = "false";
+		}
+		else if(detectorType == Feature2D::kFeatureSuperPointRpautrat)
+		{
+			params[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
+			params[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
+			params[Parameters::kSuperPointRpautratCuda()]        = "false";
+		}
+
+		const std::string workDb = workDbForCurrentTest(detectorLabel);
+		UFile::erase(workDb);
+		Rtabmap rtabmap;
+		rtabmap.init(params, workDb);
+
+		struct FrameStat {
+			int    queryRow;    // 0-based query frame index
+			double hypValue;    // rtabmap.getHighestHypothesisValue()
+			int    hypId;       // rtabmap.getHighestHypothesisId() (1-based, 0 = none)
+			bool   accepted;    // rtabmap.getLoopClosureId() > 0
+			bool   correct;     // GT[queryRow][hypId-1] == 255
+			bool   gtPositive;  // any GT[queryRow][*] == 255
+		};
+		std::vector<FrameStat> stats;
+		stats.reserve(kNumFrames);
+
+		CameraImages camera(samplesDir);
+		ASSERT_TRUE(camera.init()) << "CameraImages.init() failed on " << samplesDir;
+
+		UTimer wall;
+		int i = 0;
+		SensorData data = camera.takeImage();
+		while(!data.imageRaw().empty())
+		{
+			++i;
+			data.setId(i);
+			data.setStamp(static_cast<double>(i));
+			const bool ok = rtabmap.process(data, Transform());
+			ASSERT_TRUE(ok) << detectorLabel << " rtabmap.process failed at frame " << i;
+
+			FrameStat s;
+			s.queryRow   = i - 1;
+			s.hypValue   = rtabmap.getHighestHypothesisValue();
+			s.hypId      = rtabmap.getHighestHypothesisId();
+			s.accepted   = rtabmap.getLoopClosureId() > 0;
+
+			s.gtPositive = false;
+			for(int j = 0; j < gt.cols; ++j)
+			{
+				if(gt.at<unsigned char>(s.queryRow, j) == 255)
+				{
+					s.gtPositive = true;
+					break;
+				}
+			}
+
+			s.correct = false;
+			if(s.hypId > 0 && s.hypId - 1 < gt.cols)
+			{
+				s.correct = gt.at<unsigned char>(s.queryRow, s.hypId - 1) == 255;
+			}
+
+			stats.push_back(s);
+			data = camera.takeImage();
+		}
+		ASSERT_EQ(kNumFrames, i)
+				<< detectorLabel << " expected " << kNumFrames
+				<< " frames from " << samplesDir << ", got " << i;
+		rtabmap.close();
+
+		// Standard rtabmap P/R curve: sort frames by hypothesis value
+		// descending and walk down; precision = correct hypotheses so far
+		// divided by total hypotheses so far, recall = correct so far over
+		// gtTotalPositives. "Recall at 100% precision" is the recall at
+		// the last point before the first FP appears.
+		std::vector<FrameStat> sorted = stats;
+		std::sort(sorted.begin(), sorted.end(),
+				[](const FrameStat & a, const FrameStat & b){
+					return a.hypValue > b.hypValue;
+				});
+
+		int   tp = 0, fp = 0;
+		float recallAt100p = 0.0f;
+		float thrAt100p    = 0.0f;
+		bool  seenFp       = false;
+		for(const FrameStat & s : sorted)
+		{
+			if(s.hypId <= 0 || s.hypValue <= 0.0)
+			{
+				continue;  // no hypothesis at all this frame
+			}
+			if(s.correct)
+			{
+				++tp;
+				if(!seenFp)
+				{
+					recallAt100p = float(tp) / float(gtTotalPositives);
+					thrAt100p    = static_cast<float>(s.hypValue);
+				}
+			}
+			else
+			{
+				if(!seenFp)
+				{
+					// One-shot diagnostic: the first FP is what gates
+					// recall@100%P. Print the (query, matched) pair so we
+					// can eyeball whether it's a true mismatch or just a
+					// visually-similar frame the GT happens not to flag.
+					std::cerr << "[" << detectorLabel << "] first-FP query="
+							<< (s.queryRow + 1)
+							<< " matched=" << s.hypId
+							<< " hypValue=" << s.hypValue
+							<< " (TPs above this point=" << tp << ")\n";
+				}
+				++fp;
+				seenFp = true;
+			}
+		}
+
+		// Also report end-of-run precision/recall at the default rtabmap
+		// loop threshold (i.e. counting only accepted closures) -- closer
+		// to what a real deployment would observe.
+		int acceptedTp = 0, acceptedFp = 0, acceptedFn = 0;
+		for(const FrameStat & s : stats)
+		{
+			if(s.accepted && s.correct)      ++acceptedTp;
+			else if(s.accepted && !s.correct) ++acceptedFp;
+			else if(s.gtPositive)             ++acceptedFn;
+		}
+		const float acceptedPrec = (acceptedTp + acceptedFp) > 0
+				? float(acceptedTp) / float(acceptedTp + acceptedFp) : 0.0f;
+		const float acceptedRec  = gtTotalPositives > 0
+				? float(acceptedTp) / float(gtTotalPositives) : 0.0f;
+
+		// Dump the accepted loops as a 84x84 binary matrix in the same
+		// shape as samples_GT.bmp (pixel (query, loop) = 255 when rtabmap
+		// accepted that closure) so the run is easy to diff visually
+		// against the ground truth.
+		cv::Mat detectionsMat = cv::Mat::zeros(kNumFrames, kNumFrames, CV_8UC1);
+		for(const FrameStat & s : stats)
+		{
+			if(s.accepted && s.hypId > 0
+					&& s.hypId - 1 < detectionsMat.cols
+					&& s.queryRow < detectionsMat.rows)
+			{
+				detectionsMat.at<unsigned char>(s.queryRow, s.hypId - 1) = 255;
+			}
+		}
+
+		std::string safeLabel = detectorLabel;
+		for(char & c : safeLabel)
+		{
+			if(c == '+' || c == '/' || c == ' ' || c == '\\'
+					|| c == '[' || c == ']') c = '_';
+		}
+		const std::string detectionsBmp = test::tempPath(uFormat(
+				"rtabmap_integration_AppearanceOnly_%s_loops.bmp", safeLabel.c_str()));
+		cv::imwrite(detectionsBmp, detectionsMat);
+		std::cerr << "[" << detectorLabel << "] loop-closure matrix -> "
+				<< detectionsBmp << "\n";
+
+		std::cerr << "[" << detectorLabel << "]"
+				<< " gtPos=" << gtTotalPositives
+				<< " sortedTP=" << tp << " sortedFP=" << fp
+				<< " recall@100%P=" << recallAt100p << " (thr=" << thrAt100p << ")"
+				<< " accepted: tp=" << acceptedTp << " fp=" << acceptedFp
+				<< " prec=" << acceptedPrec << " recall=" << acceptedRec
+				<< " wall=" << wall.elapsed() << "s\n";
+
+		if(acceptedTp + acceptedFp == 0)
+		{
+			std::cerr << "[" << detectorLabel << "] note: no loop closure accepted "
+					"at default threshold (sortedTP=" << tp << ", sortedFP=" << fp
+					<< ")\n";
+		}
+		else if(acceptedPrec < 0.5f)
+		{
+			std::cerr << "[" << detectorLabel << "] note: accepted-loop precision "
+					<< acceptedPrec << " below 0.5 (TP=" << acceptedTp
+					<< ", FP=" << acceptedFp << ")\n";
+		}
+
+		EXPECT_GE(recallAt100p, 0.9f)
+				<< detectorLabel << " recall@100%P=" << recallAt100p
+				<< " is below 0.9 (sortedTP=" << tp << ", sortedFP=" << fp << ")";
+
+		++detectorsTested;
+	}
+	ASSERT_GT(detectorsTested, 0) << "no Features2D detector was available in this build";
 }

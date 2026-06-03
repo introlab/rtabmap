@@ -1,1 +1,7 @@
+# Test data fetched by scripts/fetch_test_data.sh -- never tracked.
+# The manifest (basename / source URL / sha256) is the source of truth.
 *.db
+*.pt
+*.pth
+*.py
+__pycache__/

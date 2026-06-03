@@ -80,3 +80,50 @@ while IFS=$'\t' read -r name source expected_sha; do
 done < "$MANIFEST"
 
 echo "Test data ready under $DEST_DIR"
+
+# --- Optional: trace SuperPoint *.pth -> *.pt for the tests ---
+# The C++ side loads TorchScript (*.pt); upstream ships only *.pth, so we
+# trace them locally if python3 + torch are on PATH. A failure is logged and
+# silently skipped -- the test guards every SuperPoint variant with
+# UFile::exists(*.pt) and skips when the trace didn't run.
+trace_superpoint_pt() {
+	local label="$1" script="$2" weights="$3" output="$4" model_dir="$5"
+	if [[ -f "$output" ]]; then
+		echo "  $label: already traced ($output)"
+		return 0
+	fi
+	if [[ ! -f "$weights" || ! -f "$model_dir/$(basename "$script" | sed 's/^rtabmap_trace_superpoint\.py$/demo_superpoint.py/; s/^superpoint_to_torchscript\.py$/superpoint_pytorch.py/')" ]]; then
+		echo "  $label: source files missing — skipping trace"
+		return 0
+	fi
+	if ! command -v python3 >/dev/null 2>&1; then
+		echo "  $label: python3 not on PATH — skipping trace"
+		return 0
+	fi
+	if ! python3 -c "import torch" >/dev/null 2>&1; then
+		echo "  $label: python3 doesn't have torch — skipping trace"
+		return 0
+	fi
+	echo "Tracing $label: $weights -> $output"
+	# Run in a subshell with PWD in DEST_DIR so demo_superpoint.py /
+	# superpoint_pytorch.py (also under DEST_DIR) are found by the bare
+	# `from X import ...` inside the trace scripts.
+	if ( cd "$model_dir" && python3 "$script" --weights "$weights" --output "$output" ) >/tmp/sp_trace.log 2>&1; then
+		echo "  $label: traced ($(du -h "$output" | cut -f1))"
+	else
+		echo "  $label: trace failed (see /tmp/sp_trace.log) — test will skip"
+		rm -f "$output"
+	fi
+}
+
+trace_superpoint_pt \
+	"superpoint_v1" \
+	"$REPO_ROOT/corelib/src/python/rtabmap_trace_superpoint.py" \
+	"$DEST_DIR/superpoint_v1.pth" \
+	"$DEST_DIR/superpoint_v1.pt" \
+	"$DEST_DIR"
+
+# rpautrat's SuperPoint backend (kFeatureSuperPointRpautrat) traces its own
+# *.pth -> *.pt on first detect() inside the C++ class, so the fetch script
+# doesn't pre-trace it. The *.pth and superpoint_pytorch.py downloaded above
+# are what that runtime tracer consumes.
