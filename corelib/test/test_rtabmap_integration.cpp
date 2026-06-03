@@ -31,6 +31,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/SensorCaptureInfo.h>
+#include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/Transform.h>
@@ -143,7 +144,13 @@ ReplayResult replayDatabase(
 		bool passOdomDataToRtabmap = false,
 		const std::map<double, Transform> * goldenStampedGroundTruth = nullptr,
 		int frameStride = 1,
-		const std::string & runLabel = "")
+		const std::string & runLabel = "",
+		// When true, post-process every stereo frame through
+		// SensorCaptureThread::postUpdate() with stereo-to-depth enabled.
+		// The SensorData turns into an RGB-D record (depth = dense disparity
+		// triangulated from the left/right pair). The odometry + rtabmap
+		// pipeline then runs the RGB-D path instead of the stereo path.
+		bool stereoToDepth = false)
 {
 	ReplayResult result;
 
@@ -163,6 +170,22 @@ ReplayResult replayDatabase(
 	}
 
 	std::unique_ptr<Odometry> odometry(Odometry::create(odometryParameters));
+
+	// Optional stereo->depth post-processor. SensorCaptureThread is used
+	// only for its postUpdate() side-effect (dense disparity from left/right
+	// + setRGBDImage on the SensorData), not as an actual capture thread.
+	// Its constructor needs a non-null Camera*, so we hand it a default
+	// CameraImages we never init -- SensorCaptureThread owns it and
+	// deletes it on destruction. Dense-matcher knobs live under
+	// Stereo/Dense/* in odometryParameters, same as a real capture setup.
+	std::unique_ptr<SensorCaptureThread> stereoToDepthHelper;
+	if(stereoToDepth)
+	{
+		stereoToDepthHelper.reset(new SensorCaptureThread(
+				new CameraImages(),  // owned by SensorCaptureThread
+				odometryParameters));
+		stereoToDepthHelper->setStereoToDepth(true);
+	}
 
 	// Output DB at a discoverable path named after the test (with optional
 	// runLabel suffix to disambiguate per-backend / per-variant runs). We
@@ -226,6 +249,7 @@ ReplayResult replayDatabase(
 	// Prime the loop with the first sample.
 	SensorCaptureInfo info;
 	SensorData data = dbReader.takeData(&info);
+	if(stereoToDepthHelper) stereoToDepthHelper->postUpdate(&data, &info);
 	overrideStamps = data.stamp() > UTimer::now() - 3600.0;
 	if(overrideStamps)
 	{
@@ -246,6 +270,7 @@ ReplayResult replayDatabase(
 		if(frameStride > 1 && (result.framesRead - 1) % frameStride != 0)
 		{
 			data = dbReader.takeData(&info);
+			if(stereoToDepthHelper) stereoToDepthHelper->postUpdate(&data, &info);
 			if(overrideStamps && data.isValid())
 			{
 				data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
@@ -343,6 +368,7 @@ ReplayResult replayDatabase(
 		}
 
 		data = dbReader.takeData(&info);
+		if(stereoToDepthHelper) stereoToDepthHelper->postUpdate(&data, &info);
 		if(overrideStamps && data.isValid())
 		{
 			data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
@@ -852,24 +878,43 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
 			<< "Failed to load golden poses from " << goldenPath;
 
-	struct Backend { Optimizer::Type type; const char * name; };
-	const std::vector<Backend> backends = {
-		{Optimizer::kTypeG2O,   "g2o"  },
-		{Optimizer::kTypeGTSAM, "gtsam"},
-		{Optimizer::kTypeCeres, "ceres"},
+	// Variants:
+	//  - g2o / gtsam / ceres baseline (vary only the BA backend).
+	//  - g2o + Stereo/OpticalFlow=false: switches stereo correspondence
+	//    from KLT optical-flow to OpenCV block-matching.
+	//  - g2o + Vis/CorFlowUseMinEigenVals=false: keeps optical flow but
+	//    drops the min-eigenvalue error metric (uses L1-patch instead).
+	//  - g2o + stereoToDepth: SensorCaptureThread::postUpdate() converts
+	//    each stereo frame into RGB-D (dense disparity -> depth) before
+	//    odometry runs, exercising rtabmap's RGB-D path on stereo data.
+	struct Variant {
+		Optimizer::Type opt;
+		const char *    label;
+		ParametersMap   extraOdom;
+		bool            stereoToDepth;
+	};
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O,   "g2o",                                    {}, false},
+		{Optimizer::kTypeGTSAM, "gtsam",                                  {}, false},
+		{Optimizer::kTypeCeres, "ceres",                                  {}, false},
+		{Optimizer::kTypeG2O,   "g2o_no_optical_flow",
+				{{Parameters::kStereoOpticalFlow(), "false"}},            false},
+		{Optimizer::kTypeG2O,   "g2o_no_min_eigenvals",
+				{{Parameters::kVisCorFlowUseMinEigenVals(), "false"}},    false},
+		{Optimizer::kTypeG2O,   "g2o_stereo_to_depth",                    {}, true },
 	};
 
 	int variantsTested = 0;
-	for(const Backend & be : backends)
+	for(const Variant & v : variants)
 	{
-		if(!Optimizer::isAvailable(be.type))
+		if(!Optimizer::isAvailable(v.opt))
 		{
-			std::cerr << "[skip] optimizer " << be.name << " not available\n";
+			std::cerr << "[skip] optimizer " << v.label << " not available\n";
 			continue;
 		}
-		SCOPED_TRACE(std::string("optimizer=") + be.name);
+		SCOPED_TRACE(std::string("variant=") + v.label);
 
-		const std::string strategy = uNumber2Str(static_cast<int>(be.type));
+		const std::string strategy = uNumber2Str(static_cast<int>(v.opt));
 
 		ParametersMap rtabmapParams = baseRtabmapParams();
 		rtabmapParams[Parameters::kMemUseOdomFeatures()] = "true";
@@ -885,20 +930,33 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 
 		ParametersMap odomParams = baseOdometryParams();
 		odomParams[Parameters::kOdomF2MBundleAdjustment()] = strategy;
+		// Apply per-variant odometry overrides (Stereo/OpticalFlow, ...).
+		// Last write wins, so this overrides anything from baseOdometryParams.
+		for(const auto & kv : v.extraOdom)
+		{
+			odomParams[kv.first] = kv.second;
+			// Vis/* knobs apply to both odom and rtabmap; mirror them
+			// so loop-closure verification uses the same setting.
+			if(kv.first.rfind("Vis/", 0) == 0)
+			{
+				rtabmapParams[kv.first] = kv.second;
+			}
+		}
 
 		const ReplayResult result = replayDatabase(dbPath, rtabmapParams, odomParams,
 				/*useStoredOdomAsGuess=*/false,
 				/*passOdomDataToRtabmap=*/true,
 				/*goldenStampedGroundTruth=*/nullptr,
 				/*frameStride=*/1,
-				/*runLabel=*/be.name);
+				/*runLabel=*/v.label,
+				/*stereoToDepth=*/v.stereoToDepth);
 
 		EXPECT_GT(result.framesRead, 1000)
-				<< be.name << ": expected ~1035 frames from stereo_20Hz.db";
+				<< v.label << ": expected ~1035 frames from stereo_20Hz.db";
 		EXPECT_EQ(0, result.odomLost)
-				<< be.name << ": stereo odometry should not lose tracking";
+				<< v.label << ": stereo odometry should not lose tracking";
 		EXPECT_GE(result.loopClosuresAccepted, 1)
-				<< be.name << ": expected at least one loop closure";
+				<< v.label << ": expected at least one loop closure";
 		EXPECT_GT(result.finalGlobalGraphSize, 0);
 
 		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
@@ -907,17 +965,19 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 				tRmse, tMean, tMed, tStd, tMin, tMax,
 				rRmse, rMean, rMed, rStd, rMin, rMax,
 				/*align2D=*/false);
-		std::cerr << "[" << be.name << "] trans rmse=" << tRmse << "m max="
+		std::cerr << "[" << v.label << "] trans rmse=" << tRmse << "m max="
 				  << tMax << "m, rot rmse=" << rRmse << "deg max="
 				  << rMax << "deg\n";
 
 		// Golden is BA-optimized; the test runs only the real-time SLAM
 		// pipeline with the matching BA backend, so the natural gap to
 		// the golden is wider than a run-to-run comparison would be.
-		EXPECT_LT(tRmse, 0.40f)
-				<< be.name << " translational RMSE drifted vs golden";
-		EXPECT_LT(rRmse, 12.0f)
-				<< be.name << " rotational RMSE drifted vs golden";
+		// Bounds sit at ~2x the worst observed across all six variants
+		// (worst trans=0.076 m on ceres, worst rot=1.40 deg on gtsam)
+		EXPECT_LT(tRmse, 0.15f)
+				<< v.label << " translational RMSE drifted vs golden";
+		EXPECT_LT(rRmse, 3.0f)
+				<< v.label << " rotational RMSE drifted vs golden";
 		++variantsTested;
 	}
 	ASSERT_GT(variantsTested, 0) << "no BA-capable optimizer was available";
