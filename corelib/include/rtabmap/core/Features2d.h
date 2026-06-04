@@ -270,6 +270,15 @@ public:
 	virtual const ParametersMap & getParameters() const {return parameters_;}
 	virtual Feature2D::Type getType() const = 0;
 
+	/** @brief Returns true when a GPU/CUDA code path **could** be used by
+	 *  this detector on this host: i.e. the build was compiled with the
+	 *  matching GPU support AND a CUDA-capable device is detected at
+	 *  runtime. This is a capability probe -- it does NOT reflect whether
+	 *  the current instance is actually configured to run on GPU (that
+	 *  depends on per-detector parameters like SURF/GpuVersion). Defaults
+	 *  to false; subclasses with a GPU backend override it. */
+	virtual bool isGpuAvailable() const {return false;}
+
 protected:
 	Feature2D(const ParametersMap & parameters = ParametersMap());
 
@@ -302,6 +311,7 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const {return kFeatureSurf;}
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
@@ -329,6 +339,7 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const {return kFeatureSift;}
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
@@ -363,6 +374,7 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const {return kFeatureOrb;}
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
@@ -394,6 +406,7 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const {return kFeatureUndef;}
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
@@ -470,6 +483,7 @@ public:
 	virtual ~GFTT();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
@@ -650,6 +664,7 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const { return kFeatureSuperPointTorch; }
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
@@ -673,6 +688,7 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const { return kFeatureSuperPointRpautrat; }
+	virtual bool isGpuAvailable() const override;
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());

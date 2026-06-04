@@ -1240,6 +1240,19 @@ void SURF::parseParameters(const ParametersMap & parameters)
 #endif
 }
 
+bool SURF::isGpuAvailable() const
+{
+#ifdef RTABMAP_NONFREE
+#if CV_MAJOR_VERSION < 3
+	return cv::gpu::getCudaEnabledDeviceCount() > 0;
+#else
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#endif
+#else
+	return false;
+#endif
+}
+
 std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
@@ -1402,6 +1415,15 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 #endif
 	}
 
+}
+
+bool SIFT::isGpuAvailable() const
+{
+#ifdef RTABMAP_CUDASIFT
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
 }
 
 std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -1681,6 +1703,15 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	}
 }
 
+bool ORB::isGpuAvailable() const
+{
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
+}
+
 std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
@@ -1945,6 +1976,15 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	}
 }
 
+bool FAST::isGpuAvailable() const
+{
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
+}
+
 std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
@@ -2206,6 +2246,15 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 		_gftt = CV_GFTT::create(this->getMaxFeatures(), _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
 #endif
 	}
+}
+
+bool GFTT::isGpuAvailable() const
+{
+#ifdef HAVE_OPENCV_CUDAIMGPROC
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
 }
 
 std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -2659,6 +2708,15 @@ SuperPointTorch::~SuperPointTorch()
 {
 }
 
+bool SuperPointTorch::isGpuAvailable() const
+{
+#ifdef RTABMAP_TORCH
+	return torch::cuda::is_available();
+#else
+	return false;
+#endif
+}
+
 void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
@@ -2693,7 +2751,7 @@ std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat &
 {
 #ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	if(roi.x!=0 || roi.y !=0)
+	if(roi.x!=0 || roi.y !=0 || roi.width!=image.cols || roi.height!=image.rows)
 	{
 		UERROR("SuperPoint: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
 				roi.x, roi.y, roi.width, roi.height,
@@ -2741,6 +2799,15 @@ SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
 
 SuperPointRpautrat::~SuperPointRpautrat()
 {
+}
+
+bool SuperPointRpautrat::isGpuAvailable() const
+{
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	return torch::cuda::is_available();
+#else
+	return false;
+#endif
 }
 
 void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
@@ -2795,7 +2862,7 @@ std::vector<cv::KeyPoint> SuperPointRpautrat::generateKeypointsImpl(const cv::Ma
 {
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	if(roi.x!=0 || roi.y !=0)
+	if(roi.x!=0 || roi.y !=0 || roi.width!=image.cols || roi.height!=image.rows)
 	{
 		UERROR("SuperPoint Rpautrat: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
 				roi.x, roi.y, roi.width, roi.height,

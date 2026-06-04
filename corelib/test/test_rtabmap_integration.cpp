@@ -1645,30 +1645,28 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 	const std::string superpointRpautratWeights = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v6_from_tf.pth";
 	const std::string superpointRpautratModel   = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_pytorch.py";
 
-	// Two BoW likelihood variants: the rtabmap default (raw word-count
-	// likelihood) and the TF-IDF-weighted variant. They produce different
-	// hypothesis distributions, so each detector is exercised under both.
-	const std::vector<bool> tfIdfVariants = {false, true};
+	// One pass per detector: prefer GPU if available, otherwise CPU. To
+	// keep wall-clock low, the two BoW likelihood variants (default raw
+	// word-count vs TF-IDF-weighted) are exercised only on rtabmap's
+	// default detector (Kp/DetectorStrategy default = kFeatureGfttOrb).
+	const Feature2D::Type defaultDetector =
+			static_cast<Feature2D::Type>(Parameters::defaultKpDetectorStrategy());
 
 	int detectorsTested = 0;
-	for(bool tfIdfUsed : tfIdfVariants)
 	for(int strategy = Feature2D::kFeatureSurf; strategy < Feature2D::kFeatureEnd; ++strategy)
 	{
 		const Feature2D::Type detectorType = static_cast<Feature2D::Type>(strategy);
-		// Label includes the variant so per-detector logs / output BMPs /
-		// work DBs don't clobber each other across the two iterations.
-		const std::string     detectorLabel = Feature2D::typeName(detectorType)
-				+ (tfIdfUsed ? "[TfIdf]" : "[Likelihood]");
+		const std::string typeName = Feature2D::typeName(detectorType);
 
 		if(!Feature2D::isAvailable(detectorType))
 		{
-			std::cerr << "[skip] detector " << detectorLabel << " not available in this build\n";
+			std::cerr << "[skip] detector " << typeName << " not available in this build\n";
 			continue;
 		}
 
 		if(detectorType == Feature2D::kFeaturePyDetector)
 		{
-			std::cerr << "[skip] detector " << detectorLabel
+			std::cerr << "[skip] detector " << typeName
 					<< " requires a user-supplied Py/DetectorPath script\n";
 			continue;
 		}
@@ -1678,7 +1676,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// script writes them under data/tests/; skip cleanly if absent.
 		if(detectorType == Feature2D::kFeatureSuperPointTorch && !UFile::exists(superpointTorchModel))
 		{
-			std::cerr << "[skip] detector " << detectorLabel
+			std::cerr << "[skip] detector " << typeName
 					<< " missing weights: " << superpointTorchModel
 					<< " (run scripts/fetch_test_data.sh)\n";
 			continue;
@@ -1687,13 +1685,45 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 				(!UFile::exists(superpointRpautratWeights) ||
 				 !UFile::exists(superpointRpautratModel)))
 		{
-			std::cerr << "[skip] detector " << detectorLabel
+			std::cerr << "[skip] detector " << typeName
 					<< " missing assets: weights=" << superpointRpautratWeights
 					<< " model=" << superpointRpautratModel
 					<< " (run scripts/fetch_test_data.sh)\n";
 			continue;
 		}
-		SCOPED_TRACE(std::string("detector=") + detectorLabel);
+
+		// Probe GPU availability once per detector. Build the temp instance
+		// with the same asset paths the actual run uses; otherwise SuperPoint
+		// variants log a (harmless) load failure.
+		bool useGpu = false;
+		{
+			ParametersMap probeParams;
+			if(detectorType == Feature2D::kFeatureSuperPointTorch)
+			{
+				probeParams[Parameters::kSuperPointModelPath()] = superpointTorchModel;
+			}
+			else if(detectorType == Feature2D::kFeatureSuperPointRpautrat)
+			{
+				probeParams[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
+				probeParams[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
+			}
+			std::unique_ptr<Feature2D> probe(Feature2D::create(detectorType, probeParams));
+			if(probe) useGpu = probe->isGpuAvailable();
+		}
+
+		// Run only the default likelihood variant for every detector;
+		// the TF-IDF variant adds a second run on the default detector
+		// (kFeatureGfttOrb) so the alternative likelihood path stays
+		// exercised without quadrupling the test runtime.
+		std::vector<bool> tfIdfVariants = {false};
+		if(detectorType == defaultDetector) tfIdfVariants.push_back(true);
+
+		for(bool tfIdfUsed : tfIdfVariants)
+		{
+			const std::string detectorLabel = typeName
+					+ (tfIdfUsed ? "[TfIdf]" : "[Likelihood]")
+					+ (useGpu ? "[GPU]" : "");
+			SCOPED_TRACE(std::string("detector=") + detectorLabel);
 
 		ParametersMap params;
 		params[Parameters::kRGBDEnabled()]                = "false";
@@ -1718,17 +1748,36 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		params[Parameters::kMemBadSignaturesIgnored()]    = "true";
 		params[Parameters::kMemRehearsalSimilarity()]     = "0.20";
 
-		// Backend-specific asset paths.
+		// Backend-specific asset paths + GPU/CUDA toggle. `useGpu` only
+		// reaches here when this detector reports a usable GPU path; we
+		// then flip the per-detector "use GPU" parameter on.
+		const std::string gpuFlag = useGpu ? "true" : "false";
 		if(detectorType == Feature2D::kFeatureSuperPointTorch)
 		{
 			params[Parameters::kSuperPointModelPath()] = superpointTorchModel;
-			params[Parameters::kSuperPointCuda()]      = "false";
+			params[Parameters::kSuperPointCuda()]      = gpuFlag;
 		}
 		else if(detectorType == Feature2D::kFeatureSuperPointRpautrat)
 		{
 			params[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 			params[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
-			params[Parameters::kSuperPointRpautratCuda()]        = "false";
+			params[Parameters::kSuperPointRpautratCuda()]        = gpuFlag;
+		}
+		else if(useGpu)
+		{
+			switch(detectorType)
+			{
+			case Feature2D::kFeatureSurf:      params[Parameters::kSURFGpuVersion()] = "true"; break;
+			case Feature2D::kFeatureSift:      params[Parameters::kSIFTGpu()]        = "true"; break;
+			case Feature2D::kFeatureOrb:       params[Parameters::kORBGpu()]         = "true"; break;
+			case Feature2D::kFeatureFastBrief:
+			case Feature2D::kFeatureFastFreak: params[Parameters::kFASTGpu()]        = "true"; break;
+			case Feature2D::kFeatureGfttFreak:
+			case Feature2D::kFeatureGfttBrief:
+			case Feature2D::kFeatureGfttOrb:
+			case Feature2D::kFeatureGfttDaisy: params[Parameters::kGFTTGpu()]        = "true"; break;
+			default: break;
+			}
 		}
 
 		const std::string workDb = workDbForCurrentTest(detectorLabel);
@@ -1908,6 +1957,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 				<< " is below 0.9 (sortedTP=" << tp << ", sortedFP=" << fp << ")";
 
 		++detectorsTested;
+		}  // end for(tfIdfUsed)
 	}
 	ASSERT_GT(detectorsTested, 0) << "no Features2D detector was available in this build";
 }
