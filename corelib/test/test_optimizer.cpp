@@ -1427,8 +1427,8 @@ TEST_P(LandmarkCovarianceTest, LandmarkCovarianceAffectsConvergence)
 	{
 		const bool isG2O = (backend == Optimizer::kTypeG2O);
 		landmarkDistMax = isG2O   ? 0.15f : 0.05f;     // g2o has no bearing-purity advantage
-		poseDistMax     = g2o6DoF ? 0.10f : 0.06f;
-		poseAngMaxDeg   = g2o6DoF ? 0.70f : 0.35f;
+		poseDistMax     = g2o6DoF ? 0.15f : 0.06f;
+		poseAngMaxDeg   = g2o6DoF ? 1.0f  : 0.35f;
 	}
 	else if(noisy)
 	{

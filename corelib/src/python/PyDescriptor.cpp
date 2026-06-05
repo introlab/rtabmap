@@ -94,6 +94,8 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 		std::string matcherPythonDir = UDirectory::getDir(path_);
 		if(!matcherPythonDir.empty())
 		{
+			// For windows
+			matcherPythonDir = uReplaceChar(matcherPythonDir, '\\', '/');
 			PyRun_SimpleString("import sys");
 			PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
 		}

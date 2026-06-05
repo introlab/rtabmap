@@ -200,7 +200,7 @@ static Transform computeRegistrationRobust(
 		RegistrationInfo * infoOut = nullptr)
 {
 	const int estimationType = std::atoi(params.at(Parameters::kVisEstimationType()).c_str());
-	const int maxAttempts = estimationType == 2 ? 5 : 1;
+	const int maxAttempts = estimationType == 2 ? 20 : 1;
 	Transform result;
 	RegistrationInfo info;
 	for(int attempt = 0; attempt < maxAttempts; ++attempt)

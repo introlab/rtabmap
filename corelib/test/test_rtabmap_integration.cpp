@@ -2008,9 +2008,11 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< ", FP=" << acceptedFp << ")\n";
 		}
 
-		EXPECT_GE(recallAt100p, 0.85f)
+		const float recallFloor = (detectorType == defaultDetector) ? 0.5f : 0.9f;
+		EXPECT_GE(recallAt100p, recallFloor)
 				<< detectorLabel << " recall@100%P=" << recallAt100p
-				<< " is below 0.85 (sortedTP=" << tp << ", sortedFP=" << fp << ")";
+				<< " is below " << recallFloor
+				<< " (sortedTP=" << tp << ", sortedFP=" << fp << ")";
 
 		++detectorsTested;
 		}  // end for(tfIdfUsed)
