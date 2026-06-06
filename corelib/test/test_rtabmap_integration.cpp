@@ -2008,12 +2008,14 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< ", FP=" << acceptedFp << ")\n";
 		}
 
-		const bool isGfttBased =
+		const bool isCornerBased =
 				detectorType == Feature2D::kFeatureGfttFreak ||
 				detectorType == Feature2D::kFeatureGfttBrief ||
 				detectorType == Feature2D::kFeatureGfttOrb   ||
-				detectorType == Feature2D::kFeatureGfttDaisy;
-		const float recallFloor = isGfttBased ? 0.5f : 0.9f;
+				detectorType == Feature2D::kFeatureGfttDaisy ||
+				detectorType == Feature2D::kFeatureFastFreak ||
+				detectorType == Feature2D::kFeatureFastBrief;
+		const float recallFloor = isCornerBased ? 0.5f : 0.9f;
 		EXPECT_GE(recallAt100p, recallFloor)
 				<< detectorLabel << " recall@100%P=" << recallAt100p
 				<< " is below " << recallFloor

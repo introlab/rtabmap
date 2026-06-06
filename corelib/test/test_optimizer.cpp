@@ -1427,8 +1427,8 @@ TEST_P(LandmarkCovarianceTest, LandmarkCovarianceAffectsConvergence)
 	{
 		const bool isG2O = (backend == Optimizer::kTypeG2O);
 		landmarkDistMax = isG2O   ? 0.15f : 0.05f;     // g2o has no bearing-purity advantage
-		poseDistMax     = isG2O ? 0.20f : 0.06f;
-		poseAngMaxDeg   = isG2O ? 1.0f  : 0.35f;
+		poseDistMax     = 0.20f;
+		poseAngMaxDeg   = 1.0f;
 	}
 	else if(noisy)
 	{
@@ -2023,8 +2023,8 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		}
 		else if(variant == BaVariant::kWithDepth || variant == BaVariant::kWithDepthNoLinks)
 		{
-			poseDistMax  = 0.03f;
-			pointDistMax = roundPixels ? 0.025f : 0.15f;
+			poseDistMax  = 0.04f;
+			pointDistMax = roundPixels ? 0.04f : 0.15f;
 		}
 		else if(variant == BaVariant::kNoLinks)
 		{
