@@ -246,10 +246,10 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	bool pointToPlane = _pointToPlane;
 
 #ifndef RTABMAP_POINTMATCHER
-	if(_strategy==1)
+	if(_strategy==kIcpPointMatcher)
 	{
 		UWARN("Parameter %s is set to 1 but RTAB-Map has not been built with libpointmatcher support. Setting to 0.", Parameters::kIcpStrategy().c_str());
-		_strategy = 0;
+		_strategy = kIcpPCL;
 	}
 #else
 	delete (PM::ICP*)_libpointmatcherICP;
@@ -379,12 +379,12 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 #endif
 
 #ifndef RTABMAP_CCCORELIB
-	if(_strategy==2)
+	if(_strategy==kIcpCCCoreLib)
 	{
 #ifdef RTABMAP_POINTMATCHER
-		_strategy = 1;
+		_strategy = kIcpPointMatcher;
 #else
-		_strategy = 0;
+		_strategy = kIcpPCL;
 #endif
 		UWARN("Parameter %s is set to 2 but RTAB-Map has not been built with CCCoreLib support. Setting to %d.", Parameters::kIcpStrategy().c_str(), _strategy);
 	}
