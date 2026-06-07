@@ -54,9 +54,103 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+namespace {
+
+// Strategy-1 projection used by both PointToPlane and PointToPoint branches
+// in computeTransformationImpl(): when the structural complexity is below
+// Icp/PointToPlaneMinComplexity (corridor-like environment), project the ICP
+// translation correction onto the constrained eigenvectors of the normals
+// (the first one always; the second only if its eigenvalue is itself above
+// the complexity threshold).  The unconstrained DoFs are then sourced from
+// the guess.  Returns the constrained transform.
+Transform constrainLowComplexityTransform(
+		const Transform & icpT,
+		const Transform & guess,
+		const cv::Mat & complexityVectors,
+		float secondEigenValue,
+		float pointToPlaneMinComplexity,
+		float complexity)
+{
+	const Transform guessInv = guess.inverse();
+	Transform t = guessInv * icpT.inverse() * guess;
+	Eigen::Vector3f v(t.x(), t.y(), t.z());
+	if(complexityVectors.cols == 2)
+	{
+		// 2D: project onto the first (and only constrained) eigenvector.
+		Eigen::Vector3f n(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), 0.0f);
+		Eigen::Vector3f vp = n * v.dot(n);
+		UWARN("Normals low complexity (%f): Limiting translation from (%f,%f) to (%f,%f)",
+				complexity, v[0], v[1], vp[0], vp[1]);
+		v = vp;
+	}
+	else if(complexityVectors.rows == 3)
+	{
+		// 3D: project onto first and second eigenvectors. Second is only
+		// kept when its eigenvalue is itself above the complexity threshold.
+		Eigen::Vector3f n1(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2));
+		Eigen::Vector3f n2(complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2));
+		Eigen::Vector3f vp = n1 * v.dot(n1);
+		if(secondEigenValue >= pointToPlaneMinComplexity)
+		{
+			vp += n2 * v.dot(n2);
+		}
+		UWARN("Normals low complexity: Limiting translation from (%f,%f,%f) to (%f,%f,%f)",
+				v[0], v[1], v[2], vp[0], vp[1], vp[2]);
+		v = vp;
+	}
+	else
+	{
+		UWARN("not supposed to be here!");
+		v = Eigen::Vector3f(0,0,0);
+	}
+	float roll, pitch, yaw;
+	t.getEulerAngles(roll, pitch, yaw);
+	t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
+	return guess * t.inverse() * guessInv;
+}
+
+}  // namespace
+
+bool RegistrationIcp::available(IcpStrategy strategy)
+{
+	switch(strategy)
+	{
+	case kIcpPCL:           return true;
+	case kIcpPointMatcher:
+#ifdef RTABMAP_POINTMATCHER
+		return true;
+#else
+		return false;
+#endif
+	case kIcpCCCoreLib:
+#ifdef RTABMAP_CCCORELIB
+		return true;
+#else
+		return false;
+#endif
+	default:             return false;
+	}
+}
+
+const char * RegistrationIcp::strategyName(IcpStrategy strategy)
+{
+	switch(strategy)
+	{
+	case kIcpPCL:          return "PCL";
+	case kIcpPointMatcher: return "libpointmatcher";
+	case kIcpCCCoreLib:    return "CCCoreLib";
+	default:               return "Unknown";
+	}
+}
+
 RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration * child) :
+	RegistrationIcp(static_cast<IcpStrategy>(Parameters::defaultIcpStrategy()), parameters, child)
+{
+}
+
+RegistrationIcp::RegistrationIcp(IcpStrategy strategy, const ParametersMap & parameters, Registration * child) :
 	Registration(parameters, child),
-	_strategy(Parameters::defaultIcpStrategy()),
+	_strategy(strategy),
 	_maxTranslation(Parameters::defaultIcpMaxTranslation()),
 	_maxRotation(Parameters::defaultIcpMaxRotation()),
 	_voxelSize(Parameters::defaultIcpVoxelSize()),
@@ -75,6 +169,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_pointToPlaneRadius(Parameters::defaultIcpPointToPlaneRadius()),
 	_pointToPlaneGroundNormalsUp(Parameters::defaultIcpPointToPlaneGroundNormalsUp()),
 	_pointToPlaneMinComplexity(Parameters::defaultIcpPointToPlaneMinComplexity()),
+	_pointToPlaneComplexityCentered(Parameters::defaultIcpPointToPlaneComplexityCentered()),
 	_pointToPlaneLowComplexityStrategy(Parameters::defaultIcpPointToPlaneLowComplexityStrategy()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
 	_libpointmatcherKnn(Parameters::defaultIcpPMMatcherKnn()),
@@ -103,7 +198,11 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 {
 	Registration::parseParameters(parameters);
 
-	Parameters::parse(parameters, Parameters::kIcpStrategy(), _strategy);
+	{
+		int strategyAsInt = static_cast<int>(_strategy);
+		Parameters::parse(parameters, Parameters::kIcpStrategy(), strategyAsInt);
+		_strategy = static_cast<IcpStrategy>(strategyAsInt);
+	}
 	Parameters::parse(parameters, Parameters::kIcpMaxTranslation(), _maxTranslation);
 	Parameters::parse(parameters, Parameters::kIcpMaxRotation(), _maxRotation);
 	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), _voxelSize);
@@ -123,6 +222,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), _pointToPlaneRadius);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneGroundNormalsUp(), _pointToPlaneGroundNormalsUp);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneMinComplexity(), _pointToPlaneMinComplexity);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneComplexityCentered(), _pointToPlaneComplexityCentered);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneLowComplexityStrategy(), _pointToPlaneLowComplexityStrategy);
 	UASSERT(_pointToPlaneGroundNormalsUp >= 0.0f && _pointToPlaneGroundNormalsUp <= 1.0f);
 	UASSERT(_pointToPlaneMinComplexity >= 0.0f && _pointToPlaneMinComplexity <= 1.0f);
@@ -342,7 +442,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Enabled filters: from=%s to=%s", _filtersEnabled&1?"true":"false", _filtersEnabled&2?"true":"false");
 	UDEBUG("Min Complexity=%f", _pointToPlaneMinComplexity);
 	UDEBUG("libpointmatcher (knn=%d, outlier ratio=%f)", _libpointmatcherKnn, _outlierRatio);
-	UDEBUG("Strategy=%d", _strategy);
+	UDEBUG("IcpStrategy=%d", _strategy);
 
 	UTimer timer;
 	std::string msg;
@@ -525,15 +625,26 @@ Transform RegistrationIcp::computeTransformationImpl(
 			{
 				cv::Mat complexityVectorsFrom, complexityVectorsTo;
 				cv::Mat complexityValuesFrom, complexityValuesTo;
-				double fromComplexity = util3d::computeNormalsComplexity(fromScan, Transform::getIdentity(), &complexityVectorsFrom, &complexityValuesFrom);
-				double toComplexity = util3d::computeNormalsComplexity(toScan, guess, &complexityVectorsTo, &complexityValuesTo);
+				double fromComplexity = util3d::computeNormalsComplexity(fromScan, Transform::getIdentity(), &complexityVectorsFrom, &complexityValuesFrom, _pointToPlaneComplexityCentered);
+				double toComplexity = util3d::computeNormalsComplexity(toScan, guess, &complexityVectorsTo, &complexityValuesTo, _pointToPlaneComplexityCentered);
 				float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 				info.icpStructuralComplexity = complexity;
 				UDEBUG("structural complexity: from=%f to=%f", fromComplexity, toComplexity);
 				if(complexity < _pointToPlaneMinComplexity)
 				{
 					tooLowComplexityForPlaneToPlane = true;
-					pointToPlane = false;
+					// Strategy 1 (project) keeps PointToPlane on: it gives
+					// cleaner residuals on the constrained perpendicular
+					// axes than PointToPoint does (point-to-plane cancels
+					// the random in-plane jitter via the normal dot
+					// product), and the in-plane DoFs are then pinned to
+					// the guess by the projection block in the
+					// PointToPlane branch. Strategy 0 (reject) and 2
+					// (accept PointToPoint as-is) keep the old behavior.
+					if(_pointToPlaneLowComplexityStrategy != 1)
+					{
+						pointToPlane = false;
+					}
 					if(complexity > 0.0f)
 					{
 						complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
@@ -616,6 +727,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 						PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
 						UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
 						T = icp(data, ref);
+						// CounterTransformationChecker (added first by parseParameters()) tracks
+						// the actual iteration count in its first condition variable.
+						if(!icp.transformationCheckers.empty())
+						{
+							const auto & vars = icp.transformationCheckers[0]->getConditionVariables();
+							if(vars.size() > 0) info.icpIterations = static_cast<int>(vars(0));
+						}
 						icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
 						UDEBUG("libpointmatcher icp...done! T=%s", icpT.prettyPrint().c_str());
 
@@ -645,11 +763,23 @@ Transform RegistrationIcp::computeTransformationImpl(
 						   *fromCloudNormalsRegistered,
 						   _epsilon,
 						   this->force3DoF(),
-						   _outlierRatio);
+						   _outlierRatio,
+						   &info.icpIterations);
 				}
 
 				if(!icpT.isNull() && hasConverged)
 				{
+					// Strategy 1 with low complexity: project the
+					// PointToPlane correction onto the constrained
+					// eigenvectors (in-plane DoFs come from the guess).
+					if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy == 1)
+					{
+						icpT = constrainLowComplexityTransform(icpT, guess,
+								complexityVectors, secondEigenValue,
+								_pointToPlaneMinComplexity, info.icpStructuralComplexity);
+						fromCloudNormalsRegistered = util3d::transformPointCloud(fromCloudNormals, icpT);
+					}
+
 					util3d::computeVarianceAndCorrespondences(
 							fromCloudNormalsRegistered,
 							toCloudNormals,
@@ -726,10 +856,20 @@ Transform RegistrationIcp::computeTransformationImpl(
 							}
 
 							T = icpTmp(data, ref);
+							if(!icpTmp.transformationCheckers.empty())
+							{
+								const auto & vars = icpTmp.transformationCheckers[0]->getConditionVariables();
+								if(vars.size() > 0) info.icpIterations = static_cast<int>(vars(0));
+							}
 						}
 						else
 						{
 							T = icp(data, ref);
+							if(!icp.transformationCheckers.empty())
+							{
+								const auto & vars = icp.transformationCheckers[0]->getConditionVariables();
+								if(vars.size() > 0) info.icpIterations = static_cast<int>(vars(0));
+							}
 						}
 						UDEBUG("libpointmatcher icp...done!");
 						icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
@@ -780,68 +920,31 @@ Transform RegistrationIcp::computeTransformationImpl(
 							   *fromCloudRegistered,
 							   _epsilon,
 							   this->force3DoF(), // icp2D
-							   _outlierRatio);
+							   _outlierRatio,
+							   &info.icpIterations);
 					}
 				}
 
 				if(!icpT.isNull() && hasConverged)
 				{
-					if(tooLowComplexityForPlaneToPlane)
+					// PointToPoint branch only reached for strategy 2
+					// ("accept as-is") or 3 (legacy: recompute then project).
+					// Strategy 0 returned early; strategy 1 stays on the
+					// PointToPlane branch.
+					if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy == 3)
 					{
-						if(_pointToPlaneLowComplexityStrategy == 1)
-						{
-							Transform guessInv = guess.inverse();
-							Transform t = guessInv * icpT.inverse() * guess;
-							Eigen::Vector3f v(t.x(), t.y(), t.z());
-							if(complexityVectors.cols == 2)
-							{
-								// limit translation in direction of the first eigen vector
-								Eigen::Vector3f n(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), 0.0f);
-								float a = v.dot(n);
-								Eigen::Vector3f vp = n*a;
-								UWARN("Normals low complexity (%f): Limiting translation from (%f,%f) to (%f,%f)",
-										info.icpStructuralComplexity,
-										v[0], v[1], vp[0], vp[1]);
-								v= vp;
-							}
-							else if(complexityVectors.rows == 3)
-							{
-								// limit translation in direction of the first and second eigen vectors
-								Eigen::Vector3f n1(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2));
-								Eigen::Vector3f n2(complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2));
-								float a = v.dot(n1);
-								float b = v.dot(n2);
-								Eigen::Vector3f vp = n1*a;
-								if(secondEigenValue >= _pointToPlaneMinComplexity)
-								{
-									vp += n2*b;
-								}
-								UWARN("Normals low complexity: Limiting translation from (%f,%f,%f) to (%f,%f,%f)",
-										v[0], v[1], v[2], vp[0], vp[1], vp[2]);
-								v = vp;
-							}
-							else
-							{
-								UWARN("not supposed to be here!");
-								v = Eigen::Vector3f(0,0,0);
-							}
-							float roll, pitch, yaw;
-							t.getEulerAngles(roll, pitch, yaw);
-							t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
-							icpT = guess * t.inverse() * guessInv;
-
-							fromCloudRegistered = util3d::transformPointCloud(fromCloud, icpT);
-						}
-						else
-						{
-							UWARN("Even if complexity is low (%f), PointToPoint transformation is accepted \"as is\" (%s=2)",
-									info.icpStructuralComplexity,
-									Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
-							if(fromCloudRegistered->empty())
-								fromCloudRegistered = util3d::transformPointCloud(fromCloud, icpT);
-						}
+						icpT = constrainLowComplexityTransform(icpT, guess,
+								complexityVectors, secondEigenValue,
+								_pointToPlaneMinComplexity, info.icpStructuralComplexity);
+						fromCloudRegistered = util3d::transformPointCloud(fromCloud, icpT);
 					}
-					else if(fromCloudRegistered->empty())
+					else if(tooLowComplexityForPlaneToPlane)
+					{
+						UWARN("Even if complexity is low (%f), PointToPoint transformation is accepted \"as is\" (%s=2)",
+								info.icpStructuralComplexity,
+								Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
+					}
+					if(fromCloudRegistered->empty())
 						fromCloudRegistered = util3d::transformPointCloud(fromCloud, icpT);
 
 					util3d::computeVarianceAndCorrespondences(

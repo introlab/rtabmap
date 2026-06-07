@@ -215,7 +215,8 @@ Transform RTABMAP_CORE_EXPORT icp(
 		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
 		float epsilon = 0.0f,
 		bool icp2D = false,
-		float ransacOutlierRatio = 0.0f);
+		float ransacOutlierRatio = 0.0f,
+		int * iterationsDone = nullptr);
 /**
  * @brief Performs Iterative Closest Point (ICP) alignment between two point clouds and returns the resulting transform.
  * @see util3d::icp()
@@ -233,7 +234,8 @@ Transform RTABMAP_CORE_EXPORT icp(
 		pcl::PointCloud<pcl::PointXYZI> & cloud_source_registered,
 		float epsilon = 0.0f,
 		bool icp2D = false,
-		float ransacOutlierRatio = 0.0f);
+		float ransacOutlierRatio = 0.0f,
+		int * iterationsDone = nullptr);
 
 /**
  * @brief Performs Iterative Closest Point (ICP) alignment using a point-to-plane error metric.
@@ -269,7 +271,8 @@ Transform RTABMAP_CORE_EXPORT icpPointToPlane(
 		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
 		float epsilon = 0.0f,
 		bool icp2D = false,
-		float ransacOutlierRatio = 0.0f);
+		float ransacOutlierRatio = 0.0f,
+		int * iterationsDone = nullptr);
 /**
  * @briefPerforms Iterative Closest Point (ICP) alignment using a point-to-plane error metric.
  * @see util3d::icpPointToPlane()
@@ -287,7 +290,8 @@ Transform RTABMAP_CORE_EXPORT icpPointToPlane(
 		pcl::PointCloud<pcl::PointXYZINormal> & cloud_source_registered,
 		float epsilon = 0.0f,
 		bool icp2D = false,
-		float ransacOutlierRatio = 0.0f);
+		float ransacOutlierRatio = 0.0f,
+		int * iterationsDone = nullptr);
 
 } // namespace util3d
 } // namespace rtabmap

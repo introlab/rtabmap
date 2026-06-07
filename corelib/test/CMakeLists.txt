@@ -173,6 +173,11 @@ add_executable(test_registrationvis test_registrationvis.cpp)
 target_link_libraries(test_registrationvis gtest_main rtabmap_core)
 add_test(NAME test_registrationvis COMMAND test_registrationvis)
 
+#RegistrationIcp.h
+add_executable(test_registrationicp test_registrationicp.cpp)
+target_link_libraries(test_registrationicp gtest_main rtabmap_core)
+add_test(NAME test_registrationicp COMMAND test_registrationicp)
+
 #LocalGridMaker.h
 add_executable(test_localgridmaker test_localgridmaker.cpp)
 target_link_libraries(test_localgridmaker gtest_main rtabmap_core)

@@ -427,17 +427,25 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const LaserScan & scan,
 		const Transform & t = Transform::getIdentity(),
 		cv::Mat * pcaEigenVectors = 0,
-		cv::Mat * pcaEigenValues = 0);
+		cv::Mat * pcaEigenValues = 0,
+		bool centered = true);
 /**
  * @ingroup ComputeNormalsComplexity
  * @brief Computes the complexity of surface normals in a point cloud of type `pcl::Normal`.
+ *
+ * @param centered When true (default), use covariance PCA (centered at mean).
+ * Use false for the uncentered second-moment matrix `M = (1/N) sum(n_i * n_i^T)`,
+ * which measures span of normal directions and correctly identifies degeneracy
+ * even when there are only N (rather than N+1) distinct viewpoint-flipped
+ * normal directions in N-D space.
  */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::Normal> & normals,
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
-		cv::Mat * pcaEigenValues = 0);
+		cv::Mat * pcaEigenValues = 0,
+		bool centered = true);
 /**
  * @ingroup ComputeNormalsComplexity
  * @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointNormal`.
@@ -447,7 +455,8 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
-		cv::Mat * pcaEigenValues = 0);
+		cv::Mat * pcaEigenValues = 0,
+		bool centered = true);
 /**
  * @ingroup ComputeNormalsComplexity
  * @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointXYZINormal`.
@@ -457,7 +466,8 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
-		cv::Mat * pcaEigenValues = 0);
+		cv::Mat * pcaEigenValues = 0,
+		bool centered = true);
 /**
  * @ingroup ComputeNormalsComplexity
  * @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointXYZRGBNormal`.
@@ -467,7 +477,8 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const Transform & t = Transform::getIdentity(),
 		bool is2d = false,
 		cv::Mat * pcaEigenVectors = 0,
-		cv::Mat * pcaEigenValues = 0);
+		cv::Mat * pcaEigenValues = 0,
+		bool centered = true);
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,

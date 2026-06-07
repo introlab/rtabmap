@@ -61,7 +61,8 @@ public:
 		icpStructuralComplexity(0.0f),
 		icpStructuralDistribution(0.0f),
 		icpCorrespondences(0),
-		icpRMS(0)
+		icpRMS(0),
+		icpIterations(-1)
 
 	{
 	}
@@ -87,6 +88,7 @@ public:
 		output.icpStructuralDistribution = icpStructuralDistribution;
 		output.icpCorrespondences = icpCorrespondences;
         output.icpRMS = icpRMS;
+		output.icpIterations = icpIterations;
 		return output;
 	}
 
@@ -115,6 +117,7 @@ public:
 	float icpStructuralDistribution; /**< Distribution of structural features in the overlap. */
 	int   icpCorrespondences;     /**< Number of ICP point correspondences. */
 	float icpRMS;                 /**< Root-mean-square error of ICP correspondences (m). */
+	int   icpIterations;          /**< Number of ICP iterations actually performed (-1 if unavailable from backend). */
 };
 
 }

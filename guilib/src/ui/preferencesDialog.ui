@@ -24910,7 +24910,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="23" column="1">
+                      <item row="24" column="1">
                        <widget class="QLabel" name="label_640">
                         <property name="text">
                          <string>Export scans used for ICP in the specified format (a warning on terminal will be shown with the file paths used). Supported formats are &quot;pcd&quot;, &quot;ply&quot; or &quot;vtk&quot;. If logger level is debug, from and to scans will stamped, so previous files won't be overwritten.</string>
@@ -24962,8 +24962,28 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="23" column="0">
+                      <item row="24" column="0">
                        <widget class="QLineEdit" name="loopClosure_icpDebugExportFormat"/>
+                      </item>
+                      <item row="23" column="0">
+                       <widget class="QCheckBox" name="loopClosure_icpPointToPlaneComplexityCentered">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="23" column="1">
+                       <widget class="QLabel" name="label_icpPointToPlaneComplexityCentered">
+                        <property name="text">
+                         <string>Structural-complexity metric. If unchecked (default), use the uncentered second-moment matrix (1/N) * sum(n_i * n_i^T) — its smallest eigenvalue measures how well the surface normals span the ambient space, which correctly distinguishes perpendicular-surface scenes from corridors. If checked, use centered PCA (cv::PCA covariance) for backwards compatibility — but the centered metric is known to mis-classify perpendicular-surface scenes as degenerate when normals are consistently viewpoint-flipped.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
                       </item>
                       <item row="20" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneGroundNormalsUp">

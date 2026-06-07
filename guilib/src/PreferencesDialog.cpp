@@ -1394,6 +1394,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpPointToPlaneNormalsRadius->setObjectName(Parameters::kIcpPointToPlaneRadius().c_str());
 	_ui->loopClosure_icpPointToPlaneGroundNormalsUp->setObjectName(Parameters::kIcpPointToPlaneGroundNormalsUp().c_str());
 	_ui->loopClosure_icpPointToPlaneNormalsMinComplexity->setObjectName(Parameters::kIcpPointToPlaneMinComplexity().c_str());
+	_ui->loopClosure_icpPointToPlaneComplexityCentered->setObjectName(Parameters::kIcpPointToPlaneComplexityCentered().c_str());
 	_ui->loopClosure_icpPointToPlaneLowComplexityStrategy->setObjectName(Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
 	_ui->loopClosure_icpDebugExportFormat->setObjectName(Parameters::kIcpDebugExportFormat().c_str());
 
