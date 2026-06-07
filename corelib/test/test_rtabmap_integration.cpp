@@ -582,9 +582,10 @@ ReplayResult replayDatabaseWithStoredOdom(
 	std::cout << "[          ] Output DB: " << workDb << std::endl;
 
 	// Honor Rtabmap/DetectionRate (Hz) by gating rtabmap.process on DB frame
-	// stamps -- mirrors the throttle in replayDatabase(). Throttled frames
-	// are dropped here (no intermediate-node path) since the stored odom is
-	// already continuous.
+	// stamps -- mirrors the throttle in replayDatabase(). When
+	// Rtabmap/CreateIntermediateNodes=true, throttled frames are forwarded
+	// with id=-1 so the odom edge + payload are preserved in the graph
+	// between detection frames; otherwise they are dropped.
 	float rtabmapDetectionRate = Parameters::defaultRtabmapDetectionRate();
 	Parameters::parse(rtabmapParameters,
 			Parameters::kRtabmapDetectionRate(), rtabmapDetectionRate);
@@ -592,6 +593,9 @@ ReplayResult replayDatabaseWithStoredOdom(
 			? (1.0 / rtabmapDetectionRate)
 			: 0.0;
 	double lastUpdateStamp = 0.0;
+	bool createIntermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
+	Parameters::parse(rtabmapParameters,
+			Parameters::kRtabmapCreateIntermediateNodes(), createIntermediateNodes);
 
 	// Filter the laser scan of `d` to drop points beyond scanMaxRange.
 	// No-op when scanMaxRange<=0 or the scan is empty.
@@ -644,15 +648,28 @@ ReplayResult replayDatabaseWithStoredOdom(
 		const bool throttle = rtabmapInterval > 0.0
 				&& lastUpdateStamp > 0.0
 				&& data.stamp() < lastUpdateStamp + rtabmapInterval;
-		if(throttle)
+		if(throttle && !createIntermediateNodes)
 		{
 			data = dbReader.takeData(&info);
 			applyScanRangeFilter(data);
 			continue;
 		}
-		lastUpdateStamp = data.stamp();
 
-		rtabmap.process(data, info.odomPose, info.odomCovariance);
+		SensorData rtabmapData = data;
+		if(throttle)
+		{
+			rtabmapData.setId(-1);  // intermediate node
+		}
+		rtabmap.process(rtabmapData, info.odomPose, info.odomCovariance);
+
+		if(throttle)
+		{
+			++result.framesIntermediate;
+			data = dbReader.takeData(&info);
+			applyScanRangeFilter(data);
+			continue;
+		}
+		lastUpdateStamp = data.stamp();
 		++result.framesProcessed;
 		// Caller-driven session split: trigger a fresh map once the
 		// configured number of frames has been processed. Used by tests
@@ -708,6 +725,7 @@ ReplayResult replayDatabaseWithStoredOdom(
 	std::cout << "[          ] Replay summary:"
 			<< " framesRead=" << result.framesRead
 			<< " framesProcessed=" << result.framesProcessed
+			<< " framesIntermediate=" << result.framesIntermediate
 			<< " loops=" << result.loopClosuresAccepted
 			<< " loopsRejected=" << result.loopClosuresRejected
 			<< " proximity=" << result.proximityDetections
@@ -1261,7 +1279,12 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Corridor_IcpReg)
 
 	auto buildRtabmapParams = []() {
 		ParametersMap p = baseRtabmapParams();
+		// 1 Hz detection rate; throttled frames become intermediate nodes
+		// (id=-1) so the full 990-frame odom track + laser payloads are
+		// preserved in the output DB for offline inspection.
 		p[Parameters::kRtabmapDetectionRate()] = "1";
+		p[Parameters::kRtabmapCreateIntermediateNodes()] = "true";
+		p[Parameters::kMemIntermediateNodeDataKept()] = "true";
 		p[Parameters::kRegStrategy()] = "1";
 		p[Parameters::kRegForce3DoF()] = "true";
 		p[Parameters::kRGBDCreateOccupancyGrid()] = "false";
@@ -1333,7 +1356,10 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Corridor_IcpReg)
 			// Icp/MaxTranslation bound, so ICP odometry never loses
 			// tracking. All three modes build a complete ~48-node graph.
 			EXPECT_NEAR(48, result.framesProcessed, 3) << v.label;
-			EXPECT_NEAR(48, result.finalGlobalGraphSize, 3) << v.label;
+			// All 990 DB frames live in the graph: 48 detection nodes +
+			// 942 intermediate nodes (Rtabmap/CreateIntermediateNodes).
+			EXPECT_NEAR(942, result.framesIntermediate, 5) << v.label;
+			EXPECT_EQ(990, result.finalGlobalGraphSize) << v.label;
 			ASSERT_GE(result.translationalRmseFinal, 0.0f) << v.label;
 			if(v.mode != OdomMode::StoredOdomDirect)
 			{
@@ -1373,7 +1399,10 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Corridor_IcpReg)
 			// mode (odom always runs on every DB frame, rtabmap.process is
 			// the one that gates on DetectionRate).
 			EXPECT_NEAR(48, result.framesProcessed, 3) << v.label;
-			EXPECT_NEAR(48, result.finalGlobalGraphSize, 3) << v.label;
+			// All 990 DB frames live in the graph: 48 detection nodes +
+			// 942 intermediate nodes (Rtabmap/CreateIntermediateNodes).
+			EXPECT_NEAR(942, result.framesIntermediate, 5) << v.label;
+			EXPECT_EQ(990, result.finalGlobalGraphSize) << v.label;
 			// Corridor's tight viewpoint spacing -> near-1:1 node-to-proximity
 			// ratio (observed 43/48).
 			EXPECT_GE(result.proximityDetections, 35) << v.label;
