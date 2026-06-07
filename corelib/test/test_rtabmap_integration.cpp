@@ -35,6 +35,7 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -150,7 +151,11 @@ ReplayResult replayDatabase(
 		// The SensorData turns into an RGB-D record (depth = dense disparity
 		// triangulated from the left/right pair). The odometry + rtabmap
 		// pipeline then runs the RGB-D path instead of the stereo path.
-		bool stereoToDepth = false)
+		bool stereoToDepth = false,
+		// When > 0, points beyond this range (in meters) are dropped from
+		// the LaserScan of each SensorData right after dbReader.takeData(),
+		// simulating a lidar with a tighter max range.
+		float scanMaxRange = 0.0f)
 {
 	ReplayResult result;
 
@@ -246,10 +251,23 @@ ReplayResult replayDatabase(
 	int syntheticFrameIdx = 0;
 	bool overrideStamps = false;
 
+	// Filter the laser scan of `d` to drop points beyond scanMaxRange (no-op
+	// when scanMaxRange<=0 or the scan is empty).  Keeps the simulated-lidar
+	// range cap uniform across all takeData() call sites.
+	const auto applyScanRangeFilter = [scanMaxRange](SensorData & d) {
+		if(scanMaxRange <= 0.0f || d.laserScanRaw().isEmpty()) return;
+		d.setLaserScan(util3d::commonFiltering(
+				d.laserScanRaw(),
+				/*downsamplingStep=*/0,
+				/*rangeMin=*/0.0f,
+				/*rangeMax=*/scanMaxRange));
+	};
+
 	// Prime the loop with the first sample.
 	SensorCaptureInfo info;
 	SensorData data = dbReader.takeData(&info);
 	if(stereoToDepthHelper) stereoToDepthHelper->postUpdate(&data, &info);
+	applyScanRangeFilter(data);
 	overrideStamps = data.stamp() > UTimer::now() - 3600.0;
 	if(overrideStamps)
 	{
@@ -271,6 +289,7 @@ ReplayResult replayDatabase(
 		{
 			data = dbReader.takeData(&info);
 			if(stereoToDepthHelper) stereoToDepthHelper->postUpdate(&data, &info);
+			applyScanRangeFilter(data);
 			if(overrideStamps && data.isValid())
 			{
 				data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
@@ -307,6 +326,16 @@ ReplayResult replayDatabase(
 		if(odomPose.isNull())
 		{
 			++result.odomLost;
+			// Log the failure reason so tests can diagnose ICP odometry
+			// drops (e.g. truncated-scan variants of the corridor test).
+			std::cerr << "[odom-lost] frame=" << result.framesRead
+					<< " stamp=" << data.stamp()
+					<< " rejected=\"" << odomInfo.reg.rejectedMsg << "\""
+					<< " inliers=" << odomInfo.reg.inliers
+					<< " matches=" << odomInfo.reg.matches
+					<< " icpInliersRatio=" << odomInfo.reg.icpInliersRatio
+					<< " icpStructuralComplexity=" << odomInfo.reg.icpStructuralComplexity
+					<< std::endl;
 		}
 		else
 		{
@@ -369,6 +398,7 @@ ReplayResult replayDatabase(
 
 		data = dbReader.takeData(&info);
 		if(stereoToDepthHelper) stereoToDepthHelper->postUpdate(&data, &info);
+		applyScanRangeFilter(data);
 		if(overrideStamps && data.isValid())
 		{
 			data.setStamp(syntheticFrameIdx++ * kSyntheticFrameDt);
@@ -515,7 +545,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		// rotational variance baked into the DB.
 		double overrideOdomAngularVariance = -1.0,
 		// When >0, same idea for the translational diagonal (0,1,2).
-		double overrideOdomLinearVariance = -1.0)
+		double overrideOdomLinearVariance = -1.0,
+		// When >0, points beyond this range (in meters) are dropped from
+		// the LaserScan of each SensorData after dbReader.takeData(),
+		// simulating a lidar with a tighter max range.
+		float scanMaxRange = 0.0f)
 {
 	ReplayResult result;
 
@@ -547,10 +581,34 @@ ReplayResult replayDatabaseWithStoredOdom(
 	rtabmap.init(rtabmapParameters, workDb);
 	std::cout << "[          ] Output DB: " << workDb << std::endl;
 
+	// Honor Rtabmap/DetectionRate (Hz) by gating rtabmap.process on DB frame
+	// stamps -- mirrors the throttle in replayDatabase(). Throttled frames
+	// are dropped here (no intermediate-node path) since the stored odom is
+	// already continuous.
+	float rtabmapDetectionRate = Parameters::defaultRtabmapDetectionRate();
+	Parameters::parse(rtabmapParameters,
+			Parameters::kRtabmapDetectionRate(), rtabmapDetectionRate);
+	const double rtabmapInterval = (rtabmapDetectionRate > 0.0f)
+			? (1.0 / rtabmapDetectionRate)
+			: 0.0;
+	double lastUpdateStamp = 0.0;
+
+	// Filter the laser scan of `d` to drop points beyond scanMaxRange.
+	// No-op when scanMaxRange<=0 or the scan is empty.
+	const auto applyScanRangeFilter = [scanMaxRange](SensorData & d) {
+		if(scanMaxRange <= 0.0f || d.laserScanRaw().isEmpty()) return;
+		d.setLaserScan(util3d::commonFiltering(
+				d.laserScanRaw(),
+				/*downsamplingStep=*/0,
+				/*rangeMin=*/0.0f,
+				/*rangeMax=*/scanMaxRange));
+	};
+
 	UTimer replayTimer;
 
 	SensorCaptureInfo info;
 	SensorData data = dbReader.takeData(&info);
+	applyScanRangeFilter(data);
 	while(data.isValid())
 	{
 		++result.framesRead;
@@ -583,6 +641,17 @@ ReplayResult replayDatabaseWithStoredOdom(
 		}
 		result.lastOdomPose = info.odomPose;
 
+		const bool throttle = rtabmapInterval > 0.0
+				&& lastUpdateStamp > 0.0
+				&& data.stamp() < lastUpdateStamp + rtabmapInterval;
+		if(throttle)
+		{
+			data = dbReader.takeData(&info);
+			applyScanRangeFilter(data);
+			continue;
+		}
+		lastUpdateStamp = data.stamp();
+
 		rtabmap.process(data, info.odomPose, info.odomCovariance);
 		++result.framesProcessed;
 		// Caller-driven session split: trigger a fresh map once the
@@ -613,7 +682,13 @@ ReplayResult replayDatabaseWithStoredOdom(
 		{
 			++result.loopClosuresRejected;
 		}
+		const auto rmseIt = stats.data().find(Statistics::kGtTranslational_rmse());
+		if(rmseIt != stats.data().end())
+		{
+			result.translationalRmseFinal = rmseIt->second;
+		}
 		data = dbReader.takeData(&info);
+		applyScanRangeFilter(data);
 	}
 
 	{
@@ -638,6 +713,7 @@ ReplayResult replayDatabaseWithStoredOdom(
 			<< " proximity=" << result.proximityDetections
 			<< " localGraph=" << result.finalLocalGraphSize
 			<< " globalGraph=" << result.finalGlobalGraphSize
+			<< " rmse=" << result.translationalRmseFinal << "m"
 			<< " wall=" << result.replayWallSeconds << "s"
 			<< std::endl;
 
@@ -1159,6 +1235,167 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD_IcpReg)
 }
 
 // ---------------------------------------------------------------------------
+// PR2 2D-laser corridor traversal (~50s). Three replay variants exercising
+// every entry point into Rtabmap's ICP path (Reg/Strategy=1):
+//   own-odom    : DB odom ignored, ICP-F2M odometry runs from scratch.
+//   guess-odom  : DB odom delta supplied as motion guess to ICP-F2M odometry.
+//   stored-odom : DB odom fed straight to Rtabmap, no odometry stage at all.
+// The corridor's long-axis degeneracy makes this a useful regression check
+// for the low-complexity fallback + ICP loop closure on 2D scans.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Corridor_IcpReg)
+{
+	const std::string dbPath = testDataPath("pr2_scan2d_corridor_50s.db");
+	SKIP_IF_MISSING(dbPath);
+
+	enum class OdomMode { OwnOdom, GuessFromDb, StoredOdomDirect };
+	struct Variant { const char * label; OdomMode mode; float scanMaxRange; };
+	const std::vector<Variant> variants = {
+		{"own-odom",             OdomMode::OwnOdom,          0.0f},
+		{"guess-odom",           OdomMode::GuessFromDb,      0.0f},
+		{"stored-odom",          OdomMode::StoredOdomDirect, 0.0f},
+		{"own-odom-range5.6",    OdomMode::OwnOdom,          5.6f},
+		{"guess-odom-range5.6",  OdomMode::GuessFromDb,      5.6f},
+		{"stored-odom-range5.6", OdomMode::StoredOdomDirect, 5.6f},
+	};
+
+	auto buildRtabmapParams = []() {
+		ParametersMap p = baseRtabmapParams();
+		p[Parameters::kRtabmapDetectionRate()] = "1";
+		p[Parameters::kRegStrategy()] = "1";
+		p[Parameters::kRegForce3DoF()] = "true";
+		p[Parameters::kRGBDCreateOccupancyGrid()] = "false";
+		p[Parameters::kIcpEpsilon()] = "0.001";
+		p[Parameters::kIcpMaxTranslation()] = "0.5";
+		p[Parameters::kIcpCorrespondenceRatio()] = "0.01";
+		p[Parameters::kIcpPointToPlane()] = "true";
+		p[Parameters::kIcpVoxelSize()] = "0.0";
+#ifdef RTABMAP_POINTMATCHER
+		p[Parameters::kIcpOutlierRatio()] = "0.95";
+		p[Parameters::kIcpStrategy()] = "1";  // libpointmatcher
+#else
+		p[Parameters::kIcpOutlierRatio()] = "0.85";
+#endif
+		p[Parameters::kMemBinDataKept()] = "true";
+		p[Parameters::kMemLaserScanNormalK()] = "5";
+		p[Parameters::kMemLaserScanNormalRadius()] = "1";
+		p[Parameters::kMemLaserScanVoxelSize()] = "0.05";
+		p[Parameters::kRGBDProximityPathFilteringRadius()] = "1";
+		p[Parameters::kRGBDProximityPathMaxNeighbors()] = "10";
+		return p;
+	};
+
+	for(const Variant & v : variants)
+	{
+		SCOPED_TRACE(std::string("variant=") + v.label);
+		ParametersMap rtabmapParams = buildRtabmapParams();
+
+		ReplayResult result;
+		if(v.mode == OdomMode::StoredOdomDirect)
+		{
+			rtabmapParams[Parameters::kRGBDNeighborLinkRefining()] = "true";
+			const std::string workDb = test::tempPath(uFormat(
+					"rtabmap_integration_PR2_Scan2D_Corridor_IcpReg_%s.db", v.label));
+			result = replayDatabaseWithStoredOdom(dbPath, workDb, rtabmapParams,
+					/*triggerNewMapAfterFrame=*/-1,
+					/*overrideOdomAngularVariance=*/-1.0,
+					/*overrideOdomLinearVariance=*/-1.0,
+					/*scanMaxRange=*/v.scanMaxRange);
+		}
+		else
+		{
+			ParametersMap odomParams = rtabmapParams;
+			odomParams[Parameters::kOdomStrategy()] = "0";  // F2M
+			odomParams[Parameters::kOdomGuessMotion()] = "true";
+			odomParams[Parameters::kIcpPointToPlaneRadius()] = "1";
+			odomParams[Parameters::kIcpVoxelSize()] = "0.05";
+
+			const bool useGuess = (v.mode == OdomMode::GuessFromDb);
+			result = replayDatabase(dbPath, rtabmapParams, odomParams,
+					/*useStoredOdomAsGuess=*/useGuess,
+					/*passOdomDataToRtabmap=*/false,
+					/*goldenStampedGroundTruth=*/nullptr,
+					/*frameStride=*/1,
+					/*runLabel=*/v.label,
+					/*stereoToDepth=*/false,
+					/*scanMaxRange=*/v.scanMaxRange);
+		}
+
+		EXPECT_EQ(990, result.framesRead)
+				<< v.label << ": expected 990 frames in the corridor DB";
+
+		if(v.scanMaxRange > 0.0f)
+		{
+			// Range-capped variants: even when the lidar sees only 5.6 m
+			// of corridor, the default low-complexity strategy
+			// (Icp/PointToPlaneLowComplexityStrategy=1: PointToPoint +
+			// project) keeps libpointmatcher's iteration inside the
+			// Icp/MaxTranslation bound, so ICP odometry never loses
+			// tracking. All three modes build a complete ~48-node graph.
+			EXPECT_NEAR(48, result.framesProcessed, 3) << v.label;
+			EXPECT_NEAR(48, result.finalGlobalGraphSize, 3) << v.label;
+			ASSERT_GE(result.translationalRmseFinal, 0.0f) << v.label;
+			if(v.mode != OdomMode::StoredOdomDirect)
+			{
+				EXPECT_EQ(0, result.odomLost) << v.label
+						<< ": no odom loss expected under the range cap with the "
+						<< "default PointToPoint-low-complexity recovery strategy";
+			}
+			if(v.mode == OdomMode::OwnOdom)
+			{
+				// Observed RMSE swings between ~0.20 m and ~1.5 m
+				// run-to-run -- ICP-F2M alone drifts unpredictably
+				// along the unobservable x-axis. Bound is loose on
+				// purpose; the documented behavior is "stays within
+				// the same order of magnitude as a full corridor",
+				// not anything precise.
+				EXPECT_LT(result.translationalRmseFinal, 2.0f)
+						<< v.label << " RMSE = " << result.translationalRmseFinal << "m";
+			}
+			else if(v.mode == OdomMode::GuessFromDb)
+			{
+				// Observed ~0.05 m at 5.6 m range -- DB odom guess holds
+				// the trajectory while ICP refines y/yaw.
+				EXPECT_LT(result.translationalRmseFinal, 0.15f)
+						<< v.label << " RMSE = " << result.translationalRmseFinal << "m";
+			}
+			else  // StoredOdomDirect
+			{
+				// Observed ~0.04 m at 5.6 m range; stored odom carries
+				// the trajectory, short scans don't propagate into error.
+				EXPECT_LT(result.translationalRmseFinal, 0.10f)
+						<< v.label << " RMSE = " << result.translationalRmseFinal << "m";
+			}
+		}
+		else
+		{
+			// 1 Hz throttle on 50s of data -> ~48-50 nodes regardless of
+			// mode (odom always runs on every DB frame, rtabmap.process is
+			// the one that gates on DetectionRate).
+			EXPECT_NEAR(48, result.framesProcessed, 3) << v.label;
+			EXPECT_NEAR(48, result.finalGlobalGraphSize, 3) << v.label;
+			// Corridor's tight viewpoint spacing -> near-1:1 node-to-proximity
+			// ratio (observed 43/48).
+			EXPECT_GE(result.proximityDetections, 35) << v.label;
+
+			// Stored ground truth + 3DoF ICP -> ~3 cm RMSE on the odom
+			// variants; the stored-odom variant inherits whatever drift
+			// the recorded odom carries. 6 cm bound gives ~2x headroom.
+			ASSERT_GE(result.translationalRmseFinal, 0.0f)
+					<< v.label << ": no Gt/translational_rmse in stats";
+			EXPECT_LT(result.translationalRmseFinal, 0.06f)
+					<< v.label << " RMSE = " << result.translationalRmseFinal << "m";
+
+			if(v.mode != OdomMode::StoredOdomDirect)
+			{
+				EXPECT_EQ(0, result.odomLost)
+						<< v.label << ": odometry should never lose tracking";
+			}
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Two-loop workspace mapping session (Texture tutorial DB). Loads the
 // pre-built session, runs global bundle adjustment, and asserts the
 // resulting poses against a captured golden trajectory.
@@ -1383,6 +1620,7 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
 		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
 		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
+		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
 
 		const std::string workDb = test::tempPath(uFormat(
 				"rtabmap_integration_RobustGraphOptimizationStereo_%s.db", v.label));
@@ -1518,6 +1756,7 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
 		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
 		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
+		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
 
 		const std::string workDb = test::tempPath(uFormat(
 				"rtabmap_integration_Loop3ItGps_%s.db", v.label.c_str()));

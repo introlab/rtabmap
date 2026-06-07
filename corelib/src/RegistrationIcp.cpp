@@ -633,15 +633,17 @@ Transform RegistrationIcp::computeTransformationImpl(
 				if(complexity < _pointToPlaneMinComplexity)
 				{
 					tooLowComplexityForPlaneToPlane = true;
-					// Strategy 1 (project) keeps PointToPlane on: it gives
+					// Strategy 3 keeps PointToPlane on and projects: gives
 					// cleaner residuals on the constrained perpendicular
 					// axes than PointToPoint does (point-to-plane cancels
 					// the random in-plane jitter via the normal dot
 					// product), and the in-plane DoFs are then pinned to
 					// the guess by the projection block in the
-					// PointToPlane branch. Strategy 0 (reject) and 2
-					// (accept PointToPoint as-is) keep the old behavior.
-					if(_pointToPlaneLowComplexityStrategy != 1)
+					// PointToPlane branch. Strategy 1 (default, legacy)
+					// recomputes with PointToPoint then projects; Strategy
+					// 0 (reject) and 2 (accept PointToPoint as-is) keep
+					// the old behavior.
+					if(_pointToPlaneLowComplexityStrategy != 3)
 					{
 						pointToPlane = false;
 					}
@@ -769,10 +771,10 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				if(!icpT.isNull() && hasConverged)
 				{
-					// Strategy 1 with low complexity: project the
+					// Strategy 3 with low complexity: project the
 					// PointToPlane correction onto the constrained
 					// eigenvectors (in-plane DoFs come from the guess).
-					if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy == 1)
+					if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy == 3)
 					{
 						icpT = constrainLowComplexityTransform(icpT, guess,
 								complexityVectors, secondEigenValue,
@@ -927,11 +929,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				if(!icpT.isNull() && hasConverged)
 				{
-					// PointToPoint branch only reached for strategy 2
-					// ("accept as-is") or 3 (legacy: recompute then project).
-					// Strategy 0 returned early; strategy 1 stays on the
-					// PointToPlane branch.
-					if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy == 3)
+					// PointToPoint branch is reached for strategies 1
+					// (default, legacy: recompute then project) and 2
+					// (accept as-is). Strategy 0 returned early; strategy
+					// 3 stays on the PointToPlane branch.
+					if(tooLowComplexityForPlaneToPlane && _pointToPlaneLowComplexityStrategy == 1)
 					{
 						icpT = constrainLowComplexityTransform(icpT, guess,
 								complexityVectors, secondEigenValue,

@@ -398,11 +398,12 @@ TEST(RegistrationIcpTest, ParseParametersOverridesDefaults)
 // is geometrically unobservable -- any pure-x translation maps the scan
 // onto itself.  rtabmap detects this via @ref Icp/PointToPlaneMinComplexity
 // and falls back to a strategy controlled by @ref
-// Icp/PointToPlaneLowComplexityStrategy.  Strategy 1 (default) limits the
-// ICP correction along the degenerate axis: y and yaw are still solved for,
-// but x is taken from the guess.
+// Icp/PointToPlaneLowComplexityStrategy.  These tests exercise Strategy 3
+// (keep PointToPlane + project onto constrained axes), which yields cleaner
+// y/yaw recovery than Strategy 1 (the default, legacy: recompute with
+// PointToPoint then project) on these synthetic clouds.
 //
-// These tests use the default ICP strategy only -- the low-complexity logic
+// These tests use the default ICP backend only -- the low-complexity logic
 // lives in RegistrationIcp itself, so the backend underneath isn't what's
 // under test.
 // =====================================================================
@@ -410,8 +411,8 @@ TEST(RegistrationIcpTest, ParseParametersOverridesDefaults)
 namespace {
 
 // Helper for the corridor tests: PointToPlane=true with normals auto-computed
-// from a k-neighborhood; low-complexity strategy 1 (limit along the
-// degenerate axis); 5 cm voxel downsampling on both scans before ICP.
+// from a k-neighborhood; low-complexity strategy 3 (keep PointToPlane + project
+// along the degenerate axis); 5 cm voxel downsampling on both scans before ICP.
 ParametersMap corridorIcpParams(RegistrationIcp::IcpStrategy strategy)
 {
 	ParametersMap p = baseIcpParams(strategy);
@@ -425,14 +426,24 @@ ParametersMap corridorIcpParams(RegistrationIcp::IcpStrategy strategy)
 	// Default MinComplexity = 0.02 already detects a corridor; keep it
 	// explicit so the test documents what threshold is being exercised.
 	p[Parameters::kIcpPointToPlaneMinComplexity()] = "0.02";
-	p[Parameters::kIcpPointToPlaneLowComplexityStrategy()] = "1";
+	// Strategy 3 (keep PointToPlane + project): PointToPlane's normal-dot
+	// residual gives clean y/yaw recovery on the synthetic corridor walls.
+	// The default Strategy 1 (recompute with PointToPoint + project) is
+	// more robust on real-world F2M drift (where libpointmatcher iteration
+	// can wander on degenerate scans -- see the PR2_Scan2D_Corridor
+	// integration test), but on these clean clouds PointToPoint loses
+	// signal on the y axis and yaw collapses toward zero (~0.5 deg out of
+	// 3 deg). So this helper opts back into Strategy 3.
+	p[Parameters::kIcpPointToPlaneLowComplexityStrategy()] = "3";
 	// 5 cm voxel: downsamples the dense synthetic walls while keeping enough
 	// points to estimate normals + run ICP -- closer to a real-world setup.
 	p[Parameters::kIcpVoxelSize()] = "0.05";
-	// Allow the 1 m translation guess in the second pair of tests (default
-	// MaxTranslation is 0.2 m, which would reject before the low-complexity
-	// path even runs).
-	p[Parameters::kIcpMaxTranslation()] = "0.0";
+	// 0.5 m matches the integration-test PR2 corridor configuration so this
+	// test exercises libpointmatcher's BoundTransformationChecker. The
+	// checker measures the iteration's *delta from the initial guess*, not
+	// the absolute transform, so even the with-guess tests (xGuess at 1 m
+	// forward) only need ~5 cm of correction and never trip the bound.
+	p[Parameters::kIcpMaxTranslation()] = "0.5";
 	return p;
 }
 

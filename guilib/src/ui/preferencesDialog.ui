@@ -25208,7 +25208,7 @@ Lower the ratio -&gt; higher the precision.</string>
                       <item row="22" column="1">
                        <widget class="QLabel" name="label_6071">
                         <property name="text">
-                         <string>Stuctural complexity strategy. If structural complexity is below the minimum complexity threshold: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept &quot;as is&quot; the transform computed by PointToPoint.</string>
+                         <string>Structural complexity strategy. If structural complexity is below the minimum complexity threshold: 0 = reject the transform; 1 (default) = recompute with PointToPoint and limit ICP correction along the unconstrained axes (e.g. in a corridor, x is taken from the guess while y/yaw are still solved for); 2 = recompute with PointToPoint and accept the result &quot;as is&quot;; 3 = keep the PointToPlane transform and apply the same axis-constrained projection as strategy 1.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -25233,6 +25233,11 @@ Lower the ratio -&gt; higher the precision.</string>
                         <item>
                          <property name="text">
                           <string>PointToPoint</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Constrained PointToPlane</string>
                          </property>
                         </item>
                        </widget>
