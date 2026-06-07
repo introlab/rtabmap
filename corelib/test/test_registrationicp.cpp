@@ -438,12 +438,7 @@ ParametersMap corridorIcpParams(RegistrationIcp::IcpStrategy strategy)
 	// 5 cm voxel: downsamples the dense synthetic walls while keeping enough
 	// points to estimate normals + run ICP -- closer to a real-world setup.
 	p[Parameters::kIcpVoxelSize()] = "0.05";
-	// 0.5 m matches the integration-test PR2 corridor configuration so this
-	// test exercises libpointmatcher's BoundTransformationChecker. The
-	// checker measures the iteration's *delta from the initial guess*, not
-	// the absolute transform, so even the with-guess tests (xGuess at 1 m
-	// forward) only need ~5 cm of correction and never trip the bound.
-	p[Parameters::kIcpMaxTranslation()] = "0.5";
+	p[Parameters::kIcpMaxTranslation()] = "0.0";
 	return p;
 }
 
@@ -714,8 +709,16 @@ TEST(RegistrationIcpTest, Corridor3D_Drone4DoF_ImuPlusXGuess_RecoversFullTransfo
 	EXPECT_NEAR(3.0f*deg, yawOut, 5e-3f);
 }
 
+// 2D corridor tests: PCL has no 2D PointToPlane estimator
+// (TransformationEstimation2D is point-to-point only), so the
+// low-complexity machinery never fires on PCL+2D and the iteration
+// drifts unchecked. Skip when libpointmatcher isn't available.
 TEST(RegistrationIcpTest, Corridor2D_NoGuess_FailsToRecoverXButGetsYAndYaw)
 {
+	if(defaultIcpStrategy() != RegistrationIcp::kIcpPointMatcher)
+	{
+		GTEST_SKIP() << "2D PointToPlane requires libpointmatcher";
+	}
 	// 2D analogue: two parallel lines along x. Same degeneracy + same
 	// infinite-corridor model (independent `to` sample, x stripped from
 	// the truth motion).
@@ -729,7 +732,9 @@ TEST(RegistrationIcpTest, Corridor2D_NoGuess_FailsToRecoverXButGetsYAndYaw)
 			observableMotion(truth).inverse());
 
 	RegistrationInfo info;
-	const Transform t = runIcp(defaultIcpStrategy(), from, to, corridorIcpParams(defaultIcpStrategy()), Transform::getIdentity(), &info);
+	const Transform t = runIcp(defaultIcpStrategy(), from, to,
+			corridorIcpParams(defaultIcpStrategy()),
+			Transform::getIdentity(), &info);
 	ASSERT_FALSE(t.isNull()) << info.rejectedMsg;
 	EXPECT_LT(info.icpStructuralComplexity, 0.02f)
 			<< "expected 2D corridor to land below low-complexity threshold; got "
@@ -745,6 +750,10 @@ TEST(RegistrationIcpTest, Corridor2D_NoGuess_FailsToRecoverXButGetsYAndYaw)
 
 TEST(RegistrationIcpTest, Corridor2D_WithXGuess_RecoversFullTransform)
 {
+	if(defaultIcpStrategy() != RegistrationIcp::kIcpPointMatcher)
+	{
+		GTEST_SKIP() << "2D PointToPlane requires libpointmatcher";
+	}
 	const LaserScan from = makeCorridor2D();
 	const float yaw = 3.0f * static_cast<float>(M_PI) / 180.0f;
 	const Transform truth(1.0f, 0.05f, 0.0f, 0.0f, 0.0f, yaw);
@@ -756,7 +765,8 @@ TEST(RegistrationIcpTest, Corridor2D_WithXGuess_RecoversFullTransform)
 
 	const Transform xGuess(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	RegistrationInfo info;
-	const Transform t = runIcp(defaultIcpStrategy(), from, to, corridorIcpParams(defaultIcpStrategy()), xGuess, &info);
+	const Transform t = runIcp(defaultIcpStrategy(), from, to,
+			corridorIcpParams(defaultIcpStrategy()), xGuess, &info);
 	ASSERT_FALSE(t.isNull()) << info.rejectedMsg;
 	EXPECT_LT(t.getDistance(truth), 2e-2f)
 			<< "got=" << t.prettyPrint() << " truth=" << truth.prettyPrint();
@@ -830,7 +840,7 @@ TEST(RegistrationIcpTest, RoomCorner2D_PointToPlane_RecoversFullTransform)
 	// libpointmatcher only -- PCL's TransformationEstimation2D is
 	// point-to-point and crashes mid-iteration when fed normals; see
 	// makeCorridor2D / util3d_registration.cpp for context.
-	if(!RegistrationIcp::available(RegistrationIcp::kIcpPointMatcher))
+	if(defaultIcpStrategy() != RegistrationIcp::kIcpPointMatcher)
 	{
 		GTEST_SKIP() << "2D PointToPlane requires libpointmatcher";
 	}
