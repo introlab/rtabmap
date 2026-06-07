@@ -247,7 +247,15 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 
 cv::Mat PyDetector::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-	UASSERT((int)keypoints.size() == descriptors_.rows);
+	if(!keypoints.empty() && (int)keypoints.size() != descriptors_.rows)
+	{
+		UERROR("The number of keypoints (%ld) doesn't match the number of buffered "
+			"descriptors (%d). PyDetector's descriptors extraction should "
+			"be called right after keypoints detection, with same keypoints "
+			"returned by the detection. Returning empty descriptors.", 
+			keypoints.size(), descriptors_.rows);
+		return cv::Mat();
+	}
 	return descriptors_;
 }
 

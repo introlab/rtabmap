@@ -2639,7 +2639,31 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 {
 #ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	return superPoint_->compute(keypoints);
+	cv::Mat descriptors;
+	if(!keypoints.empty())
+	{
+		descriptors = superPoint_->compute(keypoints);
+		if(descriptors.empty())
+		{
+			// superpoint may have been reset between keypoint detection and now,
+			// re-detect features to re-inialize the descriptors matrix, then
+			// re-extract descriptors with original keypoints.
+			UWARN("Re-initializing superpoint on that image to extract descriptors");
+			if(!superPoint_->detect(image).empty())
+			{
+				descriptors = superPoint_->compute(keypoints);
+				if(descriptors.rows == (int)keypoints.size())
+				{
+					UWARN("Sucessfully re-initialized superpoint, returning %d descriptors.", descriptors.rows);
+				}
+			}
+			else
+			{
+				UWARN("Failed to re-initialize superpoint on that image, returning empty descriptors.");
+			}
+		}
+	}
+	return descriptors;
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
 	return cv::Mat();
@@ -2741,7 +2765,31 @@ cv::Mat SuperPointRpautrat::generateDescriptorsImpl(const cv::Mat & image, std::
 {
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	return superPoint_->compute(keypoints);
+	cv::Mat descriptors;
+	if(!keypoints.empty())
+	{
+		descriptors = superPoint_->compute(keypoints);
+		if(descriptors.empty())
+		{
+			// superpoint may have been reset between keypoint detection and now,
+			// re-detect features to re-inialize the descriptors matrix, then
+			// re-extract descriptors with original keypoints.
+			UWARN("Re-initializing superpoint on that image to extract descriptors");
+			if(!superPoint_->detect(image).empty())
+			{
+				descriptors = superPoint_->compute(keypoints);
+				if(descriptors.rows == (int)keypoints.size())
+				{
+					UWARN("Sucessfully re-initialized superpoint, returning %d descriptors.", descriptors.rows);
+				}
+			}
+			else
+			{
+				UWARN("Failed to re-initialize superpoint on that image, returning empty descriptors.");
+			}
+		}
+	}
+	return descriptors;
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
 	return cv::Mat();
