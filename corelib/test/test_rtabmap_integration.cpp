@@ -2313,6 +2313,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		}
 
 		const bool isCornerBased =
+				detectorType == Feature2D::kFeatureBrisk ||		
 				detectorType == Feature2D::kFeatureOrb ||
 				detectorType == Feature2D::kFeatureGfttFreak ||
 				detectorType == Feature2D::kFeatureGfttBrief ||
