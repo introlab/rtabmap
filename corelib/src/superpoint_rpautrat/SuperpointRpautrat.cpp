@@ -130,7 +130,7 @@ cv::Mat SPDetectorRpautrat::compute(const std::vector<cv::KeyPoint> &keypoints)
 {
 	if(!detected_)
 	{
-		UERROR("SPDetector has been reset before extracting the descriptors! detect() should be called before compute().");
+		UERROR("SPDetectorRpautrat has been reset before extracting the descriptors! detect() should be called before compute().");
 		return cv::Mat();
 	}
     if(keypoints.empty())
