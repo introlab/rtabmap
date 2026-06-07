@@ -22,6 +22,7 @@
 #include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Version.h>
 #ifdef RTABMAP_OCTOMAP
@@ -2055,8 +2056,8 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		params[Parameters::kSURFHessianThreshold()]       = "150";
 		params[Parameters::kMemSTMSize()]                 = "20";
 		params[Parameters::kKpTfIdfLikelihoodUsed()]      = tfIdfUsed ? "true" : "false";
-		params[Parameters::kKpMaxFeatures()]              = "400";
-		params[Parameters::kKpBadSignRatio()]             = "0.1";
+		params[Parameters::kKpMaxFeatures()]              = "500";
+		params[Parameters::kKpBadSignRatio()]             = "0.25";
 		// SIFT-specific: lower the contrast threshold so more keypoints
 		// survive on the low-texture frames in data/samples.
 		params[Parameters::kSIFTContrastThreshold()]      = "0.01";
@@ -2069,7 +2070,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// GFTT-specific: tighten the minimum keypoint separation (default
 		// 7 px) so more candidates fit per frame.
 		params[Parameters::kGFTTMinDistance()]            = "5";
-		params[Parameters::kMemBadSignaturesIgnored()]    = "true";
+		params[Parameters::kMemBadSignaturesIgnored()]    = "false";
 		params[Parameters::kMemRehearsalSimilarity()]     = "0.20";
 
 		// Backend-specific asset paths + GPU/CUDA toggle. `useGpu` only
@@ -2125,6 +2126,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 
 		UTimer wall;
 		int i = 0;
+		int badSignatureCount = 0;
 		SensorData data = camera.takeImage();
 		while(!data.imageRaw().empty())
 		{
@@ -2133,6 +2135,27 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			data.setStamp(static_cast<double>(i));
 			const bool ok = rtabmap.process(data, Transform());
 			ASSERT_TRUE(ok) << detectorLabel << " rtabmap.process failed at frame " << i;
+
+			// Per-frame checks on the just-processed signature in
+			// working memory:
+			//   * verify keypoints and descriptors stay 1-to-1 (no row
+			//     silently dropped during BOW quantization),
+			//   * count bad signatures (low-texture frames on this
+			//     84-image set produce a handful with
+			//     Mem/BadSignaturesIgnored=false; rehearsal does not
+			//     merge bad signatures, so the per-frame count is stable).
+			const Signature * lastSig =
+					rtabmap.getMemory()->getLastWorkingSignature(false);
+			ASSERT_TRUE(lastSig != nullptr)
+					<< detectorLabel << " frame " << i << ": no last signature";
+			EXPECT_EQ(static_cast<int>(lastSig->getWordsKpts().size()),
+					lastSig->getWordsDescriptors().rows)
+					<< detectorLabel << " frame " << i
+					<< " (id=" << lastSig->id() << "): keypoints/descriptors "
+					<< "size mismatch on signature ("
+					<< lastSig->getWordsKpts().size() << " vs "
+					<< lastSig->getWordsDescriptors().rows << ")";
+			if(lastSig->isBadSignature()) ++badSignatureCount;
 
 			FrameStat s;
 			s.queryRow   = i - 1;
@@ -2162,6 +2185,19 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		ASSERT_EQ(kNumFrames, i)
 				<< detectorLabel << " expected " << kNumFrames
 				<< " frames from " << samplesDir << ", got " << i;
+
+		// Mem/BadSignaturesIgnored=false should reveal at least one bad
+		// signature during the 84-frame run -- except for SuperPoint
+		// (Magicleap) on GPU, whose dense features always yield >= 1
+		// valid word per frame on this dataset, so no frame ever turns
+		// into a bad signature.
+		if(detectorType != Feature2D::kFeatureSuperPointTorch)
+		{
+			EXPECT_GE(badSignatureCount, 1)
+					<< detectorLabel << " expected at least 1 bad signature with "
+					<< "Mem/BadSignaturesIgnored=false; got " << badSignatureCount;
+		}
+
 		rtabmap.close();
 
 		// Standard rtabmap P/R curve: sort frames by hypothesis value
@@ -2277,6 +2313,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		}
 
 		const bool isCornerBased =
+				detectorType == Feature2D::kFeatureOrb ||
 				detectorType == Feature2D::kFeatureGfttFreak ||
 				detectorType == Feature2D::kFeatureGfttBrief ||
 				detectorType == Feature2D::kFeatureGfttOrb   ||
