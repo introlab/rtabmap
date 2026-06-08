@@ -111,7 +111,15 @@ add_test(NAME test_rtabmap COMMAND test_rtabmap)
 # assets are absent, so the build stays green for contributors without them.
 add_executable(test_rtabmap_integration test_rtabmap_integration.cpp)
 target_link_libraries(test_rtabmap_integration gtest_main rtabmap_core)
+
+# Labelled "long" so CI PR jobs can opt out via:
+#  `ctest -LE long` 
+# while nightlies run:
+#  `ctest -L long`.
 add_test(NAME test_rtabmap_integration COMMAND test_rtabmap_integration)
+set_tests_properties(test_rtabmap_integration PROPERTIES
+        TIMEOUT 1800
+        LABELS  "long")
 
 #Link.h
 add_executable(test_link test_link.cpp)
