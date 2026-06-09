@@ -536,7 +536,7 @@ bool OptimizerTORO::loadGraph(
 					UFATAL("Pose %d already added", id);
 				}
 			}
-			else if(tag.compare("EDGE2") == 0 && strList.size() == 11)
+			else if(tag.compare("EDGE2") == 0 && strList.size() == 12)
 			{
 				//EDGE2 observed_vertex_id observing_vertex_id x y theta inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
 				int idFrom = atoi(strList[1].c_str());
