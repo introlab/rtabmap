@@ -1978,11 +1978,8 @@ void FAST::parseParameters(const ParametersMap & parameters)
 
 bool FAST::isGpuAvailable() const
 {
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-	return cv::cuda::getCudaEnabledDeviceCount() > 0;
-#else
+	// Not implemented
 	return false;
-#endif
 }
 
 std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)

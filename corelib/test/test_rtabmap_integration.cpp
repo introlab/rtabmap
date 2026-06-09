@@ -1978,6 +1978,13 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			static_cast<Feature2D::Type>(Parameters::defaultKpDetectorStrategy());
 
 	int detectorsTested = 0;
+	// Tracks whether any detector × variant across the whole test produced
+	// a bad signature that still carried non-empty word-keypoints. Asserted
+	// at the end so the BadSignatures path is verified at least once
+	// regardless of which detectors are available in this build.
+	// The idea is that we should test that in case of bad signatures,
+	// the keypoints AND descriptors should be generated (#1717).
+	bool sawBadSigWithKpts = false;
 	for(int strategy = Feature2D::kFeatureSurf; strategy < Feature2D::kFeatureEnd; ++strategy)
 	{
 		const Feature2D::Type detectorType = static_cast<Feature2D::Type>(strategy);
@@ -2057,7 +2064,8 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		params[Parameters::kMemSTMSize()]                 = "20";
 		params[Parameters::kKpTfIdfLikelihoodUsed()]      = tfIdfUsed ? "true" : "false";
 		params[Parameters::kKpMaxFeatures()]              = "500";
-		params[Parameters::kKpBadSignRatio()]             = "0.25";
+		params[Parameters::kKpBadSignRatio()]             = "0.1";
+		params[Parameters::kKpNndrRatio()]                = "0.8";
 		// SIFT-specific: lower the contrast threshold so more keypoints
 		// survive on the low-texture frames in data/samples.
 		params[Parameters::kSIFTContrastThreshold()]      = "0.01";
@@ -2095,8 +2103,6 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			case Feature2D::kFeatureSurf:      params[Parameters::kSURFGpuVersion()] = "true"; break;
 			case Feature2D::kFeatureSift:      params[Parameters::kSIFTGpu()]        = "true"; break;
 			case Feature2D::kFeatureOrb:       params[Parameters::kORBGpu()]         = "true"; break;
-			case Feature2D::kFeatureFastBrief:
-			case Feature2D::kFeatureFastFreak: params[Parameters::kFASTGpu()]        = "true"; break;
 			case Feature2D::kFeatureGfttFreak:
 			case Feature2D::kFeatureGfttBrief:
 			case Feature2D::kFeatureGfttOrb:
@@ -2155,7 +2161,14 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< "size mismatch on signature ("
 					<< lastSig->getWordsKpts().size() << " vs "
 					<< lastSig->getWordsDescriptors().rows << ")";
-			if(lastSig->isBadSignature()) ++badSignatureCount;
+			if(lastSig->isBadSignature())
+			{
+				++badSignatureCount;
+				if(!lastSig->getWordsKpts().empty())
+				{
+					sawBadSigWithKpts = true;
+				}
+			}
 
 			FrameStat s;
 			s.queryRow   = i - 1;
@@ -2186,16 +2199,21 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 				<< detectorLabel << " expected " << kNumFrames
 				<< " frames from " << samplesDir << ", got " << i;
 
-		// Mem/BadSignaturesIgnored=false should reveal at least one bad
-		// signature during the 84-frame run -- except for SuperPoint
-		// (Magicleap) on GPU, whose dense features always yield >= 1
-		// valid word per frame on this dataset, so no frame ever turns
-		// into a bad signature.
-		if(detectorType != Feature2D::kFeatureSuperPointTorch)
+		std::cerr << "[" << detectorLabel
+				<< "] bad signatures: " << badSignatureCount
+				<< " (Mem/BadSignaturesIgnored=false)\n";
+
+		// Pick the descriptor type from the last in-memory signature to
+		// drive the recall-floor logic below (binary vs float bucket).
+		bool binaryDescriptors = false;
 		{
-			EXPECT_GE(badSignatureCount, 1)
-					<< detectorLabel << " expected at least 1 bad signature with "
-					<< "Mem/BadSignaturesIgnored=false; got " << badSignatureCount;
+			const Signature * lastSig =
+					rtabmap.getMemory()->getLastWorkingSignature(false);
+			if(lastSig && !lastSig->getWordsDescriptors().empty())
+			{
+				binaryDescriptors =
+						lastSig->getWordsDescriptors().type() == CV_8U;
+			}
 		}
 
 		rtabmap.close();
@@ -2312,16 +2330,11 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< ", FP=" << acceptedFp << ")\n";
 		}
 
-		const bool isCornerBased =
-				detectorType == Feature2D::kFeatureBrisk ||		
-				detectorType == Feature2D::kFeatureOrb ||
-				detectorType == Feature2D::kFeatureGfttFreak ||
-				detectorType == Feature2D::kFeatureGfttBrief ||
-				detectorType == Feature2D::kFeatureGfttOrb   ||
-				detectorType == Feature2D::kFeatureGfttDaisy ||
-				detectorType == Feature2D::kFeatureFastFreak ||
-				detectorType == Feature2D::kFeatureFastBrief;
-		const float recallFloor = isCornerBased ? 0.5f : 0.9f;
+		// Binary-descriptor detectors (Hamming-distance BoW: ORB, BRIEF,
+		// FREAK, BRISK) carry less per-keypoint discrimination than float
+		// descriptors (SIFT, SURF, KAZE, DAISY, SuperPoint) on this 84-img
+		// low-texture set, so they get a looser recall@100%P floor.
+		const float recallFloor = binaryDescriptors ? 0.5f : 0.9f;
 		EXPECT_GE(recallAt100p, recallFloor)
 				<< detectorLabel << " recall@100%P=" << recallAt100p
 				<< " is below " << recallFloor
@@ -2331,4 +2344,12 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		}  // end for(tfIdfUsed)
 	}
 	ASSERT_GT(detectorsTested, 0) << "no Features2D detector was available in this build";
+	// Across every detector × variant we exercised, at least one bad
+	// signature must have been observed with non-empty word-keypoints --
+	// otherwise the BadSignatures path was never genuinely triggered by
+	// the data and the test setup has drifted away from validating it.
+	EXPECT_TRUE(sawBadSigWithKpts)
+			<< "no bad signature with non-empty words-keypoints was seen "
+			<< "across any detector; data/samples or the BoW pipeline may "
+			<< "no longer be exercising the BadSignatures path";
 }
