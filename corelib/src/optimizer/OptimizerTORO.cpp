@@ -380,7 +380,7 @@ bool OptimizerTORO::saveGraph(
 	if(file)
 	{
 		
-		for (std::map<int, Transform>::const_iterator iter = poses.begin(); iter != poses.end(); ++iter)
+		for (std::map<int, Transform>::const_iterator iter = poses.lower_bound(0); iter != poses.end(); ++iter)
 		{
 			if (isSlam2d())
 			{
@@ -409,7 +409,7 @@ bool OptimizerTORO::saveGraph(
 
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			if (iter->second.type() != Link::kPosePrior && iter->second.type() != Link::kGravity)
+			if (iter->second.from() != iter->second.to() && iter->second.type() != Link::kLandmark)
 			{
 				if (isSlam2d())
 				{
