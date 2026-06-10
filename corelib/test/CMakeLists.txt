@@ -30,6 +30,7 @@ add_test(NAME test_util3d_registration COMMAND test_util3d_registration)
 add_executable(test_util3d_features test_util3d_features.cpp)
 target_link_libraries(test_util3d_features gtest_main rtabmap_core)
 add_test(NAME test_util3d_features COMMAND test_util3d_features)
+set_tests_properties(test_util3d_features PROPERTIES TIMEOUT 600)
 
 #util3d_correspondences.h
 add_executable(test_util3d_correspondences test_util3d_correspondences.cpp)
@@ -70,6 +71,7 @@ add_test(NAME test_transform COMMAND test_transform)
 add_executable(test_stereo_dense test_stereo_dense.cpp)
 target_link_libraries(test_stereo_dense gtest_main rtabmap_core)
 add_test(NAME test_stereo_dense COMMAND test_stereo_dense)
+set_tests_properties(test_stereo_dense PROPERTIES TIMEOUT 600)
 
 #Stereo.h (tests both BlockMatching and OpticalFlow strategies)
 add_executable(test_stereo test_stereo.cpp)
@@ -160,6 +162,7 @@ add_test(NAME test_landmark COMMAND test_landmark)
 add_executable(test_localgrid test_localgrid.cpp)
 target_link_libraries(test_localgrid gtest_main rtabmap_core)
 add_test(NAME test_localgrid COMMAND test_localgrid)
+set_tests_properties(test_localgrid PROPERTIES TIMEOUT 600)
 
 #Features2d.h
 add_executable(test_features2d test_features2d.cpp)
