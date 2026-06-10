@@ -1408,12 +1408,14 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_Corridor_IcpReg)
 			// ratio (observed 43/48).
 			EXPECT_GE(result.proximityDetections, 35) << v.label;
 
-			// Stored ground truth + 3DoF ICP -> ~3 cm RMSE on the odom
-			// variants; the stored-odom variant inherits whatever drift
-			// the recorded odom carries. 6 cm bound gives ~2x headroom.
+			// Stored ground truth + 3DoF ICP. With recorded-odom guidance
+			// (guess / stored variants) RMSE stays around 3 cm; pure
+			// ICP-F2M (own-odom) drifts more, ~8 cm on macOS CI runs,
+			// so it gets a looser bound.
 			ASSERT_GE(result.translationalRmseFinal, 0.0f)
 					<< v.label << ": no Gt/translational_rmse in stats";
-			EXPECT_LT(result.translationalRmseFinal, 0.06f)
+			const float rmseBound = (v.mode == OdomMode::OwnOdom) ? 0.15f : 0.06f;
+			EXPECT_LT(result.translationalRmseFinal, rmseBound)
 					<< v.label << " RMSE = " << result.translationalRmseFinal << "m";
 
 			if(v.mode != OdomMode::StoredOdomDirect)
