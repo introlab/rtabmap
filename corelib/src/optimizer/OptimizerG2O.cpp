@@ -2693,9 +2693,13 @@ bool OptimizerG2O::saveGraph(
 				{
 					continue;
 				}
+				// Look up landmark info by landmark id (the negative endpoint),
+				// not by the multimap key -- callers may key landmark links
+				// either by from() or by the landmark id.
+				const int landmarkId = iter->second.from() < 0 ? iter->second.from() : iter->second.to();
 				if(isSlam2d())
 				{
-					if(uValue(isLandmarkWithRotation, iter->first, false))
+					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
 						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n",
@@ -2726,7 +2730,7 @@ bool OptimizerG2O::saveGraph(
 				}
 				else
 				{
-					if(uValue(isLandmarkWithRotation, iter->first, false))
+					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 						Eigen::Quaternionf q = iter->second.transform().getQuaternionf();

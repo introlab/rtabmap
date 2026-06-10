@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/utilite/UFile.h>
+#include "TestUtils.h"
 #include <cmath>
 #include <string>
 #include <vector>
@@ -859,3 +863,400 @@ TEST(GraphTest, GetPathsNeighborChain)
 	EXPECT_EQ(paths.front().size(), 3u);
 	EXPECT_EQ(poses.size(), 3u); // poses passed by value, caller's map is unchanged
 }
+
+// -------------------------------------------------------------------------
+// exportPoses / importPoses round-trip for graph formats (3=TORO, 4=g2o).
+// Skips when the underlying optimizer isn't built in (loadGraph requires it).
+// -------------------------------------------------------------------------
+namespace {
+
+void expectPosesNearEqual(
+		const std::map<int, Transform> & a,
+		const std::map<int, Transform> & b,
+		float transTol,
+		float rotTol,
+		const std::string & label)
+{
+	ASSERT_EQ(a.size(), b.size()) << label << " pose count differs";
+	for(const auto & kv : a)
+	{
+		const auto it = b.find(kv.first);
+		ASSERT_TRUE(it != b.end()) << label << " missing pose id=" << kv.first;
+		const Transform & A = kv.second;
+		const Transform & B = it->second;
+		EXPECT_LT(A.getDistance(B), transTol)
+				<< label << " id=" << kv.first
+				<< " A=" << A.prettyPrint() << " B=" << B.prettyPrint();
+		EXPECT_LT(A.getAngle(B), rotTol)
+				<< label << " id=" << kv.first
+				<< " angle diff exceeds tolerance";
+	}
+}
+
+void expectLinksNearEqual(
+		const std::multimap<int, Link> & a,
+		const std::multimap<int, Link> & b,
+		float transTol,
+		float rotTol,
+		bool slam2d,
+		bool landmarkWithRotation,
+		bool priorWithRotation,
+		const std::string & label)
+{
+	ASSERT_EQ(a.size(), b.size()) << label << " link count differs";
+	// Index both maps by (from, to) so the comparison is independent of
+	// the multimap key. rtabmap's Memory keys landmark links by the
+	// landmark id (negative), while OptimizerG2O::loadGraph keys every
+	// link by `from` -- the file format doesn't encode the rtabmap key
+	// convention, so we can't expect it to round-trip.
+	auto index = [](const std::multimap<int, Link> & m) {
+		std::map<std::pair<int, int>, const Link *> out;
+		for(const auto & kv : m)
+		{
+			out.emplace(std::make_pair(kv.second.from(), kv.second.to()),
+					&kv.second);
+		}
+		return out;
+	};
+	const auto idxA = index(a);
+	const auto idxB = index(b);
+	ASSERT_EQ(idxA.size(), idxB.size())
+			<< label << " unique (from,to) link pair count differs";
+	// Note: graph file formats (TORO / g2o) store edges generically and
+	// don't preserve rtabmap's Link::Type tag, so we only round-trip
+	// from / to / transform / infMatrix here. The loader assigns a
+	// placeholder type for ordinary edges.
+	//
+	// Landmark links in g2o are written as EDGE_SE3_TRACKXYZ (3D point
+	// observation): only the translation and the 3x3 translation block
+	// of the info matrix survive. Rotation and the 3x3 rotation block
+	// are skipped for these links.
+	for(const auto & kvA : idxA)
+	{
+		const auto itB = idxB.find(kvA.first);
+		ASSERT_TRUE(itB != idxB.end())
+				<< label << " missing link "
+				<< kvA.first.first << "->" << kvA.first.second;
+		const Link & la = *kvA.second;
+		const Link & lb = *itB->second;
+		// Position-only links (point-landmark observations and
+		// position-only priors) round-trip translation but not
+		// rotation, and only the translation block of the info
+		// matrix survives. The saver picks the serialization based
+		// on the rotation-block variance.
+		const bool isLandmark = la.type() == Link::kLandmark
+				|| lb.type() == Link::kLandmark
+				|| la.to() < 0 || lb.to() < 0;
+		const bool isPrior = la.from() == la.to();
+		const bool isPositionOnly =
+				(isLandmark && !landmarkWithRotation) ||
+				(isPrior && !priorWithRotation);
+		EXPECT_EQ(la.from(), lb.from()) << label;
+		EXPECT_EQ(la.to(),   lb.to())   << label;
+		EXPECT_LT(la.transform().getDistance(lb.transform()), transTol)
+				<< label << " link " << la.from() << "->" << la.to()
+				<< " translation drift";
+		if(!isPositionOnly)
+		{
+			EXPECT_LT(la.transform().getAngle(lb.transform()), rotTol)
+					<< label << " link " << la.from() << "->" << la.to()
+					<< " rotation drift";
+		}
+		const cv::Mat & infA = la.infMatrix();
+		const cv::Mat & infB = lb.infMatrix();
+		ASSERT_EQ(infA.rows, infB.rows)
+				<< label << " infMatrix row count differs";
+		ASSERT_EQ(infA.cols, infB.cols)
+				<< label << " infMatrix col count differs";
+		// Which DoFs survive the round trip:
+		//   * slam3d, non-landmark: all 6 (x,y,z,roll,pitch,yaw).
+		//   * slam2d, non-landmark: x,y,yaw (file stores a 3x3 block,
+		//     unused z/roll/pitch refilled with defaults on load).
+		//   * slam3d, landmark    : x,y,z only (EDGE_SE3_TRACKXYZ is a
+		//     3D point obs, no orientation block).
+		//   * slam2d, landmark    : x,y only (EDGE_SE2_XY / point2 obs).
+		const int dim = infA.rows;
+		auto isActive = [slam2d, isPositionOnly](int idx) {
+			if(slam2d && isPositionOnly)  return idx == 0 || idx == 1;
+			if(slam2d)                    return idx == 0 || idx == 1 || idx == 5;
+			if(isPositionOnly)            return idx >= 0 && idx <= 2;
+			return idx >= 0 && idx < 6;
+		};
+		for(int r = 0; r < dim; ++r)
+		{
+			for(int c = 0; c < dim; ++c)
+			{
+				if(!isActive(r) || !isActive(c)) continue;
+				EXPECT_NEAR(infA.at<double>(r, c),
+						infB.at<double>(r, c),
+						/*absTol=*/1e-3)
+						<< label << " link "
+						<< la.from() << "->" << la.to()
+						<< " infMatrix(" << r << "," << c << ") drift";
+			}
+		}
+	}
+}
+
+class GraphIoRoundTripTest
+		: public ::testing::TestWithParam<std::tuple<int, bool>>
+{
+protected:
+	int format() const { return std::get<0>(GetParam()); }
+	bool force3DoF() const { return std::get<1>(GetParam()); }
+	const char * formatName() const
+	{
+		switch(format())
+		{
+		case 3: return "TORO";
+		case 4: return "g2o";
+		default: return "unknown";
+		}
+	}
+	std::string label() const
+	{
+		return std::string(formatName()) + (force3DoF() ? "/slam2d" : "/slam3d");
+	}
+	Optimizer::Type requiredOptimizer() const
+	{
+		switch(format())
+		{
+		case 3: return Optimizer::kTypeTORO;
+		case 4: return Optimizer::kTypeG2O;
+		default: return Optimizer::kTypeUndef;
+		}
+	}
+};
+
+}  // namespace
+
+TEST_P(GraphIoRoundTripTest, RoundTripsPosesAndConstraints)
+{
+	if(!Optimizer::isAvailable(requiredOptimizer()))
+	{
+		GTEST_SKIP() << formatName() << " optimizer not built in";
+	}
+
+	// Small 3-node chain with one loop closure -- exercises both
+	// neighbor and global-closure link types, plus a non-identity
+	// information matrix to verify it survives the round trip.
+	//
+	// Poses are 2D-compatible (z = roll = pitch = 0) so the slam2d
+	// branch (Reg/Force3DoF=true) can serialize them without lossy
+	// projection.
+	const float deg = static_cast<float>(M_PI) / 180.0f;
+	std::map<int, Transform> poses = {
+		{1, Transform(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)},
+		{2, Transform(1.0f, 0.05f, 0.0f, 0.0f, 0.0f, 3.0f * deg)},
+		{3, Transform(2.0f, 0.10f, 0.0f, 0.0f, 0.0f, 6.0f * deg)},
+	};
+	std::multimap<int, Link> links;
+	cv::Mat infMat = cv::Mat::eye(6, 6, CV_64F) * 100.0;
+	infMat.at<double>(0, 0) = 50.0;  // distinct diagonals so any
+	infMat.at<double>(5, 5) = 200.0; // shuffling of channels shows up
+	links.insert(std::make_pair(1, Link(1, 2, Link::kNeighbor,
+			poses.at(1).inverse() * poses.at(2), infMat)));
+	links.insert(std::make_pair(2, Link(2, 3, Link::kNeighbor,
+			poses.at(2).inverse() * poses.at(3), infMat)));
+	links.insert(std::make_pair(1, Link(1, 3, Link::kGlobalClosure,
+			poses.at(1).inverse() * poses.at(3), infMat)));
+
+	// Reg/Force3DoF toggles the slam2d branch in OptimizerTORO /
+	// OptimizerG2O's saveGraph (writes 2D node/edge records).  The
+	// importPoses path detects 2D-vs-3D from the file contents, so
+	// passing parameters only matters on the export side.
+	ParametersMap params;
+	params[Parameters::kRegForce3DoF()] = force3DoF() ? "true" : "false";
+
+	const std::string path = test::tempPath(
+			uFormat("rtabmap_graph_round_trip_%s_%s_%d.graph",
+					formatName(),
+					force3DoF() ? "slam2d" : "slam3d",
+					test::getPid()));
+	UFile::erase(path);
+
+	ASSERT_TRUE(graph::exportPoses(path, format(), poses, links,
+			/*stamps=*/std::map<int, double>(), params))
+			<< label() << " exportPoses failed for " << path;
+	ASSERT_TRUE(UFile::exists(path))
+			<< label() << " expected " << path << " on disk";
+
+	std::map<int, Transform> posesOut;
+	std::multimap<int, Link> linksOut;
+	ASSERT_TRUE(graph::importPoses(path, format(), posesOut, &linksOut))
+			<< label() << " importPoses failed for " << path;
+
+	expectPosesNearEqual(poses, posesOut, /*transTol=*/1e-4f,
+			/*rotTol=*/1e-4f, label() + " poses");
+	expectLinksNearEqual(links, linksOut, /*transTol=*/1e-4f,
+			/*rotTol=*/1e-4f, /*slam2d=*/force3DoF(),
+			/*landmarkWithRotation=*/false /* no landmarks in this test */,
+			/*priorWithRotation=*/false /* no priors in this test */,
+			label() + " links");
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		GraphFormats,
+		GraphIoRoundTripTest,
+		::testing::Combine(
+				::testing::Values(3 /*TORO*/, 4 /*g2o*/),
+				::testing::Bool() /*force3DoF*/),
+		[](const ::testing::TestParamInfo<std::tuple<int, bool>> & info)
+		{
+			const char * fmt;
+			switch(std::get<0>(info.param))
+			{
+			case 3: fmt = "TORO"; break;
+			case 4: fmt = "g2o";  break;
+			default: fmt = "unknown"; break;
+			}
+			return std::string(fmt) + (std::get<1>(info.param) ? "_slam2d" : "_slam3d");
+		});
+
+// -------------------------------------------------------------------------
+// g2o-specific round-trip with prior + landmark links. TORO's text graph
+// format doesn't carry rtabmap's prior/landmark link types, so this test
+// is g2o-only. Parameterized on (slam2d, landmarkWithRotation):
+//
+//   * landmarkWithRotation=true  -> landmark exported as VERTEX_SE3:QUAT
+//     (or VERTEX_SE2 in slam2d), EDGE_SE3:QUAT / EDGE_SE2. Full pose obs.
+//   * landmarkWithRotation=false -> landmark exported as VERTEX_TRACKXYZ
+//     (or VERTEX_XY in slam2d), EDGE_SE3_TRACKXYZ / EDGE_SE2_XY. 3D-point
+//     (or 2D-point) obs, no rotation.
+//
+// The branch is selected by the rotation block of the landmark link's
+// info matrix: if 1/inf(3..5,3..5) >= 9999 (i.e. effectively infinite
+// rotation variance), the saver emits the point variant; otherwise SE3.
+// -------------------------------------------------------------------------
+class GraphIoG2oPriorsAndLandmarksTest
+		: public ::testing::TestWithParam<std::tuple<bool, bool, bool>>
+{
+protected:
+	bool force3DoF() const { return std::get<0>(GetParam()); }
+	bool landmarkWithRotation() const { return std::get<1>(GetParam()); }
+	bool priorWithRotation() const { return std::get<2>(GetParam()); }
+	std::string label() const
+	{
+		return std::string("g2o/") + (force3DoF() ? "slam2d" : "slam3d")
+				+ (landmarkWithRotation() ? "/rotLm" : "/pointLm")
+				+ (priorWithRotation() ? "/rotPrior" : "/posPrior");
+	}
+};
+
+TEST_P(GraphIoG2oPriorsAndLandmarksTest, RoundTripsPriorAndLandmarkLinks)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "g2o optimizer not built in";
+	}
+
+	// 3 poses + 1 landmark (negative id). 2 neighbor links chain the
+	// poses, 1 pose prior anchors pose 1 in the world frame, 1 landmark
+	// link records pose 2's observation of the landmark.
+	const float deg = static_cast<float>(M_PI) / 180.0f;
+	// Landmark's "pose" has a non-zero yaw only when the variant uses
+	// the SE-rotation landmark path; otherwise rtabmap would round-trip
+	// only translation and the test would have to ignore the rotation.
+	const float landmarkYaw =
+			landmarkWithRotation() ? 45.0f * deg : 0.0f;
+	std::map<int, Transform> poses = {
+		{1,   Transform(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)},
+		{2,   Transform(1.0f, 0.05f, 0.0f, 0.0f, 0.0f, 3.0f * deg)},
+		{3,   Transform(2.0f, 0.10f, 0.0f, 0.0f, 0.0f, 6.0f * deg)},
+		{-10, Transform(1.5f, 0.50f, 0.0f, 0.0f, 0.0f, landmarkYaw)},
+	};
+
+	cv::Mat infMat = cv::Mat::eye(6, 6, CV_64F) * 100.0;
+	infMat.at<double>(0, 0) = 50.0;
+	infMat.at<double>(5, 5) = 200.0;
+
+	// Helper: blank out the rotation diagonal so the saver's
+	// `1 / inf(3,3) >= 9999` check picks the position-only serialization.
+	auto stripRotationVariance = [](cv::Mat m) {
+		// 1/1e-5 = 1e5 > 9999 -> "effectively infinite variance".
+		m.at<double>(3, 3) = 1e-5;
+		m.at<double>(4, 4) = 1e-5;
+		m.at<double>(5, 5) = 1e-5;
+		return m;
+	};
+
+	// Landmark info matrix: rotation block blanked when point-landmark.
+	cv::Mat landmarkInfMat = infMat.clone();
+	if(!landmarkWithRotation())
+	{
+		landmarkInfMat = stripRotationVariance(landmarkInfMat);
+	}
+	// Prior info matrix: same logic. Saver picks EDGE_SE3_PRIOR
+	// (rotation) vs EDGE_POINTXYZ_PRIOR / EDGE_PRIOR_SE2_XY (no rotation)
+	// based on the rotation block diagonal.
+	cv::Mat priorInfMat = infMat.clone();
+	if(!priorWithRotation())
+	{
+		priorInfMat = stripRotationVariance(priorInfMat);
+	}
+
+	std::multimap<int, Link> links;
+	links.insert(std::make_pair(1, Link(1, 2, Link::kNeighbor,
+			poses.at(1).inverse() * poses.at(2), infMat)));
+	links.insert(std::make_pair(2, Link(2, 3, Link::kNeighbor,
+			poses.at(2).inverse() * poses.at(3), infMat)));
+	// Pose prior on node 1 (from == to). Transform is the world-frame
+	// prior pose; rtabmap convention places it on the source node.
+	links.insert(std::make_pair(1, Link(1, 1, Link::kPosePrior,
+			poses.at(1), priorInfMat)));
+	// Landmark observation: node 2 observes landmark -10. Transform is
+	// the landmark's position in pose 2's frame. Convention: rtabmap
+	// keys landmark links in the multimap by the *landmark id*
+	// (negative), not by the source node -- see Signature::addLandmark
+	// and OptimizerG2O::saveGraph's isLandmarkWithRotation lookup.
+	links.insert(std::make_pair(-10, Link(2, -10, Link::kLandmark,
+			poses.at(2).inverse() * poses.at(-10), landmarkInfMat)));
+
+	ParametersMap params;
+	params[Parameters::kRegForce3DoF()] = force3DoF() ? "true" : "false";
+	// Optimizer/PriorsIgnored defaults to true (so global SLAM doesn't
+	// fight against drift-prone priors). We need it off here so the
+	// prior edge actually gets written by OptimizerG2O::saveGraph.
+	params[Parameters::kOptimizerPriorsIgnored()] = "false";
+
+	const std::string path = test::tempPath(
+			uFormat("rtabmap_graph_g2o_priors_landmarks_%s_%s_%d.g2o",
+					force3DoF() ? "slam2d" : "slam3d",
+					landmarkWithRotation() ? "rotLm" : "pointLm",
+					test::getPid()));
+	UFile::erase(path);
+
+	ASSERT_TRUE(graph::exportPoses(path, /*format=*/4, poses, links,
+			std::map<int, double>(), params))
+			<< label() << " exportPoses failed";
+	ASSERT_TRUE(UFile::exists(path)) << label() << " file missing";
+
+	std::map<int, Transform> posesOut;
+	std::multimap<int, Link> linksOut;
+	ASSERT_TRUE(graph::importPoses(path, /*format=*/4, posesOut, &linksOut))
+			<< label() << " importPoses failed";
+
+	expectPosesNearEqual(poses, posesOut, /*transTol=*/1e-4f,
+			/*rotTol=*/1e-4f, label() + " poses (incl. landmark)");
+	expectLinksNearEqual(links, linksOut, /*transTol=*/1e-4f,
+			/*rotTol=*/1e-4f, /*slam2d=*/force3DoF(),
+			/*landmarkWithRotation=*/landmarkWithRotation(),
+			/*priorWithRotation=*/priorWithRotation(),
+			label() + " links (incl. prior + landmark)");
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		G2oVariants,
+		GraphIoG2oPriorsAndLandmarksTest,
+		::testing::Combine(
+				::testing::Bool() /*force3DoF*/,
+				::testing::Bool() /*landmarkWithRotation*/,
+				::testing::Bool() /*priorWithRotation*/),
+		[](const ::testing::TestParamInfo<std::tuple<bool, bool, bool>> & info)
+		{
+			return std::string(std::get<0>(info.param) ? "slam2d" : "slam3d")
+					+ "_"
+					+ (std::get<1>(info.param) ? "rotLm" : "pointLm")
+					+ "_"
+					+ (std::get<2>(info.param) ? "rotPrior" : "posPrior");
+		});
