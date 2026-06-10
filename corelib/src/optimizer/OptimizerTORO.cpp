@@ -380,7 +380,7 @@ bool OptimizerTORO::saveGraph(
 	if(file)
 	{
 		
-		for (std::map<int, Transform>::const_iterator iter = poses.begin(); iter != poses.end(); ++iter)
+		for (std::map<int, Transform>::const_iterator iter = poses.lower_bound(0); iter != poses.end(); ++iter)
 		{
 			if (isSlam2d())
 			{
@@ -409,7 +409,7 @@ bool OptimizerTORO::saveGraph(
 
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			if (iter->second.type() != Link::kPosePrior && iter->second.type() != Link::kGravity)
+			if (iter->second.from() != iter->second.to() && iter->second.type() != Link::kLandmark)
 			{
 				if (isSlam2d())
 				{
@@ -494,9 +494,31 @@ bool OptimizerTORO::loadGraph(
 		while ( fgets (line , 400 , file) != NULL )
 		{
 			std::vector<std::string> strList = uListToVector(uSplit(uReplaceChar(line, '\n', ' '), ' '));
-			if(strList.size() == 8)
+			if(strList.empty())
 			{
-				//VERTEX3
+				continue;
+			}
+			const std::string & tag = strList[0];
+			if(tag.compare("VERTEX2") == 0 && strList.size() == 5)
+			{
+				//VERTEX2 id x y theta
+				int id = atoi(strList[1].c_str());
+				float x = uStr2Float(strList[2]);
+				float y = uStr2Float(strList[3]);
+				float theta = uStr2Float(strList[4]);
+				Transform pose(x, y, theta);
+				if(poses.find(id) == poses.end())
+				{
+					poses.insert(std::make_pair(id, pose));
+				}
+				else
+				{
+					UFATAL("Pose %d already added", id);
+				}
+			}
+			else if(tag.compare("VERTEX3") == 0 && strList.size() == 8)
+			{
+				//VERTEX3 id x y z roll pitch yaw
 				int id = atoi(strList[1].c_str());
 				float x = uStr2Float(strList[2]);
 				float y = uStr2Float(strList[3]);
@@ -514,9 +536,44 @@ bool OptimizerTORO::loadGraph(
 					UFATAL("Pose %d already added", id);
 				}
 			}
-			else if(strList.size() == 30)
+			else if(tag.compare("EDGE2") == 0 && strList.size() == 12)
 			{
-				//EDGE3
+				//EDGE2 observed_vertex_id observing_vertex_id x y theta inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
+				int idFrom = atoi(strList[1].c_str());
+				int idTo = atoi(strList[2].c_str());
+				float x = uStr2Float(strList[3]);
+				float y = uStr2Float(strList[4]);
+				float theta = uStr2Float(strList[5]);
+				cv::Mat informationMatrix = cv::Mat::eye(6,6,CV_64FC1);
+				informationMatrix.at<double>(0,0) = uStr2Float(strList[6]);  // x-x
+				informationMatrix.at<double>(0,1) = uStr2Float(strList[7]);  // x-y
+				informationMatrix.at<double>(0,5) = uStr2Float(strList[8]);  // x-theta
+				informationMatrix.at<double>(1,1) = uStr2Float(strList[9]);  // y-y
+				informationMatrix.at<double>(1,5) = uStr2Float(strList[10]); // y-theta
+				informationMatrix.at<double>(5,5) = uStr2Float(strList[11]); // theta-theta
+				// symmetric counterparts
+				informationMatrix.at<double>(1,0) = informationMatrix.at<double>(0,1);
+				informationMatrix.at<double>(5,0) = informationMatrix.at<double>(0,5);
+				informationMatrix.at<double>(5,1) = informationMatrix.at<double>(1,5);
+				informationMatrix.at<double>(2,2) = 0.00010001; // 9999 cov
+				informationMatrix.at<double>(3,3) = 0.00010001; // 9999 cov
+				informationMatrix.at<double>(4,4) = 0.00010001; // 9999 cov
+				UASSERT_MSG(informationMatrix.at<double>(0,0) > 0.0 && informationMatrix.at<double>(1,1) > 0.0 && informationMatrix.at<double>(5,5) > 0.0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
+				Transform transform(x, y, theta);
+				if(poses.find(idFrom) != poses.end() && poses.find(idTo) != poses.end())
+				{
+					//Link type is unknown
+					Link link(idFrom, idTo, Link::kUndef, transform, informationMatrix);
+					edgeConstraints.insert(std::pair<int, Link>(idFrom, link));
+				}
+				else
+				{
+					UERROR("Referred poses from the link (%d->%d) don't exist! Link ignored!", idFrom, idTo);
+				}
+			}
+			else if(tag.compare("EDGE3") == 0 && strList.size() == 30)
+			{
+				//EDGE3 observed_vertex_id observing_vertex_id x y z roll pitch yaw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 				int idFrom = atoi(strList[1].c_str());
 				int idTo = atoi(strList[2].c_str());
 				float x = uStr2Float(strList[3]);
@@ -525,15 +582,20 @@ bool OptimizerTORO::loadGraph(
 				float roll = uStr2Float(strList[6]);
 				float pitch = uStr2Float(strList[7]);
 				float yaw = uStr2Float(strList[8]);
+				// upper triangle is stored row by row (same order as saveGraph)
 				cv::Mat informationMatrix(6,6,CV_64FC1);
-				informationMatrix.at<double>(3,3) = uStr2Float(strList[9]);
-				informationMatrix.at<double>(4,4) = uStr2Float(strList[15]);
-				informationMatrix.at<double>(5,5) = uStr2Float(strList[20]);
-				UASSERT_MSG(informationMatrix.at<double>(3,3) > 0.0 && informationMatrix.at<double>(4,4) > 0.0 && informationMatrix.at<double>(5,5) > 0.0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
-				informationMatrix.at<double>(0,0) = uStr2Float(strList[24]);
-				informationMatrix.at<double>(1,1) = uStr2Float(strList[27]);
-				informationMatrix.at<double>(2,2) = uStr2Float(strList[29]);
-				UASSERT_MSG(informationMatrix.at<double>(0,0) > 0.0 && informationMatrix.at<double>(1,1) > 0.0 && informationMatrix.at<double>(2,2) > 0.0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
+				int index = 9;
+				for(int i=0; i<6; ++i)
+				{
+					for(int j=i; j<6; ++j)
+					{
+						double value = uStr2Float(strList[index++]);
+						informationMatrix.at<double>(i,j) = value;
+						informationMatrix.at<double>(j,i) = value;
+					}
+				}
+				UASSERT_MSG(informationMatrix.at<double>(0,0) > 0.0 && informationMatrix.at<double>(1,1) > 0.0 && informationMatrix.at<double>(2,2) > 0.0 &&
+						informationMatrix.at<double>(3,3) > 0.0 && informationMatrix.at<double>(4,4) > 0.0 && informationMatrix.at<double>(5,5) > 0.0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
 				Transform transform(x, y, z, roll, pitch, yaw);
 				if(poses.find(idFrom) != poses.end() && poses.find(idTo) != poses.end())
 				{
@@ -546,7 +608,7 @@ bool OptimizerTORO::loadGraph(
 					UERROR("Referred poses from the link (%d->%d) don't exist! Link ignored!", idFrom, idTo);
 				}
 			}
-			else if(strList.size())
+			else
 			{
 				UFATAL("Error parsing graph file %s on line \"%s\" (strList.size()=%d)", fileName.c_str(), line, (int)strList.size());
 			}

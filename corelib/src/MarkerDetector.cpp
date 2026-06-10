@@ -551,7 +551,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			}
 			if(idsAdded.find(det->id)!=idsAdded.end())
 			{
-				UWARN("Marker %d already added by another camera, ignoring detection from camera %d", det->id, cameraIndex);
+				UDEBUG("Marker %d already added by another camera, ignoring detection from camera %d", det->id, cameraIndex);
 				continue;
 			}
 
@@ -668,7 +668,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			}
 			if(idsAdded.find(id) != idsAdded.end())
 			{
-				UWARN("Marker %d already added by another camera, ignoring detection from camera %d", id, cameraIndex);
+				UDEBUG("Marker %d already added by another camera, ignoring detection from camera %d", id, cameraIndex);
 				continue;
 			}
 
