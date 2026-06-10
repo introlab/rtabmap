@@ -51,6 +51,7 @@ class BayesFilter;
 class Signature;
 class Optimizer;
 class PythonInterface;
+class OrtInterface;
 
 class RTABMAP_CORE_EXPORT Rtabmap
 {
@@ -404,6 +405,10 @@ private:
 
 #ifdef RTABMAP_PYTHON
 	PythonInterface * _python;
+#endif
+
+#ifdef RTABMAP_ONNXRUNTIME
+	OrtInterface * _ort;
 #endif
 
 };
