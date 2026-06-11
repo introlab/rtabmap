@@ -62,17 +62,11 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
 
     for(VWDictionary::NNStrategy strategy : strategies)
     {
-        // Reset dictionary for each strategy
-        dict->clear();
-        dict->setNNStrategy(strategy);
-        
-        EXPECT_TRUE(dict->isIncremental());
-
         if(strategy == VWDictionary::kNNBruteForceGPU)
         {
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-            if(!cv::gpu::getCudaEnabledDeviceCount())
+            if(cv::gpu::getCudaEnabledDeviceCount() <= 0)
             {
                 strategy = VWDictionary::kNNBruteForce;
             }
@@ -81,7 +75,7 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-            if(!cv::cuda::getCudaEnabledDeviceCount())
+            if(cv::cuda::getCudaEnabledDeviceCount() <= 0)
             {
                 strategy = VWDictionary::kNNBruteForce;
             }
@@ -90,6 +84,12 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
 #endif
 #endif
         }
+
+        // Reset dictionary for each strategy
+        dict->clear();
+        dict->setNNStrategy(strategy);
+
+        EXPECT_TRUE(dict->isIncremental());
         EXPECT_EQ(dict->getNNStrategy(), strategy);
         
         // Add initial words to dictionary (2D descriptors)
@@ -636,15 +636,11 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
 
     for(VWDictionary::NNStrategy strategy : strategies)
     {
-        // Reset dictionary for each strategy
-        dict->clear();
-        dict->setNNStrategy(strategy);
-
         if(strategy == VWDictionary::kNNBruteForceGPU)
         {
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-            if(!cv::gpu::getCudaEnabledDeviceCount())
+            if(cv::gpu::getCudaEnabledDeviceCount() <= 0)
             {
                 continue; // Skip if no GPU available
             }
@@ -653,7 +649,7 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-            if(!cv::cuda::getCudaEnabledDeviceCount())
+            if(cv::cuda::getCudaEnabledDeviceCount() <= 0)
             {
                 continue; // Skip if no GPU available
             }
@@ -662,6 +658,10 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
 #endif
 #endif
         }
+
+        // Reset dictionary for each strategy
+        dict->clear();
+        dict->setNNStrategy(strategy);
 
         // Add words and build index
         cv::Mat descriptors(5, 32, CV_32F);

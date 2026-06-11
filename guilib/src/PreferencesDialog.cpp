@@ -134,11 +134,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	bool haveCuda = false;
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	haveCuda = cv::gpu::getCudaEnabledDeviceCount() != 0;
+	haveCuda = cv::gpu::getCudaEnabledDeviceCount() > 0;
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-	haveCuda = cv::cuda::getCudaEnabledDeviceCount() != 0;
+	haveCuda = cv::cuda::getCudaEnabledDeviceCount() > 0;
 #endif
 #endif
 	if(!haveCuda)

@@ -1211,13 +1211,13 @@ void SURF::parseParameters(const ParametersMap & parameters)
 
 #ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
-	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of SURF not available! Using CPU version instead...");
 		gpuVersion_ = false;
 	}
 #else
-	if(gpuVersion_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(gpuVersion_ && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of SURF not available! Using CPU version instead...");
 		gpuVersion_ = false;
@@ -1650,7 +1650,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of ORB not available! Using CPU version instead...");
 		gpu_ = false;
@@ -1670,7 +1670,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 		gpu_ = false;
 	}
 #endif
-	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of ORB not available (no GPU found)! Using CPU version instead...");
 		gpu_ = false;
@@ -1906,7 +1906,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of FAST not available! Using CPU version instead...");
 		gpu_ = false;
@@ -1920,7 +1920,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of FAST not available! Using CPU version instead...");
 		gpu_ = false;
@@ -2215,7 +2215,7 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 #endif
 
 #ifdef HAVE_OPENCV_CUDAIMGPROC
-	if(_gpu && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(_gpu && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of GFTT not available! Using CPU version instead...");
 		_gpu = false;

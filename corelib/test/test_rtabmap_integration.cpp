@@ -2029,7 +2029,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// Probe GPU availability once per detector. Build the temp instance
 		// with the same asset paths the actual run uses; otherwise SuperPoint
 		// variants log a (harmless) load failure.
-		bool useGpu = false;
+		bool gpuAvailable = false;
 		{
 			ParametersMap probeParams;
 			if(detectorType == Feature2D::kFeatureSuperPointTorch)
@@ -2042,8 +2042,14 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 				probeParams[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
 			}
 			std::unique_ptr<Feature2D> probe(Feature2D::create(detectorType, probeParams));
-			if(probe) useGpu = probe->isGpuAvailable();
+			if(probe) gpuAvailable = probe->isGpuAvailable();
 		}
+
+		// GPU-capable detectors are exercised twice (CPU + GPU) so both code
+		// paths stay covered. Detectors that don't report a GPU path run only
+		// once.
+		std::vector<bool> gpuVariants = {false};
+		if(gpuAvailable) gpuVariants.push_back(true);
 
 		// Run only the default likelihood variant for every detector;
 		// the TF-IDF variant adds a second run on the default detector
@@ -2052,6 +2058,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		std::vector<bool> tfIdfVariants = {false};
 		if(detectorType == defaultDetector) tfIdfVariants.push_back(true);
 
+		for(bool useGpu : gpuVariants)
 		for(bool tfIdfUsed : tfIdfVariants)
 		{
 			const std::string detectorLabel = typeName
@@ -2079,9 +2086,10 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		params[Parameters::kKAZEThreshold()]              = "0.0001";
 		// GFTT-specific: tighten the minimum keypoint separation (default
 		// 7 px) so more candidates fit per frame.
-		params[Parameters::kGFTTMinDistance()]            = "5";
+		params[Parameters::kGFTTMinDistance()]            = "3";
 		params[Parameters::kMemBadSignaturesIgnored()]    = "false";
 		params[Parameters::kMemRehearsalSimilarity()]     = "0.20";
+		params[Parameters::kBRIEFBytes()]                 = "64";
 
 		// Backend-specific asset paths + GPU/CUDA toggle. `useGpu` only
 		// reaches here when this detector reports a usable GPU path; we

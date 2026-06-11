@@ -300,7 +300,7 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 {
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	if(strategy == kNNBruteForceGPU && !cv::gpu::getCudaEnabledDeviceCount())
+	if(strategy == kNNBruteForceGPU && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
 		strategy = kNNBruteForce;
@@ -314,7 +314,7 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-	if(strategy == kNNBruteForceGPU && !cv::cuda::getCudaEnabledDeviceCount())
+	if(strategy == kNNBruteForceGPU && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
 		strategy = kNNBruteForce;
