@@ -101,3 +101,12 @@ jobs:
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure --rerun-failed
 
+    - name: Upload ctest log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ctest-log-${{ matrix.build_name }}
+        path: build/Testing/Temporary/LastTest.log
+        if-no-files-found: warn
+        retention-days: 7
+
