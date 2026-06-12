@@ -75,6 +75,51 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ALL_BUILD
 
+    # Diagnostic for test_util3d_features hanging on the CUDA build.
+    # Compares startup time with/without the GPU visible and lists the DLL
+    # graph against a reference test (test_localgrid) that runs fine.
+    # Non-fatal: keeps going even if a step times out so the timings still
+    # show up in the log.
+    - name: Diagnose test_util3d_features startup (CUDA only)
+      if: matrix.build_name == 'windows-2022-cuda'
+      shell: pwsh
+      working-directory: ${{github.workspace}}/build
+      continue-on-error: true
+      env:
+        PYTHONHOME: ${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3
+        PYTHONNOUSERSITE: 1
+      run: |
+        function Measure-Listing($exe, $envOverride) {
+          $job = Start-Job -ScriptBlock {
+            param($exe, $envOverride)
+            if ($envOverride) { $env:CUDA_VISIBLE_DEVICES = $envOverride }
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            & $exe --gtest_list_tests *> $null
+            $sw.Stop()
+            [pscustomobject]@{ Seconds = $sw.Elapsed.TotalSeconds; ExitCode = $LASTEXITCODE }
+          } -ArgumentList $exe, $envOverride
+          if (Wait-Job $job -Timeout 120) {
+            $r = Receive-Job $job
+            "{0,7:F2}s exit={1}" -f $r.Seconds, $r.ExitCode
+          } else {
+            Stop-Job $job; Remove-Job $job -Force
+            ">120s (timed out)"
+          }
+        }
+        $exe = "${{github.workspace}}\build\bin\test_util3d_features.exe"
+        $ref = "${{github.workspace}}\build\bin\test_localgrid.exe"
+        Write-Host "=== --gtest_list_tests timing ==="
+        Write-Host ("test_util3d_features (GPU visible)    : " + (Measure-Listing $exe $null))
+        Write-Host ("test_util3d_features (CUDA hidden)    : " + (Measure-Listing $exe ""))
+        Write-Host ("test_localgrid       (GPU visible)    : " + (Measure-Listing $ref $null))
+        Write-Host ("test_localgrid       (CUDA hidden)    : " + (Measure-Listing $ref ""))
+        Write-Host ""
+        Write-Host "=== DLL graph delta (util3d_features minus localgrid) ==="
+        $u = & dumpbin /dependents $exe | Select-String -Pattern '\.dll' | ForEach-Object { $_.ToString().Trim().ToLower() } | Sort-Object -Unique
+        $l = & dumpbin /dependents $ref | Select-String -Pattern '\.dll' | ForEach-Object { $_.ToString().Trim().ToLower() } | Sort-Object -Unique
+        $onlyU = Compare-Object $u $l | Where-Object { $_.SideIndicator -eq '<=' } | ForEach-Object { $_.InputObject }
+        if ($onlyU) { $onlyU | ForEach-Object { Write-Host "  +$_" } } else { Write-Host "  (identical)" }
+
     - name: Test
       working-directory: ${{github.workspace}}/build
       # PYTHONHOME points the embedded interpreter at vcpkg's bundled
