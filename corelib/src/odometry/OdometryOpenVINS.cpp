@@ -152,6 +152,85 @@ OdometryOpenVINS::OdometryOpenVINS(const ParametersMap & parameters) :
 	params_->init_options.sigma_wb = params_->imu_noises.sigma_wb;
 	params_->init_options.sigma_pix = params_->slam_options.sigma_pix;
 	params_->init_options.gravity_mag = params_->gravity_mag;
+
+	if(parameters.find(Parameters::kOdomOpenVINSConfigPath()) != parameters.end())
+	{
+		// Load the config: will override all parameters above!
+		std::string configPath = parameters.at(Parameters::kOdomOpenVINSConfigPath());
+		if(!configPath.empty())
+		{
+			if(UFile::exists(configPath))
+			{
+				UWARN("OpenVINS config file is provided (%s=\"%s\"), reading it. The parameters from the config file will overwrite OdomOpenVINS/*** parameters.",
+					Parameters::kOdomOpenVINSConfigPath().c_str(), configPath.c_str());
+				auto parser = std::make_shared<ov_core::YamlParser>(configPath);
+
+				// The sequence of loading is based on VioManagerOptions::print_and_load()
+				// We removed all parts about intrinsics/extrinsics, which will be loaded later
+				// when we receive the data (which should already include intrinsics and extrinsics).
+
+				params_->state_options.print(parser);
+				
+				params_->init_options.print_and_load_initializer(parser);
+    			params_->init_options.print_and_load_noise(parser);
+				parser->parse_config("gravity_mag", params_->init_options.gravity_mag);
+				parser->parse_config("max_cameras", params_->init_options.num_cameras);
+				parser->parse_config("use_stereo", params_->init_options.use_stereo);
+				parser->parse_config("downsample_cameras", params_->init_options.downsample_cameras);
+
+				parser->parse_config("dt_slam_delay", params_->dt_slam_delay);
+				parser->parse_config("try_zupt", params_->try_zupt);
+				parser->parse_config("zupt_max_velocity",params_-> zupt_max_velocity);
+				parser->parse_config("zupt_noise_multiplier", params_->zupt_noise_multiplier);
+				parser->parse_config("zupt_max_disparity", params_->zupt_max_disparity);
+				parser->parse_config("zupt_only_at_beginning", params_->zupt_only_at_beginning);
+				parser->parse_config("record_timing_information", params_->record_timing_information);
+				parser->parse_config("record_timing_filepath", params_->record_timing_filepath);
+
+				params_->print_and_load_trackers(parser);
+				params_->print_and_load_noise(parser);
+
+				if(params_->state_options.num_cameras > 2)
+				{
+					UFATAL("OpenVINS integration in RTAB-Map doesn't support more than 2 cameras (num_cameras=%d).", params_->state_options.num_cameras);
+				}
+
+				parser->parse_config("gravity_mag", params_->gravity_mag);
+				parser->parse_config("use_mask", params_->use_mask);
+				params_->masks.clear();
+				if (params_->use_mask) {
+					for (int i = 0; i < params_->state_options.num_cameras; i++) {
+						std::string mask_path;
+						std::string mask_node = "mask" + std::to_string(i);
+						parser->parse_config(mask_node, mask_path);
+						std::string total_mask_path = parser->get_config_folder() + mask_path;
+						if (!boost::filesystem::exists(total_mask_path)) {
+							PRINT_ERROR(RED "VioManager(): invalid mask path:\n" RESET);
+							PRINT_ERROR(RED "\t- mask%d - %s\n" RESET, i, total_mask_path.c_str());
+							std::exit(EXIT_FAILURE);
+						}
+						params_->masks.emplace(i, cv::imread(total_mask_path, cv::IMREAD_GRAYSCALE));
+					}
+				}
+
+				if (!parser->successful()) {
+					UWARN("Not all expected OpenVINS parameters were read successfully "
+						"from \"%s\". Values from RTAB-Map's OpenOpenVINS/* parameters "
+						"will be used instead for the missing ones.",
+						configPath.c_str());
+				}
+				else {
+					UINFO("OpenVINS config file(%s=\"%s\") read.",
+					Parameters::kOdomOpenVINSConfigPath().c_str(), configPath.c_str());
+				}
+			}
+			else
+			{
+				UERROR("OpenVINS config file is provided (%s=\"%s\") but it doesn't exist!",
+					Parameters::kOdomOpenVINSConfigPath().c_str(), configPath.c_str());
+			}
+		}
+	}
 #endif
 }
 
