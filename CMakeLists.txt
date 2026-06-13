@@ -842,22 +842,7 @@ IF(WITH_VINS_FUSION)
 ENDIF(WITH_VINS_FUSION)
 
 IF(WITH_OPENVINS)
-    FIND_PACKAGE(ov_msckf)
-    # On ROS2, the indirect includes and libraries
-    # are not forwarded by ov_msckf target, append them manually
-    FIND_PACKAGE(ov_core)
-    FIND_PACKAGE(ov_init)
-    IF(ov_msckf_FOUND AND ov_core_FOUND AND ov_init_FOUND)
-      SET(ov_msckf_INCLUDE_DIRS
-         ${ov_msckf_INCLUDE_DIRS}
-         ${ov_core_INCLUDE_DIRS}
-         ${ov_init_INCLUDE_DIRS})
-      SET(ov_msckf_LIBRARIES
-         ${ov_msckf_LIBRARIES}
-         ${ov_core_LIBRARIES}
-         ${ov_init_LIBRARIES})
-      MESSAGE(STATUS "Found OpenVINS: ${ov_msckf_INCLUDE_DIRS}")
-    ENDIF()
+   FIND_PACKAGE(OpenVINS)
 ENDIF(WITH_OPENVINS)
 
 IF(WITH_FASTCV)
@@ -1223,7 +1208,7 @@ ENDIF()
 IF(NOT vins_FOUND)
    SET(VINSFUSION "//")
 ENDIF()
-IF(NOT ov_msckf_FOUND)
+IF(NOT OpenVINS_FOUND)
    SET(OPENVINS "//")
 ENDIF()
 IF(NOT CUVSLAM_FOUND)
@@ -1981,7 +1966,7 @@ ELSE()
 MESSAGE(STATUS "  With VINS-Fusion          = NO (VINS-Fusion not found)")
 ENDIF()
 
-IF(ov_msckf_FOUND)
+IF(OpenVINS_FOUND)
 MESSAGE(STATUS "  With OpenVINS             = YES (License: GPLv3)")
 ELSEIF(NOT WITH_OPENVINS)
 MESSAGE(STATUS "  With OpenVINS             = NO (WITH_OPENVINS=OFF)")
