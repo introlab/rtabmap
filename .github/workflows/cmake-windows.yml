@@ -92,10 +92,14 @@ jobs:
       run: |
         # The Windows CUDA runner ships a CUDA driver older than the runtime
         # OpenCV/cv::cuda was built against. Lazy CUDA-init on first cv::cuda
-        # symbol call stalls some unit tests (test_util3d_features) for >300s.
+        # symbol call stalls some unit tests (test_util3d_features,
+        # test_localgrid) for >300s; which test hangs first is timing-dependent.
         # Hide the GPU so the runtime short-circuits before any blocking call.
+        # Note: '$env:CUDA_VISIBLE_DEVICES = ""' on Windows *deletes* the
+        # variable (Win32 SetEnvironmentVariable treats empty as remove), so
+        # use "-1" — CUDA's documented sentinel for "no device visible".
         if ('${{ matrix.build_name }}' -eq 'windows-2022-cuda') {
-          $env:CUDA_VISIBLE_DEVICES = ""
+          $env:CUDA_VISIBLE_DEVICES = "-1"
         }
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed
