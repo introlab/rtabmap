@@ -1245,11 +1245,13 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD_IcpReg)
 	EXPECT_EQ(0, result.octomapObstacleCells);
 #endif
 	// Scan-based ICP loop closure with the PR2's 2D laser should align the
-	// final trajectory to within ~5 cm of the stored ground truth (RMSE
-	// observed up to ~0.045 m on macOS CI; Linux typically ~0.015-0.02 m).
+	// final trajectory to within ~6 cm of the stored ground truth. Typical
+	// observations: Linux ~0.015-0.02 m, macOS ~0.045 m, with occasional
+	// Linux outliers up to ~0.054 m from the RANSAC correspondence rejector
+	// in the PCL ICP path.
 	ASSERT_GE(result.translationalRmseFinal, 0.0f)
 			<< "No Gt/translational_rmse in stats (ground truth missing?)";
-	EXPECT_LT(result.translationalRmseFinal, 0.05f)
+	EXPECT_LT(result.translationalRmseFinal, 0.06f)
 			<< "Final trajectory RMSE = " << result.translationalRmseFinal << " m";
 }
 
