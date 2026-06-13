@@ -1280,9 +1280,10 @@ TEST(Util3dTest, GetMinMax3D) {
 
 // Test with a laser scan that contains only 2D data (no Z values)
 TEST(Util3dTest, GetMinMax3DCVPoint3f2DData) {
-    // Create a 2x3 CV matrix of type CV_32FC2 (2D points)
+    // Create a 1x2 CV matrix of type CV_32FC2 (2D points)
     cv::Mat laserScan(1, 2, CV_32FC2);
-    float data[6] = {1.0f, 2.0f, 4.0f, 5.0f};  // No Z values
+    // 2 points * 2 channels = 4 floats.
+    float data[4] = {1.0f, 2.0f, 4.0f, 5.0f};  // No Z values
     memcpy(laserScan.data, data, sizeof(data));
 
     cv::Point3f min, max;
