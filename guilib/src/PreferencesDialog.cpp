@@ -134,11 +134,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	bool haveCuda = false;
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	haveCuda = cv::gpu::getCudaEnabledDeviceCount() != 0;
+	haveCuda = cv::gpu::getCudaEnabledDeviceCount() > 0;
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-	haveCuda = cv::cuda::getCudaEnabledDeviceCount() != 0;
+	haveCuda = cv::cuda::getCudaEnabledDeviceCount() > 0;
 #endif
 #endif
 	if(!haveCuda)
@@ -1281,9 +1281,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
-	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kg2oPixelVariance().c_str());
-	_ui->doubleSpinBox_g2o_robustKernelDelta->setObjectName(Parameters::kg2oRobustKernelDelta().c_str());
-	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kg2oBaseline().c_str());
+	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kOptimizerPixelVariance().c_str());
+	_ui->doubleSpinBox_optimizer_disparityVariance->setObjectName(Parameters::kOptimizerDisparityVariance().c_str());
+	_ui->doubleSpinBox_g2o_robustKernelDelta->setObjectName(Parameters::kOptimizerRobustKernelDelta().c_str());
+	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kOptimizerBaseline().c_str());
 
 	_ui->comboBox_gtsam_optimizer->setObjectName(Parameters::kGTSAMOptimizer().c_str());
 	_ui->gtsam_incremental->setObjectName(Parameters::kGTSAMIncremental().c_str());
@@ -1393,6 +1394,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpPointToPlaneNormalsRadius->setObjectName(Parameters::kIcpPointToPlaneRadius().c_str());
 	_ui->loopClosure_icpPointToPlaneGroundNormalsUp->setObjectName(Parameters::kIcpPointToPlaneGroundNormalsUp().c_str());
 	_ui->loopClosure_icpPointToPlaneNormalsMinComplexity->setObjectName(Parameters::kIcpPointToPlaneMinComplexity().c_str());
+	_ui->loopClosure_icpPointToPlaneComplexityCentered->setObjectName(Parameters::kIcpPointToPlaneComplexityCentered().c_str());
 	_ui->loopClosure_icpPointToPlaneLowComplexityStrategy->setObjectName(Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
 	_ui->loopClosure_icpDebugExportFormat->setObjectName(Parameters::kIcpDebugExportFormat().c_str());
 

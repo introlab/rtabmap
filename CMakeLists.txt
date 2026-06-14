@@ -168,6 +168,36 @@ OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 
+include(CTest)
+if(BUILD_TESTING)
+   # Add GTest using FetchContent
+   include(FetchContent)
+   FetchContent_Declare(
+       googletest
+       URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+   )
+   FetchContent_GetProperties(googletest)
+   if(NOT googletest_POPULATED)
+     FetchContent_Populate(googletest)
+     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+   endif()
+   include(GoogleTest)
+   set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data")
+endif()
+
+OPTION(ENABLE_COVERAGE "Build with gcov/lcov coverage (GCC/Clang, Debug only; see coverage-report.sh)" OFF)
+IF(ENABLE_COVERAGE)
+   IF(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+      MESSAGE(FATAL_ERROR "ENABLE_COVERAGE requires GCC or Clang with gcov/lcov (current: ${CMAKE_CXX_COMPILER_ID}).")
+   ENDIF()
+   IF(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+      MESSAGE(FATAL_ERROR "ENABLE_COVERAGE requires CMAKE_BUILD_TYPE=Debug (current: \"${CMAKE_BUILD_TYPE}\").")
+   ENDIF()
+   MESSAGE(STATUS "Coverage instrumentation enabled")
+   ADD_COMPILE_OPTIONS(--coverage -O0 -g)
+   ADD_LINK_OPTIONS(--coverage)
+ENDIF()
+
 ####### DEPENDENCIES #######
 IF(MOBILE_BUILD)
 option(WITH_QT            "Include Qt support"                   OFF)
@@ -1460,6 +1490,8 @@ MESSAGE(STATUS "  CMAKE_INSTALL_LIBDIR = ${CMAKE_INSTALL_LIBDIR}")
 MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
+MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
 IF(NOT WIN32)
     # see comment above for the BUILD_SHARED_LIBS option on Windows
     MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")

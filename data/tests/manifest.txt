@@ -1,0 +1,25 @@
+# Test data assets fetched by scripts/fetch_test_data.sh.
+# Format: <basename>\t<source>\t<sha256>
+# - basename is the file's name on disk under data/tests/
+# - source is one of:
+#     * a Google Drive file ID (from https://drive.google.com/file/d/<ID>/...);
+#       assembled into a direct-download URL by the fetch script.
+#     * a full http(s):// URL; used as-is. Append "&resourcekey=<key>" to a
+#       GDrive URL for legacy files (uploaded before 2017) that require it.
+# - sha256 must match the downloaded bytes (compute with `sha256sum file.db`).
+#   Leave as TODO_FILL_SHA256 to bypass the integrity check on first download
+#   then paste the actual hash back in.
+#
+# Lines starting with '#' and blank lines are ignored.
+netherdrone_lidar3d_sample_15s.db	1IBE8aMgY1_kmme_7Kb9W2wz6yBMLl63i	3fedb26d76d080e687d3926ab80cadee27d7c0115638562a75c1d9f08cc1c885
+pr2_scan2d_stereo_sample_15s.db	11GHZgwDzgC1Gv2hkmrPQQtP-dS9BGCA7	842fe941ce487b2109ae12ae796a9debf9e6a94df45cc2a0a9e4a47d41c5e878
+pr2_scan2d_rgbd_sample_15s.db	1vlFungKsdbnepgsuPHY-1h-mxdFxkZvI	1d8fd150a7f1d1e3dbb7cbb4f6ed66d0ac80cf06a6f5e859047e28bff2b96f14
+pr2_scan2d_corridor_50s.db	18ClEPTRM98icorrlDYBzKTWRwVOU8-bh	f518cb4d9284b24a1500d3913cf67a098745229c12846b58520ec4cd085c2713
+2loops_workspace_3IT.db	https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/Texture/2loops_workspace_3IT_updated.db	68f113fed7228d9081314f08b54240966c295cda0fb42046567edcf714445755
+robust_graph_optimization_stereo.db	https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/RobustGraphOptimization/robust_graph_optimization_stereo.db	247694b5bdb82168ebe88bb6bb5bc31c7142234f8c64567afd93e464418cf02e
+loop_3it_gps.db	https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/RobustGraphOptimization/loop_3it_gps.db	7aefeb573107a27b0a7826cb87ea03db495367aa56868b4d2b2543e6cacad3c8
+stereo_20Hz.db	https://github.com/introlab/rtabmap/releases/download/0.23.1/stereo_20Hz.db	94e219e1c96e540cbb1490cc23c81c65b9e7b132e8d61eda05e7990bc13393b7
+superpoint_v1.pth	https://github.com/magicleap/SuperPointPretrainedNetwork/raw/refs/heads/master/superpoint_v1.pth	52b6708629640ca883673b5d5c097c4ddad37d8048b33f09c8ca0d69db12c40e
+superpoint_v6_from_tf.pth	https://github.com/rpautrat/SuperPoint/raw/refs/heads/master/weights/superpoint_v6_from_tf.pth	cd5d19a5061848e248c17728878ea166b66512076d43c77dbcf27f4a88a56084
+demo_superpoint.py	https://raw.githubusercontent.com/magicleap/SuperPointPretrainedNetwork/master/demo_superpoint.py	613706ae7e9ce3fbc2cfe042fc3f37d739838cc2e1dc8ddd08f8ec037765df04
+superpoint_pytorch.py	https://raw.githubusercontent.com/rpautrat/SuperPoint/master/superpoint_pytorch.py	c06e3b0aad7548316ca59db3be9f56c7fcd126a1cf7a73359445fb778598f365

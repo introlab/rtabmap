@@ -1,0 +1,57 @@
+name: ROS Documentation
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  rosdoc:
+    name: rosdoc2 (jazzy)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Setup ROS2
+        run: |
+          sudo apt install software-properties-common
+          sudo add-apt-repository universe
+          sudo apt update && sudo apt install curl -y
+          export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
+          curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+          sudo apt install /tmp/ros2-apt-source.deb
+          sudo apt update
+
+      - uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - uses: actions/checkout@v4
+
+      - name: Install documentation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-rosdoc2 doxygen graphviz
+
+      - name: Generate Sphinx documentation (rosdoc2)
+        run: |
+          # Do not source a colcon workspace (rosdoc2 known issue #66).
+          source /opt/ros/jazzy/setup.bash
+          rosdoc2 build --package-path "${{ github.workspace }}"
+
+      - name: Upload ROS documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosdoc2-html
+          path: docs_output/rtabmap
+          retention-days: 14

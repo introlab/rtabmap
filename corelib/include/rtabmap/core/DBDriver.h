@@ -50,45 +50,91 @@ class Signature;
 class VWDictionary;
 class VisualWord;
 
-// Todo This class needs a refactoring, the _dbSafeAccessMutex problem when the trash is emptying (transaction)
-// "Of course, it has always been the case and probably always will be
-//that you cannot use the same sqlite3 connection in two or more
-//threads at the same time.  You can use different sqlite3 connections
-//at the same time in different threads, or you can move the same
-//sqlite3 connection across threads (subject to the constraints above)
-//but never, never try to use the same connection simultaneously in
-//two or more threads."
-//
+/**
+ * @class DBDriver
+ * @brief Abstract database driver for RTAB-Map maps (signatures, links, words, statistics).
+ *
+ * DBDriver is the persistence layer used by @ref Memory, @ref DBReader and tools that
+ * read or write \c .db files. The default implementation is @ref DBDriverSqlite3, created
+ * by @ref create().
+ *
+ * The driver extends @ref UThreadNode: pending @ref Signature and @ref VisualWord objects
+ * are queued with @ref asyncSave() and flushed to the database by @ref emptyTrashes()
+ * (also called from the background thread on @ref closeConnection()).
+ *
+ * Public methods are thread-safe where noted (mutex-protected wrappers). Subclasses
+ * implement SQL-specific logic in protected \c *Query() virtual methods.
+ *
+ * @see DBDriverSqlite3
+ * @see Memory
+ */
 class RTABMAP_CORE_EXPORT DBDriver : public UThreadNode
 {
 public:
+	/**
+	 * @brief Factory: returns a SQLite database driver (@ref DBDriverSqlite3).
+	 * @param parameters Optional driver parameters (e.g. @ref Parameters::kDbTargetVersion()).
+	 * @return New driver instance; caller owns the pointer.
+	 */
 	static DBDriver * create(const ParametersMap & parameters = ParametersMap());
 
 public:
 	virtual ~DBDriver();
 
+	/** @brief Parse driver parameters from the map (e.g. target schema version). */
 	virtual void parseParameters(const ParametersMap & parameters);
+	/**
+	 * @brief True when no database file URL was set at open time.
+	 * @note @ref DBDriverSqlite3 overrides this when @ref Parameters::kDbSqlite3InMemory() is enabled.
+	 */
 	virtual bool isInMemory() const {return _url.empty();}
+	/** @return Database file path last passed to @ref openConnection(). */
 	const std::string & getUrl() const {return _url;}
+	/** @return Target schema version for new databases (from parameters). */
 	const std::string & getTargetVersion() const {return _targetVersion;}
 
-	void beginTransaction() const;
-	void commit() const;
-
-	void asyncSave(Signature * s); //ownership transferred
-	void asyncSave(VisualWord * vw); //ownership transferred
+	/** @brief Queue a signature for deferred save; ownership is transferred. */
+	void asyncSave(Signature * s);
+	/** @brief Queue a visual word for deferred save; ownership is transferred. */
+	void asyncSave(VisualWord * vw);
+	/**
+	 * @brief Flush queued signatures and visual words to the database.
+	 * @param async If true, signal the background thread instead of flushing synchronously.
+	 */
 	void emptyTrashes(bool async = false);
 	double getEmptyTrashesTime() const {return _emptyTrashesTime;}
 	void setTimestampUpdateEnabled(bool enabled) {_timestampUpdate = enabled;} // used on Update Signature and Word queries
 
-	// Warning: the following functions don't look in the trash, direct database modifications
+	/**
+	 * @brief Export the pose graph to a Graphviz DOT file for visualization.
+	 *
+	 * Reads nodes and links from the database (and optionally from @p otherSignatures
+	 * not yet persisted) and writes @p fileName. Does not modify the database.
+	 * If @p ids is empty, all node ids are included.
+	 */
 	void generateGraph(
 			const std::string & fileName,
 			const std::set<int> & ids = std::set<int>(),
 			const std::map<int, Signature *> & otherSignatures = std::map<int, Signature *>());
+
+	/**
+	 * @name Direct database updates
+	 * @brief Write node or link data immediately (not via the async trash).
+	 * @{
+	 */
+	/** @brief Insert or replace a link in the database. */
 	void addLink(const Link & link);
+	/** @brief Remove a link between two nodes. */
 	void removeLink(int from, int to);
+	/** @brief Update an existing link in the database. */
 	void updateLink(const Link & link);
+	/**
+	 * @brief Update occupancy grid cells for a node.
+	 * @param ground Ground cells (raw @c CV_32FC2/@c CV_32FC3, or compressed @c CV_8UC1 1×N).
+	 * @param obstacles Obstacle cells (same formats as @p ground).
+	 * @param empty Empty cells (same formats as @p ground; ignored on DB schema &lt; 0.16.0).
+	 * Raw mats are compressed internally via @ref SensorData::setOccupancyGrid() before writing.
+	 */
 	void updateOccupancyGrid(
 				int nodeId,
 				const cv::Mat & ground,
@@ -96,22 +142,61 @@ public:
 				const cv::Mat & empty,
 				float cellSize,
 				const cv::Point3f & viewpoint);
+	/** @brief Update camera calibration stored for a node. */
 	void updateCalibration(
 		int nodeId,
 		const std::vector<CameraModel> & models,
 		const std::vector<StereoCameraModel> & stereoModels);
+	/**
+	 * @brief Update the depth image stored for a node.
+	 * @param image Raw depth image, or pre-compressed blob (@c CV_8UC1, single row).
+	 * @param format Compression format when @p image is raw (e.g. @c ".png"); ignored if already compressed.
+	 * Uncompressed images are compressed with @ref Compression::compressImage2() before writing.
+	 */
 	void updateDepthImage(int nodeId, const cv::Mat & image, const std::string & format);
+	/**
+	 * @brief Update the laser scan stored for a node.
+	 * @param scan Uncompressed scan, or already compressed (@ref LaserScan::isCompressed()).
+	 * Uncompressed data is compressed with @ref Compression::compressData2() before writing.
+	 */
 	void updateLaserScan(int nodeId, const LaserScan & scan);
+	/** @} */
 
 public:
+	/**
+	 * @name Session exports and map artifacts
+	 * @brief Statistics, preview image, optimized poses, 2D map, mesh and FLANN index.
+	 * @{*/
 	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
+	/**
+	 * @brief Append a @ref Statistics record for a processed node.
+	 * @param statistics Metrics for @ref Statistics::refImageId() (insert skipped if id &le; 0 or data empty).
+	 * @param saveWmState If true and schema &ge; 0.16.2, also store compressed working-memory state.
+	 */
 	void addStatistics(const Statistics & statistics, bool saveWmState) const;
+	/**
+	 * @brief Save the map preview thumbnail in the Admin table.
+	 * @param image Raw image or JPEG-compressed blob (@c CV_8UC1, single row); empty clears it.
+	 * @note Requires database schema &ge; 0.12.0.
+	 */
 	void savePreviewImage(const cv::Mat & image) const;
+	/** @brief Load and uncompress the map preview thumbnail from the Admin table. */
 	cv::Mat loadPreviewImage() const;
+	/** @brief Persist graph-optimized poses and last localization pose. */
 	void saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
+	/** @brief Load optimized poses; optional last localization pose output. */
 	std::map<int, Transform> loadOptimizedPoses(Transform * lastlocalizationPose = 0) const;
+	/** @brief Save the assembled 2D occupancy grid and its origin metadata. */
 	void save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const;
+	/** @brief Load the 2D map and fill origin/cell size outputs. */
 	cv::Mat load2DMap(float & xMin, float & yMin, float & cellSize) const;
+	/**
+	 * @brief Persist the global optimized 3D mesh to the database.
+	 * @param cloud Point cloud (@c CV_32FC1 or @c CV_32FC3).
+	 * @param polygons Optional per-texture polygon index lists (texture → polygon → vertex indices).
+	 * @param texCoords Optional UV coordinates per texture (one per polygon vertex).
+	 * @param textures Optional concatenated square texture images (same size per texture).
+	 */
 	void saveOptimizedMesh(
 			const cv::Mat & cloud,
 			const std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > & polygons = std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > >(),      // Textures -> polygons -> vertices
@@ -129,15 +214,27 @@ public:
 			std::vector<std::vector<Eigen::Vector2f> > * texCoords = 0,
 #endif
 			cv::Mat * textures = 0) const;
+	/**
+	 * @brief Persist the visual word dictionary FLANN index (serialized blob).
+	 * @param indexData Serialized index from @ref VWDictionary::serializeIndex(); pass empty to clear.
+	 * @note Requires database schema &ge; 0.23.0. Used when @ref Parameters::kKpFlannIndexSaved() is enabled.
+	 */
 	void saveFlannIndex(const std::vector<unsigned char> & indexData) const;
+	/** @} */
 
 public:
-	// Mutex-protected methods of abstract versions below
-
+	/**
+	 * @name Connection and database introspection
+	 * @brief Mutex-protected wrappers around protected \c *Query() methods.
+	 * @{*/
+	/** @brief Open or create the database at @p url (empty @p url uses an in-memory database). */
 	bool openConnection(const std::string & url, bool overwritten = false, bool readOnly = false);
+	/** @brief Close the connection; optionally flush trashes and save in-memory DB to @p outputUrl. */
 	void closeConnection(bool save = true, const std::string & outputUrl = "");
+	/** @return True if a database connection is active. */
 	bool isConnected() const;
 	unsigned long getMemoryUsed() const; // In bytes
+	/** @return Schema version string stored in the database (e.g. "0.21.0"). */
 	std::string getDatabaseVersion() const;
 	long getNodesMemoryUsed() const;
 	long getLinksMemoryUsed() const;
@@ -159,11 +256,33 @@ public:
 	std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatistics() const;
 	std::map<int, std::vector<int> > getAllStatisticsWmStates() const;
 
+	/** @} */
+
+	/**
+	 * @brief Run a SQL statement that does not return result rows.
+	 *
+	 * Executes @p sql on the open database (e.g. @c INSERT, @c UPDATE, @c DELETE,
+	 * @c CREATE, @c PRAGMA). Thread-safe wrapper around @ref executeNoResultQuery().
+	 *
+	 * For reads, use the dedicated @ref loadSignature(), @ref loadLinks() and related
+	 * query methods instead of raw SQL.
+	 *
+	 * @param sql Complete SQL statement (SQLite syntax for @ref DBDriverSqlite3).
+	 * @note The connection must be open (@ref isConnected()). On failure the driver
+	 *       aborts with an assertion (SQLite backend).
+	 * @warning @p sql is passed verbatim; sanitize any user-controlled values before calling.
+	 */
 	void executeNoResult(const std::string & sql) const;
+
+	/**
+	 * @name Load and query
+	 * @brief Load signatures, words, links and node metadata from the database.
+	 * @{*/
 
 	// Load objects
 	void load(VWDictionary & dictionary, bool lastStateOnly = true) const;
 	void loadLastNodes(std::list<Signature *> & signatures, bool loadWordIdsOnly = false) const; // returned signatures must be freed after usage
+	/** @brief Load one signature by id; caller must delete the returned pointer. */
 	Signature * loadSignature(int id, bool * loadedFromTrash = 0); // returned signature must be freed after usage, call loadSignatures() instead if more than one signature should be loaded
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0, bool loadWordIdsOnly = false); // returned signatures must be freed after usage
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws); // returned words must be freed after usage
@@ -176,6 +295,7 @@ public:
 	bool getLaserScanInfo(int signatureId, LaserScan & info) const;
 	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const;
 	void getLocalFeatures(int signatureId, std::multimap<int, int> & words, std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & points, cv::Mat & descriptors) const;
+	/** @brief Load outgoing links from @p signatureId, optionally filtered by @p type. */
 	void loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const;
 	void getWeight(int signatureId, int & weight) const;
 	void getLastNodeIds(std::set<int> & ids) const;
@@ -189,10 +309,18 @@ public:
 	void getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const;
 	void getNodeIdByLabel(const std::string & label, int & id) const;
 	void getAllLabels(std::map<int, std::string> & labels) const;
+	/** @} */
 
 protected:
+	/**
+	 * @brief Protected constructor for subclasses.
+	 */
 	DBDriver(const ParametersMap & parameters = ParametersMap());
 
+	/**
+	 * @name Backend implementation (subclass responsibility)
+	 * @brief Pure virtual SQL/backend hooks invoked by public wrappers above.
+	 * @{*/
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false, bool readOnly = false) = 0;
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "") = 0;
 	virtual bool isConnectedQuery() const = 0;
@@ -299,8 +427,14 @@ protected:
 	virtual void getNodesObservingLandmarkQuery(int landmarkId, std::map<int, Link> & nodes) const = 0;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const = 0;
 	virtual void getAllLabelsQuery(std::map<int, std::string> & labels) const = 0;
+	/** @} */
 
 private:
+	/** @brief Begin a database transaction (nested calls are serialized). */
+	void beginTransaction() const;
+	/** @brief Commit the current transaction. */
+	void commit() const;
+
 	//non-abstract methods
 	void saveOrUpdate(const std::vector<Signature *> & signatures);
 	void saveOrUpdate(const std::vector<VisualWord *> & words) const;

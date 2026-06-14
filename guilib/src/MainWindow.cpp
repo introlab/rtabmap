@@ -7120,7 +7120,7 @@ void MainWindow::postProcessing(
 
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
-		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
+		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerPixelVariance(), uNumber2Str(sbaVariance)));
 		Optimizer * sbaOptimizer = Optimizer::create(sbaType, parametersSBA);
 		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(
 			optimizedPoses.begin()->first,

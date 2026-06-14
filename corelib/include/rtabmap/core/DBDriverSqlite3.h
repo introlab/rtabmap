@@ -37,17 +37,118 @@ typedef struct sqlite3 sqlite3;
 
 namespace rtabmap {
 
+/**
+ * @class DBDriverSqlite3
+ * @brief SQLite3 implementation of @ref DBDriver for RTAB-Map map databases.
+ *
+ * This is the default driver returned by @ref DBDriver::create(). It stores signatures,
+ * links, visual words, statistics and sensor payloads in a single \c .db file using
+ * the SQLite C API.
+ *
+ * **Storage modes**
+ * - **File-backed** (default): the database is read/written directly on disk at @ref getUrl().
+ * - **In-memory**: when @ref isInMemory() is true, SQLite uses \c :memory: and the file at
+ *   @ref getUrl() (if any) is loaded at open and optionally saved on @ref closeConnection().
+ *
+ * **SQLite PRAGMA tuning** (applied on connect and when setters are called while connected):
+ * - @ref setCacheSize() — page cache size in pages
+ * - @ref setJournalMode() — rollback journal mode (DELETE … OFF)
+ * - @ref setSynchronous() — fsync policy (OFF / NORMAL / FULL)
+ * - @ref setTempStore() — storage for temporary tables and indices
+ *
+ * Configure via @ref Parameters::kDbSqlite3InMemory(), @ref Parameters::kDbSqlite3CacheSize(),
+ * @ref Parameters::kDbSqlite3JournalMode(), @ref Parameters::kDbSqlite3Synchronous() and
+ * @ref Parameters::kDbSqlite3TempStore(), or call the setters directly.
+ *
+ * @see DBDriver
+ * @see DBDriver::create()
+ */
 class RTABMAP_CORE_EXPORT DBDriverSqlite3: public DBDriver {
 public:
+	/**
+	 * @brief Construct driver with optional SQLite-specific parameters.
+	 * @param parameters Map of parameters (see class description).
+	 */
 	DBDriverSqlite3(const ParametersMap & parameters = ParametersMap());
 	virtual ~DBDriverSqlite3();
 
+	/** @brief Apply SQLite parameters from the map; forwards to @ref DBDriver::parseParameters(). */
 	virtual void parseParameters(const ParametersMap & parameters);
+	/**
+	 * @brief True when the database runs in RAM instead of on disk.
+	 * @return True if @ref getUrl() is empty or @ref setDbInMemory(true) was used.
+	 */
 	virtual bool isInMemory() const {return getUrl().empty() || _dbInMemory;}
+	/**
+	 * @brief Enable or disable in-memory mode.
+	 * If connected, the connection is closed and reopened with the new mode.
+	 */
 	void setDbInMemory(bool dbInMemory);
+	/**
+	 * @brief Set SQLite rollback journal mode (`PRAGMA journal_mode`).
+	 *
+	 * Controls how SQLite stores the transaction journal used for atomic commit and rollback.
+	 * See https://www.sqlite.org/pragma.html#pragma_journal_mode
+	 *
+	 * @param journalMode Accepted values (invalid values are ignored). RTAB-Map default:
+	 *   @ref Parameters::defaultDbSqlite3JournalMode() = **3 (MEMORY)** (@ref Parameters::kDbSqlite3JournalMode()).
+	 * - **0 — DELETE** (SQLite default): the journal file is deleted at the end of each transaction.
+	 *   Good general-purpose balance of safety and speed.
+	 * - **1 — TRUNCATE**: the journal is truncated to zero length instead of being unlinked; can be
+	 *   faster on some filesystems than DELETE.
+	 * - **2 — PERSIST**: the journal file is not deleted; only its header is zeroed after commit,
+	 *   reducing create/delete overhead at the cost of always keeping a journal file on disk.
+	 * - **3 — MEMORY** (RTAB-Map default): the journal is held in RAM only (not written to disk). Faster, but the
+	 *   database cannot be rolled back after a crash and may corrupt if the process dies mid-write.
+	 * - **4 — OFF**: no rollback journal. Fastest, but a crash or power loss during a write can
+	 *   leave the database inconsistent; transactions cannot be rolled back atomically.
+	 */
 	void setJournalMode(int journalMode);
+
+	/**
+	 * @brief Set the number of database pages kept in SQLite's page cache (`PRAGMA cache_size`).
+	 *
+	 * A larger cache reduces disk I/O when the working set fits in memory. The effective memory
+	 * is approximately `cacheSize * page_size` bytes (page size is usually 4096 bytes unless
+	 * changed with `PRAGMA page_size`). Only positive values are used (page count); see
+	 * https://www.sqlite.org/pragma.html#pragma_cache_size
+	 *
+	 * @param cacheSize Number of pages to cache. RTAB-Map default:
+	 *   @ref Parameters::defaultDbSqlite3CacheSize() = **10000** (@ref Parameters::kDbSqlite3CacheSize()).
+	 */
 	void setCacheSize(unsigned int cacheSize);
+
+	/**
+	 * @brief Set how aggressively SQLite syncs the database file to disk (`PRAGMA synchronous`).
+	 *
+	 * Trade-off between durability after a crash or power loss and write performance.
+	 * See https://www.sqlite.org/pragma.html#pragma_synchronous
+	 *
+	 * @param synchronous Accepted values (invalid values are ignored). RTAB-Map default:
+	 *   @ref Parameters::defaultDbSqlite3Synchronous() = **0 (OFF)** (@ref Parameters::kDbSqlite3Synchronous()).
+	 * - **0 — OFF** (RTAB-Map default): SQLite does not wait for data to reach persistent storage. Fastest; a system
+	 *   crash or power loss during a transaction may corrupt the database.
+	 * - **1 — NORMAL**: syncs at the most critical moments (SQLite default in many builds). A crash
+	 *   may lose the last transaction but the database file structure usually stays valid.
+	 * - **2 — FULL**: syncs after every transaction commit. Slowest; strongest guarantee that a
+	 *   committed transaction survives a power loss (when the OS honors fsync).
+	 */
 	void setSynchronous(int synchronous);
+
+	/**
+	 * @brief Set where SQLite stores temporary tables and indices (`PRAGMA temp_store`).
+	 *
+	 * Affects internal temp storage used for some queries and operations, not RTAB-Map map data.
+	 * See https://www.sqlite.org/pragma.html#pragma_temp_store
+	 *
+	 * @param tempStore Accepted values (invalid values are ignored). RTAB-Map default:
+	 *   @ref Parameters::defaultDbSqlite3TempStore() = **2 (MEMORY)** (@ref Parameters::kDbSqlite3TempStore()).
+	 * - **0 — DEFAULT**: use SQLite's compile-time default (often FILE, i.e. on-disk temp files).
+	 * - **1 — FILE**: store temporary tables and indices in temporary files in the directory
+	 *   given by `PRAGMA temp_store_directory` or the system temp folder.
+	 * - **2 — MEMORY** (RTAB-Map default): store temporary tables and indices in RAM. Can speed up heavy queries
+	 *   but increases memory use; large temp structures may still spill to disk depending on build.
+	 */
 	void setTempStore(int tempStore);
 
 protected:
@@ -199,8 +300,8 @@ private:
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
 
 protected:
-	sqlite3 * _ppDb;
-	std::string _version;
+	sqlite3 * _ppDb; ///< Open SQLite connection (null when disconnected)
+	std::string _version; ///< Schema version read from the database
 
 private:
 	unsigned long _memoryUsedEstimate;

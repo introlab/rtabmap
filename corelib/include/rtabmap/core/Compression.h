@@ -37,29 +37,51 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 /**
- * Compress image or data
+ * @class CompressionThread
+ * @brief Background thread to compress or uncompress images and generic matrices.
+ *
+ * In compress mode, pass a source matrix to the constructor with an optional image
+ * format (".png", ".jpg", ".rvl", or empty for zlib data). In uncompress mode, pass
+ * compressed bytes and set @c isImage accordingly. Call @ref UThread::start() then
+ * @ref UThread::join() to obtain the result from @ref getCompressedData() or
+ * @ref getUncompressedData().
  *
  * Example compression:
- *   cv::Mat image;// an image
- *   CompressionThread ct(image);
- *   ct.start();
- *   ct.join();
- *   std::vector<unsigned char> bytes = ct.getCompressedData();
+ * @code
+ * cv::Mat image;
+ * CompressionThread ct(image, ".png");
+ * ct.start();
+ * ct.join();
+ * cv::Mat bytes = ct.getCompressedData();
+ * @endcode
  *
- * Example uncompression
- *   std::vector<unsigned char> bytes;// a compressed image
- *   CompressionThread ct(bytes);
- *   ct.start();
- *   ct.join();
- *   cv::Mat image = ct.getUncompressedData();
+ * Example uncompression:
+ * @code
+ * cv::Mat bytes;
+ * CompressionThread ct(bytes, true);
+ * ct.start();
+ * ct.join();
+ * cv::Mat image = ct.getUncompressedData();
+ * @endcode
  */
 class RTABMAP_CORE_EXPORT CompressionThread : public UThread
 {
 public:
-	// format : ".png" ".jpg" "" (empty is general)
+	/**
+	 * @brief Constructs a thread in compress mode.
+	 * @param mat Source image or data matrix to compress.
+	 * @param format Image format: @c ".png", @c ".jpg", @c ".rvl", or empty for zlib (@ref compressData2).
+	 */
 	CompressionThread(const cv::Mat & mat, const std::string & format = "");
+	/**
+	 * @brief Constructs a thread in uncompress mode.
+	 * @param bytes Compressed bytes (@c CV_8UC1).
+	 * @param isImage If true, decode as image; otherwise decode as zlib data.
+	 */
 	CompressionThread(const cv::Mat & bytes, bool isImage);
+	/** @return Compressed output (@c CV_8UC1), valid after compress mode completes. */
 	const cv::Mat & getCompressedData() const {return compressedData_;}
+	/** @return Uncompressed output, valid after uncompress mode completes. */
 	cv::Mat & getUncompressedData() {return uncompressedData_;}
 protected:
 	virtual void mainLoop();
@@ -71,24 +93,41 @@ private:
 	bool compressMode_;
 };
 
+/** @brief Encodes @p image to a byte buffer (OpenCV @c imencode or RVL for depth). */
 std::vector<unsigned char> RTABMAP_CORE_EXPORT compressImage(const cv::Mat & image, const std::string & format = ".png");
+/** @brief Same as @ref compressImage() but returns a @c CV_8UC1 row matrix. */
 cv::Mat RTABMAP_CORE_EXPORT compressImage2(const cv::Mat & image, const std::string & format = ".png");
 
+/** @brief Decodes compressed image bytes to a @cv::Mat. */
 cv::Mat RTABMAP_CORE_EXPORT uncompressImage(const cv::Mat & bytes);
+/** @brief Decodes compressed image bytes to a @cv::Mat. */
 cv::Mat RTABMAP_CORE_EXPORT uncompressImage(const std::vector<unsigned char> & bytes);
 
+/** @brief Compresses a matrix with zlib; appends rows, cols and type at the end. */
 std::vector<unsigned char> RTABMAP_CORE_EXPORT compressData(const cv::Mat & data);
+/** @brief Same as @ref compressData() but returns a @c CV_8UC1 row matrix. */
 cv::Mat RTABMAP_CORE_EXPORT compressData2(const cv::Mat & data);
 
+/** @brief Restores a matrix compressed with @ref compressData() or @ref compressData2(). */
 cv::Mat RTABMAP_CORE_EXPORT uncompressData(const cv::Mat & bytes);
+/** @brief Restores a matrix compressed with @ref compressData() or @ref compressData2(). */
 cv::Mat RTABMAP_CORE_EXPORT uncompressData(const std::vector<unsigned char> & bytes);
+/** @brief Restores a matrix from a raw compressed buffer. */
 cv::Mat RTABMAP_CORE_EXPORT uncompressData(const unsigned char * bytes, unsigned long size);
 
+/** @brief Compresses a null-terminated string using @ref compressData2(). */
 cv::Mat RTABMAP_CORE_EXPORT compressString(const std::string & str);
+/** @brief Decompresses a string produced by @ref compressString(). */
 std::string RTABMAP_CORE_EXPORT uncompressString(const cv::Mat & bytes);
 
+/**
+ * @brief Detects the compression format of depth image bytes.
+ * @return @c ".rvl" if the buffer has an RVL signature, otherwise @c ".png".
+ */
 std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const cv::Mat & bytes);
+/** @overload */
 std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const std::vector<unsigned char> & bytes);
+/** @overload */
 std::string RTABMAP_CORE_EXPORT compressedDepthFormat(const unsigned char * bytes, size_t size);
 
 } /* namespace rtabmap */

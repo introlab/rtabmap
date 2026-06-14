@@ -267,7 +267,7 @@
         <item row="2" column="1">
          <widget class="QLabel" name="label_variance">
           <property name="text">
-           <string>Pixel variance used by g2o.</string>
+           <string>Pixel variance used by g2o / GTSAM / Ceres BA.</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
@@ -310,17 +310,27 @@
          <widget class="QComboBox" name="comboBox_sbaType">
           <item>
            <property name="text">
+            <string>TORO</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>g2o</string>
            </property>
           </item>
           <item>
            <property name="text">
-            <string>cvsba</string>
+            <string>GTSAM</string>
            </property>
           </item>
           <item>
            <property name="text">
             <string>Ceres</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>cvsba</string>
            </property>
           </item>
          </widget>

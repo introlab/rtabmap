@@ -546,8 +546,10 @@ void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNo
 vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
                                        const int &maxX, const int &minY, const int &maxY, const int &N, const int &level)
 {
-    // Compute how many initial nodes   
-    const int nIni = round(static_cast<float>(maxX-minX)/(maxY-minY));
+    // Compute how many initial nodes. For regions taller than wide the
+    // raw ratio rounds down to 0; clamp to at least 1 so hX stays finite
+    // and vpIniNodes is non-empty.
+    const int nIni = std::max(1, (int)round(static_cast<float>(maxX-minX)/(maxY-minY)));
 
     const float hX = static_cast<float>(maxX-minX)/nIni;
 
@@ -569,11 +571,14 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>&
         vpIniNodes[i] = &lNodes.back();
     }
 
-    //Associate points to childs
+    //Associate points to childs. A keypoint sitting exactly on the right
+    //border has kp.pt.x == maxX-minX, so kp.pt.x/hX == nIni -- one past
+    //the last bucket. Clamp to nIni-1 to keep it in range.
     for(size_t i=0;i<vToDistributeKeys.size();i++)
     {
         const cv::KeyPoint &kp = vToDistributeKeys[i];
-        vpIniNodes[kp.pt.x/hX]->vKeys.push_back(kp);
+        const int bucket = std::min(static_cast<int>(kp.pt.x/hX), nIni-1);
+        vpIniNodes[bucket]->vKeys.push_back(kp);
     }
 
     list<ExtractorNode>::iterator lit = lNodes.begin();

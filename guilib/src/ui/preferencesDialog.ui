@@ -24937,7 +24937,7 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="23" column="1">
+                      <item row="24" column="1">
                        <widget class="QLabel" name="label_640">
                         <property name="text">
                          <string>Export scans used for ICP in the specified format (a warning on terminal will be shown with the file paths used). Supported formats are &quot;pcd&quot;, &quot;ply&quot; or &quot;vtk&quot;. If logger level is debug, from and to scans will stamped, so previous files won't be overwritten.</string>
@@ -24989,8 +24989,28 @@ Lower the ratio -&gt; higher the precision.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="23" column="0">
+                      <item row="24" column="0">
                        <widget class="QLineEdit" name="loopClosure_icpDebugExportFormat"/>
+                      </item>
+                      <item row="23" column="0">
+                       <widget class="QCheckBox" name="loopClosure_icpPointToPlaneComplexityCentered">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="23" column="1">
+                       <widget class="QLabel" name="label_icpPointToPlaneComplexityCentered">
+                        <property name="text">
+                         <string>Structural-complexity metric. If unchecked (default), use the uncentered second-moment matrix (1/N) * sum(n_i * n_i^T) — its smallest eigenvalue measures how well the surface normals span the ambient space, which correctly distinguishes perpendicular-surface scenes from corridors. If checked, use centered PCA (cv::PCA covariance) for backwards compatibility — but the centered metric is known to mis-classify perpendicular-surface scenes as degenerate when normals are consistently viewpoint-flipped.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
                       </item>
                       <item row="20" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneGroundNormalsUp">
@@ -25215,7 +25235,7 @@ Lower the ratio -&gt; higher the precision.</string>
                       <item row="22" column="1">
                        <widget class="QLabel" name="label_6071">
                         <property name="text">
-                         <string>Stuctural complexity strategy. If structural complexity is below the minimum complexity threshold: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept &quot;as is&quot; the transform computed by PointToPoint.</string>
+                         <string>Structural complexity strategy. If structural complexity is below the minimum complexity threshold: 0 = reject the transform; 1 (default) = recompute with PointToPoint and limit ICP correction along the unconstrained axes (e.g. in a corridor, x is taken from the guess while y/yaw are still solved for); 2 = recompute with PointToPoint and accept the result &quot;as is&quot;; 3 = keep the PointToPlane transform and apply the same axis-constrained projection as strategy 1.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -25240,6 +25260,11 @@ Lower the ratio -&gt; higher the precision.</string>
                         <item>
                          <property name="text">
                           <string>PointToPoint</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Constrained PointToPlane</string>
                          </property>
                         </item>
                        </widget>
@@ -25897,6 +25922,134 @@ Lower the ratio -&gt; higher the precision.</string>
                      </layout>
                     </item>
                     <item>
+                     <widget class="QGroupBox" name="groupBox_20">
+                      <property name="title">
+                       <string>Bundle Adjustement</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_84" columnstretch="0,1">
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_disparityVariance">
+                         <property name="text">
+                          <string>Disparity variance. Set higher if the depth source is noisier than the feature precision (e.g. stereo block matching at long range); set lower if depth is more accurate than 2d pixel location of the features (e.g. ToF / LiDAR-fused depth).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_350">
+                         <property name="text">
+                          <string>Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_352">
+                         <property name="text">
+                          <string>When doing bundle adjustment with RGB-D data, we can set a fake baseline to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_robustKernelDelta">
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>5.991000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_baseline">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>4</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>9.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.075000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_optimizer_disparityVariance">
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.001000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_pixelVariance">
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.001000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.010000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_148">
+                         <property name="text">
+                          <string>Pixel variance of the feature detection. Set higher if features are noisy (low texture, motion blur); set lower if features are sub-pixel.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
                      <widget class="QGroupBox" name="groupBoxx_g2o">
                       <property name="title">
                        <string>g2o</string>
@@ -25963,105 +26116,6 @@ Lower the ratio -&gt; higher the precision.</string>
                           </widget>
                          </item>
                         </layout>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_20">
-                         <property name="title">
-                          <string>Bundle Adjustement</string>
-                         </property>
-                         <layout class="QGridLayout" name="gridLayout_84" columnstretch="0,1">
-                          <item row="0" column="0">
-                           <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_pixelVariance">
-                            <property name="decimals">
-                             <number>2</number>
-                            </property>
-                            <property name="minimum">
-                             <double>0.010000000000000</double>
-                            </property>
-                            <property name="maximum">
-                             <double>999.000000000000000</double>
-                            </property>
-                            <property name="singleStep">
-                             <double>0.001000000000000</double>
-                            </property>
-                            <property name="value">
-                             <double>0.010000000000000</double>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="1">
-                           <widget class="QLabel" name="label_148">
-                            <property name="text">
-                             <string>Pixel variance used for bundle adjustment.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="0">
-                           <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_robustKernelDelta">
-                            <property name="decimals">
-                             <number>3</number>
-                            </property>
-                            <property name="minimum">
-                             <double>0.000000000000000</double>
-                            </property>
-                            <property name="maximum">
-                             <double>999.000000000000000</double>
-                            </property>
-                            <property name="singleStep">
-                             <double>1.000000000000000</double>
-                            </property>
-                            <property name="value">
-                             <double>5.991000000000000</double>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="1">
-                           <widget class="QLabel" name="label_350">
-                            <property name="text">
-                             <string>Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="0">
-                           <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_baseline">
-                            <property name="suffix">
-                             <string> m</string>
-                            </property>
-                            <property name="decimals">
-                             <number>4</number>
-                            </property>
-                            <property name="minimum">
-                             <double>0.000000000000000</double>
-                            </property>
-                            <property name="maximum">
-                             <double>9.000000000000000</double>
-                            </property>
-                            <property name="singleStep">
-                             <double>0.010000000000000</double>
-                            </property>
-                            <property name="value">
-                             <double>0.075000000000000</double>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="1">
-                           <widget class="QLabel" name="label_352">
-                            <property name="text">
-                             <string>When doing bundle adjustment with RGB-D data, we can set a fake baseline to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
                        </item>
                       </layout>
                      </widget>

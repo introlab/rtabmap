@@ -34,28 +34,88 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+/**
+ * @class StereoBM
+ * @brief Block Matching algorithm for dense stereo matching
+ * 
+ * This class implements the Block Matching (BM) algorithm for computing disparity
+ * maps from stereo image pairs.
+ * 
+ * @note This class wraps OpenCV's cv::StereoBM implementation.
+ * @see StereoSGBM for a more accurate but slower alternative
+ */
 class RTABMAP_CORE_EXPORT StereoBM : public StereoDense {
 public:
+	/**
+	 * @brief Constructor with explicit block size and number of disparities
+	 * 
+	 * @param blockSize Size of the block window for matching (must be odd, typically 5-21)
+	 * @param numDisparities Number of disparity levels to search (must be divisible by 16)
+	 */
 	StereoBM(int blockSize, int numDisparities);
+	
+	/**
+	 * @brief Constructor with parameters map
+	 * 
+	 * Creates a StereoBM instance and initializes it from the provided parameters map.
+	 * 
+	 * @param parameters Parameters map containing configuration values
+	 */
 	StereoBM(const ParametersMap & parameters = ParametersMap());
+	
+	/**
+	 * @brief Virtual destructor
+	 */
 	virtual ~StereoBM() {}
 
+	/**
+	 * @brief Parse parameters from a parameters map
+	 * 
+	 * Updates the algorithm's configuration based on the provided parameters map.
+	 * Supported parameters:
+	 * - Parameters::kStereoBMBlockSize()
+	 * - Parameters::kStereoBMMinDisparity()
+	 * - Parameters::kStereoBMNumDisparities()
+	 * - Parameters::kStereoBMPreFilterSize()
+	 * - Parameters::kStereoBMPreFilterCap()
+	 * - Parameters::kStereoBMUniquenessRatio()
+	 * - Parameters::kStereoBMTextureThreshold()
+	 * - Parameters::kStereoBMSpeckleWindowSize()
+	 * - Parameters::kStereoBMSpeckleRange()
+	 * - Parameters::kStereoBMDisp12MaxDiff()
+	 * 
+	 * @param parameters Parameters map containing configuration values
+	 */
 	virtual void parseParameters(const ParametersMap & parameters);
+	
+	/**
+	 * @brief Compute disparity map from stereo image pair
+	 * 
+	 * Computes a disparity map using the Block Matching algorithm. The images
+	 * must have the same size and be either grayscale (CV_8UC1) or color (CV_8UC3).
+	 * Color images are automatically converted to grayscale.
+	 * 
+	 * @param leftImage Left stereo image (CV_8UC1 or CV_8UC3)
+	 * @param rightImage Right stereo image (CV_8UC1 or CV_8UC3), must have same size as leftImage
+	 * @return Disparity map as a 16-bit signed integer image (CV_16SC1)
+	 * @note The disparity values are stored as fixed-point numbers with 4 fractional bits.
+	 *       To get the actual disparity, divide by 16.
+	 */
 	virtual cv::Mat computeDisparity(
 			const cv::Mat & leftImage,
 			const cv::Mat & rightImage) const;
 
 private:
-	int blockSize_;         //15
-	int minDisparity_;      //0
-	int numDisparities_;    //64
-	int preFilterSize_;     //9
-	int preFilterCap_;      //31
-	int uniquenessRatio_;   //15
-	int textureThreshold_;  //10
-	int speckleWindowSize_; //100
-	int speckleRange_;      //4
-	int disp12MaxDiff_;     //-1
+	int blockSize_;         ///< Size of the block window for matching (default: 15, must be odd)
+	int minDisparity_;      ///< Minimum disparity value to search (default: 0)
+	int numDisparities_;    ///< Number of disparity levels to search (default: 64, must be divisible by 16)
+	int preFilterSize_;     ///< Size of the prefiltering window (default: 9, must be odd)
+	int preFilterCap_;      ///< Prefiltering cap value (default: 31)
+	int uniquenessRatio_;   ///< Uniqueness ratio for matching (default: 15)
+	int textureThreshold_;  ///< Texture threshold for filtering (default: 10)
+	int speckleWindowSize_; ///< Maximum size of smooth disparity regions to consider as speckles (default: 100)
+	int speckleRange_;      ///< Maximum disparity variation within each connected component (default: 4)
+	int disp12MaxDiff_;     ///< Maximum allowed difference in left-right disparity check (default: -1, disabled)
 };
 
 } /* namespace rtabmap */

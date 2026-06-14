@@ -883,11 +883,49 @@ target_include_directories(rtabmap_core PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_BINARY_DIR}/include>"
   "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>")
 
-target_include_directories(rtabmap_core SYSTEM PUBLIC 
+target_include_directories(rtabmap_core SYSTEM PUBLIC
   "$<BUILD_INTERFACE:${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
   "$<INSTALL_INTERFACE:${PUBLIC_INCLUDE_DIRS}>")
-  
-TARGET_LINK_LIBRARIES(rtabmap_core 
+
+# GCC 12 false positives from PCL/Eigen template instantiations (SSE codepath
+# unaligned-loads 16 bytes from a 3-element Eigen vector). Eigen knows the
+# over-read is safe; GCC 12 doesn't. Fixed in GCC 13. PCL itself doesn't
+# trigger this in its own build because the offending code is in templated
+# headers and only fires in downstream TUs. Same scope/approach as
+# pybind11 PR #5355.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+    target_compile_options(rtabmap_core PRIVATE -Wno-array-bounds -Wno-stringop-overread)
+
+    # GCC 12 -Wuse-after-free false positive on the vendored TORO library's
+    # reference-counted DMatrix destructor: when multiple ~DMatrix<double>()
+    # inline at the same closing brace, GCC's cross-call flow analysis can't
+    # prove the freed and re-read 'shares' pointers belong to different
+    # objects. Scope to the TORO sources only.
+    if(WITH_TORO)
+        set_source_files_properties(
+            optimizer/toro3d/posegraph3.cpp
+            optimizer/toro3d/treeoptimizer3_iteration.cpp
+            optimizer/toro3d/treeoptimizer3.cpp
+            optimizer/toro3d/posegraph2.cpp
+            optimizer/toro3d/treeoptimizer2.cpp
+            PROPERTIES COMPILE_OPTIONS "-Wno-use-after-free")
+    endif()
+
+    # GCC 12 -Wmaybe-uninitialized false positive: Eigen's SSE codepath
+    # _mm_loadu_pd's an uninitialized-by-design Eigen::Matrix<double,3,3>
+    # inside g2o::SBACam. GCC follows the SIMD load through and flags it as
+    # potentially uninitialized; Eigen relies on the caller to assign before
+    # reading. Only OptimizerG2O.cpp instantiates SBACam.
+    if(G2O_FOUND)
+        set_source_files_properties(
+            optimizer/OptimizerG2O.cpp
+            PROPERTIES COMPILE_OPTIONS "-Wno-maybe-uninitialized")
+    endif()
+endif()
+
+TARGET_LINK_LIBRARIES(rtabmap_core
   PUBLIC 
     rtabmap_utilite 
     ${PUBLIC_LIBRARIES}

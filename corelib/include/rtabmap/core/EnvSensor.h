@@ -28,22 +28,43 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_ENVSENSOR_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_ENVSENSOR_H_
 
+#include <map>
+
 namespace rtabmap {
 
+/**
+ * @class EnvSensor
+ * @brief Single environmental measurement (type, value, timestamp).
+ *
+ * Built-in @ref Type values cover common phone/robot sensors; @ref kCustomSensor1
+ * through @ref kCustomSensor9 are reserved for application-specific channels.
+ * Units depend on the type (see @ref Type).
+ *
+ * Samples are stored per node in @ref SensorData via @ref EnvSensors (one entry
+ * per type). Persisted in the database with node records (@ref DBDriver).
+ *
+ * @see SensorData::setEnvSensors()
+ * @see SensorData::addEnvSensor()
+ * @see SensorData::envSensors()
+ */
 class EnvSensor
 {
 public:
+	/**
+	 * @brief Environmental sensor channel identifier.
+	 *
+	 * Built-in types use fixed units; custom types (≥ @ref kCustomSensor1) have
+	 * application-defined meaning and units.
+	 */
 	enum Type {
-		// built-in types
-		kUndefined = 0,
-		kWifiSignalStrength,      // dBm
-		kAmbientTemperature,      // Celcius
-		kAmbientAirPressure,      // hPa
-		kAmbientLight,            // lx
-		kAmbientRelativeHumidity, // %
+		kUndefined = 0,              ///< Uninitialized / unknown channel.
+		kWifiSignalStrength,         ///< Wi‑Fi signal strength (dBm).
+		kAmbientTemperature,         ///< Ambient temperature (°C).
+		kAmbientAirPressure,         ///< Ambient air pressure (hPa).
+		kAmbientLight,               ///< Ambient illuminance (lx).
+		kAmbientRelativeHumidity,    ///< Relative humidity (%).
 
-		// user types
-		kCustomSensor1 = 100,
+		kCustomSensor1 = 100,        ///< User-defined sensor slot 1.
 		kCustomSensor2,
 		kCustomSensor3,
 		kCustomSensor4,
@@ -55,11 +76,19 @@ public:
 	};
 
 public:
+	/** @brief Default constructor: @ref kUndefined type, zero value and stamp. */
 	EnvSensor() :
 		type_(kUndefined),
 		value_(0.0),
 		stamp_(0.0)
 	{}
+
+	/**
+	 * @brief Constructs a reading with the given type, value, and optional stamp.
+	 * @param type Sensor channel (@ref Type).
+	 * @param value Measurement in the units for @p type.
+	 * @param stamp Timestamp in seconds (0 if unknown).
+	 */
 	EnvSensor(const Type & type, const double & value,const double & stamp = 0) :
 		type_(type),
 		value_(value),
@@ -68,8 +97,11 @@ public:
 
 	virtual ~EnvSensor() {}
 
+	/** @return Sensor channel. */
 	const Type & type() const {return type_;}
+	/** @return Measurement value (units depend on @ref type()). */
 	const double & value() const {return value_;}
+	/** @return Timestamp in seconds. */
 	const double & stamp() const {return stamp_;}
 
 private:
@@ -78,6 +110,7 @@ private:
 	double stamp_;
 };
 
+/** @brief Map of environmental readings keyed by @ref EnvSensor::Type (at most one per type). */
 typedef std::map<EnvSensor::Type, EnvSensor> EnvSensors;
 
 }

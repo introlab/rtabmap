@@ -82,40 +82,46 @@ public:
 	}
 
 	/**
-	 * Lock the mutex.
+	 * Lock the mutex. 
+	 * @return true on success, false if error.
 	 */
-	int lock() const
+	bool lock() const
 	{
 #ifdef _WIN32
-		EnterCriticalSection(&C); return 0;
+		EnterCriticalSection(&C); return true;
 #else
-		return pthread_mutex_lock(&M);
+		return pthread_mutex_lock(&M) == 0;
 #endif
 	}
 
+	/**
+	 * Try locking the mutex.
+	 * @return true if mutex has been locked by this call, false otherwise.
+	 */
 #ifdef _WIN32
 	#if(_WIN32_WINNT >= 0x0400)
-	int lockTry() const
+	bool lockTry() const
 	{
-		return (TryEnterCriticalSection(&C)?0:EBUSY);
+		return (TryEnterCriticalSection(&C)?true:false);
 	}
 	#endif
 #else
-	int lockTry() const
+	bool lockTry() const
 	{
-		return pthread_mutex_trylock(&M);
+		return pthread_mutex_trylock(&M) == 0;
 	}
 #endif
 
 	/**
 	 * Unlock the mutex.
+	 * @return true on success, false if error.
 	 */
-	int unlock() const
+	bool unlock() const
 	{
 #ifdef _WIN32
-		LeaveCriticalSection(&C); return 0;
+		LeaveCriticalSection(&C); return true;
 #else
-		return pthread_mutex_unlock(&M);
+		return pthread_mutex_unlock(&M) == 0;
 #endif
 	}
 

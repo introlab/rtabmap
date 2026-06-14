@@ -673,18 +673,11 @@ int32_t lastFrameFromSegmentLength(std::vector<float> &dist,int32_t first_frame,
 }
 
 inline float rotationError(const Transform &pose_error) {
-	float a = pose_error(0,0);
-	float b = pose_error(1,1);
-	float c = pose_error(2,2);
-	float d = 0.5*(a+b+c-1.0);
-	return std::acos(std::max(std::min(d,1.0f),-1.0f));
+	return pose_error.getAngle(Transform::getIdentity());
 }
 
 inline float translationError(const Transform &pose_error) {
-	float dx = pose_error.x();
-	float dy = pose_error.y();
-	float dz = pose_error.z();
-	return sqrt(dx*dx+dy*dy+dz*dz);
+	return pose_error.getNorm();
 }
 
 void calcKittiSequenceErrors (
@@ -694,6 +687,14 @@ void calcKittiSequenceErrors (
 		float & r_err) {
 
 	UASSERT(poses_gt.size() == poses_result.size());
+
+	t_err = 0.0f;
+	r_err = 0.0f;
+
+	if(poses_gt.size() < 2)
+	{
+		return;
+	}
 
 	// error vector
 	std::vector<errors> err;
@@ -720,24 +721,35 @@ void calcKittiSequenceErrors (
 			if (last_frame==-1)
 				continue;
 
+			const Transform & gtFirst = poses_gt[first_frame];
+			const Transform & gtLast = poses_gt[last_frame];
+			const Transform & estFirst = poses_result[first_frame];
+			const Transform & estLast = poses_result[last_frame];
+			UASSERT_MSG(gtFirst.isInvertible() && gtLast.isInvertible() &&
+					estFirst.isInvertible() && estLast.isInvertible(),
+					uFormat("Non-invertible poses at frames %d and %d (segment length %f m)",
+							first_frame, last_frame, len).c_str());
+
 			// compute rotational and translational errors
-			Transform pose_delta_gt     = poses_gt[first_frame].inverse()*poses_gt[last_frame];
-			Transform pose_delta_result = poses_result[first_frame].inverse()*poses_result[last_frame];
-			Transform pose_error        = pose_delta_result.inverse()*pose_delta_gt;
-			float r_err = rotationError(pose_error);
-			float t_err = translationError(pose_error);
+			Transform pose_delta_gt     = gtFirst.inverse()*gtLast;
+			Transform pose_delta_result = estFirst.inverse()*estLast;
+			Transform pose_error = pose_delta_result.inverse()*pose_delta_gt;
+			const float rotErr = rotationError(pose_error);
+			const float transErr = translationError(pose_error);
 
 			// compute speed
 			float num_frames = (float)(last_frame-first_frame+1);
-			float speed = len/(0.1*num_frames);
+			float speed = len/(0.1f*num_frames);
 
 			// write to file
-			err.push_back(errors(first_frame,r_err/len,t_err/len,len,speed));
+			err.push_back(errors(first_frame, rotErr/len, transErr/len, len, speed));
 		}
 	}
 
-	t_err = 0;
-	r_err = 0;
+	if(err.empty())
+	{
+		return;
+	}
 
 	// for all errors do => compute sum of t_err, r_err
 	for (std::vector<errors>::iterator it=err.begin(); it!=err.end(); it++)
@@ -747,11 +759,11 @@ void calcKittiSequenceErrors (
 	}
 
 	// save errors
-	float num = err.size();
+	const float num = float(err.size());
 	t_err /= num;
 	r_err /= num;
 	t_err *= 100.0f;    // Translation error (%)
-	r_err *= 180/CV_PI; // Rotation error (deg/m)
+	r_err *= 180.0f/CV_PI; // Rotation error (deg/m)
 }
 // KITTI evaluation end
 
@@ -1879,6 +1891,7 @@ std::list<std::pair<int, Transform> > computePath(
 						if(mapIter->second == nodeIter->first)
 						{
 							pqmap.erase(mapIter);
+							nodeIter->second.setFromId(currentNode->id());
 							nodeIter->second.setCostSoFar(newCostSoFar);
 							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
 							break;
@@ -1969,7 +1982,7 @@ std::list<int> computePath(
 					pq.push(Pair(n.id(), n.totalCost()));
 				}
 			}
-			else if(!useSameCostForAllLinks && updateNewCosts && nodeIter->second.isOpened())
+			else if(updateNewCosts && nodeIter->second.isOpened())
 			{
 				float newCostSoFar = currentNode->costSoFar() + cost;
 				if(nodeIter->second.costSoFar() > newCostSoFar)
@@ -1980,6 +1993,7 @@ std::list<int> computePath(
 						if(mapIter->second == nodeIter->first)
 						{
 							pqmap.erase(mapIter);
+							nodeIter->second.setFromId(currentNode->id());
 							nodeIter->second.setCostSoFar(newCostSoFar);
 							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
 							break;
@@ -2149,6 +2163,7 @@ std::list<std::pair<int, Transform> > computePath(
 							if(mapIter->second == nodeIter->first)
 							{
 								pqmap.erase(mapIter);
+								nodeIter->second.setFromId(currentNode->id());
 								nodeIter->second.setCostSoFar(newCostSoFar);
 								pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
 								break;
@@ -2427,8 +2442,18 @@ std::list<std::map<int, Transform> > getPaths(
 			std::map<int, Transform> path;
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
 			{
-				std::multimap<int, Link>::const_iterator jter = findLink(links, path.rbegin()->first, iter->first);
-				if(path.size() == 0 || (jter != links.end() && (jter->second.type() == Link::kNeighbor || jter->second.type() == Link::kNeighborMerged)))
+				bool addPose = false;
+				if(path.empty())
+				{
+					addPose = true;
+				}
+				else
+				{
+					std::multimap<int, Link>::const_iterator jter = findLink(links, path.rbegin()->first, iter->first);
+					addPose = jter != links.end() &&
+							(jter->second.type() == Link::kNeighbor || jter->second.type() == Link::kNeighborMerged);
+				}
+				if(addPose)
 				{
 					path.insert(*iter);
 					poses.erase(iter++);

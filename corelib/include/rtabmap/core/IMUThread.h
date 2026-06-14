@@ -37,26 +37,63 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <fstream>
 
-namespace rtabmap
-{
+namespace rtabmap {
 
 class IMUFilter;
 
 /**
- * Class IMUThread
+ * @class IMUThread
+ * @brief Background thread that replays IMU measurements from a CSV file.
  *
+ * Reads gyroscope and accelerometer samples from a comma-separated file (EuRoC-style
+ * or epoch timestamps), optionally fuses them with @ref IMUFilter, and posts
+ * @ref IMUEvent on each step.
+ *
+ * CSV format:
+ * - First line: header (skipped).
+ * - Following lines: `stamp,gx,gy,gz,ax,ay,az` (stamp in seconds with a decimal
+ *   point, or EuRoC nanoseconds without one).
+ *
+ * Playback rate is limited by @ref setRate() when `rate > 0`; otherwise samples are
+ * read as fast as possible (or spaced using inter-sample timestamps after the first
+ * pair). When the file ends, the thread posts an empty @ref IMUEvent and stops.
+ *
+ * @see IMUEvent
+ * @see IMUFilter
+ * @see SensorCaptureThread::enableIMUFiltering()
  */
 class RTABMAP_CORE_EXPORT IMUThread :
 	public UThread,
 	public UEventsSender
 {
 public:
+	/**
+	 * @brief Constructs the replay thread.
+	 * @param rate Target playback rate in Hz (`0` = no rate cap until timestamps apply).
+	 * @param localTransform IMU frame relative to the robot base (stored in each @ref IMU).
+	 */
 	IMUThread(int rate, const Transform & localTransform);
 	virtual ~IMUThread();
 
+	/**
+	 * @brief Opens and validates an IMU CSV file.
+	 * @param path Path to the CSV file.
+	 * @return False if the file is missing or contains no data rows.
+	 */
 	bool init(const std::string & path);
+
+	/** @brief Sets the target playback rate in Hz. */
 	void setRate(int rate);
-	void enableIMUFiltering(int filteringStrategy=1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
+
+	/**
+	 * @brief Enables orientation fusion on replayed samples.
+	 * @param filteringStrategy @ref IMUFilter::Type index (`0` = Madgwick, `1` = complementary).
+	 * @param parameters Optional ImuFilter/... tuning parameters.
+	 * @param baseFrameConversion If true, rotate IMU vectors into the base frame before filtering.
+	 */
+	void enableIMUFiltering(int filteringStrategy = 1, const ParametersMap & parameters = ParametersMap(), bool baseFrameConversion = false);
+
+	/** @brief Disables fusion and deletes the internal @ref IMUFilter. */
 	void disableIMUFiltering();
 
 private:
