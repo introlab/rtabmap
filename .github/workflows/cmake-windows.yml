@@ -94,15 +94,15 @@ jobs:
         # OpenCV/cv::cuda was built against. Lazy CUDA-init on first cv::cuda
         # symbol call stalls some unit tests (test_util3d_features,
         # test_localgrid) for >300s; which test hangs first is timing-dependent.
-        # Hide the GPU so the runtime short-circuits before any blocking call.
-        # Note: '$env:CUDA_VISIBLE_DEVICES = ""' on Windows *deletes* the
-        # variable (Win32 SetEnvironmentVariable treats empty as remove), so
-        # use "-1" — CUDA's documented sentinel for "no device visible".
+        # Hiding the GPU (CUDA_VISIBLE_DEVICES=-1) was not enough to prevent the
+        # stall, so on the CUDA runner we skip these two cv::cuda-touching tests
+        # outright via ctest's exclude regex.
+        $excludeArg = @()
         if ('${{ matrix.build_name }}' -eq 'windows-2022-cuda') {
-          $env:CUDA_VISIBLE_DEVICES = "-1"
+          $excludeArg = "-E", "^test_util3d_features$|^test_localgrid$"
         }
-        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
-        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 $excludeArg
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed $excludeArg
 
     - name: Build Windows Package
       shell: pwsh
