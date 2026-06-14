@@ -372,6 +372,7 @@ private Q_SLOTS:
 	void changeOdometryORBSLAMVocabulary();
 	void changeOdometryOKVISConfigPath();
 	void changeOdometryVINSFusionConfigPath();
+	void changeOdometryOpenVINSConfigPath();
 	void changeOdometryLIOSAMConfigPath();
 	void changeOdometryOpenVINSLeftMask();
 	void changeOdometryOpenVINSRightMask();
