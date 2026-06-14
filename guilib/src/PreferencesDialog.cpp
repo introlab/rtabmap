@@ -1619,6 +1619,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_OdomVinsFusionPath, SIGNAL(clicked()), this, SLOT(changeOdometryVINSFusionConfigPath()));
 
 	// Odometry OpenVINS
+	_ui->lineEdit_openvinsConfigPath->setObjectName(Parameters::kOdomOpenVINSConfigPath().c_str());
+	connect(_ui->toolButton_openvinsConfigPath, SIGNAL(clicked()), this, SLOT(changeOdometryOpenVINSConfigPath()));
 	_ui->checkBox_OdomOpenVINSUseStereo->setObjectName(Parameters::kOdomOpenVINSUseStereo().c_str());
 	_ui->checkBox_OdomOpenVINSUseKLT->setObjectName(Parameters::kOdomOpenVINSUseKLT().c_str());
 	_ui->spinBox_OdomOpenVINSNumPts->setObjectName(Parameters::kOdomOpenVINSNumPts().c_str());
@@ -5791,6 +5793,23 @@ void PreferencesDialog::changeOdometryVINSFusionConfigPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_OdomVinsFusionPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryOpenVINSConfigPath()
+{
+	QString path;
+	if(_ui->lineEdit_openvinsConfigPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("OpenVINS Config"), this->getWorkingDirectory(), tr("OpenVINS config (*.yaml)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("OpenVINS Config"), _ui->lineEdit_openvinsConfigPath->text(), tr("OpenVINS config (*.yaml)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_openvinsConfigPath->setText(path);
 	}
 }
 

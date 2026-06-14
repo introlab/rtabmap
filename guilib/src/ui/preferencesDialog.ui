@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-648</y>
             <width>684</width>
             <height>5218</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -16763,7 +16763,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>10</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -20388,7 +20388,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                           <property name="title">
                            <string>OpenVINS</string>
                           </property>
-                          <layout class="QVBoxLayout" name="verticalLayout_161" stretch="0,0,0,0,0,0">
+                          <layout class="QVBoxLayout" name="verticalLayout_161">
                            <item>
                             <widget class="QLabel" name="label_632">
                              <property name="text">
@@ -20406,6 +20406,33 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                             </widget>
                            </item>
                            <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_19" stretch="0,0,1">
+                             <item>
+                              <widget class="QToolButton" name="toolButton_openvinsConfigPath">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QLineEdit" name="lineEdit_openvinsConfigPath"/>
+                             </item>
+                             <item>
+                              <widget class="QLabel" name="label_796">
+                               <property name="text">
+                                <string>Configuration file (*.yaml). Same format used than OpenVINS library. Note that any parameter from that config file will overwrite the same parameter below.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
                             <widget class="QGroupBox" name="groupBox_36">
                              <property name="title">
                               <string>Tracker</string>
@@ -20421,7 +20448,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_682">
                                 <property name="text">
-                                 <string>If we should process two cameras are being stereo or binocular. If binocular, we do monocular feature tracking on each image.</string>
+                                 <string>Stereo mode. If we should process two cameras are being stereo or binocular. If binocular, we do monocular feature tracking on each image. Ignored if provided input data is not stereo.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20441,7 +20468,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_683">
                                 <property name="text">
-                                 <string>If we should use KLT tracking, or descriptor matcher</string>
+                                 <string>KLT tracking. Uncheck to use descriptor matcher.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20467,7 +20494,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_684">
                                 <property name="text">
-                                 <string>Number of points (per camera) we will extract and try to track</string>
+                                 <string>Number of points (per camera) we will extract and try to track.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20490,7 +20517,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_688">
                                 <property name="text">
-                                 <string>Will check after doing KLT track and remove any features closer than this</string>
+                                 <string>Minimum pixel distance. Will check after doing KLT track and remove any features closer than this.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20510,7 +20537,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_689">
                                 <property name="text">
-                                 <string>If we should perform 1d triangulation instead of 3d</string>
+                                 <string>If we should perform 1d triangulation instead of 3d.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20530,7 +20557,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_732">
                                 <property name="text">
-                                 <string>If we should perform Levenberg-Marquardt refinement</string>
+                                 <string>If we should perform Levenberg-Marquardt refinement.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20553,7 +20580,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_733">
                                 <property name="text">
-                                 <string>Max runs for Levenberg-Marquardt</string>
+                                 <string>Max runs for Levenberg-Marquardt.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20579,7 +20606,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_734">
                                 <property name="text">
-                                 <string>Max baseline ratio to accept triangulated features</string>
+                                 <string>Max baseline ratio to accept triangulated features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20605,7 +20632,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="8" column="1">
                                <widget class="QLabel" name="label_735">
                                 <property name="text">
-                                 <string>Max condition number of linear triangulation matrix accept triangulated features</string>
+                                 <string>Max condition number of linear triangulation matrix accept triangulated features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20634,7 +20661,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_690">
                                 <property name="text">
-                                 <string>If first-estimate Jacobians should be used (enable for good consistency)</string>
+                                 <string>If first-estimate Jacobians should be used (enable for good consistency).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20672,7 +20699,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_691">
                                 <property name="text">
-                                 <string>Numerical integration methods</string>
+                                 <string>Numerical integration methods.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20692,7 +20719,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_685">
                                 <property name="text">
-                                 <string>If the transform between camera and IMU should be optimized (R_ItoC, p_CinI)</string>
+                                 <string>If the transform between camera and IMU should be optimized (R_ItoC, p_CinI).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20712,7 +20739,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_686">
                                 <property name="text">
-                                 <string>If camera intrinsics should be optimized (focal, center, distortion)</string>
+                                 <string>If camera intrinsics should be optimized (focal, center, distortion).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20732,7 +20759,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_687">
                                 <property name="text">
-                                 <string>If timeoffset between camera and IMU should be optimized</string>
+                                 <string>If timeoffset between camera and IMU should be optimized.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20752,7 +20779,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_718">
                                 <property name="text">
-                                 <string>If imu intrinsics should be calibrated (rotation and skew-scale matrix)</string>
+                                 <string>If imu intrinsics should be calibrated (rotation and skew-scale matrix).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20772,7 +20799,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_719">
                                 <property name="text">
-                                 <string>If gyroscope gravity sensitivity (Tg) should be calibrated</string>
+                                 <string>If gyroscope gravity sensitivity (Tg) should be calibrated.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20795,7 +20822,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_692">
                                 <property name="text">
-                                 <string>Max clone size of sliding window</string>
+                                 <string>Max clone size of sliding window.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20821,7 +20848,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="8" column="1">
                                <widget class="QLabel" name="label_693">
                                 <property name="text">
-                                 <string>Max number of estimated SLAM features</string>
+                                 <string>Max number of estimated SLAM features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20926,7 +20953,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="11" column="1">
                                <widget class="QLabel" name="label_696">
                                 <property name="text">
-                                 <string>What representation our features are in (msckf features)</string>
+                                 <string>What representation our features are in (msckf features).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20942,7 +20969,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                  <number>4</number>
                                 </property>
                                 <property name="sizeAdjustPolicy">
-                                 <enum>QComboBox::AdjustToContents</enum>
+                                 <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
                                 </property>
                                 <item>
                                  <property name="text">
@@ -20979,7 +21006,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="12" column="1">
                                <widget class="QLabel" name="label_697">
                                 <property name="text">
-                                 <string>What representation our features are in (slam features)</string>
+                                 <string>What representation our features are in (slam features).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21008,7 +21035,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="13" column="1">
                                <widget class="QLabel" name="label_698">
                                 <property name="text">
-                                 <string>Delay before initializing (helps with stability from bad initialization...)</string>
+                                 <string>Delay before initializing (helps with stability from bad initialization...).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21034,7 +21061,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="14" column="1">
                                <widget class="QLabel" name="label_699">
                                 <property name="text">
-                                 <string>Magnitude of gravity in this location</string>
+                                 <string>Magnitude of gravity in this location.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21061,7 +21088,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="15" column="1">
                                <widget class="QLabel" name="label_736">
                                 <property name="text">
-                                 <string>Mask for left image</string>
+                                 <string>Mask for left image (stereo mode) or mono image (RGB-D mode). For RGB-D mode, to use depth as mask, enable that option under Visual Registration panel.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21088,7 +21115,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="16" column="1">
                                <widget class="QLabel" name="label_737">
                                 <property name="text">
-                                 <string>Mask for right image</string>
+                                 <string>Mask for right image.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21126,7 +21153,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_700">
                                 <property name="text">
-                                 <string>Amount of time we will initialize over</string>
+                                 <string>Amount of time we will initialize over.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21155,7 +21182,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_701">
                                 <property name="text">
-                                 <string>Variance threshold on our acceleration to be classified as moving</string>
+                                 <string>Variance threshold on our acceleration to be classified as moving.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21181,7 +21208,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_702">
                                 <property name="text">
-                                 <string>Max disparity to consider the platform stationary (dependent on resolution)</string>
+                                 <string>Max disparity to consider the platform stationary (dependent on resolution).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21207,7 +21234,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_703">
                                 <property name="text">
-                                 <string>How many features to track during initialization (saves on computation)</string>
+                                 <string>How many features to track during initialization (saves on computation).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21227,7 +21254,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_720">
                                 <property name="text">
-                                 <string>If we should perform dynamic initialization</string>
+                                 <string>If we should perform dynamic initialization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21247,7 +21274,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_721">
                                 <property name="text">
-                                 <string>If we should optimize and recover the calibration in our MLE</string>
+                                 <string>If we should optimize and recover the calibration in our MLE.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21270,7 +21297,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_722">
                                 <property name="text">
-                                 <string>Max number of MLE iterations for dynamic initialization</string>
+                                 <string>Max number of MLE iterations for dynamic initialization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21299,7 +21326,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_723">
                                 <property name="text">
-                                 <string>Max time for MLE optimization</string>
+                                 <string>Max time for MLE optimization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21322,7 +21349,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="8" column="1">
                                <widget class="QLabel" name="label_724">
                                 <property name="text">
-                                 <string>Max number of MLE threads for dynamic initialization</string>
+                                 <string>Max number of MLE threads for dynamic initialization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21345,7 +21372,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="9" column="1">
                                <widget class="QLabel" name="label_725">
                                 <property name="text">
-                                 <string>Number of poses to use during initialization (max should be cam freq * window)</string>
+                                 <string>Number of poses to use during initialization (max should be cam freq * window).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21374,7 +21401,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="10" column="1">
                                <widget class="QLabel" name="label_726">
                                 <property name="text">
-                                 <string>Minimum degrees we need to rotate before we try to init (sum of norm)</string>
+                                 <string>Minimum degrees we need to rotate before we try to init (sum of norm).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21400,7 +21427,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="11" column="1">
                                <widget class="QLabel" name="label_727">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of orientation</string>
+                                 <string>Magnitude we will inflate initial covariance of orientation.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21426,7 +21453,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="12" column="1">
                                <widget class="QLabel" name="label_728">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of velocity</string>
+                                 <string>Magnitude we will inflate initial covariance of velocity.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21452,7 +21479,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="13" column="1">
                                <widget class="QLabel" name="label_729">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of gyroscope bias</string>
+                                 <string>Magnitude we will inflate initial covariance of gyroscope bias.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21478,7 +21505,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="14" column="1">
                                <widget class="QLabel" name="label_730">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of accelerometer bias</string>
+                                 <string>Magnitude we will inflate initial covariance of accelerometer bias.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21507,7 +21534,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="15" column="1">
                                <widget class="QLabel" name="label_731">
                                 <property name="text">
-                                 <string>Minimum reciprocal condition number acceptable for our covariance recovery</string>
+                                 <string>Minimum reciprocal condition number acceptable for our covariance recovery.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21536,7 +21563,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_704">
                                 <property name="text">
-                                 <string>If we should try to use zero velocity update</string>
+                                 <string>If we should try to use zero velocity update.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21565,7 +21592,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_705">
                                 <property name="text">
-                                 <string>Chi2 multiplier for zero velocity</string>
+                                 <string>Chi2 multiplier for zero velocity.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21594,7 +21621,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_706">
                                 <property name="text">
-                                 <string>Max velocity we will consider to try to do a zupt (i.e. if above this, don't do zupt)</string>
+                                 <string>Max velocity we will consider to try to do a zupt (i.e. if above this, don't do zupt).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21623,7 +21650,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_707">
                                 <property name="text">
-                                 <string>Multiplier of our zupt measurement IMU noise matrix (default should be 1.0)</string>
+                                 <string>Multiplier of our zupt measurement IMU noise matrix (default should be 1.0).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21652,7 +21679,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_708">
                                 <property name="text">
-                                 <string>Max disparity we will consider to try to do a zupt (i.e. if above this, don't do zupt)</string>
+                                 <string>Max disparity we will consider to try to do a zupt (i.e. if above this, don't do zupt).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21672,7 +21699,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_709">
                                 <property name="text">
-                                 <string>If we should only use the zupt at the very beginning static initialization phase</string>
+                                 <string>If we should only use the zupt at the very beginning static initialization phase.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21713,7 +21740,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_710">
                                 <property name="text">
-                                 <string>Accel &quot;white noise&quot;</string>
+                                 <string>Accel &quot;white noise&quot;.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21745,7 +21772,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_711">
                                 <property name="text">
-                                 <string>Accel bias diffusion</string>
+                                 <string>Accel bias diffusion.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21777,7 +21804,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_712">
                                 <property name="text">
-                                 <string>Gyro &quot;white noise&quot;</string>
+                                 <string>Gyro &quot;white noise&quot;.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21809,7 +21836,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_713">
                                 <property name="text">
-                                 <string>Gyro bias diffusion</string>
+                                 <string>Gyro bias diffusion.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21838,7 +21865,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_714">
                                 <property name="text">
-                                 <string>Pixel noise for MSCKF features</string>
+                                 <string>Pixel noise for MSCKF features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21867,7 +21894,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_715">
                                 <property name="text">
-                                 <string>Chi2 multiplier for MSCKF features</string>
+                                 <string>Chi2 multiplier for MSCKF features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21896,7 +21923,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_716">
                                 <property name="text">
-                                 <string>Pixel noise for SLAM features</string>
+                                 <string>Pixel noise for SLAM features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21925,7 +21952,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_717">
                                 <property name="text">
-                                 <string>Chi2 multiplier for SLAM features</string>
+                                 <string>Chi2 multiplier for SLAM features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
