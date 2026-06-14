@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Optimizer.h"
+#include "rtabmap/core/optimizer/OptimizerGTSAM.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Signature.h"
 
@@ -4231,6 +4232,12 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected_node_ref(), landmarksDetected.empty() || landmarksDetected.begin()->second.empty()?0:*landmarksDetected.begin()->second.begin());
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_mean_dist(), loopClosureVisualInliersMeanDist);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_distribution(), loopClosureVisualInliersDistribution);
+			OptimizerGTSAM * gtsamOpt = dynamic_cast<OptimizerGTSAM*>(_graphOptimizer);
+			if(gtsamOpt != 0 && gtsamOpt->isIncremental())
+			{
+				statistics_.addStatistic(Statistics::kLoopOptimization_factors(), (float)gtsamOpt->getTrackedFactorsCount());
+				statistics_.addStatistic("Loop/Optimization_internal_factors", (float)gtsamOpt->getISAM2LiveFactorsCount());
+			}
 
 			statistics_.addStatistic(Statistics::kProximityTime_detections(), proximityDetectionsInTimeFound);
 			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_visually(), proximityDetectionsAddedVisually);
