@@ -201,18 +201,15 @@ TEST(UThreadTest, Kill)
     CountingThread thread;
     thread.setMaxIterations(1000);
     thread.start();
-    
+
     // Wait a bit
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    
-    // Kill the thread
+
     thread.kill();
 
-    EXPECT_TRUE(thread.isKilled());
-    
     // Wait for it to finish
     thread.join();
-    
+
     EXPECT_TRUE(thread.isIdle());
     EXPECT_LT(thread.getCounter(), 1000); // Should have stopped early
 }

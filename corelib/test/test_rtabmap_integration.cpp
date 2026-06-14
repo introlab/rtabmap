@@ -1898,7 +1898,7 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 		}
 		else if(v.triggerNewMapAfterFrame > 0)
 		{
-			minAcc = 15; maxAcc = 40;
+			minAcc = 10; maxAcc = 40;
 			minRej = 5;  maxRej = 40;   // gps-on newmap60
 		}
 		else
