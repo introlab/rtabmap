@@ -27,16 +27,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ humble, jazzy, kilted, rolling ]
+        ros_distribution: [ humble, jazzy, kilted, lyrical, rolling ]
         include:
         - ros_distribution: 'humble'
           os: ubuntu-22.04
+          skip_keys: ""
         - ros_distribution: 'jazzy'
           os: ubuntu-24.04
+          skip_keys: ""
         - ros_distribution: 'kilted'
           os: ubuntu-24.04
+          skip_keys: ""
+        - ros_distribution: 'lyrical'
+          os: ubuntu-26.04
+          skip_keys: "libpointmatcher"
         - ros_distribution: 'rolling'
-          os: ubuntu-24.04
+          os: ubuntu-26.04
+          skip_keys: ""
 
     steps:   
     - name: Setup ROS2
@@ -56,16 +63,11 @@ jobs:
     
     - uses: actions/checkout@v4
 
-    - name: Point rosdep to latest Rolling on Noble until github runners support ubuntu 26.04
-      if: matrix.ros_distribution == 'rolling'
-      run: |
-        echo "ROSDISTRO_INDEX_URL=https://raw.githubusercontent.com/ros/rosdistro/6527fa694360d609c1491528ed50437bd853af5b/index-v4.yaml" >> $GITHUB_ENV
-
     - name: Install dependencies
       run: |
         source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
         rosdep update
-        rosdep install --from-paths ${{github.workspace}} -y
+        rosdep install --from-paths ${{github.workspace}} --skip-keys "${{ matrix.skip_keys }}" -y
 
     - name: Configure CMake
       run: |
