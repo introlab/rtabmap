@@ -42,7 +42,7 @@ jobs:
           os: ubuntu-26.04
           skip_keys: "libpointmatcher"
         - ros_distribution: 'rolling'
-          os: ubuntu-26.04
+          os: ubuntu-24.04
           skip_keys: ""
 
     steps:   
