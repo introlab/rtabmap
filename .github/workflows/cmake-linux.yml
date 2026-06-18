@@ -19,6 +19,9 @@ jobs:
   build:
     name: ${{ matrix.build_name }}
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.build_name }}
+      cancel-in-progress: true
     strategy:
       fail-fast: true
       matrix:
@@ -39,6 +42,21 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Restore test data
+      id: cache-testdata
+      uses: actions/cache@v4
+      with:
+        # SQLite DBs are binary-portable -> share the cache across
+        # linux / macos / windows. Key omits runner.os on purpose so all
+        # three OSes hit the same entry.
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/fetch_test_data.sh
 
     - name: Install Linux Dependencies
       run: |
@@ -68,9 +86,15 @@ jobs:
       run: |
         ./rtabmap-console --version
 
-#    - name: Test
-#      working-directory: ${{github.workspace}}/build
-#      # Execute tests defined by the CMake configuration.  
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest -C ${{env.BUILD_TYPE}}
-      
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      # PYTHONNOUSERSITE=1: prevent the embedded Python interpreter from
+      # loading numpy / other site-packages from ~/.local that were compiled
+      # against a different ABI than the build-time Python (causes numpy
+      # 1.x/2.x mismatch crashes in test_pydetector / test_pydescriptor /
+      # test_pymatcher).
+      env:
+        PYTHONNOUSERSITE: 1
+      run: |
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --rerun-failed

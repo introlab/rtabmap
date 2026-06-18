@@ -148,11 +148,12 @@ int saveLASFile(const std::string & filePath,
 		{
 			liblas::Point point(&header);
 			point.SetCoordinates(cloud.at(i).x, cloud.at(i).y, cloud.at(i).z);
+			point.SetIntensity(cloud.at(i).intensity);
 			if(!cameraIds.empty())
 			{
 				point.SetPointSourceID(cameraIds.at(i));
 			}
-			
+
 			writer.WritePoint(point);
 		}
 	}

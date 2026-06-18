@@ -2494,9 +2494,15 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 
 void Memory::save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const
 {
-	if(_dbDriver)
+	if(_dbDriver && !this->isReadOnly())
 	{
 		_dbDriver->save2DMap(map, xMin, yMin, cellSize);
+	}
+	else
+	{
+		UERROR("Attempting to write back 2D map but the database "
+			"is opened in read-only mode (%s=true), skipping.",
+			Parameters::kMemLocalizationReadOnly().c_str());
 	}
 }
 
@@ -2588,7 +2594,9 @@ public:
 		}
 		return false;
 	}
-	int weight, age, id;
+	int weight;
+	double age;
+	int id;
 };
 std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
 {
@@ -6077,7 +6085,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						{
 							// Bearing/Range in 2D, set X as bearing and Y as range (see OptimizerGTSAM)
 							covariance(cv::Range(0,1), cv::Range(0,1)) *= _markerAngVariance;
-							covariance(cv::Range(1,3), cv::Range(1,3)) *= _markerLinVariance;
+							covariance(cv::Range(1,2), cv::Range(1,2)) *= _markerLinVariance;
 						}
 						else
 						{

@@ -12,3 +12,19 @@ compile_flags.txt
 tags
 build_*
 *.bak
+build-*
+
+# Coverage (coverage-report.sh / .github/workflows/coverage.yml)
+coverage-html/
+lcov.info
+*.gcda
+*.gcno
+
+# Doxygen (docs-report.sh / .github/workflows/docs.yml)
+doc/
+.doxygen-input
+
+# rosdoc2 (rosdoc-report.sh / .github/workflows/rosdoc.yml)
+cross_reference/
+docs_build/
+docs_output/

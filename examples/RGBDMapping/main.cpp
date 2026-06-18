@@ -40,10 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/filter.h>
 #include <rtabmap/core/SensorCaptureThread.h>
 
-#ifdef RTABMAP_PYTHON
-#include "rtabmap/core/PythonInterface.h"
-#endif
-
 #include "MapBuilder.h"
 
 void showUsage()
@@ -76,10 +72,6 @@ int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
-
-#ifdef RTABMAP_PYTHON
-	PythonInterface python; // Make sure we initialize python in main thread
-#endif
 
 	int driver = 0;
 	if(argc < 2)

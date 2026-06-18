@@ -51,6 +51,13 @@ typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
 		flatObstacles->reset(new std::vector<int>);
 	}
 
+	UASSERT(cloudIn.get());
+	UASSERT(indicesIn.get());
+	if(cloudIn->empty())
+	{
+		return cloudIn;
+	}
+
 	typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
 	pcl::IndicesPtr indices(new std::vector<int>);
 
@@ -80,6 +87,11 @@ typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
 		{
 			indices = indicesIn;
 		}
+	}
+
+	if(cloud->empty())
+	{
+		return cloud;
 	}
 
 	// add pose rotation without yaw

@@ -244,6 +244,13 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		// 0.23.7
 		removedParameters_.insert(std::make_pair("Marker/CornerRefinementMethod", std::make_pair(true, Parameters::kMarkerOpenCVCornerRefinementMethod())));
 
+		// BA tunables moved from g2o/ namespace to Optimizer/ since they
+		// now apply to g2o, GTSAM, and Ceres backends.
+		removedParameters_.insert(std::make_pair("g2o/PixelVariance",     std::make_pair(true, Parameters::kOptimizerPixelVariance())));
+		removedParameters_.insert(std::make_pair("g2o/DisparityVariance", std::make_pair(true, Parameters::kOptimizerDisparityVariance())));
+		removedParameters_.insert(std::make_pair("g2o/RobustKernelDelta", std::make_pair(true, Parameters::kOptimizerRobustKernelDelta())));
+		removedParameters_.insert(std::make_pair("g2o/Baseline",          std::make_pair(true, Parameters::kOptimizerBaseline())));
+
 		// 0.23.1
 		removedParameters_.insert(std::make_pair("OdomVINS/ConfigPath",    std::make_pair(true, Parameters::kOdomVINSFusionConfigPath())));
 

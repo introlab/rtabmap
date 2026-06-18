@@ -614,6 +614,69 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpDetectorStrategy(), type);
 	return create((Feature2D::Type)type, parameters);
 }
+
+bool Feature2D::isAvailable(Feature2D::Type type)
+{
+	// kFeatureUndef is a sentinel ("strategy not specified"); create() falls
+	// through to a default backend, so the type isn't really "available" as
+	// requested.
+	if(type == kFeatureUndef)
+	{
+		return false;
+	}
+
+	// SURF / SIFT / SURF-FREAK / SURF-DAISY require either OpenCV < 3.4.11
+	// (built-in) OR the xfeatures2d module + RTABMAP_NONFREE for OpenCV >= 3.4.11.
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
+  #ifndef RTABMAP_NONFREE
+	if(type == kFeatureSurf || type == kFeatureSift || type == kFeatureSurfFreak || type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+  #endif
+#else
+  #ifndef RTABMAP_NONFREE
+	if(type == kFeatureSurf || type == kFeatureSurfFreak || type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+  #endif
+#endif
+
+#if !defined(HAVE_OPENCV_XFEATURES2D) && CV_MAJOR_VERSION >= 3
+	if(type == kFeatureFastBrief ||
+	   type == kFeatureFastFreak ||
+	   type == kFeatureGfttBrief ||
+	   type == kFeatureGfttFreak ||
+	   type == kFeatureSurfFreak ||
+	   type == kFeatureGfttDaisy ||
+	   type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+#elif CV_MAJOR_VERSION < 3
+	if(type == kFeatureKaze ||
+	   type == kFeatureGfttDaisy ||
+	   type == kFeatureSurfDaisy)
+	{
+		return false;
+	}
+#endif
+
+#ifndef RTABMAP_ORB_OCTREE
+	if(type == kFeatureOrbOctree) return false;
+#endif
+#ifndef RTABMAP_TORCH
+	if(type == kFeatureSuperPointTorch) return false;
+#endif
+#if !defined(RTABMAP_TORCH) || !defined(RTABMAP_PYTHON)
+	if(type == kFeatureSuperPointRpautrat) return false;
+#endif
+#ifndef RTABMAP_PYTHON
+	if(type == kFeaturePyDetector) return false;
+#endif
+	return true;
+}
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
 {
 
@@ -1148,13 +1211,13 @@ void SURF::parseParameters(const ParametersMap & parameters)
 
 #ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
-	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of SURF not available! Using CPU version instead...");
 		gpuVersion_ = false;
 	}
 #else
-	if(gpuVersion_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(gpuVersion_ && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of SURF not available! Using CPU version instead...");
 		gpuVersion_ = false;
@@ -1174,6 +1237,19 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	}
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
+#endif
+}
+
+bool SURF::isGpuAvailable() const
+{
+#ifdef RTABMAP_NONFREE
+#if CV_MAJOR_VERSION < 3
+	return cv::gpu::getCudaEnabledDeviceCount() > 0;
+#else
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#endif
+#else
+	return false;
 #endif
 }
 
@@ -1339,6 +1415,15 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 #endif
 	}
 
+}
+
+bool SIFT::isGpuAvailable() const
+{
+#ifdef RTABMAP_CUDASIFT
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
 }
 
 std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -1565,7 +1650,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of ORB not available! Using CPU version instead...");
 		gpu_ = false;
@@ -1585,7 +1670,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 		gpu_ = false;
 	}
 #endif
-	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of ORB not available (no GPU found)! Using CPU version instead...");
 		gpu_ = false;
@@ -1616,6 +1701,15 @@ void ORB::parseParameters(const ParametersMap & parameters)
 		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, fastThreshold_);
 #endif
 	}
+}
+
+bool ORB::isGpuAvailable() const
+{
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
 }
 
 std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -1812,7 +1906,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of FAST not available! Using CPU version instead...");
 		gpu_ = false;
@@ -1826,7 +1920,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of FAST not available! Using CPU version instead...");
 		gpu_ = false;
@@ -1880,6 +1974,12 @@ void FAST::parseParameters(const ParametersMap & parameters)
 		_fast = CV_FAST::create(threshold_, nonmaxSuppression_);
 #endif
 	}
+}
+
+bool FAST::isGpuAvailable() const
+{
+	// Not implemented
+	return false;
 }
 
 std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -2115,7 +2215,7 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 #endif
 
 #ifdef HAVE_OPENCV_CUDAIMGPROC
-	if(_gpu && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(_gpu && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UWARN("GPU version of GFTT not available! Using CPU version instead...");
 		_gpu = false;
@@ -2143,6 +2243,15 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 		_gftt = CV_GFTT::create(this->getMaxFeatures(), _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
 #endif
 	}
+}
+
+bool GFTT::isGpuAvailable() const
+{
+#ifdef HAVE_OPENCV_CUDAIMGPROC
+	return cv::cuda::getCudaEnabledDeviceCount() > 0;
+#else
+	return false;
+#endif
 }
 
 std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
@@ -2173,7 +2282,21 @@ std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, con
 	{
 		_gftt->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 	}
-	
+
+	if(!_useHarrisDetector && _qualityLevel>0.0)
+	{
+		std::vector<cv::KeyPoint> bestKeypoints;
+		bestKeypoints.reserve(keypoints.size());
+		for(size_t i=0; i<keypoints.size(); ++i)
+		{
+			if(keypoints[i].response > _qualityLevel)
+			{
+				bestKeypoints.push_back(keypoints[i]);
+			}
+		}
+		
+		return bestKeypoints;
+	}
 	return keypoints;
 }
 
@@ -2582,6 +2705,15 @@ SuperPointTorch::~SuperPointTorch()
 {
 }
 
+bool SuperPointTorch::isGpuAvailable() const
+{
+#ifdef RTABMAP_TORCH
+	return torch::cuda::is_available();
+#else
+	return false;
+#endif
+}
+
 void SuperPointTorch::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
@@ -2616,7 +2748,7 @@ std::vector<cv::KeyPoint> SuperPointTorch::generateKeypointsImpl(const cv::Mat &
 {
 #ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	if(roi.x!=0 || roi.y !=0)
+	if(roi.x!=0 || roi.y !=0 || roi.width!=image.cols || roi.height!=image.rows)
 	{
 		UERROR("SuperPoint: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
 				roi.x, roi.y, roi.width, roi.height,
@@ -2690,6 +2822,15 @@ SuperPointRpautrat::~SuperPointRpautrat()
 {
 }
 
+bool SuperPointRpautrat::isGpuAvailable() const
+{
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	return torch::cuda::is_available();
+#else
+	return false;
+#endif
+}
+
 void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
@@ -2742,7 +2883,7 @@ std::vector<cv::KeyPoint> SuperPointRpautrat::generateKeypointsImpl(const cv::Ma
 {
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	if(roi.x!=0 || roi.y !=0)
+	if(roi.x!=0 || roi.y !=0 || roi.width!=image.cols || roi.height!=image.rows)
 	{
 		UERROR("SuperPoint Rpautrat: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
 				roi.x, roi.y, roi.width, roi.height,

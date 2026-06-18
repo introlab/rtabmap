@@ -41,23 +41,46 @@ class Feature2D;
 class PyMatcher;
 #endif
 
-// Visual registration
+/**
+ * @class RegistrationVis
+ * @brief Visual registration between two signatures using features and geometry.
+ *
+ * Extracts and matches features (@ref Feature2D), then estimates motion with
+ * **Vis/EstimationType** (3D→3D, 3D→2D PnP, or 2D→2D epipolar). Supports RGB-D
+ * (@ref CameraModel + depth), stereo (@ref StereoCameraModel), optical flow, GMS,
+ * and optional Python matchers when built with Python support.
+ *
+ * Can chain a @ref child_ registration (e.g. @ref RegistrationIcp in
+ * @ref Registration::kTypeVisIcp). Feature-related Vis/ parameters are mapped
+ * to Kp/ for @ref Feature2D::create().
+ *
+ * @see Registration
+ * @see RegistrationInfo
+ */
 class RTABMAP_CORE_EXPORT RegistrationVis : public Registration
 {
 public:
-	// take ownership of child
+	/** @brief @p child is owned and deleted in the destructor. */
 	RegistrationVis(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
 	virtual ~RegistrationVis();
 
+	/** @brief Parses Vis/ and feature parameters; recreates feature detectors. */
 	virtual void parseParameters(const ParametersMap & parameters);
 
+	/** @return **Vis/InlierDistance** (m). */
 	float getInlierDistance() const {return _inlierDistance;}
+	/** @return **Vis/Iterations** (RANSAC iterations). */
 	int getIterations() const {return _iterations;}
+	/** @return **Vis/MinInliers**. */
 	int getMinInliers() const {return _minInliers;}
+	/** @return **Vis/CorNNType** nearest-neighbor strategy. */
 	int getNNType() const {return _nnType;}
+	/** @return **Vis/CorNNDR** ratio test threshold. */
 	float getNNDR() const {return _nndr;}
+	/** @return **Vis/EstimationType** (0: 3D→3D, 1: PnP, 2: epipolar). */
 	int getEstimationType() const {return _estimationType;}
 
+	/** @return Feature detector used for the “from” signature. */
 	const Feature2D * getDetector() const {return _detectorFrom;}
 
 protected:

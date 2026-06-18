@@ -56,6 +56,24 @@ namespace rtabmap
 namespace util3d
 {
 
+namespace {
+// When true, every newly-constructed OpenGV SAC problem inside this
+// translation unit gets its RNG reseeded with a fixed constant so that
+// RANSAC is bit-for-bit reproducible. Tests can flip this on via
+// setRansacDeterministicSeed(true); production code leaves it off.
+bool g_ransacDeterministicSeed = false;
+} // namespace
+
+void setRansacDeterministicSeed(bool enable)
+{
+	g_ransacDeterministicSeed = enable;
+}
+
+bool ransacDeterministicSeedEnabled()
+{
+	return g_ransacDeterministicSeed;
+}
+
 Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
@@ -224,11 +242,11 @@ Transform estimateMotion3DTo2D(
 				//divide by 4 instead of 2 to ignore very very far features (stereo)
 				double median_error_sqr_lin = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_lin));
-				(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr_lin;
+				(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr_lin + 1e-6;
 				std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
 				double median_error_sqr_ang = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () / varianceMedianRatio];
 				UASSERT(uIsFinite(median_error_sqr_ang));
-				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang;
+				(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr_ang + 1e-6;
 
 				if(splitLinearCovarianceComponents)
 				{
@@ -242,9 +260,9 @@ Transform estimateMotion3DTo2D(
 					UASSERT(uIsFinite(median_error_sqr_x));
 					UASSERT(uIsFinite(median_error_sqr_y));
 					UASSERT(uIsFinite(median_error_sqr_z));
-					covariance->at<double>(0,0) = median_error_sqr_x;
-					covariance->at<double>(1,1) = median_error_sqr_y;
-					covariance->at<double>(2,2) = median_error_sqr_z;
+					covariance->at<double>(0,0) = median_error_sqr_x + 1e-6;
+					covariance->at<double>(1,1) = median_error_sqr_y + 1e-6;
+					covariance->at<double>(2,2) = median_error_sqr_z + 1e-6;
 
 					median_error_sqr_lin = uMax3(median_error_sqr_x, median_error_sqr_y, median_error_sqr_z);
 				}
@@ -267,7 +285,7 @@ Transform estimateMotion3DTo2D(
 					err += uNormSquared(imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x, imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y);
 				}
 				UASSERT(uIsFinite(err));
-				*covariance *= std::sqrt(err/float(inliers.size()));
+				*covariance *= std::sqrt(err/float(inliers.size())) + 1e-6;
 			}
 		}
 	}
@@ -483,6 +501,7 @@ Transform estimateMotion3DTo2D(
 			// convert 2d-3d correspondences into bearing vectors
 			std::vector<std::shared_ptr<opengv::bearingVectors_t>> multiBearingVectors;
 			multiBearingVectors.resize(cameraModels.size());
+			std::vector<std::vector<int> > localIndexToGlobalIndex(cameraModels.size());
 			for(size_t i=0; i<cameraModels.size();++i)
 			{
 				multiPoints[i] = std::make_shared<opengv::points_t>();
@@ -497,6 +516,7 @@ Transform estimateMotion3DTo2D(
 				cameraModels[cameraIndex].project(imagePoints[i].x, imagePoints[i].y, 1, pt[0], pt[1], pt[2]);
 				pt = cv::normalize(pt);
 				multiBearingVectors[cameraIndex]->push_back(opengv::bearingVector_t(pt[0], pt[1], pt[2]));
+				localIndexToGlobalIndex[cameraIndex].push_back(i);
 			}
 
 			//create a non-central absolute multi adapter
@@ -515,6 +535,18 @@ Transform estimateMotion3DTo2D(
 			std::shared_ptr<opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem> absposeproblem_ptr(
 					new opengv::sac_problems::absolute_pose::MultiNoncentralAbsolutePoseSacProblem(adapter));
 
+			// Opt-in deterministic RANSAC: OpenGV's default constructor seeds
+			// its internal mt19937 from the system clock, so without this
+			// override two calls with identical inputs can produce different
+			// inlier sets / covariances. Tests flip the toggle via
+			// setRansacDeterministicSeed(true).
+			if(g_ransacDeterministicSeed)
+			{
+				absposeproblem_ptr->rng_alg_.seed(12345u);
+				absposeproblem_ptr->rng_gen_.reset(new std::function<int()>(
+						std::bind(*absposeproblem_ptr->rng_dist_, absposeproblem_ptr->rng_alg_)));
+			}
+
 			ransac.sac_model_ = absposeproblem_ptr;
 			ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
 			ransac.max_iterations_ = iterations;
@@ -527,9 +559,10 @@ Transform estimateMotion3DTo2D(
 
 			UDEBUG("Ransac result: %s", pnp.prettyPrint().c_str());
 			UDEBUG("Ransac iterations done: %d", ransac.iterations_);
-			for (size_t i=0; i < cameraModels.size(); ++i)
-			{
-				inliers.insert(inliers.end(), ransac.inliers_[i].begin(), ransac.inliers_[i].end());
+			for (size_t i=0; i < cameraModels.size(); ++i) {
+				for (size_t j=0; j < ransac.inliers_[i].size(); ++j) {
+					inliers.push_back(localIndexToGlobalIndex[i][ransac.inliers_[i][j]]);
+				}
 			}
 		}
 		else
@@ -568,6 +601,14 @@ Transform estimateMotion3DTo2D(
 			opengv::sac::Ransac<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> ransac;
 			std::shared_ptr<opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem> absposeproblem_ptr(
 					new opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem(adapter, opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem::GP3P));
+
+			// Opt-in deterministic RANSAC (see comment on MultiRansac above).
+			if(g_ransacDeterministicSeed)
+			{
+				absposeproblem_ptr->rng_alg_.seed(12345u);
+				absposeproblem_ptr->rng_gen_.reset(new std::function<int()>(
+						std::bind(*absposeproblem_ptr->rng_dist_, absposeproblem_ptr->rng_alg_)));
+			}
 
 			ransac.sac_model_ = absposeproblem_ptr;
 			ransac.threshold_ = 1.0 - cos(atan(reprojError/cameraModels[0].fx()));
@@ -705,6 +746,7 @@ Transform estimateMotion3DTo2D(
 
 	if(matchesOut)
 	{
+		matchesOut->clear();
 		matchesOut->resize(cameraModels.size());
 		UASSERT(matches.size() == cameraIndexes.size());
 		for(size_t i=0; i<matches.size(); ++i)
@@ -715,6 +757,7 @@ Transform estimateMotion3DTo2D(
 	}
 	if(inliersOut)
 	{
+		inliersOut->clear();
 		inliersOut->resize(cameraModels.size());
 		for(unsigned int i=0; i<inliers.size(); ++i)
 		{

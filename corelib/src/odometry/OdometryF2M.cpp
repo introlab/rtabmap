@@ -110,13 +110,15 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	ParametersMap bundleParameters = parameters;
 	if(bundleAdjustment_ > 0)
 	{
-		if((bundleAdjustment_==1 && Optimizer::isAvailable(Optimizer::kTypeG2O)) ||
-		(bundleAdjustment_==2 && Optimizer::isAvailable(Optimizer::kTypeCVSBA)) ||
-		(bundleAdjustment_==3 && Optimizer::isAvailable(Optimizer::kTypeCeres)))
+		// The BundleAdjustment int matches the Optimizer/Strategy parameter
+		// 1:1 (g2o=1, GTSAM=2, Ceres=3, CVSBA=4). 0 = "disabled" -- it's
+		// the TORO slot, which isn't BA-capable.
+		const Optimizer::Type sbaType = static_cast<Optimizer::Type>(bundleAdjustment_);
+		if(Optimizer::isAvailable(sbaType))
 		{
 			// disable bundle in RegistrationVis as we do it already here
 			uInsert(bundleParameters, ParametersPair(Parameters::kVisBundleAdjustment(), "0"));
-			sba_ = Optimizer::create(bundleAdjustment_==3?Optimizer::kTypeCeres:bundleAdjustment_==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, bundleParameters);
+			sba_ = Optimizer::create(sbaType, bundleParameters);
 		}
 		else
 		{

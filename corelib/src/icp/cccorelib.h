@@ -125,7 +125,16 @@ rtabmap::Transform icpCC(
 		*finalRMS = (float)finalError;
 	}
 
-	if(result != 1)
+	if(result == CCCoreLib::ICPRegistrationTools::ICP_NOTHING_TO_DO)
+	{
+		// CCCoreLib's "nothing to do" outcome means the clouds were already
+		// aligned (no transform needed) -- semantically identity, not a
+		// failure. Return identity instead of null so callers don't have to
+		// treat trivial alignment as a rejection.
+		UDEBUG("CCCoreLib: ICP_NOTHING_TO_DO -- returning identity");
+		return rtabmap::Transform::getIdentity();
+	}
+	if(result != CCCoreLib::ICPRegistrationTools::ICP_APPLY_TRANSFO)
 	{
 		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as result %d !=1", result);
 		UDEBUG(msg.c_str());

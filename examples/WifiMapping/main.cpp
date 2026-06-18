@@ -36,10 +36,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <stdio.h>
 
-#ifdef RTABMAP_PYTHON
-#include "rtabmap/core/PythonInterface.h"
-#endif
-
 #include "MapBuilderWifi.h"
 
 #include "WifiThread.h"
@@ -60,10 +56,6 @@ int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
-
-#ifdef RTABMAP_PYTHON
-	PythonInterface python; // Make sure we initialize python in main thread
-#endif
 
 	std::string interfaceName = "wlan0";
 	int driver = 0;

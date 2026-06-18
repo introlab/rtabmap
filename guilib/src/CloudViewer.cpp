@@ -574,7 +574,7 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 void CloudViewer::refreshView()
 {
 #if VTK_MAJOR_VERSION > 8
-	this->renderWindow()->Render();
+	this->renderWindow()->GetInteractor()->Render();
 #else
 	this->update();
 #endif

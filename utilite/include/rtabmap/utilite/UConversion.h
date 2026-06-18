@@ -93,27 +93,80 @@ std::string UTILITE_EXPORT uToUpperCase(const std::string & str);
 std::string UTILITE_EXPORT uToLowerCase(const std::string & str);
 
 /**
- * Convert a number (unsigned int) to a string.
- * @param number the number to convert in a string
- * @return the string
+ * Convert an unsigned integer to a string.
+ * 
+ * This function converts an unsigned integer value to its string representation.
+ * The conversion uses standard decimal notation.
+ * 
+ * Example:
+ * @code
+ * std::string str = uNumber2Str(42u);
+ * // str contains "42"
+ * @endcode
+ * 
+ * @param number the unsigned integer number to convert to a string
+ * @return the string representation of the number
  */
 std::string UTILITE_EXPORT uNumber2Str(unsigned int number);
+
 /**
- * Convert a number (int) to a string.
- * @param number the number to convert in a string
- * @return the string
+ * Convert a signed integer to a string.
+ * 
+ * This function converts a signed integer value to its string representation.
+ * Negative numbers will include a minus sign prefix.
+ * 
+ * Example:
+ * @code
+ * std::string str = uNumber2Str(-42);
+ * // str contains "-42"
+ * @endcode
+ * 
+ * @param number the integer number to convert to a string
+ * @return the string representation of the number (includes minus sign for negative values)
  */
 std::string UTILITE_EXPORT uNumber2Str(int number);
+
 /**
- * Convert a number (float) to a string.
- * @param number the number to convert in a string
- * @return the string
+ * Convert a float to a string.
+ * 
+ * This function converts a floating-point value to its string representation
+ * with configurable precision and format.
+ * 
+ * Example:
+ * @code
+ * std::string str1 = uNumber2Str(3.14159f, 2, false);
+ * // str1 contains "3.14" (scientific notation if needed)
+ * 
+ * std::string str2 = uNumber2Str(3.14159f, 2, true);
+ * // str2 contains "3.14" (fixed decimal notation)
+ * @endcode
+ * 
+ * @param number the float number to convert to a string
+ * @param precision the number of decimal places to display (default: 6)
+ * @param fixed if true, use fixed decimal notation; if false, use scientific notation when appropriate (default: false)
+ * @return the string representation of the number
  */
 std::string UTILITE_EXPORT uNumber2Str(float number, int precision=6, bool fixed = false);
+
 /**
- * Convert a number (double) to a string.
- * @param number the number to convert in a string
- * @return the string
+ * Convert a double to a string.
+ * 
+ * This function converts a double-precision floating-point value to its string
+ * representation with configurable precision and format.
+ * 
+ * Example:
+ * @code
+ * std::string str1 = uNumber2Str(3.141592653589793, 4, false);
+ * // str1 contains "3.1416" (scientific notation if needed)
+ * 
+ * std::string str2 = uNumber2Str(3.141592653589793, 4, true);
+ * // str2 contains "3.1416" (fixed decimal notation)
+ * @endcode
+ * 
+ * @param number the double number to convert to a string
+ * @param precision the number of decimal places to display (default: 6)
+ * @param fixed if true, use fixed decimal notation; if false, use scientific notation when appropriate (default: false)
+ * @return the string representation of the number
  */
 std::string UTILITE_EXPORT uNumber2Str(double number, int precision=6, bool fixed = false);
 

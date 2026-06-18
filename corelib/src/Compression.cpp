@@ -331,6 +331,10 @@ std::string uncompressString(const cv::Mat & bytes)
 
 std::string compressedDepthFormat(const cv::Mat & bytes)
 {
+	if(bytes.empty())
+	{
+		return std::string();
+	}
 	return compressedDepthFormat(bytes.data, bytes.rows * bytes.cols * bytes.elemSize());
 }
 std::string compressedDepthFormat(const std::vector<unsigned char> & bytes)

@@ -51,7 +51,9 @@ class Grabber;
 
 namespace rtabmap
 {
-
+/**
+ * @brief OpenNI driver for cameras like Kinect for Xbox 360
+ */
 class RTABMAP_CORE_EXPORT CameraOpenni :
 	public Camera
 {

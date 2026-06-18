@@ -40,30 +40,28 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	_ui = new Ui_PostProcessingDialog();
 	_ui->setupUi(this);
 
-	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA) &&
-		!Optimizer::isAvailable(Optimizer::kTypeG2O) &&
-		!Optimizer::isAvailable(Optimizer::kTypeCeres))
+	int firstAvailable = -1;
+	for(int i = 0; i < _ui->comboBox_sbaType->count(); ++i)
+	{
+		const Optimizer::Type type = static_cast<Optimizer::Type>(i);
+		const bool usable = type != Optimizer::kTypeTORO && Optimizer::isAvailable(type);
+		if(usable)
+		{
+			if(firstAvailable < 0) firstAvailable = i;
+		}
+		else
+		{
+			_ui->comboBox_sbaType->setItemData(i, 0, Qt::UserRole - 1);
+		}
+	}
+	if(firstAvailable < 0)
 	{
 		_ui->sba->setEnabled(false);
 		_ui->sba->setChecked(false);
 	}
 	else
 	{
-		if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
-		{
-			_ui->comboBox_sbaType->setItemData(1, 0, Qt::UserRole - 1);
-			_ui->comboBox_sbaType->setCurrentIndex(0);
-		}
-		if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
-		{
-			_ui->comboBox_sbaType->setItemData(0, 0, Qt::UserRole - 1);
-			_ui->comboBox_sbaType->setCurrentIndex(1);
-		}
-		if(!Optimizer::isAvailable(Optimizer::kTypeCeres))
-		{
-			_ui->comboBox_sbaType->setItemData(2, 0, Qt::UserRole - 1);
-			_ui->comboBox_sbaType->setCurrentIndex(1);
-		}
+		_ui->comboBox_sbaType->setCurrentIndex(firstAvailable);
 	}
 
 	restoreDefaults();
@@ -135,8 +133,13 @@ bool PostProcessingDialog::validateForm()
 
 void PostProcessingDialog::updateVisibility()
 {
-	_ui->sba_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
-	_ui->label_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
+	// Pixel variance applies to every BA backend except CVSBA (its
+	// underlying Sba::run() API takes 2D points only -- no info-matrix
+	// knob).
+	const Optimizer::Type type = static_cast<Optimizer::Type>(_ui->comboBox_sbaType->currentIndex());
+	const bool usesPixelVariance = type != Optimizer::kTypeCVSBA;
+	_ui->sba_variance->setVisible(usesPixelVariance);
+	_ui->label_variance->setVisible(usesPixelVariance);
 }
 
 void PostProcessingDialog::saveSettings(QSettings & settings, const QString & group) const
@@ -288,7 +291,7 @@ double PostProcessingDialog::sbaVariance() const
 }
 Optimizer::Type PostProcessingDialog::sbaType() const
 {
-	return _ui->comboBox_sbaType->currentIndex()==2?Optimizer::kTypeCeres:_ui->comboBox_sbaType->currentIndex()==1?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O;
+	return static_cast<Optimizer::Type>(_ui->comboBox_sbaType->currentIndex());
 }
 bool PostProcessingDialog::sbaRematchFeatures() const
 {
@@ -349,18 +352,11 @@ void PostProcessingDialog::setSBAVariance(double variance)
 }
 void PostProcessingDialog::setSBAType(Optimizer::Type type)
 {
-	if(type == Optimizer::kTypeCeres)
+	if(type < 0 || type >= _ui->comboBox_sbaType->count())
 	{
-		_ui->comboBox_sbaType->setCurrentIndex(2);
+		type = Optimizer::kTypeG2O;
 	}
-	else if(type == Optimizer::kTypeCVSBA)
-	{
-		_ui->comboBox_sbaType->setCurrentIndex(1);
-	}
-	else
-	{
-		_ui->comboBox_sbaType->setCurrentIndex(0);
-	}
+	_ui->comboBox_sbaType->setCurrentIndex(static_cast<int>(type));
 }
 void PostProcessingDialog::setSBARematchFeatures(bool value)
 {

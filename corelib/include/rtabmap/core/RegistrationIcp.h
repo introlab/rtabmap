@@ -39,8 +39,33 @@ namespace rtabmap {
 class RTABMAP_CORE_EXPORT RegistrationIcp : public Registration
 {
 public:
+	enum IcpStrategy {
+		kIcpUndef = -1,        /**< Undefined / invalid type. */
+		kIcpPCL = 0,           /**< Point Cloud Library. */
+		kIcpPointMatcher = 1,  /**< libpointmatcher. */
+		kIcpCCCoreLib = 2,     /**< CCCoreLib (Cloud Compare). */
+		kIcpEnd = 3            /**< Sentinel: always keep last. Used to iterate through strategies. */
+	};
+
+public:
+	/**
+	 * @brief Returns true if @p strategy is built into this rtabmap binary.
+	 *
+	 * @ref kPCL is always available; @ref kPointMatcher requires the
+	 * RTABMAP_POINTMATCHER build flag; @ref kCCCoreLib requires
+	 * RTABMAP_CCCORELIB.
+	 */
+	static bool available(IcpStrategy strategy);
+
+	/**
+	 * @brief Human-readable name for @p strategy ("PCL", "libpointmatcher",
+	 * "CCCoreLib", or "Unknown").
+	 */
+	static const char * strategyName(IcpStrategy strategy);
+
 	// take ownership of child
 	RegistrationIcp(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
+	RegistrationIcp(IcpStrategy strategy, const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
 	virtual ~RegistrationIcp();
 
 	virtual void parseParameters(const ParametersMap & parameters);
@@ -56,7 +81,7 @@ protected:
 	virtual float getMinGeometryCorrespondencesRatioImpl() const {return _correspondenceRatio;}
 
 private:
-	int _strategy;
+	IcpStrategy _strategy;
 	float _maxTranslation;
 	float _maxRotation;
 	float _voxelSize;
@@ -75,6 +100,7 @@ private:
 	float _pointToPlaneRadius;
 	float _pointToPlaneGroundNormalsUp;
 	float _pointToPlaneMinComplexity;
+	bool _pointToPlaneComplexityCentered;
 	int _pointToPlaneLowComplexityStrategy;
 	std::string _libpointmatcherConfig;
 	int _libpointmatcherKnn;

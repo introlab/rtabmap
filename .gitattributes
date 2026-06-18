@@ -1,0 +1,4 @@
+# Keep LF line endings on the test-data manifest regardless of platform; the
+# fetch_test_data.sh script tab-splits this file and a trailing CR breaks SHA
+# matching on Windows checkouts.
+data/tests/manifest.txt text eol=lf

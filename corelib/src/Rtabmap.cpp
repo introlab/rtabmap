@@ -181,10 +181,13 @@ Rtabmap::Rtabmap() :
 	_pathTransformToGoal(Transform::getIdentity()),
 	_pathStuckCount(0),
 	_pathStuckDistance(0.0f)
-#ifdef RTABMAP_PYTHON
-	,_python(new PythonInterface())
-#endif
 {
+#ifdef RTABMAP_PYTHON
+	// Ensure the embedded Python interpreter is up. The first call here will
+	// assert that it runs on the main thread; callers building Rtabmap on a
+	// worker thread should construct the singleton in main() beforehand.
+	PythonInterface::instance("Rtabmap");
+#endif
 }
 
 Rtabmap::~Rtabmap() {
@@ -4418,8 +4421,13 @@ bool Rtabmap::process(
 	}
 	if(!_publishLastSignatureData)
 	{
+		// Keep the occupancy grid (compressed AND raw) on the published copy:
+		// downstream consumers rely on it to generate global occupancy grid
+		// in the same process (e.g. the raw occupancy grid used by the MainWindow 
+		// or ROS rtabmap_slam) or on an external process (the compressed occupancy
+		// grid published over ROS rtabmap_msgs/MapData).
 		lastSignatureData.sensorData().clearCompressedData(true, true, true, false);
-		lastSignatureData.sensorData().clearRawData();
+		lastSignatureData.sensorData().clearRawData(true, true, true, false);
 	}
 	if(!_rawDataKept)
 	{
@@ -4993,7 +5001,14 @@ void Rtabmap::setMemoryThreshold(int maxMemoryAllowed)
 
 void Rtabmap::setWorkingDirectory(std::string path)
 {
-	path = uReplaceChar(path, '~', UDirectory::homeDir());
+	// Expand leading "~" to the user's home directory (shell convention).
+	// We do NOT replace every "~" in the path -- Windows 8.3 short names
+	// embed "~" in the middle (e.g. C:\Users\RUNNER~1\...), and a blanket
+	// uReplaceChar would corrupt those.
+	if(!path.empty() && path[0] == '~')
+	{
+		path = UDirectory::homeDir() + path.substr(1);
+	}
 	if(!path.empty() && UDirectory::exists(path))
 	{
 		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());
@@ -6393,17 +6408,17 @@ bool Rtabmap::globalBundleAdjustment(
 	if(!_optimizedPoses.empty() && !_constraints.empty())
 	{
 		int iterations = Parameters::defaultOptimizerIterations();
-		float pixelVariance = Parameters::defaultg2oPixelVariance();
+		float pixelVariance = Parameters::defaultOptimizerPixelVariance();
 		ParametersMap params = _parameters;
 		Parameters::parse(params, Parameters::kOptimizerIterations(), iterations);
-		Parameters::parse(params, Parameters::kg2oPixelVariance(), pixelVariance);
+		Parameters::parse(params, Parameters::kOptimizerPixelVariance(), pixelVariance);
 		if(iterations > 0)
 		{
 			uInsert(params, ParametersPair(Parameters::kOptimizerIterations(), uNumber2Str(iterations)));
 		}
 		if(pixelVariance > 0.0f)
 		{
-			uInsert(params, ParametersPair(Parameters::kg2oPixelVariance(), uNumber2Str(pixelVariance)));
+			uInsert(params, ParametersPair(Parameters::kOptimizerPixelVariance(), uNumber2Str(pixelVariance)));
 		}
 
 		std::map<int, Signature> signatures;
@@ -7003,6 +7018,33 @@ bool Rtabmap::computePath(int targetNode, bool global)
 			{
 				if(iter->first > 0)
 				{
+					// Skip intermediate nodes (weight==-1). They are not navigable
+					// waypoints and updateGoalIndex would otherwise abort the
+					// plan when it sees them. The poses of the remaining real
+					// nodes already account for cumulative transform through any
+					// intermediate chain (relative poses from graph::computePath).
+					int weight = 0;
+					const Signature * s = _memory->getSignature(iter->first);
+					if(s)
+					{
+						weight = s->getWeight();
+					}
+					else
+					{
+						// For nodes in LTM, fetch weight from the database.
+						Transform p, gt;
+						int mapId = 0;
+						std::string label;
+						double stamp = 0.0;
+						std::vector<float> vel;
+						GPS gps;
+						EnvSensors envs;
+						_memory->getNodeInfo(iter->first, p, mapId, weight, label, stamp, gt, vel, gps, envs, true);
+					}
+					if(weight == -1)
+					{
+						continue;
+					}
 					// just keep nodes in the path
 					_path[oi].first = iter->first;
 					_path[oi++].second = t * iter->second;
@@ -7276,17 +7318,13 @@ void Rtabmap::updateGoalIndex()
 	if( _memory && _path.size())
 	{
 		// remove all previous virtual links
-		bool hasIntermediateNodes = false;
 		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
 		{
 			const Signature * s = _memory->getSignature(_path[i].first);
 			if(s)
 			{
+				UASSERT_MSG(s->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i, _path[i].first).c_str());
 				_memory->removeVirtualLinks(s->id());
-			}
-			if(s->getWeight() == -1)
-			{
-				hasIntermediateNodes = true;
 			}
 		}
 
@@ -7313,51 +7351,42 @@ void Rtabmap::updateGoalIndex()
 			}
 		}
 
-		// Make sure the next signatures on the path are linked together
+		// Make sure the next signatures on the path are linked together.
+		// Intermediate nodes have been filtered out of _path by computePath, so
+		// every entry is a real node here.
 		float distanceSoFar = 0.0f;
-		for(unsigned int i=_pathCurrentIndex+1;
-			i<_path.size() && !hasIntermediateNodes;
-			++i)
+		for(unsigned int i=_pathCurrentIndex+1; i<_path.size(); ++i)
 		{
-			if(i>0)
+			if(_localRadius > 0.0f)
 			{
-				if(_localRadius > 0.0f)
+				distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
+			}
+
+			if(_path[i].first != _path[i-1].first)
+			{
+				const Signature * s = _memory->getSignature(_path[i].first);
+				if(s)
 				{
-					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
-				}
-				
-				if(_path[i].first != _path[i-1].first)
-				{
-					const Signature * s = _memory->getSignature(_path[i].first);
-					if(s)
+					UASSERT_MSG(s->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i, _path[i].first).c_str());
+					const Signature * sPrev = _memory->getSignature(_path[i-1].first);
+					if(sPrev)
 					{
-						if(s->getWeight() == -1)
-						{
-							hasIntermediateNodes = true;
-							break;
-						}
-						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
-						{
-							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
-							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
-						}
+						UASSERT_MSG(sPrev->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i-1, _path[i-1].first).c_str());
+					}
+					if(!s->hasLink(_path[i-1].first) && sPrev != 0)
+					{
+						Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
+						_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
+						UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 					}
 				}
-
-				if(distanceSoFar > _localRadius)
-				{
-					UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
-					break;
-				}
 			}
-		}
 
-		if(hasIntermediateNodes)
-		{
-			UERROR("Cannot follow a path with a map containing intermediate nodes (not supported: don't use intermediate nodes if rtabmap's planner has to be used). Aborting current plan!");
-			this->clearPath(-1);
-			return;
+			if(distanceSoFar > _localRadius)
+			{
+				UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
+				break;
+			}
 		}
 
 		UDEBUG("current node = %d current goal = %d", _path[_pathCurrentIndex].first, _path[_pathGoalIndex].first);

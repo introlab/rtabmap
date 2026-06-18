@@ -254,6 +254,8 @@ std::map<std::string, unsigned long> ULogger::getRegisteredThreads()
 
 void ULogger::reset()
 {
+	UScopeMutex lock(loggerMutex_);
+	flush();
 	ULogger::setType(ULogger::kTypeNoLog);
 	append_ = true;
 	printTime_ = true;
@@ -263,9 +265,11 @@ void ULogger::reset()
 	printWhere_ = true;
 	printWhereFullPath_ = false;
 	printThreadID_ = false;
+	buffered_ = false;
 	limitWhereLength_ = false;
 	level_ = kInfo; // By default, we show all info msgs + upper level (Warning, Error)
 	logFileName_ = ULogger::kDefaultLogFileName;
+	registeredThreads_.clear();
 }
 
 void ULogger::setBuffered(bool buffered)
@@ -296,66 +300,6 @@ void ULogger::_flush()
 	ULogger::getInstance()->_writeStr(bufferedMsgs_.c_str());
 	bufferedMsgs_.clear();
 }
-
-void ULogger::write(const char* msg, ...)
-{
-	loggerMutex_.lock();
-	if(!instance_)
-	{
-		loggerMutex_.unlock();
-		return;
-	}
-
-    std::string endline = "";
-    if(printEndline_) {
-        endline = "\r\n";
-    }
-
-    std::string time = "";
-    if(printTime_)
-    {
-        getTime(time);
-        time.append(" - ");
-    }
-
-
-    if(printTime_)
-    {
-    	if(buffered_)
-    	{
-    		bufferedMsgs_.append(time.c_str());
-    	}
-    	else
-    	{
-    		ULogger::getInstance()->_writeStr(time.c_str());
-    	}
-    }
-
-    va_list args;
-    va_start(args, msg);
-    if(buffered_)
-    {
-    	bufferedMsgs_.append(uFormatv(msg, args));
-    }
-	else
-	{
-		ULogger::getInstance()->_write(msg, args);
-	}
-    va_end(args);
-    if(printEndline_)
-    {
-    	if(buffered_)
-    	{
-    		bufferedMsgs_.append(endline.c_str());
-    	}
-    	else
-    	{
-    		ULogger::getInstance()->_writeStr(endline.c_str());
-    	}
-    }
-    loggerMutex_.unlock();
-
-} 
 
 void ULogger::write(ULogger::Level level,
 		const char * file,

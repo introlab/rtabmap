@@ -30,8 +30,14 @@ PyMatcher::PyMatcher(
 				iterations_(iterations),
 				cuda_(cuda)
 {
-	path_ = uReplaceChar(pythonMatcherPath, '~', UDirectory::homeDir());
-	model_ = uReplaceChar(model, '~', UDirectory::homeDir());
+	PythonInterface::instance("PyMatcher");
+	auto expandTilde = [](const std::string & p) -> std::string {
+		if(!p.empty() && p[0] == '~' && (p.size() == 1 || p[1] == '/' || p[1] == '\\'))
+			return UDirectory::homeDir() + p.substr(1);
+		return p;
+	};
+	path_  = expandTilde(pythonMatcherPath);
+	model_ = expandTilde(model);
 	UINFO("path = %s", path_.c_str());
 	UINFO("model = %s", model_.c_str());
 
@@ -46,11 +52,19 @@ PyMatcher::PyMatcher(
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
 	{
+		// For windows:
+		matcherPythonDir = uReplaceChar(matcherPythonDir, '\\', '/');
 		PyRun_SimpleString("import sys");
 		PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
 	}
 
 	_import_array();
+
+	// Invalidate importlib's directory-listing caches so a script created
+	// after sys.path was first scanned in this process is still found.
+	// Without this, the second Py* instance pointing at a freshly-written
+	// script in an already-known directory fails with ModuleNotFoundError.
+	PyRun_SimpleString("import importlib; importlib.invalidate_caches()");
 
 	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());

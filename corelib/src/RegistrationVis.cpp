@@ -1880,7 +1880,10 @@ Transform RegistrationVis::computeTransformationImpl(
 			(toSignature.sensorData().stereoCameraModels().size() >= 1 || toSignature.sensorData().cameraModels().size() >= 1))
 		{
 			UDEBUG("Refine with bundle adjustment");
-			Optimizer * sba = Optimizer::create(_bundleAdjustment==3?Optimizer::kTypeCeres:_bundleAdjustment==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, _bundleParameters);
+			// _bundleAdjustment matches the Optimizer/Strategy parameter 1:1
+			// (1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba); 0 was filtered out above.
+			Optimizer * sba = Optimizer::create(
+					static_cast<Optimizer::Type>(_bundleAdjustment), _bundleParameters);
 
 			std::map<int, Transform> poses;
 			std::multimap<int, Link> links;

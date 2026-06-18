@@ -225,17 +225,18 @@ bool UEventsManager::dispatchEvent(UEvent * event, const UEventsSender * sender)
 		if(std::find(handlers_.begin(), handlers_.end(), *it) != handlers_.end())
 		{
 			UEventsHandler * handler = *it;
-			handlersMutex_.unlock();
 
 			// Don't process event if the handler is the same as the sender
 			if(handler != sender)
 			{
-				// To be able to add/remove an handler in a handleEvent call (without a deadlock)
-				// @see _addHandler(), _removeHandler()
+				// Keep handlersMutex_ held across handleEvent() so a concurrent
+				// removeHandler() in another thread cannot return while this
+				// dispatch is in flight (which would let the handler be
+				// destroyed under us). The mutex is recursive, so a handler
+				// that calls addHandler()/removeHandler() from within
+				// handleEvent() still works.
 				handled = handler->handleEvent(event);
 			}
-
-			handlersMutex_.lock();
 		}
 	}
 	handlersMutex_.unlock();
