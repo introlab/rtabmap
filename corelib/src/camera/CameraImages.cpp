@@ -60,6 +60,7 @@ CameraImages::CameraImages() :
 		_depthFromScanFillHolesFromBorder(false),
 		_filenamesAreTimestamps(false),
 		_hasConfigForEachFrame(false),
+		_multiCameraCalib(false),
 		_syncImageRateWithStamps(true),
 		_odometryFormat(0),
 		_groundTruthFormat(0),
@@ -91,6 +92,7 @@ CameraImages::CameraImages(const std::string & path,
 	_depthFromScanFillHolesFromBorder(false),
 	_filenamesAreTimestamps(false),
 	_hasConfigForEachFrame(false),
+	_multiCameraCalib(false),
 	_syncImageRateWithStamps(true),
 	_odometryFormat(0),
 	_groundTruthFormat(0),
@@ -118,6 +120,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	_framesPublished=0;
 	_model = cameraModel();
 	_models.clear();
+	_multiModels.clear();
 	covariances_.clear();
 
 	UDEBUG("");
@@ -201,41 +204,108 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 
 	if(_dir)
 	{
-		// look for calibration files
-		UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
-		if(!calibrationFolder.empty() && !cameraName.empty())
+		if(_multiCameraCalib)
 		{
-			if(!_model.load(calibrationFolder, cameraName))
+			// Multi-camera mode: each image is a horizontal stack of N sub-camera
+			// images. Load one CameraModel per sub-camera from calibration files
+			// named "<imageBaseName>_<index>.yaml" (index starting at 0).
+			if(calibrationFolder.empty())
 			{
-				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-						cameraName.c_str(), calibrationFolder.c_str());
+				UERROR("Multi-camera calibration is enabled but no calibration folder was provided.");
+				return false;
 			}
-			else
-			{
-				UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-						_model.fx(),
-						_model.fy(),
-						_model.cx(),
-						_model.cy());
+			const std::list<std::string> & imageFiles = _dir->getFileNames();
 
-				cv::FileStorage fs(calibrationFolder+"/"+cameraName+".yaml", 0);
-				cv::FileNode poseNode = fs["local_transform"];
-				if(!poseNode.isNone())
+			// auto-detect the number of cameras from the first frame
+			int numCameras = 0;
+			std::string firstBase = imageFiles.front().substr(0, imageFiles.front().find_last_of('.'));
+			while(UFile::exists(calibrationFolder + "/" + firstBase + "_" + uNumber2Str(numCameras) + ".yaml"))
+			{
+				++numCameras;
+			}
+
+			if(numCameras == 0)
+			{
+				UERROR("Multi-camera calibration is enabled but no calibration file matching "
+						"\"%s/%s_<index>.yaml\" was found for the first image \"%s\".",
+						calibrationFolder.c_str(), firstBase.c_str(), imageFiles.front().c_str());
+				return false;
+			}
+
+			UINFO("Multi-camera mode: %d sub-cameras detected from \"%s\".", numCameras, calibrationFolder.c_str());
+			for(std::list<std::string>::const_iterator iter=imageFiles.begin(); iter!=imageFiles.end(); ++iter)
+			{
+				std::string base = iter->substr(0, iter->find_last_of('.'));
+				std::vector<CameraModel> models(numCameras);
+				for(int i=0; i<numCameras; ++i)
 				{
-					UWARN("Using local transform from calibration file (%s) instead of the parameter one (%s).",
-							_model.localTransform().prettyPrint().c_str(),
-							this->getLocalTransform().prettyPrint().c_str());
-					this->setLocalTransform(_model.localTransform());
+					std::string name = base + "_" + uNumber2Str(i);
+					if(!models[i].load(calibrationFolder, name) || !models[i].isValidForProjection())
+					{
+						UERROR("Failed to load a valid calibration \"%s/%s.yaml\" for multi-camera frame \"%s\".",
+								calibrationFolder.c_str(), name.c_str(), iter->c_str());
+						_multiModels.clear();
+						return false;
+					}
+					if(models[i].localTransform().isNull())
+					{
+						// In multi-camera mode the rig extrinsics are required: each
+						// sub-camera calibration must provide a "local_transform".
+						UERROR("Calibration \"%s/%s.yaml\" has no \"local_transform\"; it is "
+								"required in multi-camera mode (rig extrinsics).",
+								calibrationFolder.c_str(), name.c_str());
+						_multiModels.clear();
+						return false;
+					}
+					if(_rectifyImages && !models[i].isValidForRectification())
+					{
+						UERROR("Parameter \"rectifyImages\" is set, but calibration \"%s/%s.yaml\" is not valid for rectification.",
+								calibrationFolder.c_str(), name.c_str());
+						_multiModels.clear();
+						return false;
+					}
 				}
+				_multiModels.push_back(models);
 			}
 		}
-		_model.setName(cameraName);
-
-		_model.setLocalTransform(this->getLocalTransform());
-		if(_rectifyImages && !_model.isValidForRectification())
+		else
 		{
-			UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
-			return false;
+			// look for calibration files
+			UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
+			if(!calibrationFolder.empty() && !cameraName.empty())
+			{
+				if(!_model.load(calibrationFolder, cameraName))
+				{
+					UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+							cameraName.c_str(), calibrationFolder.c_str());
+				}
+				else
+				{
+					UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
+							_model.fx(),
+							_model.fy(),
+							_model.cx(),
+							_model.cy());
+
+					cv::FileStorage fs(calibrationFolder+"/"+cameraName+".yaml", 0);
+					cv::FileNode poseNode = fs["local_transform"];
+					if(!poseNode.isNone())
+					{
+						UWARN("Using local transform from calibration file (%s) instead of the parameter one (%s).",
+								_model.localTransform().prettyPrint().c_str(),
+								this->getLocalTransform().prettyPrint().c_str());
+						this->setLocalTransform(_model.localTransform());
+					}
+				}
+			}
+			_model.setName(cameraName);
+
+			_model.setLocalTransform(this->getLocalTransform());
+			if(_rectifyImages && !_model.isValidForRectification())
+			{
+				UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+				return false;
+			}
 		}
 	}
 
@@ -245,7 +315,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	groundTruth_.clear();
 	if(success)
 	{
-		if(_dir && _hasConfigForEachFrame)
+		if(_dir && _hasConfigForEachFrame && !_multiCameraCalib)
 		{
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
 			UDirectory dirJson(_path, "yaml xml");
@@ -653,7 +723,9 @@ bool CameraImages::readPoses(
 
 bool CameraImages::isCalibrated() const
 {
-	return (_dir && (_model.isValidForProjection() || (_models.size() && _models.front().isValidForProjection()))) ||
+	return (_dir && (_model.isValidForProjection() ||
+			(_models.size() && _models.front().isValidForProjection()) ||
+			(_multiModels.size() && !_multiModels.front().empty() && _multiModels.front().front().isValidForProjection()))) ||
 			_scanDir;
 }
 
@@ -728,7 +800,13 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 	cv::Mat covariance;
 	Transform groundTruthPose;
 	cv::Mat depthFromScan;
-	CameraModel model = _model;
+	std::vector<CameraModel> models; // one entry per camera (single entry in single-camera mode)
+	if(!_multiCameraCalib)
+	{
+		// Single-camera mode keeps exactly one model in the vector; in multi-camera
+		// mode the per-frame vector is taken from _multiModels below.
+		models.push_back(_model);
+	}
 	UDEBUG("");
 	if(_dir || _scanDir)
 	{
@@ -784,7 +862,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 			{
 				UERROR("groundTruth cannot be used when startAt < 0");
 			}
-			if(_models.size() && !model.isValidForProjection())
+			if((_models.size() && !models.back().isValidForProjection()) || _multiModels.size())
 			{
 				UERROR("models cannot be used when startAt < 0");
 			}
@@ -826,12 +904,19 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					groundTruthPose = groundTruth_.front();
 					groundTruth_.pop_front();
 				}
-				if(_models.size() && !model.isValidForProjection())
+				if(_models.size() && !models.back().isValidForProjection())
 				{
-					UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(), 
+					UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(),
 						uFormat("Stamps=%ld models=%ld", _stamps.size(), _models.size()).c_str());
-					model = _models.front();
+					models.back() = _models.front();
 					_models.pop_front();
+				}
+				if(_multiModels.size())
+				{
+					UASSERT_MSG(stampsSize==0 || stampsSize == _multiModels.size(),
+						uFormat("Stamps=%ld multiModels=%ld", stampsSize, _multiModels.size()).c_str());
+					models = _multiModels.front();
+					_multiModels.pop_front();
 				}
 
 				while(_count++ < _startAt)
@@ -875,12 +960,19 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 						groundTruthPose = groundTruth_.front();
 						groundTruth_.pop_front();
 					}
-					if(_models.size() && !model.isValidForProjection())
+					if(_models.size() && !models.back().isValidForProjection())
 					{
-						UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(), 
+						UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(),
 							uFormat("Stamps=%ld models=%ld", _stamps.size(), _models.size()).c_str());
-						model = _models.front();
+						models.back() = _models.front();
 						_models.pop_front();
+					}
+					if(_multiModels.size())
+					{
+						UASSERT_MSG(stampsSize==0 || stampsSize == _multiModels.size(),
+							uFormat("Stamps=%ld multiModels=%ld", stampsSize, _multiModels.size()).c_str());
+						models = _multiModels.front();
+						_multiModels.pop_front();
 					}
 				}
 			}
@@ -951,9 +1043,56 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					}
 				}
 
-				if(!img.empty() && model.isValidForRectification() && _rectifyImages)
+				if(!img.empty() && !models.empty())
 				{
-					img = model.rectifyImage(img);
+					// The image is a horizontal stack of N sub-images (N==1 in
+					// single-camera mode). Each sub-camera's width comes from its
+					// calibrated image size; if a model has no size (==0), assume a
+					// uniform split (stackedWidth / N) and set it. If requested, each
+					// sub-image is rectified independently with its model and written
+					// into a new stacked image of the same layout.
+					cv::Mat rectified;
+					int offset = 0;
+					for(size_t i=0; i<models.size(); ++i)
+					{
+						if(models[i].imageWidth()==0 || models[i].imageHeight()==0)
+						{
+							models[i].setImageSize(cv::Size(img.cols/(int)models.size(), img.rows));
+						}
+						int subWidth = models[i].imageWidth();
+						if(offset+subWidth > img.cols)
+						{
+							UERROR("Multi-camera: sum of sub-image widths (%d) exceeds the stacked "
+									"image width (%d) at camera %d.", offset+subWidth, img.cols, (int)i);
+							rectified = cv::Mat();
+							break;
+						}
+						if(_rectifyImages)
+						{
+							if(!models[i].isValidForRectification())
+							{
+								UERROR("Parameter \"rectifyImages\" is set, but camera model %d is not valid for rectification.", (int)i);
+								rectified = cv::Mat();
+								break;
+							}
+							if(rectified.empty())
+							{
+								rectified = cv::Mat::zeros(img.rows, img.cols, img.type());
+							}
+							cv::Rect roi(offset, 0, subWidth, img.rows);
+							models[i].rectifyImage(img(roi)).copyTo(rectified(roi));
+						}
+						offset += subWidth;
+					}
+					if(offset != img.cols)
+					{
+						UWARN("Multi-camera: sum of sub-image widths (%d) does not match the "
+								"stacked image width (%d).", offset, img.cols);
+					}
+					if(!rectified.empty())
+					{
+						img = rectified;
+					}
 				}
 			}
 
@@ -966,7 +1105,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 				if(_depthFromScan && !img.empty())
 				{
 					UDEBUG("Computing depth from scan...");
-					if(!model.isValidForProjection())
+					if(models.empty() || !models.front().isValidForProjection())
 					{
 						UWARN("Depth from laser scan: Camera model should be valid.");
 					}
@@ -977,10 +1116,23 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					else
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
-						depthFromScan = util3d::projectCloudToCamera(img.size(), model.K(), cloud, model.localTransform());
-						if(_depthFromScanFillHoles!=0)
+						// There is no multi-camera version of projectCloudToCamera(): project
+						// the scan into each (sub-)camera and stack the registered depth images
+						// horizontally, matching the RGB layout (single iteration in single-camera
+						// mode). Sub-image widths come from each model's (already set) image size.
+						// Holes are filled per sub-image so they don't bleed across cameras.
+						depthFromScan = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
+						int offset = 0;
+						for(size_t i=0; i<models.size() && offset+models[i].imageWidth()<=img.cols; ++i)
 						{
-							util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHoles>0, _depthFromScanFillHolesFromBorder);
+							int subWidth = models[i].imageWidth();
+							cv::Mat subDepth = util3d::projectCloudToCamera(cv::Size(subWidth, img.rows), models[i].K(), cloud, models[i].localTransform());
+							if(_depthFromScanFillHoles!=0)
+							{
+								util3d::fillProjectedCloudHoles(subDepth, _depthFromScanFillHoles>0, _depthFromScanFillHolesFromBorder);
+							}
+							subDepth.copyTo(depthFromScan(cv::Rect(offset, 0, subWidth, img.rows)));
+							offset += subWidth;
 						}
 					}
 				}
@@ -992,15 +1144,10 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
-	if(model.imageHeight() == 0 || model.imageWidth() == 0)
-	{
-		model.setImageSize(img.size());
-	}
-
 	SensorData data;
 	if(!img.empty() || !scan.empty())
 	{
-		data = SensorData(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, model, this->getNextSeqID(), stamp);
+		data = SensorData(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, models, this->getNextSeqID(), stamp);
 		data.setGroundTruth(groundTruthPose);
 	}
 

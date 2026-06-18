@@ -77,6 +77,20 @@ public:
 		_hasConfigForEachFrame = value;
 	}
 
+	// Enable multi-camera mode. Each image in the folder is expected to be the
+	// horizontal concatenation of N sub-camera images of a rig, sharing the same
+	// base name (timestamp or node id), e.g. "1780687370.031791.jpg" or "1.jpg".
+	// One calibration file per sub-camera must exist in the calibrationFolder
+	// passed to init(), named "<imageBaseName>_<index>.yaml" with index starting
+	// at 0 (e.g. "1_0.yaml", "1_1.yaml", ...). The number of cameras is
+	// auto-detected from the first frame. Each sub-image width is taken from the
+	// corresponding model's calibrated image size; if a model has no size, a
+	// uniform split (stackedWidth / N) is assumed instead.
+	void setMultiCameraCalibration(bool enabled)
+	{
+		_multiCameraCalib = enabled;
+	}
+
 	void setScanPath(
 			const std::string & dir,
 			int maxScanPts = 0,
@@ -158,6 +172,7 @@ private:
 
 	bool _filenamesAreTimestamps;
 	bool _hasConfigForEachFrame;
+	bool _multiCameraCalib;
 	std::string _timestampsPath;
 	bool _syncImageRateWithStamps;
 
@@ -174,6 +189,7 @@ private:
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
 	std::list<CameraModel> _models;
+	std::list<std::vector<CameraModel> > _multiModels; // one vector of sub-camera models per frame (multi-camera mode)
 
 	UTimer _captureTimer;
 	double _captureDelay;
