@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-557</y>
+            <y>-1365</y>
             <width>684</width>
-            <height>5360</height>
+            <height>5343</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -7661,7 +7661,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             <item row="1" column="2">
                              <widget class="QLabel" name="label_605">
                               <property name="text">
-                               <string>Load config file for each frame. For calibration, global calibration path above should be empty. Config files should be in the same directory than RGB frames and they should have the same name than the corresponding frame file. Currently supporting 3DScannerApp for iOS export config format (JSON, intrinsics, pose and stamp) and RTAB-Map calibration file format.</string>
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load config file for each frame. Config files are read from the calibration folder and should have the same name than the corresponding frame file. Currently supporting 3DScannerApp for iOS export config format (JSON, intrinsics, pose and stamp) and RTAB-Map calibration file format. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -7801,8 +7801,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </item>
                             <item row="2" column="2">
                              <widget class="QLabel" name="label_798">
+                              <property name="toolTip">
+                               <string>Naming &lt;prefix&gt;_&lt;index&gt;.yaml, or &lt;prefix&gt;_&lt;index&gt;_left.yaml and &lt;prefix&gt;_&lt;index&gt;_right.yaml for stereo, index starting at 0</string>
+                              </property>
                               <property name="text">
-                               <string>Multi-camera mode: each image is a horizontal stack of N sub-camera images. One calibration file per sub-camera (named &lt;imageBaseName&gt;_&lt;index&gt;.yaml, index starting at 0) must be in the calibration folder. The number of cameras is auto-detected and a local_transform (rig extrinsics) is required in each file.</string>
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Multi-camera mode: each image is a horizontal stack of N sub-camera images (for stereo, both left and right images are stacked the same way). One calibration file per sub-camera (see naming format on tooltip) must be in the calibration folder. A local_transform (rig extrinsics) is required in each file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>

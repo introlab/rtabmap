@@ -4626,7 +4626,12 @@ void PreferencesDialog::selectCalibrationPath()
 	{
 		dir = getWorkingDirectory()+"/camera_info/"+dir;
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml)"));
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml *.xml)"));
+#else
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml *.xml *.json)"));
+#endif
+	
 	if(path.size())
 	{
 		_ui->lineEdit_calibrationFile->setText(path);
@@ -7120,6 +7125,7 @@ Camera * PreferencesDialog::createCamera(
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 		((CameraStereoImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraStereoImages*)camera)->setMultiCameraCalibration(_ui->checkBox_cameraImages_multiCameraCalibration->isChecked());
 		((CameraStereoImages*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoUsb)

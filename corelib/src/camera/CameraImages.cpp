@@ -61,6 +61,7 @@ CameraImages::CameraImages() :
 		_filenamesAreTimestamps(false),
 		_hasConfigForEachFrame(false),
 		_multiCameraCalib(false),
+		_multiCameraCount(0),
 		_syncImageRateWithStamps(true),
 		_odometryFormat(0),
 		_groundTruthFormat(0),
@@ -93,6 +94,7 @@ CameraImages::CameraImages(const std::string & path,
 	_filenamesAreTimestamps(false),
 	_hasConfigForEachFrame(false),
 	_multiCameraCalib(false),
+	_multiCameraCount(0),
 	_syncImageRateWithStamps(true),
 	_odometryFormat(0),
 	_groundTruthFormat(0),
@@ -113,15 +115,22 @@ CameraImages::~CameraImages()
 bool CameraImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	_lastFileName.clear();
+	_lastImageFileName.clear();
 	_lastScanFileName.clear();
 	_count = 0;
 	_countScan = 0;
 	_captureDelay = 0.0;
 	_framesPublished=0;
 	_model = cameraModel();
-	_models.clear();
+	_modelFileNames.clear();
+	_configLocalTransformWarned = false;
 	_multiModels.clear();
+	_calibrationFolder.clear();
+	_multiCameraCount = 0;
 	covariances_.clear();
+	_stamps.clear();
+	odometry_.clear();
+	groundTruth_.clear();
 
 	UDEBUG("");
 	if(_dir)
@@ -202,24 +211,52 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		return false;
 	}
 
+	bool success = _dir|| _scanDir;
+
 	if(_dir)
 	{
 		if(_multiCameraCalib)
 		{
 			// Multi-camera mode: each image is a horizontal stack of N sub-camera
 			// images. Load one CameraModel per sub-camera from calibration files
-			// named "<imageBaseName>_<index>.yaml" (index starting at 0).
+			// named "<prefix>_<index>.yaml" (index starting at 0). In config-for-each-frame
+			// mode the prefix is each image's base name (one calibration set per frame);
+			// otherwise a single calibration set is shared by all frames, using cameraName
+			// as the prefix when provided (it may differ from any image name), falling back
+			// to the first image's base name.
 			if(calibrationFolder.empty())
 			{
 				UERROR("Multi-camera calibration is enabled but no calibration folder was provided.");
 				return false;
 			}
 			const std::list<std::string> & imageFiles = _dir->getFileNames();
-
-			// auto-detect the number of cameras from the first frame
-			int numCameras = 0;
 			std::string firstBase = imageFiles.front().substr(0, imageFiles.front().find_last_of('.'));
-			while(UFile::exists(calibrationFolder + "/" + firstBase + "_" + uNumber2Str(numCameras) + ".yaml"))
+
+			// In config-for-each-frame mode the prefix is each image's base name. Otherwise
+			// the shared prefix is cameraName when provided. cameraName may point to a specific
+			// sub-camera calibration "<rig>_<index>" (e.g. when a single calibration file is
+			// selected); in that case strip the trailing "_<index>" to recover the rig prefix
+			// shared by all sub-cameras. Fall back to the first image's base name if empty.
+			std::string sharedBase = cameraName;
+			if(!sharedBase.empty() && !UFile::exists(calibrationFolder + "/" + sharedBase + "_0.yaml"))
+			{
+				std::size_t us = sharedBase.find_last_of('_');
+				if(us != std::string::npos && us+1 < sharedBase.size() &&
+					sharedBase.find_first_not_of("0123456789", us+1) == std::string::npos &&
+					UFile::exists(calibrationFolder + "/" + sharedBase.substr(0, us) + "_0.yaml"))
+				{
+					sharedBase = sharedBase.substr(0, us);
+				}
+			}
+			if(sharedBase.empty())
+			{
+				sharedBase = firstBase;
+			}
+
+			// auto-detect the number of cameras
+			int numCameras = 0;
+			std::string detectBase = _hasConfigForEachFrame ? firstBase : sharedBase;
+			while(UFile::exists(calibrationFolder + "/" + detectBase + "_" + uNumber2Str(numCameras) + ".yaml"))
 			{
 				++numCameras;
 			}
@@ -227,54 +264,132 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			if(numCameras == 0)
 			{
 				UERROR("Multi-camera calibration is enabled but no calibration file matching "
-						"\"%s/%s_<index>.yaml\" was found for the first image \"%s\".",
-						calibrationFolder.c_str(), firstBase.c_str(), imageFiles.front().c_str());
+						"\"%s/%s_<index>.yaml\" was found.",
+						calibrationFolder.c_str(), detectBase.c_str());
 				return false;
 			}
 
-			UINFO("Multi-camera mode: %d sub-cameras detected from \"%s\".", numCameras, calibrationFolder.c_str());
-			for(std::list<std::string>::const_iterator iter=imageFiles.begin(); iter!=imageFiles.end(); ++iter)
+			UINFO("Multi-camera mode: %d sub-cameras detected from \"%s\" (%s).", numCameras, calibrationFolder.c_str(),
+					_hasConfigForEachFrame?"one calibration per frame, loaded on demand":
+							uFormat("calibration \"%s_<index>\" reused for all frames", sharedBase.c_str()).c_str());
+			_calibrationFolder = calibrationFolder;
+			_multiCameraCount = numCameras;
+			if(_hasConfigForEachFrame)
 			{
-				std::string base = iter->substr(0, iter->find_last_of('.'));
-				std::vector<CameraModel> models(numCameras);
-				for(int i=0; i<numCameras; ++i)
+				// Validate the first frame now; the per-frame sub-camera models are loaded
+				// on demand in captureImage() (keyed by each image's base name) so we don't
+				// keep every frame's models - and their rectification maps - in memory.
+				if(loadMultiCameraModels(firstBase).empty())
 				{
-					std::string name = base + "_" + uNumber2Str(i);
-					if(!models[i].load(calibrationFolder, name) || !models[i].isValidForProjection())
-					{
-						UERROR("Failed to load a valid calibration \"%s/%s.yaml\" for multi-camera frame \"%s\".",
-								calibrationFolder.c_str(), name.c_str(), iter->c_str());
-						_multiModels.clear();
-						return false;
-					}
-					if(models[i].localTransform().isNull())
-					{
-						// In multi-camera mode the rig extrinsics are required: each
-						// sub-camera calibration must provide a "local_transform".
-						UERROR("Calibration \"%s/%s.yaml\" has no \"local_transform\"; it is "
-								"required in multi-camera mode (rig extrinsics).",
-								calibrationFolder.c_str(), name.c_str());
-						_multiModels.clear();
-						return false;
-					}
-					if(_rectifyImages && !models[i].isValidForRectification())
-					{
-						UERROR("Parameter \"rectifyImages\" is set, but calibration \"%s/%s.yaml\" is not valid for rectification.",
-								calibrationFolder.c_str(), name.c_str());
-						_multiModels.clear();
-						return false;
-					}
+					return false;
+				}
+			}
+			else
+			{
+				// A single calibration set is shared by all frames: load it once.
+				std::vector<CameraModel> models = loadMultiCameraModels(sharedBase);
+				if(models.empty())
+				{
+					return false;
 				}
 				_multiModels.push_back(models);
 			}
 		}
+		else if(_hasConfigForEachFrame)
+		{
+			// Per-frame calibration: one config file per image, taken from the
+			// calibration folder (same convention as the single/multi-camera cases).
+			// If the config files are in the same folder than the images, just set the
+			// calibration folder to the images folder.
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+			UDirectory dirJson(calibrationFolder, "yaml xml");
+#else
+			UDirectory dirJson(calibrationFolder, "yaml xml json");
+#endif
+			if(dirJson.getFileNames().size() == _dir->getFileNames().size())
+			{
+				// The per-frame models are loaded on demand in captureImage() (see
+				// loadConfigModel) so we don't keep every frame's model - and its
+				// rectification map - in memory. Only the stamps and poses of the
+				// 3DScannerApp format are read eagerly here (needed for synchronization).
+				for(std::list<std::string>::const_iterator iter=dirJson.getFileNames().begin(); iter!=dirJson.getFileNames().end() && success; ++iter)
+				{
+					std::string filePath = calibrationFolder+"/"+*iter;
+					cv::FileStorage fs(filePath, 0);
+					cv::FileNode poseNode = fs["cameraPoseARFrame"]; // Check if it is 3DScannerApp(iOS) format
+					if(!poseNode.isNone())
+					{
+						cv::FileNode timeNode = fs["time"];
+						cv::FileNode intrinsicsNode = fs["intrinsics"];
+						if(poseNode.size() != 16)
+						{
+							UERROR("Failed reading \"cameraPoseARFrame\" parameter, it should have 16 values (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else if(timeNode.isNone() || !timeNode.isReal())
+						{
+							UERROR("Failed reading \"time\" parameter (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else if(intrinsicsNode.isNone() || intrinsicsNode.size()!=9)
+						{
+							UERROR("Failed reading \"intrinsics\" parameter (file=%s)", filePath.c_str());
+							success = false;
+							break;
+						}
+						else
+						{
+							_stamps.push_back((double)timeNode);
+							// we need to rotate from opengl world to rtabmap world
+							Transform pose(
+									(float)poseNode[0], (float)poseNode[1], (float)poseNode[2], (float)poseNode[3],
+									(float)poseNode[4], (float)poseNode[5], (float)poseNode[6], (float)poseNode[7],
+									(float)poseNode[8], (float)poseNode[9], (float)poseNode[10], (float)poseNode[11]);
+							pose =  Transform::rtabmap_T_opengl() * pose * Transform::opengl_T_rtabmap();
+							odometry_.push_back(pose);
+						}
+					}
+					_modelFileNames.push_back(filePath);
+				}
+				// Validate the first frame's calibration now to fail early.
+				if(success && !_modelFileNames.empty() && !loadConfigModel(_modelFileNames.front()).isValidForProjection())
+				{
+					success = false;
+				}
+				if(!success)
+				{
+					odometry_.clear();
+					_stamps.clear();
+					_modelFileNames.clear();
+				}
+			}
+			else
+			{
+				std::string opencv32warn;
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+				opencv32warn = " RTAB-Map is currently built with OpenCV < 3.2, only xml and yaml files are supported (not json).";
+#endif
+				UERROR("Parameter \"Config for each frame\" is true, but the "
+						"number of config files (%d) is not equal to number "
+						"of images (%d) in this directory \"%s\".%s",
+						(int)dirJson.getFileNames().size(),
+						(int)_dir->getFileNames().size(),
+						calibrationFolder.c_str(),
+						opencv32warn.c_str());
+				success = false;
+			}
+		}
 		else
 		{
+			// Config-for-each-frame is disabled: load a single general calibration
+			// model (the per-frame branch above handles the config-for-each-frame case).
 			// look for calibration files
 			UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
 			if(!calibrationFolder.empty() && !cameraName.empty())
 			{
-				if(!_model.load(calibrationFolder, cameraName))
+				if(!_model.load(calibrationFolder, cameraName, _rectifyImages))
 				{
 					UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
 							cameraName.c_str(), calibrationFolder.c_str());
@@ -297,150 +412,24 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 						this->setLocalTransform(_model.localTransform());
 					}
 				}
+
+				// Only validate rectification when a general calibration was requested.
+				// Without it (e.g. images that are already rectified) the single model is
+				// expected to be empty and must not fail init here.
+				if(_rectifyImages && !_model.isValidForRectification())
+				{
+					UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
+					return false;
+				}
 			}
 			_model.setName(cameraName);
 
 			_model.setLocalTransform(this->getLocalTransform());
-			if(_rectifyImages && !_model.isValidForRectification())
-			{
-				UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
-				return false;
-			}
 		}
 	}
 
-	bool success = _dir|| _scanDir;
-	_stamps.clear();
-	odometry_.clear();
-	groundTruth_.clear();
 	if(success)
 	{
-		if(_dir && _hasConfigForEachFrame && !_multiCameraCalib)
-		{
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
-			UDirectory dirJson(_path, "yaml xml");
-#else
-			UDirectory dirJson(_path, "yaml xml json");
-#endif
-			if(dirJson.getFileNames().size() == _dir->getFileNames().size())
-			{
-				bool modelsWarned = false;
-				bool localTWarned = false;
-				for(std::list<std::string>::const_iterator iter=dirJson.getFileNames().begin(); iter!=dirJson.getFileNames().end() && success; ++iter)
-				{
-					std::string filePath = _path+"/"+*iter;
-					cv::FileStorage fs(filePath, 0);
-					cv::FileNode poseNode = fs["cameraPoseARFrame"]; // Check if it is 3DScannerApp(iOS) format
-					if(poseNode.isNone())
-					{
-						cv::FileNode n = fs["local_transform"];
-						bool hasLocalTransform = !n.isNone();
-
-						fs.release();
-						if(_model.isValidForProjection() && !modelsWarned)
-						{
-							UWARN("Camera model loaded for each frame is overridden by "
-									"general calibration file provided. Remove general calibration "
-									"file to use camera model of each frame. This warning will "
-									"be shown only one time.");
-							modelsWarned = true;
-						}
-						else
-						{
-							CameraModel model;
-							model.load(filePath);
-
-							if(!hasLocalTransform)
-							{
-								if(!localTWarned)
-								{
-									UWARN("Loaded calibration file doesn't have local_transform field, "
-											"the global local_transform parameter is used by default (%s).",
-											this->getLocalTransform().prettyPrint().c_str());
-									localTWarned = true;
-								}
-								model.setLocalTransform(this->getLocalTransform());
-							}
-
-							_models.push_back(model);
-						}
-					}
-					else
-					{
-						cv::FileNode timeNode = fs["time"];
-						cv::FileNode intrinsicsNode = fs["intrinsics"];
-						if(poseNode.isNone() || poseNode.size() != 16)
-						{
-							UERROR("Failed reading \"cameraPoseARFrame\" parameter, it should have 16 values (file=%s)", filePath.c_str());
-							success = false;
-							break;
-						}
-						else if(timeNode.isNone() || !timeNode.isReal())
-						{
-							UERROR("Failed reading \"time\" parameter (file=%s)", filePath.c_str());
-							success = false;
-							break;
-						}
-						else if(intrinsicsNode.isNone() || intrinsicsNode.size()!=9)
-						{
-							UERROR("Failed reading \"intrinsics\" parameter (file=%s)", filePath.c_str());
-							success = false;
-							break;
-						}
-						else
-						{
-							_stamps.push_back((double)timeNode);
-							if(_model.isValidForProjection() && !modelsWarned)
-							{
-								UWARN("Camera model loaded for each frame is overridden by "
-										"general calibration file provided. Remove general calibration "
-										"file to use camera model of each frame. This warning will "
-										"be shown only one time.");
-								modelsWarned = true;
-							}
-							else
-							{
-								_models.push_back(CameraModel(
-										(double)intrinsicsNode[0], //fx
-										(double)intrinsicsNode[4], //fy
-										(double)intrinsicsNode[2], //cx
-										(double)intrinsicsNode[5], //cy
-										CameraModel::opticalRotation()));
-							}
-							// we need to rotate from opengl world to rtabmap world
-							Transform pose(
-									(float)poseNode[0], (float)poseNode[1], (float)poseNode[2], (float)poseNode[3],
-									(float)poseNode[4], (float)poseNode[5], (float)poseNode[6], (float)poseNode[7],
-									(float)poseNode[8], (float)poseNode[9], (float)poseNode[10], (float)poseNode[11]);
-							pose =  Transform::rtabmap_T_opengl() * pose * Transform::opengl_T_rtabmap();
-							odometry_.push_back(pose);
-						}
-					}
-				}
-				if(!success)
-				{
-					odometry_.clear();
-					_stamps.clear();
-					_models.clear();
-				}
-			}
-			else
-			{
-				std::string opencv32warn;
-#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
-				opencv32warn = " RTAB-Map is currently built with OpenCV < 3.2, only xml and yaml files are supported (not json).";
-#endif
-				UERROR("Parameter \"Config for each frame\" is true, but the "
-						"number of config files (%d) is not equal to number "
-						"of images (%d) in this directory \"%s\".%s",
-						(int)dirJson.getFileNames().size(),
-						(int)_dir->getFileNames().size(),
-						_path.c_str(),
-						opencv32warn.c_str());
-				success = false;
-			}
-		}
-
 		if(_stamps.empty())
 		{
 			if(_filenamesAreTimestamps)
@@ -724,9 +713,94 @@ bool CameraImages::readPoses(
 bool CameraImages::isCalibrated() const
 {
 	return (_dir && (_model.isValidForProjection() ||
-			(_models.size() && _models.front().isValidForProjection()) ||
-			(_multiModels.size() && !_multiModels.front().empty() && _multiModels.front().front().isValidForProjection()))) ||
+			_modelFileNames.size() || // per-frame single-camera models loaded on demand (validated in init)
+			(_multiModels.size() && !_multiModels.front().empty() && _multiModels.front().front().isValidForProjection()) ||
+			(_multiCameraCalib && _hasConfigForEachFrame && _multiCameraCount > 0))) || // per-frame multi-camera models loaded on demand
 			_scanDir;
+}
+
+std::vector<CameraModel> CameraImages::loadMultiCameraModels(const std::string & baseName) const
+{
+	std::vector<CameraModel> models(_multiCameraCount);
+	for(int i=0; i<_multiCameraCount; ++i)
+	{
+		std::string name = baseName + "_" + uNumber2Str(i);
+		if(!models[i].load(_calibrationFolder, name, _rectifyImages) || !models[i].isValidForProjection())
+		{
+			UERROR("Failed to load a valid calibration \"%s/%s.yaml\" for multi-camera frame base \"%s\".",
+					_calibrationFolder.c_str(), name.c_str(), baseName.c_str());
+			return std::vector<CameraModel>();
+		}
+		if(models[i].localTransform().isNull())
+		{
+			// In multi-camera mode the rig extrinsics are required: each
+			// sub-camera calibration must provide a "local_transform".
+			UERROR("Calibration \"%s/%s.yaml\" has no \"local_transform\"; it is "
+					"required in multi-camera mode (rig extrinsics).",
+					_calibrationFolder.c_str(), name.c_str());
+			return std::vector<CameraModel>();
+		}
+		if(_rectifyImages && !models[i].isValidForRectification())
+		{
+			UERROR("Parameter \"rectifyImages\" is set, but calibration \"%s/%s.yaml\" is not valid for rectification.",
+					_calibrationFolder.c_str(), name.c_str());
+			return std::vector<CameraModel>();
+		}
+	}
+	return models;
+}
+
+CameraModel CameraImages::loadConfigModel(const std::string & filePath)
+{
+	cv::FileStorage fs(filePath, 0);
+	cv::FileNode poseNode = fs["cameraPoseARFrame"]; // Check if it is 3DScannerApp(iOS) format
+	CameraModel model;
+	if(poseNode.isNone())
+	{
+		// RTAB-Map calibration format
+		bool hasLocalTransform = !fs["local_transform"].isNone();
+		fs.release();
+		model.load(filePath, _rectifyImages);
+		if(!hasLocalTransform)
+		{
+			if(!_configLocalTransformWarned)
+			{
+				UWARN("Loaded calibration file doesn't have local_transform field, "
+						"the global local_transform parameter is used by default (%s).",
+						this->getLocalTransform().prettyPrint().c_str());
+				_configLocalTransformWarned = true;
+			}
+			model.setLocalTransform(this->getLocalTransform());
+		}
+	}
+	else
+	{
+		// 3DScannerApp(iOS) format
+		cv::FileNode intrinsicsNode = fs["intrinsics"];
+		if(intrinsicsNode.isNone() || intrinsicsNode.size()!=9)
+		{
+			UERROR("Failed reading \"intrinsics\" parameter (file=%s)", filePath.c_str());
+			return CameraModel();
+		}
+		model = CameraModel(
+				(double)intrinsicsNode[0], //fx
+				(double)intrinsicsNode[4], //fy
+				(double)intrinsicsNode[2], //cx
+				(double)intrinsicsNode[5], //cy
+				CameraModel::opticalRotation());
+	}
+	if(!model.isValidForProjection())
+	{
+		UERROR("Camera model loaded from \"%s\" is not valid for projection.", filePath.c_str());
+		return CameraModel();
+	}
+	if(_rectifyImages && !model.isValidForRectification())
+	{
+		UERROR("Parameter \"rectifyImages\" is set, but camera model loaded from \"%s\" is not valid for rectification.",
+				filePath.c_str());
+		return CameraModel();
+	}
+	return model;
 }
 
 std::string CameraImages::getSerial() const
@@ -862,7 +936,8 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 			{
 				UERROR("groundTruth cannot be used when startAt < 0");
 			}
-			if((_models.size() && !models.back().isValidForProjection()) || _multiModels.size())
+			if(_modelFileNames.size() || _multiModels.size() ||
+				(_multiCameraCalib && _hasConfigForEachFrame))
 			{
 				UERROR("models cannot be used when startAt < 0");
 			}
@@ -904,19 +979,24 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					groundTruthPose = groundTruth_.front();
 					groundTruth_.pop_front();
 				}
-				if(_models.size() && !models.back().isValidForProjection())
+				if(_modelFileNames.size())
 				{
-					UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(),
-						uFormat("Stamps=%ld models=%ld", _stamps.size(), _models.size()).c_str());
-					models.back() = _models.front();
-					_models.pop_front();
+					UASSERT_MSG(stampsSize==0 || stampsSize == _modelFileNames.size(),
+						uFormat("Stamps=%ld models=%ld", _stamps.size(), _modelFileNames.size()).c_str());
+					// per-frame calibration loaded on demand (not kept in memory)
+					models.back() = loadConfigModel(_modelFileNames.front());
+					_modelFileNames.pop_front();
 				}
-				if(_multiModels.size())
+				if(_multiCameraCalib && _hasConfigForEachFrame)
 				{
-					UASSERT_MSG(stampsSize==0 || stampsSize == _multiModels.size(),
-						uFormat("Stamps=%ld multiModels=%ld", stampsSize, _multiModels.size()).c_str());
+					// Per-frame calibration loaded on demand (not kept in memory),
+					// keyed by the current image's base name.
+					models = loadMultiCameraModels(imageFileName.substr(0, imageFileName.find_last_of('.')));
+				}
+				else if(_multiModels.size())
+				{
+					// calibration is shared across all frames
 					models = _multiModels.front();
-					_multiModels.pop_front();
 				}
 
 				while(_count++ < _startAt)
@@ -960,21 +1040,27 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 						groundTruthPose = groundTruth_.front();
 						groundTruth_.pop_front();
 					}
-					if(_models.size() && !models.back().isValidForProjection())
+					if(_modelFileNames.size())
 					{
-						UASSERT_MSG(stampsSize==0 || stampsSize == _models.size(),
-							uFormat("Stamps=%ld models=%ld", _stamps.size(), _models.size()).c_str());
-						models.back() = _models.front();
-						_models.pop_front();
+						UASSERT_MSG(stampsSize==0 || stampsSize == _modelFileNames.size(),
+							uFormat("Stamps=%ld models=%ld", _stamps.size(), _modelFileNames.size()).c_str());
+						// per-frame calibration loaded on demand (not kept in memory)
+						models.back() = loadConfigModel(_modelFileNames.front());
+						_modelFileNames.pop_front();
 					}
-					if(_multiModels.size())
+					if(_multiCameraCalib && _hasConfigForEachFrame)
 					{
-						UASSERT_MSG(stampsSize==0 || stampsSize == _multiModels.size(),
-							uFormat("Stamps=%ld multiModels=%ld", stampsSize, _multiModels.size()).c_str());
+						// Per-frame calibration loaded on demand (not kept in memory),
+						// keyed by the current image's base name.
+						models = loadMultiCameraModels(imageFileName.substr(0, imageFileName.find_last_of('.')));
+					}
+					else if(_multiModels.size())
+					{
+						// calibration is shared across all frames
 						models = _multiModels.front();
-						_multiModels.pop_front();
 					}
 				}
+				_lastImageFileName = imageFileName; // expose the current frame name to subclasses
 			}
 		}
 
@@ -1053,6 +1139,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					// into a new stacked image of the same layout.
 					cv::Mat rectified;
 					int offset = 0;
+					bool rectifyAborted = false;
 					for(size_t i=0; i<models.size(); ++i)
 					{
 						if(models[i].imageWidth()==0 || models[i].imageHeight()==0)
@@ -1065,14 +1152,24 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 							UERROR("Multi-camera: sum of sub-image widths (%d) exceeds the stacked "
 									"image width (%d) at camera %d.", offset+subWidth, img.cols, (int)i);
 							rectified = cv::Mat();
+							rectifyAborted = true;
 							break;
 						}
 						if(_rectifyImages)
 						{
 							if(!models[i].isValidForRectification())
 							{
-								UERROR("Parameter \"rectifyImages\" is set, but camera model %d is not valid for rectification.", (int)i);
+								// In multi-camera mode a valid calibration is expected for each
+								// sub-camera. In single-camera mode this is a passthrough (e.g. the
+								// base reader of a stereo/RGBD subclass that rectifies itself, or
+								// images that are already rectified): skip silently to keep the
+								// backward-compatible behavior.
+								if(_multiCameraCalib)
+								{
+									UERROR("Parameter \"rectifyImages\" is set, but camera model %d is not valid for rectification.", (int)i);
+								}
 								rectified = cv::Mat();
+								rectifyAborted = true;
 								break;
 							}
 							if(rectified.empty())
@@ -1084,7 +1181,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 						}
 						offset += subWidth;
 					}
-					if(offset != img.cols)
+					if(!rectifyAborted && offset != img.cols)
 					{
 						UWARN("Multi-camera: sum of sub-image widths (%d) does not match the "
 								"stacked image width (%d).", offset, img.cols);

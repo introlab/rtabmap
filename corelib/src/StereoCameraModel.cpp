@@ -220,11 +220,11 @@ void StereoCameraModel::updateStereoRectification()
 	right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
 }
 
-bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform)
+bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform, bool initRectificationMaps)
 {
 	name_ = cameraName;
-	bool leftLoaded = left_.load(directory, cameraName+"_"+getLeftSuffix());
-	bool rightLoaded = right_.load(directory, cameraName+"_"+getRightSuffix());
+	bool leftLoaded = left_.load(directory, cameraName+"_"+getLeftSuffix(), initRectificationMaps);
+	bool rightLoaded = right_.load(directory, cameraName+"_"+getRightSuffix(), initRectificationMaps);
 	if(leftLoaded && rightLoaded)
 	{
 		if(ignoreStereoTransform)

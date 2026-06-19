@@ -58,6 +58,21 @@ public:
 
 	void setRightGrayScale(bool enabled = true) {rightGrayScale_ = enabled;}
 
+	// Enable multi-camera stereo mode. Each left/right image in the folders is
+	// expected to be the horizontal concatenation of N sub-camera images of a
+	// stereo rig, all sharing the same base name (timestamp or node id), e.g.
+	// "1779318290.502227.jpg". Two calibration files per sub-camera must exist in
+	// the calibrationFolder passed to init(), named "<prefix>_<index>_left.yaml"
+	// and "<prefix>_<index>_right.yaml" with index starting at 0. The number of
+	// cameras is auto-detected. Sub-images are split using a uniform width
+	// (stackedWidth / N).
+	// If setConfigForEachFrame() is enabled, one calibration set is loaded per frame
+	// using each image's base name as prefix. Otherwise a single calibration set is
+	// loaded and reused for all frames, using the cameraName passed to init() as
+	// prefix (it may differ from any image name), falling back to the first image's
+	// base name when cameraName is empty.
+	void setMultiCameraCalibration(bool enabled) {multiCameraCalib_ = enabled;}
+
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
@@ -69,9 +84,21 @@ protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
 private:
+	// Load the sub-camera stereo models of a frame from calibration files named
+	// "<baseName>_<index>_{left,right}.yaml" (index 0..multiCameraCount_-1) in
+	// calibrationFolder_. Returns an empty vector (and logs an error) on failure.
+	// Used to load per-frame calibration on demand in captureImage() instead of
+	// keeping all frames' models (and their rectification maps) in memory.
+	std::vector<StereoCameraModel> loadStereoCameraModels(const std::string & baseName, bool rectify) const;
+
+private:
 	CameraImages * camera2_;
 	StereoCameraModel stereoModel_;
 	bool rightGrayScale_;
+	bool multiCameraCalib_;
+	std::list<std::vector<StereoCameraModel> > multiStereoModels_; // sub-camera stereo models shared by all frames (multi-camera mode); empty when loaded per-frame
+	std::string calibrationFolder_; // kept to load per-frame multi-camera calibration on demand
+	int multiCameraCount_; // number of sub-cameras detected in multi-camera mode
 };
 
 

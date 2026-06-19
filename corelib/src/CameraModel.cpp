@@ -212,7 +212,7 @@ void CameraModel::setImageSize(const cv::Size & size)
 	}
 }
 
-bool CameraModel::load(const std::string & filePath)
+bool CameraModel::load(const std::string & filePath, bool initRectificationMaps)
 {
 	K_ = cv::Mat();
 	D_ = cv::Mat();
@@ -377,7 +377,7 @@ bool CameraModel::load(const std::string & filePath)
 
 			fs.release();
 
-			if(isValidForRectification())
+			if(initRectificationMaps && isValidForRectification())
 			{
 				initRectificationMap();
 			}
@@ -396,9 +396,9 @@ bool CameraModel::load(const std::string & filePath)
 	return false;
 }
 
-bool CameraModel::load(const std::string & directory, const std::string & cameraName)
+bool CameraModel::load(const std::string & directory, const std::string & cameraName, bool initRectificationMaps)
 {
-	return load(directory+"/"+cameraName+".yaml");
+	return load(directory+"/"+cameraName+".yaml", initRectificationMaps);
 }
 
 bool CameraModel::save(const std::string & directory) const
