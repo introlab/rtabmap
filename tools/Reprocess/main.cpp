@@ -82,6 +82,7 @@ void showUsage()
 			"     -stop #     Last node to process.\n"
 			"     -start_s #  Start from this map session ID.\n"
 			"     -stop_s #   Last map session to process.\n"
+			"     -stop_loop  Stop after the first loop closure is detected.\n"
 			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
 			"                 then next databases are reprocessed on top of the first one.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data. Can also be multiple \n"
@@ -271,6 +272,7 @@ int main(int argc, char * argv[])
 	int stopId = 0;
 	int startMapId = 0;
 	int stopMapId = -1;
+	bool stopOnLoopClosure = false;
 	bool appendMode = false;
 	std::vector<unsigned int> cameraIndices;
 	std::vector<Transform> cameraLocalTransformOverrides;
@@ -418,6 +420,10 @@ int main(int argc, char * argv[])
 				printf("-stop option requires a value\n");
 				showUsage();
 			}
+		}
+		else if(strcmp(argv[i], "-stop_loop") == 0 || strcmp(argv[i], "--stop_loop") == 0)
+		{
+			stopOnLoopClosure = true;
 		}
 		else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--a") == 0)
 		{
@@ -1288,6 +1294,11 @@ int main(int argc, char * argv[])
 				++loopIntra;
 			}
 			printf("[%f] Processed %d/%d nodes [id=%d map=%d graph=%d hyp=%d]... %dms %s on %d [%d]\n", data.stamp(), ++processed, totalIds, refId, refMapId, int(stats.poses().size()), int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value())*100.0f), int(iterationTime.ticks() * 1000), stats.loopClosureId() > 0?"Loop":"Prox", loopId, loopMapId);
+			if(stopOnLoopClosure)
+			{
+				printf("First loop closure has been detected and --stop_loop option is enabled, stop processing...\n");
+				break;
+			}
 		}
 		else if(landmarkId != 0)
 		{
