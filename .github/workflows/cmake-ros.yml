@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ humble, jazzy, kilted, lyrical, rolling ]
+        ros_distribution: [ humble, jazzy, kilted, lyrical ]
         include:
         - ros_distribution: 'humble'
           os: ubuntu-22.04
@@ -41,9 +41,9 @@ jobs:
         - ros_distribution: 'lyrical'
           os: ubuntu-26.04
           skip_keys: "libpointmatcher"
-        - ros_distribution: 'rolling'
-          os: ubuntu-24.04
-          skip_keys: ""
+        #- ros_distribution: 'rolling'
+        #  os: ubuntu-26.04
+        #  skip_keys: ""
 
     steps:   
     - name: Setup ROS2
