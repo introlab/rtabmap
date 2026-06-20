@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        docker_tag: [focal-deps, jammy-deps, noble-deps, noble-kilted-deps]
+        docker_tag: [focal-deps, jammy-deps, noble-deps, noble-kilted-deps, resolute-deps]
         include:
         - docker_tag: focal-deps
           docker_tags: |
@@ -60,6 +60,13 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'noble-kilted/deps'
+        - docker_tag: resolute-deps
+          docker_tags: |
+            introlab3it/rtabmap:resolute-deps
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'resolute/deps'
     
     steps:
       -
@@ -100,7 +107,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        docker_tag: [bionic, focal, jammy, noble, noble-kilted, android23, android24, android26, android30]
+        docker_tag: [bionic, focal, jammy, noble, noble-kilted, resolute, android23, android24, android26, android30]
         include:
         - docker_tag: bionic
           docker_tags: |
@@ -152,6 +159,16 @@ jobs:
             linux/amd64
             linux/arm64
           docker_path: 'noble-kilted'
+        - docker_tag: resolute
+          docker_tags: |
+            introlab3it/rtabmap:resolute
+            introlab3it/rtabmap:26.04
+          docker_args: |
+            NOT_USED=0
+          docker_platforms: |
+            linux/amd64
+            linux/arm64
+          docker_path: 'resolute'
         - docker_tag: android23
           docker_tags: |
             introlab3it/rtabmap:android23
