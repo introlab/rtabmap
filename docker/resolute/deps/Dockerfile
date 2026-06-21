@@ -84,6 +84,8 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
 RUN git clone --branch 4.10.0 https://github.com/opencv/opencv.git && \
     git clone --branch 4.10.0 https://github.com/opencv/opencv_contrib.git && \
     cd opencv && \
+    # FFmpeg 7/8 compatibility (Ubuntu 26.04): avcodec_close / av_stream_get_side_data removed
+    git -c user.email=docker@build -c user.name=docker cherry-pick -x 90c444abd387ffa70b2e72a34922903a2f0f4f5a 443d0ae63fad6dfd8c485d609203db16c8bd0ec3 && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DWITH_TBB=ON -DWITH_ADE=OFF -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
