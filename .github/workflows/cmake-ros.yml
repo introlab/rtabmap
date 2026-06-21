@@ -3,7 +3,7 @@ name: CMake-ROS
 on:
   push:
     branches: 
-      - master
+      - lyrical-devel
   pull_request:
     branches: 
       - '**'
@@ -30,7 +30,7 @@ jobs:
         ros_distribution: [ lyrical ]
         include:
         - ros_distribution: 'lyrical'
-          skip_keys: "libpointmatcher"
+          skip_keys: "" # When releasing to ROS2, the skip_keys shoudl be empty, patch these deps in package.xml instead.
     container:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
     steps:   
