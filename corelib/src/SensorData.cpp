@@ -548,7 +548,7 @@ void SensorData::setOccupancyGrid(
 			float cellSize,
 			const cv::Point3f & viewPoint)
 {
-	UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
+	//UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
 	if((!ground.empty() && (!_groundCellsCompressed.empty() || !_groundCellsRaw.empty())) ||
 	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())) ||
 	   (!empty.empty() && (!_emptyCellsCompressed.empty() || !_emptyCellsRaw.empty())))
@@ -649,7 +649,7 @@ void SensorData::uncompressData(
 		cv::Mat * emptyCellsRaw,
 		cv::Mat * depthConfidenceRaw)
 {
-	UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d,%d)", 
+	/*UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d,%d)", 
 		this->id(),
 		imageRaw?1:0,
 		depthRaw?1:0,
@@ -658,7 +658,7 @@ void SensorData::uncompressData(
 		groundCellsRaw?1:0,
 		obstacleCellsRaw?1:0, 
 		emptyCellsRaw?1:0,
-		depthConfidenceRaw?1:0);
+		depthConfidenceRaw?1:0);*/
 	if(imageRaw == 0 &&
 		depthRaw == 0 &&
 		laserScanRaw == 0 &&
@@ -976,7 +976,7 @@ unsigned long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			(_descriptors.empty()?0:_descriptors.total()*_descriptors.elemSize());
 }
 
-void SensorData::clearCompressedData(bool images, bool scan, bool userData)
+void SensorData::clearCompressedData(bool images, bool scan, bool userData, bool occupancyGrid)
 {
 	if(images)
 	{
@@ -992,14 +992,32 @@ void SensorData::clearCompressedData(bool images, bool scan, bool userData)
 	{
 		_userDataCompressed=cv::Mat();
 	}
+	if(occupancyGrid)
+	{
+		_groundCellsCompressed=cv::Mat();
+		_emptyCellsCompressed=cv::Mat();
+		_obstacleCellsCompressed=cv::Mat();
+		
+		if( _groundCellsCompressed.empty()  && _groundCellsRaw.empty() &&
+			_obstacleCellsCompressed.empty()  && _obstacleCellsRaw.empty() &&
+			_emptyCellsCompressed.empty()  && _emptyCellsRaw.empty())
+		{
+			_cellSize = 0.0f;
+			_viewPoint = cv::Point3f();
+		}
+	}
 }
-void SensorData::clearRawData(bool images, bool scan, bool userData)
+void SensorData::clearRawData(bool images, bool scan, bool userData, bool occupancyGrid)
 {
 	if(images)
 	{
 		_imageRaw=cv::Mat();
 		_depthOrRightRaw=cv::Mat();
 		_depthConfidenceRaw=cv::Mat();
+#ifdef HAVE_OPENCV_CUDEV
+		_imageRawGpu = cv::cuda::GpuMat();
+		_depthOrRightRawGpu = cv::cuda::GpuMat();
+#endif
 	}
 	if(scan)
 	{
@@ -1008,6 +1026,20 @@ void SensorData::clearRawData(bool images, bool scan, bool userData)
 	if(userData)
 	{
 		_userDataRaw=cv::Mat();
+	}
+	if(occupancyGrid)
+	{
+		_groundCellsRaw=cv::Mat();
+		_emptyCellsRaw=cv::Mat();
+		_obstacleCellsRaw=cv::Mat();
+
+		if( _groundCellsCompressed.empty()  && _groundCellsRaw.empty() &&
+			_obstacleCellsCompressed.empty()  && _obstacleCellsRaw.empty() &&
+			_emptyCellsCompressed.empty()  && _emptyCellsRaw.empty())
+		{
+			_cellSize = 0.0f;
+			_viewPoint = cv::Point3f();
+		}
 	}
 }
 

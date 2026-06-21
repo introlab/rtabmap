@@ -41,6 +41,7 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
 	camera/CameraSeerSense.cpp
+	camera/CameraOrbbecSDK.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -97,10 +98,12 @@ SET(SRC_FILES
     odometry/OdometryORBSLAM3.cpp
     odometry/OdometryLOAM.cpp
     odometry/OdometryFLOAM.cpp
+    odometry/OdometryLIOSAM.cpp
     odometry/OdometryMSCKF.cpp
-    odometry/OdometryVINS.cpp
+    odometry/OdometryVINSFusion.cpp
     odometry/OdometryOpenVINS.cpp
     odometry/OdometryOpen3D.cpp
+	odometry/OdometryCuVSLAM.cpp
     
     IMU.cpp
     IMUThread.cpp
@@ -163,10 +166,6 @@ IF(MSVC)
 ENDIF(MSVC)
 
 SET(INCLUDE_DIRS
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}/include
 	${ZLIB_INCLUDE_DIRS}
 )
 
@@ -217,11 +216,21 @@ IF(TORCH_FOUND)
 		${SRC_FILES}
 		superpoint_torch/SuperPoint.cc
 	)
-	 SET(INCLUDE_DIRS
+	SET(INCLUDE_DIRS
 	    ${TORCH_INCLUDE_DIRS}
 	    ${CMAKE_CURRENT_SOURCE_DIR}/superpoint_torch
 		${INCLUDE_DIRS}
 	)
+	IF(WITH_PYTHON AND Python3_FOUND)
+		SET(SRC_FILES
+			${SRC_FILES}
+			superpoint_rpautrat/SuperpointRpautrat.cpp
+		)
+		SET(INCLUDE_DIRS
+	    	${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat
+			${INCLUDE_DIRS}
+		)
+	ENDIF(WITH_PYTHON AND Python3_FOUND)
 ENDIF(TORCH_FOUND)
 
 IF(WITH_PYTHON AND Python3_FOUND)
@@ -394,6 +403,13 @@ IF(xvsdk_FOUND)
 	)
 ENDIF(xvsdk_FOUND)
 
+IF(OrbbecSDK_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		ob::OrbbecSDK
+	)
+ENDIF(OrbbecSDK_FOUND)
+
 IF(TARGET OpenMP::OpenMP_CXX)
 	SET(LIBRARIES
 		${LIBRARIES}
@@ -517,6 +533,13 @@ IF(FastCV_FOUND)
 	)
 ENDIF(FastCV_FOUND)
 
+IF(apriltag_FOUND)
+	SET(LIBRARIES
+		apriltag::apriltag
+		${LIBRARIES}
+	)
+ENDIF(apriltag_FOUND)
+
 IF(opengv_FOUND)
     SET(LIBRARIES
         ${LIBRARIES}
@@ -588,6 +611,18 @@ IF(floam_FOUND)
         ${floam_LIBRARIES}
     )
 ENDIF(floam_FOUND)
+
+IF(lio_sam_FOUND)
+    SET(INCLUDE_DIRS
+        ${INCLUDE_DIRS}
+        ${lio_sam_INCLUDE_DIRS}
+    )
+    link_directories(${lio_sam_LIBRARY_DIRS})
+    SET(LIBRARIES
+        ${LIBRARIES}
+        lio_sam_core
+    )
+ENDIF(lio_sam_FOUND)
 
 IF(ZED_FOUND)
 	SET(INCLUDE_DIRS
@@ -746,16 +781,16 @@ IF(vins_FOUND)
 	)
 ENDIF(vins_FOUND)
 
-IF(ov_msckf_FOUND)
+IF(OpenVINS_FOUND)
     SET(INCLUDE_DIRS
-		${ov_msckf_INCLUDE_DIRS}
+		${OpenVINS_INCLUDE_DIRS}
 		${INCLUDE_DIRS}
 	)
 	SET(LIBRARIES
-		${ov_msckf_LIBRARIES}
+		${OpenVINS_LIBRARIES}
 		${LIBRARIES}
 	)
-ENDIF(ov_msckf_FOUND)
+ENDIF(OpenVINS_FOUND)
 
 IF(ORB_SLAM_FOUND)
     SET(INCLUDE_DIRS
@@ -768,38 +803,18 @@ IF(ORB_SLAM_FOUND)
 	)
 ENDIF(ORB_SLAM_FOUND)
 
-IF(GTSAM_FOUND)
-	# Make sure GTSAM is built with system Eigen, not the included one in its package
-	IF(GTSAM_INCLUDE_DIR)
-		SET(INCLUDE_DIRS 
-			${INCLUDE_DIRS} 
-			${GTSAM_INCLUDE_DIR} 
-		)
-	ELSE()
-		SET(INCLUDE_DIRS 
-			${INCLUDE_DIRS} 
-			${GTSAM_INCLUDE_DIRS}
-		)
-	ENDIF()
-	SET(SRC_FILES
-    	${SRC_FILES}
-		optimizer/gtsam/GravityFactor.cpp
+IF(CUVSLAM_FOUND)
+    SET(LIBRARIES
+		${LIBRARIES}
+		cuvslam::cuvslam
 	)
-	IF(WIN32)
-		# GTSAM should be built in STATIC on Windows to avoid "error C2338: THIS_METHOD_IS_ONLY_FOR_1x1_EXPRESSIONS" when building GTSAM
-		add_definitions("-DGTSAM_IMPORT_STATIC") 
-	ENDIF(WIN32)
+ENDIF(CUVSLAM_FOUND)
+
+IF(GTSAM_FOUND)
 	SET(LIBRARIES
 		${LIBRARIES}
-		gtsam # Windows: Place static libs at the end
+		gtsam
 	)
-	IF(WIN32)
-		#explicitly add metis target on windows (after gtsam target)
-		SET(LIBRARIES
-			${LIBRARIES}
-			metis
-		)
-	ENDIF(WIN32)
 ENDIF(GTSAM_FOUND)
 
 IF(WITH_MADGWICK)
@@ -816,6 +831,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql.in ${CMA
 
 SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql
+	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_22_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_20_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_18_3.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_18_0.sql
@@ -824,6 +840,13 @@ SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_1.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_16_0.sql
 )
+
+IF(TORCH_FOUND AND WITH_PYTHON AND Python3_FOUND)
+	SET(RESOURCES
+		${RESOURCES}
+		${CMAKE_CURRENT_SOURCE_DIR}/superpoint_rpautrat/superpoint_to_torchscript.py
+	)
+ENDIF()
 
 foreach(arg ${RESOURCES})
    get_filename_component(filename ${arg} NAME)
@@ -857,8 +880,12 @@ generate_export_header(rtabmap_core
  DEPRECATED_MACRO_NAME RTABMAP_DEPRECATED)
 
 target_include_directories(rtabmap_core PUBLIC 
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR}/include;${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
-  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR};${PUBLIC_INCLUDE_DIRS}>")
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/../include;${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_BINARY_DIR}/include>"
+  "$<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>")
+
+target_include_directories(rtabmap_core SYSTEM PUBLIC 
+  "$<BUILD_INTERFACE:${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
+  "$<INSTALL_INTERFACE:${PUBLIC_INCLUDE_DIRS}>")
   
 TARGET_LINK_LIBRARIES(rtabmap_core 
   PUBLIC 

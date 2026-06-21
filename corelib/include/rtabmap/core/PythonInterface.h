@@ -8,6 +8,7 @@
 #ifndef CORELIB_SRC_PYTHON_PYTHONINTERFACE_H_
 #define CORELIB_SRC_PYTHON_PYTHONINTERFACE_H_
 
+#include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <string>
 #include <rtabmap/utilite/UMutex.h>
@@ -23,7 +24,7 @@ namespace rtabmap {
  * Create a single PythonInterface on main thread at
  * global scope before any Python classes.
  */
-class PythonInterface
+class RTABMAP_CORE_EXPORT PythonInterface
 {
 public:
 	PythonInterface();
@@ -34,7 +35,7 @@ private:
 	pybind11::gil_scoped_release* release_;
 };
 
-std::string getPythonTraceback();
+std::string RTABMAP_CORE_EXPORT getPythonTraceback();
 
 }
 

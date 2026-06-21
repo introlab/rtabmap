@@ -47,6 +47,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_TORCH
 #include "superpoint_torch/SuperPoint.h"
 #endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+#include "superpoint_rpautrat/SuperpointRpautrat.h"
+#endif
 
 #ifdef RTABMAP_PYTHON
 #include "python/PyDetector.h"
@@ -300,7 +303,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		cv::Mat descriptorsTmp;
 		if(ssc)
 		{
-			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with SSC", keypoints.size());
 
 			// Sorting keypoints by deacreasing order of strength
 			std::vector<float> responseVector;
@@ -416,7 +419,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 		inliers.resize(keypoints.size(), false);
 		if(ssc)
 		{
-			ULOGGER_DEBUG("too much words (%d), removing words with SSC", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with SSC", keypoints.size());
 
 			// Sorting keypoints by deacreasing order of strength
 			std::vector<float> responseVector;
@@ -463,7 +466,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 				minimumHessian = iter->first;
 			}
 		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, maxKeypoints, minimumHessian);
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size()-removed, minimumHessian);
 		ULOGGER_DEBUG("filter keypoints time = %f s", timer.ticks());
 	}
 	else
@@ -730,9 +733,14 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 		feature2D = new ORBOctree(parameters);
 		break;
 #ifdef RTABMAP_TORCH
-	case Feature2D::kFeatureSuperPointTorch:
-		feature2D = new SuperPointTorch(parameters);
-		break;
+case Feature2D::kFeatureSuperPointTorch:
+    feature2D = new SuperPointTorch(parameters);
+    break;
+#endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+case Feature2D::kFeatureSuperPointRpautrat:
+    feature2D = new SuperPointRpautrat(parameters);
+    break;
 #endif
 	case Feature2D::kFeatureSurfFreak:
 		feature2D = new SURF_FREAK(parameters);
@@ -831,7 +839,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> subKeypoints;
 			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
-			if (this->getType() != Feature2D::Type::kFeaturePyDetector)
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector && this->getType() != Feature2D::Type::kFeatureSuperPointRpautrat)
 			{
 				limitKeypoints(subKeypoints, maxFeatures, roi.size(), this->getSSC());
 			}
@@ -879,8 +887,17 @@ cv::Mat Feature2D::generateDescriptors(
 		UASSERT(!image.empty());
 		UASSERT(image.type() == CV_8UC1);
 		descriptors = generateDescriptorsImpl(image, keypoints);
-		UASSERT_MSG(descriptors.rows == (int)keypoints.size(), uFormat("descriptors=%d, keypoints=%d", descriptors.rows, (int)keypoints.size()).c_str());
-		UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+		if(descriptors.rows != (int)keypoints.size())
+		{
+			UWARN("Descriptor extraction returned %d rows for %d keypoints — "
+					"clearing keypoints to keep them in sync.",
+					descriptors.rows, (int)keypoints.size());
+			keypoints.clear();
+			descriptors = cv::Mat();
+		}
+		else {
+			UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+		}
 	}
 	return descriptors;
 }
@@ -1243,7 +1260,8 @@ SIFT::SIFT(const ParametersMap & parameters) :
 	preciseUpscale_(Parameters::defaultSIFTPreciseUpscale()),
 	rootSIFT_(Parameters::defaultSIFTRootSIFT()),
 	gpu_(Parameters::defaultSIFTGpu()),
-	guaussianThreshold_(Parameters::defaultSIFTGaussianThreshold()),
+	gaussianThreshold_(Parameters::defaultSIFTGaussianThreshold()),
+	maxGaussianThreshold_(Parameters::defaultSIFTMaxGaussianThreshold()),
 	upscale_(Parameters::defaultSIFTUpscale()),
 	cudaSiftData_(0),
 	cudaSiftMemory_(0),
@@ -1276,23 +1294,25 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTPreciseUpscale(), preciseUpscale_);
 	Parameters::parse(parameters, Parameters::kSIFTRootSIFT(), rootSIFT_);
 	Parameters::parse(parameters, Parameters::kSIFTGpu(), gpu_);
-	Parameters::parse(parameters, Parameters::kSIFTGaussianThreshold(), guaussianThreshold_);
+	Parameters::parse(parameters, Parameters::kSIFTGaussianThreshold(), gaussianThreshold_);
+	Parameters::parse(parameters, Parameters::kSIFTMaxGaussianThreshold(), maxGaussianThreshold_);
 	Parameters::parse(parameters, Parameters::kSIFTUpscale(), upscale_);
 	
 	if(gpu_)
 	{
 #ifdef RTABMAP_CUDASIFT
 		// Check if there is a cuda device
-		if(InitCuda(0, ULogger::level() == ULogger::kDebug)) {
-			UDEBUG("Init SiftData");
-			if(cudaSiftData_ == 0) {
+		if(cudaSiftData_==0)
+		{
+			if(InitCuda(0, ULogger::level() == ULogger::kDebug)) {
+				UDEBUG("Init SiftData");
 				cudaSiftData_ = new SiftData();
 				InitSiftData(*cudaSiftData_, 8192, true, true);
 			}
-		}
-		else{
-			UWARN("No cuda device(s) detected, CudaSift is not available! Using SIFT CPU version instead.");
-			gpu_ = false;
+			else{
+				UWARN("No cuda device(s) detected, CudaSift is not available! Using SIFT CPU version instead.");
+				gpu_ = false;
+			}
 		}
 #else
 		UWARN("RTAB-Map is not built with CudaSift so %s cannot be used!", Parameters::kSIFTGpu().c_str());
@@ -1355,7 +1375,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 			numOctaves = 7; // hard-coded limit in CudaSift
 		}
 		float initBlur = sigma_; /* Amount of initial Gaussian blurring in standard deviations */
-		float thresh = guaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
+		float thresh = gaussianThreshold_;   /* Threshold on difference of Gaussians for feature pruning */
 		float edgeLimit = edgeThreshold_;   
 		float minScale = 0.0f; /* Minimum acceptable scale to remove fine-scale features */
 		UDEBUG("numOctaves=%d initBlur=%f thresh=%f edgeLimit=%f minScale=%f upScale=%s w=%d h=%d", numOctaves, initBlur, thresh, edgeLimit, minScale, upscale_?"true":"false", w, h);
@@ -1380,15 +1400,9 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 		cudaSiftDescriptors_ = cv::Mat();
 		if(cudaSiftData_->numPts)
 		{
-			int maxKeypoints = this->getMaxFeatures();
-			if(maxKeypoints == 0 || maxKeypoints > cudaSiftData_->numPts)
-			{
-				maxKeypoints = cudaSiftData_->numPts;
-			}
-
-			// Re-using same implementation of limitKeypoints() directly here to avoid doubling memory copies
-			// Sort words by hessian
-			std::multimap<float, int> hessianMap; // <hessian,id>
+			keypoints.resize(cudaSiftData_->numPts);
+			cudaSiftDescriptors_ = cv::Mat(cudaSiftData_->numPts, 128, CV_32FC1);
+			size_t k=0;
 			for(int i=0; i<cudaSiftData_->numPts; ++i)
 			{
 				// Ignore keypoints with invalid descriptors
@@ -1405,29 +1419,40 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 					continue;
 				}
 
-				//Keep track of the data, to be easier to manage the data in the next step
-				hessianMap.insert(std::pair<float, int>(cudaSiftData_->h_data[i].sharpness, i));
-			}
+				if(i>0 && 
+					cudaSiftData_->h_data[i].subsampling == cudaSiftData_->h_data[i-1].subsampling &&
+					fabs(cudaSiftData_->h_data[i].xpos-cudaSiftData_->h_data[i-1].xpos) +
+					fabs(cudaSiftData_->h_data[i].xpos-cudaSiftData_->h_data[i-1].ypos) < 0.1f)
+				{
+					// Same feature, skip doubles
+					continue;
+				}
 
-			if((int)hessianMap.size() < maxKeypoints)
-			{
-				maxKeypoints = hessianMap.size();
-			}
+				float response = abs(cudaSiftData_->h_data[i].sharpness);
+				if(maxGaussianThreshold_>gaussianThreshold_ && response > maxGaussianThreshold_)
+				{
+					continue;
+				}
 
-			std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
-			keypoints.resize(maxKeypoints);
-			cudaSiftDescriptors_ = cv::Mat(maxKeypoints, 128, CV_32FC1);
-			for(unsigned int k=0; k<keypoints.size() && iter!=hessianMap.rend(); ++k, ++iter)
-			{
-				int i = iter->second;
-				float *desc = cudaSiftData_->h_data[i].data;
 				cv::Mat(1, 128, CV_32FC1, desc).copyTo(cudaSiftDescriptors_.row(k));
 				keypoints[k].pt.x = cudaSiftData_->h_data[i].xpos;
 				keypoints[k].pt.y = cudaSiftData_->h_data[i].ypos;
 				keypoints[k].size = 2.0f*cudaSiftData_->h_data[i].scale; // x2 because the scale is more like a radius than a diameter, see CudaSift's ExtractSiftDescriptors function to see how they convert scale to patch size
 				keypoints[k].angle = cudaSiftData_->h_data[i].orientation;
-				keypoints[k].response = cudaSiftData_->h_data[i].sharpness; 
+				keypoints[k].response = response; 
 				keypoints[k].octave = log2(cudaSiftData_->h_data[i].subsampling)-(upscale_?1:0);
+				++k;
+			}
+			if(k < keypoints.size())
+			{
+				UDEBUG("keypoints extracted = %d, valid=%d", keypoints.size(), k);
+				keypoints.resize(k);
+				cudaSiftDescriptors_.resize(k);
+			}
+			if(this->getMaxFeatures() != 0 && this->getMaxFeatures() < (int)keypoints.size())
+			{
+				// Call limitKeypoints() now to filter the descriptors.
+				this->limitKeypoints(keypoints, cudaSiftDescriptors_, this->getMaxFeatures(), cv::Size(w,h), this->getSSC());
 			}
 		}
 	}
@@ -1449,12 +1474,13 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 
 cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
+	cv::Mat descriptors;
 #ifdef RTABMAP_CUDASIFT
 	if(gpu_)
 	{
 		if((int)keypoints.size() == cudaSiftDescriptors_.rows)
 		{
-			return cudaSiftDescriptors_.clone();
+			descriptors = cudaSiftDescriptors_.clone();
 		}
 		else
 		{
@@ -1462,19 +1488,25 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 			return cv::Mat();
 		}
 	}
+	else
+	{
 #endif
 
-	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	cv::Mat descriptors;
+		UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 #ifdef RTABMAP_NONFREE
-	sift_->compute(image, keypoints, descriptors);
+		sift_->compute(image, keypoints, descriptors);
 #else
-	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+		UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
 #else // >=4.4, >=3.4.11
-	sift_->compute(image, keypoints, descriptors);
+		sift_->compute(image, keypoints, descriptors);
 #endif
+
+#ifdef RTABMAP_CUDASIFT
+	}
+#endif
+
 	if( rootSIFT_ && !descriptors.empty())
 	{
 		UDEBUG("Performing RootSIFT...");
@@ -2607,9 +2639,159 @@ cv::Mat SuperPointTorch::generateDescriptorsImpl(const cv::Mat & image, std::vec
 {
 #ifdef RTABMAP_TORCH
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	return superPoint_->compute(keypoints);
+	cv::Mat descriptors;
+	if(!keypoints.empty())
+	{
+		descriptors = superPoint_->compute(keypoints);
+		if(descriptors.empty())
+		{
+			// superpoint may have been reset between keypoint detection and now,
+			// re-detect features to re-inialize the descriptors matrix, then
+			// re-extract descriptors with original keypoints.
+			UWARN("Re-initializing superpoint on that image to extract descriptors");
+			if(!superPoint_->detect(image).empty())
+			{
+				descriptors = superPoint_->compute(keypoints);
+				if(descriptors.rows == (int)keypoints.size())
+				{
+					UWARN("Sucessfully re-initialized superpoint, returning %d descriptors.", descriptors.rows);
+				}
+			}
+			else
+			{
+				UWARN("Failed to re-initialize superpoint on that image, returning empty descriptors.");
+			}
+		}
+	}
+	return descriptors;
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Torch feature cannot be used!");
+	return cv::Mat();
+#endif
+}
+
+
+//////////////////////////
+//SuperPointRpautrat
+//////////////////////////
+SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
+		superpointWeightsPath_(Parameters::defaultSuperPointRpautratWeightsPath()),
+		superpointModelPath_(Parameters::defaultSuperPointRpautratModelPath()),
+		outputDir_(""),
+		threshold_(Parameters::defaultSuperPointRpautratThreshold()),
+		nms_(Parameters::defaultSuperPointRpautratNMS()),
+		minDistance_(Parameters::defaultSuperPointRpautratNMSRadius()),
+		cuda_(Parameters::defaultSuperPointRpautratCuda())
+{
+	parseParameters(parameters);
+}
+
+SuperPointRpautrat::~SuperPointRpautrat()
+{
+}
+
+void SuperPointRpautrat::parseParameters(const ParametersMap & parameters)
+{
+	Feature2D::parseParameters(parameters);
+
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	std::string previousWeightsPath = superpointWeightsPath_;
+	std::string previousModelPath = superpointModelPath_;
+	bool previousCuda = cuda_;
+	float previousThreshold = threshold_;
+	bool previousNms = nms_;
+	int previousMinDistance = minDistance_;
+	
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratWeightsPath(), superpointWeightsPath_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratModelPath(), superpointModelPath_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratThreshold(), threshold_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMS(), nms_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratNMSRadius(), minDistance_);
+	Parameters::parse(parameters, Parameters::kSuperPointRpautratCuda(), cuda_);
+	Parameters::parse(parameters, Parameters::kRtabmapWorkingDirectory(), outputDir_);
+
+	// If working directory is not set, use the default
+	if(outputDir_.empty())
+	{
+		outputDir_ = Parameters::createDefaultWorkingDirectory();
+	}
+
+	// Reinitialize detector if model-affecting parameters changed
+	if(superPoint_.get() == 0 || 
+	   superpointWeightsPath_.compare(previousWeightsPath) != 0 || 
+	   superpointModelPath_.compare(previousModelPath) != 0 ||
+	   previousCuda != cuda_ ||
+	   previousThreshold != threshold_ ||
+	   previousNms != nms_ ||
+	   previousMinDistance != minDistance_)
+	{
+		superPoint_ = cv::Ptr<SPDetectorRpautrat>(new SPDetectorRpautrat(superpointWeightsPath_, superpointModelPath_, outputDir_, threshold_, nms_, minDistance_, cuda_, this->getMaxFeatures(), this->getSSC()));
+	}
+	else if(superPoint_.get() != 0)
+	{
+		// Update post-processing parameters without reinitializing
+		superPoint_->setMaxFeatures(this->getMaxFeatures());
+		superPoint_->setSSC(this->getSSC());
+	}
+#else
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
+#endif
+}
+
+std::vector<cv::KeyPoint> SuperPointRpautrat::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
+{
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	if(roi.x!=0 || roi.y !=0)
+	{
+		UERROR("SuperPoint Rpautrat: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
+				roi.x, roi.y, roi.width, roi.height,
+				Parameters::kKpRoiRatios().c_str(),
+				Parameters::kVisRoiRatios().c_str(),
+				Parameters::kVisGridRows().c_str(),
+				Parameters::kVisGridCols().c_str(),
+				Parameters::kKpGridRows().c_str(),
+				Parameters::kKpGridCols().c_str());
+		return std::vector<cv::KeyPoint>();
+	}
+	return superPoint_->detect(image, mask);
+#else
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
+	return std::vector<cv::KeyPoint>();
+#endif
+}
+
+cv::Mat SuperPointRpautrat::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	if(!keypoints.empty())
+	{
+		descriptors = superPoint_->compute(keypoints);
+		if(descriptors.empty())
+		{
+			// superpoint may have been reset between keypoint detection and now,
+			// re-detect features to re-inialize the descriptors matrix, then
+			// re-extract descriptors with original keypoints.
+			UWARN("Re-initializing superpoint on that image to extract descriptors");
+			if(!superPoint_->detect(image).empty())
+			{
+				descriptors = superPoint_->compute(keypoints);
+				if(descriptors.rows == (int)keypoints.size())
+				{
+					UWARN("Sucessfully re-initialized superpoint, returning %d descriptors.", descriptors.rows);
+				}
+			}
+			else
+			{
+				UWARN("Failed to re-initialize superpoint on that image, returning empty descriptors.");
+			}
+		}
+	}
+	return descriptors;
+#else
+	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
 	return cv::Mat();
 #endif
 }

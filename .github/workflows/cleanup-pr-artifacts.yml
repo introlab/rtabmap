@@ -1,0 +1,15 @@
+name: Cleanup PR Artifacts
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete-artifacts:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete PR Artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: build-output-*

@@ -3703,7 +3703,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							0,
 							0,
 							0,
-							_ui->checkBox_fromDepth->isChecked()?&confidence:0);
+							_ui->checkBox_fromDepth->isChecked()&&_ui->spinBox_depthConfidence->value()>0?&confidence:0);
 				}
 				else if(_dbDriver)
 				{
@@ -3717,7 +3717,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							0,
 							0,
 							0,
-							_ui->checkBox_fromDepth->isChecked()?&confidence:0);
+							_ui->checkBox_fromDepth->isChecked()&&_ui->spinBox_depthConfidence->value()>0?&confidence:0);
 				}
 
 				if(_ui->checkBox_fromDepth->isChecked() && !data.imageRaw().empty() && !data.depthOrRightRaw().empty())

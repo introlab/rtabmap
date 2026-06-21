@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>552</width>
-    <height>633</height>
+    <width>553</width>
+    <height>662</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -67,10 +67,10 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QLabel" name="label_3">
+        <item row="4" column="1">
+         <widget class="QLabel" name="label_9">
           <property name="text">
-           <string>Cluster radius</string>
+           <string>Inter-session</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
@@ -87,10 +87,10 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QLabel" name="label_6">
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_3">
           <property name="text">
-           <string>Iterations</string>
+           <string>Cluster radius</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
@@ -120,16 +120,6 @@
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
-         <widget class="QLabel" name="label_9">
-          <property name="text">
-           <string>Inter-session</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item row="3" column="0">
          <widget class="QCheckBox" name="intraSession">
           <property name="text">
@@ -137,10 +127,46 @@
           </property>
          </widget>
         </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Iterations</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
         <item row="4" column="0">
          <widget class="QCheckBox" name="interSession">
           <property name="text">
            <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Minimum graph distance</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QSpinBox" name="minGraphDistance">
+          <property name="suffix">
+           <string> nodes</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>9999</number>
+          </property>
+          <property name="value">
+           <number>10</number>
           </property>
          </widget>
         </item>

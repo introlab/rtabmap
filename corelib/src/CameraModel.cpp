@@ -353,6 +353,22 @@ bool CameraModel::load(const std::string & filePath)
 						data[0], data[1], data[2], data[3],
 						data[4], data[5], data[6], data[7],
 						data[8], data[9], data[10], data[11]);
+				Transform detCheck = localTransform_.clone();
+				localTransform_.normalizeRotation(); /// Normalize by default
+				float det = detCheck.toEigen3f().linear().determinant();
+				if(fabs(det - 1.0f) > 0.0001)
+				{
+					std::stringstream streamBefore, streamAfter;
+					streamBefore << detCheck << std::endl;
+					streamAfter << localTransform_ << std::endl;
+					UWARN("The camera model's local_transform from \"%s\" doesn't "
+						"have a normalized rotation matrix (dertminant=%f). We will normalize "
+						"it for convenience.\nWas:\n%sNow\n%s",
+						filePath.c_str(),
+						det,
+						streamBefore.str().c_str(),
+						streamAfter.str().c_str());
+				}
 			}
 			else
 			{
@@ -554,7 +570,7 @@ unsigned int CameraModel::deserialize(const unsigned char * data, unsigned int d
 			int iR = 8;
 			int iP = 9;
 			int iL = 10;
-			UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10]);
+			//UDEBUG("Header: %d %d %d %d %d %d %d %d %d %d %d", header[0],header[1],header[2],header[3],header[4],header[5],header[6],header[7],header[8],header[9],header[10]);
 			unsigned int requiredDataSize = sizeof(int)*headerSize +
 					sizeof(double)*(header[iK]+header[iD]+header[iR]+header[iP]) +
 					sizeof(float)*header[iL];

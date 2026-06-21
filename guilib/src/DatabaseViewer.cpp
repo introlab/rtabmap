@@ -239,6 +239,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopClosureReextractFeatures()));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopCovLimited()));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDProximityPathFilteringRadius()));
+	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kMemSTMSize()));
 	ui_->parameters_toolbox->setupUi(parameters);
 	exportDialog_->setObjectName("ExportCloudsDialog");
 	restoreDefaultSettings();
@@ -394,11 +395,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->toolButton_constraint, SIGNAL(clicked(bool)), this, SLOT(editConstraint()));
 	connect(ui_->checkBox_enableForAll, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintButtons()));
 
-	ui_->horizontalSlider_iterations->setTracking(false);
+	ui_->horizontalSlider_iterations->setTracking(true);
 	ui_->horizontalSlider_iterations->setEnabled(false);
 	ui_->spinBox_optimizationsFrom->setEnabled(false);
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
-	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->comboBox_optimizationFlavor, SIGNAL(activated(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -454,6 +454,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_alignScansCloudsWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->comboBox_env_sensor_graph_colormap, SIGNAL(currentIndexChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
@@ -481,6 +482,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_intraSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_detectMore_interSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->spinBox_minGraphDistance, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_opt_graph_as_guess, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
@@ -678,6 +680,7 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_detectMore_intraSession->setChecked(settings.value("intra_session", ui_->checkBox_detectMore_intraSession->isChecked()).toBool());
 	ui_->checkBox_detectMore_interSession->setChecked(settings.value("inter_session", ui_->checkBox_detectMore_interSession->isChecked()).toBool());
 	ui_->checkBox_opt_graph_as_guess->setChecked(settings.value("opt_graph_as_guess", ui_->checkBox_opt_graph_as_guess->isChecked()).toBool());
+	ui_->spinBox_minGraphDistance->setValue(settings.value("min_graph_distance", ui_->spinBox_minGraphDistance->value()).toInt());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -775,6 +778,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("intra_session", ui_->checkBox_detectMore_intraSession->isChecked());
 	settings.setValue("inter_session", ui_->checkBox_detectMore_interSession->isChecked());
 	settings.setValue("opt_graph_as_guess", ui_->checkBox_opt_graph_as_guess->isChecked());
+	settings.setValue("min_graph_distance", ui_->spinBox_minGraphDistance->value());
 	settings.endGroup();
 	settings.endGroup();
 
@@ -855,6 +859,8 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_detectMore_intraSession->setChecked(true);
 	ui_->checkBox_detectMore_interSession->setChecked(true);
 	ui_->checkBox_opt_graph_as_guess->setChecked(true);
+	ui_->spinBox_fromToMapId->setValue(-1);
+	ui_->spinBox_minGraphDistance->setValue(10);
 }
 
 void DatabaseViewer::openDatabase()
@@ -1129,6 +1135,7 @@ bool DatabaseViewer::closeDatabase()
 		lastWmIds_.clear();
 		mapIds_.clear();
 		weights_.clear();
+		envSensors_.clear();
 		wmStates_.clear();
 		links_.clear();
 		linksAdded_.clear();
@@ -1806,6 +1813,7 @@ void DatabaseViewer::updateIds()
 	idToIndex_.clear();
 	mapIds_.clear();
 	weights_.clear();
+	envSensors_.clear();
 	wmStates_.clear();
 	odomPoses_.clear();
 	groundTruthPoses_.clear();
@@ -1912,6 +1920,7 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps, sensors);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
+		envSensors_.insert(std::make_pair(ids_[i], sensors));
 		if(w>=0)
 		{
 			for(std::multimap<int, Link>::iterator iter=links.find(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
@@ -4281,10 +4290,12 @@ void DatabaseViewer::detectMoreLoopClosures()
 	const ParametersMap & parameters = ui_->parameters_toolbox->getParameters();
 	bool loopCovLimited = Parameters::defaultRGBDLoopCovLimited();
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), loopCovLimited);
+	std::multimap<int, Link> links = updateLinksWithModifications(links_);
 	if(loopCovLimited)
 	{
-		odomMaxInf_ = graph::getMaxOdomInf(updateLinksWithModifications(links_));
+		odomMaxInf_ = graph::getMaxOdomInf(links);
 	}
+	links = graph::filterLinks(links, Link::kNeighbor, true); // keep only neighbor links
 
 	int iterations = ui_->spinBox_detectMore_iterations->value();
 	UASSERT(iterations > 0);
@@ -4294,6 +4305,8 @@ void DatabaseViewer::detectMoreLoopClosures()
 	bool intraSession = ui_->checkBox_detectMore_intraSession->isChecked();
 	bool interSession = ui_->checkBox_detectMore_interSession->isChecked();
 	bool useOptimizedGraphAsGuess = ui_->checkBox_opt_graph_as_guess->isChecked();
+	int fromToMapId = ui_->spinBox_fromToMapId->value();
+	int minimumGraphDistance = ui_->spinBox_minGraphDistance->value();
 	if(!interSession && !intraSession)
 	{
 		QMessageBox::warning(this, tr("Cannot detect more loop closures"), tr("Intra and inter session parameters are disabled! Enable one or both."));
@@ -4310,13 +4323,67 @@ void DatabaseViewer::detectMoreLoopClosures()
 				ui_->doubleSpinBox_detectMore_radius->value(),
 				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
 
-		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
-		progressDialog->appendText(tr("Looking for more loop closures, %1 clusters found.").arg(clusters.size()));
 		QApplication::processEvents();
 		if(progressDialog->isCanceled())
 		{
 			break;
 		}
+
+		progressDialog->appendText(tr("Looking for more loop closures: %1 clusters found.").arg(clusters.size()));
+		if(fromToMapId >=0)
+		{
+			int clusterBefore = clusters.size();
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				int mapId = uValue(mapIds_, iter->first, 0);
+				if(mapId != fromToMapId)
+				{
+					iter = clusters.erase(iter);
+				}
+				else {
+					++iter;
+				}
+			}
+			progressDialog->appendText(tr("Looking for more loop closures: filtered %1/%2 clusters for map session %3.")
+				.arg(clusterBefore-clusters.size()).arg(clusterBefore).arg(fromToMapId));
+			if(clusters.empty())
+			{
+				progressDialog->appendText(tr("No clusters belong to mapId %1, aborting!").arg(fromToMapId));
+				QApplication::processEvents();
+				break;
+			}
+		}
+
+		if(minimumGraphDistance > 1)
+		{
+			int clusterBefore = clusters.size();
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!=clusters.end();)
+			{
+				if(abs(iter->first - iter->second) < minimumGraphDistance)
+				{
+					iter = clusters.erase(iter);
+				}
+				else
+				{
+					// compute path to know how far we are in terms of graph length
+					std::list<int> path = graph::computePath(links, iter->first, iter->second);
+					if(!path.empty() && (int)path.size() <= minimumGraphDistance)
+					{
+						iter = clusters.erase(iter);
+					}
+					else
+					{
+						++iter;
+					}
+				}
+			}
+			progressDialog->appendText(tr("Filtered %1/%2 clusters for too close nodes (below minimum graph distance=%3).")
+				.arg(clusterBefore-clusters.size()).arg(clusterBefore).arg(minimumGraphDistance));
+			QApplication::processEvents();
+		}
+
+		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
+		QApplication::processEvents();
 
 		std::set<int> addedLinks;
 		int i=0;
@@ -4671,10 +4738,17 @@ void DatabaseViewer::graphNodeSelected(int id)
 
 void DatabaseViewer::graphLinkSelected(int from, int to)
 {
-	if(from>0 && idToIndex_.contains(from))
-		ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
-	if(to>0 && idToIndex_.contains(to))
-		ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+	if(from < 0 || to < 0)
+	{
+		updateLoopClosuresSlider(from, to);
+	}
+	else
+	{
+		if(idToIndex_.contains(from))
+			ui_->horizontalSlider_A->setValue(idToIndex_.value(from));
+		if(idToIndex_.contains(to))
+			ui_->horizontalSlider_B->setValue(idToIndex_.value(to));
+	}
 }
 
 void DatabaseViewer::sliderAValueChanged(int value)
@@ -6134,6 +6208,14 @@ void DatabaseViewer::updateWordsMatching(const std::vector<int> & inliers)
 							kptB->keypoint().pt.y,
 							cB);
 				}
+				else if(ids[i]<0)
+				{
+					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::gray);
+				}
+			}
+			for(auto iter = wordsB.begin(); iter.key()<0 && iter!=wordsB.end(); ++iter)
+			{
+				ui_->graphicsView_B->setFeatureColor(iter.key(), Qt::gray);
 			}
 			ui_->graphicsView_A->update();
 			ui_->graphicsView_B->update();
@@ -7100,6 +7182,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 void DatabaseViewer::sliderIterationsValueChanged(int value)
 {
+	UDEBUG("sender=%s value=%d currentValue = %d", sender()?sender()->objectName().toStdString().c_str():"NA", value, ui_->horizontalSlider_iterations->value());
 	if(dbDriver_ && value >=0 && value < (int)graphes_.size())
 	{
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
@@ -7242,7 +7325,47 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGPSGraph(gpsPoses_, gpsValues_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_, weights_);
-		if(ui_->checkBox_wmState->isEnabled() &&
+		if(ui_->comboBox_env_sensor_graph_colormap->currentIndex() != 0)
+		{
+			std::map<int, float> colors;
+			EnvSensor::Type curentType = (EnvSensor::Type)ui_->comboBox_env_sensor_graph_colormap->currentIndex();
+			for(std::map<int, rtabmap::Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				auto jter = envSensors_.find(iter->first);
+				if(jter != envSensors_.end() && jter->second.find(curentType) != jter->second.end())
+				{
+					colors.insert(std::make_pair(iter->first, jter->second.at(curentType).value()));
+				}
+			}
+			std::string legend;
+			bool invertedColor = false;
+			unsigned char hueMax = 240; // blue
+			switch(curentType)
+			{
+				case EnvSensor::kWifiSignalStrength:
+					legend = "Wifi Signal Strength (dBm)";
+					invertedColor = true;
+					hueMax = 120; // green
+					break;
+				case EnvSensor::kAmbientTemperature:
+					legend = "Ambient Temperature (Celcius)";
+					break;
+				case EnvSensor::kAmbientAirPressure:
+					legend = "Ambient Air Pressure (hPa)";
+					break;
+				case EnvSensor::kAmbientLight:
+					legend = "Ambient Light / Illuminance (lx)";
+					break;
+				case EnvSensor::kAmbientRelativeHumidity:
+					legend = "Ambient Relative Humidity (%)";
+					break;
+				default:
+					break;
+			}
+			ui_->graphViewer->updateNodeColorByValue(legend, colors, 0.0f, 0.0f, invertedColor, 0, hueMax, 1);
+			UDEBUG("Updated node color based on env sensor %d", (int)curentType);
+		}
+		else if(ui_->checkBox_wmState->isEnabled() &&
 		   ui_->checkBox_wmState->isChecked() &&
 		   !lastWmIds_.empty())
 		{
@@ -7263,6 +7386,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			{
 				ui_->graphViewer->updateNodeColorByValue("In WM", colors, 1, false, 1);
 			}
+			UDEBUG("Updated node color based working memory state");
 		}
 		QGraphicsRectItem * rectScaleItem = 0;
 		ui_->graphViewer->clearMap();
@@ -7466,12 +7590,15 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 #endif
 		}
-		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+		
 		if(rectScaleItem != 0)
 		{
 			ui_->graphViewer->fitInView(rectScaleItem, Qt::KeepAspectRatio);
 			ui_->graphViewer->scene()->removeItem(rectScaleItem);
 			delete rectScaleItem;
+		}
+		else {
+			ui_->graphViewer->fitInView(ui_->graphViewer->sceneRect(), Qt::KeepAspectRatio);
 		}
 
 		ui_->graphViewer->update();
@@ -7803,8 +7930,7 @@ void DatabaseViewer::updateGraphView()
 
 		// remove intermediate nodes?
 		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
-		   ui_->checkBox_ignoreIntermediateNodes->isEnabled() &&
-		   ui_->checkBox_ignoreIntermediateNodes->isChecked())
+		   (ui_->checkBox_ignoreIntermediateNodes->isChecked() || ui_->comboBox_optimizationFlavor->currentIndex() == 2))
 		{
 			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
@@ -7969,6 +8095,17 @@ void DatabaseViewer::updateGraphView()
 				ui_->label_timeOptimization->setNum(0);
 				ui_->label_poses->setNum((int)optPoses.size());
 				graphes_.push_back(optPoses);
+				// Just get the links:
+				std::map<int, rtabmap::Transform> posesOut;
+				UINFO("Get connected graph from %d (%d poses, %d links)", fromId, (int)poses.size(), (int)links.size());
+				std::shared_ptr<Optimizer> optimizer(Optimizer::create(parameters));
+				optimizer->getConnectedGraph(
+						fromId,
+						optPoses,
+						links,
+						posesOut,
+						graphLinks_);
+				UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)graphLinks_.size());
 			}
 			ui_->horizontalSlider_rotation->setEnabled(false);
 			ui_->pushButton_applyRotation->setEnabled(false);
@@ -8361,7 +8498,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 		}
 
 		Transform toPoseInv = filteredScanPoses.at(currentLink.to()).inverse();
-		dbDriver_->loadNodeData(fromS, !silent, true, !silent, !silent);
+		dbDriver_->loadNodeData(*fromS, !silent, true, !silent, !silent);
 		fromS->sensorData().uncompressData();
 		LaserScan fromScan = fromS->sensorData().laserScanRaw();
 		int maxPoints = fromScan.size();
@@ -8507,8 +8644,8 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 			reextractVisualFeatures ||
 			!silent)
 		{
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 		
 			if(!silent)
 			{
@@ -8603,6 +8740,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 
 	if(!transform.isNull())
 	{
+		UASSERT(!info.covariance.empty());
 		if(!transform.isIdentity())
 		{
 			if(info.covariance.at<double>(0,0)<=0.0)
@@ -8796,9 +8934,9 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 			!silent)
 		{
 			// Add sensor data to generate features
-			dbDriver_->loadNodeData(fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*fromS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			fromS->sensorData().uncompressData();
-			dbDriver_->loadNodeData(toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
+			dbDriver_->loadNodeData(*toS, reextractVisualFeatures || !silent || (reg->isScanRequired() && ui_->checkBox_icp_from_depth->isChecked()), reg->isScanRequired() || !silent, reg->isUserDataRequired() || !silent, !silent);
 			toS->sensorData().uncompressData();
 			if(reextractVisualFeatures)
 			{
@@ -8990,10 +9128,6 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 		int fromId = newLink.from();
 		std::multimap<int, Link> linksIn = updateLinksWithModifications(links_);
 		linksIn.insert(std::make_pair(newLink.from(), newLink));
-		const Link * maxLinearLink = 0;
-		const Link * maxAngularLink = 0;
-		float maxLinearErrorRatio = 0.0f;
-		float maxAngularErrorRatio = 0.0f;
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
@@ -9026,51 +9160,43 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 		std::string msg;
 		if(poses.size())
 		{
-			float maxLinearError = 0.0f;
-			float maxAngularError = 0.0f;
-			graph::computeMaxGraphErrors(
+			graph::MaxGraphErrors maxGraphErrors = graph::computeMaxGraphErrors(
 					poses,
-					links,
-					maxLinearErrorRatio,
-					maxAngularErrorRatio,
-					maxLinearError,
-					maxAngularError,
-					&maxLinearLink,
-					&maxAngularLink);
-			if(maxLinearLink)
+					links);
+			if(maxGraphErrors.linearLink.isValid())
 			{
-				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
-				if(maxLinearErrorRatio > maxOptimizationError)
+				UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to(), maxGraphErrors.linearLink.transVariance(), maxGraphErrors.linear/sqrt(maxGraphErrors.linearLink.transVariance()));
+				if(maxGraphErrors.linearRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
 						  "graph error is too large (abs=%f m) after optimization (ratio %f for edge %d->%d, stddev=%f m). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
-						  maxLinearError,
-						  maxLinearErrorRatio,
-						  maxLinearLink->from(),
-						  maxLinearLink->to(),
-						  sqrt(maxLinearLink->transVariance()),
+						  maxGraphErrors.linear,
+						  maxGraphErrors.linearRatio,
+						  maxGraphErrors.linearLink.from(),
+						  maxGraphErrors.linearLink.to(),
+						  sqrt(maxGraphErrors.linearLink.transVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 				}
 			}
-			if(maxAngularLink)
+			if(maxGraphErrors.angularLink.isValid())
 			{
-				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxAngularError*180.0f/CV_PI, maxAngularLink->from(), maxAngularLink->to(), maxAngularLink->rotVariance(), maxAngularError/sqrt(maxAngularLink->rotVariance()));
-				if(maxAngularErrorRatio > maxOptimizationError)
+				UINFO("Max optimization angular error = %f deg (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.angular*180.0f/CV_PI, maxGraphErrors.angularLink.from(), maxGraphErrors.angularLink.to(), maxGraphErrors.angularLink.rotVariance(), maxGraphErrors.angular/sqrt(maxGraphErrors.angularLink.rotVariance()));
+				if(maxGraphErrors.angularRatio > maxOptimizationError)
 				{
 					msg = uFormat("Rejecting edge %d->%d because "
 						  "graph error is too large (abs=%f deg) after optimization (ratio %f for edge %d->%d, stddev=%f deg). "
 						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
-						  maxAngularError*180.0f/CV_PI,
-						  maxAngularErrorRatio,
-						  maxAngularLink->from(),
-						  maxAngularLink->to(),
-						  sqrt(maxAngularLink->rotVariance()),
+						  maxGraphErrors.angular*180.0f/CV_PI,
+						  maxGraphErrors.angularRatio,
+						  maxGraphErrors.angularLink.from(),
+						  maxGraphErrors.angularLink.to(),
+						  sqrt(maxGraphErrors.angularLink.rotVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 				}
@@ -9312,7 +9438,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		findIter = rtabmap::graph::findLink(linksRemoved_, iter->second.from(), iter->second.to());
 		if(findIter != linksRemoved_.end())
 		{
-			UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			//UDEBUG("Removed link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue; // don't add this link
 		}
 
@@ -9329,7 +9455,7 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 			{
 				links.insert(*findIter);
 			}
-			UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+			//UDEBUG("Updated link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 			continue;
 		}
 
@@ -9345,14 +9471,18 @@ std::multimap<int, rtabmap::Link> DatabaseViewer::updateLinksWithModifications(
 		if(findIter!=linksRefined_.end())
 		{
 			links.insert(*findIter); // add the refined link
-			links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
-			UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
+			if(findIter->second.from() != findIter->second.to()) {
+				links.insert(std::make_pair(findIter->second.to(), findIter->second.inverse())); // return both ways 
+			}
+			//UDEBUG("Added refined link (%d->%d, %d)", findIter->second.from(), findIter->second.to(), findIter->second.type());
 			continue;
 		}
 
-		UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
+		//UDEBUG("Added link (%d->%d, %d)", iter->second.from(), iter->second.to(), iter->second.type());
 		links.insert(*iter);
-		links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
+		if(iter->second.from() != iter->second.to()) {
+			links.insert(std::make_pair(iter->second.to(), iter->second.inverse())); // return both ways 
+		}
 	}
 
 	return links;

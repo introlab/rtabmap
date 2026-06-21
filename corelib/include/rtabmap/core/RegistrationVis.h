@@ -91,6 +91,9 @@ private:
 	float _flowEps;
 	int _flowMaxLevel;
 	bool _flowGpu;
+	bool _flowUseMinEigenVals;
+	float _flowMinEigThreshold;
+	float _flowErrorThreshold;
 	float _nndr;
 	int _nnType;
 	bool _gmsWithRotation;

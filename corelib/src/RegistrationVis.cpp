@@ -84,6 +84,9 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowEps(Parameters::defaultVisCorFlowEps()),
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
 		_flowGpu(Parameters::defaultVisCorFlowGpu()),
+		_flowUseMinEigenVals(Parameters::defaultVisCorFlowUseMinEigenVals()),
+		_flowMinEigThreshold(Parameters::defaultVisCorFlowMinEigThreshold()),
+		_flowErrorThreshold(Parameters::defaultVisCorFlowErrorThreshold()),
 		_nndr(Parameters::defaultVisCorNNDR()),
 		_nnType(Parameters::defaultVisCorNNType()),
 		_gmsWithRotation(Parameters::defaultGMSWithRotation()),
@@ -145,6 +148,9 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), _flowEps);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
 	Parameters::parse(parameters, Parameters::kVisCorFlowGpu(), _flowGpu);
+	Parameters::parse(parameters, Parameters::kVisCorFlowUseMinEigenVals(), _flowUseMinEigenVals);
+	Parameters::parse(parameters, Parameters::kVisCorFlowMinEigThreshold(), _flowMinEigThreshold);
+	Parameters::parse(parameters, Parameters::kVisCorFlowErrorThreshold(), _flowErrorThreshold);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
 	Parameters::parse(parameters, Parameters::kVisCorNNType(), _nnType);
 	Parameters::parse(parameters, Parameters::kGMSWithRotation(), _gmsWithRotation);
@@ -286,6 +292,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	{
 		uInsert(_featureParameters, ParametersPair(Parameters::kKpGridCols(), parameters.at(Parameters::kVisGridCols())));
 	}
+	if(uContains(parameters, Parameters::kRtabmapWorkingDirectory()))
+	{
+		uInsert(_featureParameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), parameters.at(Parameters::kRtabmapWorkingDirectory())));
+	}
 
 	delete _detectorFrom;
 	delete _detectorTo;
@@ -317,6 +327,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%d", Parameters::kVisPnPFlags().c_str(), _PnPFlags);
 	UDEBUG("%s=%f", Parameters::kVisPnPMaxVariance().c_str(), _PnPMaxVar);
 	UDEBUG("%s=%f", Parameters::kVisPnPSplitLinearCovComponents().c_str(), _PnPSplitLinearCovarianceComponents);
+	UDEBUG("%s=%f", Parameters::kVisPnPVarianceMedianRatio().c_str(), _PnPVarMedianRatio);
 	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowWinSize().c_str(), _flowWinSize);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
@@ -329,11 +340,12 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("Feature Detector = %d", (int)_detectorFrom->getType());
 	UDEBUG("guess=%s", guess.prettyPrint().c_str());
 
-	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors,  %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
+	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors, %d words kpts, %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
 			fromSignature.id(),
 			(int)fromSignature.getWords().size(),
 			(int)fromSignature.getWords3().size(),
 			(int)fromSignature.getWordsDescriptors().rows,
+			(int)fromSignature.getWordsKpts().size(),
 			(int)fromSignature.sensorData().keypoints().size(),
 			(int)fromSignature.sensorData().keypoints3D().size(),
 			fromSignature.sensorData().descriptors().rows,
@@ -342,11 +354,12 @@ Transform RegistrationVis::computeTransformationImpl(
 			(int)fromSignature.sensorData().cameraModels().size(),
 			(int)fromSignature.sensorData().stereoCameraModels().size());
 
-	UDEBUG("Input(%d): to=%d words, %d 3D words, %d words descriptors, %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
+	UDEBUG("Input(%d): to=%d words, %d 3D words, %d words descriptors, %d words kpts, %d kpts, %d kpts3D, %d descriptors, image=%dx%d models=%d stereo=%d",
 			toSignature.id(),
 			(int)toSignature.getWords().size(),
 			(int)toSignature.getWords3().size(),
 			(int)toSignature.getWordsDescriptors().rows,
+			(int)toSignature.getWordsKpts().size(),
 			(int)toSignature.sensorData().keypoints().size(),
 			(int)toSignature.sensorData().keypoints3D().size(),
 			toSignature.sensorData().descriptors().rows,
@@ -376,14 +389,20 @@ Transform RegistrationVis::computeTransformationImpl(
 		UDEBUG("");
 		// just some checks to make sure that input data are ok
 		UASSERT(fromSignature.getWords().empty() ||
+				fromSignature.getWordsKpts().empty() ||
+				(fromSignature.getWords().size() == fromSignature.getWordsKpts().size()));
+		UASSERT(fromSignature.getWords().empty() ||
 				fromSignature.getWords3().empty() ||
 				(fromSignature.getWords().size() == fromSignature.getWords3().size()));
 		UASSERT((int)fromSignature.sensorData().keypoints().size() == fromSignature.sensorData().descriptors().rows ||
 				(int)fromSignature.getWords().size() == fromSignature.getWordsDescriptors().rows ||
 				fromSignature.sensorData().descriptors().empty() ||
 				fromSignature.getWordsDescriptors().empty() == 0);
-		UASSERT((toSignature.getWords().empty() && toSignature.getWords3().empty())||
-				(toSignature.getWords().size() && toSignature.getWords3().empty())||
+		UASSERT(toSignature.getWords().empty() ||
+				toSignature.getWordsKpts().empty() ||
+				(toSignature.getWords().size() == toSignature.getWordsKpts().size()));
+		UASSERT(toSignature.getWords().empty() ||
+				toSignature.getWords3().empty() ||
 				(toSignature.getWords().size() == toSignature.getWords3().size()));
 		UASSERT((int)toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
 				(int)toSignature.getWords().size() == toSignature.getWordsDescriptors().rows ||
@@ -428,16 +447,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								UASSERT(!fromSignature.sensorData().cameraModels().empty());
 								UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
-								if(_maskFloorThreshold<0.0f)
-								{
-									cv::Mat depthBelow;
-									util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
-									depthMask = depthBelow;
-								}
-								else
-								{
-									depthMask = util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold);
-								}
+								depthMask = util3d::filterFloor(depthMask, fromSignature.sensorData().cameraModels(), _maskFloorThreshold);
 								UDEBUG("Masking floor done.");
 							}
 
@@ -643,6 +653,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				// Find features in the new left image
 				UDEBUG("guessSet = %d", guessSet?1:0);
 				std::vector<unsigned char> status;
+				std::vector<float> err;
 #ifdef HAVE_OPENCV_CUDAOPTFLOW
 				if (_flowGpu)
 				{
@@ -672,7 +683,6 @@ Transform RegistrationVis::computeTransformationImpl(
 				else
 #endif
 				{
-					std::vector<float> err;
 					UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 					cv::calcOpticalFlowPyrLK(
 						imageFrom,
@@ -684,7 +694,8 @@ Transform RegistrationVis::computeTransformationImpl(
 						cv::Size(_flowWinSize, _flowWinSize),
 						guessSet ? 0 : _flowMaxLevel,
 						cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, _flowIterations, _flowEps),
-						cv::OPTFLOW_LK_GET_MIN_EIGENVALS | (guessSet ? cv::OPTFLOW_USE_INITIAL_FLOW : 0), 1e-4);
+						(_flowUseMinEigenVals ? cv::OPTFLOW_LK_GET_MIN_EIGENVALS : 0) | (guessSet ? cv::OPTFLOW_USE_INITIAL_FLOW : 0),
+						_flowMinEigThreshold);
 					UDEBUG("cv::calcOpticalFlowPyrLK() end");
 				}
 
@@ -693,11 +704,14 @@ Transform RegistrationVis::computeTransformationImpl(
 				std::vector<cv::Point3f> kptsFrom3DKept(kptsFrom3D.size());
 				std::vector<int> orignalWordsFromIdsCpy = orignalWordsFromIds;
 				int ki = 0;
+				UASSERT((status.empty() || cornersTo.size() == status.size()) &&
+						(err.empty() || cornersTo.size() == err.size()));
 				for(unsigned int i=0; i<status.size(); ++i)
 				{
 					if(status[i] &&
 					   uIsInBounds(cornersTo[i].x, 0.0f, float(imageTo.cols)) &&
-					   uIsInBounds(cornersTo[i].y, 0.0f, float(imageTo.rows)))
+					   uIsInBounds(cornersTo[i].y, 0.0f, float(imageTo.rows)) &&
+					   (_flowUseMinEigenVals || err.empty() || err[i] < _flowErrorThreshold))
 					{
 						if(orignalWordsFromIdsCpy.size())
 						{
@@ -794,16 +808,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								UASSERT(!toSignature.sensorData().cameraModels().empty());
 								UDEBUG("Masking floor (threshold=%f)", _maskFloorThreshold);
-								if(_maskFloorThreshold<0.0f)
-								{
-									cv::Mat depthBelow;
-									util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold*-1.0f, &depthBelow);
-									depthMask = depthBelow;
-								}
-								else
-								{
-									depthMask = util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold);
-								}
+								depthMask = util3d::filterFloor(depthMask, toSignature.sensorData().cameraModels(), _maskFloorThreshold);
 								UDEBUG("Masking floor done.");
 							}
 
@@ -1620,6 +1625,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						cameraTransform,
 						_PnPReprojError,
 						0.99f,
+						_PnPVarMedianRatio,
 						words3A, // for scale estimation
 						&variance,
 						&matchesV);
@@ -1660,14 +1666,10 @@ Transform RegistrationVis::computeTransformationImpl(
 					UINFO(msg.c_str());
 				}
 			}
-			else if(fromSignature.getWords().size() == 0)
+			else 
 			{
-				msg = uFormat("No enough features (%d)", (int)fromSignature.getWords().size());
-				UWARN(msg.c_str());
-			}
-			else
-			{
-				msg = uFormat("No camera model");
+				msg = uFormat("No enough features < %s=%d (from=%d to=%d)", 
+					Parameters::kVisMinInliers().c_str(), _minInliers, (int)fromSignature.getWords().size(), (int)toSignature.getWords().size());
 				UWARN(msg.c_str());
 			}
 		}
@@ -2174,6 +2176,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				// We take the second eigen value
 				info.inliersDistribution = pca_analysis.eigenvalues.at<float>(0, 1);
 
+				UDEBUG("Visual distribution: %f (eigen values = %f %f)", info.inliersDistribution, pca_analysis.eigenvalues.at<float>(0, 0), pca_analysis.eigenvalues.at<float>(0, 1));
+
 				if(info.inliersDistribution < _minInliersDistributionThr)
 				{
 					msg = uFormat("The distribution (%f) of inliers is under %s threshold (%f)",
@@ -2196,6 +2200,10 @@ Transform RegistrationVis::computeTransformationImpl(
 	info.matches = matchesCount;
 	info.rejectedMsg = msg;
 	info.covariance = covariance;
+	if(!covariance.empty())
+	{
+		info.variance = covariance.at<double>(0,0);
+	}
 
 	UDEBUG("inliers=%d/%d", info.inliers, info.matches);
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
