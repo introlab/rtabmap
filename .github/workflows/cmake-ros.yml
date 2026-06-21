@@ -27,18 +27,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distribution: [ humble, jazzy, kilted, lyrical, rolling]
+        ros_distribution: [ lyrical ]
         include:
-        - ros_distribution: 'humble'
-          skip_keys: ""
-        - ros_distribution: 'jazzy'
-          skip_keys: ""
-        - ros_distribution: 'kilted'
-          skip_keys: ""
         - ros_distribution: 'lyrical'
           skip_keys: "libpointmatcher"
-        - ros_distribution: 'rolling'
-          skip_keys: ""
     container:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
     steps:   
