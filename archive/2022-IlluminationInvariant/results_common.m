@@ -15,7 +15,7 @@ RAMaddOverhead = 0;
 % Inliers_ratio = 'Loop/Visual_inliers/' ./ 'Keypoint/Current_frame/words'
 % Odometry_average = 'Memory/Distance_travelled/m'(2:end) - 'Memory/Distance_travelled/m'(1:end-1)
 
-statNames = {'Loop/Odom_correction_norm/m', 'Loop/Visual_inliers/', 'Inliers_ratio_%', 'Timing/Total/ms', 'Memory/RAM_usage/MB', 'Memory/RAM_estimated/MB', 'Keypoint/Current_frame/words', 'Loop/Map_id/', 'Memory/Local_graph_size/', 'Keypoint/Dictionary_size/words', 'Loop/Distance_since_last_loc/'}; % 'Odometry_average'
+statNames = {'Loop/Odom_correction_norm/m', 'Loop/Visual_inliers/', 'Inliers_ratio_%', 'Timing/Total/ms', 'Memory/RAM_usage/MB', 'Memory/RAM_estimated/MB', 'Keypoint/Current_frame/words', 'Loop/Map_id/', 'Memory/Local_graph_size/', 'Keypoint/Dictionary_size/words', 'Loop/Distance_since_last_loc/m'}; % 'Odometry_average'
 
  
 datasets = [ 0 1 6 7 9 14 11 111 ]; % 0 1 6 7 9 12 14 11
@@ -26,7 +26,7 @@ if resultsToShow == 2
   sep = [0, 1000, 3000, 5000, 7000, 9000];
   sepName = {'17:27', '17:54', '18:27', '18:56', '19:35'};
   prefix = 'Consecutive';
-  statNames = {'Loop/Distance_since_last_loc/', 'Distance_since_last_loc_under_50cm'};
+  statNames = {'Loop/Distance_since_last_loc/m', 'Distance_since_last_loc_under_50cm'};
 endif
 
 MapsN = length(sepName);
@@ -52,7 +52,7 @@ if strcmp(statName,'Inliers_ratio_%')
 elseif strcmp(statName, 'Odometry_average')
   data = dlmread([dataDir '/' prefix num2str(datasets(d)) '-' 'Memory-Distance_travelled-m' '.txt'], '\t', 1, 0, "emptyvalue", 0);
 elseif strcmp(statName, 'Distance_since_last_loc_under_50cm')
-  data = dlmread([dataDir '/' prefix num2str(datasets(d)) '-' 'Loop-Distance_since_last_loc-' '.txt'], '\t', 1, 0, "emptyvalue", 0);
+  data = dlmread([dataDir '/' prefix num2str(datasets(d)) '-' 'Loop-Distance_since_last_loc-m' '.txt'], '\t', 1, 0, "emptyvalue", 0);
 else
   data = dlmread([dataDir '/' prefix num2str(datasets(d)) '-' statName '.txt'], '\t', 1, 0, "emptyvalue", 0);
 endif

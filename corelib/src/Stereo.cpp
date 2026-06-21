@@ -113,6 +113,9 @@ std::vector<cv::Point2f> Stereo::computeCorrespondences(
 StereoOpticalFlow::StereoOpticalFlow(const ParametersMap & parameters) :
 		Stereo(parameters),
 		epsilon_(Parameters::defaultStereoEps()),
+		useMinEigenVals_(Parameters::defaultStereoUseMinEigenVals()),
+		minEigThreshold_(Parameters::defaultStereoMinEigThreshold()),
+		errorThreshold_(Parameters::defaultStereoErrorThreshold()),
 		gpu_(Parameters::defaultStereoGpu())
 {
 	this->parseParameters(parameters);
@@ -122,6 +125,9 @@ void StereoOpticalFlow::parseParameters(const ParametersMap & parameters)
 {
 	Stereo::parseParameters(parameters);
 	Parameters::parse(parameters, Parameters::kStereoEps(), epsilon_);
+	Parameters::parse(parameters, Parameters::kStereoUseMinEigenVals(), useMinEigenVals_);
+	Parameters::parse(parameters, Parameters::kStereoMinEigThreshold(), minEigThreshold_);
+	Parameters::parse(parameters, Parameters::kStereoErrorThreshold(), errorThreshold_);
 	Parameters::parse(parameters, Parameters::kStereoGpu(), gpu_);
 #ifndef HAVE_OPENCV_CUDAOPTFLOW
 	if(gpu_)
@@ -171,11 +177,18 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 				err,
 				this->winSize(),
 				this->maxLevel(),
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, this->iterations(), epsilon_),
-				cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, this->iterations(), this->epsilon()),
+				this->usingMinEigenVals() ? cv::OPTFLOW_LK_GET_MIN_EIGENVALS : 0, this->minEigThreshold());
 		UDEBUG("util2d::calcOpticalFlowPyrLKStereo() end");
 	}
-	updateStatus(leftCorners, rightCorners, status);
+	if(this->usingMinEigenVals())
+	{
+		updateStatus(leftCorners, rightCorners, status);
+	}
+	else
+	{
+		updateStatus(leftCorners, rightCorners, status, err);
+	}
 	return rightCorners;
 }
 
@@ -227,14 +240,17 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 void StereoOpticalFlow::updateStatus(
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
-		std::vector<unsigned char> & status) const
+		std::vector<unsigned char> & status,
+		std::vector<float> err) const
 {
-	UASSERT(leftCorners.size() == rightCorners.size() && status.size() == leftCorners.size());
+	UASSERT(
+		leftCorners.size() == rightCorners.size() && status.size() == leftCorners.size() &&
+		(err.empty() || err.size() == leftCorners.size()));
 	int countFlowRejected = 0;
 	int countDisparityRejected = 0;
 	for(unsigned int i=0; i<status.size(); ++i)
 	{
-		if(status[i]!=0)
+		if(status[i]!=0 && (err.empty() || err[i] < this->errorThreshold()))
 		{
 			float disparity = leftCorners[i].x - rightCorners[i].x;
 			if(disparity <= this->minDisparity() || disparity > this->maxDisparity())

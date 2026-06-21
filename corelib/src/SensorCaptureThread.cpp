@@ -960,7 +960,6 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 			{
 				UASSERT(!data.imu().localTransform().isNull());
 				imu.convertToBaseFrame();
-
 			}
 			_imuFilter->update(
 					imu.angularVelocity()[0],

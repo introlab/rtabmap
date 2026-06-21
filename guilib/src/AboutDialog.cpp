@@ -86,6 +86,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_sptorch->setText("No");
 	_ui->label_sptorch_license->setEnabled(false);
 #endif
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	_ui->label_sprpautrat->setText("Yes");
+	_ui->label_sprpautrat_license->setEnabled(true);
+#else
+	_ui->label_sprpautrat->setText("No");
+	_ui->label_sprpautrat_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_PYTHON
 	_ui->label_pymatcher->setText("Yes");
 	_ui->label_pymatcher_license->setEnabled(true);
@@ -100,6 +107,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_fastcv->setText("No");
 	_ui->label_fastcv_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_APRILTAG
+	_ui->label_apriltag->setText("Yes");
+	_ui->label_apriltag_license->setEnabled(true);
+#else
+	_ui->label_apriltag->setText("No");
+	_ui->label_apriltag_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_PDAL
 	_ui->label_pdal->setText("Yes");
 	_ui->label_pdal_license->setEnabled(true);
@@ -113,6 +127,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_liblas->setText("No");
 	_ui->label_liblas_license->setEnabled(false);
+#endif
+#ifdef RTABMAP_OPENGV
+	_ui->label_opengv->setText("Yes");
+	_ui->label_opengv_license->setEnabled(true);
+#else
+	_ui->label_opengv->setText("No");
+	_ui->label_opengv_license->setEnabled(false);
 #endif
 #ifdef RTABMAP_CUDASIFT
 	_ui->label_cudasift->setText("Yes");
@@ -179,6 +200,8 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_depthai->setText(CameraDepthAI::available() ? "Yes" : "No");
 	_ui->label_depthai_license->setEnabled(CameraDepthAI::available());
 	_ui->label_xvsdk->setText(CameraSeerSense::available() ? "Yes" : "No");
+	_ui->label_orbbec_sdk->setText(CameraOrbbecSDK::available() ? "Yes" : "No");
+	_ui->label_orbbec_sdk_license->setEnabled(CameraOrbbecSDK::available());
 
 	_ui->label_toro->setText(Optimizer::isAvailable(Optimizer::kTypeTORO)?"Yes":"No");
 	_ui->label_toro_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeTORO)?true:false);
@@ -281,7 +304,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_msckf_license->setEnabled(false);
 #endif
 
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 	_ui->label_vins_fusion->setText("Yes");
 	_ui->label_vins_fusion_license->setEnabled(true);
 #else
@@ -295,6 +318,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_openvins->setText("No");
 	_ui->label_openvins_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_CUVSLAM
+	_ui->label_cuvslam->setText("Yes");
+	_ui->label_cuvslam_license->setEnabled(true);
+#else
+	_ui->label_cuvslam->setText("No");
+	_ui->label_cuvslam_license->setEnabled(false);
 #endif
 
 }

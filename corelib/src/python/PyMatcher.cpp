@@ -228,16 +228,32 @@ std::vector<cv::DMatch> PyMatcher::match(
 				int len2 = PyArray_SHAPE(np_ret)[1];
 				int type = PyArray_TYPE(np_ret);
 				UDEBUG("Matches array %dx%d (type=%d)", len1, len2, type);
-				UASSERT_MSG(type == NPY_LONG || type == NPY_INT, uFormat("Returned matches should type INT=5 or LONG=7, received type=%d", type).c_str());
-				if(type == NPY_LONG)
+				UASSERT_MSG(type == NPY_INT32 || type == NPY_UINT32 || type == NPY_INT64 || type == NPY_UINT64, uFormat("Returned matches should type INT32=%d UINT32=%d, INT64=%d or UINT64=%d, received type=%d", NPY_INT, NPY_UINT32, NPY_INT64, NPY_UINT64, type).c_str());
+				if(type == NPY_UINT64)
 				{
-					long* c_out = reinterpret_cast<long*>(PyArray_DATA(np_ret));
+					long long* c_out = reinterpret_cast<long long*>(PyArray_DATA(np_ret));
 					for (int i = 0; i < len1*len2; i+=2)
 					{
 						matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
 					}
 				}
-				else // INT
+				if(type == NPY_INT64)
+				{
+					unsigned long long* c_out = reinterpret_cast<unsigned long long*>(PyArray_DATA(np_ret));
+					for (int i = 0; i < len1*len2; i+=2)
+					{
+						matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+					}
+				}
+				else if(type == NPY_UINT32)
+				{
+					unsigned int* c_out = reinterpret_cast<unsigned int*>(PyArray_DATA(np_ret));
+					for (int i = 0; i < len1*len2; i+=2)
+					{
+						matches.push_back(cv::DMatch(c_out[i], c_out[i+1], 0));
+					}
+				}
+				else // NPY_INT
 				{
 					int* c_out = reinterpret_cast<int*>(PyArray_DATA(np_ret));
 					for (int i = 0; i < len1*len2; i+=2)

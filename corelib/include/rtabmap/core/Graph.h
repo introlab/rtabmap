@@ -56,7 +56,7 @@ bool RTABMAP_CORE_EXPORT exportPoses(
 
 bool RTABMAP_CORE_EXPORT importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
 		std::map<int, double> * stamps = 0); // optional for format 1 and 9
@@ -118,15 +118,18 @@ Transform RTABMAP_CORE_EXPORT calcRMSE(
 		float & rotational_max,
 		bool align2D = false);
 
-void RTABMAP_CORE_EXPORT computeMaxGraphErrors(
+struct MaxGraphErrors
+{
+	float linear=-1.0f;         // absolute error (m) of the link with maximum linear error
+	float angular=-1.0f;        // absolute error (rad)  of the link with maximum angular error
+	float linearRatio=-1.0f;    // Ratio = absolute error (m) / linear std (m), of the link with maximum linear error
+	float angularRatio=-1.0f;   // Ratio = absolute error (rad) / angular std (rad), of the link with maximum angular error
+	Link linearLink;  // link with maximum linear error
+	Link angularLink; // link with maximum angular error
+};
+MaxGraphErrors RTABMAP_CORE_EXPORT computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		float & maxLinearErrorRatio,
-		float & maxAngularErrorRatio,
-		float & maxLinearError,
-		float & maxAngularError,
-		const Link ** maxLinearErrorLink = 0,
-		const Link ** maxAngularErrorLink = 0,
 		bool for3DoF = false);
 
 std::vector<double> RTABMAP_CORE_EXPORT getMaxOdomInf(const std::multimap<int, Link> & links);
@@ -277,7 +280,8 @@ std::list<std::pair<int, Transform> > RTABMAP_CORE_EXPORT computePath(
 		bool lookInDatabase = true,
 		bool updateNewCosts = false,
 		float linearVelocity = 0.0f,   // m/sec
-		float angularVelocity = 0.0f); // rad/sec
+		float angularVelocity = 0.0f,  // rad/sec
+		bool ignoreDirectLinks = false); 
 
 /**
  * Find the nearest node of the target pose
@@ -336,9 +340,7 @@ RTABMAP_DEPRECATED std::map<int, Transform> RTABMAP_CORE_EXPORT getPosesInRadius
 RTABMAP_DEPRECATED std::map<int, Transform> RTABMAP_CORE_EXPORT getPosesInRadius(const Transform & targetPose, const std::map<int, Transform> & nodes, float radius, float angle = 0.0f);
 
 float RTABMAP_CORE_EXPORT computePathLength(
-		const std::vector<std::pair<int, Transform> > & path,
-		unsigned int fromIndex = 0,
-		unsigned int toIndex = 0);
+		const std::vector<std::pair<int, Transform> > & path);
 
 // assuming they are all linked in map order
 float RTABMAP_CORE_EXPORT computePathLength(

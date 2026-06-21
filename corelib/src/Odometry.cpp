@@ -35,10 +35,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/odometry/OdometryORBSLAM3.h"
 #include "rtabmap/core/odometry/OdometryLOAM.h"
 #include "rtabmap/core/odometry/OdometryFLOAM.h"
+#include "rtabmap/core/odometry/OdometryLIOSAM.h"
 #include "rtabmap/core/odometry/OdometryMSCKF.h"
-#include "rtabmap/core/odometry/OdometryVINS.h"
+#include "rtabmap/core/odometry/OdometryVINSFusion.h"
 #include "rtabmap/core/odometry/OdometryOpenVINS.h"
 #include "rtabmap/core/odometry/OdometryOpen3D.h"
+#include "rtabmap/core/odometry/OdometryCuVSLAM.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
@@ -100,17 +102,23 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	case Odometry::kTypeFLOAM:
 		odometry = new OdometryFLOAM(parameters);
 		break;
+	case Odometry::kTypeLIOSAM:
+		odometry = new OdometryLIOSAM(parameters);
+		break;
 	case Odometry::kTypeMSCKF:
 		odometry = new OdometryMSCKF(parameters);
 		break;
-	case Odometry::kTypeVINS:
-		odometry = new OdometryVINS(parameters);
+	case Odometry::kTypeVINSFusion:
+		odometry = new OdometryVINSFusion(parameters);
 		break;
 	case Odometry::kTypeOpenVINS:
 		odometry = new OdometryOpenVINS(parameters);
 		break;
 	case Odometry::kTypeOpen3D:
 		odometry = new OdometryOpen3D(parameters);
+		break;
+	case Odometry::kTypeCuVSLAM:
+		odometry = new OdometryCuVSLAM(parameters);
 		break;
 	default:
 		UERROR("Unknown odometry type %d, using F2M instead...", (int)type);
@@ -625,6 +633,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	if(!guessIn.isNull())
 	{
 		guess = guessIn;
+		UDEBUG("Using provided guess %s", guessIn.prettyPrint().c_str());
 	}
 	else if(!imus_.empty())
 	{
@@ -641,11 +650,15 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			{
 				guess = guess.to3DoF();
 			}
+			UDEBUG("Adjusting guess from motion with IMU %s", guess.prettyPrint().c_str());
 		}
 		else if(!imuLastTransform_.isNull())
 		{
 			UWARN("Could not find imu transform at %f", data.stamp());
 		}
+	}
+	else if(!guess.isNull() && (!data.imageRaw().empty() || !data.laserScanRaw().isEmpty())) {
+		UDEBUG("Using guess from motion %s", guess.prettyPrint().c_str());
 	}
 
 	UTimer time;
@@ -1011,21 +1024,28 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		--_resetCurrentCount;
 		if(_resetCurrentCount == 0)
 		{
-			UWARN("Odometry automatically reset to latest pose!");
-			this->reset(_pose);
+			if(!guess.isNull() && !guessIn.isNull()) {
+				UWARN("Odometry automatically reset to latest pose (%s) + guess (%s)!", _pose.prettyPrint().c_str(), guess.prettyPrint().c_str());
+				this->reset(_pose * guess);
+			}
+			else {
+				UWARN("Odometry automatically reset to latest pose (%s)!", _pose.prettyPrint().c_str());
+				this->reset(_pose);
+			}
 			_resetCurrentCount = _resetCountdown;
 			if(info)
 			{
 				*info = OdometryInfo();
 			}
-			return this->computeTransform(data, Transform(), info);
+			this->computeTransform(data, Transform(), info);
+			return _pose;
 		}
-	}
 
 	previousVelocities_.clear();
 	velocityGuess_.setNull();
 	previousStamp_ = 0;
 
+}
 	return Transform();
 }
 
@@ -1055,6 +1075,7 @@ void Odometry::initKalmanFilter(const Transform & initialPose, float vx, float v
 	    0, 0, 0, 0, 0, 0.17 } };
 	static const boost::array<double, 36> STANDARD_TWIST_COVARIANCE =
 	{ { 0.05, 0, 0, 0, 0, 0,
+	}
 	    0, 0.05, 0, 0, 0, 0,
 	    0, 0, 0.05, 0, 0, 0,
 	    0, 0, 0, 0.09, 0, 0,

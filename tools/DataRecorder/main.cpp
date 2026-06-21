@@ -52,7 +52,8 @@ void showUsage()
 			"  after modifying Source settings.\n"
 			"Options:\n"
 			"  -debug    Show debug log.\n"
-			"  -hide     Don't display the current cloud recorded.\n");
+			"  -hide     Don't display the current cloud recorded.\n"
+			"  -ram      Record all frames in RAM before dumping on hard-drive on exit.\n");
 	exit(1);
 }
 
@@ -105,6 +106,7 @@ int main (int argc, char * argv[])
 	// parse arguments
 	std::string fileName;
 	bool show = true;
+	bool recordInRAM = false;
 	std::string configFile;
 
 	if(argc < 3)
@@ -123,6 +125,11 @@ int main (int argc, char * argv[])
 			show = false;
 			continue;
 		}
+		if(strcmp(argv[i], "-ram") == 0)
+		{
+			recordInRAM = true;
+			continue;
+		}
 		printf("Unrecognized option : %s\n", argv[i]);
 		showUsage();
 	}
@@ -139,6 +146,7 @@ int main (int argc, char * argv[])
 
 	UINFO("Output = %s", fileName.c_str());
 	UINFO("Show = %s", show?"true":"false");
+	UINFO("RecordInRAM = %s", recordInRAM?"true":"false");
 	UINFO("Config = %s", configFile.c_str());
 
 	app = new QApplication(argc, argv);
@@ -207,7 +215,7 @@ int main (int argc, char * argv[])
 
 	DataRecorder recorder;
 
-	if(recorder.init(fileName.c_str()))
+	if(recorder.init(fileName.c_str(), recordInRAM))
 	{
 		recorder.registerToEventsManager();
 		if(show)

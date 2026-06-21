@@ -61,7 +61,6 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/edge_se3_xyzprior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #include "g2o/edge_se3_gravity.h"
-#include "g2o/edge_sbacam_gravity.h"
 #include "g2o/edge_xy_prior.h"  // Include after types_slam2d.h to be ignored on newest g2o versions
 #include "g2o/edge_xyz_prior.h" // Include after types_slam3d.h to be ignored on newest g2o versions
 #ifdef G2O_HAVE_CSPARSE
@@ -77,6 +76,19 @@ typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> Matr
 #include "g2o/types/types_sba.h"
 #include "g2o/types/types_six_dof_expmap.h"
 #include "g2o/solvers/linear_solver_eigen.h"
+#include "g2o/edge_se3_expmap.h"
+#endif
+
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
+namespace rtabmap {
+#ifdef RTABMAP_ORB_SLAM
+typedef g2o::VertexSE3Expmap VertexCam;
+#else
+typedef g2o::VertexCam VertexCam;
+#endif
+}
+#include "g2o/edge_sbacam_gravity.h"
+#include "g2o/edge_sbacam_prior.h"
 #endif
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
@@ -90,14 +102,10 @@ typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSpa
 typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 #endif
 
-// We use G2O_SRC_DIR to know we are version after December 24 2020
+// We check if g2o/types/sba/sba_utils.h exists to know we use a version after December 24 2020
 // where VertexSBAPointXYZ has been renamed to VertexPointXYZ
 // (g2o: 0fcccb302787e70ff19f65e70fb103a1295b33a2)
-//
-// VCPKG commented G2O_SRC_DIR from their port so we cannot use
-// G2O_SRC_DIR on windows to deduce it, we then assume it is the
-// latest version without VertexSBAPointXYZ
-#if defined(G2O_SRC_DIR) or defined(WIN32)
+#ifdef RTABMAP_G2O_WITH_SBA_UTILS
 namespace g2o {
 typedef VertexPointXYZ VertexSBAPointXYZ;
 }
@@ -220,7 +228,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
 	std::map<int, Transform> optimizedPoses;
 #ifdef RTABMAP_G2O
-	UDEBUG("Optimizing graph...");
+	UDEBUG("Optimizing graph... (rootId=%d)", rootId);
 
 #ifndef RTABMAP_VERTIGO
 	if(this->isRobust())
@@ -352,6 +360,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
 					{
+						if(rootId!=0) {
+							UDEBUG("Removed rootId=%d because there are priors.");
+						}
 						rootId = 0;
 						break;
 					}
@@ -594,7 +605,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							g2o::EdgeSE2Prior * priorEdge = new g2o::EdgeSE2Prior();
 							g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
 							priorEdge->setVertex(0, v1);
-							priorEdge->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+							auto pose = g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta());
+							v1->setEstimate(pose); // This will help g2o to converge faster (https://github.com/introlab/rtabmap_ros/issues/1371)
+							priorEdge->setMeasurement(pose);
 							priorEdge->setParameterId(0, PARAM_OFFSET);
 							Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 							if(!isCovarianceIgnored())
@@ -675,6 +688,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 							Eigen::Isometry3d pose;
 							pose = a.linear();
 							pose.translation() = a.translation();
+							v1->setEstimate(pose); // This will help g2o to converge faster (https://github.com/introlab/rtabmap_ros/issues/1371)
 							priorEdge->setMeasurement(pose);
 							priorEdge->setParameterId(0, PARAM_OFFSET);
 							Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
@@ -1005,8 +1019,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						g2o::EdgeSE3 * e = new g2o::EdgeSE3();
 						g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
 						g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-						UASSERT(v1 != 0);
-						UASSERT(v2 != 0);
+						UASSERT_MSG(v1 != 0, uFormat("v1=%d v2=%d", id1, id2).c_str());
+						UASSERT_MSG(v2 != 0, uFormat("v1=%d v2=%d", id1, id2).c_str());
 						e->setVertex(0, v1);
 						e->setVertex(1, v2);
 						e->setMeasurement(constraint);
@@ -1173,7 +1187,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
 					return optimizedPoses;
 				}
 
@@ -1222,7 +1236,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UERROR("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
 			return optimizedPoses;
 		}
 
@@ -1412,81 +1426,6 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	return optimizedPoses;
 }
 
-#ifdef RTABMAP_ORB_SLAM
-/**
- * \brief 3D edge between two SBAcam
- */
- class EdgeSE3Expmap : public g2o::BaseBinaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap, g2o::VertexSE3Expmap>
-{
-  public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    EdgeSE3Expmap():  BaseBinaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap, g2o::VertexSE3Expmap>(){}
-    bool read(std::istream& is)
-      {
-        return false;
-      }
-
-      bool write(std::ostream& os) const
-      {
-        return false;
-      }
-
-    void computeError()
-    {
-      const g2o::VertexSE3Expmap* v1 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
-      const g2o::VertexSE3Expmap* v2 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
-      g2o::SE3Quat delta = _inverseMeasurement * (v1->estimate().inverse()*v2->estimate());
-      _error[0]=delta.translation().x();
-      _error[1]=delta.translation().y();
-      _error[2]=delta.translation().z();
-      _error[3]=delta.rotation().x();
-      _error[4]=delta.rotation().y();
-      _error[5]=delta.rotation().z();
-    }
-
-    virtual void setMeasurement(const g2o::SE3Quat& meas){
-      _measurement=meas;
-      _inverseMeasurement=meas.inverse();
-    }
-
-    virtual double initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& , g2o::OptimizableGraph::Vertex* ) { return 1.;}
-    virtual void initialEstimate(const g2o::OptimizableGraph::VertexSet& from_, g2o::OptimizableGraph::Vertex* ){
-    	g2o::VertexSE3Expmap* from = static_cast<g2o::VertexSE3Expmap*>(_vertices[0]);
-    	g2o::VertexSE3Expmap* to = static_cast<g2o::VertexSE3Expmap*>(_vertices[1]);
-		if (from_.count(from) > 0)
-		  to->setEstimate((g2o::SE3Quat) from->estimate() * _measurement);
-		else
-		  from->setEstimate((g2o::SE3Quat) to->estimate() * _inverseMeasurement);
-    }
-
-    virtual bool setMeasurementData(const double* d){
-      Eigen::Map<const g2o::Vector7d> v(d);
-      _measurement.fromVector(v);
-      _inverseMeasurement = _measurement.inverse();
-      return true;
-    }
-
-    virtual bool getMeasurementData(double* d) const{
-      Eigen::Map<g2o::Vector7d> v(d);
-      v = _measurement.toVector();
-      return true;
-    }
-
-    virtual int measurementDimension() const {return 7;}
-
-    virtual bool setMeasurementFromState() {
-    	const g2o::VertexSE3Expmap* v1 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
-		const g2o::VertexSE3Expmap* v2 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
-		_measurement = (v1->estimate().inverse()*v2->estimate());
-		_inverseMeasurement = _measurement.inverse();
-		return true;
-    }
-
-  protected:
-    g2o::SE3Quat _inverseMeasurement;
-};
-#endif
-
 std::map<int, Transform> OptimizerG2O::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
@@ -1557,7 +1496,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #endif // RTABMAP_ORB_SLAM
 
 #ifndef RTABMAP_ORB_SLAM
-		if(optimizer_ == 1)
+		// ISSUE: It seems the fatal error
+		//        "[SetJac] infinite jac" happens relatively
+		//        easily with GaussNewton on SBA problem,
+		//        ignore optimizer_ and always use Levenberg for SBA.
+		// TODO: Note that g2o/RobustKernelDelta parameter could be
+		//       potentially tuned to avoid that error with GaussNewton.
+		if(0)//optimizer_ == 1)
 		{
 #ifdef RTABMAP_G2O_CPP11
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(
@@ -1577,8 +1522,23 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 #endif
 		}
 
+		// detect if there are gravity constraints
+		bool hasGravityConstraints = false;
+		if(!isSlam2d() && gravitySigma() > 0)
+		{
+			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if( iter->second.from() == iter->second.to() &&
+					iter->second.type() == Link::kGravity)
+				{
+					hasGravityConstraints = true;
+					break;
+				}
+			}
+		}
 
-		UDEBUG("fill poses to g2o...");
+
+		UDEBUG("fill %ld poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", poses.size(), rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first > 0)
@@ -1594,11 +1554,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 					// Add node's pose
 					UASSERT(!camPose.isNull());
-#ifdef RTABMAP_ORB_SLAM
-					g2o::VertexSE3Expmap * vCam = new g2o::VertexSE3Expmap();
-#else
-					g2o::VertexCam * vCam = new g2o::VertexCam();
-#endif
+
+					rtabmap::VertexCam * vCam = new rtabmap::VertexCam();
 
 					Eigen::Affine3d a = camPose.toEigen3d();
 #ifdef RTABMAP_ORB_SLAM
@@ -1617,7 +1574,65 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					vCam->setId(iter->first*MULTICAM_OFFSET + i);
 
 					// negative root means that all other poses should be fixed instead of the root
-					vCam->setFixed((rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId));
+					bool fixNode = (rootId >= 0 && iter->first == rootId) || (rootId < 0 && iter->first != -rootId);
+
+					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
+				
+					if(this->isSlam2d())
+					{
+						if(fixNode)
+						{
+							UDEBUG("Set node %d fixed", iter->first);
+							vCam->setFixed(true);
+						}
+						else if(i==0) // Only set prior on the first camera
+						{
+							// add a singleton constraint that locks the position of the robot on the plane
+							EdgeSBACamPrior* planeConstraint = new EdgeSBACamPrior();
+							Eigen::Matrix<double, 6, 6> pinfo = Eigen::Matrix<double, 6, 6>::Zero();
+							pinfo(2, 2) = 1e9;
+							planeConstraint->setInformation(pinfo);
+							g2o::SE3Quat fixedZ = g2o::SE3Quat();
+							fixedZ.setTranslation(Eigen::Vector3d(0,0,iter->second.z()));
+							planeConstraint->setMeasurement(fixedZ);
+							Eigen::Affine3d a = iterModel->second[i].localTransform().inverse().toEigen3d();
+							planeConstraint->setCameraInvLocalTransform(g2o::SE3Quat(a.linear(), a.translation()));
+							planeConstraint->vertices()[0] = vCam;
+							optimizer.addEdge(planeConstraint);
+						}
+					}
+					else if(fixNode)
+					{
+						if(rootId < 0 || !hasGravityConstraints)
+						{
+							UDEBUG("Set node %d fixed", iter->first);
+							vCam->setFixed(true);
+						}
+						else if(hasGravityConstraints && i==0) // Only set prior on the first camera in case of multi-cam
+						{
+							// Setup root prior (fixed x,y,z,yaw)
+							EdgeSBACamPrior * e = new EdgeSBACamPrior();
+							e->vertices()[0] = vCam;
+							Eigen::Affine3d a = iter->second.toEigen3d();
+							e->setMeasurement(g2o::SE3Quat(a.linear(), a.translation()));
+							a = iterModel->second[i].localTransform().inverse().toEigen3d();
+							e->setCameraInvLocalTransform(g2o::SE3Quat(a.linear(), a.translation()));
+							Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity()*10e6;
+							// pitch and roll not fixed
+							information(3,3) = information(4,4) = 1;
+							e->setInformation(information);
+							if (!optimizer.addEdge(e))
+							{
+								delete e;
+								UERROR("Map: Failed adding fixed constraint of node %d, set as fixed instead", iter->first);
+								vCam->setFixed(true);
+							}
+							else
+							{
+								UDEBUG("Set node %d fixed with prior (have gravity constraints)", iter->first);
+							}
+						}
+					}
 
 					/*UDEBUG("camPose %d (camid=%d) (fixed=%d) fx=%f fy=%f cx=%f cy=%f Tx=%f baseline=%f t=%s",
 							iter->first,
@@ -1630,8 +1645,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							iterModel->second[i].Tx(),
 							iterModel->second[i].Tx()<0.0?-iterModel->second[i].Tx()/iterModel->second[i].fx():baseline_,
 							camPose.prettyPrint().c_str());*/
-
-					UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert cam vertex %d (pose=%d)!?", vCam->id(), iter->first).c_str());
 				}
 			}
 		}
@@ -1650,7 +1663,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 				if(id1 == id2)
 				{
-#ifndef RTABMAP_ORB_SLAM
 					g2o::HyperGraph::Edge * edge = 0;
 					if(gravitySigma() > 0 && iter->second.type() == Link::kGravity && poses.find(iter->first) != poses.end())
 					{
@@ -1664,7 +1676,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						Eigen::MatrixXd information = Eigen::MatrixXd::Identity(3, 3) * 1.0/(gravitySigma()*gravitySigma());
 
-						g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1*MULTICAM_OFFSET);
+						rtabmap::VertexCam* v1 = (rtabmap::VertexCam*)optimizer.vertex(id1*MULTICAM_OFFSET);
 						EdgeSBACamGravity* priorEdge(new EdgeSBACamGravity());
 						std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
 						// Gravity constraint added only to first camera of a pose
@@ -1681,7 +1693,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
 						return optimizedPoses;
 					}
-#endif
 				}
 				else if(id1>0 && id2>0) // not supporting landmarks
 				{
@@ -1837,14 +1848,14 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 						g2o::OptimizableGraph::Edge * e;
 						double baseline = 0.0;
+						rtabmap::VertexCam* vcam = dynamic_cast<rtabmap::VertexCam*>(optimizer.vertex(camId));
 #ifdef RTABMAP_ORB_SLAM
-						g2o::VertexSE3Expmap* vcam = dynamic_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(camId));
+						
 						std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(poseId);
 
-						UASSERT(iterModel != models.end() && camIndex<iterModel->second.size() && iterModel->second[camIndex].isValidForProjection());
+						UASSERT(iterModel != models.end() && camIndex<(int)iterModel->second.size() && iterModel->second[camIndex].isValidForProjection());
 						baseline = iterModel->second[camIndex].Tx()<0.0?-iterModel->second[camIndex].Tx()/iterModel->second[camIndex].fx():baseline_;
 #else
-						g2o::VertexCam* vcam = dynamic_cast<g2o::VertexCam*>(optimizer.vertex(camId));
 						baseline = vcam->estimate().baseline;
 #endif
 						double variance = pixelVariance_;
@@ -1942,7 +1953,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(uIsNan(chi2))
 			{
-				UERROR("Optimization generated NANs, aborting optimization! Try another g2o's optimizer (current=%d).", optimizer_);
+				UERROR("Optimization generated NANs, aborting optimization! Try another g2o's optimizer (current %s=%d) or solver (current %s=%d).",
+						Parameters::kg2oOptimizer().c_str(), optimizer_, Parameters::kg2oSolver().c_str(), solver_);
 				return optimizedPoses;
 			}
 			UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), chi2);
@@ -1976,15 +1988,18 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
 #endif
 
-						cv::Point3f pt3d;
+						int id=-1;
 						if((*iter)->vertex(0)->id() > negVertexOffset)
 						{
-							pt3d = points3DMap.at(negVertexOffset - (*iter)->vertex(0)->id());
+							id = negVertexOffset - (*iter)->vertex(0)->id();
 						}
 						else
 						{
-							pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
+							id = (*iter)->vertex(0)->id() - stepVertexId;
 						}
+						UASSERT_MSG(points3DMap.find(id) != points3DMap.end(), uFormat("word id=%d points3DMap=%ld vertex id=%d (negVertexOffset=%d stepVertexId=%d)",
+							id, points3DMap.size(), (*iter)->vertex(0)->id(), negVertexOffset, stepVertexId).c_str());
+						cv::Point3f pt3d = points3DMap.at(id);
 						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
 
 						if(outliers)
@@ -2041,12 +2056,26 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						return optimizedPoses;
 					}
 
-					// FIXME: is there a way that we can add the 2D constraint directly in SBA?
 					if(this->isSlam2d())
 					{
-						// get transform between old and new pose
-						t = iter->second.inverse() * t;
-						optimizedPoses.insert(std::pair<int, Transform>(iter->first, iter->second * t.to3DoF()));
+						// The optimized poses should be already fixed to original height,
+						// but it may have varied a little (not exaclty the same number).
+						// Here we just put back the original z value.
+						if(fabs(t.z() - iter->second.z()) < 0.001)
+						{
+							t.z() = iter->second.z();
+							optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+						}
+						else 
+						{
+							UWARN("Planar constraints didn't work!? original pose (%d), pose %s -> %s. Falling back to old approach.",
+								iter->first,
+								iter->second.prettyPrint().c_str(),
+								t.prettyPrint().c_str());
+							// get transform between old and new pose
+							t = iter->second.inverse() * t;
+							optimizedPoses.insert(std::pair<int, Transform>(iter->first, iter->second * t.to3DoF()));
+						}
 					}
 					else
 					{
@@ -2104,6 +2133,390 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	UERROR("Not built with G2O support!");
 #endif
 	return optimizedPoses;
+}
+
+bool OptimizerG2O::loadGraph(
+		const std::string & fileName,
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> & edgeConstraints)
+{
+	FILE * file = 0;
+#ifdef _MSC_VER
+	fopen_s(&file, fileName.c_str(), "r");
+#else
+	file = fopen(fileName.c_str(), "r");
+#endif
+
+	if(!file)
+	{
+		UERROR("Cannot open file %s", fileName.c_str());
+		return false;
+	}
+
+	// saveGraph() writes landmarks (originally negative ids, remapped to
+	// landmarkOffset - id) first in DESCENDING file-id order, then regular
+	// poses in ASCENDING file-id order. We recover landmarkOffset from this
+	// order to restore the original negative landmark ids.
+	struct VertexEntry {
+		int fileId;
+		Transform transform;
+		bool definitelyLandmark; // VERTEX_XY / VERTEX_TRACKXYZ
+	};
+	struct EdgeEntry {
+		int from;
+		int to;
+		Link::Type type;
+		Transform transform;
+		cv::Mat info;
+		bool isPrior;             // from==to, prior on a single vertex
+		bool hasLandmarkEndpoint; // tag implies a landmark on one side
+	};
+	std::vector<VertexEntry> verticesList;
+	std::vector<EdgeEntry> edgesList;
+
+	char line[2048];
+	while(fgets(line, 2048, file) != NULL)
+	{
+		std::list<std::string> tokenList = uSplit(uReplaceChar(uReplaceChar(line, '\n', ' '), '\r', ' '), ' ');
+		std::vector<std::string> v;
+		v.reserve(tokenList.size());
+		for(std::list<std::string>::const_iterator iter = tokenList.begin(); iter != tokenList.end(); ++iter)
+		{
+			if(!iter->empty())
+			{
+				v.push_back(*iter);
+			}
+		}
+		if(v.empty())
+		{
+			continue;
+		}
+		const std::string & tag = v[0];
+
+		// Skip parameters, switch helpers and unrelated entries
+		if(tag == "PARAMS_SE2OFFSET" || tag == "PARAMS_SE3OFFSET" ||
+		   tag == "VERTEX_SWITCH" || tag == "EDGE_SWITCH_PRIOR")
+		{
+			continue;
+		}
+
+		if(tag == "VERTEX_SE2" && v.size() == 5)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]));
+			e.definitelyLandmark = false;
+			verticesList.push_back(e);
+		}
+		else if(tag == "VERTEX_XY" && v.size() == 4)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), 0);
+			e.definitelyLandmark = true;
+			verticesList.push_back(e);
+		}
+		else if(tag == "VERTEX_SE3:QUAT" && v.size() == 9)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]),
+									uStr2Float(v[5]), uStr2Float(v[6]), uStr2Float(v[7]), uStr2Float(v[8]));
+			e.definitelyLandmark = false;
+			verticesList.push_back(e);
+		}
+		else if(tag == "VERTEX_TRACKXYZ" && v.size() == 5)
+		{
+			VertexEntry e;
+			e.fileId = atoi(v[1].c_str());
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]), 0, 0, 0);
+			e.definitelyLandmark = true;
+			verticesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE2" && v.size() == 12)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), uStr2Float(v[5]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[6]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[7]);
+			e.info.at<double>(0, 5) = e.info.at<double>(5, 0) = uStr2Double(v[8]);
+			e.info.at<double>(1, 1) = uStr2Double(v[9]);
+			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[10]);
+			e.info.at<double>(5, 5) = uStr2Double(v[11]);
+			e.type = Link::kUndef; // disambiguated after we know landmarkOffset
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE2_XY" && v.size() == 8)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[5]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
+			e.info.at<double>(1, 1) = uStr2Double(v[7]);
+			e.type = Link::kLandmark;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = true;
+			edgesList.push_back(e);
+		}
+		else if((tag == "EDGE_SE3:QUAT" || tag == "EDGE_SE3") && v.size() == 31)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), uStr2Float(v[5]),
+									uStr2Float(v[6]), uStr2Float(v[7]), uStr2Float(v[8]), uStr2Float(v[9]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			int idx = 10;
+			for(int r = 0; r < 6; ++r)
+			{
+				for(int c = r; c < 6; ++c)
+				{
+					e.info.at<double>(r, c) = uStr2Double(v[idx++]);
+					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
+				}
+			}
+			// EDGE_SE3 (no :QUAT) is the landmark variant emitted by saveGraph
+			bool landmarkTag = (tag == "EDGE_SE3");
+			e.type = landmarkTag ? Link::kLandmark : Link::kUndef;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = landmarkTag;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE3_TRACKXYZ" && v.size() == 13)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			// v[3] = param_offset id, ignored
+			e.transform = Transform(uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]), 0, 0, 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[7]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[8]);
+			e.info.at<double>(0, 2) = e.info.at<double>(2, 0) = uStr2Double(v[9]);
+			e.info.at<double>(1, 1) = uStr2Double(v[10]);
+			e.info.at<double>(1, 2) = e.info.at<double>(2, 1) = uStr2Double(v[11]);
+			e.info.at<double>(2, 2) = uStr2Double(v[12]);
+			e.type = Link::kLandmark;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = true;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_PRIOR_SE2" && v.size() == 11)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[5]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
+			e.info.at<double>(0, 5) = e.info.at<double>(5, 0) = uStr2Double(v[7]);
+			e.info.at<double>(1, 1) = uStr2Double(v[8]);
+			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[9]);
+			e.info.at<double>(5, 5) = uStr2Double(v[10]);
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_PRIOR_SE2_XY" && v.size() == 7)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[4]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[5]);
+			e.info.at<double>(1, 1) = uStr2Double(v[6]);
+			// no orientation info on this prior
+			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE3_PRIOR" && v.size() == 31)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			// v[2] = param_offset id, ignored
+			e.transform = Transform(uStr2Float(v[3]), uStr2Float(v[4]), uStr2Float(v[5]),
+									uStr2Float(v[6]), uStr2Float(v[7]), uStr2Float(v[8]), uStr2Float(v[9]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			int idx = 10;
+			for(int r = 0; r < 6; ++r)
+			{
+				for(int c = r; c < 6; ++c)
+				{
+					e.info.at<double>(r, c) = uStr2Double(v[idx++]);
+					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
+				}
+			}
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_POINTXYZ_PRIOR" && v.size() == 11)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to = e.from;
+			e.transform = Transform(uStr2Float(v[2]), uStr2Float(v[3]), uStr2Float(v[4]), 0, 0, 0);
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[5]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
+			e.info.at<double>(0, 2) = e.info.at<double>(2, 0) = uStr2Double(v[7]);
+			e.info.at<double>(1, 1) = uStr2Double(v[8]);
+			e.info.at<double>(1, 2) = e.info.at<double>(2, 1) = uStr2Double(v[9]);
+			e.info.at<double>(2, 2) = uStr2Double(v[10]);
+			// no orientation info on this prior
+			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
+			e.type = Link::kPosePrior;
+			e.isPrior = true;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE2_SWITCHABLE" && v.size() == 13)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			// v[3] = switch vertex id, ignored
+			e.transform = Transform(uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			e.info.at<double>(0, 0) = uStr2Double(v[7]);
+			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[8]);
+			e.info.at<double>(0, 5) = e.info.at<double>(5, 0) = uStr2Double(v[9]);
+			e.info.at<double>(1, 1) = uStr2Double(v[10]);
+			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[11]);
+			e.info.at<double>(5, 5) = uStr2Double(v[12]);
+			e.type = Link::kUndef;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else if(tag == "EDGE_SE3_SWITCHABLE" && v.size() == 32)
+		{
+			EdgeEntry e;
+			e.from = atoi(v[1].c_str());
+			e.to   = atoi(v[2].c_str());
+			// v[3] = switch vertex id, ignored
+			e.transform = Transform(uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]),
+									uStr2Float(v[7]), uStr2Float(v[8]), uStr2Float(v[9]), uStr2Float(v[10]));
+			e.info = cv::Mat::eye(6, 6, CV_64FC1);
+			int idx = 11;
+			for(int r = 0; r < 6; ++r)
+			{
+				for(int c = r; c < 6; ++c)
+				{
+					e.info.at<double>(r, c) = uStr2Double(v[idx++]);
+					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
+				}
+			}
+			e.type = Link::kUndef;
+			e.isPrior = false;
+			e.hasLandmarkEndpoint = false;
+			edgesList.push_back(e);
+		}
+		else
+		{
+			UWARN("Unsupported or malformed g2o line: \"%s\" (tag=%s, tokens=%d)", line, tag.c_str(), (int)v.size());
+		}
+	}
+	fclose(file);
+
+	// Recover landmarkOffset from vertex order:
+	//   file order = [landmarks with DESCENDING file_ids] + [regular poses with ASCENDING file_ids]
+	// Walk backwards from the end and take the longest ascending suffix as the regular poses.
+	// landmarkOffset = max regular pose id (= last fileId of that suffix).
+	int landmarkOffset = 0;
+	int firstRegularIdx = (int)verticesList.size();
+	if(!verticesList.empty())
+	{
+		firstRegularIdx = (int)verticesList.size() - 1;
+		while(firstRegularIdx > 0 &&
+			  verticesList[firstRegularIdx - 1].fileId < verticesList[firstRegularIdx].fileId)
+		{
+			--firstRegularIdx;
+		}
+		landmarkOffset = verticesList.back().fileId;
+
+		// If the alleged regular suffix actually starts on a definite landmark
+		// (VERTEX_XY / VERTEX_TRACKXYZ), then there are no regular poses and
+		// saveGraph used landmarkOffset = 0; restore that case.
+		if(verticesList[firstRegularIdx].definitelyLandmark)
+		{
+			landmarkOffset = 0;
+			firstRegularIdx = (int)verticesList.size();
+		}
+	}
+
+	// Insert vertices into poses, remapping landmark file ids back to negative.
+	for(int i = 0; i < (int)verticesList.size(); ++i)
+	{
+		int originalId;
+		if(i < firstRegularIdx)
+		{
+			originalId = landmarkOffset - verticesList[i].fileId; // negative
+		}
+		else
+		{
+			originalId = verticesList[i].fileId;
+		}
+		if(poses.find(originalId) == poses.end())
+		{
+			poses.insert(std::make_pair(originalId, verticesList[i].transform));
+		}
+		else
+		{
+			UWARN("Vertex %d (file id %d) already exists, ignoring duplicate", originalId, verticesList[i].fileId);
+		}
+	}
+
+	// Remap edge endpoints. Any file id > landmarkOffset (or, if landmarkOffset == 0
+	// and there are any landmarks at all, any id present in the landmark prefix)
+	// is a landmark and gets the negative id back.
+	bool allLandmarks = (landmarkOffset == 0 && firstRegularIdx == (int)verticesList.size() && !verticesList.empty());
+	auto remap = [&](int fileId) -> int {
+		if(landmarkOffset > 0 && fileId > landmarkOffset)
+		{
+			return landmarkOffset - fileId; // negative
+		}
+		if(allLandmarks)
+		{
+			return -fileId;
+		}
+		return fileId;
+	};
+
+	for(const EdgeEntry & e : edgesList)
+	{
+		int from = remap(e.from);
+		int to   = e.isPrior ? from : remap(e.to);
+		Link::Type type = e.type;
+		// Promote ambiguous edges (EDGE_SE2) to kLandmark when an endpoint
+		// turns out to be a landmark after remapping.
+		if(type == Link::kUndef && (from < 0 || to < 0))
+		{
+			type = Link::kLandmark;
+		}
+		edgeConstraints.insert(std::make_pair(from, Link(from, to, type, e.transform, e.info)));
+	}
+
+	UINFO("Graph loaded from %s (%d poses, %d edges, landmarkOffset=%d)",
+		  fileName.c_str(), (int)poses.size(), (int)edgeConstraints.size(), landmarkOffset);
+	return true;
 }
 
 bool OptimizerG2O::saveGraph(

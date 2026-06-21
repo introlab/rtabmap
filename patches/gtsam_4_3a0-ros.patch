@@ -1,0 +1,13 @@
+diff --git a/cmake/Config.cmake.in b/cmake/Config.cmake.in
+index 338ff8500..0b738ea3c 100644
+--- a/cmake/Config.cmake.in
++++ b/cmake/Config.cmake.in
+@@ -28,7 +28,7 @@ if(@GTSAM_USE_TBB@)
+ endif()
+ 
+ if(@GTSAM_USE_SYSTEM_EIGEN@)
+-find_dependency(Eigen3 REQUIRED)
++find_dependency(Eigen3 REQUIRED CONFIG)
+ endif()
+ 
+ # Load exports

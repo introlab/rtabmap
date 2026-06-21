@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QWidget>
 #include <QtCore/QMap>
+#include <QTimer>
 
 class QToolButton;
 class QLabel;
@@ -59,6 +60,7 @@ public:
 
 public Q_SLOTS:
 	void updateMenu(const QMenu * menu);
+	void updateLabel();
 
 Q_SIGNALS:
 	void valueAdded(qreal);
@@ -117,6 +119,8 @@ Q_SIGNALS:
 private Q_SLOTS:
 	void plot(const StatItem * stat, const QString & plotName = QString());
 	void figureDeleted(QObject * obj);
+	void requestLabelsUpdate();
+	void updateLabels();
 
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
@@ -127,6 +131,7 @@ private:
 	QString _workingDirectory;
 	int _newFigureMaxItems;
 	QMap<QString, QWidget*> _figures;
+	QTimer _updateLabelsTimer;
 };
 
 }

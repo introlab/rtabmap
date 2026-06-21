@@ -250,17 +250,18 @@ void CalibrationDialog::resetSettings()
 
 cv::Mat drawChessboard(int squareSize, int boardWidth, int boardHeight, int borderSize)
 {
-    int imageWidth = squareSize*boardWidth + borderSize;
-	int imageHeight = squareSize*boardHeight + borderSize;
-    cv::Mat chessboard(imageWidth, imageHeight, CV_8UC1, 255);
-	unsigned char color = 0;
+    int imageWidth = squareSize*(boardWidth+1) + 2*borderSize;
+	int imageHeight = squareSize*(boardHeight+1) + 2*borderSize;
+    cv::Mat chessboard(imageHeight, imageWidth, CV_8UC1, 255);
+	unsigned char rowColor = 0;
 	for(int i=borderSize;i<imageHeight-borderSize; i=i+squareSize) {
-		color=~color;
+		unsigned char colColor = rowColor;
 		for(int j=borderSize;j<imageWidth-borderSize;j=j+squareSize) {
-			cv::Mat roi=chessboard(cv::Rect(i,j,squareSize,squareSize));
-			roi.setTo(color);
-			color=~color;
+			cv::Mat roi=chessboard(cv::Rect(j,i,squareSize,squareSize));
+			roi.setTo(colColor);
+			colColor=~colColor;
 		}
+		rowColor = ~rowColor;
 	}
 	return chessboard;
 }

@@ -42,6 +42,12 @@ public:
 	static bool isCholmodAvailable();
 
 public:
+	static bool loadGraph(
+			const std::string & fileName,
+			std::map<int, Transform> & poses,
+			std::multimap<int, Link> & edgeConstraints);
+
+public:
 	OptimizerG2O(const ParametersMap & parameters = ParametersMap());
 	virtual ~OptimizerG2O() {}
 

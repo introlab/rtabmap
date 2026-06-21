@@ -1141,14 +1141,14 @@ void ImageView::mouseMoveEvent(QMouseEvent * event)
 	if(_mouseTracking->isChecked() &&
 		!_graphicsView->scene()->sceneRect().isNull() &&
 		!_image.isNull() &&
-		!_imageDepthCv.empty() &&(_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
+		!_imageDepthCv.empty() && (_imageDepthCv.type() == CV_16UC1 || _imageDepthCv.type() == CV_32FC1))
 	{
 		float scale, offsetX, offsetY;
 		computeScaleOffsets(this->rect(), scale, offsetX, offsetY);
 		float u = (event->pos().x() - offsetX) / scale;
 		float v = (event->pos().y() - offsetY) / scale;
 		float depthScale = 1;
-		if(_image.width() > _imageDepthCv.cols)
+		if(_image.width() != _imageDepthCv.cols)
 		{
 			depthScale = float(_imageDepthCv.cols) / float(_image.width());
 		}
@@ -1255,11 +1255,11 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 	{
 		if (xRatio > 0 && yRatio > 0)
 		{
-			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), color);
+			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), iter->first<0?Qt::gray:color);
 		}
 		else
 		{
-			addFeature(iter->first, iter->second, 0, color);
+			addFeature(iter->first, iter->second, 0, iter->first<0?Qt::gray:color);
 		}
 	}
 
@@ -1382,6 +1382,16 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 			// convert the depth values in height values
 			cv::Mat depthInBaseFrame = _imageDepthCv.clone();
 			int subImageWidth = _imageDepthCv.cols / _models.size();
+			std::vector<CameraModel> models; // scale model to size of depth image if needed
+			for(const auto & model: _models) {
+				UASSERT(subImageWidth <= model.imageWidth());
+				if(subImageWidth < model.imageWidth()) {
+					models.push_back(model.scaled(float(subImageWidth)/float(model.imageWidth())));
+				}
+				else {
+					models.push_back(model);
+				}
+			}
 			if(depthInBaseFrame.type() == CV_16UC1) {
 				for(int v=0; v<depthInBaseFrame.rows; ++v){
 					unsigned short * rowPtr = depthInBaseFrame.ptr<unsigned short>(v);
@@ -1390,9 +1400,9 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 						if(val > 0) {
 							cv::Point3f pt;
 							int cameraIndex = u/subImageWidth;
-							UASSERT(cameraIndex>=0 && cameraIndex < (int)_models.size() && subImageWidth == _models[cameraIndex].imageWidth());
-							_models[cameraIndex].project(u,v,float(val)/1000.0f, pt.x, pt.y, pt.z);
-							pt = util3d::transformPoint(pt, _models[cameraIndex].localTransform());
+							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
+							models[cameraIndex].project(u-(cameraIndex*subImageWidth),v,float(val)/1000.0f, pt.x, pt.y, pt.z);
+							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
 							val = (unsigned short)(pt.z*1000.0f);
 						}
 					}
@@ -1406,9 +1416,9 @@ void ImageView::setImageDepth(const cv::Mat & imageDepth, const cv::Mat & imageD
 						if(val > 0) {
 							cv::Point3f pt;
 							int cameraIndex = u/subImageWidth;
-							UASSERT(cameraIndex>=0 && cameraIndex < (int)_models.size() && subImageWidth == _models[cameraIndex].imageWidth());
-							_models[cameraIndex].project(u,v,val, pt.x, pt.y, pt.z);
-							pt = util3d::transformPoint(pt, _models[cameraIndex].localTransform());
+							UASSERT(cameraIndex>=0 && cameraIndex < (int)models.size() && subImageWidth == models[cameraIndex].imageWidth());
+							models[cameraIndex].project(u-(cameraIndex*subImageWidth),v,val, pt.x, pt.y, pt.z);
+							pt = util3d::transformPoint(pt, models[cameraIndex].localTransform());
 							val = pt.z;
 						}
 					}
@@ -1438,8 +1448,8 @@ void ImageView::setImageDepth(const QImage & imageDepth, const QImage & imageDep
 	UASSERT(_imageDepth.width() && _imageDepth.height());
 
 	if( _image.width() > 0 &&
-		_image.width() > _imageDepth.width() &&
-		_image.height() > _imageDepth.height())
+		_image.width() != _imageDepth.width() &&
+		_image.height() != _imageDepth.height())
 	{
 		// scale depth to rgb
 		_imageDepth = _imageDepth.scaled(_image.size());

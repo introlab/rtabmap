@@ -12,57 +12,35 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    name: Build on ros ${{ matrix.ros_distribution }} and ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.ros_distribution }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         ros_distribution: [ kilted ]
         include:
         - ros_distribution: 'kilted'
-          os: ubuntu-24.04
-
+          skip_keys: ""
+    container:
+      image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
     steps:   
-    - name: Setup ROS2
-      # https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
-      run: |
-        sudo apt install software-properties-common
-        sudo add-apt-repository universe
-        sudo apt update && sudo apt install curl -y
-        export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
-        curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb"
-        sudo apt install /tmp/ros2-apt-source.deb
-        sudo apt update
-
+    - uses: actions/checkout@v4
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
-    
-    - uses: actions/checkout@v4
-
-    - name: Install dependencies
-      run: |
-        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
-        rosdep update
-        rosdep install --from-paths ${{github.workspace}} -y
-
-    - name: Configure CMake
-      run: |
-        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-    - name: Info
-      working-directory: ${{github.workspace}}/build/bin
-      run: |
-        source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
-        ./rtabmap-console --version
+    - uses: ros-tooling/action-ros-ci@v0.4
+      with:
+        package-name: rtabmap
+        target-ros2-distro: ${{ matrix.ros_distribution }}
+        rosdep-skip-keys: "${{ matrix.skip_keys }}"
       
