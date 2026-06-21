@@ -41,11 +41,11 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs, b
 		return LaserScan();
 	}
 	//determine the output type
-	int fieldStates[8] = {0}; // x,y,z,normal_x,normal_y,normal_z,rgb,intensity
+	int fieldStates[10] = {0}; // x,y,z,normal_x,normal_y,normal_z,rgb,intensity,time,ring
 #if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-	std::uint32_t fieldOffsets[8] = {0};
+	std::uint32_t fieldOffsets[10] = {0};
 #else
-	pcl::uint32_t fieldOffsets[8] = {0};
+	pcl::uint32_t fieldOffsets[10] = {0};
 #endif
 	for(unsigned int i=0; i<cloud.fields.size(); ++i)
 	{
@@ -102,6 +102,42 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs, b
 			fieldStates[7] = 1;
 			fieldOffsets[7] = cloud.fields[i].offset;
 		}
+		else if(cloud.fields[i].name.compare("time") == 0)
+		{
+			if(cloud.fields[i].datatype != pcl::PCLPointField::FLOAT32)
+			{
+				static bool warningShown = false;
+				if(!warningShown)
+				{
+					UWARN("The input scan cloud has an \"time\" field "
+							"but the datatype (%d) is not supported. Time will be ignored. "
+							"This message is only shown once.", cloud.fields[i].datatype);
+					warningShown = true;
+				}
+				continue;
+			}
+
+			fieldStates[8] = 1;
+			fieldOffsets[8] = cloud.fields[i].offset;
+		}
+		else if(cloud.fields[i].name.compare("ring") == 0)
+		{
+			if(cloud.fields[i].datatype != pcl::PCLPointField::UINT16)
+			{
+				static bool warningShown = false;
+				if(!warningShown)
+				{
+					UWARN("The input scan cloud has an \"ring\" field "
+							"but the datatype (%d) is not supported. Ring will be ignored. "
+							"This message is only shown once.", cloud.fields[i].datatype);
+					warningShown = true;
+				}
+				continue;
+			}
+
+			fieldStates[9] = 1;
+			fieldOffsets[9] = cloud.fields[i].offset;
+		}
 		else
 		{
 			UDEBUG("Ignoring \"%s\" field", cloud.fields[i].name.c_str());
@@ -117,6 +153,8 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs, b
 	bool hasNormals = fieldStates[3] || fieldStates[4] || fieldStates[5];
 	bool hasIntensity = fieldStates[7];
 	bool hasRGB = !hasIntensity&&fieldStates[6];
+	bool hasTime = hasIntensity&&fieldStates[8];
+	bool hasRing = hasIntensity&&fieldStates[9];
 	bool is3D = fieldStates[0] && fieldStates[1] && fieldStates[2];
 
 	LaserScan::Format format;
@@ -140,7 +178,18 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs, b
 		}
 		else if(!hasNormals && hasIntensity)
 		{
-			format = LaserScan::kXYZI;
+			if(hasTime && hasRing)
+			{
+				format = LaserScan::kXYZIRT;
+			}
+			else if(hasTime)
+			{
+				format = LaserScan::kXYZIT;
+			}
+			else
+			{
+				format = LaserScan::kXYZI;
+			}
 		}
 		else if(!hasNormals && hasRGB)
 		{
@@ -183,6 +232,7 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs, b
 		transformRot = transform.rotation();
 	}
 	int oi=0;
+	UASSERT(cloud.height == 1 || cloud.row_step != 0);
 	for (uint32_t row = 0; row < (uint32_t)cloud.height; ++row)
 	{
 		const uint8_t* row_data = &cloud.data[row * cloud.row_step];
@@ -242,26 +292,45 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs, b
 			{
 				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
 				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				ptr[2] = *(float*)(msg_data + fieldOffsets[3]);
-				ptr[3] = *(float*)(msg_data + fieldOffsets[4]);
-				ptr[4] = *(float*)(msg_data + fieldOffsets[5]);
+				if(format == LaserScan::kXYZIT)
+				{
+					ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
+					ptr[3] = *(float*)(msg_data + fieldOffsets[7]);
+					ptr[4] = *(float*)(msg_data + fieldOffsets[8]);
+				}
+				else // kXYNormal
+				{
+					ptr[2] = *(float*)(msg_data + fieldOffsets[3]);
+					ptr[3] = *(float*)(msg_data + fieldOffsets[4]);
+					ptr[4] = *(float*)(msg_data + fieldOffsets[5]);
+				}
 				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[3]) && uIsFinite(ptr[4]);
 			}
 			else if(laserScan.channels() == 6)
 			{
 				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
 				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				if(format == LaserScan::kXYINormal)
-				{
-					ptr[2] = *(float*)(msg_data + fieldOffsets[7]);
-				}
-				else // XYZNormal
+				if(format == LaserScan::kXYZIRT)
 				{
 					ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
+					ptr[3] = *(float*)(msg_data + fieldOffsets[7]);
+					ptr[4] = float(*(unsigned short*)(msg_data + fieldOffsets[9])); // Convert 16U to float
+					ptr[5] = *(float*)(msg_data + fieldOffsets[8]);
 				}
-				ptr[3] = *(float*)(msg_data + fieldOffsets[3]);
-				ptr[4] = *(float*)(msg_data + fieldOffsets[4]);
-				ptr[5] = *(float*)(msg_data + fieldOffsets[5]);
+				else // with normal
+				{
+					if(format == LaserScan::kXYINormal)
+					{
+						ptr[2] = *(float*)(msg_data + fieldOffsets[7]);
+					}
+					else // XYZNormal
+					{
+						ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
+					}
+					ptr[3] = *(float*)(msg_data + fieldOffsets[3]);
+					ptr[4] = *(float*)(msg_data + fieldOffsets[4]);
+					ptr[5] = *(float*)(msg_data + fieldOffsets[5]);
+				}
 				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[3]) && uIsFinite(ptr[4]) &&  uIsFinite(ptr[5]);
 			}
 			else if(laserScan.channels() == 7)

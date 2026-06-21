@@ -50,7 +50,24 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-rgbd_mapping driver\n"
-			"  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=ZED SDK, 7=RealSense, 8=RealSense2 9=Kinect for Azure SDK 10=MYNT EYE S\n\n");
+			"  driver       Driver number to use: 0=OpenNI-PCL (Kinect)\n"
+			"                                     1=OpenNI2    (Kinect and Xtion PRO Live)\n"
+			"                                     2=Freenect   (Kinect)\n"
+			"                                     3=OpenNI-CV  (Kinect)\n"
+			"                                     4=OpenNI-CV-ASUS (Xtion PRO Live)\n"
+			"                                     5=Freenect2  (Kinect v2)\n"
+			"                                     6=DC1394     (Bumblebee2)\n"
+			"                                     7=FlyCapture2 (Bumblebee2)\n"
+			"                                     8=ZED stereo\n"
+			"                                     9=RealSense\n"
+			"                                     10=Kinect for Windows 2 SDK\n"
+			"                                     11=RealSense2\n"
+			"                                     12=Kinect for Azure SDK\n"
+			"                                     13=MYNT EYE S\n"
+			"                                     14=ZED Open Capture\n"
+			"                                     15=depthai-core\n"
+			"                                     16=XVSDK     (SeerSense)\n"
+			"                                     17=Orbbec SDK\n\n");
 	exit(1);
 }
 
@@ -58,7 +75,7 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kWarning);
+	ULogger::setLevel(ULogger::kInfo);
 
 #ifdef RTABMAP_PYTHON
 	PythonInterface python; // Make sure we initialize python in main thread
@@ -72,92 +89,120 @@ int main(int argc, char * argv[])
 	else
 	{
 		driver = atoi(argv[argc-1]);
-		if(driver < 0 || driver > 10)
+		if(driver < 0 || driver > 17)
 		{
-			UERROR("driver should be between 0 and 10.");
+			UERROR("driver should be between 0 and 17.");
 			showUsage();
 		}
 	}
 
 	// Here is the pipeline that we will use:
 	// CameraOpenni -> "SensorEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
-
-	// Create the OpenNI camera, it will send a SensorEvent at the rate specified.
-	// Set transform to camera so z is up, y is left and x going forward
 	Camera * camera = 0;
-	if(driver == 1)
+	if (driver == 0)
 	{
-		if(!CameraOpenNI2::available())
+		camera = new rtabmap::CameraOpenni();
+	}
+	else if (driver == 1)
+	{
+		if (!rtabmap::CameraOpenNI2::available())
 		{
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNI2();
+		camera = new rtabmap::CameraOpenNI2();
 	}
-	else if(driver == 2)
+	else if (driver == 2)
 	{
-		if(!CameraFreenect::available())
+		if (!rtabmap::CameraFreenect::available())
 		{
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect();
+		camera = new rtabmap::CameraFreenect();
 	}
-	else if(driver == 3)
+	else if (driver == 3)
 	{
-		if(!CameraOpenNICV::available())
+		if (!rtabmap::CameraOpenNICV::available())
 		{
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNICV();
+		camera = new rtabmap::CameraOpenNICV(false);
 	}
-	else if(driver == 4)
+	else if (driver == 4)
 	{
-		if(!CameraOpenNICV::available())
+		if (!rtabmap::CameraOpenNICV::available())
 		{
 			UERROR("Not built with OpenNI from OpenCV support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNICV(true);
+		camera = new rtabmap::CameraOpenNICV(true);
 	}
 	else if (driver == 5)
 	{
-		if (!CameraFreenect2::available())
+		if (!rtabmap::CameraFreenect2::available())
 		{
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect2(0, CameraFreenect2::kTypeColor2DepthSD);
+		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeColor2DepthSD);
 	}
 	else if (driver == 6)
 	{
-		if (!CameraStereoZed::available())
+		if (!rtabmap::CameraStereoDC1394::available())
 		{
-			UERROR("Not built with ZED SDK support...");
+			UERROR("Not built with DC1394 support...");
 			exit(-1);
 		}
-		camera = new CameraStereoZed(0, -1, 1, 1, 100, false);
+		camera = new rtabmap::CameraStereoDC1394();
 	}
 	else if (driver == 7)
 	{
-		if (!CameraRealSense::available())
+		if (!rtabmap::CameraStereoFlyCapture2::available())
+		{
+			UERROR("Not built with FlyCapture2/Triclops support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoFlyCapture2();
+	}
+	else if (driver == 8)
+	{
+		if (!rtabmap::CameraStereoZed::available())
+		{
+			UERROR("Not built with ZED sdk support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoZed(0);
+	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraRealSense::available())
 		{
 			UERROR("Not built with RealSense support...");
 			exit(-1);
 		}
-		camera = new CameraRealSense();
+		camera = new rtabmap::CameraRealSense();
 	}
-	else if (driver == 8)
+	else if (driver == 10)
 	{
-		if (!CameraRealSense2::available())
+		if (!rtabmap::CameraK4W2::available())
 		{
-			UERROR("Not built with RealSense2 support...");
+			UERROR("Not built with Kinect for Windows 2 SDK support...");
 			exit(-1);
 		}
-		camera = new CameraRealSense2();
+		camera = new rtabmap::CameraK4W2();
 	}
-	else if (driver == 9)
+	else if (driver == 11)
+	{
+		if (!rtabmap::CameraRealSense2::available())
+		{
+			UERROR("Not built with RealSense2 SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense2();
+	}
+	else if (driver == 12)
 	{
 		if (!rtabmap::CameraK4A::available())
 		{
@@ -166,7 +211,7 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraK4A(1);
 	}
-	else if (driver == 10)
+	else if (driver == 13)
 	{
 		if (!rtabmap::CameraMyntEye::available())
 		{
@@ -175,9 +220,45 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraMyntEye();
 	}
+	else if (driver == 14)
+	{
+		if (!rtabmap::CameraStereoZedOC::available())
+		{
+			UERROR("Not built with Zed Open Capture support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoZedOC(0);
+	}
+	else if (driver == 15)
+	{
+		if (!rtabmap::CameraDepthAI::available())
+		{
+			UERROR("Not built with depthai-core support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraDepthAI();
+	}
+	else if (driver == 16)
+	{
+		if (!rtabmap::CameraSeerSense::available())
+		{
+			UERROR("Not built with XVisio SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraSeerSense();
+	}
+	else if (driver == 17)
+	{
+		if (!rtabmap::CameraOrbbecSDK::available())
+		{
+			UERROR("Not built with Orbbec SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOrbbecSDK();
+	}
 	else
 	{
-		camera = new rtabmap::CameraOpenni();
+		UFATAL("");
 	}
 
 	if(!camera->init())

@@ -135,8 +135,20 @@ void IMUThread::mainLoop()
 		std::stringstream stream(line);
 		std::string s;
 		std::getline(stream, s, ',');
-		std::string nanoseconds = s.substr(s.size() - 9, 9);
-		std::string seconds = s.substr(0, s.size() - 9);
+
+		double stamp = 0.0;
+		if(s.find('.') != std::string::npos)
+		{
+			// Normal [epoch] timestamp
+			stamp = uStr2Double(s);
+		}
+		else
+		{
+			// Assume EuRoC format
+			std::string nanoseconds = s.substr(s.size() - 9, 9);
+			std::string seconds = s.substr(0, s.size() - 9);
+			stamp = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
+		}
 
 		cv::Vec3d gyr;
 		for (int j = 0; j < 3; ++j) {
@@ -150,7 +162,6 @@ void IMUThread::mainLoop()
 			acc[j] = uStr2Double(s);
 		}
 
-		double stamp = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
 		if(previousStamp_>0 && stamp > previousStamp_)
 		{
 			captureDelay_ = stamp - previousStamp_;

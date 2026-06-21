@@ -1,0 +1,21 @@
+{
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "ROS_DISTRO": "jazzy"
+      }
+    },
+    "customizations": {
+        "vscode": {
+          "extensions": ["ms-vscode.cpptools-themes", "ms-vscode.cmake-tools"]
+        }
+      },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/rtabmap,type=bind",
+    "workspaceFolder": "/home/vscode/rtabmap",
+    //"mounts": ["source=${localEnv:HOME}/Documents/RTAB-Map,target=/home/vscode/Documents/RTAB-Map,type=bind,consistency=cached"],
+    "settings": {
+      "terminal.integrated.defaultProfile.linux": "bash"
+    },
+    "remoteUser": "vscode",
+    "runArgs": ["--privileged", "--network=host"]
+}

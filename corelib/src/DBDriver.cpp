@@ -45,7 +45,7 @@ DBDriver * DBDriver::create(const ParametersMap & parameters)
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
 	_emptyTrashesTime(0),
-	_timestampUpdate(true)
+	_timestampUpdate(false)
 {
 	this->parseParameters(parameters);
 }
@@ -73,7 +73,15 @@ void DBDriver::closeConnection(bool save, const std::string & outputUrl)
 	else
 	{
 		_trashesMutex.lock();
+		for(auto & iter: _trashSignatures)
+		{
+			delete iter.second;
+		}
 		_trashSignatures.clear();
+		for(auto & iter: _trashVisualWords)
+		{
+			delete iter.second;
+		}
 		_trashVisualWords.clear();
 		_trashesMutex.unlock();
 	}
@@ -83,12 +91,12 @@ void DBDriver::closeConnection(bool save, const std::string & outputUrl)
 	UDEBUG("");
 }
 
-bool DBDriver::openConnection(const std::string & url, bool overwritten)
+bool DBDriver::openConnection(const std::string & url, bool overwritten, bool readOnly)
 {
 	UDEBUG("");
 	_url = url;
 	_dbSafeAccessMutex.lock();
-	if(this->connectDatabaseQuery(url, overwritten))
+	if(this->connectDatabaseQuery(url, overwritten, readOnly))
 	{
 		_dbSafeAccessMutex.unlock();
 		return true;
@@ -383,7 +391,7 @@ void DBDriver::asyncSave(Signature * s)
 {
 	if(s)
 	{
-		UDEBUG("s=%d", s->id());
+		//UDEBUG("s=%d", s->id());
 		_trashesMutex.lock();
 		{
 			_trashSignatures.insert(std::pair<int, Signature*>(s->id(), s));
@@ -531,17 +539,17 @@ void DBDriver::updateLaserScan(int nodeId, const LaserScan & scan)
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::load(VWDictionary * dictionary, bool lastStateOnly) const
+void DBDriver::load(VWDictionary & dictionary, bool lastStateOnly) const
 {
 	_dbSafeAccessMutex.lock();
 	this->loadQuery(dictionary, lastStateOnly);
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::loadLastNodes(std::list<Signature *> & signatures) const
+void DBDriver::loadLastNodes(std::list<Signature *> & signatures, bool loadWordIdsOnly) const
 {
 	_dbSafeAccessMutex.lock();
-	this->loadLastNodesQuery(signatures);
+	this->loadLastNodesQuery(signatures, loadWordIdsOnly);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -564,7 +572,8 @@ Signature * DBDriver::loadSignature(int id, bool * loadedFromTrash)
 }
 void DBDriver::loadSignatures(const std::list<int> & signIds,
 		std::list<Signature *> & signatures,
-		std::set<int> * loadedFromTrash)
+		std::set<int> * loadedFromTrash,
+		bool loadWordIdsOnly)
 {
 	UDEBUG("");
 	// look up in the trash before the database
@@ -609,7 +618,7 @@ void DBDriver::loadSignatures(const std::list<int> & signIds,
 	if(ids.size())
 	{
 		_dbSafeAccessMutex.lock();
-		this->loadSignaturesQuery(ids, signatures);
+		this->loadSignaturesQuery(ids, signatures, loadWordIdsOnly);
 		_dbSafeAccessMutex.unlock();
 	}
 }
@@ -656,10 +665,10 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	}
 }
 
-void DBDriver::loadNodeData(Signature * signature, bool images, bool scan, bool userData, bool occupancyGrid) const
+void DBDriver::loadNodeData(Signature & signature, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	std::list<Signature *> signatures;
-	signatures.push_back(signature);
+	signatures.push_back(&signature);
 	this->loadNodeData(signatures, images, scan, userData, occupancyGrid);
 }
 
@@ -821,6 +830,45 @@ bool DBDriver::getNodeInfo(
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;
+}
+
+void DBDriver::getLocalFeatures(
+	int signatureId,
+	std::multimap<int, int> & words,
+	std::vector<cv::KeyPoint> & keypoints,
+	std::vector<cv::Point3f> & points,
+	cv::Mat & descriptors) const
+{
+	bool found = false;
+	// look in the trash
+	_trashesMutex.lock();
+	if(uContains(_trashSignatures, signatureId))
+	{
+		const Signature * s = _trashSignatures.at(signatureId);
+		UASSERT(s != 0);
+		found = true;
+		if(!s->getWords().empty())
+		{
+			words = s->getWords();
+			if(s->getWordsKpts().empty()){
+				found = false; // Force checking the database in case the local features were not loaded in RAM
+			}
+			else
+			{
+				words = s->getWords();
+				keypoints = s->getWordsKpts();
+				points = s->getWords3();
+				descriptors = s->getWordsDescriptors().clone();
+			}
+		}
+	}
+	_trashesMutex.unlock();
+
+	if(!found)
+	{
+		UScopeMutex lock(_dbSafeAccessMutex);
+		getLocalFeaturesQuery(signatureId, words, keypoints, points, descriptors);
+	}
 }
 
 void DBDriver::loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type) const
@@ -1285,6 +1333,13 @@ cv::Mat DBDriver::loadOptimizedMesh(
 	cv::Mat cloud = loadOptimizedMeshQuery(polygons, texCoords, textures);
 	_dbSafeAccessMutex.unlock();
 	return cloud;
+}
+
+void DBDriver::saveFlannIndex(const std::vector<unsigned char> & indexData) const
+{
+	_dbSafeAccessMutex.lock();
+	saveFlannIndexQuery(indexData);
+	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::generateGraph(

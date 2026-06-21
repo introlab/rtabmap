@@ -156,12 +156,12 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 	if(pFunc_)
 	{
 		npy_intp dims[2] = {imgRoi.rows, imgRoi.cols};
-		PyObject* pImageBuffer = PyArray_SimpleNewFromData(2, dims, NPY_UBYTE, (void*)imgRoi.data);
+		PyObject * pImageBuffer = PyArray_SimpleNewFromData(2, dims, NPY_UBYTE, (void*)imgRoi.data);
 		UASSERT(pImageBuffer);
 
 		UDEBUG("Preparing data time = %fs", timer.ticks());
 
-		PyObject *pReturn = PyObject_CallFunctionObjArgs(pFunc_, pImageBuffer, NULL);
+		PyObject * pReturn = PyObject_CallFunctionObjArgs(pFunc_, pImageBuffer, NULL);
 		if(pReturn == NULL)
 		{
 			UERROR("Failed to call match() function!");
@@ -173,8 +173,8 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 
 			if (PyTuple_Check(pReturn) && PyTuple_GET_SIZE(pReturn) == 2)
 			{
-				PyObject *kptsPtr = PyTuple_GET_ITEM(pReturn, 0);
-				PyObject *descPtr = PyTuple_GET_ITEM(pReturn, 1);
+				PyObject * kptsPtr = PyTuple_GET_ITEM(pReturn, 0);
+				PyObject * descPtr = PyTuple_GET_ITEM(pReturn, 1);
 				if(PyArray_Check(kptsPtr) && PyArray_Check(descPtr))
 				{
 					PyArrayObject *arrayPtr = reinterpret_cast<PyArrayObject*>(kptsPtr);
@@ -186,26 +186,47 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 					UASSERT_MSG(type == NPY_FLOAT, uFormat("Returned matches should type FLOAT=11, received type=%d", type).c_str());
 
 					float* c_out = reinterpret_cast<float*>(PyArray_DATA(arrayPtr));
+					std::vector<bool> keep_kpt(nKpts);
 					keypoints.reserve(nKpts);
-					for (int i = 0; i < nKpts*kptSize; i+=kptSize)
+					for (int i = 0, kpt_idx = 0; i < nKpts*kptSize; i+=kptSize, kpt_idx++)
 					{
-						cv::KeyPoint kpt(c_out[i], c_out[i+1], 8, -1, c_out[i+2]);
-						keypoints.push_back(kpt);
+						// x,y in full image coordinates. Mask is in full image coordinates too.
+						int full_x = (int)(c_out[i] + roi.x);
+						int full_y = (int)(c_out[i+1] + roi.y);
+						keep_kpt[kpt_idx] = mask.empty() || (full_x >= 0 && full_x < mask.cols && full_y >= 0 && full_y < mask.rows && mask.at<unsigned char>(full_y, full_x) != 0);
+						if(keep_kpt[kpt_idx]) {
+							cv::KeyPoint kpt(c_out[i], c_out[i+1], 8, -1, c_out[i+2]);
+							keypoints.push_back(kpt);
+						}
 					}
 
 					arrayPtr = reinterpret_cast<PyArrayObject*>(descPtr);
 					int nDesc = PyArray_SHAPE(arrayPtr)[0];
-					UASSERT(nDesc = nKpts);
 					int dim = PyArray_SHAPE(arrayPtr)[1];
 					type = PyArray_TYPE(arrayPtr);
 					UDEBUG("Desc array %dx%d (type=%d)", nDesc, dim, type);
-					UASSERT_MSG(type == NPY_FLOAT, uFormat("Returned matches should type FLOAT=11, received type=%d", type).c_str());
 
-					c_out = reinterpret_cast<float*>(PyArray_DATA(arrayPtr));
-					for (int i = 0; i < nDesc*dim; i+=dim)
+					if(nDesc != nKpts || dim <= 0)
 					{
-						cv::Mat descriptor = cv::Mat(1, dim, CV_32FC1, &c_out[i]).clone();
-						descriptors_.push_back(descriptor);
+						UWARN("Python detector returned mismatched arrays: "
+								"%d keypoints vs %d descriptors (dim=%d). "
+								"Returning empty features.",
+								nKpts, nDesc, dim);
+						keypoints.clear();
+						descriptors_ = cv::Mat();
+					}
+					else
+					{
+						UASSERT_MSG(type == NPY_FLOAT, uFormat("Returned matches should type FLOAT=11, received type=%d", type).c_str());
+
+						c_out = reinterpret_cast<float*>(PyArray_DATA(arrayPtr));
+						for (int i = 0, kpt_idx = 0; i < nDesc*dim; i+=dim, kpt_idx++)
+						{
+							if(keep_kpt[kpt_idx]) {
+								cv::Mat descriptor = cv::Mat(1, dim, CV_32FC1, &c_out[i]).clone();
+								descriptors_.push_back(descriptor);
+							}
+						}
 					}
 				}
 			}
@@ -218,12 +239,23 @@ std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & imag
 		Py_DECREF(pImageBuffer);
 	}
 
+	// Apply limitKeypoints to enforce maxFeatures and SSC
+	this->limitKeypoints(keypoints, descriptors_, this->getMaxFeatures(), cv::Size(roi.width, roi.height), this->getSSC());
+
 	return keypoints;
 }
 
 cv::Mat PyDetector::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
-	UASSERT((int)keypoints.size() == descriptors_.rows);
+	if(!keypoints.empty() && (int)keypoints.size() != descriptors_.rows)
+	{
+		UERROR("The number of keypoints (%ld) doesn't match the number of buffered "
+			"descriptors (%d). PyDetector's descriptors extraction should "
+			"be called right after keypoints detection, with same keypoints "
+			"returned by the detection. Returning empty descriptors.", 
+			keypoints.size(), descriptors_.rows);
+		return cv::Mat();
+	}
 	return descriptors_;
 }
 

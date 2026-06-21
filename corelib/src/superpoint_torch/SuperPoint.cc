@@ -144,7 +144,12 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 	UASSERT(img.type() == CV_8UC1);
 	UASSERT(mask.empty() || (mask.type() == CV_8UC1 && img.cols == mask.cols && img.rows == mask.rows));
 	detected_ = false;
-	if(model_)
+	if(!model_)
+	{
+		UERROR("No model is loaded!");
+		return std::vector<cv::KeyPoint>();
+	}
+	try
 	{
 		torch::NoGradGuard no_grad_guard;
 		auto x = torch::from_blob(img.data, {1, 1, img.rows, img.cols}, torch::kByte);
@@ -199,9 +204,9 @@ std::vector<cv::KeyPoint> SPDetector::detect(const cv::Mat &img, const cv::Mat &
 		detected_ = true;
 		return keypoints;
 	}
-	else
+	catch(const std::exception & e)
 	{
-		UERROR("No model is loaded!");
+		UERROR("SPDetector::detect() threw: %s", e.what());
 		return std::vector<cv::KeyPoint>();
 	}
 }

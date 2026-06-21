@@ -177,7 +177,8 @@ private:
 			struct iwreq req;
 			struct iw_statistics stats;
 
-			strncpy(req.ifr_name, interfaceName_.c_str(), IFNAMSIZ);
+			strncpy(req.ifr_name, interfaceName_.c_str(), IFNAMSIZ - 1);
+			req.ifr_name[IFNAMSIZ - 1] = '\0';
 
 			//make room for the iw_statistics object
 			req.u.data.pointer = (caddr_t) &stats;

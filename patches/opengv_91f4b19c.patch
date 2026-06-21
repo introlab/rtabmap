@@ -1,0 +1,314 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9660f55..c4a076f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -18,6 +18,7 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+ 
+ OPTION(BUILD_TESTS "Build tests" ON)
+ OPTION(BUILD_PYTHON "Build Python extension" OFF)
++OPTION(BUILD_WITH_MARCHNATIVE "Build with -march=native" ON)
+ 
+ IF(MSVC)
+   set(BUILD_SHARED_LIBS OFF)
+@@ -35,7 +36,7 @@ ELSE()
+   ELSEIF (CMAKE_SYSTEM_PROCESSOR MATCHES 
+           "(arm)|(ARM)|(armhf)|(ARMHF)|(armel)|(ARMEL)")
+     add_definitions (-march=armv7-a)
+-  ELSE ()
++  ELSEIF (BUILD_WITH_MARCHNATIVE)
+     add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
+   ENDIF()
+   add_definitions (
+@@ -54,8 +55,9 @@ IF(BUILD_POSITION_INDEPENDENT_CODE)
+ ENDIF()
+ 
+ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
+-find_package(Eigen REQUIRED)
+-set(ADDITIONAL_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIR}/unsupported)
++find_package(Eigen3 REQUIRED)
++get_target_property(EIGEN3_INCLUDE_DIR Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
++set(ADDITIONAL_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR}/unsupported)
+ 
+ set( OPENGV_SOURCE_FILES
+   src/absolute_pose/modules/main.cpp
+@@ -187,13 +189,10 @@ set_target_properties( opengv random_generators PROPERTIES
+ 
+ target_include_directories( opengv PUBLIC 
+                 # only when building from the source tree
+-                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
++                "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${ADDITIONAL_INCLUDE_DIRS}>"
+                 # only when using the lib from the install path
+-                $<INSTALL_INTERFACE:include>
+-                ${ADDITIONAL_INCLUDE_DIRS} )
+-
+-target_include_directories( random_generators PRIVATE ${ADDITIONAL_INCLUDE_DIRS} )
+-
++                "$<INSTALL_INTERFACE:include>" )
++target_link_libraries(opengv PUBLIC Eigen3::Eigen)
+ target_link_libraries( random_generators opengv )
+ 
+ IF (BUILD_TESTS)
+diff --git a/modules/Config.cmake.in b/modules/Config.cmake.in
+index 9b4c9ee..6963356 100644
+--- a/modules/Config.cmake.in
++++ b/modules/Config.cmake.in
+@@ -1,4 +1,4 @@
+ @PACKAGE_INIT@
+-
++find_dependency(Eigen3 CONFIG)
+ include("${CMAKE_CURRENT_LIST_DIR}/@targets_export_name@.cmake")
+ check_required_components("@PROJECT_NAME@")
+diff --git a/src/absolute_pose/CentralAbsoluteAdapter.cpp b/src/absolute_pose/CentralAbsoluteAdapter.cpp
+index 684fa7e..ead54ac 100644
+--- a/src/absolute_pose/CentralAbsoluteAdapter.cpp
++++ b/src/absolute_pose/CentralAbsoluteAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
++#include <cassert>
+ 
+ 
+ opengv::absolute_pose::CentralAbsoluteAdapter::CentralAbsoluteAdapter(
+diff --git a/src/absolute_pose/MACentralAbsolute.cpp b/src/absolute_pose/MACentralAbsolute.cpp
+index 6edbabc..1164b30 100644
+--- a/src/absolute_pose/MACentralAbsolute.cpp
++++ b/src/absolute_pose/MACentralAbsolute.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/absolute_pose/MACentralAbsolute.hpp>
++#include <cassert>
+ 
+ 
+ opengv::absolute_pose::MACentralAbsolute::MACentralAbsolute(
+diff --git a/src/absolute_pose/MANoncentralAbsolute.cpp b/src/absolute_pose/MANoncentralAbsolute.cpp
+index d9b5b09..1d2041c 100644
+--- a/src/absolute_pose/MANoncentralAbsolute.cpp
++++ b/src/absolute_pose/MANoncentralAbsolute.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/absolute_pose/MANoncentralAbsolute.hpp>
++#include <cassert>
+ 
+ opengv::absolute_pose::MANoncentralAbsolute::MANoncentralAbsolute(
+     const double * points,
+diff --git a/src/absolute_pose/NoncentralAbsoluteAdapter.cpp b/src/absolute_pose/NoncentralAbsoluteAdapter.cpp
+index 30176aa..399699b 100644
+--- a/src/absolute_pose/NoncentralAbsoluteAdapter.cpp
++++ b/src/absolute_pose/NoncentralAbsoluteAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/absolute_pose/NoncentralAbsoluteAdapter.hpp>
++#include <cassert>
+ 
+ opengv::absolute_pose::NoncentralAbsoluteAdapter::NoncentralAbsoluteAdapter(
+     const bearingVectors_t & bearingVectors,
+diff --git a/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp b/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp
+index 88c237a..b88bbb2 100644
+--- a/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp
++++ b/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/absolute_pose/NoncentralAbsoluteMultiAdapter.hpp>
++#include <cassert>
+ 
+ opengv::absolute_pose::NoncentralAbsoluteMultiAdapter::NoncentralAbsoluteMultiAdapter(
+     std::vector<std::shared_ptr<bearingVectors_t> > bearingVectors,
+diff --git a/src/absolute_pose/methods.cpp b/src/absolute_pose/methods.cpp
+index b1f0889..6d7a73c 100644
+--- a/src/absolute_pose/methods.cpp
++++ b/src/absolute_pose/methods.cpp
+@@ -34,6 +34,7 @@
+ 
+ #include <Eigen/NonLinearOptimization>
+ #include <Eigen/NumericalDiff>
++#include <cassert>
+ 
+ #include <opengv/absolute_pose/modules/main.hpp>
+ #include <opengv/absolute_pose/modules/Epnp.hpp>
+diff --git a/src/absolute_pose/modules/main.cpp b/src/absolute_pose/modules/main.cpp
+index ed0c271..011dbcc 100644
+--- a/src/absolute_pose/modules/main.cpp
++++ b/src/absolute_pose/modules/main.cpp
+@@ -46,6 +46,8 @@
+ #include <opengv/math/arun.hpp>
+ #include <opengv/math/cayley.hpp>
+ 
++#include <cassert>
++
+ void
+ opengv::absolute_pose::modules::p3p_kneip_main(
+     const bearingVectors_t & f,
+diff --git a/src/math/arun.cpp b/src/math/arun.cpp
+index a0d6296..bc729f6 100644
+--- a/src/math/arun.cpp
++++ b/src/math/arun.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/math/arun.hpp>
++#include <cassert>
+ 
+ opengv::rotation_t
+ opengv::math::arun( const Eigen::MatrixXd & Hcross )
+diff --git a/src/point_cloud/MAPointCloud.cpp b/src/point_cloud/MAPointCloud.cpp
+index 81fd5dd..a216857 100644
+--- a/src/point_cloud/MAPointCloud.cpp
++++ b/src/point_cloud/MAPointCloud.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/point_cloud/MAPointCloud.hpp>
++#include <cassert>
+ 
+ opengv::point_cloud::MAPointCloud::MAPointCloud(
+     const double * points1,
+diff --git a/src/point_cloud/PointCloudAdapter.cpp b/src/point_cloud/PointCloudAdapter.cpp
+index f9faaeb..1f8e951 100644
+--- a/src/point_cloud/PointCloudAdapter.cpp
++++ b/src/point_cloud/PointCloudAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/point_cloud/PointCloudAdapter.hpp>
++#include <cassert>
+ 
+ opengv::point_cloud::PointCloudAdapter::PointCloudAdapter(
+     const points_t & points1,
+diff --git a/src/point_cloud/methods.cpp b/src/point_cloud/methods.cpp
+index 5409eeb..f098a1d 100644
+--- a/src/point_cloud/methods.cpp
++++ b/src/point_cloud/methods.cpp
+@@ -39,6 +39,8 @@
+ #include <opengv/math/arun.hpp>
+ #include <opengv/math/cayley.hpp>
+ 
++#include <cassert>
++
+ namespace opengv
+ {
+ namespace point_cloud
+diff --git a/src/relative_pose/CentralRelativeAdapter.cpp b/src/relative_pose/CentralRelativeAdapter.cpp
+index 38e9a62..b2e9d98 100644
+--- a/src/relative_pose/CentralRelativeAdapter.cpp
++++ b/src/relative_pose/CentralRelativeAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/CentralRelativeAdapter.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::CentralRelativeAdapter::CentralRelativeAdapter(
+     const bearingVectors_t & bearingVectors1,
+diff --git a/src/relative_pose/CentralRelativeMultiAdapter.cpp b/src/relative_pose/CentralRelativeMultiAdapter.cpp
+index 2ab7476..e522205 100644
+--- a/src/relative_pose/CentralRelativeMultiAdapter.cpp
++++ b/src/relative_pose/CentralRelativeMultiAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/CentralRelativeMultiAdapter.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::CentralRelativeMultiAdapter::CentralRelativeMultiAdapter(
+     std::vector<std::shared_ptr<bearingVectors_t> > bearingVectors1,
+diff --git a/src/relative_pose/CentralRelativeWeightingAdapter.cpp b/src/relative_pose/CentralRelativeWeightingAdapter.cpp
+index a6ab478..9401dc2 100644
+--- a/src/relative_pose/CentralRelativeWeightingAdapter.cpp
++++ b/src/relative_pose/CentralRelativeWeightingAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/CentralRelativeWeightingAdapter.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::CentralRelativeWeightingAdapter::CentralRelativeWeightingAdapter(
+     const bearingVectors_t & bearingVectors1,
+diff --git a/src/relative_pose/MACentralRelative.cpp b/src/relative_pose/MACentralRelative.cpp
+index ec2959f..c1feb7c 100644
+--- a/src/relative_pose/MACentralRelative.cpp
++++ b/src/relative_pose/MACentralRelative.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/MACentralRelative.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::MACentralRelative::MACentralRelative(
+     const double * bearingVectors1,
+diff --git a/src/relative_pose/MANoncentralRelative.cpp b/src/relative_pose/MANoncentralRelative.cpp
+index cea9c14..fc65c64 100644
+--- a/src/relative_pose/MANoncentralRelative.cpp
++++ b/src/relative_pose/MANoncentralRelative.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/MANoncentralRelative.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::MANoncentralRelative::MANoncentralRelative(
+       const double * bearingVectors1,
+diff --git a/src/relative_pose/MANoncentralRelativeMulti.cpp b/src/relative_pose/MANoncentralRelativeMulti.cpp
+index 49f8ecf..1e58fde 100644
+--- a/src/relative_pose/MANoncentralRelativeMulti.cpp
++++ b/src/relative_pose/MANoncentralRelativeMulti.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/MANoncentralRelativeMulti.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::MANoncentralRelativeMulti::MANoncentralRelativeMulti(
+     const std::vector<double*> & bearingVectors1,
+diff --git a/src/relative_pose/NoncentralRelativeAdapter.cpp b/src/relative_pose/NoncentralRelativeAdapter.cpp
+index 552f180..9edf294 100644
+--- a/src/relative_pose/NoncentralRelativeAdapter.cpp
++++ b/src/relative_pose/NoncentralRelativeAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/NoncentralRelativeAdapter.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::NoncentralRelativeAdapter::NoncentralRelativeAdapter(
+     const bearingVectors_t & bearingVectors1,
+diff --git a/src/relative_pose/NoncentralRelativeMultiAdapter.cpp b/src/relative_pose/NoncentralRelativeMultiAdapter.cpp
+index f41edbe..c720a5a 100644
+--- a/src/relative_pose/NoncentralRelativeMultiAdapter.cpp
++++ b/src/relative_pose/NoncentralRelativeMultiAdapter.cpp
+@@ -30,6 +30,7 @@
+ 
+ 
+ #include <opengv/relative_pose/NoncentralRelativeMultiAdapter.hpp>
++#include <cassert>
+ 
+ opengv::relative_pose::NoncentralRelativeMultiAdapter::NoncentralRelativeMultiAdapter(
+     std::vector<std::shared_ptr<bearingVectors_t> > bearingVectors1,
+diff --git a/src/relative_pose/methods.cpp b/src/relative_pose/methods.cpp
+index 0027dae..e2e26b1 100644
+--- a/src/relative_pose/methods.cpp
++++ b/src/relative_pose/methods.cpp
+@@ -42,6 +42,7 @@
+ #include <opengv/triangulation/methods.hpp>
+ 
+ #include <iostream>
++#include <cassert>
+ 
+ opengv::translation_t
+ opengv::relative_pose::twopt(
+diff --git a/src/relative_pose/modules/fivept_nister/modules.cpp b/src/relative_pose/modules/fivept_nister/modules.cpp
+index 4b134c5..f24e3f1 100644
+--- a/src/relative_pose/modules/fivept_nister/modules.cpp
++++ b/src/relative_pose/modules/fivept_nister/modules.cpp
+@@ -34,6 +34,7 @@
+ #include <Eigen/NumericalDiff>
+ 
+ #include <opengv/OptimizationFunctor.hpp>
++#include <cassert>
+ 
+ void
+ opengv::relative_pose::modules::fivept_nister::composeA(

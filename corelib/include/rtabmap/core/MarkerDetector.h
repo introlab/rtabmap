@@ -57,6 +57,12 @@ private:
 };
 
 class RTABMAP_CORE_EXPORT MarkerDetector {
+
+public:
+  enum Strategy {
+    kStrategyOpencv,
+    kStrategyApriltag
+  };
     
 public:
 	MarkerDetector(const ParametersMap & parameters = ParametersMap());
@@ -84,15 +90,19 @@ public:
 		    cv::Mat * imageWithDetections = 0);
 
 private:
-#ifdef HAVE_OPENCV_ARUCO
-	cv::Ptr<cv::aruco::DetectorParameters> detectorParams_;
-	float markerLength_;
+  Strategy strategy_;
+  float markerLength_;
+  std::map<int, float> markerLengths_;
 	float maxDepthError_;
 	float maxRange_;
 	float minRange_;
 	int dictionaryId_;
+#ifdef HAVE_OPENCV_ARUCO
+	cv::Ptr<cv::aruco::DetectorParameters> detectorParams_;
 	cv::Ptr<cv::aruco::Dictionary> dictionary_;
 #endif
+  void * apriltagLibDetector_;
+  void * apriltagLibFamily_;
 };
 
 } /* namespace rtabmap */

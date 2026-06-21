@@ -149,11 +149,13 @@ void MultiSessionLocWidget::updateView(
 
 				Link link = loopLinks.find(nodeId) != loopLinks.end()?loopLinks.find(nodeId)->second:Link();
 				std::multimap<int, cv::KeyPoint> keypoints;
-				for(std::multimap<int, int>::const_iterator jter=s.getWords().begin(); jter!=s.getWords().end(); ++jter)
-				{
-					if(jter->first>0 && lastSignature.getWords().find(jter->first) != lastSignature.getWords().end())
+				if(s.getWords().size() == s.getWordsKpts().size()) {
+					for(std::multimap<int, int>::const_iterator jter=s.getWords().begin(); jter!=s.getWords().end(); ++jter)
 					{
-						keypoints.insert(std::make_pair(jter->first, s.getWordsKpts()[jter->second]));
+						if(jter->first>0 && lastSignature.getWords().find(jter->first) != lastSignature.getWords().end())
+						{
+							keypoints.insert(std::make_pair(jter->first, s.getWordsKpts()[jter->second]));
+						}
 					}
 				}
 

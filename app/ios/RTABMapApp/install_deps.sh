@@ -175,6 +175,18 @@ cd $pwd
 #rm -rf g2o
 fi
 
+# g2o's installed CMake config hard-codes the absolute build-time prefix of its
+# external dependencies (e.g. suitesparse) in INTERFACE_INCLUDE_DIRECTORIES. That
+# path doesn't exist when the prebuilt Libraries archive is unpacked on another
+# machine (CI), breaking find_package(g2o) with "includes non-existent path".
+# Rewrite those absolute paths to be relocatable (relative to the config file).
+# Run unconditionally (outside the build guard above) so it also fixes the prebuilt
+# archive in CI, where the g2o build step is skipped.
+find "$prefix/lib" -path '*/cmake/g2o/*.cmake' -print0 | while IFS= read -r -d '' f
+do
+  sed -i '' -E 's#[^";]*/Libraries#${CMAKE_CURRENT_LIST_DIR}/../../..#g' "$f"
+done
+
 # VTK
 if [ ! -e $prefix/lib/vtk.framework ]
 then
@@ -288,6 +300,6 @@ cmake -DANDROID_PREBUILD=ON ../../../../..
 cmake --build . --config Release
 mkdir -p ios
 cd ios
-cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_QT=OFF -DBUILD_APP=OFF -DBUILD_TOOLS=OFF -DWITH_TORO=OFF -DWITH_VERTIGO=OFF -DWITH_MADGWICK=OFF -DWITH_ORB_OCTREE=ON  -DBUILD_EXAMPLES=OFF -DWITH_LIBLAS=ON ../../../../../..
+cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_QT=OFF -DBUILD_APP=OFF -DBUILD_TOOLS=OFF -DWITH_TORO=OFF -DWITH_VERTIGO=OFF -DWITH_MADGWICK=OFF -DWITH_ORB_OCTREE=ON  -DBUILD_EXAMPLES=OFF -DWITH_LIBLAS=ON -DWITH_OPENGV=OFF ../../../../../..
 cmake --build . --config Release
 cmake --build . --config Release --target install

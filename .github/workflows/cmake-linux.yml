@@ -1,0 +1,80 @@
+name: CMake-Linux
+
+on:
+  push:
+    branches: 
+      - master
+  pull_request:
+    branches: 
+      - '**'
+
+env:
+  BUILD_TYPE: Release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: ${{ matrix.build_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv, ubuntu-26.04]
+        include:
+        - build_name: ubuntu-22.04
+          os: ubuntu-22.04
+          extra_deps: "libunwind-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
+        - build_name: ubuntu-24.04
+          os: ubuntu-24.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
+        - build_name: ubuntu-24.04-with-opengv
+          os: ubuntu-24.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_OPENGV=ON"
+        - build_name: ubuntu-26.04
+          os: ubuntu-26.04
+          extra_deps: "libg2o-dev libceres-dev"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_OPENGV=ON"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Linux Dependencies
+      run: |
+        DEBIAN_FRONTEND=noninteractive
+        sudo apt-get update
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Python Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy pybind11
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DPython3_EXECUTABLE=$(which python3) -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) ${{ matrix.extra_cmake_def }}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Info
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        ./rtabmap-console --version
+
+#    - name: Test
+#      working-directory: ${{github.workspace}}/build
+#      # Execute tests defined by the CMake configuration.  
+#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#      run: ctest -C ${{env.BUILD_TYPE}}
+      

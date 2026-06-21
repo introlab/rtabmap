@@ -53,7 +53,7 @@ void showUsage()
 			"[Not built with Qt, statistics cannot be plotted]\n"
 #endif
 			"  path               Directory containing rtabmap databases or path of a database.\n"
-			"  Options:"
+			"  Options:\n"
 			"    --latex            Print table formatted in LaTeX with results.\n"
 			"    --kitti            Compute error based on KITTI benchmark.\n"
 			"    --relative         Compute relative motion error between poses.\n"
@@ -62,7 +62,7 @@ void showUsage()
 			"                         and compute error based on the scaled path.\n"
 			"    --poses            Export odometry to [path]_odom.txt, optimized graph to [path]_slam.txt \n"
 			"                         and ground truth to [path]_gt.txt in TUM RGB-D format.\n"
-			"    --poses_raw        Same as --poses, but poses are not aligned to gt."
+			"    --poses_raw        Same as --poses, but poses are not aligned to gt.\n"
 			"    --gt FILE.txt      Use this file as ground truth (TUM RGB-D format). It will\n"
 			"                         override the ground truth set in database if there is one.\n"
 			"                         If extension is *.db, the optimized poses of that database will\n"
@@ -908,7 +908,16 @@ int main(int argc, char * argv[])
 					{
 						std::map<int, Transform> posesOut;
 						std::multimap<int, Link> linksOut;
+						// Find first valid id
 						int firstId = *ids.begin();
+						for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+						{
+							if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
+							{
+								firstId = iter->first;
+								break;
+							}
+						}
 						rtabmap::Optimizer * optimizer = rtabmap::Optimizer::create(params);
 						bool useOdomGravity = Parameters::defaultMemUseOdomGravity();
 						Parameters::parse(params, Parameters::kMemUseOdomGravity(), useOdomGravity);

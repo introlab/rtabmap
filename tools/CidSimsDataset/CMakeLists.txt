@@ -1,0 +1,11 @@
+
+ADD_EXECUTABLE(cidsims_dataset main.cpp)
+  
+TARGET_LINK_LIBRARIES(cidsims_dataset rtabmap_core)
+
+SET_TARGET_PROPERTIES( cidsims_dataset 
+    PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-cidsims_dataset)
+    
+INSTALL(TARGETS cidsims_dataset
+	RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
+	BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)

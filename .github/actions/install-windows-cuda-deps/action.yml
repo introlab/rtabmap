@@ -1,0 +1,53 @@
+name: 'Install Windows Dependencies with CUDA'
+description: 'Installs PCL, Qt, VTK, g2o and others'
+runs:
+  using: "composite"
+  steps:
+    - name: Set up MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64 
+  
+    - name: Install CUDA
+      uses: Jimver/cuda-toolkit@v0.2.30
+      id: cuda-toolkit
+      with:
+        cuda: '13.0.0'
+        use-github-cache: True
+
+    - name: Verify CUDA
+      shell: bash
+      run: |
+        nvcc --version
+        echo "CUDA Path: $CUDA_PATH"
+  
+    - name: Cache vcpkg
+      id: cache-vcpkg
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.workspace }}/vcpkg_installed
+        key: ${{ runner.os }}-vcpkg-export-66c0373d-x64-vs2022-cuda130_v1
+
+    - name: Download and Install vcpkg
+      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        $install_dir = "${{ runner.workspace }}\vcpkg_installed"
+        $archivePath = "${{ runner.workspace }}\vcpkg-export.7z"
+
+        # The file has been built locally with bundle-windows-deps.bat
+        $url = "https://github.com/introlab/rtabmap/releases/download/0.23.1/vcpkg-export-66c0373d-x64-vs2022-cuda130.7z"
+
+        Invoke-WebRequest -Uri $url -OutFile $archivePath
+        & 7z x $archivePath "-o$install_dir" -y
+
+    - name: Add vcpkg to PATH and env variable
+      shell: pwsh
+      run: |
+        $vcpkg_path = "${{ runner.workspace }}\vcpkg_installed"
+        echo "VCPKG_EXPORT_PATH=$vcpkg_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "$vcpkg_path\installed\x64-windows-release\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append     
+        echo "${{env.CUDA_PATH}}\bin\x64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "${{env.CUDA_PATH}}\extras\CUPTI\lib64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "$vcpkg_path\installed\x64-windows-release\tools\python3\Lib\site-packages\torch\lib" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "$vcpkg_path\installed\x64-windows-release\tools\python3\Lib\site-packages\numpy.libs" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
