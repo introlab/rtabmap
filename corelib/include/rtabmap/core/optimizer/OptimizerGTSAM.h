@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OPTIMIZERGTSAM_H_
 
 #include <rtabmap/core/Optimizer.h>
+#include <tuple>
 
 namespace gtsam {
 	class ISAM2;
@@ -58,26 +59,25 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 
+	// True when iSAM2 (incremental) backend is active.
+	bool isIncremental() const {return isam2_ != 0;}
+
+	// Number of factors we believe are live in iSAM2.
+	std::size_t getTrackedFactorsCount() const {
+		return trackedFactors_.size() + (lastRootFactorIndex_.first != 0 ? 1 : 0);
+	}
+
+	// Live factor count reported by iSAM2 itself (should match getTrackedFactorsCount()).
+	std::size_t getISAM2LiveFactorsCount() const;
+
 private:
 	int internalOptimizerType_;
 
 	gtsam::ISAM2 * isam2_;
-	struct ConstraintToFactor {
-		ConstraintToFactor(int _from, int _to, std::uint64_t _factorIndice)
-		{
-			from = _from;
-			to = _to;
-			factorIndice = _factorIndice;
-		}
-		int from;
-		int to;
-		std::uint64_t factorIndice;
-	};
-
-	std::vector<ConstraintToFactor> lastAddedConstraints_;
 	int lastSwitchId_;
 	std::set<int> addedPoses_;
 	std::map<int, bool> isLandmarkWithRotation_; // persists across iSAM2 incremental calls
+	std::map<std::tuple<int, int, int>, std::uint64_t> trackedFactors_; // iSAM2 tracked constraints
 	std::pair<int, std::uint64_t> lastRootFactorIndex_;
 };
 

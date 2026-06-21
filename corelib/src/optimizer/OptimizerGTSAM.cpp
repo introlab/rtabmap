@@ -90,6 +90,27 @@ bool OptimizerGTSAM::available()
 #endif
 }
 
+std::size_t OptimizerGTSAM::getISAM2LiveFactorsCount() const
+{
+#ifdef RTABMAP_GTSAM
+	if(isam2_ == 0)
+	{
+		return 0;
+	}
+	// iSAM2 keeps removed factors as null entries to preserve factor indices,
+	// so we have to skip nulls to get the actual live count.
+	const gtsam::NonlinearFactorGraph & factors = isam2_->getFactorsUnsafe();
+	std::size_t live = 0;
+	for(const gtsam::NonlinearFactorGraph::sharedFactor & f : factors)
+	{
+		if(f) ++live;
+	}
+	return live;
+#else
+	return 0;
+#endif
+}
+
 void OptimizerGTSAM::parseParameters(const ParametersMap & parameters)
 {
 	Optimizer::parseParameters(parameters);
@@ -124,7 +145,7 @@ void OptimizerGTSAM::parseParameters(const ParametersMap & parameters)
 		isam2_ = new gtsam::ISAM2(params);
 
 		addedPoses_.clear();
-		lastAddedConstraints_.clear();
+		trackedFactors_.clear();
 		lastRootFactorIndex_.first = 0;
 		lastSwitchId_ = 1000000000;
 	}
@@ -197,7 +218,21 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 		}
 
-		std::vector<ConstraintToFactor> addedPrior;
+		// Ordered list of (from, to, type) entries added to the gtsam graph
+		// during this optimize() call. The order matches the order of factors
+		// pushed into iSAM2, so result.newFactorsIndices[j] gives the factor
+		// index for addedConstraints[j]. Used post-update to populate
+		// trackedFactors_. type holds Link::Type as int; type == -1 marks
+		// the synthetic root prior, which is managed separately via
+		// lastRootFactorIndex_ and stays out of trackedFactors_.
+		struct ConstraintToFactor {
+			ConstraintToFactor(int _from, int _to, int _type = -1) :
+				from(_from), to(_to), type(_type) {}
+			int from;
+			int to;
+			int type;
+		};
+		std::vector<ConstraintToFactor> addedConstraints;
 		gtsam::FactorIndices removeFactorIndices;
 
 		//prior first pose
@@ -211,7 +246,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			{
 				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(gtsam::Vector3(0.01, 0.01, hasGPSPrior?1e-2:1e-9));
 				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
-				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
+				addedConstraints.push_back(ConstraintToFactor(rootId, rootId));
 			}
 			else
 			{
@@ -221,7 +256,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
 								).finished());
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
-				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
+				addedConstraints.push_back(ConstraintToFactor(rootId, rootId));
 			}
 			if(isam2_ && lastRootFactorIndex_.first!=0)
 			{
@@ -238,7 +273,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					delete isam2_;
 					isam2_ = new gtsam::ISAM2(params);
 					addedPoses_.clear();
-					lastAddedConstraints_.clear();
+					trackedFactors_.clear();
 					isLandmarkWithRotation_.clear();
 					lastRootFactorIndex_.first = 0;
 					lastSwitchId_ = 1000000000;
@@ -249,6 +284,16 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 		std::map<int, Transform> newPoses;
 		std::multimap<int, Link> newEdgeConstraints;
+
+		// trackedFactors_ keys are (min(from,to), max(from,to), type) so that:
+		//   - (A,B) and (B,A) with the same type map to the same entry
+		//     (matches graph::findLink(checkBothWays=true) and the
+		//     "Input links should be unique!" invariant in Graph.cpp);
+		//   - the same pair with a *different* Link::Type counts as a
+		//     distinct constraint and gets its own factor index.
+		auto linkKey = [](int from, int to, int type) {
+			return std::make_tuple(std::min(from, to), std::max(from, to), type);
+		};
 
 		if(isam2_)
 		{
@@ -264,31 +309,78 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 			UDEBUG("Add new links...");
 			// new links?
+			//   - self-referring (priors, gravity): add once per new pose, by
+			//     checking addedPoses_ (these are never removed/re-added).
+			//   - regular edges: add if (from,to,type) is not already a live
+			//     factor in iSAM2 (trackedFactors_) AND not already queued
+			//     earlier in this same call (queuedLinks). The latter dedupes
+			//     bidirectional duplicates of the same logical edge supplied
+			//     within a single optimize() call — only one factor goes into
+			//     iSAM2.
+			// Self-ref constraints (priors, gravity) are tracked uniformly
+			// with edges: when a node is transferred to LTM its prior is
+			// dropped from the input, and we need to remove its factor from
+			// iSAM2. Likewise a prior re-supplied after being dropped must
+			// be re-added.
+			std::set<std::tuple<int, int, int> > queuedLinks;
 			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
-				if(addedPoses_.find(iter->second.from()) == addedPoses_.end() ||
-				   addedPoses_.find(iter->second.to()) == addedPoses_.end())
+				const int from = iter->second.from();
+				const int to = iter->second.to();
+				const std::tuple<int, int, int> key = linkKey(from, to, (int)iter->second.type());
+				bool isNew;
+				if(trackedFactors_.find(key) != trackedFactors_.end())
+				{
+					isNew = false;
+				}
+				else if(!queuedLinks.insert(key).second)
+				{
+					// Already queued earlier in this call (bidirectional
+					// duplicate supplied as both A->B and B->A with the
+					// same type). Skip the second copy.
+					UDEBUG("Ignoring duplicate constraint %d (%d->%d type=%d)", iter->first, from, to, (int)iter->second.type());
+					isNew = false;
+				}
+				else
+				{
+					isNew = true;
+				}
+				if(isNew)
 				{
 					newEdgeConstraints.insert(*iter);
-					UDEBUG("Adding constraint %d (%d->%d) to factor graph", iter->first, iter->second.from(), iter->second.to());
+					UDEBUG("Adding constraint %d (%d->%d type=%d) to factor graph", iter->first, from, to, (int)iter->second.type());
 				}
 			}
 
 			if(!this->isRobust())
 			{
 				UDEBUG("Remove links...");
-				// Remove constraints not there anymore in case the last loop closures were rejected.
-				// As we don't track "switch" constraints, we don't support this if vertigo is used.
-				for(size_t i=0; i<lastAddedConstraints_.size(); ++i)
+				// Remove every tracked non-self-ref factor whose (from,to,type)
+				// is no longer present in the input. Covers loop closures
+				// rejected since the last call, links deleted by graph repair,
+				// or any external deleteLink() applied to old edges. We don't
+				// track "switch" constraints, so this is skipped when vertigo
+				// is used.
+				std::set<std::tuple<int, int, int> > inputLinks;
+				for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 				{
-					if(lastAddedConstraints_[i].from != lastAddedConstraints_[i].to &&
-					   graph::findLink(edgeConstraints, lastAddedConstraints_[i].from, lastAddedConstraints_[i].to) == edgeConstraints.end())
+					inputLinks.insert(linkKey(iter->second.from(), iter->second.to(), (int)iter->second.type()));
+				}
+				for(std::map<std::tuple<int, int, int>, std::uint64_t>::iterator iter=trackedFactors_.begin(); iter!=trackedFactors_.end(); )
+				{
+					if(inputLinks.find(iter->first) == inputLinks.end())
 					{
-						removeFactorIndices.push_back(lastAddedConstraints_[i].factorIndice);
-						UDEBUG("Removing constraint %d->%d (factor indice=%ld)",
-								lastAddedConstraints_[i].from,
-								lastAddedConstraints_[i].to,
-								lastAddedConstraints_[i].factorIndice);
+						removeFactorIndices.push_back(iter->second);
+						UDEBUG("Removing constraint %d->%d type=%d (factor indice=%ld)",
+								std::get<0>(iter->first),
+								std::get<1>(iter->first),
+								std::get<2>(iter->first),
+								iter->second);
+						iter = trackedFactors_.erase(iter);
+					}
+					else
+					{
+						++iter;
 					}
 				}
 			}
@@ -298,7 +390,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				return optimizedPoses;
 			}
 
-			lastAddedConstraints_ = addedPrior;
+			
 		}
 		else
 		{
@@ -403,7 +495,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 									1/iter->second.infMatrix().at<double>(0,0),
 									1/iter->second.infMatrix().at<double>(1,1)));
 							graph.add(XYFactor<gtsam::Point2>(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id1, (int)iter->second.type()));
 						}
 						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(5,5)) >= 9999.0)
 						{
@@ -411,7 +503,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 									1/iter->second.infMatrix().at<double>(0,0),
 									1/iter->second.infMatrix().at<double>(1,1)));
 							graph.add(XYFactor<gtsam::Pose2>(id1, gtsam::Point2(iter->second.transform().x(), iter->second.transform().y()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id1, (int)iter->second.type()));
 						}
 						else
 						{
@@ -431,7 +523,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 							gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 							graph.add(gtsam::PriorFactor<gtsam::Pose2>(id1, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id1, (int)iter->second.type()));
 						}
 					}
 					else
@@ -443,7 +535,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 										iter->second.infMatrix().at<double>(1,1),
 										iter->second.infMatrix().at<double>(2,2)));
 							graph.add(XYZFactor<gtsam::Point3>(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id1, (int)iter->second.type()));
 						}
 						else if (1 / static_cast<double>(iter->second.infMatrix().at<double>(3,3)) >= 9999.0 ||
 							1 / static_cast<double>(iter->second.infMatrix().at<double>(4,4)) >= 9999.0 ||
@@ -454,7 +546,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 										iter->second.infMatrix().at<double>(1,1),
 										iter->second.infMatrix().at<double>(2,2)));
 							graph.add(XYZFactor<gtsam::Pose3>(id1, gtsam::Point3(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().z()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id1, (int)iter->second.type()));
 						}
 						else
 						{
@@ -472,7 +564,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Information(mgtsam);
 
 							graph.add(gtsam::PriorFactor<gtsam::Pose3>(id1, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id1, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id1, (int)iter->second.type()));
 						}
 					}
 				}
@@ -489,7 +581,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #else
 					graph.add(gtsam::AttitudeFactor<gtsam::Pose3>(iter->first, nZ, model, bGMeas));
 #endif
-					lastAddedConstraints_.push_back(ConstraintToFactor(iter->first, iter->first, -1));
+					addedConstraints.push_back(ConstraintToFactor(iter->first, iter->first, (int)iter->second.type()));
 				}
 			}
 			else if(id1<0 || id2 < 0)
@@ -563,7 +655,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #endif
 							{
 								graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(t.x(), t.y(), t.theta()), model));
-								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+								addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 							}
 						}
 						else if(1 / static_cast<double>(iter->second.infMatrix().at<double>(1,1)) < 9999)
@@ -579,7 +671,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point2 landmark(t.x(), t.y());
 							gtsam::Pose2 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), p.range(landmark), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 						}
 						else
 						{
@@ -594,7 +686,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point2 landmark(t.x(), t.y());
 							gtsam::Pose2 p;
 							graph.add(gtsam::BearingFactor<gtsam::Pose2, gtsam::Point2>(id1, id2, p.bearing(landmark), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 						}
 					}
 					else
@@ -626,7 +718,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #endif
 							{
 								graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(t.toEigen4d()), model));
-								lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+								addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 							}
 						}
 						else if(1 / static_cast<double>(iter->second.infMatrix().at<double>(2,2)) < 9999)
@@ -643,7 +735,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point3 landmark(t.x(), t.y(), t.z());
 							gtsam::Pose3 p;
 							graph.add(gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), p.range(landmark), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 						}
 						else
 						{
@@ -659,7 +751,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 							gtsam::Point3 landmark(t.x(), t.y(), t.z());
 							gtsam::Pose3 p;
 							graph.add(gtsam::BearingFactor<gtsam::Pose3, gtsam::Point3>(id1, id2, p.bearing(landmark), model));
-							lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+							addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 						}
 					}
 				}
@@ -717,7 +809,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #endif
 					{
 						graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
-						lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+						addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 					}
 				}
 				else
@@ -747,7 +839,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 #endif
 					{
 						graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
-						lastAddedConstraints_.push_back(ConstraintToFactor(id1, id2, -1));
+						addedConstraints.push_back(ConstraintToFactor(id1, id2, (int)iter->second.type()));
 					}
 				}
 			}
@@ -870,6 +962,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				{
 					UDEBUG("Update iSAM with the new factors");
 					result = isam2_->update(graph, initialEstimate, removeFactorIndices);
+
 #if BOOST_VERSION >= 106800
 					UASSERT(result.errorBefore.has_value());
 					UASSERT(result.errorAfter.has_value());
@@ -882,12 +975,26 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					error = result.errorAfter.value();
 					if(!this->isRobust())
 					{
-						UASSERT_MSG(lastAddedConstraints_.size() == result.newFactorsIndices.size(),
-								uFormat("%ld versus %ld", lastAddedConstraints_.size(), result.newFactorsIndices.size()).c_str());
+						UASSERT_MSG(addedConstraints.size() == result.newFactorsIndices.size(),
+								uFormat("%ld versus %ld", addedConstraints.size(), result.newFactorsIndices.size()).c_str());
 						for(size_t j=0; j<result.newFactorsIndices.size(); ++j)
 						{
 							UDEBUG("New factor indice: %ld", result.newFactorsIndices[j]);
-							lastAddedConstraints_[j].factorIndice = result.newFactorsIndices[j];
+							// Persist all input-derived factors (including
+							// self-ref priors / gravity) so later calls can
+							// remove them when dropped from input or skip
+							// re-adding when still present. type == -1 marks
+							// the synthetic root prior, which is managed
+							// separately via lastRootFactorIndex_ and must
+							// stay out of trackedFactors_.
+							if(addedConstraints[j].type != -1)
+							{
+								trackedFactors_[linkKey(
+										addedConstraints[j].from,
+										addedConstraints[j].to,
+										addedConstraints[j].type)] =
+									result.newFactorsIndices[j];
+							}
 						}
 					}
 					if(rootId != 0 && lastRootFactorIndex_.first == 0)
@@ -928,7 +1035,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					delete isam2_;
 					isam2_ = new gtsam::ISAM2(params);
 					addedPoses_.clear();
-					lastAddedConstraints_.clear();
+					trackedFactors_.clear();
 					lastRootFactorIndex_.first = 0;
 					lastSwitchId_ = 1000000000;
 				}
