@@ -901,6 +901,9 @@ IF(WITH_OPENGV OR okvis_FOUND)
          set(BUILD_TESTS OFF)
          set(CMAKE_BUILD_TYPE Release)
          set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+         # OpenGV's CMakeLists.txt declares cmake_minimum_required(VERSION 2.x),
+         # which CMake >= 4.0 (e.g. recent Ubuntu) rejects. Allow it to configure.
+         set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
          # Eigen should have been already added by PCL, just populate the compatible variables
          IF(EIGEN_INCLUDE_DIRS)
             set(EIGEN_INCLUDE_DIRS "${EIGEN_INCLUDE_DIRS}" CACHE PATH "Eigen include dirs" FORCE)
