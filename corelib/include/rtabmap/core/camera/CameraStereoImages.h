@@ -96,7 +96,7 @@ private:
 	StereoCameraModel stereoModel_;
 	bool rightGrayScale_;
 	bool multiCameraCalib_;
-	std::list<std::vector<StereoCameraModel> > multiStereoModels_; // sub-camera stereo models shared by all frames (multi-camera mode); empty when loaded per-frame
+	std::vector<StereoCameraModel> multiStereoModels_; // sub-camera stereo models shared by all frames (multi-camera mode); empty when loaded per-frame
 	std::string calibrationFolder_; // kept to load per-frame multi-camera calibration on demand
 	int multiCameraCount_; // number of sub-cameras detected in multi-camera mode
 };

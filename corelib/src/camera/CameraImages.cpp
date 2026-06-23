@@ -292,7 +292,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				{
 					return false;
 				}
-				_multiModels.push_back(models);
+				_multiModels = models;
 			}
 		}
 		else if(_hasConfigForEachFrame)
@@ -714,7 +714,7 @@ bool CameraImages::isCalibrated() const
 {
 	return (_dir && (_model.isValidForProjection() ||
 			_modelFileNames.size() || // per-frame single-camera models loaded on demand (validated in init)
-			(_multiModels.size() && !_multiModels.front().empty() && _multiModels.front().front().isValidForProjection()) ||
+			(!_multiModels.empty() && _multiModels.front().isValidForProjection()) ||
 			(_multiCameraCalib && _hasConfigForEachFrame && _multiCameraCount > 0))) || // per-frame multi-camera models loaded on demand
 			_scanDir;
 }
@@ -936,7 +936,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 			{
 				UERROR("groundTruth cannot be used when startAt < 0");
 			}
-			if(_modelFileNames.size() || _multiModels.size() ||
+			if(_modelFileNames.size() || !_multiModels.empty() ||
 				(_multiCameraCalib && _hasConfigForEachFrame))
 			{
 				UERROR("models cannot be used when startAt < 0");
@@ -993,10 +993,10 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					// keyed by the current image's base name.
 					models = loadMultiCameraModels(imageFileName.substr(0, imageFileName.find_last_of('.')));
 				}
-				else if(_multiModels.size())
+				else if(!_multiModels.empty())
 				{
 					// calibration is shared across all frames
-					models = _multiModels.front();
+					models = _multiModels;
 				}
 
 				while(_count++ < _startAt)
@@ -1054,10 +1054,10 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 						// keyed by the current image's base name.
 						models = loadMultiCameraModels(imageFileName.substr(0, imageFileName.find_last_of('.')));
 					}
-					else if(_multiModels.size())
+					else if(!_multiModels.empty())
 					{
 						// calibration is shared across all frames
-						models = _multiModels.front();
+						models = _multiModels;
 					}
 				}
 				_lastImageFileName = imageFileName; // expose the current frame name to subclasses

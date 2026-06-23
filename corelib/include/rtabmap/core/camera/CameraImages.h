@@ -90,7 +90,9 @@ public:
 	// using each image's base name as prefix. Otherwise a single calibration set is
 	// loaded and reused for all frames, using the cameraName passed to init() as
 	// prefix (it may differ from any image name), falling back to the first image's
-	// base name when cameraName is empty.
+	// base name when cameraName is empty. Note that it is not recommended to use
+	// setConfigForEachFrame() if images have to be rectified, a rectification matrix
+	// would need to be re-initilaized for each frame.
 	void setMultiCameraCalibration(bool enabled)
 	{
 		_multiCameraCalib = enabled;
@@ -156,13 +158,11 @@ private:
 	// Load the sub-camera models of a multi-camera rig from calibration files named
 	// "<baseName>_<index>.yaml" (index 0.._multiCameraCount-1) in _calibrationFolder.
 	// Returns an empty vector (and logs an error) if any model is missing or invalid.
-	// Used to load per-frame calibration lazily in captureImage() instead of keeping
-	// all frames' models (and their rectification maps) in memory.
 	std::vector<CameraModel> loadMultiCameraModels(const std::string & baseName) const;
 
 	// Load the single-camera model for one frame from a per-frame config file (RTAB-Map
 	// calibration or 3DScannerApp format). Returns an invalid model (and logs an error)
-	// on failure. Used to load config-for-each-frame calibration on demand in captureImage().
+	// on failure.
 	CameraModel loadConfigModel(const std::string & filePath);
 
 private:
@@ -212,9 +212,9 @@ private:
 	std::list<cv::Mat> covariances_;
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
-	std::list<std::string> _modelFileNames; // per-frame single-camera config file paths (config-for-each-frame), loaded on demand
+	std::list<std::string> _modelFileNames; // per-frame single-camera config file paths (config-for-each-frame)
 	bool _configLocalTransformWarned; // warn only once when a per-frame config has no local_transform
-	std::list<std::vector<CameraModel> > _multiModels; // sub-camera models, shared by all frames (multi-camera mode); empty when loaded per-frame
+	std::vector<CameraModel> _multiModels; // sub-camera models, shared by all frames (multi-camera mode); empty when loaded per-frame
 	std::string _calibrationFolder; // kept to load per-frame calibration on demand
 
 	UTimer _captureTimer;

@@ -252,7 +252,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 					}
 					else
 					{
-						multiStereoModels_.push_back(models);
+						multiStereoModels_ = models;
 					}
 				}
 			}
@@ -266,7 +266,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 bool CameraStereoImages::isCalibrated() const
 {
 	return stereoModel_.isValidForProjection() ||
-			(multiStereoModels_.size() && !multiStereoModels_.front().empty() && multiStereoModels_.front().front().isValidForProjection()) ||
+			(!multiStereoModels_.empty() && multiStereoModels_.front().isValidForProjection()) ||
 			(multiCameraCalib_ && this->isConfigForEachFrame() && multiCameraCount_ > 0); // per-frame models loaded on demand
 }
 
@@ -357,8 +357,8 @@ SensorData CameraStereoImages::captureImage(SensorCaptureInfo * info)
 				else
 				{
 					// a single calibration set is shared by all frames
-					UASSERT(multiStereoModels_.size());
-					models = multiStereoModels_.front();
+					UASSERT(!multiStereoModels_.empty());
+					models = multiStereoModels_;
 				}
 				if(models.empty())
 				{
