@@ -90,9 +90,10 @@ public:
 	// using each image's base name as prefix. Otherwise a single calibration set is
 	// loaded and reused for all frames, using the cameraName passed to init() as
 	// prefix (it may differ from any image name), falling back to the first image's
-	// base name when cameraName is empty. Note that it is not recommended to use
-	// setConfigForEachFrame() if images have to be rectified, a rectification matrix
-	// would need to be re-initilaized for each frame.
+	// base name when cameraName is empty.
+	// Note that it is not recommended to use setConfigForEachFrame() if images have
+	// to be rectified, a rectification matrix would need to be re-initilaized for
+	// each frame.
 	void setMultiCameraCalibration(bool enabled)
 	{
 		_multiCameraCalib = enabled;
@@ -147,6 +148,17 @@ protected:
 	// calibration loaded on demand. Empty if no image was read.
 	const std::string & lastImageFileName() const {return _lastImageFileName;}
 
+	// Calibration folder passed to init(), kept to load per-frame calibration on
+	// demand. Shared with subclasses (e.g. stereo) that load calibration themselves.
+	std::string _calibrationFolder;
+
+	// Multi-camera mode state, shared with subclasses (e.g. stereo) that layer their
+	// own multi-camera handling over the base reader. Such subclasses temporarily set
+	// _multiCameraCalib to false while delegating to base init()/captureImage() so the
+	// base returns the raw stacked image instead of doing its own split, then restore it.
+	bool _multiCameraCalib;
+	int _multiCameraCount; // number of sub-cameras detected in multi-camera mode
+
 private:
 	bool readPoses(
 		std::list<Transform> & outputPoses,
@@ -195,8 +207,6 @@ private:
 
 	bool _filenamesAreTimestamps;
 	bool _hasConfigForEachFrame;
-	bool _multiCameraCalib;
-	int _multiCameraCount; // number of sub-cameras detected in multi-camera mode
 	std::string _timestampsPath;
 	bool _syncImageRateWithStamps;
 
@@ -215,7 +225,6 @@ private:
 	std::list<std::string> _modelFileNames; // per-frame single-camera config file paths (config-for-each-frame)
 	bool _configLocalTransformWarned; // warn only once when a per-frame config has no local_transform
 	std::vector<CameraModel> _multiModels; // sub-camera models, shared by all frames (multi-camera mode); empty when loaded per-frame
-	std::string _calibrationFolder; // kept to load per-frame calibration on demand
 
 	UTimer _captureTimer;
 	double _captureDelay;

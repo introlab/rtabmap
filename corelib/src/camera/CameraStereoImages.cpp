@@ -47,9 +47,7 @@ CameraStereoImages::CameraStereoImages(
 		const Transform & localTransform) :
 		CameraImages(pathLeftImages, imageRate, localTransform),
 		camera2_(new CameraImages(pathRightImages)),
-		rightGrayScale_(true),
-		multiCameraCalib_(false),
-		multiCameraCount_(0)
+		rightGrayScale_(true)
 {
 	this->setImagesRectified(rectifyImages);
 }
@@ -61,9 +59,7 @@ CameraStereoImages::CameraStereoImages(
 		const Transform & localTransform) :
 		CameraImages("", imageRate, localTransform),
 		camera2_(0),
-		rightGrayScale_(true),
-		multiCameraCalib_(false),
-		multiCameraCount_(0)
+		rightGrayScale_(true)
 {
 	std::vector<std::string> paths = uListToVector(uSplit(pathLeftRightImages, uStrContains(pathLeftRightImages, ":")?':':';'));
 	if(paths.size() >= 1)
@@ -94,11 +90,9 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	UINFO("Calibration folder: \"%s\", name=\"%s\"", calibrationFolder.c_str(), cameraName.c_str());
 
 	multiStereoModels_.clear();
-	calibrationFolder_.clear();
-	multiCameraCount_ = 0;
 
 	// look for calibration files
-	if(!multiCameraCalib_ && !calibrationFolder.empty() && !cameraName.empty())
+	if(!_multiCameraCalib && !calibrationFolder.empty() && !cameraName.empty())
 	{
 		if(!stereoModel_.load(calibrationFolder, cameraName, false, this->isImagesRectified()) && !stereoModel_.isValidForProjection())
 		{
@@ -115,7 +109,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 		}
 	}
 
-	if(!multiCameraCalib_)
+	if(!_multiCameraCalib)
 	{
 		stereoModel_.setLocalTransform(this->getLocalTransform());
 		stereoModel_.setName(cameraName);
@@ -129,15 +123,18 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	bool rectify = this->isImagesRectified();
 	this->setImagesRectified(false);
 	// The base reader is used here only to enumerate/read the left images; in
-	// multi-camera mode this class loads the calibration itself, so prevent the
-	// base from triggering its own per-frame config loading (which would look for
-	// config files inside the image directory). The flag is restored below and
-	// still drives the per-frame vs. shared calibration loading in this class.
+	// multi-camera mode this class loads the calibration and splits the images
+	// itself, so prevent the base from doing its own multi-camera handling and
+	// per-frame config loading (which would look for config files inside the image
+	// directory). Both flags are restored below: _multiCameraCalib still drives the
+	// per-frame vs. shared calibration loading in this class.
 	bool configForEachFrame = this->isConfigForEachFrame();
-	if(multiCameraCalib_)
+	bool multiCameraCalib = _multiCameraCalib;
+	if(multiCameraCalib)
 	{
 		this->setConfigForEachFrame(false);
 	}
+	_multiCameraCalib = false;
 
 	bool success = false;
 	if(CameraImages::init())
@@ -168,10 +165,11 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 		}
 	}
 
-	// restore the flag: it drives the per-frame vs. shared calibration loading below
+	// restore the flags: _multiCameraCalib drives the per-frame vs. shared calibration loading below
 	this->setConfigForEachFrame(configForEachFrame);
+	_multiCameraCalib = multiCameraCalib;
 
-	if(success && multiCameraCalib_)
+	if(success && _multiCameraCalib)
 	{
 		// Multi-camera stereo mode: each left/right image is a horizontal stack of N
 		// sub-camera images. Load one StereoCameraModel per sub-camera from calibration
@@ -230,8 +228,8 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 				UINFO("Multi-camera stereo mode: %d sub-cameras detected from \"%s\" (%s).", numCameras, calibrationFolder.c_str(),
 						this->isConfigForEachFrame()?"one calibration per frame, loaded on demand":
 								uFormat("calibration \"%s_<index>\" reused for all frames", sharedBase.c_str()).c_str());
-				calibrationFolder_ = calibrationFolder;
-				multiCameraCount_ = numCameras;
+				_calibrationFolder = calibrationFolder;
+				_multiCameraCount = numCameras;
 				if(this->isConfigForEachFrame())
 				{
 					// Validate the first frame now; the per-frame sub-camera stereo models are
@@ -267,19 +265,19 @@ bool CameraStereoImages::isCalibrated() const
 {
 	return stereoModel_.isValidForProjection() ||
 			(!multiStereoModels_.empty() && multiStereoModels_.front().isValidForProjection()) ||
-			(multiCameraCalib_ && this->isConfigForEachFrame() && multiCameraCount_ > 0); // per-frame models loaded on demand
+			(_multiCameraCalib && this->isConfigForEachFrame() && _multiCameraCount > 0); // per-frame models loaded on demand
 }
 
 std::vector<StereoCameraModel> CameraStereoImages::loadStereoCameraModels(const std::string & baseName, bool rectify) const
 {
-	std::vector<StereoCameraModel> models(multiCameraCount_);
-	for(int i=0; i<multiCameraCount_; ++i)
+	std::vector<StereoCameraModel> models(_multiCameraCount);
+	for(int i=0; i<_multiCameraCount; ++i)
 	{
 		std::string name = baseName + "_" + uNumber2Str(i);
-		if(!models[i].load(calibrationFolder_, name, true /*ignoreStereoTransform*/, rectify) || !models[i].isValidForProjection())
+		if(!models[i].load(_calibrationFolder, name, true /*ignoreStereoTransform*/, rectify) || !models[i].isValidForProjection())
 		{
 			UERROR("Failed to load a valid stereo calibration \"%s/%s_{%s,%s}.yaml\" for multi-camera frame base \"%s\".",
-					calibrationFolder_.c_str(), name.c_str(),
+					_calibrationFolder.c_str(), name.c_str(),
 					models[i].getLeftSuffix().c_str(), models[i].getRightSuffix().c_str(), baseName.c_str());
 			return std::vector<StereoCameraModel>();
 		}
@@ -289,13 +287,13 @@ std::vector<StereoCameraModel> CameraStereoImages::loadStereoCameraModels(const 
 			// sub-camera calibration must provide a "local_transform".
 			UERROR("Stereo calibration \"%s/%s_%s.yaml\" has no \"local_transform\"; it is "
 					"required in multi-camera mode (rig extrinsics).",
-					calibrationFolder_.c_str(), name.c_str(), models[i].getLeftSuffix().c_str());
+					_calibrationFolder.c_str(), name.c_str(), models[i].getLeftSuffix().c_str());
 			return std::vector<StereoCameraModel>();
 		}
 		if(rectify && !models[i].isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but stereo calibration \"%s/%s_{%s,%s}.yaml\" is not valid for rectification.",
-					calibrationFolder_.c_str(), name.c_str(),
+					_calibrationFolder.c_str(), name.c_str(),
 					models[i].getLeftSuffix().c_str(), models[i].getRightSuffix().c_str());
 			return std::vector<StereoCameraModel>();
 		}
@@ -313,6 +311,11 @@ SensorData CameraStereoImages::captureImage(SensorCaptureInfo * info)
 	SensorData data;
 
 	SensorData left, right;
+	// Disable the base reader's own multi-camera handling while reading the stacked
+	// left/right images: this class splits and rectifies them itself below. Restored
+	// before the multi-camera branch, which relies on the real flag value.
+	bool multiCameraCalib = _multiCameraCalib;
+	_multiCameraCalib = false;
 	left = CameraImages::captureImage(info);
 	if(!left.imageRaw().empty())
 	{
@@ -325,98 +328,99 @@ SensorData CameraStereoImages::captureImage(SensorCaptureInfo * info)
 		{
 			right = this->takeImage(info);
 		}
+	}
+	_multiCameraCalib = multiCameraCalib;
 
-		if(!right.imageRaw().empty())
+	if(!left.imageRaw().empty() && !right.imageRaw().empty())
+	{
+		// Rectification
+		cv::Mat leftImage = left.imageRaw();
+		cv::Mat rightImage = right.imageRaw();
+		if(rightImage.type() != CV_8UC1 && rightGrayScale_)
 		{
-			// Rectification
-			cv::Mat leftImage = left.imageRaw();
-			cv::Mat rightImage = right.imageRaw();
-			if(rightImage.type() != CV_8UC1 && rightGrayScale_)
+			cv::Mat tmp;
+			cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
+			rightImage = tmp;
+		}
+
+		if(multiCameraCalib)
+		{
+			// Multi-camera stereo mode: left and right images are horizontal stacks
+			// of N sub-images (one stereo pair per sub-camera). Each pair is rectified
+			// independently with its own model and written back into a stacked image of
+			// the same layout. Sub-images are split using a uniform width (cols / N),
+			// matching the convention used downstream to de-stack the images.
+			std::vector<StereoCameraModel> models;
+			if(this->isConfigForEachFrame())
 			{
-				cv::Mat tmp;
-				cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
-				rightImage = tmp;
-			}
-
-			if(multiCameraCalib_)
-			{
-				// Multi-camera stereo mode: left and right images are horizontal stacks
-				// of N sub-images (one stereo pair per sub-camera). Each pair is rectified
-				// independently with its own model and written back into a stacked image of
-				// the same layout. Sub-images are split using a uniform width (cols / N),
-				// matching the convention used downstream to de-stack the images.
-				std::vector<StereoCameraModel> models;
-				if(this->isConfigForEachFrame())
-				{
-					// Per-frame calibration loaded on demand (not kept in memory),
-					// keyed by the current image's base name.
-					std::string base = this->lastImageFileName();
-					base = base.substr(0, base.find_last_of('.'));
-					models = loadStereoCameraModels(base, this->isImagesRectified());
-				}
-				else
-				{
-					// a single calibration set is shared by all frames
-					UASSERT(!multiStereoModels_.empty());
-					models = multiStereoModels_;
-				}
-				if(models.empty())
-				{
-					return data;
-				}
-				int n = (int)models.size();
-
-				if(leftImage.cols % n != 0 || rightImage.cols % n != 0)
-				{
-					UERROR("Multi-camera stereo: stacked image width (left=%d, right=%d) is not "
-							"divisible by the number of cameras (%d).", leftImage.cols, rightImage.cols, n);
-					return data;
-				}
-				int subWidthLeft = leftImage.cols/n;
-				int subWidthRight = rightImage.cols/n;
-
-				if(this->isImagesRectified())
-				{
-					cv::Mat leftRect(leftImage.rows, leftImage.cols, leftImage.type());
-					cv::Mat rightRect(rightImage.rows, rightImage.cols, rightImage.type());
-					for(int i=0; i<n; ++i)
-					{
-						cv::Rect roiL(subWidthLeft*i, 0, subWidthLeft, leftImage.rows);
-						cv::Rect roiR(subWidthRight*i, 0, subWidthRight, rightImage.rows);
-						models[i].left().rectifyImage(leftImage(roiL)).copyTo(leftRect(roiL));
-						models[i].right().rectifyImage(rightImage(roiR)).copyTo(rightRect(roiR));
-					}
-					leftImage = leftRect;
-					rightImage = rightRect;
-				}
-
-				for(int i=0; i<n; ++i)
-				{
-					if(models[i].left().imageHeight() == 0 || models[i].left().imageWidth() == 0)
-					{
-						models[i].setImageSize(cv::Size(subWidthLeft, leftImage.rows));
-					}
-				}
-
-				data = SensorData(left.laserScanRaw(), leftImage, rightImage, models, left.id()/(camera2_?1:2), left.stamp());
-				data.setGroundTruth(left.groundTruth());
+				// Per-frame calibration loaded on demand (not kept in memory),
+				// keyed by the current image's base name.
+				std::string base = this->lastImageFileName();
+				base = base.substr(0, base.find_last_of('.'));
+				models = loadStereoCameraModels(base, this->isImagesRectified());
 			}
 			else
 			{
-				if(this->isImagesRectified() && stereoModel_.isValidForRectification())
-				{
-					leftImage = stereoModel_.left().rectifyImage(leftImage);
-					rightImage = stereoModel_.right().rectifyImage(rightImage);
-				}
-
-				if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
-				{
-					stereoModel_.setImageSize(leftImage.size());
-				}
-
-				data = SensorData(left.laserScanRaw(), leftImage, rightImage, stereoModel_, left.id()/(camera2_?1:2), left.stamp());
-				data.setGroundTruth(left.groundTruth());
+				// a single calibration set is shared by all frames
+				UASSERT(!multiStereoModels_.empty());
+				models = multiStereoModels_;
 			}
+			if(models.empty())
+			{
+				return data;
+			}
+			int n = (int)models.size();
+
+			if(leftImage.cols % n != 0 || rightImage.cols % n != 0)
+			{
+				UERROR("Multi-camera stereo: stacked image width (left=%d, right=%d) is not "
+						"divisible by the number of cameras (%d).", leftImage.cols, rightImage.cols, n);
+				return data;
+			}
+			int subWidthLeft = leftImage.cols/n;
+			int subWidthRight = rightImage.cols/n;
+
+			if(this->isImagesRectified())
+			{
+				cv::Mat leftRect(leftImage.rows, leftImage.cols, leftImage.type());
+				cv::Mat rightRect(rightImage.rows, rightImage.cols, rightImage.type());
+				for(int i=0; i<n; ++i)
+				{
+					cv::Rect roiL(subWidthLeft*i, 0, subWidthLeft, leftImage.rows);
+					cv::Rect roiR(subWidthRight*i, 0, subWidthRight, rightImage.rows);
+					models[i].left().rectifyImage(leftImage(roiL)).copyTo(leftRect(roiL));
+					models[i].right().rectifyImage(rightImage(roiR)).copyTo(rightRect(roiR));
+				}
+				leftImage = leftRect;
+				rightImage = rightRect;
+			}
+
+			for(int i=0; i<n; ++i)
+			{
+				if(models[i].left().imageHeight() == 0 || models[i].left().imageWidth() == 0)
+				{
+					models[i].setImageSize(cv::Size(subWidthLeft, leftImage.rows));
+				}
+			}
+
+			data = SensorData(left.laserScanRaw(), leftImage, rightImage, models, left.id()/(camera2_?1:2), left.stamp());
+			data.setGroundTruth(left.groundTruth());
+		}
+		else
+		{
+			if(this->isImagesRectified() && stereoModel_.isValidForRectification())
+			{
+				leftImage = stereoModel_.left().rectifyImage(leftImage);
+				rightImage = stereoModel_.right().rectifyImage(rightImage);
+			}
+
+			if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+			{
+				stereoModel_.setImageSize(leftImage.size());
+			}
+
+			data = SensorData(left.laserScanRaw(), leftImage, rightImage, stereoModel_, left.id()/(camera2_?1:2), left.stamp());
+			data.setGroundTruth(left.groundTruth());
 		}
 	}
 	return data;
