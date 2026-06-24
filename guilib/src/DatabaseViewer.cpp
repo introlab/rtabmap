@@ -1665,12 +1665,12 @@ void DatabaseViewer::extractImages()
 							}
 							StereoCameraModel model(
 									cameraName,
-									data.imageRaw().size(),
+									data.stereoCameraModels()[i].left().imageSize(),
 									data.stereoCameraModels()[i].left().K_raw(),
 									data.stereoCameraModels()[i].left().D_raw(),
 									data.stereoCameraModels()[i].left().R(),
 									data.stereoCameraModels()[i].left().P(),
-									data.rightRaw().size(),
+									data.stereoCameraModels()[i].right().imageSize(),
 									data.stereoCameraModels()[i].right().K_raw(),
 									data.stereoCameraModels()[i].right().D_raw(),
 									data.stereoCameraModels()[i].right().R(),
@@ -1730,7 +1730,7 @@ void DatabaseViewer::extractImages()
 								cameraName+="_"+uNumber2Str((int)i);
 							}
 							CameraModel model(cameraName,
-									data.imageRaw().size(),
+									data.cameraModels()[i].imageSize(),
 									data.cameraModels()[i].K_raw(),
 									data.cameraModels()[i].D_raw(),
 									data.cameraModels()[i].R(),
