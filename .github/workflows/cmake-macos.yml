@@ -61,19 +61,19 @@ jobs:
       run: |
         ./rtabmap-console --version
 
-#    - name: Build MacOS Package
-#      run: |
-#        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+    - name: Build MacOS Package
+      run: |
+        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
 
-#    - name: Upload RTABMap Artifacts (DMG)
-#      uses: actions/upload-artifact@v4
-#      with:
-#        name: RTABMap-Binaries-${{ matrix.build_name }}-zip
-#        path: |
-#          build/RTABMap-*.dmg
-#        compression-level: 0
-#        if-no-files-found: warn
-#        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+    - name: Upload RTABMap Artifacts (DMG)
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}-nonsigned-zip
+        path: |
+          build/RTABMap-*.dmg
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build
