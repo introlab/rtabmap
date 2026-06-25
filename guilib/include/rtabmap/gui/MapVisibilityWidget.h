@@ -44,6 +44,7 @@ public:
 
 	void setMap(const std::map<int, Transform> & poses, const std::map<int, bool> & mask);
 	std::map<int, Transform> getVisiblePoses() const;
+	bool isEmpty() const {return _poses.empty();}
 
 	void clear();
 

@@ -1,0 +1,83 @@
+name: CMake-MacOS
+
+on:
+  push:
+    branches: 
+      - master
+  pull_request:
+    branches: 
+      - '**'
+
+env:
+  BUILD_TYPE: Release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: ${{ matrix.build_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        build_name: [macos-sequoia-intel, macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon]
+        include:
+        - build_name: macos-sequoia-intel
+          os: macos-15-intel
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+        - build_name: macos-sequoia-apple-silicon
+          os: macos-15
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+        - build_name: macos-tahoe-intel
+          os: macos-26-intel
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+        - build_name: macos-tahoe-apple-silicon
+          os: macos-26
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Brew Dependencies
+      run: |
+        # Update brew and install from Brewfile if present, or specific packages
+        brew install pcl opencv octomap g2o pdal
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Info
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        ./rtabmap-console --version
+
+#    - name: Build MacOS Package
+#      run: |
+#        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+
+#    - name: Upload RTABMap Artifacts (DMG)
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: RTABMap-Binaries-${{ matrix.build_name }}-zip
+#        path: |
+#          build/RTABMap-*.dmg
+#        compression-level: 0
+#        if-no-files-found: warn
+#        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+
+#    - name: Test
+#      working-directory: ${{github.workspace}}/build
+#      # Execute tests defined by the CMake configuration.  
+#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#      run: ctest -C ${{env.BUILD_TYPE}}
+      

@@ -37,37 +37,48 @@ namespace rtabmap {
 class RTABMAP_CORE_EXPORT FlannIndex
 {
 public:
+	// A forward of the internal enum, indexes should match. See src/rtflann/defines.h
+	enum flann_algorithm_t
+	{
+		FLANN_INDEX_LINEAR 			= 0,
+		FLANN_INDEX_KDTREE 			= 1,
+		FLANN_INDEX_KDTREE_SINGLE   = 4,
+		FLANN_INDEX_LSH 			= 6,
+	};
+
 	FlannIndex();
 	virtual ~FlannIndex();
 
 	void release();
+	std::vector<unsigned char> serializeIndex(bool computeChecksum = true) const;
+
 	size_t indexedFeatures() const;
 
 	// return Bytes
 	size_t memoryUsed() const;
 
 	// Note that useDistanceL1 doesn't have any effect if LSH is used
-	void buildLinearIndex(
+	void buildIndex(
+			flann_algorithm_t algorithm,
 			const cv::Mat & features,
 			bool useDistanceL1 = false,
 			float rebalancingFactor = 2.0f);
-	void buildKDTreeIndex(
-			const cv::Mat & features,
-			int trees = 4,
-			bool useDistanceL1 = false,
-			float rebalancingFactor = 2.0f);
-	void buildKDTreeSingleIndex(
-			const cv::Mat & features,
-			int leafMaxSize = 10,
-			bool reorder = true,
-			bool useDistanceL1 = false,
-			float rebalancingFactor = 2.0f);
-	void buildLSHIndex(
-			const cv::Mat & features,
-			unsigned int table_number = 12,
-			unsigned int key_size = 20,
-			unsigned int multi_probe_level = 2,
-			float rebalancingFactor = 2.0f);
+	// Return false if the indexData doesn't correspond to expected features used and parameters.
+	bool loadIndex(
+		const std::vector<unsigned char> & indexData,
+		flann_algorithm_t algorithm,
+		const cv::Mat & features,
+		bool useDistanceL1 = false,
+		float rebalancingFactor = 2.0f,
+		std::string * errorMsg = NULL);
+	bool loadIndex(
+		const unsigned char * indexData,
+		size_t indexDataSize,
+		flann_algorithm_t algorithm,
+		const cv::Mat & features,
+		bool useDistanceL1 = false,
+		float rebalancingFactor = 2.0f,
+		std::string * errorMsg = NULL);
 
 	bool isBuilt();
 
@@ -104,9 +115,9 @@ private:
 	unsigned int nextIndex_;
 	int featuresType_;
 	int featuresDim_;
-	bool isLSH_;
 	bool useDistanceL1_; // true=EUCLEDIAN_L2 false=MANHATTAN_L1
 	float rebalancingFactor_;
+	flann_algorithm_t algorithm_;
 
 	// keep feature in memory until the tree is rebuilt
 	// (in case the word is deleted when removed from the VWDictionary)

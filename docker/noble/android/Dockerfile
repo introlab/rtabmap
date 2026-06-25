@@ -3,14 +3,17 @@
 FROM ubuntu:24.04
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      apt-utils && apt-get clean && \
+      rm -rf /var/lib/apt/lists/
 RUN apt-get update && apt-get install -y \
       git unzip wget ant cmake \
       g++ lib32stdc++6 lib32z1 \
       software-properties-common \
       freeglut3-dev \
       openjdk-8-jdk openjdk-8-jre \
-      curl
+      curl && \
+      apt-get clean && rm -rf /var/lib/apt/lists/
 
 ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/tools:/opt/android-sdk/platform-tools:/opt/android-sdk/ndk/21.4.7075529
@@ -53,6 +56,8 @@ RUN echo "Install boost..." && \
     cd build && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" ..  && \
     make -j4 && \
+    find . -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     make install && \
     cd /root  && \
     rm -r boost_1_59_0.tar.gz boost_1_59_0
@@ -80,6 +85,8 @@ RUN echo "Install flann..." && \
     cd build && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DBUILD_PYTHON_BINDINGS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" .. && \
     make -j4 && \
+    find . -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     make install && \
     cd /root && \
     rm -rf flann
@@ -95,6 +102,8 @@ RUN echo "Install gtsam..." && \
     cd build && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" -DMETIS_SHARED=OFF -DGTSAM_BUILD_STATIC_LIBRARY=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_USE_SYSTEM_EIGEN=ON .. && \
     make -j4 && \
+    find . -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     make install && \
     cd /root && \
     rm -rf gtsam
@@ -108,6 +117,8 @@ RUN echo "Install g2o..." && \
     cd build && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DG2O_USE_OPENGL=OFF .. && \
     make -j4 && \
+    find "../lib" -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     make install && \
     cd /root && \
     rm -rf g2o
@@ -117,12 +128,14 @@ RUN echo "Install VTK..." && \
     git clone https://github.com/Kitware/VTK.git && \
     cd VTK && \
     git checkout tags/v8.2.0 && \
-    wget https://gist.github.com/matlabbe/e217259fb8ece9ee6daf5a8f70e896a0/raw/2214b503a537d6431d764526b5b780f07d6f168d/vtk_8_2_0_android_r21_fix.patch && \
+    wget https://gist.github.com/matlabbe/e217259fb8ece9ee6daf5a8f70e896a0/raw/36d879f0827289e75de969afb7b6515d9a1c71d7/vtk_8_2_0_android_r21_fix.patch && \
     git apply vtk_8_2_0_android_r21_fix.patch && \
     mkdir build && \
     cd build && \
     cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DVTK_ANDROID_BUILD=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DANDROID_ARCH_ABI=arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" .. && \
     make -j4 && \
+    find . -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     cp -r CMakeExternals/Install/vtk-android/* /opt/android/arm64-v8a/. && \
     cd /root && \
     rm -rf VTK
@@ -140,6 +153,8 @@ RUN echo "Install pcl..." && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_tools=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF .. || true && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_tools=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF .. && \
     make -j4 && \
+    find . -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     make install && \
     cd /root && \
     rm -rf pcl
@@ -161,13 +176,11 @@ RUN echo "Install OpenCV..." && \
     cd build && \
     cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NDK=$ANDROID_NDK -DANDROID_NATIVE_API_LEVEL=23 -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a -DCMAKE_FIND_ROOT_PATH="/opt/android/arm64-v8a/bin;/opt/android/arm64-v8a;/opt/android/arm64-v8a/share" -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DWITH_CUDA=OFF -DBUILD_opencv_structured_light=OFF -DBUILD_ANDROID_PROJECTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DBUILD_ANDROID_EXAMPLES=OFF -DWITH_PROTOBUF=OFF -DBUILD_opencv_stereo=OFF -DBUILD_JAVA=OFF -DWITH_QUIRC=OFF -DBUILD_opencv_js_bindings_generator=OFF -DBUILD_opencv_objc_bindings_generator=OFF -DBUILD_opencv_objdetect=OFF -DBUILD_opencv_xobjdetect=OFF .. && \
     make -j4 && \
+    find . -type f -name "*.a" -print0 \
+       | xargs -0 $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug && \
     make install && \
     cd /root && \
     rm -rf opencv opencv_contrib
-
-RUN echo "Strip libraries..." && \
-    $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug --verbose /opt/android/arm64-v8a/lib/*.a && \
-    $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-strip -g -S -d --strip-debug --verbose /opt/android/arm64-v8a/sdk/native/staticlibs/arm64-v8a/*.a
 
 RUN mkdir /opt/android/lib
 

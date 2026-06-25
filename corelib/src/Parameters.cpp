@@ -113,11 +113,14 @@ ParametersMap Parameters::deserialize(const std::string & parameters)
 	std::list<std::string> tuplets = uSplit(parameters, ';');
 	for(std::list<std::string>::iterator iter=tuplets.begin(); iter!=tuplets.end(); ++iter)
 	{
-		std::list<std::string> p = uSplit(*iter, ':');
-		if(p.size() == 2)
+		// Split on the FIRST ':' only. Using uSplit() here would discard
+		// empty tokens, so a tuplet like "Marker/Lengths:" (legitimate empty
+		// string value) would lose the value side and be dropped entirely.
+		size_t colonPos = iter->find(':');
+		if(colonPos != std::string::npos && colonPos > 0)
 		{
-			std::string key = p.front();
-			std::string value = p.back();
+			std::string key = iter->substr(0, colonPos);
+			std::string value = iter->substr(colonPos + 1);
 
 			// look for old parameter name
 			bool addParameter = true;
@@ -168,6 +171,7 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRISK") == 0 ||
 			group.compare("KAZE") == 0 ||
 			group.compare("SuperPoint") == 0 ||
+			group.compare("SuperPointRpautrat") == 0 ||
 			group.compare("PyDetector") == 0;
 }
 
@@ -182,6 +186,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			(stereo && group.compare("Stereo") == 0) ||
 			(icp && group.compare("Icp") == 0) ||
 			(vis && Parameters::isFeatureParameter(iter->first)) ||
+			group.compare("OdomCuVSLAM") == 0 ||
 			group.compare("Reg") == 0 ||
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
@@ -236,6 +241,12 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.23.7
+		removedParameters_.insert(std::make_pair("Marker/CornerRefinementMethod", std::make_pair(true, Parameters::kMarkerOpenCVCornerRefinementMethod())));
+
+		// 0.23.1
+		removedParameters_.insert(std::make_pair("OdomVINS/ConfigPath",    std::make_pair(true, Parameters::kOdomVINSFusionConfigPath())));
+
 		// 0.21.13
 		removedParameters_.insert(std::make_pair("Vis/ForwardEstOnly",    std::make_pair(false, "")));
 
@@ -285,7 +296,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Aruco/MaxDepthError",          std::make_pair(true,  Parameters::kMarkerMaxDepthError())));
 		removedParameters_.insert(std::make_pair("Aruco/VarianceLinear",         std::make_pair(true,  Parameters::kMarkerVarianceLinear())));
 		removedParameters_.insert(std::make_pair("Aruco/VarianceAngular",        std::make_pair(true,  Parameters::kMarkerVarianceAngular())));
-		removedParameters_.insert(std::make_pair("Aruco/CornerRefinementMethod", std::make_pair(true,  Parameters::kMarkerCornerRefinementMethod())));
+		removedParameters_.insert(std::make_pair("Aruco/CornerRefinementMethod", std::make_pair(true,  Parameters::kMarkerOpenCVCornerRefinementMethod())));
 
 		// 0.17.5
 		removedParameters_.insert(std::make_pair("Grid/OctoMapOccupancyThr",     std::make_pair(true,  Parameters::kGridGlobalOccupancyThr())));
@@ -659,6 +670,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With SuperPoint Rpautrat:"; 
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON) 
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl; 
+#else 
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl; 
+#endif
 				str = "With Python3:";
 #ifdef RTABMAP_PYTHON
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -667,6 +684,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With FastCV:";
 #ifdef RTABMAP_FASTCV
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With AprilTag:";
+#ifdef RTABMAP_APRILTAG
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -893,6 +916,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With LIO-SAM:";
+#ifdef RTABMAP_LIOSAM
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With FOVIS:";
 #ifdef RTABMAP_FOVIS
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -936,7 +965,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
 				str = "With VINS-Fusion:";
-#ifdef RTABMAP_VINS
+#ifdef RTABMAP_VINS_FUSION
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -1109,8 +1138,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#ifndef RTABMAP_ORBSLAM2
-					if(group.compare("OdomORBSLAM2") == 0)
+#ifndef RTABMAP_ORB_SLAM
+					if(group.compare("OdomORBSLAM") == 0)
 					{
 						ignore = true;
 					}
@@ -1216,13 +1245,13 @@ void readINIImpl(const CSimpleIniA & ini, const std::string & configFilePath, Pa
 				std::vector<std::string> version = uListToVector(uSplit((*iter).second, '.'));
 				if(version.size() == 3)
 				{
-					if(!RTABMAP_VERSION_COMPARE(std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
+					if(RTABMAP_VERSION_COMPARE(<, std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
 					{
 						if(configFilePath.find(".rtabmap") != std::string::npos)
 						{
 							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
-								   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
-								   "to new version.",
+								   "current RTAB-Map version used (\"%s\"). The config file will be downgraded "
+								   "to current RTAB-Map version if saved.",
 								   configFilePath.c_str(),
 								   (*iter).second,
 								   RTABMAP_VERSION);

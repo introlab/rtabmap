@@ -1,0 +1,107 @@
+name: CMake-Windows
+
+on:
+  push:
+    branches: 
+      - master
+  pull_request:
+    branches: 
+      - '**'
+
+env:
+  BUILD_TYPE: Release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: ${{ matrix.build_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        build_name: [windows-2022, windows-2022-cuda]
+        include:
+        - build_name: windows-2022
+          os: windows-2022
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=OFF'
+        - build_name: windows-2022-cuda
+          os: windows-2022
+          extra_deps: ""
+          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=ON'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Windows Dependencies
+      if: matrix.build_name == 'windows-2022'
+      uses: ./.github/actions/install-windows-deps
+ 
+    - name: Install Windows Dependencies with CUDA
+      if: matrix.build_name == 'windows-2022-cuda'
+      uses: ./.github/actions/install-windows-cuda-deps
+
+    - name: Configure CMake
+      run: |
+        cmake `
+          -B ${{github.workspace}}/build `
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
+          ${{ matrix.extra_cmake_def }} `
+          -DVCPKG_MANIFEST_INSTALL=OFF `
+          -DVCPKG_TARGET_TRIPLET=x64-windows-release `
+          -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
+          -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_EXPORT_PATH}}/scripts/buildsystems/vcpkg.cmake `
+          -DTorch_DIR=${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3/Lib/site-packages/torch/share/cmake/Torch
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Build Windows Package
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "pull_request") {
+          cpack --config build/CPackConfig.cmake -G ZIP -B build
+        } else {
+          cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+        }
+
+    - name: Rename CUDA artifacts
+      if: matrix.build_name == 'windows-2022-cuda'
+      shell: pwsh
+      run: Get-ChildItem -Path "build" -Filter "RTABMap-*" | Rename-Item -NewName { $_.BaseName + "_cuda" + $_.Extension }
+
+    - name: Info
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        ./rtabmap-console --version
+
+    - name: Upload RTABMap Artifacts (ZIP)
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}-zip
+        path: |
+          build/RTABMap-*.zip
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+
+    - name: Upload RTABMap Artifacts (Installer)
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}-exe
+        path: |
+          build/RTABMap-*.exe
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+
+#    - name: Test
+#      working-directory: ${{github.workspace}}/build
+#      # Execute tests defined by the CMake configuration.  
+#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#      run: ctest -C ${{env.BUILD_TYPE}}
+      

@@ -77,6 +77,7 @@ private:
 	std::vector<ConstraintToFactor> lastAddedConstraints_;
 	int lastSwitchId_;
 	std::set<int> addedPoses_;
+	std::map<int, bool> isLandmarkWithRotation_; // persists across iSAM2 incremental calls
 	std::pair<int, std::uint64_t> lastRootFactorIndex_;
 };
 

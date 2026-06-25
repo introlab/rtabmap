@@ -82,6 +82,7 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->intraSession, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->interSession, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->minGraphDistance, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->refineNeighborLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->refineLoopClosureLinks, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
@@ -150,6 +151,7 @@ void PostProcessingDialog::saveSettings(QSettings & settings, const QString & gr
 	settings.setValue("iterations", this->iterations());
 	settings.setValue("intra_session", this->intraSession());
 	settings.setValue("inter_session", this->interSession());
+	settings.setValue("min_graph_distance", this->minGraphDistance());
 	settings.setValue("refine_neigbors", this->isRefineNeighborLinks());
 	settings.setValue("refine_lc", this->isRefineLoopClosureLinks());
 	settings.setValue("sba", this->isSBA());
@@ -175,6 +177,7 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 	this->setIterations(settings.value("iterations", this->iterations()).toInt());
 	this->setIntraSession(settings.value("intra_session", this->intraSession()).toBool());
 	this->setInterSession(settings.value("inter_session", this->interSession()).toBool());
+	this->setMinGraphDistance(settings.value("min_graph_distance", this->minGraphDistance()).toInt());
 	this->setRefineNeighborLinks(settings.value("refine_neigbors", this->isRefineNeighborLinks()).toBool());
 	this->setRefineLoopClosureLinks(settings.value("refine_lc", this->isRefineLoopClosureLinks()).toBool());
 	this->setSBA(settings.value("sba", this->isSBA()).toBool());
@@ -197,6 +200,7 @@ void PostProcessingDialog::restoreDefaults()
 	setIterations(5);
 	setIntraSession(true);
 	setInterSession(true);
+	setMinGraphDistance(10);
 	setRefineNeighborLinks(false);
 	setRefineLoopClosureLinks(false);
 	setSBA(false);
@@ -252,6 +256,11 @@ bool PostProcessingDialog::intraSession() const
 bool PostProcessingDialog::interSession() const
 {
 	return _ui->interSession->isChecked();
+}
+
+int PostProcessingDialog::minGraphDistance() const
+{
+	return _ui->minGraphDistance->value();
 }
 
 bool PostProcessingDialog::isRefineNeighborLinks() const
@@ -310,6 +319,10 @@ void PostProcessingDialog::setIntraSession(bool enabled)
 void PostProcessingDialog::setInterSession(bool enabled)
 {
 	_ui->interSession->setChecked(enabled);
+}
+void PostProcessingDialog::setMinGraphDistance(int value)
+{
+	_ui->minGraphDistance->setValue(value);
 }
 void PostProcessingDialog::setRefineNeighborLinks(bool on)
 {

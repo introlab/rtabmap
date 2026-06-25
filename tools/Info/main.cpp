@@ -153,6 +153,15 @@ int main(int argc, char * argv[])
 #endif
 	int padding = 35;
 	std::cout << ("Parameters (Yellow=modified, Red=old parameter not used anymore, NA=not in database):\n");
+	auto displayValue = [](const std::string & key, const std::string & v) -> std::string {
+		// Quote string-typed parameters so empty values are visible and
+		// whitespace-padded values aren't misread as missing.
+		if(Parameters::getType(key) == "string")
+		{
+			return std::string("\"") + v + "\"";
+		}
+		return v;
+	};
 	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
 		ParametersMap::const_iterator jter = defaultParameters.find(iter->first);
@@ -195,7 +204,7 @@ int main(int argc, char * argv[])
 #else
 				printf("%s", COLOR_YELLOW);
 #endif
-				std::cout << (uFormat("%s%s  (%s=%s)\n", uPad(iter->first + "=", padding).c_str(), iter->second.c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str(), defaultValue.c_str()));
+				std::cout << (uFormat("%s%s  (%s=%s)\n", uPad(iter->first + "=", padding).c_str(), displayValue(iter->first, iter->second).c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str(), displayValue(iter->first, defaultValue).c_str()));
 			}
 			else if(!diff)
 			{
@@ -205,7 +214,7 @@ int main(int argc, char * argv[])
 #else
 				printf("%s", COLOR_NORMAL);
 #endif
-				std::cout << (uFormat("%s%s\n", uPad(iter->first + "=", padding).c_str(), iter->second.c_str()));
+				std::cout << (uFormat("%s%s\n", uPad(iter->first + "=", padding).c_str(), displayValue(iter->first, iter->second).c_str()));
 			}
 		}
 		else if(!defaultValueSet)
@@ -216,7 +225,7 @@ int main(int argc, char * argv[])
 #else
 			printf("%s", COLOR_RED);
 #endif
-			std::cout << (uFormat("%s%s  (%s=NA)\n", uPad(iter->first + "=", padding).c_str(), iter->second.c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str()));
+			std::cout << (uFormat("%s%s  (%s=NA)\n", uPad(iter->first + "=", padding).c_str(), displayValue(iter->first, iter->second).c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str()));
 		}
 		else if(!diff)
 		{
@@ -226,7 +235,7 @@ int main(int argc, char * argv[])
 #else
 			printf("%s", COLOR_NORMAL);
 #endif
-			std::cout << (uFormat("%s%s\n", uPad(iter->first + "=", padding).c_str(), iter->second.c_str()));
+			std::cout << (uFormat("%s%s\n", uPad(iter->first + "=", padding).c_str(), displayValue(iter->first, iter->second).c_str()));
 		}
 #ifdef _WIN32
 		SetConsoleTextAttribute(H,COLOR_NORMAL);
@@ -246,7 +255,7 @@ int main(int argc, char * argv[])
 #else
 			printf("%s", COLOR_RED);
 #endif
-			std::cout << (uFormat("%sNA  (%s=\"%s\")\n", uPad(iter->first + "=", padding).c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str(), iter->second.c_str()));
+			std::cout << (uFormat("%sNA  (%s=%s)\n", uPad(iter->first + "=", padding).c_str(), otherDatabasePath.empty()?"default":otherDatabasePathName.c_str(), displayValue(iter->first, iter->second).c_str()));
 		
 #ifdef _WIN32
 			SetConsoleTextAttribute(H,COLOR_NORMAL);

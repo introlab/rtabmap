@@ -96,16 +96,23 @@ public:
 #endif
 
 	float epsilon() const {return epsilon_;}
+	bool usingMinEigenVals() const {return useMinEigenVals_;}
+	float minEigThreshold() const {return minEigThreshold_;}
+	float errorThreshold() const {return errorThreshold_;}
 	virtual bool isGpuEnabled() const;
 
 private:
 	void updateStatus(
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
-		std::vector<unsigned char> & status) const;
+		std::vector<unsigned char> & status,
+		std::vector<float> err = {}) const;
 
 private:
 	float epsilon_;
+	bool useMinEigenVals_;
+	float minEigThreshold_;
+	float errorThreshold_;
 	bool gpu_;
 };
 

@@ -56,6 +56,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   int startMapId,
 				   int stopMapId,
 				   bool priorsIgnored,
+				   bool imuIgnored,
+				   bool intermediateNodesAreNormalNodes,
 				   const std::vector<Transform> & cameraLocalTransformOverrides) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
@@ -66,9 +68,11 @@ DBReader::DBReader(const std::string & databasePath,
 	_stopId(stopId),
 	_cameraIndices(cameraIndices),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
+	_intermediateNodesAreNormalNodes(intermediateNodesAreNormalNodes),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
 	_priorsIgnored(priorsIgnored),
+	_imuIgnored(imuIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
@@ -96,6 +100,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   int startMapId,
 				   int stopMapId,
 				   bool priorsIgnored,
+				   bool imuIgnored,
+				   bool intermediateNodesAreNormalNodes,
 				   const std::vector<Transform> & cameraLocalTransformOverrides) :
 	Camera(frameRate),
    _paths(databasePaths),
@@ -106,9 +112,11 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_stopId(stopId),
 	_cameraIndices(cameraIndices),
 	_intermediateNodesIgnored(intermediateNodesIgnored),
+	_intermediateNodesAreNormalNodes(intermediateNodesAreNormalNodes),
 	_landmarksIgnored(landmarksIgnored),
 	_featuresIgnored(featuresIgnored),
 	_priorsIgnored(priorsIgnored),
+	_imuIgnored(imuIgnored),
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
@@ -260,7 +268,7 @@ bool DBReader::init(
 			else
 			{
 				Signature * s = _dbDriver->loadSignature(*_ids.begin());
-				_dbDriver->loadNodeData(s);
+				_dbDriver->loadNodeData(*s);
 				if( s->sensorData().imageCompressed().empty() &&
 					s->getWords().empty() &&
 					!s->sensorData().laserScanCompressed().empty())
@@ -463,14 +471,17 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 			}
 
 			Transform gravityTransform;
-			std::multimap<int, Link> gravityLinks;
-			_dbDriver->loadLinks(*_currentId, gravityLinks, Link::kGravity);
-			if( gravityLinks.size() &&
-				!gravityLinks.begin()->second.transform().isNull() &&
-				gravityLinks.begin()->second.infMatrix().cols == 6 &&
-				gravityLinks.begin()->second.infMatrix().rows == 6)
+			if(!_imuIgnored)
 			{
-				gravityTransform = gravityLinks.begin()->second.transform();
+				std::multimap<int, Link> gravityLinks;
+				_dbDriver->loadLinks(*_currentId, gravityLinks, Link::kGravity);
+				if( gravityLinks.size() &&
+					!gravityLinks.begin()->second.transform().isNull() &&
+					gravityLinks.begin()->second.infMatrix().cols == 6 &&
+					gravityLinks.begin()->second.infMatrix().rows == 6)
+				{
+					gravityTransform = gravityLinks.begin()->second.transform();
+				}
 			}
 
 			Landmarks landmarks;
@@ -510,22 +521,41 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 					}
 					else
 					{
-						// if localization data saved in database, covariance will be set in a prior link
-						_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
-						if(links.size())
-						{
-							// assume the first is the backward neighbor, take its variance
-							infMatrix = links.begin()->second.infMatrix();
-							_previousInfMatrix = infMatrix;
-						}
-						else
-						{
-							if(_previousInfMatrix.empty())
+						// In case the graph was reduced, look for forward neighbor link from previous id
+						bool covAdded = false;
+						if(_currentId != _ids.begin()) {
+							std::set<int>::iterator previousId = _currentId;
+							--previousId;
+							std::multimap<int, Link> previousLinks;
+							_dbDriver->loadLinks(*previousId, previousLinks, Link::kNeighbor);
+							if(previousLinks.size() && previousLinks.rbegin()->first == *_currentId)
 							{
-								_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+								// assume the last is the forward neighbor pointing to current ID, take its covariance
+								infMatrix = previousLinks.rbegin()->second.infMatrix();
+								_previousInfMatrix = infMatrix;
+								covAdded = true;
 							}
-							// we have a node not linked to map, use last variance
-							infMatrix = _previousInfMatrix;
+						}
+
+						if(!covAdded) {
+							// if localization data saved in database, covariance will be set in a prior link
+							_dbDriver->loadLinks(*_currentId, links, Link::kPosePrior);
+							if(links.size())
+							{
+								// assume the first is the backward neighbor, take its variance
+								infMatrix = links.begin()->second.infMatrix();
+								_previousInfMatrix = infMatrix;
+							}
+							else
+							{
+								if(_previousInfMatrix.empty())
+								{
+									_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+								}
+								// we have a node not linked to map, use last variance
+								UWARN("The node loaded (%d) doesn't have neighbor, re-using the covariance of the previous link for odometry.", s->id());
+								infMatrix = _previousInfMatrix;
+							}
 						}
 					}
 				}
@@ -723,7 +753,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 					data.setStereoCameraModels(combinedStereoModels);
 				}
 			}
-			data.setId(seq);
+			data.setId(!_intermediateNodesAreNormalNodes && s->getWeight()==-1 ? -1 : seq);
 			data.setStamp(s->getStamp());
 			data.setGroundTruth(s->getGroundTruthPose());
 			if(!globalPose.isNull())
@@ -837,6 +867,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				if(info)
 				{
 					info->odomPose = pose;
+					UASSERT(!infMatrix.empty());
 					info->odomCovariance = infMatrix.inv();
 					info->odomVelocity = s->getVelocity();
 					UDEBUG("odom variance = %f/%f", info->odomCovariance.at<double>(0,0), info->odomCovariance.at<double>(5,5));

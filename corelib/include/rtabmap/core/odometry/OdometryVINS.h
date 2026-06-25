@@ -25,39 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYVINS_H_
-#define ODOMETRYVINS_H_
+#pragma once
+#pragma message("Warning: OdometryVINS.h is deprecated. Please use OdometryVINSFusion.h instead.")
 
-#include <rtabmap/core/Odometry.h>
-
-namespace rtabmap {
-
-class VinsEstimator;
-
-class RTABMAP_CORE_EXPORT OdometryVINS : public Odometry
-{
-public:
-	OdometryVINS(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryVINS();
-
-	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	virtual Odometry::Type getType() {return Odometry::kTypeVINS;}
-	virtual bool canProcessRawImages() const {return true;}
-	virtual bool canProcessAsyncIMU() const {return true;}
-
-private:
-	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
-
-private:
-#ifdef RTABMAP_VINS
-	VinsEstimator * vinsEstimator_;
-	bool initGravity_;
-	Transform previousPose_;
-	Transform previousLocalTransform_;
-	IMU lastImu_;
-#endif
-};
-
-}
-
-#endif /* ODOMETRYVINS_H_ */
+#include "rtabmap/core/odometry/OdometryVINSFusion.h"

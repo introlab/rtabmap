@@ -98,6 +98,7 @@ public:
 		kSrcRealSense2     = 9,
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
+		kSrcOrbbecSDK      = 12,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,
@@ -173,6 +174,7 @@ public:
 	int getOdomRegistrationApproach() const;
 	double getOdomF2MGravitySigma() const;
 	bool isOdomDisabled() const;
+	bool isOdomAsGuessEnabled() const;
 	bool isOdomSensorAsGt() const;
 	bool isGroundTruthAligned() const;
 
@@ -291,6 +293,7 @@ public:
 	double getSourceScanForceGroundNormalsUp() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
+	Transform getGroundTruthLocalTransform() const; // directory images
 	Transform getIMULocalTransform() const; // directory images
 	QString getIMUPath() const;
 	int getIMURate() const;
@@ -361,17 +364,22 @@ private Q_SLOTS:
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
 	void updateGlobalDescriptorVisibility();
+	void updateAvailableMarkerDictionaries();
 	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void changeOdometryORBSLAMVocabulary();
 	void changeOdometryOKVISConfigPath();
-	void changeOdometryVINSConfigPath();
+	void changeOdometryVINSFusionConfigPath();
+	void changeOdometryOpenVINSConfigPath();
+	void changeOdometryLIOSAMConfigPath();
 	void changeOdometryOpenVINSLeftMask();
 	void changeOdometryOpenVINSRightMask();
 	void changeIcpPMConfigPath();
 	void changeSuperPointModelPath();
+	void changeSuperPointRpautratWeightsPath();
+	void changeSuperPointRpautratModelPath();
 	void changePyMatcherPath();
 	void changePyMatcherModel();
 	void changePyDescriptorPath();

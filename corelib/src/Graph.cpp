@@ -196,7 +196,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV
+		int format, // 0=Raw, 1=RGBD-SLAM motion capture (10=without change of coordinate frame, 11=10+ID), 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAV, 12=rgbd_bonn
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1 and 9
@@ -218,7 +218,14 @@ bool importPoses(
 	else if(format == 4) // g2o
 	{
 		std::multimap<int, Link> constraintsTmp;
-		UERROR("Cannot import from g2o format because it is not yet supported!");
+		if(OptimizerG2O::loadGraph(filePath, poses, constraintsTmp))
+		{
+			if(constraints)
+			{
+				*constraints = constraintsTmp;
+			}
+			return true;
+		}
 		return false;
 	}
 	else
@@ -440,7 +447,7 @@ bool importPoses(
 					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y, found %d)", str.c_str(), (int)strList.size());
 				}
 			}
-			else if(format == 1 || format==10 || format==11) // rgbd-slam format
+			else if(format == 1 || format==10 || format==11 || format==12) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
 				if((strList.size() >=  8 && format!=11) || (strList.size() ==  9 && format==11))
@@ -451,9 +458,12 @@ bool importPoses(
 					}
 					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
-					if(format==11)
+					if(strList.size() == 8 && (format==10 || format==11 || format==12))
 					{
-						id = uStr2Int(strList.back());
+						if(format==11)
+						{
+							id = uStr2Int(strList.back());
+						}
 						strList.pop_back();
 					}
 					str = uJoin(strList, " ");
@@ -480,6 +490,20 @@ bool importPoses(
 										   0, -1, 0, 0,
 										   1, 0, 0, 0);
 							pose = t*pose;
+						}
+						else if(format == 12)
+						{
+							// See https://www.ipb.uni-bonn.de/data/rgbd-dynamic-dataset/index.html
+							Transform T_ros(-1, 0, 0, 0,
+											 0, 0, 1, 0,
+											 0, 1, 0, 0);
+							Transform T_m(
+										1.0157,    0.1828,   -0.2389,    0.0113,
+										0.0009,   -0.8431,   -0.6413,   -0.00980,
+										-0.3009,    0.6147,   -0.8085,    0.0111);
+
+							// we remove the optical rotation
+							pose = T_ros*pose*T_ros*T_m*CameraModel::opticalRotation().inverse();
 						}
 						poses.insert(std::make_pair(id, pose));
 					}
@@ -910,21 +934,12 @@ Transform calcRMSE (
 	return t;
 }
 
-void computeMaxGraphErrors(
+MaxGraphErrors computeMaxGraphErrors(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		float & maxLinearErrorRatio,
-		float & maxAngularErrorRatio,
-		float & maxLinearError,
-		float & maxAngularError,
-		const Link ** maxLinearErrorLink,
-		const Link ** maxAngularErrorLink,
 		bool force3DoF)
 {
-	maxLinearErrorRatio = -1;
-	maxAngularErrorRatio = -1;
-	maxLinearError = -1;
-	maxAngularError = -1;
+	MaxGraphErrors maxError;
 
 	UDEBUG("poses=%d links=%d", (int)poses.size(), (int)links.size());
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
@@ -946,19 +961,7 @@ void computeMaxGraphErrors(
 					iter->second.to(),
 					t2.prettyPrint().c_str());
 
-				if(maxLinearErrorLink)
-				{
-					*maxLinearErrorLink = 0;
-				}
-				if(maxAngularErrorLink)
-				{
-					*maxAngularErrorLink = 0;
-				}
-				maxLinearErrorRatio = -1;
-				maxAngularErrorRatio = -1;
-				maxLinearError = -1;
-				maxAngularError = -1;
-				return;
+				return MaxGraphErrors();
 			}
 
 			Transform t;
@@ -982,14 +985,11 @@ void computeMaxGraphErrors(
 			UASSERT(iter->second.transVariance(false)>0.0);
 			float stddevLinear = sqrt(iter->second.transVariance(false));
 			float linearErrorRatio = linearError/stddevLinear;
-			if(linearErrorRatio > maxLinearErrorRatio)
+			if(linearErrorRatio > maxError.linearRatio)
 			{
-				maxLinearError = linearError;
-				maxLinearErrorRatio = linearErrorRatio;
-				if(maxLinearErrorLink)
-				{
-					*maxLinearErrorLink = &iter->second;
-				}
+				maxError.linear = linearError;
+				maxError.linearRatio = linearErrorRatio;
+				maxError.linearLink = iter->second;
 			}
 
 			// For landmark links, don't compute angular error if it doesn't estimate orientation
@@ -1014,18 +1014,16 @@ void computeMaxGraphErrors(
 				UASSERT(iter->second.rotVariance(false)>0.0);
 				float stddevAngular = sqrt(iter->second.rotVariance(false));
 				float angularErrorRatio = angularError/stddevAngular;
-				if(angularErrorRatio > maxAngularErrorRatio)
+				if(angularErrorRatio > maxError.angularRatio)
 				{
-					maxAngularError = angularError;
-					maxAngularErrorRatio = angularErrorRatio;
-					if(maxAngularErrorLink)
-					{
-						*maxAngularErrorLink = &iter->second;
-					}
+					maxError.angular = angularError;
+					maxError.angularRatio = angularErrorRatio;
+					maxError.angularLink = iter->second;
 				}
 			}
 		}
 	}
+	return maxError;
 }
 
 std::vector<double> getMaxOdomInf(const std::multimap<int, Link> & links)
@@ -2003,19 +2001,21 @@ std::list<std::pair<int, Transform> > computePath(
 		bool lookInDatabase,
 		bool updateNewCosts,
 		float linearVelocity,  // m/sec
-		float angularVelocity) // rad/sec
+		float angularVelocity, // rad/sec
+		bool ignoreDirectLinks) 
 {
 	UASSERT(memory!=0);
 	UASSERT(fromId>=0);
 	UASSERT(toId!=0);
 	std::list<std::pair<int, Transform> > path;
-	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f",
+	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f ignoreDirectLinks=%d",
 			fromId,
 			toId,
 			lookInDatabase?1:0,
 			updateNewCosts?1:0,
 			linearVelocity,
-			angularVelocity);
+			angularVelocity,
+			ignoreDirectLinks?1:0);
 
 	std::multimap<int, Link> allLinks;
 	if(lookInDatabase)
@@ -2093,7 +2093,9 @@ std::list<std::pair<int, Transform> > computePath(
 		}
 		for(std::multimap<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
-			if(iter->second.from() != iter->second.to())
+			if(iter->second.from() != iter->second.to() &&
+			  (!ignoreDirectLinks || 
+				(!(iter->second.from()==fromId && iter->second.to()==toId) && !(iter->second.to()==fromId && iter->second.from()==toId))))
 			{
 				Transform nextPose = currentNode->pose()*iter->second.transform();
 				float cost = 0.0f;
@@ -2379,26 +2381,15 @@ std::map<int, Transform> getPosesInRadius(const Transform & targetPose, const st
 
 
 float computePathLength(
-		const std::vector<std::pair<int, Transform> > & path,
-		unsigned int fromIndex,
-		unsigned int toIndex)
+		const std::vector<std::pair<int, Transform> > & path)
 {
 	float length = 0.0f;
 	if(path.size() > 1)
 	{
-		UASSERT(fromIndex  < path.size() && toIndex < path.size() && fromIndex <= toIndex);
-		if(fromIndex >= toIndex)
+		for(unsigned int i=0; i<path.size()-1; ++i)
 		{
-			toIndex = (unsigned int)path.size()-1;
+			length+=path[i].second.getDistance(path[i+1].second);
 		}
-		float x=0, y=0, z=0;
-		for(unsigned int i=fromIndex; i<toIndex-1; ++i)
-		{
-			x += fabs(path[i].second.x() - path[i+1].second.x());
-			y += fabs(path[i].second.y() - path[i+1].second.y());
-			z += fabs(path[i].second.z() - path[i+1].second.z());
-		}
-		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
 }
@@ -2409,19 +2400,15 @@ float computePathLength(
 	float length = 0.0f;
 	if(path.size() > 1)
 	{
-		float x=0, y=0, z=0;
 		std::map<int, Transform>::const_iterator iter=path.begin();
 		Transform previousPose = iter->second;
 		++iter;
 		for(; iter!=path.end(); ++iter)
 		{
 			const Transform & currentPose = iter->second;
-			x += fabs(previousPose.x() - currentPose.x());
-			y += fabs(previousPose.y() - currentPose.y());
-			z += fabs(previousPose.z() - currentPose.z());
+			length+=previousPose.getDistance(currentPose);
 			previousPose = currentPose;
 		}
-		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
 }

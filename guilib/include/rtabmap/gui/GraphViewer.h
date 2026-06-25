@@ -77,6 +77,7 @@ public:
 	// Use updateNodeColorByValue() instead with valueName="Posterior".
 	RTABMAP_DEPRECATED void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f, int zValueOffset = 0);
 	void updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float fixedMax = 0.0f, bool invertedColorScale = false, int zValueOffset = 0);
+	void updateNodeColorByValue(const std::string & valueName, const std::map<int, float> & values, float fixedMin, float fixedMax, bool invertedColorScale = false, unsigned short hueMin=0, unsigned short hueMax=180, int zValueOffset = 0);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());
@@ -118,8 +119,9 @@ public:
 	bool isReferentialVisible() const;
 	bool isLocalRadiusVisible() const;
 	float getLoopClosureOutlierThr() const {return _loopClosureOutlierThr;}
-	float getMaxLinkLength() const {return _maxLinkLength;}
+	float getMinLinkLength() const {return _minLinkLength;}
 	bool isGraphVisible() const;
+	bool isNodeVisible() const;
 	bool isGlobalPathVisible() const;
 	bool isLocalPathVisible() const;
 	bool isGtGraphVisible() const;
@@ -158,7 +160,7 @@ public:
 	void setReferentialVisible(bool visible);
 	void setLocalRadiusVisible(bool visible);
 	void setLoopClosureOutlierThr(float value);
-	void setMaxLinkLength(float value);
+	void setMinLinkLength(float value);
 	void setGraphVisible(bool visible);
 	void setGlobalPathVisible(bool visible);
 	void setLocalPathVisible(bool visible);
@@ -183,6 +185,9 @@ protected:
 	virtual void mouseMoveEvent(QMouseEvent * event);
 	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
+
+private:
+	void setupGraphicsScene();
 
 private:
 	QString _workingDirectory;
@@ -237,7 +242,7 @@ private:
 	QGraphicsEllipseItem * _localRadius;
 	QGraphicsRectItem * _odomCacheOverlay;
 	float _loopClosureOutlierThr;
-	float _maxLinkLength;
+	float _minLinkLength;
 	bool _orientationENU;
 	bool _mouseTracking;
 	ViewPlane _viewPlane;

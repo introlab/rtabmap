@@ -69,6 +69,7 @@ StatItem::StatItem(const QString & name, bool cacheOn, const std::vector<qreal> 
 		_y = y;
 	}
 	_unit->setText(unit);
+	_value->setTextFormat(Qt::PlainText);
 	this->updateMenu(menu);
 }
 
@@ -90,7 +91,6 @@ void StatItem::addValue(qreal y)
 	{
 		_y.push_back(y);
 	}
-	_value->setText(QString::number(y, 'g', 3));
 	Q_EMIT valueAdded(y);
 }
 
@@ -107,7 +107,6 @@ void StatItem::addValue(qreal x, qreal y)
 		_x.push_back(x);
 	}
 
-	_value->setText(QString::number(y, 'g', 3));
 	Q_EMIT valueAdded(x,y);
 }
 
@@ -117,16 +116,21 @@ void StatItem::setValues(const std::vector<qreal> & x, const std::vector<qreal> 
 	{
 		_x = x;
 		_y = y;
-		if(y.size())
-		{
-			_value->setNum(y[y.size()-1]);
-		}
-	}
-	else
-	{
-		_value->setText("*");
 	}
 	Q_EMIT valuesChanged(x,y);
+}
+
+void StatItem::updateLabel()
+{
+	QString newText;
+	if(_y.size())
+	{
+		newText = QString::number(_y.back(), 'g', 3);
+	}
+	if(newText != _value->text())
+	{
+		_value->setText(newText);
+	}
 }
 
 QString StatItem::value() const
@@ -227,6 +231,8 @@ StatsToolBox::StatsToolBox(QWidget * parent) :
 	_plotMenu->addAction(tr("<New figure>"));
 	_workingDirectory = QDir::homePath();
 	_newFigureMaxItems = 0;
+	_updateLabelsTimer.setSingleShot(true);
+	connect(&_updateLabelsTimer, &QTimer::timeout, this, &StatsToolBox::updateLabels);
 }
 
 StatsToolBox::~StatsToolBox()
@@ -263,6 +269,7 @@ void StatsToolBox::updateStat(const QString & statFullName, qreal y, bool cacheO
 	std::vector<qreal> vx,vy(1);
 	vy[0] = y;
 	updateStat(statFullName, vx, vy, cacheOn);
+	requestLabelsUpdate();
 }
 
 void StatsToolBox::updateStat(const QString & statFullName, qreal x, qreal y, bool cacheOn)
@@ -271,6 +278,7 @@ void StatsToolBox::updateStat(const QString & statFullName, qreal x, qreal y, bo
 	vx[0] = x;
 	vy[0] = y;
 	updateStat(statFullName, vx, vy, cacheOn);
+	requestLabelsUpdate();
 }
 
 void StatsToolBox::updateStat(const QString & statFullName, const std::vector<qreal> & x, const std::vector<qreal> & y, bool cacheOn)
@@ -295,6 +303,7 @@ void StatsToolBox::updateStat(const QString & statFullName, const std::vector<qr
 		{
 			item->setValues(x, y);
 		}
+		requestLabelsUpdate();
 	}
 	else
 	{
@@ -375,6 +384,22 @@ void StatsToolBox::updateStat(const QString & statFullName, const std::vector<qr
 		//layout->insertWidget(layout->count()-1, item);
 		connect(item, SIGNAL(plotRequested(const StatItem *, const QString &)), this, SLOT(plot(const StatItem *, const QString &)));
 		connect(this, SIGNAL(menuChanged(const QMenu *)), item, SLOT(updateMenu(const QMenu *)));
+	}
+}
+
+void StatsToolBox::requestLabelsUpdate()
+{
+	if(!_updateLabelsTimer.isActive())
+	{
+		_updateLabelsTimer.start(100); // Max 10 Hz
+	}
+}
+void StatsToolBox::updateLabels()
+{
+	QList<StatItem *> items = _statBox->findChildren<StatItem *>();
+	for(int i=0; i<items.size(); ++i)
+	{
+		items[i]->updateLabel();
 	}
 }
 
