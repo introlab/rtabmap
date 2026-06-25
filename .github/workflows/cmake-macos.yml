@@ -62,6 +62,7 @@ jobs:
         ./rtabmap-console --version
 
     - name: Build MacOS Package
+      if: matrix.os == 'macos-26' || matrix.os == 'macos-26-intel'
       run: |
         cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
 
