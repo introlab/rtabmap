@@ -165,6 +165,43 @@ runs:
         "$CMAKE3" --build build -j$NPROC
         DESTDIR="$STAGE" "$CMAKE3" --install build
 
+    # ----------------------------- opengv ---------------------------
+    - name: Cache opengv
+      id: cache-opengv
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/opengv
+        key: opengv-91f4b19c-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/opengv-91f4b19c-disable-march-native.patch') }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build opengv
+      if: steps.cache-opengv.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        PATCHES="${{ github.action_path }}/patches"
+        SRC="${{ runner.temp }}/src-deps/opengv"
+        STAGE="${{ runner.temp }}/deps-stage/opengv"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        # opengv pins a commit (not a tag), so clone then checkout.
+        git clone https://github.com/laurentkneip/opengv.git "$SRC/opengv"
+        cd "$SRC/opengv"
+        git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3
+        # Disable the -march=native/armv7-a/armv8-a flags so it builds portably on
+        # both Intel and Apple Silicon runners.
+        git apply "$PATCHES/opengv-91f4b19c-disable-march-native.patch"
+        # CMAKE_POLICY_VERSION_MINIMUM=3.5: opengv declares an ancient
+        # cmake_minimum_required that modern CMake rejects. EIGEN_INCLUDE_DIR points
+        # opengv's bundled FindEigen at Homebrew's eigen (covers /opt/homebrew on arm64).
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DBUILD_TESTS=OFF \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+          -DEIGEN_INCLUDE_DIR="$(brew --prefix eigen)/include/eigen3"
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
     # ------------------- install all units into /usr/local ----------
     - name: Install source dependencies into /usr/local
       shell: bash
@@ -175,7 +212,7 @@ runs:
         set -e
         STAGE="${{ runner.temp }}/deps-stage"
         found=0
-        for unit in gtsam pointmatcher orbbec depthai; do
+        for unit in gtsam pointmatcher orbbec depthai opengv; do
           if [ -d "$STAGE/$unit/usr/local" ]; then
             sudo cp -a "$STAGE/$unit/usr/local/." /usr/local/
             found=1
