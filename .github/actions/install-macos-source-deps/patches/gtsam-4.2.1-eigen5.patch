@@ -1,0 +1,83 @@
+diff --git a/cmake/HandleEigen.cmake b/cmake/HandleEigen.cmake
+index b3b4f66b6..651cd1009 100644
+--- a/cmake/HandleEigen.cmake
++++ b/cmake/HandleEigen.cmake
+@@ -59,7 +59,12 @@ else()
+ endif()
+
+ # Detect Eigen version:
+-set(EIGEN_VER_H "${GTSAM_EIGEN_INCLUDE_FOR_BUILD}/Eigen/src/Core/util/Macros.h")
++# Since Eigen 5.0.0 the version macros moved from Eigen/src/Core/util/Macros.h
++# to a dedicated Eigen/Version header, so check the new location first.
++set(EIGEN_VER_H "${GTSAM_EIGEN_INCLUDE_FOR_BUILD}/Eigen/Version")
++if (NOT EXISTS ${EIGEN_VER_H})
++    set(EIGEN_VER_H "${GTSAM_EIGEN_INCLUDE_FOR_BUILD}/Eigen/src/Core/util/Macros.h")
++endif()
+ if (EXISTS ${EIGEN_VER_H})
+     file(READ "${EIGEN_VER_H}" STR_EIGEN_VERSION)
+
+diff --git a/gtsam/base/Matrix.h b/gtsam/base/Matrix.h
+index cfedf6d8c..9c9771407 100644
+--- a/gtsam/base/Matrix.h
++++ b/gtsam/base/Matrix.h
+@@ -54,7 +54,7 @@ using Matrix7##N = Eigen::Matrix<double, 7, N>;  \
+ using Matrix8##N = Eigen::Matrix<double, 8, N>;  \
+ using Matrix9##N = Eigen::Matrix<double, 9, N>;  \
+ static const Eigen::MatrixBase<Matrix##N>::IdentityReturnType I_##N##x##N = Matrix##N::Identity(); \
+-static const Eigen::MatrixBase<Matrix##N>::ConstantReturnType Z_##N##x##N = Matrix##N::Zero();
++static const decltype(Matrix##N::Zero()) Z_##N##x##N = Matrix##N::Zero();
+
+ GTSAM_MAKE_MATRIX_DEFS(1)
+ GTSAM_MAKE_MATRIX_DEFS(2)
+diff --git a/gtsam/base/Vector.h b/gtsam/base/Vector.h
+index f7923ff88..5410393f6 100644
+--- a/gtsam/base/Vector.h
++++ b/gtsam/base/Vector.h
+@@ -27,6 +27,7 @@
+
+ #include <gtsam/global_includes.h>
+ #include <Eigen/Core>
++#include <cassert>
+ #include <iosfwd>
+ #include <list>
+
+@@ -42,14 +43,14 @@ typedef Eigen::Matrix<double, 1, 1> Vector1;
+ typedef Eigen::Vector2d Vector2;
+ typedef Eigen::Vector3d Vector3;
+
+-static const Eigen::MatrixBase<Vector2>::ConstantReturnType Z_2x1 = Vector2::Zero();
+-static const Eigen::MatrixBase<Vector3>::ConstantReturnType Z_3x1 = Vector3::Zero();
++static const decltype(Vector2::Zero()) Z_2x1 = Vector2::Zero();
++static const decltype(Vector3::Zero()) Z_3x1 = Vector3::Zero();
+
+ // Create handy typedefs and constants for vectors with N>3
+ // VectorN and Z_Nx1, for N=1..9
+ #define GTSAM_MAKE_VECTOR_DEFS(N)                \
+   using Vector##N = Eigen::Matrix<double, N, 1>; \
+-  static const Eigen::MatrixBase<Vector##N>::ConstantReturnType Z_##N##x1 = Vector##N::Zero();
++  static const decltype(Vector##N::Zero()) Z_##N##x1 = Vector##N::Zero();
+
+ GTSAM_MAKE_VECTOR_DEFS(4)
+ GTSAM_MAKE_VECTOR_DEFS(5)
+diff --git a/gtsam/linear/iterative.h b/gtsam/linear/iterative.h
+index 22f65b8de..20a0c936e 100644
+--- a/gtsam/linear/iterative.h
++++ b/gtsam/linear/iterative.h
+@@ -61,7 +61,7 @@ namespace gtsam {
+
+     /** Apply operator A'*e */
+     Vector operator^(const Vector& e) const {
+-      return A_ ^ e;
++      return gtsam::operator^(A_, e);
+     }
+
+     /**
+@@ -71,7 +71,7 @@ namespace gtsam {
+
+     /** gradient of objective function 0.5*|Ax-b_|^2 at x = A_'*(Ax-b_) */
+     Vector gradient(const Vector& x) const {
+-      return A() ^ (A() * x - b());
++      return gtsam::operator^(A(), Vector(A() * x - b()));
+     }
+
+     /** Apply operator A */

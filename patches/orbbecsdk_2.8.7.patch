@@ -1,0 +1,29 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 261f2cda..644e068f 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -92,17 +92,20 @@ if(OB_IS_MAIN_PROJECT)
+     )
+ 
+     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/generated/Export.h" DESTINATION include/libobsensor/h)
+-    install(EXPORT ${OB_SDK_LIB_NAME}Config NAMESPACE ob:: DESTINATION lib)
++    install(EXPORT ${OB_SDK_LIB_NAME}Config NAMESPACE ob:: DESTINATION lib/cmake/${OB_SDK_LIB_NAME})
+ 
+     include(CMakePackageConfigHelpers)
++    # Name the version file <pkg>ConfigVersion.cmake (not <pkg>Version.cmake) and
++    # install it next to the config in lib/cmake/<pkg>, so find_package(OrbbecSDK)
++    # discovers it in config mode and reads its version.
+     write_basic_package_version_file(
+-        "${CMAKE_CURRENT_BINARY_DIR}/${OB_SDK_LIB_NAME}Version.cmake"
++        "${CMAKE_CURRENT_BINARY_DIR}/${OB_SDK_LIB_NAME}ConfigVersion.cmake"
+         VERSION "${PROJECT_VERSION}"
+         COMPATIBILITY SameMajorVersion
+     )
+     install(
+-        FILES "${CMAKE_CURRENT_BINARY_DIR}/${OB_SDK_LIB_NAME}Version.cmake"
+-        DESTINATION lib
++        FILES "${CMAKE_CURRENT_BINARY_DIR}/${OB_SDK_LIB_NAME}ConfigVersion.cmake"
++        DESTINATION lib/cmake/${OB_SDK_LIB_NAME}
+     )
+     if(MSVC)
+         install(FILES $<TARGET_PDB_FILE:${OB_SDK_LIB_NAME}> DESTINATION bin OPTIONAL)

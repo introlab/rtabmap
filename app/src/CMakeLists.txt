@@ -33,6 +33,14 @@ ENDIF()
 # Add binary
 IF(APPLE AND BUILD_AS_BUNDLE)
   ADD_EXECUTABLE(rtabmap_app MACOSX_BUNDLE ${SRC_FILES})
+  # Custom Info.plist providing NSCameraUsageDescription, required by macOS to
+  # grant the app access to USB/UVC cameras (e.g. Orbbec, RealSense). A bundle
+  # identifier is also set: macOS ties the camera (TCC) permission to it, so it
+  # must be non-empty for the permission to be granted/persisted.
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.introlab.rtabmap"
+    MACOSX_BUNDLE_BUNDLE_NAME "${CMAKE_BUNDLE_NAME}")
 ELSEIF(WIN32 AND BUILD_AS_BUNDLE)
   ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
 ELSE()
@@ -241,7 +249,42 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	ENDIF(WIN32)
   ENDIF(Python3_FOUND)
   
-  IF(Qt6_FOUND)
+  IF(Qt6_FOUND AND APPLE)
+    # On macOS we do NOT use qt_deploy_runtime_dependencies (macdeployqt):
+    # macdeployqt cannot deploy VTK 9.6+, whose libraries reference each other
+    # via @rpath relative to "@loader_path/../lib". Instead we install the Qt plugins
+    # manually and let fixup_bundle() below deploy all libraries.
+    IF(TARGET Qt6::QCocoaIntegrationPlugin)
+      get_target_property(_qt_plugin_loc Qt6::QCocoaIntegrationPlugin LOCATION)
+      get_filename_component(_qt_plugins_dir "${_qt_plugin_loc}" DIRECTORY) # .../plugins/platforms
+      get_filename_component(_qt_plugins_dir "${_qt_plugins_dir}" DIRECTORY) # .../plugins
+      FOREACH(_qt_plugin_type platforms styles imageformats iconengines)
+        IF(EXISTS "${_qt_plugins_dir}/${_qt_plugin_type}")
+          # Homebrew Qt plugins are symlinks into the Cellar; resolve them to the
+          # real files so they aren't installed as dangling symlinks (which would
+          # break fixup_bundle and codesign).
+          FILE(GLOB _qt_plugin_files "${_qt_plugins_dir}/${_qt_plugin_type}/*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+          SET(_qt_plugin_real "")
+          FOREACH(_qt_plugin_file ${_qt_plugin_files})
+            GET_FILENAME_COMPONENT(_qt_plugin_file "${_qt_plugin_file}" REALPATH)
+            LIST(APPEND _qt_plugin_real "${_qt_plugin_file}")
+          ENDFOREACH()
+          IF(_qt_plugin_real)
+            INSTALL(FILES ${_qt_plugin_real}
+                    DESTINATION ${plugin_dest_dir}/${_qt_plugin_type}
+                    COMPONENT runtime)
+          ENDIF()
+        ENDIF()
+      ENDFOREACH()
+    ELSE()
+      MESSAGE(WARNING "Qt6::QCocoaIntegrationPlugin target not found: Qt plugins may be missing from the bundle")
+    ENDIF()
+    # qt.conf so Qt finds the bundled plugins (path is relative to Contents/)
+    SET(QT_CONF_FILE [Paths]\nPlugins=${plugin_dest_dir})
+    INSTALL(CODE "
+      file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
+      " COMPONENT runtime)
+  ELSEIF(Qt6_FOUND)
 	# Reference: https://doc-snapshots.qt.io/qt6-6.4/qt-deploy-runtime-dependencies.html
 	# The following script must only be executed at install time
 	set(deploy_script "${CMAKE_CURRENT_BINARY_DIR}/deploy_app$<CONFIG>.cmake")
@@ -331,7 +374,10 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   ENDIF()
 
   # directories to look for dependencies
-  SET(DIRS "${QT_LIBRARY_DIRS}" "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib")
+  # CMAKE_LIBRARY_OUTPUT_DIRECTORY is where rtabmap's own libraries (e.g.
+  # librtabmap_core) are built; fixup_bundle needs it to resolve the app's
+  # @rpath references to them (macdeployqt used to handle this via rpath).
+  SET(DIRS "${QT_LIBRARY_DIRS}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}" "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib")
   IF(APPLE)
     SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
   ENDIF(APPLE)
@@ -363,6 +409,25 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
     include(\"BundleUtilities\")
     fixup_bundle(\"${APPS}\" \"\${ALL_LIBS}\" \"${DIRS}\")
   " COMPONENT runtime)
-  
+
+  IF(APPLE)
+    # Re-sign ad-hoc AFTER fixup_bundle has finished all its install_name_tool
+    # edits.
+    install(CODE "
+      set(_contents \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
+      get_filename_component(_app \"\${_contents}\" DIRECTORY)
+      file(GLOB_RECURSE _nested \"\${_contents}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+      foreach(_f \${_nested})
+        execute_process(COMMAND codesign --force --sign - --timestamp=none \"\${_f}\")
+      endforeach()
+      file(GLOB _frameworks \"\${_contents}/Frameworks/*.framework\")
+      foreach(_f \${_frameworks})
+        execute_process(COMMAND codesign --force --sign - --timestamp=none \"\${_f}\")
+      endforeach()
+      message(STATUS \"Ad-hoc re-signing bundle: \${_app}\")
+      execute_process(COMMAND codesign --force --sign - --timestamp=none \"\${_app}\")
+    " COMPONENT runtime)
+  ENDIF(APPLE)
+
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   

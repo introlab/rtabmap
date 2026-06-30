@@ -48,6 +48,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <signal.h>
 #include <QApplication>
+#include <QSurfaceFormat>
+#include <vtkVersionMacros.h>
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+#include <QVTKRenderWidget.h>
+#endif
 
 void showUsage(const char * executableName)
 {
@@ -168,7 +173,6 @@ int main(int argc, char * argv[])
 			}
 			if (strcmp(argv[i], "-pcl") == 0)
 			{
-				++i;
 				usePCLViz = true;
 				continue;
 			}
@@ -370,6 +374,18 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
+#ifdef __APPLE__
+	if(usePCLViz)
+	{
+		// pcl::visualization::CloudViewer creates its render window on its own
+		// background thread, but macOS only allows NSWindow creation on the main
+		// thread, so it aborts. Fall back to the default (Qt) viewer.
+		printf("-pcl is not supported on macOS (pcl::visualization::CloudViewer creates its "
+			   "window on a background thread, which macOS forbids). Using the default viewer instead.\n");
+		usePCLViz = false;
+	}
+#endif
+
 	if(usePCLViz)
 	{
 		rtabmap::SensorData data = camera->takeData();
@@ -485,6 +501,14 @@ int main(int argc, char * argv[])
 	}
 	else // Use our own visualizer
 	{
+#if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
+		// Needed to ensure the appropriate OpenGL context is created for VTK
+		// rendering (QVTKOpenGLNativeWidget). Without it the embedded VTK widget
+		// gets an incompatible context and VTK calls a null GL function pointer
+		// (crash in vtkOpenGLVertexArrayObject::Bind on first paint). Must be set
+		// before QApplication is constructed.
+		QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
+#endif
 		QApplication app(argc, argv);
 
 		rtabmap::CameraViewer cameraViewer;
