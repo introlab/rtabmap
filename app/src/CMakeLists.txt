@@ -42,7 +42,7 @@ IF(APPLE AND BUILD_AS_BUNDLE)
     MACOSX_BUNDLE_GUI_IDENTIFIER "com.introlab.rtabmap"
     MACOSX_BUNDLE_BUNDLE_NAME "${CMAKE_BUNDLE_NAME}")
 ELSEIF(WIN32 AND BUILD_AS_BUNDLE)
-  ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app WIN32 ${SRC_FILES})
 ELSE()
   ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
 ENDIF()
@@ -111,12 +111,26 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   ENDIF(OpenNI2_FOUND)
   
   IF(k4a_FOUND)
-	# Install needed depthengine_2_0.dll
+	# Install needed depthengine_2_0.dll. Its location varies by K4A SDK version:
+	# v1.4.1 ships it under sdk/windows-desktop/amd64/release/bin, or fallback in tools/.
     IF(WIN32)
 		file(TO_CMAKE_PATH "$ENV{K4A_ROOT_DIR}" ENV_K4A_ROOT_DIR)
-		INSTALL(FILES "${ENV_K4A_ROOT_DIR}/tools/depthengine_2_0.dll" 
-          DESTINATION ${thirdparty_dest_dir} 
-          COMPONENT runtime)
+		set(DEPTHENGINE_DLL "")
+		foreach(_depthengine_dir
+			"${ENV_K4A_ROOT_DIR}/sdk/windows-desktop/amd64/release/bin"
+			"${ENV_K4A_ROOT_DIR}/tools")
+			if(EXISTS "${_depthengine_dir}/depthengine_2_0.dll")
+				set(DEPTHENGINE_DLL "${_depthengine_dir}/depthengine_2_0.dll")
+				break()
+			endif()
+		endforeach()
+		IF(DEPTHENGINE_DLL)
+			INSTALL(FILES "${DEPTHENGINE_DLL}"
+              DESTINATION ${thirdparty_dest_dir}
+              COMPONENT runtime)
+		ELSE()
+			MESSAGE(WARNING "depthengine_2_0.dll not found under $ENV{K4A_ROOT_DIR} (sdk/windows-desktop/amd64/release/bin or tools); Kinect for Azure depth may not work at runtime.")
+		ENDIF()
 	ENDIF(WIN32)
   ENDIF(k4a_FOUND)
   

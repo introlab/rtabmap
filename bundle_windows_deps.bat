@@ -45,7 +45,6 @@ echo [+] Installing dependencies via vcpkg manifest...
     --x-feature=openni2 ^
     --x-feature=gtsam-deps ^
     --x-feature=python ^
-    --x-feature=pdal ^
     --x-feature=libpointmatcher-deps ^
     --x-feature=libfreenect2-deps || exit /b !errorlevel!
 
@@ -74,10 +73,16 @@ cd /d "%SRC_DIR%"
 :: Microsoft SDK layout (KINECTSDK20_DIR\inc and \Lib\x64), but vcpkg's kinectsdk2
 :: port installs vcpkg-style (include\ and lib\). Mirror the bundled headers/lib into
 :: the expected layout so it is found with KINECTSDK20_DIR pointing at the export.
+if "%KINECTSDK20_DIR%"=="" (
+    echo Error: KINECTSDK20_DIR environment variable is not set! Install Kinect for Windows SDK v2: https://www.microsoft.com/en-us/download/details.aspx?id=44561
+    pause
+    exit /b 1
+)
 echo [+] Arranging Kinect SDK v2 layout for FindKinectSDK2...
 set "K4W2_ROOT=%FINAL_EXPORT_PATH%\installed\%TRIPLET%"
 robocopy "%K4W2_ROOT%\include" "%K4W2_ROOT%\inc" Kinect*.h Nui*.h /XO >nul
 robocopy "%K4W2_ROOT%\lib" "%K4W2_ROOT%\Lib\x64" Kinect20*.lib /XO >nul
+robocopy "%KINECTSDK20_DIR%\bin" "%K4W2_ROOT%\bin" Kinect20.dll /XO >nul
 :: Robocopy exit codes under 8 mean successful copies/no changes; 8+ is a failure.
 if !errorlevel! GEQ 8 (
     echo Error: Robocopy failed with exit code !errorlevel!
@@ -379,6 +384,8 @@ goto :EndComment
 set VCPKG_UNZIPPED_EXPORT_PATH=%USERPROFILE%\Downloads\vcpkg-export-########-x64-vs2022
 
 set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\bin;%PATH%
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\sdk\windows-desktop\amd64\release\bin;%PATH%
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\tools\python3\Lib\site-packages\numpy.libs;%PATH%
 set K4A_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release
 set KINECTSDK20_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release
 
@@ -395,6 +402,7 @@ cmake -B build -GNinja ^
   -DWITH_DEPTHAI=ON ^
   -DWITH_REALSENSE2=ON ^
   -DWITH_CCCORELIB=ON ^
+  -DWITH_PDAL=OFF ^
   -DVCPKG_MANIFEST_INSTALL=OFF ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-release ^
   -DVCPKG_INSTALLED_DIR="%VCPKG_UNZIPPED_EXPORT_PATH%/installed" ^

@@ -72,7 +72,8 @@ if not exist "%FINAL_EXPORT_PATH%" (
 	xcopy "%CUDA_PATH%\bin\x64\cudnn*.dll" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin\" /Y
 )
 
-:: For ZED, modify zed-config.cmake and remove all dependencies
+:: ZED: copy the main library + the zed-config.cmake so find_package(ZED) resolves
+:: it from the export (the config derives paths from ZED_SDK_ROOT_DIR/CMAKE_PREFIX_PATH).
 if "%ZED_SDK_ROOT_DIR%"=="" (
     echo Error: ZED_SDK_ROOT_DIR environment variable is not set!
     pause
@@ -82,7 +83,10 @@ echo Copying ZED main library only...
 robocopy "%ZED_SDK_ROOT_DIR%\bin" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin" *.dll /XF nv*.dll
 robocopy "%ZED_SDK_ROOT_DIR%\lib" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\lib" /E /XO
 robocopy "%ZED_SDK_ROOT_DIR%\include" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\include" /E /XO
-:: Robocopy exit codes under 8 mean successful copies/no changes. 
+:: Install ZED's CMake config at the export prefix root so find_package(ZED 2) (config
+:: mode, via the vcpkg toolchain CMAKE_PREFIX_PATH) finds it.
+robocopy "%ZED_SDK_ROOT_DIR%" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%" zed-config.cmake zed-config-version.cmake /XO
+:: Robocopy exit codes under 8 mean successful copies/no changes.
 :: 8 or higher means there was a failure.
 if !errorlevel! GEQ 8 (
     echo Error: Robocopy failed with exit code !errorlevel!
@@ -228,6 +232,28 @@ cmake -S . -B build_cuda -GNinja ^
 cmake --build build_cuda --config Release --target install || exit /b !errorlevel!
 cd ..
 
+:: CudaSift (CUDA SIFT/SURF GPU features, matlabbe fork; needs CUDA)
+echo [+] Building CudaSift...
+if not exist CudaSift (
+    echo [+] Downloading...
+    git clone https://github.com/matlabbe/CudaSift.git
+    cd CudaSift
+    git checkout f764e14ae59ee78ff5b282d38790301d80faadc3
+    cd ..
+)
+cd CudaSift
+cmake -S . -B build -GNinja ^
+  -DVCPKG_MANIFEST_INSTALL=OFF ^
+  -DVCPKG_TARGET_TRIPLET=%TRIPLET% ^
+  -DVCPKG_INSTALLED_DIR="%FINAL_EXPORT_PATH%\installed" ^
+  -DCMAKE_TOOLCHAIN_FILE="%FINAL_EXPORT_PATH%\scripts\buildsystems\vcpkg.cmake" ^
+  -DCMAKE_INSTALL_PREFIX="%FINAL_EXPORT_PATH%\installed\%TRIPLET%" ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DVERBOSE=OFF ^
+  -DBUILD_SHARED_LIBS=ON || exit /b !errorlevel!
+cmake --build build --config Release --target install || exit /b !errorlevel!
+cd ..
+
 :: 5. ZIP the folder
 echo [+] Creating final package with 7-Zip...
 :: Rip off pdb files
@@ -261,9 +287,9 @@ set PATH=%CUDA_PATH%\bin\x64;%PATH%
 set PATH=%CUDA_PATH%\extras\CUPTI\lib64;%PATH%
 set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\torch\lib;%PATH%
 set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\numpy.libs;%PATH%
-set K4A_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release
-set KINECTSDK20_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release
-set ZED_SDK_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release
+set K4A_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%
+set KINECTSDK20_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%
+set ZED_SDK_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%
 
 cmake -B build_cuda -GNinja ^
   -DCMAKE_BUILD_TYPE=Release ^
@@ -271,6 +297,7 @@ cmake -B build_cuda -GNinja ^
   -DWITH_PYTHON=ON ^
   -DWITH_TORCH=ON ^
   -DWITH_ZED=ON ^
+  -DWITH_CUDASIFT=ON ^
   -DWITH_CERES=ON ^
   -DWITH_ORBBEC_SDK=ON ^
   -DWITH_FREENECT2=ON ^
@@ -279,6 +306,7 @@ cmake -B build_cuda -GNinja ^
   -DWITH_DEPTHAI=ON ^
   -DWITH_REALSENSE2=ON ^
   -DWITH_CCCORELIB=ON ^
+  -DWITH_PDAL=OFF ^
   -DVCPKG_MANIFEST_INSTALL=OFF ^
   -DVCPKG_TARGET_TRIPLET=%TRIPLET% ^
   -DVCPKG_INSTALLED_DIR="%VCPKG_UNZIPPED_EXPORT_PATH%/installed" ^

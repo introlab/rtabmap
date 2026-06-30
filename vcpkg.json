@@ -185,12 +185,6 @@
         }
       ]
     },
-    "pdal": {
-      "description": "Build RTAB-Map with pdal support",
-      "dependencies": [
-        "pdal"
-      ]
-    },
     "python": {
       "description": "Build RTAB-Map with python support",
       "dependencies": [

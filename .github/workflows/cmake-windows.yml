@@ -31,7 +31,7 @@ jobs:
         - build_name: windows-2022-cuda
           os: windows-2022
           extra_deps: ""
-          extra_cmake_def: '-DWITH_TORCH=ON -DWITH_ZED=ON'
+          extra_cmake_def: '-DWITH_TORCH=ON -DWITH_ZED=ON -DWITH_CUDASIFT=ON'
 
     steps:
     - uses: actions/checkout@v4
@@ -46,10 +46,11 @@ jobs:
 
     - name: Configure CMake
       run: |
-        # K4A and K4W2 are located via these env vars (FindK4A.cmake / FindKinectSDK2.cmake),
-        # pointing at the export where the bundle script staged their SDK files.
+        # K4A, K4W2 and ZED are located via these env vars (FindK4A.cmake / FindKinectSDK2.cmake
+        # and the install rules), pointing at the export where the bundle staged their SDK files.
         $env:K4A_ROOT_DIR = "${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
         $env:KINECTSDK20_DIR = "${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
+        $env:ZED_SDK_ROOT_DIR = "${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
         cmake `
           -B ${{github.workspace}}/build `
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
