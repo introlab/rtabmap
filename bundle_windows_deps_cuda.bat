@@ -80,7 +80,9 @@ if "%ZED_SDK_ROOT_DIR%"=="" (
     exit /b 1
 )
 echo Copying ZED main library only...
-robocopy "%ZED_SDK_ROOT_DIR%\bin" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin" *.dll /XF nv*.dll
+:: Only the core runtime goes into the bundle; the neural-depth/TensorRT DLLs are
+:: shipped separately (see the zed-neural-extra archive below).
+robocopy "%ZED_SDK_ROOT_DIR%\bin" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin" sl_zed64.dll zlibwapi.dll /XO
 robocopy "%ZED_SDK_ROOT_DIR%\lib" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\lib" /E /XO
 robocopy "%ZED_SDK_ROOT_DIR%\include" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\include" /E /XO
 :: Install ZED's CMake config at the export prefix root so find_package(ZED 2) (config
@@ -92,6 +94,18 @@ if !errorlevel! GEQ 8 (
     echo Error: Robocopy failed with exit code !errorlevel!
     pause
     exit /b !errorlevel!
+)
+:: Archive the remaining ZED runtime DLLs (neural-depth / TensorRT extras) as a
+:: separate optional download, kept out of the main bundle to keep it small. Built
+:: only once: skipped if the archive already exists. Staged with robocopy /XF
+:: (excludes by name; avoids 7z's "!" exclude switch that delayed expansion mangles).
+set "ZED_EXTRA_7Z=%EXPORT_DIR%\%TARGET_NAME%-zed-neural-extra.7z"
+set "ZED_EXTRA_DIR=%SRC_DIR%\zed-neural-extra"
+if not exist "%ZED_EXTRA_7Z%" (
+    echo [+] Creating ZED neural extra archive...
+    if exist "%ZED_EXTRA_DIR%" rd /s /q "%ZED_EXTRA_DIR%"
+    robocopy "%ZED_SDK_ROOT_DIR%\bin" "%ZED_EXTRA_DIR%" *.dll /XF sl_zed64.dll zlibwapi.dll >nul
+    "%SEVENZIP_EXE%" a -t7z -mx9 "%ZED_EXTRA_7Z%" "%ZED_EXTRA_DIR%\*" || exit /b !errorlevel!
 )
 
 :: pytorch deps
@@ -287,6 +301,7 @@ set PATH=%CUDA_PATH%\bin\x64;%PATH%
 set PATH=%CUDA_PATH%\extras\CUPTI\lib64;%PATH%
 set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\torch\lib;%PATH%
 set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib\site-packages\numpy.libs;%PATH%
+set PATH=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\x64-windows-release\sdk\windows-desktop\amd64\release\bin;%PATH%
 set K4A_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%
 set KINECTSDK20_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%
 set ZED_SDK_ROOT_DIR=%VCPKG_UNZIPPED_EXPORT_PATH%\installed\%TRIPLET%
