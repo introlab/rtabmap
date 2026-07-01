@@ -171,7 +171,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.temp }}/deps-stage/opengv
-        key: opengv-91f4b19c-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/opengv-91f4b19c-disable-march-native.patch') }}-${{ steps.depver.outputs.hash }}
+        key: opengv-91f4b19c-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/opengv-91f4b19c-macos.patch') }}-${{ steps.depver.outputs.hash }}
 
     - name: Build opengv
       if: steps.cache-opengv.outputs.cache-hit != 'true'
@@ -189,7 +189,7 @@ runs:
         git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3
         # Disable the -march=native/armv7-a/armv8-a flags so it builds portably on
         # both Intel and Apple Silicon runners.
-        git apply "$PATCHES/opengv-91f4b19c-disable-march-native.patch"
+        git apply "$PATCHES/opengv-91f4b19c-macos.patch"
         # CMAKE_POLICY_VERSION_MINIMUM=3.5: opengv declares an ancient
         # cmake_minimum_required that modern CMake rejects. EIGEN_INCLUDE_DIR points
         # opengv's bundled FindEigen at Homebrew's eigen (covers /opt/homebrew on arm64).
