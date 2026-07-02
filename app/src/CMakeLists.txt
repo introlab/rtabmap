@@ -421,6 +421,16 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	
     set(BU_CHMOD_BUNDLE_ITEMS ON)
     include(\"BundleUtilities\")
+    # nvcuvid.dll (NVDEC) and nvEncodeAPI64.dll (NVENC), and the CUDA driver API
+    # nvcuda.dll, ship with the NVIDIA GPU driver (System32), not the CUDA toolkit,
+    # so they are absent on driver-less CI runners and must never be bundled (they
+    # are resolved at runtime from the end user's driver). Mark them 'system' so
+    # fixup_bundle skips them instead of failing to resolve them.
+    function(gp_resolved_file_type_override resolved_file type_var)
+      if(resolved_file MATCHES \"(nvcuvid|nvEncodeAPI64|nvcuda)\")
+        set(\${type_var} \"system\" PARENT_SCOPE)
+      endif()
+    endfunction()
     fixup_bundle(\"${APPS}\" \"\${ALL_LIBS}\" \"${DIRS}\")
   " COMPONENT runtime)
 
