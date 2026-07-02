@@ -74,6 +74,14 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
+    - name: Info
+      # Skipped for CUDA: the binary links ZED (sl_zed64.dll -> nvcuvid/nvEncodeAPI64),
+      # which need the NVIDIA driver; the GPU-less runner can't load the exe.
+      if: matrix.build_name != 'windows-2022-cuda'
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        ./rtabmap-console --version
+
     - name: Build Windows Package
       shell: pwsh
       run: |
@@ -87,11 +95,6 @@ jobs:
       if: matrix.build_name == 'windows-2022-cuda'
       shell: pwsh
       run: Get-ChildItem -Path "build" -Filter "RTABMap-*" | Rename-Item -NewName { $_.BaseName + "_cuda" + $_.Extension }
-
-    - name: Info
-      working-directory: ${{github.workspace}}/build/bin
-      run: |
-        ./rtabmap-console --version
 
     - name: Upload RTABMap Artifacts (ZIP)
       uses: actions/upload-artifact@v4

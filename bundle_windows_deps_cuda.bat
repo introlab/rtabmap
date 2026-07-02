@@ -205,16 +205,15 @@ cmake -S . -B build -GNinja ^
   -DBUILD_PERF_TESTS=OFF ^
   -DOPENCV_ENABLE_NONFREE=ON ^
   -DBUILD_opencv_apps=OFF ^
-  -DBUILD_opencv_python3=ON ^
-  -DPYTHON3_EXECUTABLE=%FINAL_EXPORT_PATH%/installed/%TRIPLET%/tools/python3/python.exe ^
-  -DPYTHON3_PACKAGES_PATH=bin/Lib/site-packages ^
+  -DBUILD_opencv_cudacodec=OFF ^
+  -DBUILD_opencv_python3=OFF ^
+  -DBUILD_opencv_python_bindings_generator=OFF ^
+  -DBUILD_opencv_python_tests=OFF ^
   -DBUILD_opencv_java_bindings_generator=OFF ^
   -DWITH_CUDA=ON ^
   -DWITH_VTK=OFF ^
   -DWITH_TBB=ON || exit /b !errorlevel!
 cmake --build build --config Release --target install || exit /b !errorlevel!
-:: move cv2 package under tools/python3
-robocopy "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\bin\Lib" "%FINAL_EXPORT_PATH%\installed\%TRIPLET%\tools\python3\Lib" /E /MOVE /NFL /NDL /NJH /NC /NS /NP
 cd ..
 
 
