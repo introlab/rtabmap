@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QGraphicsScene>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsPixmapItem>
 #include <QtGui/QWheelEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QMenu>
@@ -341,10 +342,17 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_orientationENU(false),
 		_mouseTracking(false),
 		_viewPlane(XY),
-		_ensureFrameVisible(true)
+		_ensureFrameVisible(true),
+		_previousMousePos(-1,-1),
+		_initialMousePos(-1,-1),
+		_zoomDebounceTimer(this),
+		_zoomOverlayItem(0),
+		_zoomOverlayActive(false)
 {
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
 	_workingDirectory = QDir::homePath();
+	_zoomDebounceTimer.setSingleShot(true);
+	connect(&_zoomDebounceTimer, &QTimer::timeout, this, &GraphViewer::stopZoomOverlay);
 
 	setupGraphicsScene();
 
@@ -355,6 +363,9 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	this->restoreDefaults();
 
 	this->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
+	
+	setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    setResizeAnchor(QGraphicsView::AnchorUnderMouse);
 }
 
 GraphViewer::~GraphViewer()
@@ -363,11 +374,20 @@ GraphViewer::~GraphViewer()
 
 void GraphViewer::setupGraphicsScene()
 {
+	_zoomDebounceTimer.stop();
+	_zoomOverlayActive = false;
+	_zoomOverlayItem = 0;
 	if(this->scene())
 	{
 		delete this->scene();
 	}
 	this->setScene(new QGraphicsScene(this));
+	_zoomOverlayItem = this->scene()->addPixmap(QPixmap());
+	_zoomOverlayItem->setZValue(1000000);
+	_zoomOverlayItem->setVisible(false);
+	_zoomOverlayItem->setAcceptedMouseButtons(Qt::NoButton);
+	_zoomOverlayItem->setAcceptHoverEvents(false);
+	
 	_world = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_root->setParentItem(_world);
@@ -505,6 +525,57 @@ void GraphViewer::setupGraphicsScene()
 	_odomCacheOverlay->setBrush(QBrush(QColor(255, 255, 255, 150)));
 	_odomCacheOverlay->setPen(QPen(Qt::NoPen));
 
+}
+
+void GraphViewer::startZoomOverlay()
+{
+	if(_zoomOverlayActive || !_zoomOverlayItem)
+ 	{
+ 		return;
+ 	}
+ 
+	const QRect viewportRect = this->viewport()->rect();
+	if(viewportRect.isEmpty())
+ 	{
+ 		return;
+ 	}
+
+	const QPixmap snapshot = this->viewport()->grab();
+	if(snapshot.isNull())
+	{
+		return;
+	}
+
+	const QRectF sourceRect = this->mapToScene(viewportRect).boundingRect();
+	const qreal sx = sourceRect.width() / qreal(snapshot.width());
+	const qreal sy = sourceRect.height() / qreal(snapshot.height());
+
+	_zoomOverlayItem->setPixmap(snapshot);
+	_zoomOverlayItem->setTransform(QTransform::fromScale(sx, sy));
+	_zoomOverlayItem->setPos(sourceRect.topLeft());
+	_zoomOverlayItem->show();
+ 	_world->setVisible(false);
+ 	_zoomOverlayActive = true;
+}
+
+void GraphViewer::stopZoomOverlay()
+{
+	_zoomDebounceTimer.stop();
+	if(!_zoomOverlayActive)
+	{
+		return;
+	}
+
+	_zoomOverlayActive = false;
+	if(_zoomOverlayItem)
+	{
+		_zoomOverlayItem->hide();
+	}
+	if(_world)
+	{
+		_world->setVisible(true);
+	}
+	this->viewport()->update();
 }
 
 void GraphViewer::setWorldMapRotation(const float & theta)
@@ -1432,6 +1503,7 @@ void GraphViewer::clearNodeColorByValue()
 
 void GraphViewer::clearAll()
 {
+	stopZoomOverlay();
 	clearMap();
 	clearGraph();
 
@@ -1999,16 +2071,23 @@ void GraphViewer::restoreDefaults()
 	setGtGraphVisible(true);
 }
 
-void GraphViewer::wheelEvent ( QWheelEvent * event )
+void GraphViewer::wheelEvent(QWheelEvent * event)
 {
-	if(event->angleDelta().y() < 0)
+	if(event->angleDelta().y() == 0)
 	{
-		this->scale(0.95, 0.95);
+		event->ignore();
+		return;
 	}
-	else
-	{
-		this->scale(1.05, 1.05);
-	}
+
+	// Start buffering zoom interaction with a raster snapshot.
+	startZoomOverlay();
+	
+	const qreal factor = event->angleDelta().y() < 0 ? 0.95 : 1.05;
+	this->scale(factor, factor);
+
+	// When wheel stops for 400 ms, restore the real scene and let it redraw once.
+	_zoomDebounceTimer.start(400);
+	event->accept();
 }
 
 void GraphViewer::mouseMoveEvent(QMouseEvent * event)
@@ -2029,14 +2108,16 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	if (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier) && event->buttons() & Qt::LeftButton) {
 		// same modifiers than 3D view, change zoom
 		if(_previousMousePos.y()!=0) {
-			if(event->pos().y() - _previousMousePos.y() > 0)
-			{
-				this->scale(0.98, 0.98);
-			}
-			else
-			{
-				this->scale(1.02, 1.02);
-			}
+			qreal factor = (event->pos().y() - _previousMousePos.y() > 0) ? 0.98 : 1.02;
+			
+			QGraphicsView::ViewportAnchor oldAnchor = this->transformationAnchor();
+			this->setTransformationAnchor(QGraphicsView::NoAnchor);
+			QPointF scenePointBefore = this->mapToScene(_initialMousePos);
+			this->scale(factor, factor);
+			QPointF scenePointAfter = this->mapToScene(_initialMousePos);
+			QPointF delta = scenePointAfter - scenePointBefore;
+			this->translate(delta.x(), delta.y());
+			this->setTransformationAnchor(oldAnchor);
 		}
 		_previousMousePos = event->pos();
 		return;
@@ -2047,11 +2128,21 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 
 void GraphViewer::mousePressEvent(QMouseEvent * event)
 {
-	QGraphicsItem *item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
+	if((event->button() == Qt::LeftButton) &&
+	   (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier)))
+	{
+		startZoomOverlay();
+		_previousMousePos = event->pos();
+		_initialMousePos = event->pos();
+		event->accept();
+		return;
+	}
+
+	QGraphicsItem * item = this->scene()->itemAt(mapToScene(event->pos()), QTransform());
 	if(item)
 	{
-		NodeItem *nodeItem = qgraphicsitem_cast<NodeItem*>(item);
-		LinkItem *linkItem = qgraphicsitem_cast<LinkItem*>(item);
+		NodeItem * nodeItem = qgraphicsitem_cast<NodeItem*>(item);
+		LinkItem * linkItem = qgraphicsitem_cast<LinkItem*>(item);
 		if(nodeItem && nodeItem->parentItem() == _graphRoot && nodeItem->id() != 0)
 		{
 			Q_EMIT nodeSelected(nodeItem->id());
@@ -2069,6 +2160,19 @@ void GraphViewer::mousePressEvent(QMouseEvent * event)
 	{
 		QGraphicsView::mousePressEvent(event);
 	}
+}
+
+void GraphViewer::mouseReleaseEvent(QMouseEvent * event)
+{
+	_previousMousePos = QPoint(-1, -1);
+	_initialMousePos = QPoint(-1, -1);
+
+	if(_zoomOverlayActive)
+	{
+		stopZoomOverlay();
+	}
+
+	QGraphicsView::mouseReleaseEvent(event);
 }
 
 QIcon createIcon(const QColor & color)
