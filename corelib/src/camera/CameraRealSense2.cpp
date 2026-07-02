@@ -508,7 +508,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		rs2::device_list list = ctx_.query_devices();
 		if (0 == list.size())
 		{
+#ifdef __APPLE__
+			UERROR("No RealSense2 devices were found! On macOS the RealSense SDK accesses "
+			       "the camera through libusb, which must take the USB interface from the "
+			       "system driver; this requires root privileges. If a device is connected "
+			       "but not detected, run the application with sudo.");
+#else
 			UERROR("No RealSense2 devices were found!");
+#endif
 			return false;
 		}
 
@@ -546,7 +553,12 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 		catch(const rs2::error & error)
 		{
+#ifdef __APPLE__
+			UWARN("%s. Is the camera already used with another app? On macOS, accessing a "
+			      "RealSense camera requires root privileges, so try running with sudo.", error.what());
+#else
 			UWARN("%s. Is the camera already used with another app?", error.what());
+#endif
 		}
 
 		if (!found)

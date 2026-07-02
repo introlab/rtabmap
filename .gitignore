@@ -12,3 +12,9 @@ compile_flags.txt
 tags
 build_*
 *.bak
+
+# Windows bundle: vcpkg tree, build output, and deps built from source (bundle_windows_deps.bat)
+vcpkg/
+vcpkg_installed/
+vcpkg_binaries/
+vcpkg_deps_from_source/
