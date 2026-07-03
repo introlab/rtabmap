@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMath.h>
 
 #ifdef RTABMAP_ZED
 #include <sl/Camera.hpp>
@@ -161,6 +162,23 @@ IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTr
             accCov,
             imuLocalTransform);
 }
+
+// sl::SensorsData::imu.is_available only means the camera has an IMU; a returned
+// sample can still contain NaN pose/accel/gyro (e.g. before the IMU fusion has
+// initialized, or in SVO/STREAM mode). Validate the actual measurements.
+bool isImuValid(const sl::SensorsData & sensorData)
+{
+	if(!sensorData.imu.is_available)
+	{
+		return false;
+	}
+	const sl::float3 & acc = sensorData.imu.linear_acceleration;
+	const sl::float3 & gyr = sensorData.imu.angular_velocity;
+	const sl::Orientation ori = sensorData.imu.pose.getOrientation();
+	return uIsFinite(acc.v[0]) && uIsFinite(acc.v[1]) && uIsFinite(acc.v[2]) &&
+	       uIsFinite(gyr.v[0]) && uIsFinite(gyr.v[1]) && uIsFinite(gyr.v[2]) &&
+	       uIsFinite(ori.ox) && uIsFinite(ori.oy) && uIsFinite(ori.oz) && uIsFinite(ori.ow);
+}
 #endif
 
 class ZedIMUThread: public UThread
@@ -217,7 +235,7 @@ private:
 #else
         sl::SensorsData sensordata;
         sl::ERROR_CODE res = zed_->getSensorsData(sensordata, sl::TIME_REFERENCE::CURRENT);
-        if(res == sl::ERROR_CODE::SUCCESS && sensordata.imu.is_available)
+        if(res == sl::ERROR_CODE::SUCCESS && isImuValid(sensordata))
         {
         	camera_->postInterIMUPublic(zedIMUtoIMU(sensordata, imuLocalTransform_), double(sensordata.imu.timestamp.getNanoseconds())/10e8);
         }
@@ -462,6 +480,22 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		zed_ = new sl::Camera(); // Use in Live Mode
 		r = zed_->open(param);
 	}
+
+#if ZED_SDK_MAJOR_VERSION >= 3
+	// CORRUPTED_SDK_INSTALLATION on open() is typically a NEURAL depth mode whose optional
+	// neural/TensorRT runtime files aren't installed. Give a clear, actionable error.
+	if(r == sl::ERROR_CODE::CORRUPTED_SDK_INSTALLATION &&
+	   param.depth_mode != sl::DEPTH_MODE::PERFORMANCE &&
+	   param.depth_mode != sl::DEPTH_MODE::NONE)
+	{
+		UERROR("ZED open() returned \"%s\": the optional NEURAL/TensorRT runtime files are "
+		       "likely missing. Install ZED SDK %d.%d, or select a non-NEURAL depth mode "
+		       "(e.g. PERFORMANCE).", toString(r).c_str(), ZED_SDK_MAJOR_VERSION, ZED_SDK_MINOR_VERSION);
+		delete zed_;
+		zed_ = 0;
+		return false;
+	}
+#endif
 
 	if(r!=sl::ERROR_CODE::SUCCESS)
 	{
@@ -731,15 +765,23 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 			res = zed_->grab(rparam);
 			timestamp = zed_->getTimestamp(sl::TIME_REFERENCE::IMAGE);
 
-			// If the sensor supports IMU, wait IMU to be available before sending data.
+			// If the sensor supports IMU, wait for IMU to be available before sending data.
 			if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull())
 			{
 				 sl::SensorsData imudatatmp;
 				res = zed_->getSensorsData(imudatatmp, sl::TIME_REFERENCE::IMAGE);
-				imuReceived = res == sl::ERROR_CODE::SUCCESS && imudatatmp.imu.is_available && imudatatmp.imu.timestamp.getNanoseconds() != 0;
+				imuReceived = res == sl::ERROR_CODE::SUCCESS && isImuValid(imudatatmp) && imudatatmp.imu.timestamp.getNanoseconds() != 0;
 			}
 		}
 		while(src_ == CameraVideo::kUsbDevice && (res!=sl::ERROR_CODE::SUCCESS || !imuReceived) && timer.elapsed() < 2.0);
+
+		// If no valid IMU arrived within the 2 sec startup window, null the IMU transform so
+		// we don't re-wait 2 sec on every subsequent frame (camera likely has no working IMU).
+		if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull() && !imuReceived)
+		{
+			UWARN("No valid IMU received within 2 sec; ignoring IMU for the rest of this session.");
+			imuLocalTransform_.setNull();
+		}
 
         if(res==sl::ERROR_CODE::SUCCESS)
 #endif
@@ -794,7 +836,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #endif
 			}
 
-			if(imuPublishingThread_ == 0)
+			if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull())
 			{
 #if ZED_SDK_MAJOR_VERSION < 3
 				sl::IMUData imudata;
@@ -803,7 +845,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #else
                 sl::SensorsData imudata;
                 res = zed_->getSensorsData(imudata, sl::TIME_REFERENCE::IMAGE);
-                if(res == sl::ERROR_CODE::SUCCESS && imudata.imu.is_available)
+                if(res == sl::ERROR_CODE::SUCCESS && isImuValid(imudata))
 #endif
 				{
 					//ZED-Mini

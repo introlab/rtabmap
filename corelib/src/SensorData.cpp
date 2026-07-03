@@ -952,6 +952,22 @@ void SensorData::setFeatures(const std::vector<cv::KeyPoint> & keypoints, const 
 	_descriptors = descriptors;
 }
 
+void SensorData::setIMU(const IMU & imu)
+{
+	UASSERT(
+		uIsFinite(imu.orientation()[0]) && 
+		uIsFinite(imu.orientation()[1]) && 
+		uIsFinite(imu.orientation()[2]) && 
+		uIsFinite(imu.orientation()[3]) &&
+		uIsFinite(imu.angularVelocity()[0]) && 
+		uIsFinite(imu.angularVelocity()[1]) && 
+		uIsFinite(imu.angularVelocity()[2]) && 
+		uIsFinite(imu.linearAcceleration()[0]) &&
+		uIsFinite(imu.linearAcceleration()[1]) &&
+		uIsFinite(imu.linearAcceleration()[2]));
+	imu_ = imu;
+}
+
 unsigned long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 {
 	return sizeof(SensorData) +

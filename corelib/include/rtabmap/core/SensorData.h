@@ -344,7 +344,7 @@ public:
 	void setGPS(const GPS & gps) {gps_ = gps;}
 	const GPS & gps() const {return gps_;}
 
-	void setIMU(const IMU & imu) {imu_ = imu; }
+	void setIMU(const IMU & imu);
 	const IMU & imu() const {return imu_;}
 
 	void setEnvSensors(const EnvSensors & sensors) {_envSensors = sensors;}
