@@ -265,16 +265,6 @@ CloudViewer::~CloudViewer()
 {
 	UDEBUG("");
 	this->clear();
-#if VTK_MAJOR_VERSION > 8
-	// Explicitly release the OpenGL context/resources bound to this widget's native window
-	// before the render window is torn down.
-	if(this->renderWindow())
-	{
-		this->makeCurrent();
-		this->renderWindow()->Finalize();
-		this->doneCurrent();
-	}
-#endif
 	delete _visualizer;
 	UDEBUG("");
 }
