@@ -5742,7 +5742,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                        <item>
                                         <property name="text">
+                                         <string>NEURAL LIGHT</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>NEURAL</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>NEURAL ULTRA</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -5905,7 +5915,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                        <item>
                                         <property name="text">
+                                         <string>QHDPLUS</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>HD2K</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>HD1536</string>
                                         </property>
                                        </item>
                                        <item>
@@ -5931,6 +5951,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        <item>
                                         <property name="text">
                                          <string>VGA</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>XVGA</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>TXVGA</string>
                                         </property>
                                        </item>
                                       </widget>

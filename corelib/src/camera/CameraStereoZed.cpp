@@ -303,28 +303,42 @@ CameraStereoZed::CameraStereoZed(
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
+// -1 = AUTO, 0=HD4K 1=QHDPLUS 2=HD2K 3=HD1536 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA 9=XVGA 10=TXVGA
 #if ZED_SDK_MAJOR_VERSION < 4
-	if(resolution_ == 1 || resolution_ == 2) // HD2K, HD1080
+	// Zed3 Supported: 2=HD2K 4=HD1080 6=HD720 8=VGA
+	if(resolution_ == 0 || resolution_ == 1) // 0=HD4K 1=QHDPLUS
 	{
-		resolution_ -= 1; // HD2K=0, HD1080=1
+		UWARN("Zed SDK v4 doesn't support HD4K and QHDPLUS, setting HD2K.");
+		resolution_ = 2; // 2=HD2K
 	}
-	if(resolution_ == 3) // HD1200
+	if(resolution_ == 3 || resolution_ == 5) // 3=HD1536 5=HD1200
 	{
-		resolution_ = 1; // HD1080=1
+		UWARN("Zed SDK v4 doesn't support HD1536 and HD1200, setting HD1080.");
+		resolution_ = 4; // 4=HD1080
 	}
-	if(resolution_ == 4 || resolution_ == -1)
+	if(resolution_ == 7 || resolution_ >=9) // 7=SVGA 9=XVGA 10=TXVGA
 	{
-		resolution_ = 2; // HD720=2
+		UWARN("Zed SDK v4 doesn't support SVGA, XVGA and TXVGA, setting VGA.");
+		resolution_ = 8; // 8=VGA
 	}
-	else if(resolution_ == 5 || resolution_ == 6) // SVGA, VGA
-	{
-		resolution_ = 3; // VGA=3
-	}
-#else // ZED=4
+#else 
 	if(resolution_ == -1)
 	{
 		resolution_ = int(sl::RESOLUTION::AUTO); // AUTO
 	}
+#if ZED_SDK_MAJOR_VERSION < 5
+	// Zed4 Supported: 0=HD4K 1=QHDPLUS 2=HD2K 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA
+	if(resolution_ == 3) // 3=HD1536
+	{
+		UWARN("Zed SDK v4 doesn't support HD1536, setting HD1200.");
+		resolution_ = 5; // 5=HD1200
+	}
+	if(resolution_ >=9) // 9=XVGA 10=TXVGA
+	{
+		UWARN("Zed SDK v4 doesn't support XVGA and TXVGA, setting VGA.");
+		resolution_ = 8; // 8=VGA
+	}
+#endif
 #endif
 
 #if ZED_SDK_MAJOR_VERSION < 3
@@ -485,8 +499,11 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	// CORRUPTED_SDK_INSTALLATION on open() is typically a NEURAL depth mode whose optional
 	// neural/TensorRT runtime files aren't installed. Give a clear, actionable error.
 	if(r == sl::ERROR_CODE::CORRUPTED_SDK_INSTALLATION &&
-	   param.depth_mode != sl::DEPTH_MODE::PERFORMANCE &&
-	   param.depth_mode != sl::DEPTH_MODE::NONE)
+#if ZED_SDK_MAJOR_VERSION >= 5
+		param.depth_mode >= sl::DEPTH_MODE::NEURAL_LIGHT)
+#else
+		param.depth_mode >= sl::DEPTH_MODE::NEURAL)
+#endif
 	{
 		UERROR("ZED open() returned \"%s\": the optional NEURAL/TensorRT runtime files are "
 		       "likely missing. Install ZED SDK %d.%d, or select a non-NEURAL depth mode "

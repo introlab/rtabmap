@@ -437,12 +437,29 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZed - kSrcStereo, 0, Qt::UserRole - 1);
 		_ui->comboBox_odom_sensor->setItemData(2, 0, Qt::UserRole - 1);
 	}
-	else if(CameraStereoZed::sdkVersion() < 4)
+	else
 	{
-		_ui->comboBox_stereoZed_resolution->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_stereoZed_resolution->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1);
+		if(CameraStereoZed::sdkVersion() < 5)
+		{
+			// SDK 4.X
+			_ui->comboBox_stereoZed_quality->setItemData(5, 0, Qt::UserRole - 1); // NEURAL_ULTRA
+			_ui->comboBox_stereoZed_resolution->setItemData(4, 0, Qt::UserRole - 1); //HD1536
+			_ui->comboBox_stereoZed_resolution->setItemData(10, 0, Qt::UserRole - 1); //XVGA
+			_ui->comboBox_stereoZed_resolution->setItemData(11, 0, Qt::UserRole - 1); //TXGA 
+		}
+		if(CameraStereoZed::sdkVersion() < 4)
+		{
+			// SDK 3.X
+			_ui->comboBox_stereoZed_quality->setItemData(4, 0, Qt::UserRole - 1); // NEURAL
+			_ui->comboBox_stereoZed_resolution->setItemData(1, 0, Qt::UserRole - 1); // HD4K
+			_ui->comboBox_stereoZed_resolution->setItemData(2, 0, Qt::UserRole - 1); // QHDPLUS
+			_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1); // HD1200
+			_ui->comboBox_stereoZed_resolution->setItemData(8, 0, Qt::UserRole - 1); // SVGA
+		}
+		if(CameraStereoZed::sdkVersion() < 3)
+		{
+			_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1); // NEURAL_LIGHT
+		}
 	}
     if (!CameraStereoTara::available())
     {
