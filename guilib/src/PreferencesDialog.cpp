@@ -7793,12 +7793,13 @@ void PreferencesDialog::testOdometry()
 			_ui->odom_dataBufferSize->value());
 	odomThread.registerToEventsManager();
 
+	// parent = 0 (not 'this'): see testCamera() - avoids the nested-modality crash.
 	OdometryViewer * odomViewer = new OdometryViewer(10,
 					_ui->spinBox_decimation_odom->value(),
 					0.0f,
 					_ui->doubleSpinBox_maxDepth_odom->value(),
 					this->getOdomQualityWarnThr(),
-					this,
+					0,
 					this->getAllParameters());
 	odomViewer->setWindowTitle(tr("Odometry viewer"));
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
@@ -7860,20 +7861,41 @@ void PreferencesDialog::testOdometry()
 	}
 
 	odomViewer->exec();
-	delete odomViewer;
+
+	// Tear down the pipes first so no more events are routed to the threads/viewer being
+	// destroyed, then stop the threads, then delete the viewer. This avoids delivering
+	// events to a handler that is being torn down.
+	UEventsManager::removePipe(&cameraThread, &odomThread, "SensorEvent");
+	if(imuThread)
+	{
+		UEventsManager::removePipe(imuThread, &odomThread, "IMUEvent");
+	}
+	UEventsManager::removePipe(&odomThread, odomViewer, "OdometryEvent");
+	UEventsManager::removePipe(odomViewer, &odomThread, "OdometryResetEvent");
 
 	if(imuThread)
 	{
 		imuThread->join(true);
-		delete imuThread;
 	}
 	cameraThread.join(true);
 	odomThread.join(true);
+
+	// deleteLater() (not delete): see testCamera() - avoids a dangling OpenGL platform
+	// window that crashes in QWindowsWindow::alertWindow when Preferences later closes.
+	odomViewer->deleteLater();
+	if(imuThread)
+	{
+		delete imuThread;
+	}
 }
 
 void PreferencesDialog::testCamera()
 {
-	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
+	// Not parented to 'this': the Preferences dialog is itself application-modal, and making
+	// the viewer a modal *child* of it (nested modality) with an OpenGL/VTK native window
+	// crashes Qt (QWindowsWindow::alertWindow, this==nullptr) when Preferences later closes.
+	// exec() below still makes the viewer application-modal, so interaction stays blocked.
+	CameraViewer * window = new CameraViewer(nullptr, this->getAllParameters());
 	window->setWindowTitle(tr("Camera viewer"));
 	window->resize(1280, 480+QPushButton().minimumHeight());
 	window->registerToEventsManager();
@@ -7923,12 +7945,16 @@ void PreferencesDialog::testCamera()
 
 		cameraThread.start();
 		window->exec();
-		delete window;
+		UEventsManager::removePipe(&cameraThread, window, "SensorEvent");
 		cameraThread.join(true);
+		// deleteLater() (not delete): defer destruction to the event loop so Qt finishes
+		// tearing down the OpenGL widget's context and window-proc subclass and drains
+		// pending activation messages first.
+		window->deleteLater();
 	}
 	else
 	{
-		delete window;
+		window->deleteLater();
 	}
 }
 
@@ -8394,7 +8420,8 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 
 void PreferencesDialog::testLidar()
 {
-	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
+	// Not parented to 'this': see testCamera() - avoids the nested-modality crash.
+	CameraViewer * window = new CameraViewer(nullptr, this->getAllParameters());
 	window->setWindowTitle(tr("Lidar viewer"));
 	window->setWindowFlags(Qt::Window);
 	window->resize(1280, 480+QPushButton().minimumHeight());
@@ -8420,12 +8447,15 @@ void PreferencesDialog::testLidar()
 
 		lidarThread.start();
 		window->exec();
-		delete window;
+		UEventsManager::removePipe(&lidarThread, window, "SensorEvent");
 		lidarThread.join(true);
+		// deleteLater() (not delete): see testCamera() - avoids a dangling OpenGL platform
+		// window that crashes in QWindowsWindow::alertWindow when Preferences later closes.
+		window->deleteLater();
 	}
 	else
 	{
-		delete window;
+		window->deleteLater();
 	}
 }
 

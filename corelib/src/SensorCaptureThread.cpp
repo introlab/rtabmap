@@ -530,15 +530,21 @@ void SensorCaptureThread::mainLoop()
 		info.odomPose.setNull();
 	}
 
-	if(!data.imageCompressed().empty() || !data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	if(this->isKilled())
+	{
+		// A kill was requested (e.g. while we were blocked capturing this frame): don't
+		// publish anything so we never deliver events to handlers that are being torn down.
+	}
+	else if(!data.imageCompressed().empty() || !data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
 		info.cameraName = _lidar?_lidar->getSerial():_camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new SensorEvent(data, info));
 	}
-	else if(!this->isKilled())
+	else
 	{
+		// Not killed but no data: end of stream. Signal consumers once, then stop.
 		UWARN("no more data...");
 		this->kill();
 		this->post(new SensorEvent());
