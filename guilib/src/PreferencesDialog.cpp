@@ -450,7 +450,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		if(CameraStereoZed::sdkVersion() < 4)
 		{
 			// SDK 3.X
-			_ui->comboBox_stereoZed_quality->setItemData(4, 0, Qt::UserRole - 1); // NEURAL
+			_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1); // NEURAL_LIGHT
 			_ui->comboBox_stereoZed_resolution->setItemData(1, 0, Qt::UserRole - 1); // HD4K
 			_ui->comboBox_stereoZed_resolution->setItemData(2, 0, Qt::UserRole - 1); // QHDPLUS
 			_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1); // HD1200
@@ -458,7 +458,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		}
 		if(CameraStereoZed::sdkVersion() < 3)
 		{
-			_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1); // NEURAL_LIGHT
+			_ui->comboBox_stereoZed_quality->setItemData(4, 0, Qt::UserRole - 1); // NEURAL
 		}
 	}
     if (!CameraStereoTara::available())

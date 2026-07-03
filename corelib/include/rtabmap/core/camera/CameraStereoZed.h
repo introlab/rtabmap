@@ -50,7 +50,7 @@ public:
 	CameraStereoZed(
 			int deviceId,
 			int resolution = -1, // -1 = AUTO, 0=HD4K 1=QHDPLUS 2=HD2K 3=HD1536 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA 9=XVGA 10=TXVGA
-			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
+			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY, 3=ULTRA, 4=NEURAL_LIGHT, 5=NEURAL, 6=NEURAL_ULTRA
 			int sensingMode = 0,// 0=STANDARD, 1=FILL
 			int confidenceThr = 100,
 			bool computeOdometry = false,
@@ -61,7 +61,7 @@ public:
 			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
 	CameraStereoZed(
 			const std::string & svoFilePath,
-			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY, 3=NEURAL
+			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY, 3=ULTRA, 4=NEURAL_LIGHT, 5=NEURAL, 6=NEURAL_ULTRA
 			int sensingMode = 0,// 0=STANDARD, 1=FILL
 			int confidenceThr = 100,
 			bool computeOdometry = false,

@@ -78,7 +78,7 @@ static cv::Mat slMat2cvMat(sl::Mat& input) {
 #endif
 }
 
-Transform zedPoseToTransform(const sl::Pose & pose)
+static Transform zedPoseToTransform(const sl::Pose & pose)
 {
 	return Transform(
 			pose.pose_data.m[0], pose.pose_data.m[1], pose.pose_data.m[2], pose.pose_data.m[3],
@@ -87,7 +87,7 @@ Transform zedPoseToTransform(const sl::Pose & pose)
 }
 
 #if ZED_SDK_MAJOR_VERSION < 3
-IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform)
+static IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform)
 {
 	sl::Orientation orientation = imuData.pose_data.getOrientation();
 
@@ -125,7 +125,7 @@ IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform
 			imuLocalTransform);
 }
 #else
-IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTransform)
+static IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTransform)
 {
     sl::Orientation orientation = sensorData.imu.pose.getOrientation();
 
@@ -166,7 +166,7 @@ IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTr
 // sl::SensorsData::imu.is_available only means the camera has an IMU; a returned
 // sample can still contain NaN pose/accel/gyro (e.g. before the IMU fusion has
 // initialized, or in SVO/STREAM mode). Validate the actual measurements.
-bool isImuValid(const sl::SensorsData & sensorData)
+static bool isImuValid(const sl::SensorsData & sensorData)
 {
 	if(!sensorData.imu.is_available)
 	{
@@ -269,6 +269,56 @@ int CameraStereoZed::sdkVersion()
 #endif
 }
 
+#ifdef RTABMAP_ZED
+static void backwardCompatibility(int & resolution, int & quality)
+{
+	// -1 = AUTO, 0=HD4K 1=QHDPLUS 2=HD2K 3=HD1536 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA 9=XVGA 10=TXVGA
+#if ZED_SDK_MAJOR_VERSION < 4
+	// Zed3 Supported: 2=HD2K 4=HD1080 6=HD720 8=VGA
+	if(resolution == 0 || resolution == 1) // 0=HD4K 1=QHDPLUS
+	{
+		UWARN("Zed SDK v3 doesn't support HD4K and QHDPLUS, setting HD2K.");
+		resolution = 2; // 2=HD2K
+	}
+	if(resolution == 3 || resolution == 5) // 3=HD1536 5=HD1200
+	{
+		UWARN("Zed SDK v3 doesn't support HD1536 and HD1200, setting HD1080.");
+		resolution = 4; // 4=HD1080
+	}
+	if(resolution == 7 || resolution >=9) // 7=SVGA 9=XVGA 10=TXVGA
+	{
+		UWARN("Zed SDK v3 doesn't support SVGA, XVGA and TXVGA, setting VGA.");
+		resolution = 8; // 8=VGA
+	}
+	if(quality == 4) { // 4=NEURAL_LIGHT 6=NEURAL_PLUS
+		UWARN("Zed SDK v3 doesn't support NEURAL_LIGHT and NEURAL PLUS, setting NEURAL.");
+		quality = 5; // NEURAL
+	}
+#else 
+	if(resolution == -1)
+	{
+		resolution = int(sl::RESOLUTION::AUTO); // AUTO
+	}
+#if ZED_SDK_MAJOR_VERSION < 5
+	// Zed4 Supported: 0=HD4K 1=QHDPLUS 2=HD2K 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA
+	if(resolution == 3) // 3=HD1536
+	{
+		UWARN("Zed SDK v4 doesn't support HD1536, setting HD1200.");
+		resolution_ = 5; // 5=HD1200
+	}
+	if(resolution >=9) // 9=XVGA 10=TXVGA
+	{
+		UWARN("Zed SDK v4 doesn't support XVGA and TXVGA, setting VGA.");
+		resolution = 8; // 8=VGA
+	}
+	if(quality > 5) { // NEURAL_PLUS
+		UWARN("Zed SDK v4 doesn't support NEURAL_LIGHT and NEURAL PLUS, setting NEURAL.");
+		quality = 5; // NEURAL
+	}
+#endif
+#endif
+}
+#endif
 
 CameraStereoZed::CameraStereoZed(
 		int deviceId,
@@ -303,43 +353,8 @@ CameraStereoZed::CameraStereoZed(
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
-// -1 = AUTO, 0=HD4K 1=QHDPLUS 2=HD2K 3=HD1536 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA 9=XVGA 10=TXVGA
-#if ZED_SDK_MAJOR_VERSION < 4
-	// Zed3 Supported: 2=HD2K 4=HD1080 6=HD720 8=VGA
-	if(resolution_ == 0 || resolution_ == 1) // 0=HD4K 1=QHDPLUS
-	{
-		UWARN("Zed SDK v4 doesn't support HD4K and QHDPLUS, setting HD2K.");
-		resolution_ = 2; // 2=HD2K
-	}
-	if(resolution_ == 3 || resolution_ == 5) // 3=HD1536 5=HD1200
-	{
-		UWARN("Zed SDK v4 doesn't support HD1536 and HD1200, setting HD1080.");
-		resolution_ = 4; // 4=HD1080
-	}
-	if(resolution_ == 7 || resolution_ >=9) // 7=SVGA 9=XVGA 10=TXVGA
-	{
-		UWARN("Zed SDK v4 doesn't support SVGA, XVGA and TXVGA, setting VGA.");
-		resolution_ = 8; // 8=VGA
-	}
-#else 
-	if(resolution_ == -1)
-	{
-		resolution_ = int(sl::RESOLUTION::AUTO); // AUTO
-	}
-#if ZED_SDK_MAJOR_VERSION < 5
-	// Zed4 Supported: 0=HD4K 1=QHDPLUS 2=HD2K 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA
-	if(resolution_ == 3) // 3=HD1536
-	{
-		UWARN("Zed SDK v4 doesn't support HD1536, setting HD1200.");
-		resolution_ = 5; // 5=HD1200
-	}
-	if(resolution_ >=9) // 9=XVGA 10=TXVGA
-	{
-		UWARN("Zed SDK v4 doesn't support XVGA and TXVGA, setting VGA.");
-		resolution_ = 8; // 8=VGA
-	}
-#endif
-#endif
+	
+	backwardCompatibility(resolution_, quality_);
 
 #if ZED_SDK_MAJOR_VERSION < 3
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
@@ -403,6 +418,7 @@ CameraStereoZed::CameraStereoZed(
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
+	backwardCompatibility(resolution_, quality_);
 #if ZED_SDK_MAJOR_VERSION < 3
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
 	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
