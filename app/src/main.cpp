@@ -52,6 +52,10 @@ int main(int argc, char* argv[])
 	ULogger::setLevel(ULogger::kWarning);
 
 #ifdef WIN32
+	// STA (single-threaded apartment) is required for the native file dialogs / File Explorer
+	// (see commit d75cc04, "Fixed File Explorer hanging (Qt 5.12)"). Do NOT switch to MTA
+	// (CoInitializeEx COINIT_MULTITHREADED): it deadlocks the
+	// native file dialogs.
 	CoInitialize(nullptr);
 #endif
 

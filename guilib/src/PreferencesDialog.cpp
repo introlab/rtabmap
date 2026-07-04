@@ -49,6 +49,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QStandardItemModel>
 #include <QMainWindow>
 #include <QProgressDialog>
+#include <QApplication>
+#include <functional>
 #include <QScrollBar>
 #include <QStatusBar>
 #include <QFormLayout>
@@ -6837,11 +6839,11 @@ double PreferencesDialog::getSourceScanForceGroundNormalsUp() const
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
 	return createCamera(
-		this->getSourceDriver(), 
-		_ui->lineEdit_sourceDevice->text(), 
-		_ui->lineEdit_calibrationFile->text(), 
-		useRawImages, 
-		useColor, 
+		this->getSourceDriver(),
+		_ui->lineEdit_sourceDevice->text(),
+		_ui->lineEdit_calibrationFile->text(),
+		useRawImages,
+		useColor,
 		false,
 		false);
 }
@@ -7745,7 +7747,20 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
+	// One progress dialog, reused for both the (slow) camera init and the (slow) close.
+	// Declared here so it outlives cameraThread below and stays visible while cameraThread's
+	// destructor closes the device at function scope end.
+	QProgressDialog progress(tr("Starting camera..."), QString(), 0, 0, this);
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	progress.show();
+	QApplication::processEvents();
+	QApplication::processEvents(); // make sure it is drawn
+
 	Camera * camera = this->createCamera();
+	progress.hide();
 	if(!camera)
 	{
 		return;
@@ -7861,6 +7876,7 @@ void PreferencesDialog::testOdometry()
 	}
 
 	odomViewer->exec();
+	UDEBUG("Dialog closed, stopping sensor...");
 
 	// Tear down the pipes first so no more events are routed to the threads/viewer being
 	// destroyed, then stop the threads, then delete the viewer. This avoids delivering
@@ -7877,6 +7893,14 @@ void PreferencesDialog::testOdometry()
 	{
 		imuThread->join(true);
 	}
+
+	// Reuse the same dialog for the close. The device close() runs in cameraThread's destructor
+	// at function scope end (not in join()), so 'progress' stays visible across it. On Windows
+	// the first 2-3 RealSense closes per launch stall ~20s in the Motion Module stop().
+	progress.setLabelText(tr("Closing camera..."));
+	progress.show();
+	QApplication::processEvents();
+	QApplication::processEvents(); // make sure it is drawn
 	cameraThread.join(true);
 	odomThread.join(true);
 
@@ -7900,7 +7924,21 @@ void PreferencesDialog::testCamera()
 	window->resize(1280, 480+QPushButton().minimumHeight());
 	window->registerToEventsManager();
 
+	// One progress dialog, reused for both the (slow) camera init and the (slow) close.
+	// min==max==0 => indeterminate/busy bar. Declared in this outer scope so it outlives
+	// cameraThread below and stays visible while cameraThread's destructor closes the device.
+	QProgressDialog progress(tr("Starting camera..."), QString(), 0, 0, this);
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	progress.show();
+	QApplication::processEvents();
+	QApplication::processEvents(); // make sure it is drawn
+
+	// createCamera() init()s the device on the GUI thread (required by ZED) and takes a few seconds.
 	Camera * camera = this->createCamera();
+	progress.hide();
 	if(camera)
 	{
 		SensorCaptureThread cameraThread(camera, this->getAllParameters());
@@ -7945,8 +7983,18 @@ void PreferencesDialog::testCamera()
 
 		cameraThread.start();
 		window->exec();
+		UDEBUG("Dialog closed, stopping sensor...");
 		UEventsManager::removePipe(&cameraThread, window, "SensorEvent");
-		cameraThread.join(true);
+
+		// Reuse the same dialog for the close. The device close() runs in cameraThread's
+		// destructor at scope end (not in join()), so 'progress' - declared in the outer scope -
+		// stays visible across it. On Windows the first 2-3 RealSense closes per launch stall
+		// ~20s in the Motion Module stop() (librealsense warm-up); this keeps the user informed.
+		progress.setLabelText(tr("Closing camera..."));
+		progress.show();
+		QApplication::processEvents();
+		QApplication::processEvents(); // make sure it is drawn
+		cameraThread.join(true); // cameraThread's destructor (scope end) closes the device
 		// deleteLater() (not delete): defer destruction to the event loop so Qt finishes
 		// tearing down the OpenGL widget's context and window-proc subclass and drains
 		// pending activation messages first.
@@ -8428,7 +8476,20 @@ void PreferencesDialog::testLidar()
 	window->registerToEventsManager();
 	window->setDecimation(1);
 
+	// One progress dialog, reused for both the (slow) sensor init and the (slow) close.
+	// Declared in this outer scope so it outlives lidarThread below and stays visible while
+	// lidarThread's destructor closes the device.
+	QProgressDialog progress(tr("Starting sensor..."), QString(), 0, 0, this);
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	progress.show();
+	QApplication::processEvents();
+	QApplication::processEvents(); // make sure it is drawn
+
 	Lidar * lidar = this->createLidar();
+	progress.hide();
 	if(lidar)
 	{
 		SensorCaptureThread lidarThread(lidar, this->getAllParameters());
@@ -8447,8 +8508,17 @@ void PreferencesDialog::testLidar()
 
 		lidarThread.start();
 		window->exec();
+		UDEBUG("Dialog closed, stopping sensor...");
 		UEventsManager::removePipe(&lidarThread, window, "SensorEvent");
-		lidarThread.join(true);
+
+		// Reuse the same dialog for the close. The device close() runs in lidarThread's
+		// destructor at scope end (not in join()), so 'progress' - declared in the outer
+		// scope - stays visible across it.
+		progress.setLabelText(tr("Closing sensor..."));
+		progress.show();
+		QApplication::processEvents();
+		QApplication::processEvents(); // make sure it is drawn
+		lidarThread.join(true); // lidarThread's destructor (scope end) closes the device
 		// deleteLater() (not delete): see testCamera() - avoids a dangling OpenGL platform
 		// window that crashes in QWindowsWindow::alertWindow when Preferences later closes.
 		window->deleteLater();
