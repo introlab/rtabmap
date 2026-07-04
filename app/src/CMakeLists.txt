@@ -421,7 +421,17 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   install(CODE "
     # Glob Qt Plugins
     file(GLOB_RECURSE ALL_LIBS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
-    
+
+    # OrbbecSDK loads its filter/frame-processor extensions via dlopen, and they
+    # link @rpath/libOrbbecSDK. Feed them to fixup_bundle so their reference is
+    # rewritten to the embedded libOrbbecSDK
+    file(GLOB ORBBEC_EXT_LIBS
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Frameworks/extensions/filters/*${CMAKE_SHARED_LIBRARY_SUFFIX}\"
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Frameworks/extensions/frameprocessor/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+    if(ORBBEC_EXT_LIBS)
+        list(APPEND ALL_LIBS \${ORBBEC_EXT_LIBS})
+    endif()
+
     if(NOT \"${python_pyd_dir}\" STREQUAL \"\")
         file(GLOB_RECURSE PYD_FILES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${python_pyd_dir}/*.pyd\")
         if(PYD_FILES)
