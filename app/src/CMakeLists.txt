@@ -151,14 +151,14 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
         IF(NOT OrbbecSDK_BIN_DIR)
             MESSAGE(FATAL_ERROR "OrbbecSDK.dll not found! Verify your PATH.")
         ENDIF(NOT OrbbecSDK_BIN_DIR)
-		MESSAGE(FATAL "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
+        MESSAGE(STATUS "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
         INSTALL(DIRECTORY "${OrbbecSDK_BIN_DIR}/extensions" 
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime 
           FILES_MATCHING
           PATTERN "*.lib" EXCLUDE
           PATTERN "*")
-	ELSEIF(APPLE)
+    ELSEIF(APPLE)
         # OrbbecSDK loads its extensions (frame processor, filters like
         # FrameUnpacker) via dlopen relative to libOrbbecSDK. fixup_bundle puts
         # libOrbbecSDK in Contents/Frameworks, so the extensions must sit next to
@@ -174,7 +174,7 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
             DESTINATION Frameworks
             COMPONENT runtime)
         ENDIF()
-	ENDIF(WIN32)
+    ENDIF(WIN32)
   ENDIF(OrbbecSDK_FOUND)
   
   IF(Torch_FOUND)
