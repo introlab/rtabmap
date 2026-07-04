@@ -37,6 +37,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <thread>
 #include <atomic>
 
+// On Apple, closing pcl::HDLGrabber's UDP socket while its read thread is blocked
+// in receive_from returns EBADF, which pcl::HDLGrabber::readPacketsFromSocket()
+// rethrows uncaught in its own thread, aborting the process on shutdown. There we
+// run our own single-threaded UDP receive loop and own the socket lifecycle.
+// Other platforms use the base pcl::VLPGrabber path (which also avoids needing
+// boost::asio::io_context, absent from the Boost 1.65 on e.g. Ubuntu Bionic).
+// Comment this out to force the base path everywhere (e.g. A/B testing on macOS).
+#if defined(__APPLE__)
+#define RTABMAP_VLP16_USE_CUSTOM_SOCKET
+#endif
+
 namespace rtabmap {
 
 struct PointXYZIT {
@@ -72,24 +83,28 @@ public:
 
 	void setOrganized(bool enable);
 
-	// In network mode we run our own UDP receive loop instead of
-	// pcl::HDLGrabber's: on macOS/BSD, closing the grabber's socket while its
-	// read thread is blocked in receive_from returns EBADF, a code that
-	// pcl::HDLGrabber::readPacketsFromSocket() rethrows uncaught (in its own
-	// thread), aborting the process on shutdown. Owning the socket lets us
-	// tear it down with the non-throwing receive_from overload. Like
+#ifdef RTABMAP_VLP16_USE_CUSTOM_SOCKET
+	// Overridden only on Apple: in network mode we run our own UDP receive loop
+	// instead of pcl::HDLGrabber's, because on macOS/BSD closing the grabber's
+	// socket while its read thread is blocked in receive_from returns EBADF, a
+	// code that pcl::HDLGrabber::readPacketsFromSocket() rethrows uncaught (in
+	// its own thread), aborting the process on shutdown. Owning the socket lets
+	// us tear it down with the non-throwing receive_from overload. Like
 	// pcl::HDLGrabber, we bind to the given LOCAL interface address (to scope
-	// reception on a multi-homed host) and fall back to all interfaces
-	// (0.0.0.0) when it is unspecified or not a local address. In PCAP mode we
-	// delegate to the base grabber.
+	// reception on a multi-homed host) and fall back to all interfaces (0.0.0.0)
+	// when it is unspecified or not a local address. In PCAP mode we delegate to
+	// the base grabber. On other platforms we inherit pcl::VLPGrabber directly.
 	virtual void start() override;
 	virtual void stop() override;
 	virtual bool isRunning() const override;
+#endif
 
 private:
 	void buildTimings(bool dualMode);
     virtual void toPointClouds (HDLDataPacket *dataPacket) override;
+#ifdef RTABMAP_VLP16_USE_CUSTOM_SOCKET
     void readPackets();
+#endif
 
 protected:
     virtual SensorData captureData(SensorCaptureInfo * info = 0) override;
@@ -112,12 +127,13 @@ private:
     bool networkMode_;
     boost::asio::ip::address ipAddress_;
     std::uint16_t port_;
-    std::string listenAddress_; // local address we actually bound to
     bool receivedScan_;         // set once the first scan is received
+#ifdef RTABMAP_VLP16_USE_CUSTOM_SOCKET
     boost::asio::io_context ioContext_;
     boost::asio::ip::udp::socket * socket_;
     std::thread * readThread_;
     std::atomic<bool> terminate_;
+#endif
 };
 
 } /* namespace rtabmap */
