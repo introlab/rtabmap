@@ -114,7 +114,6 @@ SensorCaptureThread::SensorCaptureThread(
 				_camera(camera),
 				_odomSensor(odomSensor),
 				_lidar(lidar),
-				_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
 				_odomAsGt(false),
 				_poseTimeOffset(poseTimeOffset),
 				_poseScaleFactor(poseScaleFactor),
@@ -153,9 +152,13 @@ SensorCaptureThread::SensorCaptureThread(
 	{
 		if(_camera)
 		{
-			if(_odomSensor == _camera && _extrinsicsOdomToCamera.isNull())
+			if(_odomSensor == _camera && extrinsics.isNull())
 			{
 				_extrinsicsOdomToCamera.setIdentity();
+			}
+			else
+			{
+				_extrinsicsOdomToCamera = extrinsics * CameraModel::opticalRotation();
 			}
 			UASSERT(!_extrinsicsOdomToCamera.isNull());
 			UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
@@ -492,20 +495,26 @@ void SensorCaptureThread::mainLoop()
 					}
 				}
 
-				// Adjust local transform of the camera based on the pose frame
+				// Adjust local transform of the camera(s) based on the pose frame. The correction
+				// and odom->camera extrinsics are frame-level, so apply the same prefix to each
+				// camera while keeping its own local transform (multi-camera supported).
 				if(!data.cameraModels().empty())
 				{
-					UASSERT(data.cameraModels().size()==1);
-					CameraModel model = data.cameraModels()[0];
-					model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
-					data.setCameraModel(model);
+					std::vector<CameraModel> models = data.cameraModels();
+					for(size_t i=0; i<models.size(); ++i)
+					{
+						models[i].setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera*models[i].localTransform());
+					}
+					data.setCameraModels(models);
 				}
 				else if(!data.stereoCameraModels().empty())
 				{
-					UASSERT(data.stereoCameraModels().size()==1);
-					StereoCameraModel model = data.stereoCameraModels()[0];
-					model.setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera);
-					data.setStereoCameraModel(model);
+					std::vector<StereoCameraModel> models = data.stereoCameraModels();
+					for(size_t i=0; i<models.size(); ++i)
+					{
+						models[i].setLocalTransform(cameraCorrection*_extrinsicsOdomToCamera*models[i].localTransform());
+					}
+					data.setStereoCameraModels(models);
 				}
 			}
 
