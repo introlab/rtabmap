@@ -561,10 +561,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		catch(const rs2::error & error)
 		{
 #ifdef __APPLE__
-			UWARN("%s. Is the camera already used with another app? On macOS, accessing a "
+			UERROR("%s. Is the camera already used with another app? On macOS, accessing a "
 			      "RealSense camera requires root privileges, so try running with sudo.", error.what());
 #else
-			UWARN("%s. Is the camera already used with another app?", error.what());
+			UERROR("%s. Is the camera already used with another app?", error.what());
 #endif
 		}
 
