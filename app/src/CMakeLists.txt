@@ -158,6 +158,22 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
           FILES_MATCHING
           PATTERN "*.lib" EXCLUDE
           PATTERN "*")
+	ELSEIF(APPLE)
+        # OrbbecSDK loads its extensions (frame processor, filters like
+        # FrameUnpacker) via dlopen relative to libOrbbecSDK. fixup_bundle puts
+        # libOrbbecSDK in Contents/Frameworks, so the extensions must sit next to
+        # it in Frameworks/extensions (they reference @rpath/libOrbbecSDK, which
+        # resolves via the app executable's @executable_path/../Frameworks rpath).
+        # Without this the camera is detected but frame processing fails.
+        get_filename_component(OrbbecSDK_LIB_DIR "${OrbbecSDK_DIR}/../.." ABSOLUTE)
+        INSTALL(DIRECTORY "${OrbbecSDK_LIB_DIR}/extensions"
+          DESTINATION Frameworks
+          COMPONENT runtime)
+        IF(EXISTS "${OrbbecSDK_LIB_DIR}/OrbbecSDKConfig.xml")
+          INSTALL(FILES "${OrbbecSDK_LIB_DIR}/OrbbecSDKConfig.xml"
+            DESTINATION Frameworks
+            COMPONENT runtime)
+        ENDIF()
 	ENDIF(WIN32)
   ENDIF(OrbbecSDK_FOUND)
   
