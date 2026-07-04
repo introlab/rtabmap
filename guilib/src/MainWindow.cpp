@@ -5936,7 +5936,7 @@ void MainWindow::startDetection()
 	// Creating the sensors below opens the devices (createLidar/createCamera/createOdomSensor ->
 	// init(), a few seconds for ZED/RealSense) on the GUI thread; show a busy dialog (min==max==0
 	// => indeterminate) so the window isn't just frozen. Hidden once all sensors are created below.
-	QProgressDialog progress(tr("Starting detection..."), QString(), 0, 0, this);
+	QProgressDialog progress(tr("Starting sensor..."), QString(), 0, 0, this);
 	progress.setWindowModality(Qt::ApplicationModal);
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
@@ -6250,7 +6250,7 @@ void MainWindow::stopDetection()
 	// RealSense closes per launch stall ~20s in the Motion Module stop() (librealsense warm-up).
 	// Show a busy dialog (min==max==0 => indeterminate) so the window isn't just frozen. It is
 	// declared here so it stays visible across the joins/deletes and closes on scope exit.
-	QProgressDialog progress(tr("Stopping detection..."), QString(), 0, 0, this);
+	QProgressDialog progress(tr("Stopping sensor..."), QString(), 0, 0, this);
 	if(_sensorCapture)
 	{
 		progress.setWindowModality(Qt::ApplicationModal);
