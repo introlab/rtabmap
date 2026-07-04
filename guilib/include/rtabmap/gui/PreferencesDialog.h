@@ -263,6 +263,9 @@ public:
 	PreferencesDialog::Src getSourceDriver() const;
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
+	// Non-empty warning to show before opening the selected source when init() is expected to be
+	// unusually slow; empty otherwise.
+	QString getSourceInitWarningMsg() const;
 	PreferencesDialog::Src getLidarSourceDriver() const;
 	PreferencesDialog::Src getOdomSourceDriver() const;
 

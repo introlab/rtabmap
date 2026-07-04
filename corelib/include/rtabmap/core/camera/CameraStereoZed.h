@@ -81,6 +81,15 @@ public:
 	void postInterIMUPublic(const IMU & imu, double stamp);
 	void setRightGrayScale(bool enabled = true);
 
+	/**
+	 * If the given ZED depth mode (quality: same encoding as the constructor) is a NEURAL mode
+	 * whose AI model isn't yet downloaded/optimized for the GPU, returns a human-readable warning
+	 * that the first start will be slower (the ZED SDK downloads/optimizes the model during
+	 * init()). Returns an empty string when the model is ready, the mode isn't neural, or the
+	 * SDK/build doesn't support the check.
+	 */
+	static std::string getNeuralModelWarning(int quality);
+
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 

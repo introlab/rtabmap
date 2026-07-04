@@ -454,6 +454,33 @@ CameraStereoZed::~CameraStereoZed()
 #endif
 }
 
+std::string CameraStereoZed::getNeuralModelWarning(int quality)
+{
+	(void)quality;
+#if defined(RTABMAP_ZED) && ZED_SDK_MAJOR_VERSION >= 5
+	sl::DEPTH_MODE depthMode = (sl::DEPTH_MODE)quality;
+	if(depthMode == sl::DEPTH_MODE::NEURAL_LIGHT ||
+	   depthMode == sl::DEPTH_MODE::NEURAL ||
+	   depthMode == sl::DEPTH_MODE::NEURAL_PLUS)
+	{
+		sl::AI_MODELS aiModel =
+			depthMode == sl::DEPTH_MODE::NEURAL_LIGHT ? sl::AI_MODELS::NEURAL_LIGHT_DEPTH :
+			depthMode == sl::DEPTH_MODE::NEURAL_PLUS  ? sl::AI_MODELS::NEURAL_PLUS_DEPTH :
+			                                            sl::AI_MODELS::NEURAL_DEPTH;
+		sl::AI_Model_status status = sl::checkAIModelStatus(aiModel);
+		if(!status.downloaded || !status.optimized)
+		{
+			return uFormat("The selected ZED NEURAL depth model is not ready yet (downloaded=%s, "
+			               "optimized=%s): the first start may take significantly longer while the "
+			               "ZED SDK downloads and/or optimizes the model for your GPU. Subsequent "
+			               "starts will be faster.",
+			               status.downloaded?"true":"false", status.optimized?"true":"false");
+		}
+	}
+#endif
+	return std::string();
+}
+
 bool CameraStereoZed::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	UDEBUG("");
@@ -524,7 +551,10 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		UERROR("ZED open() returned \"%s\": the optional NEURAL/TensorRT runtime files are "
 		       "likely missing. Install ZED SDK %d.%d, or select a non-NEURAL depth mode "
 		       "(e.g. PERFORMANCE).", toString(r).c_str(), ZED_SDK_MAJOR_VERSION, ZED_SDK_MINOR_VERSION);
-		delete zed_;
+		// Do NOT delete zed_ here: after a CORRUPTED_SDK_INSTALLATION open failure (NEURAL depth
+		// mode selected but the TensorRT/neural runtime isn't installed) the ZED SDK is left in a
+		// bad state and ~sl::Camera() crashes inside sl_zed64.dll. Leak the object (one-time,
+		// terminal error path) so we fail gracefully with the message above instead of crashing.
 		zed_ = 0;
 		return false;
 	}
@@ -532,7 +562,11 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 
 	if(r!=sl::ERROR_CODE::SUCCESS)
 	{
+#if ZED_SDK_MAJOR_VERSION >= 4
+		UERROR("Camera initialization failed: \"%s\": %s", toString(r).c_str(), toVerbose(r).c_str());
+#else
 		UERROR("Camera initialization failed: \"%s\"", toString(r).c_str());
+#endif
 		delete zed_;
 		zed_ = 0;
 		return false;
@@ -569,7 +603,11 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 #endif
         if(r!=sl::ERROR_CODE::SUCCESS)
 		{
+#if ZED_SDK_MAJOR_VERSION >= 4
+			UERROR("Camera tracking initialization failed: \"%s\": %s", toString(r).c_str(), toVerbose(r).c_str());
+#else
 			UERROR("Camera tracking initialization failed: \"%s\"", toString(r).c_str());
+#endif
 		}
 	}
 
@@ -951,7 +989,11 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 		}
 		else if(src_ == CameraVideo::kUsbDevice)
 		{
+#if ZED_SDK_MAJOR_VERSION >= 4
+			UERROR("CameraStereoZed: Failed to grab images after 2 seconds! (%s: %s)", toString(res).c_str(), toVerbose(res).c_str());
+#else
 			UERROR("CameraStereoZed: Failed to grab images after 2 seconds!");
+#endif
 		}
 		else
 		{

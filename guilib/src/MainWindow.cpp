@@ -79,6 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QProgressDialog>
+#include <QLabel>
 #include <QGraphicsEllipseItem>
 #include <QDockWidget>
 #include <QtCore/QBuffer>
@@ -5936,7 +5937,20 @@ void MainWindow::startDetection()
 	// Creating the sensors below opens the devices (createLidar/createCamera/createOdomSensor ->
 	// init(), a few seconds for ZED/RealSense) on the GUI thread; show a busy dialog (min==max==0
 	// => indeterminate) so the window isn't just frozen. Hidden once all sensors are created below.
-	QProgressDialog progress(tr("Starting sensor..."), QString(), 0, 0, this);
+	QString startLabel = tr("Starting sensor...");
+	QString initWarn = _preferencesDialog->getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
 	progress.setWindowModality(Qt::ApplicationModal);
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);

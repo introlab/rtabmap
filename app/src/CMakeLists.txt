@@ -42,9 +42,7 @@ IF(APPLE AND BUILD_AS_BUNDLE)
     MACOSX_BUNDLE_GUI_IDENTIFIER "com.introlab.rtabmap"
     MACOSX_BUNDLE_BUNDLE_NAME "${CMAKE_BUNDLE_NAME}")
 ELSEIF(WIN32 AND BUILD_AS_BUNDLE)
-   # not using WIN32 keyword to see fatal errors in the console
-   # (in particular when zed's neural dlls are not found)
-  ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app WIN32 ${SRC_FILES})
 ELSE()
   ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
 ENDIF()

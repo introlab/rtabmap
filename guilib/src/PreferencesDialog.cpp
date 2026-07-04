@@ -50,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMainWindow>
 #include <QProgressDialog>
 #include <QApplication>
+#include <QLabel>
 #include <functional>
 #include <QScrollBar>
 #include <QStatusBar>
@@ -6654,6 +6655,16 @@ QString PreferencesDialog::getSourceDriverStr() const
 	return "";
 }
 
+QString PreferencesDialog::getSourceInitWarningMsg() const
+{
+	if(getSourceDriver() == kSrcStereoZed)
+	{
+		return QString::fromStdString(
+			CameraStereoZed::getNeuralModelWarning(_ui->comboBox_stereoZed_quality->currentIndex()));
+	}
+	return QString();
+}
+
 QString PreferencesDialog::getSourceDevice() const
 {
 	return _ui->lineEdit_sourceDevice->text();
@@ -7747,10 +7758,20 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
-	// One progress dialog, reused for both the (slow) camera init and the (slow) close.
-	// Declared here so it outlives cameraThread below and stays visible while cameraThread's
-	// destructor closes the device at function scope end.
-	QProgressDialog progress(tr("Starting camera..."), QString(), 0, 0, this);
+	QString startLabel = tr("Starting camera...");
+	QString initWarn = getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
 	progress.setWindowModality(Qt::ApplicationModal);
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
@@ -7924,10 +7945,20 @@ void PreferencesDialog::testCamera()
 	window->resize(1280, 480+QPushButton().minimumHeight());
 	window->registerToEventsManager();
 
-	// One progress dialog, reused for both the (slow) camera init and the (slow) close.
-	// min==max==0 => indeterminate/busy bar. Declared in this outer scope so it outlives
-	// cameraThread below and stays visible while cameraThread's destructor closes the device.
-	QProgressDialog progress(tr("Starting camera..."), QString(), 0, 0, this);
+	QString startLabel = tr("Starting camera...");
+	QString initWarn = getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
 	progress.setWindowModality(Qt::ApplicationModal);
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
@@ -8476,10 +8507,7 @@ void PreferencesDialog::testLidar()
 	window->registerToEventsManager();
 	window->setDecimation(1);
 
-	// One progress dialog, reused for both the (slow) sensor init and the (slow) close.
-	// Declared in this outer scope so it outlives lidarThread below and stays visible while
-	// lidarThread's destructor closes the device.
-	QProgressDialog progress(tr("Starting sensor..."), QString(), 0, 0, this);
+	QProgressDialog progress(tr("Starting lidar..."), QString(), 0, 0, this);
 	progress.setWindowModality(Qt::ApplicationModal);
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
