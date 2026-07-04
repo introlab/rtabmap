@@ -39,6 +39,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QTextStream>
 #include <QtCore/QDateTime>
 #include <QtCore/QSettings>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QStandardPaths>
 #include <QThread>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
@@ -583,12 +586,33 @@ QString DatabaseViewer::getIniFilePath() const
 	{
 		return iniFilePath_;
 	}
+#ifdef WIN32
+	// Windows: store settings in the standard per-user config location (%LOCALAPPDATA%\rtabmap)
+	// instead of a Unix-style dotfile in the home root. A fixed "rtabmap" folder (not the app name)
+	// is used so the main GUI and DatabaseViewer share the same rtabmap.ini. Other platforms keep
+	// ~/.rtabmap for consistency.
+	QString privatePath = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/rtabmap";
+#else
 	QString privatePath = QDir::homePath() + "/.rtabmap";
+#endif
 	if(!QDir(privatePath).exists())
 	{
-		QDir::home().mkdir(".rtabmap");
+		QDir().mkpath(privatePath);
 	}
-	return privatePath + "/rtabmap.ini";
+	QString iniPath = privatePath + "/rtabmap.ini";
+#ifdef WIN32
+	// One-time migration: if there's no ini at the new location but the legacy ~/.rtabmap/rtabmap.ini
+	// exists, copy it over so users keep their existing settings.
+	if(!QFile::exists(iniPath))
+	{
+		QString legacyIni = QDir::homePath() + "/.rtabmap/rtabmap.ini";
+		if(QFile::exists(legacyIni))
+		{
+			QFile::copy(legacyIni, iniPath);
+		}
+	}
+#endif
+	return iniPath;
 }
 
 void DatabaseViewer::readSettings()
