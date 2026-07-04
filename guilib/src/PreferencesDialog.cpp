@@ -40,9 +40,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSettings>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QTimer>
 #include <QUrl>
+
+#ifndef _WIN32
+#include <unistd.h>   // geteuid, chown
+#include <sys/types.h>
+#include <cstdlib>    // atoi, getenv
+#include <cerrno>
+#include <cstring>    // strerror
+#endif
 
 #include <QButtonGroup>
 #include <QFileDialog>
@@ -1007,7 +1016,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_vlp16_pcap_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_ip1, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_ip2, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->spinBox_vlp16_ip2, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_vlp16_ip3, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_ip4, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_port, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_vlp16_organized, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2462,10 +2471,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->lineEdit_lidar_local_transform->setText("0 0 0 0 0 0");
 		_ui->lineEdit_vlp16_pcap_path->clear();
-		_ui->spinBox_vlp16_ip1->setValue(192);
-		_ui->spinBox_vlp16_ip2->setValue(168);
-		_ui->spinBox_vlp16_ip3->setValue(1);
-		_ui->spinBox_vlp16_ip4->setValue(201);
+		_ui->spinBox_vlp16_ip1->setValue(0);
+		_ui->spinBox_vlp16_ip2->setValue(0);
+		_ui->spinBox_vlp16_ip3->setValue(0);
+		_ui->spinBox_vlp16_ip4->setValue(0);
 		_ui->spinBox_vlp16_port->setValue(2368);
 		_ui->checkBox_vlp16_organized->setChecked(false);
 		_ui->checkBox_vlp16_hostTime->setChecked(true);
@@ -2613,6 +2622,41 @@ QString PreferencesDialog::getIniFilePath() const
 QString PreferencesDialog::getTmpIniFilePath() const
 {
 	return getIniFilePath()+".tmp";
+}
+
+void PreferencesDialog::restoreConfigOwnership(const QString & filePath)
+{
+#ifndef _WIN32
+	// Only relevant when the process is effectively root (e.g. launched with
+	// sudo). getenv("SUDO_UID"/"SUDO_GID") give the invoking user.
+	if(geteuid() == 0)
+	{
+		const char * sudoUid = getenv("SUDO_UID");
+		const char * sudoGid = getenv("SUDO_GID");
+		if(sudoUid && sudoGid)
+		{
+			uid_t uid = (uid_t)atoi(sudoUid);
+			gid_t gid = (gid_t)atoi(sudoGid);
+			// Restore the config file and its containing directory so the user
+			// can still write preferences without sudo afterwards.
+			if(!filePath.isEmpty() && QFile::exists(filePath))
+			{
+				if(chown(filePath.toStdString().c_str(), uid, gid) != 0)
+				{
+					UWARN("Could not restore ownership of \"%s\" to uid=%d (%s).",
+							filePath.toStdString().c_str(), (int)uid, strerror(errno));
+				}
+			}
+			QString dir = QFileInfo(filePath).absolutePath();
+			if(!dir.isEmpty())
+			{
+				chown(dir.toStdString().c_str(), uid, gid);
+			}
+		}
+	}
+#else
+	Q_UNUSED(filePath);
+#endif
 }
 
 void PreferencesDialog::loadConfigFrom()
@@ -3285,6 +3329,9 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 	uInsert(_parameters, _modifiedParameters); // update cached parameters
 	_modifiedParameters.clear();
 	_obsoletePanels = kPanelDummy;
+
+	// Keep the ini writable by the invoking user even if we are running as root.
+	restoreConfigOwnership(filePath.isEmpty() ? getIniFilePath() : filePath);
 }
 
 void PreferencesDialog::writeGuiSettings(const QString & filePath) const

@@ -5530,6 +5530,10 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveSettings();
 	this->saveFigures();
 	this->setWindowModified(false);
+
+	// If running under sudo, the above writes recreate rtabmap.ini as root;
+	// restore ownership so non-root runs can still save preferences.
+	PreferencesDialog::restoreConfigOwnership(_preferencesDialog->getIniFilePath());
 }
 
 void MainWindow::newDatabase()

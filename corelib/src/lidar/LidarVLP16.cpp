@@ -34,6 +34,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VLP_DUAL_MODE 0x39
 #endif
 
+// --- VLP16 network socket implementation toggle -----------------------------
+// When defined, network mode uses our own single-threaded UDP receive loop
+// (fixes the macOS crash on close, see start()/stop()). Comment this line out to
+// fall back to pcl::VLPGrabber's original two-threaded producer/consumer socket
+// handling, for A/B testing (e.g. to check whether occasional missing points
+// come from our loop or from elsewhere).
+// WARNING: the original path aborts the process on close on macOS (uncaught
+// receive_from EBADF in PCL's read thread); use it only for temporary testing.
+#define RTABMAP_VLP16_USE_CUSTOM_SOCKET
+// ----------------------------------------------------------------------------
+
 namespace rtabmap {
 
 /** @brief Function used to check that hour assigned to timestamp in conversion is
@@ -92,8 +103,15 @@ LidarVLP16::LidarVLP16(
 	startSweepTimeHost_(0),
 	organized_(organized),
 	useHostTime_(false),
-	stampLast_(stampLast)
+	stampLast_(stampLast),
+	networkMode_(false),
+	port_(0),
+	receivedScan_(false),
+	socket_(0),
+	readThread_(0),
+	terminate_(false)
 {
+	// ipAddress_ unused in PCAP mode (default-constructed / unspecified).
 	UDEBUG("Using PCAP file \"%s\"", pcapFile.c_str());
 }
 LidarVLP16::LidarVLP16(
@@ -111,7 +129,20 @@ LidarVLP16::LidarVLP16(
 	startSweepTimeHost_(0),
 	organized_(organized),
 	useHostTime_(useHostTime),
-	stampLast_(stampLast)
+	stampLast_(stampLast),
+#ifdef RTABMAP_VLP16_USE_CUSTOM_SOCKET
+	networkMode_(true),
+#else
+	// Custom socket disabled: behave like a plain pcl::VLPGrabber (start/stop/
+	// isRunning all delegate to the base when networkMode_ is false).
+	networkMode_(false),
+#endif
+	ipAddress_(ipAddress),
+	port_(port),
+	receivedScan_(false),
+	socket_(0),
+	readThread_(0),
+	terminate_(false)
 {
 	UDEBUG("Using network lidar with IP=%s port=%d", ipAddress.to_string().c_str(), port);
 }
@@ -127,6 +158,140 @@ LidarVLP16::~LidarVLP16()
 void LidarVLP16::setOrganized(bool enable)
 {
 	organized_ = true;
+}
+
+void LidarVLP16::start()
+{
+	if(!networkMode_)
+	{
+		// PCAP playback: no socket teardown race, use the base grabber.
+		pcl::VLPGrabber::start();
+		return;
+	}
+
+	if(readThread_ != 0)
+	{
+		// already running
+		return;
+	}
+
+	terminate_ = false;
+	// ipAddress_ is the LOCAL interface to listen on (as in pcl::HDLGrabber),
+	// not the sensor's address. Binding to a specific local IP scopes reception
+	// to that NIC on a multi-homed host. If it is unspecified (0.0.0.0) or not a
+	// local address (e.g. the sensor's IP was entered by mistake), fall back to
+	// listening on all interfaces, matching pcl::HDLGrabber.
+	try
+	{
+		boost::asio::ip::udp::endpoint endpoint(
+				ipAddress_.is_unspecified() ? boost::asio::ip::address(boost::asio::ip::address_v4::any()) : ipAddress_,
+				port_);
+		// Unlike pcl::HDLGrabber, we read and process packets in a single
+		// thread instead of a producer/consumer queue. A large receive buffer
+		// lets the kernel hold a backlog (~800 VLP16 packets here) so a brief
+		// stall in toPointClouds() doesn't drop packets.
+		const int receiveBufferSize = 1024 * 1024; // 1 MB
+		try
+		{
+			socket_ = new boost::asio::ip::udp::socket(ioContext_);
+			socket_->open(boost::asio::ip::udp::v4());
+			socket_->set_option(boost::asio::socket_base::reuse_address(true));
+			socket_->set_option(boost::asio::socket_base::receive_buffer_size(receiveBufferSize));
+			socket_->bind(endpoint);
+		}
+		catch(const std::exception & e)
+		{
+			UWARN("Could not bind VLP16 socket to local address %s (%s); "
+				"falling back to listening on all interfaces (0.0.0.0).",
+				endpoint.address().to_string().c_str(), e.what());
+			delete socket_;
+			socket_ = new boost::asio::ip::udp::socket(ioContext_);
+			socket_->open(boost::asio::ip::udp::v4());
+			socket_->set_option(boost::asio::socket_base::reuse_address(true));
+			socket_->set_option(boost::asio::socket_base::receive_buffer_size(receiveBufferSize));
+			socket_->bind(boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4::any(), port_));
+		}
+	}
+	catch(const std::exception & e)
+	{
+		UERROR("Failed to bind to VLP16 UDP port %d: %s", (int)port_, e.what());
+		delete socket_;
+		socket_ = 0;
+		return;
+	}
+	receivedScan_ = false;
+	try
+	{
+		listenAddress_ = socket_->local_endpoint().address().to_string();
+	}
+	catch(const std::exception &)
+	{
+		listenAddress_ = "0.0.0.0";
+	}
+	readThread_ = new std::thread(&LidarVLP16::readPackets, this);
+}
+
+void LidarVLP16::stop()
+{
+	if(!networkMode_)
+	{
+		pcl::VLPGrabber::stop();
+		return;
+	}
+
+	terminate_ = true;
+	if(socket_ != 0)
+	{
+		// Closing the socket unblocks receive_from in the read thread. Because
+		// that call uses the non-throwing (error_code) overload, the EBADF that
+		// BSD/macOS returns here surfaces as an error code instead of an
+		// exception, so the thread exits cleanly rather than aborting.
+		boost::system::error_code ec;
+		socket_->close(ec);
+	}
+	if(readThread_ != 0)
+	{
+		readThread_->join();
+		delete readThread_;
+		readThread_ = 0;
+	}
+	delete socket_;
+	socket_ = 0;
+}
+
+bool LidarVLP16::isRunning() const
+{
+	if(!networkMode_)
+	{
+		return pcl::VLPGrabber::isRunning();
+	}
+	return readThread_ != 0;
+}
+
+void LidarVLP16::readPackets()
+{
+	std::uint8_t data[1500];
+	boost::asio::ip::udp::endpoint sender;
+	while(!terminate_)
+	{
+		boost::system::error_code ec;
+		std::size_t length = socket_->receive_from(boost::asio::buffer(data, sizeof(data)), sender, 0, ec);
+		if(ec)
+		{
+			// On stop() the socket is closed under us (bad_descriptor /
+			// operation_aborted); only warn if it wasn't an expected shutdown.
+			if(!terminate_)
+			{
+				UWARN("VLP16 socket receive error: %s", ec.message().c_str());
+			}
+			break;
+		}
+		// VLP-16 data packets are 1206 bytes; ignore anything shorter.
+		if(length >= 1206)
+		{
+			toPointClouds(reinterpret_cast<HDLDataPacket*>(data));
+		}
+	}
 }
 
 bool LidarVLP16::init(const std::string &, const std::string &)
@@ -365,7 +530,21 @@ SensorData LidarVLP16::captureData(SensorCaptureInfo * info)
 		{
 			data = lastScan_;
 			lastScan_ = SensorData();
+			receivedScan_ = true;
 		}
+	}
+	else if(networkMode_ && !receivedScan_)
+	{
+		// No packet has ever arrived: most likely the sensor isn't sending data
+		// to this computer. Tell the user exactly where we are listening.
+		UWARN("Did not receive any VLP16 data packets for the past 5 seconds. "
+			"This computer is listening on %s:%d (%s). Make sure the LiDAR is "
+			"powered on and configured to send its data to this computer's IP "
+			"address on UDP port %d (set the data destination host in the "
+			"LiDAR's own web/configuration interface).",
+			listenAddress_.c_str(), (int)port_,
+			listenAddress_ == "0.0.0.0" ? "all local interfaces" : "this interface only",
+			(int)port_);
 	}
 	else
 	{

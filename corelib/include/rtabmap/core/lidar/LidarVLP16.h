@@ -29,9 +29,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Should be first on windows to avoid "WinSock.h has already been included" error
 #include <pcl/io/vlp_grabber.h>
 #include <boost/version.hpp>
+#include <boost/asio.hpp>
 
 #include <rtabmap/core/Lidar.h>
 #include <rtabmap/utilite/USemaphore.h>
+
+#include <thread>
+#include <atomic>
 
 namespace rtabmap {
 
@@ -68,9 +72,24 @@ public:
 
 	void setOrganized(bool enable);
 
+	// In network mode we run our own UDP receive loop instead of
+	// pcl::HDLGrabber's: on macOS/BSD, closing the grabber's socket while its
+	// read thread is blocked in receive_from returns EBADF, a code that
+	// pcl::HDLGrabber::readPacketsFromSocket() rethrows uncaught (in its own
+	// thread), aborting the process on shutdown. Owning the socket lets us
+	// tear it down with the non-throwing receive_from overload. Like
+	// pcl::HDLGrabber, we bind to the given LOCAL interface address (to scope
+	// reception on a multi-homed host) and fall back to all interfaces
+	// (0.0.0.0) when it is unspecified or not a local address. In PCAP mode we
+	// delegate to the base grabber.
+	virtual void start() override;
+	virtual void stop() override;
+	virtual bool isRunning() const override;
+
 private:
 	void buildTimings(bool dualMode);
     virtual void toPointClouds (HDLDataPacket *dataPacket) override;
+    void readPackets();
 
 protected:
     virtual SensorData captureData(SensorCaptureInfo * info = 0) override;
@@ -88,6 +107,17 @@ private:
     std::vector<std::vector<PointXYZIT> > accumulatedScans_;
     USemaphore scanReady_;
     UMutex lastScanMutex_;
+
+    // Own UDP receive path (network mode only).
+    bool networkMode_;
+    boost::asio::ip::address ipAddress_;
+    std::uint16_t port_;
+    std::string listenAddress_; // local address we actually bound to
+    bool receivedScan_;         // set once the first scan is received
+    boost::asio::io_context ioContext_;
+    boost::asio::ip::udp::socket * socket_;
+    std::thread * readThread_;
+    std::atomic<bool> terminate_;
 };
 
 } /* namespace rtabmap */
