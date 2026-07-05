@@ -97,7 +97,7 @@ void sighandler(int sig)
 int main(int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo);
+	ULogger::setLevel(ULogger::kDebug);
 	//ULogger::setPrintTime(false);
 	//ULogger::setPrintWhere(false);
 
@@ -272,7 +272,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with ZED sdk support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraStereoZed(deviceId.empty()?0:uStr2Int(deviceId), -1, 1, 100, false, rate);
+		camera = new rtabmap::CameraStereoZed(deviceId.empty()?0:uStr2Int(deviceId), -1, 1, 0, 100, false, rate);
 	}
 	else if (driver == 9)
 	{
@@ -523,5 +523,6 @@ int main(int argc, char * argv[])
 		cameraViewer.exec();
 		cameraThread.join(true);
 	}
+	printf("Exiting cleanly.\n");
 	return 0;
 }

@@ -203,6 +203,47 @@ runs:
         cmake --build build -j$NPROC
         DESTDIR="$STAGE" cmake --install build
 
+    # ----------------------------- g2o ------------------------------
+    - name: Cache g2o
+      id: cache-g2o
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/g2o
+        key: g2o-67cbe15c-${{ inputs.os }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build g2o
+      if: steps.cache-g2o.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        SRC="${{ runner.temp }}/src-deps/g2o"
+        STAGE="${{ runner.temp }}/deps-stage/g2o"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        # g2o pins a commit (not a tag), so clone then checkout.
+        git clone https://github.com/RainerKuemmerle/g2o.git "$SRC/g2o"
+        cd "$SRC/g2o"
+        git checkout 67cbe15c998737ac6705d3cd18201a72be0d073d
+        # CMAKE_INSTALL_PREFIX=/usr/local so it stages under usr/local like the
+        # other deps. Homebrew's libomp is keg-only and g2o does not propagate
+        # OpenMP's include/lib dirs, so with Apple clang <omp.h> isn't found and
+        # libomp isn't linked; add its include (-I) and lib (-L -lomp) explicitly.
+        LIBOMP=$(brew --prefix libomp)
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DCMAKE_PREFIX_PATH="$LIBOMP" \
+          -DCMAKE_C_FLAGS="-I$LIBOMP/include" \
+          -DCMAKE_CXX_FLAGS="-I$LIBOMP/include" \
+          -DCMAKE_EXE_LINKER_FLAGS="-L$LIBOMP/lib -lomp" \
+          -DCMAKE_SHARED_LINKER_FLAGS="-L$LIBOMP/lib -lomp" \
+          -DG2O_BUILD_APPS=OFF \
+          -DG2O_BUILD_EXAMPLES=OFF \
+          -DG2O_USE_OPENMP=ON \
+          -DG2O_USE_OPENGL=OFF
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
     # ------------------- install all units into /usr/local ----------
     - name: Install source dependencies into /usr/local
       shell: bash
@@ -213,7 +254,7 @@ runs:
         set -e
         STAGE="${{ runner.temp }}/deps-stage"
         found=0
-        for unit in gtsam pointmatcher orbbec depthai opengv; do
+        for unit in gtsam pointmatcher orbbec depthai opengv g2o; do
           if [ -d "$STAGE/$unit/usr/local" ]; then
             sudo cp -a "$STAGE/$unit/usr/local/." /usr/local/
             found=1

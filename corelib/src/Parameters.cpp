@@ -1247,7 +1247,12 @@ void readINIImpl(const CSimpleIniA & ini, const std::string & configFilePath, Pa
 				{
 					if(RTABMAP_VERSION_COMPARE(<, std::atoi(version[0].c_str()), std::atoi(version[1].c_str()), std::atoi(version[2].c_str())))
 					{
-						if(configFilePath.find(".rtabmap") != std::string::npos)
+						// Detect the user's private config - matches both the legacy
+						// ~/.rtabmap/rtabmap.ini and the Windows %LOCALAPPDATA%/rtabmap/rtabmap.ini
+						// (".rtabmap/rtabmap.ini" also contains "rtabmap/rtabmap.ini"): downgrade-on-save is fine there.
+						// Accept both forward and backward slashes (native Windows paths).
+						if(configFilePath.find("rtabmap/rtabmap.ini") != std::string::npos ||
+						   configFilePath.find("rtabmap\\rtabmap.ini") != std::string::npos)
 						{
 							UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
 								   "current RTAB-Map version used (\"%s\"). The config file will be downgraded "

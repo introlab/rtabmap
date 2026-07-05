@@ -139,10 +139,13 @@ protected:
 			fileToClear.close();
 		}
 
+        // Open in binary mode: the log formatter already emits "\r\n" line endings explicitly.
+        // On Windows, text mode ("a") would translate the "\n" of that "\r\n" into "\r\n" again,
+        // producing "\r\r\n" on disk - i.e. an extra blank line between entries.
 #ifdef _MSC_VER
-        fopen_s(&fout_, fileName_.c_str(), "a");
+        fopen_s(&fout_, fileName_.c_str(), "ab");
 #else
-        fout_ = fopen(fileName_.c_str(), "a");
+        fout_ = fopen(fileName_.c_str(), "ab");
 #endif
 
         if(!fout_) {

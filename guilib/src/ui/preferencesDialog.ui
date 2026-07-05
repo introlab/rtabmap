@@ -5742,7 +5742,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                        <item>
                                         <property name="text">
+                                         <string>NEURAL LIGHT</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>NEURAL</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>NEURAL PLUS</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -5905,7 +5915,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                        <item>
                                         <property name="text">
+                                         <string>QHDPLUS</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>HD2K</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>HD1536</string>
                                         </property>
                                        </item>
                                        <item>
@@ -5931,6 +5951,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        <item>
                                         <property name="text">
                                          <string>VGA</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>XVGA</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>TXVGA</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -9387,9 +9417,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <layout class="QHBoxLayout" name="horizontalLayout_18">
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip1">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9400,15 +9427,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>255</number>
                                   </property>
                                   <property name="value">
-                                   <number>192</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip2">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9419,15 +9443,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>255</number>
                                   </property>
                                   <property name="value">
-                                   <number>168</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip3">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9438,15 +9459,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>250</number>
                                   </property>
                                   <property name="value">
-                                   <number>1</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip4">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9457,7 +9475,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>250</number>
                                   </property>
                                   <property name="value">
-                                   <number>201</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
@@ -9498,8 +9516,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item row="0" column="2">
                                <widget class="QLabel" name="label_743">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local network interface (IP address of &lt;span style=&quot; font-weight:600;&quot;&gt;this&lt;/span&gt; computer) on which to listen for VLP16 packets. Use 0.0.0.0 to listen on all interfaces (recommended). This is NOT the sensor's IP address; the sensor decides where to send its data (configure its destination host in the sensor's own web interface).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
                                 <property name="text">
-                                 <string>IP Address.</string>
+                                 <string>Local IP to listen on (0.0.0.0 = all interfaces). See tooltip.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -9554,8 +9575,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item row="1" column="2">
                                <widget class="QLabel" name="label_744">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local UDP port on this computer to listen for VLP16 data packets (default 2368). The LiDAR must be configured to send its data to this port.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
                                 <property name="text">
-                                 <string>Port.</string>
+                                 <string>Port to listen on (default 2368).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -9567,9 +9591,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item row="1" column="1">
                                <widget class="QSpinBox" name="spinBox_vlp16_port">
-                                <property name="toolTip">
-                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                </property>
                                 <property name="buttonSymbols">
                                  <enum>QAbstractSpinBox::NoButtons</enum>
                                 </property>

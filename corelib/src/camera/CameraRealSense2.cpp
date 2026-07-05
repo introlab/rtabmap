@@ -107,10 +107,14 @@ void CameraRealSense2::close()
 			{
 				if(!_sensor.get_active_streams().empty())
 				{
+					std::string sensorName = _sensor.supports(RS2_CAMERA_INFO_NAME) ? _sensor.get_info(RS2_CAMERA_INFO_NAME) : "?";
 					try
 					{
+						UDEBUG("stop() sensor \"%s\"...", sensorName.c_str());
 						_sensor.stop();
+						UDEBUG("stop() sensor \"%s\" done; close()...", sensorName.c_str());
 						_sensor.close();
+						UDEBUG("close() sensor \"%s\" done", sensorName.c_str());
 					}
 					catch(const rs2::error & error)
 					{
@@ -119,12 +123,15 @@ void CameraRealSense2::close()
 				}
 			}
 #ifdef WIN32
+			UDEBUG("Windows-only: Hardware reset (to avoid freezing when clearing devices)...");
 			dev_[i].hardware_reset(); // To avoid freezing on some Windows computers in the following destructor
 			// Don't do this on linux (tested on Ubuntu 18.04, realsense v2.41.0): T265 cannot be restarted
+			UDEBUG("Windows-only: Hardware reset... done");
 #endif
 		}
 		UDEBUG("Clearing devices...");
 		dev_.clear();
+		UDEBUG("Clearing devices... done!");
 	}
 	catch(const rs2::error & error)
 	{
@@ -554,10 +561,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		catch(const rs2::error & error)
 		{
 #ifdef __APPLE__
-			UWARN("%s. Is the camera already used with another app? On macOS, accessing a "
+			UERROR("%s. Is the camera already used with another app? On macOS, accessing a "
 			      "RealSense camera requires root privileges, so try running with sudo.", error.what());
 #else
-			UWARN("%s. Is the camera already used with another app?", error.what());
+			UERROR("%s. Is the camera already used with another app?", error.what());
 #endif
 		}
 

@@ -151,14 +151,30 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
         IF(NOT OrbbecSDK_BIN_DIR)
             MESSAGE(FATAL_ERROR "OrbbecSDK.dll not found! Verify your PATH.")
         ENDIF(NOT OrbbecSDK_BIN_DIR)
-		MESSAGE(FATAL "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
+        MESSAGE(STATUS "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
         INSTALL(DIRECTORY "${OrbbecSDK_BIN_DIR}/extensions" 
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime 
           FILES_MATCHING
           PATTERN "*.lib" EXCLUDE
           PATTERN "*")
-	ENDIF(WIN32)
+    ELSEIF(APPLE)
+        # OrbbecSDK loads its extensions (frame processor, filters like
+        # FrameUnpacker) via dlopen relative to libOrbbecSDK. fixup_bundle puts
+        # libOrbbecSDK in Contents/Frameworks, so the extensions must sit next to
+        # it in Frameworks/extensions (they reference @rpath/libOrbbecSDK, which
+        # resolves via the app executable's @executable_path/../Frameworks rpath).
+        # Without this the camera is detected but frame processing fails.
+        get_filename_component(OrbbecSDK_LIB_DIR "${OrbbecSDK_DIR}/../.." ABSOLUTE)
+        INSTALL(DIRECTORY "${OrbbecSDK_LIB_DIR}/extensions"
+          DESTINATION Frameworks
+          COMPONENT runtime)
+        IF(EXISTS "${OrbbecSDK_LIB_DIR}/OrbbecSDKConfig.xml")
+          INSTALL(FILES "${OrbbecSDK_LIB_DIR}/OrbbecSDKConfig.xml"
+            DESTINATION Frameworks
+            COMPONENT runtime)
+        ENDIF()
+    ENDIF(WIN32)
   ENDIF(OrbbecSDK_FOUND)
   
   IF(Torch_FOUND)
@@ -405,7 +421,17 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   install(CODE "
     # Glob Qt Plugins
     file(GLOB_RECURSE ALL_LIBS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
-    
+
+    # OrbbecSDK loads its filter/frame-processor extensions via dlopen, and they
+    # link @rpath/libOrbbecSDK. Feed them to fixup_bundle so their reference is
+    # rewritten to the embedded libOrbbecSDK
+    file(GLOB ORBBEC_EXT_LIBS
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Frameworks/extensions/filters/*${CMAKE_SHARED_LIBRARY_SUFFIX}\"
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Frameworks/extensions/frameprocessor/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+    if(ORBBEC_EXT_LIBS)
+        list(APPEND ALL_LIBS \${ORBBEC_EXT_LIBS})
+    endif()
+
     if(NOT \"${python_pyd_dir}\" STREQUAL \"\")
         file(GLOB_RECURSE PYD_FILES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${python_pyd_dir}/*.pyd\")
         if(PYD_FILES)
@@ -421,6 +447,16 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	
     set(BU_CHMOD_BUNDLE_ITEMS ON)
     include(\"BundleUtilities\")
+    # nvcuvid.dll (NVDEC) and nvEncodeAPI64.dll (NVENC), and the CUDA driver API
+    # nvcuda.dll, ship with the NVIDIA GPU driver (System32), not the CUDA toolkit,
+    # so they are absent on driver-less CI runners and must never be bundled (they
+    # are resolved at runtime from the end user's driver). Mark them 'system' so
+    # fixup_bundle skips them instead of failing to resolve them.
+    function(gp_resolved_file_type_override resolved_file type_var)
+      if(resolved_file MATCHES \"(nvcuvid|nvEncodeAPI64|nvcuda)\")
+        set(\${type_var} \"system\" PARENT_SCOPE)
+      endif()
+    endfunction()
     fixup_bundle(\"${APPS}\" \"\${ALL_LIBS}\" \"${DIRS}\")
   " COMPONENT runtime)
 
