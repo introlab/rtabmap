@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>980</width>
-    <height>925</height>
+    <height>1246</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-1365</y>
             <width>684</width>
-            <height>5218</height>
+            <height>5343</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>18</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -3469,7 +3469,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QStackedWidget" name="stackedWidget_src">
                          <property name="currentIndex">
-                          <number>3</number>
+                          <number>0</number>
                          </property>
                          <widget class="QWidget" name="page_41">
                           <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3590,7 +3590,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <item>
                                <widget class="QStackedWidget" name="stackedWidget_rgbd">
                                 <property name="currentIndex">
-                                 <number>9</number>
+                                 <number>7</number>
                                 </property>
                                 <widget class="QWidget" name="page_32">
                                  <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -5742,7 +5742,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                        <item>
                                         <property name="text">
+                                         <string>NEURAL LIGHT</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>NEURAL</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>NEURAL PLUS</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -5905,7 +5915,17 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        </item>
                                        <item>
                                         <property name="text">
+                                         <string>QHDPLUS</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
                                          <string>HD2K</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>HD1536</string>
                                         </property>
                                        </item>
                                        <item>
@@ -5931,6 +5951,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                        <item>
                                         <property name="text">
                                          <string>VGA</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>XVGA</string>
+                                        </property>
+                                       </item>
+                                       <item>
+                                        <property name="text">
+                                         <string>TXVGA</string>
                                         </property>
                                        </item>
                                       </widget>
@@ -7556,279 +7586,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           </property>
                           <item>
                            <layout class="QGridLayout" name="gridLayout_68" columnstretch="0,0,1">
-                            <item row="3" column="1">
-                             <widget class="QCheckBox" name="checkBox_cameraImages_syncTimeStamps">
-                              <property name="text">
-                               <string/>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="11" column="1">
-                             <widget class="QDoubleSpinBox" name="doubleSpinBox_maxPoseTimeDiff">
-                              <property name="suffix">
-                               <string> s</string>
-                              </property>
-                              <property name="decimals">
-                               <number>4</number>
-                              </property>
-                              <property name="maximum">
-                               <double>9.990000000000000</double>
-                              </property>
-                              <property name="singleStep">
-                               <double>0.010000000000000</double>
-                              </property>
-                              <property name="value">
-                               <double>0.020000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="1" column="1">
-                             <widget class="QCheckBox" name="checkBox_cameraImages_configForEachFrame">
-                              <property name="text">
-                               <string/>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="15" column="0">
-                             <widget class="QToolButton" name="toolButton_cameraImages_path_imu">
-                              <property name="text">
-                               <string>...</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="15" column="2">
-                             <widget class="QLabel" name="label_463">
-                              <property name="text">
-                               <string>Path to file containing optional IMU data (*.csv [EuRoC format]). Mouse over the box to show formats.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="7" column="1">
-                             <widget class="QComboBox" name="comboBox_cameraImages_odomFormat">
-                              <property name="toolTip">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;RGBD-SLAM + ID (stamp id tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                              </property>
-                              <property name="sizeAdjustPolicy">
-                               <enum>QComboBox::AdjustToContents</enum>
-                              </property>
-                              <item>
-                               <property name="text">
-                                <string>Raw</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>RGBD-SLAM (motion capture)</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>KITTI</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>TORO</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>g2o</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>NewCollege</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>Malaga Urban</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>St Lucia Stereo</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>Karlsruhe</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>EuRoC MAV</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>RGBD-SLAM</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>RGBD-SLAM + ID</string>
-                               </property>
-                              </item>
-                              <item>
-                               <property name="text">
-                                <string>rgbd_bonn</string>
-                               </property>
-                              </item>
-                             </widget>
-                            </item>
-                            <item row="17" column="2">
-                             <widget class="QLabel" name="label_465">
-                              <property name="text">
-                               <string>IMU Rate. To synchronize capture rate with IMU timestamps, set to 0. This can be set a little over the actual IMU rate to keep up with camera capture rate if images are dropped by odometry.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="2">
-                             <widget class="QLabel" name="label_256">
-                              <property name="text">
-                               <string>Synchronize capture rate with timestamps.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="13" column="2">
-                             <widget class="QLabel" name="label_294">
-                              <property name="text">
-                               <string>Local transform from /base_link to /laser_link. Mouse over the box to show formats.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="6" column="2">
-                             <widget class="QLabel" name="label_348">
-                              <property name="text">
-                               <string>Odometry file. Select the correct format below.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="15" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_path_imu">
-                              <property name="toolTip">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;cvs format (comma split): &amp;quot;stamp_sec,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z&amp;quot;&lt;/p&gt;&lt;p&gt;EuRoC format: &amp;quot;stamp_nanosec,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z&amp;quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                              </property>
-                              <property name="text">
-                               <string/>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="16" column="2">
-                             <widget class="QLabel" name="label_464">
-                              <property name="text">
-                               <string>Local transform from /base_link to /imu_link. Mouse over the box to show formats.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="12" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_path_scans">
-                              <property name="text">
-                               <string/>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="13" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_laser_transform">
-                              <property name="toolTip">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /scan = -0.27 0 0.08 0 0 0&lt;br/&gt;KITTI: /base_footprint to /scan = -0.27 0 1.75 0 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                              </property>
-                              <property name="text">
-                               <string>0 0 0 0 0 0</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="12" column="2">
-                             <widget class="QLabel" name="label_293">
-                              <property name="text">
-                               <string>Path to directory containing optional laser scans (*.pcd, *.ply, *.bin [KITTI format]). The directory should have the same size has the images directory. </string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="2" column="1">
-                             <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
-                              <property name="text">
-                               <string/>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="14" column="2">
-                             <widget class="QLabel" name="label_292">
-                              <property name="text">
-                               <string>Maximum laser scan points.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="14" column="1">
-                             <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
-                              <property name="toolTip">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                              </property>
-                              <property name="maximum">
-                               <number>99999999</number>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="17" column="1">
-                             <widget class="QSpinBox" name="spinBox_cameraImages_max_imu_rate">
-                              <property name="toolTip">
-                               <string>EuRoC: 200 Hz -&gt; 250 Hz</string>
-                              </property>
-                              <property name="maximum">
-                               <number>99999999</number>
-                              </property>
-                             </widget>
-                            </item>
                             <item row="0" column="1">
                              <widget class="QComboBox" name="comboBox_cameraImages_bayerMode">
                               <property name="sizeAdjustPolicy">
@@ -7861,47 +7618,41 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                              </widget>
                             </item>
-                            <item row="11" column="2">
-                             <widget class="QLabel" name="label_443">
+                            <item row="14" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_laser_transform">
+                              <property name="toolTip">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /scan = -0.27 0 0.08 0 0 0&lt;br/&gt;KITTI: /base_footprint to /scan = -0.27 0 1.75 0 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
                               <property name="text">
-                               <string>Max time difference between data and corresponding pose for format with stamps. If delay is over this threshold, the pose won't be set on data loaded. This is used when odometry and/or ground truth files are set.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               <string>0 0 0 0 0 0</string>
                               </property>
                              </widget>
                             </item>
-                            <item row="12" column="0">
-                             <widget class="QToolButton" name="toolButton_cameraImages_path_scans">
+                            <item row="15" column="1">
+                             <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
+                              <property name="toolTip">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="maximum">
+                               <number>99999999</number>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="9" column="0">
+                             <widget class="QToolButton" name="toolButton_cameraImages_gt">
                               <property name="text">
                                <string>...</string>
                               </property>
                              </widget>
                             </item>
-                            <item row="4" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_timestamps">
+                            <item row="9" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_gt">
                               <property name="text">
                                <string/>
                               </property>
                              </widget>
                             </item>
-                            <item row="2" column="2">
-                             <widget class="QLabel" name="label_255">
-                              <property name="text">
-                               <string>Use file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="16" column="1">
+                            <item row="18" column="1">
                              <widget class="QLineEdit" name="lineEdit_cameraImages_imu_transform">
                               <property name="toolTip">
                                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;EuRoC: /base_link to /imu = 0 0 1 0 -1 0 1 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -7911,10 +7662,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </property>
                              </widget>
                             </item>
-                            <item row="8" column="2">
-                             <widget class="QLabel" name="label_288">
+                            <item row="18" column="2">
+                             <widget class="QLabel" name="label_464">
                               <property name="text">
-                               <string>Ground truth file. Select the correct format below.</string>
+                               <string>Local transform from /base_link to /imu_link. Mouse over the box to show formats.</string>
                               </property>
                               <property name="wordWrap">
                                <bool>true</bool>
@@ -7924,28 +7675,53 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </property>
                              </widget>
                             </item>
-                            <item row="8" column="0">
-                             <widget class="QToolButton" name="toolButton_cameraImages_gt">
+                            <item row="19" column="2">
+                             <widget class="QLabel" name="label_465">
                               <property name="text">
-                               <string>...</string>
+                               <string>IMU Rate. To synchronize capture rate with IMU timestamps, set to 0. This can be set a little over the actual IMU rate to keep up with camera capture rate if images are dropped by odometry.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                               </property>
                              </widget>
                             </item>
-                            <item row="8" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_gt">
+                            <item row="1" column="2">
+                             <widget class="QLabel" name="label_605">
+                              <property name="text">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load config file for each frame. Config files are read from the calibration folder and should have the same name than the corresponding frame file. Currently supporting 3DScannerApp for iOS export config format (JSON, intrinsics, pose and stamp) and RTAB-Map calibration file format. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="7" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_odom">
                               <property name="text">
                                <string/>
                               </property>
                              </widget>
                             </item>
-                            <item row="4" column="0">
-                             <widget class="QToolButton" name="toolButton_cameraImages_timestamps">
+                            <item row="4" column="2">
+                             <widget class="QLabel" name="label_256">
                               <property name="text">
-                               <string>...</string>
+                               <string>Synchronize capture rate with timestamps.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                               </property>
                              </widget>
                             </item>
-                            <item row="9" column="1">
+                            <item row="10" column="1">
                              <widget class="QComboBox" name="comboBox_cameraImages_gtFormat">
                               <property name="toolTip">
                                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;RGBD-SLAM + ID (stamp id tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -8020,72 +7796,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                              </widget>
                             </item>
-                            <item row="1" column="2">
-                             <widget class="QLabel" name="label_605">
-                              <property name="text">
-                               <string>Load config file for each frame. For calibration, global calibration path above should be empty. Config files should be in the same directory than RGB frames and they should have the same name than the corresponding frame file. Currently supporting 3DScannerApp for iOS export config format (JSON, intrinsics, pose and stamp) and RTAB-Map calibration file format.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="6" column="0">
-                             <widget class="QToolButton" name="toolButton_cameraImages_odom">
-                              <property name="text">
-                               <string>...</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="7" column="2">
-                             <widget class="QLabel" name="label_349">
-                              <property name="text">
-                               <string>Odometry format. See tool tip for more details on formats. Note that formats without stamps should have the same number of values than the source images.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="6" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_odom">
-                              <property name="text">
-                               <string/>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="9" column="2">
-                             <widget class="QLabel" name="label_289">
-                              <property name="text">
-                               <string>Ground truth format. See tool tip for more details on formats. Note that formats without stamps should have the same number of values than the source images.</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="4" column="2">
-                             <widget class="QLabel" name="label_251">
-                              <property name="text">
-                               <string>Timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use file names as timestamps&quot; above is checked. </string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                              <property name="textInteractionFlags">
-                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                              </property>
-                             </widget>
-                            </item>
                             <item row="0" column="2">
                              <widget class="QLabel" name="label_265">
                               <property name="text">
@@ -8099,7 +7809,347 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </property>
                              </widget>
                             </item>
+                            <item row="3" column="2">
+                             <widget class="QLabel" name="label_255">
+                              <property name="text">
+                               <string>Use file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="13" column="0">
+                             <widget class="QToolButton" name="toolButton_cameraImages_path_scans">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="2">
+                             <widget class="QLabel" name="label_798">
+                              <property name="toolTip">
+                               <string>Naming &lt;prefix&gt;_&lt;index&gt;.yaml, or &lt;prefix&gt;_&lt;index&gt;_left.yaml and &lt;prefix&gt;_&lt;index&gt;_right.yaml for stereo, index starting at 0</string>
+                              </property>
+                              <property name="text">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Multi-camera mode: each image is a horizontal stack of N sub-camera images (for stereo, both left and right images are stacked the same way). One calibration file per sub-camera (see naming format on tooltip) must be in the calibration folder. A local_transform (rig extrinsics) is required in each file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="17" column="0">
+                             <widget class="QToolButton" name="toolButton_cameraImages_path_imu">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="7" column="2">
+                             <widget class="QLabel" name="label_348">
+                              <property name="text">
+                               <string>Odometry file. Select the correct format below.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="7" column="0">
+                             <widget class="QToolButton" name="toolButton_cameraImages_odom">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="19" column="1">
+                             <widget class="QSpinBox" name="spinBox_cameraImages_max_imu_rate">
+                              <property name="toolTip">
+                               <string>EuRoC: 200 Hz -&gt; 250 Hz</string>
+                              </property>
+                              <property name="maximum">
+                               <number>99999999</number>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="8" column="2">
+                             <widget class="QLabel" name="label_349">
+                              <property name="text">
+                               <string>Odometry format. See tool tip for more details on formats. Note that formats without stamps should have the same number of values than the source images.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="17" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_path_imu">
+                              <property name="toolTip">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;cvs format (comma split): &amp;quot;stamp_sec,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z&amp;quot;&lt;/p&gt;&lt;p&gt;EuRoC format: &amp;quot;stamp_nanosec,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z&amp;quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
                             <item row="10" column="2">
+                             <widget class="QLabel" name="label_289">
+                              <property name="text">
+                               <string>Ground truth format. See tool tip for more details on formats. Note that formats without stamps should have the same number of values than the source images.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="5" column="2">
+                             <widget class="QLabel" name="label_251">
+                              <property name="text">
+                               <string>Timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use file names as timestamps&quot; above is checked. </string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="1">
+                             <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="12" column="1">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_maxPoseTimeDiff">
+                              <property name="suffix">
+                               <string> s</string>
+                              </property>
+                              <property name="decimals">
+                               <number>4</number>
+                              </property>
+                              <property name="maximum">
+                               <double>9.990000000000000</double>
+                              </property>
+                              <property name="singleStep">
+                               <double>0.010000000000000</double>
+                              </property>
+                              <property name="value">
+                               <double>0.020000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="5" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_timestamps">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="13" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_path_scans">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="1">
+                             <widget class="QCheckBox" name="checkBox_cameraImages_multiCameraCalibration">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="13" column="2">
+                             <widget class="QLabel" name="label_293">
+                              <property name="text">
+                               <string>Path to directory containing optional laser scans (*.pcd, *.ply, *.bin [KITTI format]). The directory should have the same size has the images directory. </string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="1">
+                             <widget class="QCheckBox" name="checkBox_cameraImages_configForEachFrame">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="5" column="0">
+                             <widget class="QToolButton" name="toolButton_cameraImages_timestamps">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="9" column="2">
+                             <widget class="QLabel" name="label_288">
+                              <property name="text">
+                               <string>Ground truth file. Select the correct format below.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="17" column="2">
+                             <widget class="QLabel" name="label_463">
+                              <property name="text">
+                               <string>Path to file containing optional IMU data (*.csv [EuRoC format]). Mouse over the box to show formats.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="11" column="1">
+                             <widget class="QLineEdit" name="lineEdit_cameraImages_gt_transform">
+                              <property name="toolTip">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="text">
+                               <string>0 0 0 0 0 0</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="14" column="2">
+                             <widget class="QLabel" name="label_294">
+                              <property name="text">
+                               <string>Local transform from /base_link to /laser_link. Mouse over the box to show formats.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="8" column="1">
+                             <widget class="QComboBox" name="comboBox_cameraImages_odomFormat">
+                              <property name="toolTip">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;RGBD-SLAM + ID (stamp id tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;br/&gt;EuRoC MAV (stamp,tx,ty,tz,qw,qx,qy,qz...)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="sizeAdjustPolicy">
+                               <enum>QComboBox::AdjustToContents</enum>
+                              </property>
+                              <item>
+                               <property name="text">
+                                <string>Raw</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>RGBD-SLAM (motion capture)</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>KITTI</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>TORO</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>g2o</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>NewCollege</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>Malaga Urban</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>St Lucia Stereo</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>Karlsruhe</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>EuRoC MAV</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>RGBD-SLAM</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>RGBD-SLAM + ID</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>rgbd_bonn</string>
+                               </property>
+                              </item>
+                             </widget>
+                            </item>
+                            <item row="4" column="1">
+                             <widget class="QCheckBox" name="checkBox_cameraImages_syncTimeStamps">
+                              <property name="text">
+                               <string/>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="15" column="2">
+                             <widget class="QLabel" name="label_292">
+                              <property name="text">
+                               <string>Maximum laser scan points.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="11" column="2">
                              <widget class="QLabel" name="label_794">
                               <property name="text">
                                <string>Local transform from /base_link to /gt_link. Mouse over the box to show formats. By default, we assume the ground truth matches the base frame, if the ground truth refers to another frame, set this to convert the poses in base frame.</string>
@@ -8112,13 +8162,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </property>
                              </widget>
                             </item>
-                            <item row="10" column="1">
-                             <widget class="QLineEdit" name="lineEdit_cameraImages_gt_transform">
-                              <property name="toolTip">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                              </property>
+                            <item row="12" column="2">
+                             <widget class="QLabel" name="label_443">
                               <property name="text">
-                               <string>0 0 0 0 0 0</string>
+                               <string>Max time difference between data and corresponding pose for format with stamps. If delay is over this threshold, the pose won't be set on data loaded. This is used when odometry and/or ground truth files are set.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                               </property>
                              </widget>
                             </item>
@@ -9364,9 +9417,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <layout class="QHBoxLayout" name="horizontalLayout_18">
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip1">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9377,15 +9427,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>255</number>
                                   </property>
                                   <property name="value">
-                                   <number>192</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip2">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9396,15 +9443,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>255</number>
                                   </property>
                                   <property name="value">
-                                   <number>168</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip3">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9415,15 +9459,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>250</number>
                                   </property>
                                   <property name="value">
-                                   <number>1</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
                                 <item>
                                  <widget class="QSpinBox" name="spinBox_vlp16_ip4">
-                                  <property name="toolTip">
-                                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                  </property>
                                   <property name="buttonSymbols">
                                    <enum>QAbstractSpinBox::NoButtons</enum>
                                   </property>
@@ -9434,7 +9475,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <number>250</number>
                                   </property>
                                   <property name="value">
-                                   <number>201</number>
+                                   <number>0</number>
                                   </property>
                                  </widget>
                                 </item>
@@ -9475,8 +9516,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item row="0" column="2">
                                <widget class="QLabel" name="label_743">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local network interface (IP address of &lt;span style=&quot; font-weight:600;&quot;&gt;this&lt;/span&gt; computer) on which to listen for VLP16 packets. Use 0.0.0.0 to listen on all interfaces (recommended). This is NOT the sensor's IP address; the sensor decides where to send its data (configure its destination host in the sensor's own web interface).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
                                 <property name="text">
-                                 <string>IP Address.</string>
+                                 <string>Local IP to listen on (0.0.0.0 = all interfaces). See tooltip.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -9531,8 +9575,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item row="1" column="2">
                                <widget class="QLabel" name="label_744">
+                                <property name="toolTip">
+                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local UDP port on this computer to listen for VLP16 data packets (default 2368). The LiDAR must be configured to send its data to this port.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                                </property>
                                 <property name="text">
-                                 <string>Port.</string>
+                                 <string>Port to listen on (default 2368).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -9544,9 +9591,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </item>
                               <item row="1" column="1">
                                <widget class="QSpinBox" name="spinBox_vlp16_port">
-                                <property name="toolTip">
-                                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                </property>
                                 <property name="buttonSymbols">
                                  <enum>QAbstractSpinBox::NoButtons</enum>
                                 </property>
@@ -16763,7 +16807,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>10</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -20388,7 +20432,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                           <property name="title">
                            <string>OpenVINS</string>
                           </property>
-                          <layout class="QVBoxLayout" name="verticalLayout_161" stretch="0,0,0,0,0,0">
+                          <layout class="QVBoxLayout" name="verticalLayout_161">
                            <item>
                             <widget class="QLabel" name="label_632">
                              <property name="text">
@@ -20406,6 +20450,33 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                             </widget>
                            </item>
                            <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_19" stretch="0,0,1">
+                             <item>
+                              <widget class="QToolButton" name="toolButton_openvinsConfigPath">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QLineEdit" name="lineEdit_openvinsConfigPath"/>
+                             </item>
+                             <item>
+                              <widget class="QLabel" name="label_796">
+                               <property name="text">
+                                <string>Configuration file (*.yaml). Same format used than OpenVINS library. Note that any parameter from that config file will overwrite the same parameter below.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
                             <widget class="QGroupBox" name="groupBox_36">
                              <property name="title">
                               <string>Tracker</string>
@@ -20421,7 +20492,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_682">
                                 <property name="text">
-                                 <string>If we should process two cameras are being stereo or binocular. If binocular, we do monocular feature tracking on each image.</string>
+                                 <string>Stereo mode. If we should process two cameras are being stereo or binocular. If binocular, we do monocular feature tracking on each image. Ignored if provided input data is not stereo.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20441,7 +20512,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_683">
                                 <property name="text">
-                                 <string>If we should use KLT tracking, or descriptor matcher</string>
+                                 <string>KLT tracking. Uncheck to use descriptor matcher.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20467,7 +20538,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_684">
                                 <property name="text">
-                                 <string>Number of points (per camera) we will extract and try to track</string>
+                                 <string>Number of points (per camera) we will extract and try to track.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20490,7 +20561,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_688">
                                 <property name="text">
-                                 <string>Will check after doing KLT track and remove any features closer than this</string>
+                                 <string>Minimum pixel distance. Will check after doing KLT track and remove any features closer than this.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20510,7 +20581,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_689">
                                 <property name="text">
-                                 <string>If we should perform 1d triangulation instead of 3d</string>
+                                 <string>If we should perform 1d triangulation instead of 3d.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20530,7 +20601,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_732">
                                 <property name="text">
-                                 <string>If we should perform Levenberg-Marquardt refinement</string>
+                                 <string>If we should perform Levenberg-Marquardt refinement.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20553,7 +20624,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_733">
                                 <property name="text">
-                                 <string>Max runs for Levenberg-Marquardt</string>
+                                 <string>Max runs for Levenberg-Marquardt.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20579,7 +20650,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_734">
                                 <property name="text">
-                                 <string>Max baseline ratio to accept triangulated features</string>
+                                 <string>Max baseline ratio to accept triangulated features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20605,7 +20676,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="8" column="1">
                                <widget class="QLabel" name="label_735">
                                 <property name="text">
-                                 <string>Max condition number of linear triangulation matrix accept triangulated features</string>
+                                 <string>Max condition number of linear triangulation matrix accept triangulated features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20634,7 +20705,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_690">
                                 <property name="text">
-                                 <string>If first-estimate Jacobians should be used (enable for good consistency)</string>
+                                 <string>If first-estimate Jacobians should be used (enable for good consistency).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20672,7 +20743,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_691">
                                 <property name="text">
-                                 <string>Numerical integration methods</string>
+                                 <string>Numerical integration methods.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20692,7 +20763,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_685">
                                 <property name="text">
-                                 <string>If the transform between camera and IMU should be optimized (R_ItoC, p_CinI)</string>
+                                 <string>If the transform between camera and IMU should be optimized (R_ItoC, p_CinI).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20712,7 +20783,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_686">
                                 <property name="text">
-                                 <string>If camera intrinsics should be optimized (focal, center, distortion)</string>
+                                 <string>If camera intrinsics should be optimized (focal, center, distortion).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20732,7 +20803,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_687">
                                 <property name="text">
-                                 <string>If timeoffset between camera and IMU should be optimized</string>
+                                 <string>If timeoffset between camera and IMU should be optimized.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20752,7 +20823,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_718">
                                 <property name="text">
-                                 <string>If imu intrinsics should be calibrated (rotation and skew-scale matrix)</string>
+                                 <string>If imu intrinsics should be calibrated (rotation and skew-scale matrix).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20772,7 +20843,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_719">
                                 <property name="text">
-                                 <string>If gyroscope gravity sensitivity (Tg) should be calibrated</string>
+                                 <string>If gyroscope gravity sensitivity (Tg) should be calibrated.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20795,7 +20866,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_692">
                                 <property name="text">
-                                 <string>Max clone size of sliding window</string>
+                                 <string>Max clone size of sliding window.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20821,7 +20892,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="8" column="1">
                                <widget class="QLabel" name="label_693">
                                 <property name="text">
-                                 <string>Max number of estimated SLAM features</string>
+                                 <string>Max number of estimated SLAM features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20926,7 +20997,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="11" column="1">
                                <widget class="QLabel" name="label_696">
                                 <property name="text">
-                                 <string>What representation our features are in (msckf features)</string>
+                                 <string>What representation our features are in (msckf features).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -20942,7 +21013,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                  <number>4</number>
                                 </property>
                                 <property name="sizeAdjustPolicy">
-                                 <enum>QComboBox::AdjustToContents</enum>
+                                 <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
                                 </property>
                                 <item>
                                  <property name="text">
@@ -20979,7 +21050,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="12" column="1">
                                <widget class="QLabel" name="label_697">
                                 <property name="text">
-                                 <string>What representation our features are in (slam features)</string>
+                                 <string>What representation our features are in (slam features).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21008,7 +21079,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="13" column="1">
                                <widget class="QLabel" name="label_698">
                                 <property name="text">
-                                 <string>Delay before initializing (helps with stability from bad initialization...)</string>
+                                 <string>Delay before initializing (helps with stability from bad initialization...).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21034,7 +21105,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="14" column="1">
                                <widget class="QLabel" name="label_699">
                                 <property name="text">
-                                 <string>Magnitude of gravity in this location</string>
+                                 <string>Magnitude of gravity in this location.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21061,7 +21132,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="15" column="1">
                                <widget class="QLabel" name="label_736">
                                 <property name="text">
-                                 <string>Mask for left image</string>
+                                 <string>Mask for left image (stereo mode) or mono image (RGB-D mode). For RGB-D mode, to use depth as mask, enable that option under Visual Registration panel.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21088,7 +21159,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="16" column="1">
                                <widget class="QLabel" name="label_737">
                                 <property name="text">
-                                 <string>Mask for right image</string>
+                                 <string>Mask for right image.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21126,7 +21197,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_700">
                                 <property name="text">
-                                 <string>Amount of time we will initialize over</string>
+                                 <string>Amount of time we will initialize over.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21155,7 +21226,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_701">
                                 <property name="text">
-                                 <string>Variance threshold on our acceleration to be classified as moving</string>
+                                 <string>Variance threshold on our acceleration to be classified as moving.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21181,7 +21252,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_702">
                                 <property name="text">
-                                 <string>Max disparity to consider the platform stationary (dependent on resolution)</string>
+                                 <string>Max disparity to consider the platform stationary (dependent on resolution).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21207,7 +21278,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_703">
                                 <property name="text">
-                                 <string>How many features to track during initialization (saves on computation)</string>
+                                 <string>How many features to track during initialization (saves on computation).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21227,7 +21298,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_720">
                                 <property name="text">
-                                 <string>If we should perform dynamic initialization</string>
+                                 <string>If we should perform dynamic initialization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21247,7 +21318,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_721">
                                 <property name="text">
-                                 <string>If we should optimize and recover the calibration in our MLE</string>
+                                 <string>If we should optimize and recover the calibration in our MLE.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21270,7 +21341,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_722">
                                 <property name="text">
-                                 <string>Max number of MLE iterations for dynamic initialization</string>
+                                 <string>Max number of MLE iterations for dynamic initialization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21299,7 +21370,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_723">
                                 <property name="text">
-                                 <string>Max time for MLE optimization</string>
+                                 <string>Max time for MLE optimization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21322,7 +21393,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="8" column="1">
                                <widget class="QLabel" name="label_724">
                                 <property name="text">
-                                 <string>Max number of MLE threads for dynamic initialization</string>
+                                 <string>Max number of MLE threads for dynamic initialization.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21345,7 +21416,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="9" column="1">
                                <widget class="QLabel" name="label_725">
                                 <property name="text">
-                                 <string>Number of poses to use during initialization (max should be cam freq * window)</string>
+                                 <string>Number of poses to use during initialization (max should be cam freq * window).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21374,7 +21445,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="10" column="1">
                                <widget class="QLabel" name="label_726">
                                 <property name="text">
-                                 <string>Minimum degrees we need to rotate before we try to init (sum of norm)</string>
+                                 <string>Minimum degrees we need to rotate before we try to init (sum of norm).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21400,7 +21471,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="11" column="1">
                                <widget class="QLabel" name="label_727">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of orientation</string>
+                                 <string>Magnitude we will inflate initial covariance of orientation.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21426,7 +21497,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="12" column="1">
                                <widget class="QLabel" name="label_728">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of velocity</string>
+                                 <string>Magnitude we will inflate initial covariance of velocity.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21452,7 +21523,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="13" column="1">
                                <widget class="QLabel" name="label_729">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of gyroscope bias</string>
+                                 <string>Magnitude we will inflate initial covariance of gyroscope bias.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21478,7 +21549,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="14" column="1">
                                <widget class="QLabel" name="label_730">
                                 <property name="text">
-                                 <string>Magnitude we will inflate initial covariance of accelerometer bias</string>
+                                 <string>Magnitude we will inflate initial covariance of accelerometer bias.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21507,7 +21578,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="15" column="1">
                                <widget class="QLabel" name="label_731">
                                 <property name="text">
-                                 <string>Minimum reciprocal condition number acceptable for our covariance recovery</string>
+                                 <string>Minimum reciprocal condition number acceptable for our covariance recovery.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21536,7 +21607,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_704">
                                 <property name="text">
-                                 <string>If we should try to use zero velocity update</string>
+                                 <string>If we should try to use zero velocity update.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21565,7 +21636,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_705">
                                 <property name="text">
-                                 <string>Chi2 multiplier for zero velocity</string>
+                                 <string>Chi2 multiplier for zero velocity.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21594,7 +21665,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_706">
                                 <property name="text">
-                                 <string>Max velocity we will consider to try to do a zupt (i.e. if above this, don't do zupt)</string>
+                                 <string>Max velocity we will consider to try to do a zupt (i.e. if above this, don't do zupt).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21623,7 +21694,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_707">
                                 <property name="text">
-                                 <string>Multiplier of our zupt measurement IMU noise matrix (default should be 1.0)</string>
+                                 <string>Multiplier of our zupt measurement IMU noise matrix (default should be 1.0).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21652,7 +21723,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_708">
                                 <property name="text">
-                                 <string>Max disparity we will consider to try to do a zupt (i.e. if above this, don't do zupt)</string>
+                                 <string>Max disparity we will consider to try to do a zupt (i.e. if above this, don't do zupt).</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21672,7 +21743,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_709">
                                 <property name="text">
-                                 <string>If we should only use the zupt at the very beginning static initialization phase</string>
+                                 <string>If we should only use the zupt at the very beginning static initialization phase.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21713,7 +21784,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="0" column="1">
                                <widget class="QLabel" name="label_710">
                                 <property name="text">
-                                 <string>Accel &quot;white noise&quot;</string>
+                                 <string>Accel &quot;white noise&quot;.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21745,7 +21816,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="1" column="1">
                                <widget class="QLabel" name="label_711">
                                 <property name="text">
-                                 <string>Accel bias diffusion</string>
+                                 <string>Accel bias diffusion.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21777,7 +21848,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="2" column="1">
                                <widget class="QLabel" name="label_712">
                                 <property name="text">
-                                 <string>Gyro &quot;white noise&quot;</string>
+                                 <string>Gyro &quot;white noise&quot;.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21809,7 +21880,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="3" column="1">
                                <widget class="QLabel" name="label_713">
                                 <property name="text">
-                                 <string>Gyro bias diffusion</string>
+                                 <string>Gyro bias diffusion.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21838,7 +21909,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="4" column="1">
                                <widget class="QLabel" name="label_714">
                                 <property name="text">
-                                 <string>Pixel noise for MSCKF features</string>
+                                 <string>Pixel noise for MSCKF features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21867,7 +21938,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="5" column="1">
                                <widget class="QLabel" name="label_715">
                                 <property name="text">
-                                 <string>Chi2 multiplier for MSCKF features</string>
+                                 <string>Chi2 multiplier for MSCKF features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21896,7 +21967,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="6" column="1">
                                <widget class="QLabel" name="label_716">
                                 <property name="text">
-                                 <string>Pixel noise for SLAM features</string>
+                                 <string>Pixel noise for SLAM features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>
@@ -21925,7 +21996,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                               <item row="7" column="1">
                                <widget class="QLabel" name="label_717">
                                 <property name="text">
-                                 <string>Chi2 multiplier for SLAM features</string>
+                                 <string>Chi2 multiplier for SLAM features.</string>
                                 </property>
                                 <property name="wordWrap">
                                  <bool>true</bool>

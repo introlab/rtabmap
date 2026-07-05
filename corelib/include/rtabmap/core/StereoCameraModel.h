@@ -94,7 +94,9 @@ public:
 	// backward compatibility
 	void setImageSize(const cv::Size & size) {left_.setImageSize(size); right_.setImageSize(size);}
 
-	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
+	// Set initRectificationMaps=false to skip building the (potentially large) left/right
+	// rectification maps when rectification won't be used (saves time and memory).
+	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true, bool initRectificationMaps = true);
 	bool save(const std::string & directory, bool ignoreStereoTransform = true) const;
 	bool saveStereoTransform(const std::string & directory) const;
 	std::vector<unsigned char> serialize() const;

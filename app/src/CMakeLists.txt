@@ -33,8 +33,16 @@ ENDIF()
 # Add binary
 IF(APPLE AND BUILD_AS_BUNDLE)
   ADD_EXECUTABLE(rtabmap_app MACOSX_BUNDLE ${SRC_FILES})
+  # Custom Info.plist providing NSCameraUsageDescription, required by macOS to
+  # grant the app access to USB/UVC cameras (e.g. Orbbec, RealSense). A bundle
+  # identifier is also set: macOS ties the camera (TCC) permission to it, so it
+  # must be non-empty for the permission to be granted/persisted.
+  SET_TARGET_PROPERTIES(rtabmap_app PROPERTIES
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.introlab.rtabmap"
+    MACOSX_BUNDLE_BUNDLE_NAME "${CMAKE_BUNDLE_NAME}")
 ELSEIF(WIN32 AND BUILD_AS_BUNDLE)
-  ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
+  ADD_EXECUTABLE(rtabmap_app WIN32 ${SRC_FILES})
 ELSE()
   ADD_EXECUTABLE(rtabmap_app ${SRC_FILES})
 ENDIF()
@@ -103,12 +111,26 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   ENDIF(OpenNI2_FOUND)
   
   IF(k4a_FOUND)
-	# Install needed depthengine_2_0.dll
+	# Install needed depthengine_2_0.dll. Its location varies by K4A SDK version:
+	# v1.4.1 ships it under sdk/windows-desktop/amd64/release/bin, or fallback in tools/.
     IF(WIN32)
 		file(TO_CMAKE_PATH "$ENV{K4A_ROOT_DIR}" ENV_K4A_ROOT_DIR)
-		INSTALL(FILES "${ENV_K4A_ROOT_DIR}/tools/depthengine_2_0.dll" 
-          DESTINATION ${thirdparty_dest_dir} 
-          COMPONENT runtime)
+		set(DEPTHENGINE_DLL "")
+		foreach(_depthengine_dir
+			"${ENV_K4A_ROOT_DIR}/sdk/windows-desktop/amd64/release/bin"
+			"${ENV_K4A_ROOT_DIR}/tools")
+			if(EXISTS "${_depthengine_dir}/depthengine_2_0.dll")
+				set(DEPTHENGINE_DLL "${_depthengine_dir}/depthengine_2_0.dll")
+				break()
+			endif()
+		endforeach()
+		IF(DEPTHENGINE_DLL)
+			INSTALL(FILES "${DEPTHENGINE_DLL}"
+              DESTINATION ${thirdparty_dest_dir}
+              COMPONENT runtime)
+		ELSE()
+			MESSAGE(WARNING "depthengine_2_0.dll not found under $ENV{K4A_ROOT_DIR} (sdk/windows-desktop/amd64/release/bin or tools); Kinect for Azure depth may not work at runtime.")
+		ENDIF()
 	ENDIF(WIN32)
   ENDIF(k4a_FOUND)
   
@@ -129,14 +151,30 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
         IF(NOT OrbbecSDK_BIN_DIR)
             MESSAGE(FATAL_ERROR "OrbbecSDK.dll not found! Verify your PATH.")
         ENDIF(NOT OrbbecSDK_BIN_DIR)
-		MESSAGE(FATAL "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
+        MESSAGE(STATUS "OrbbecSDK_BIN_DIR=${OrbbecSDK_BIN_DIR}")
         INSTALL(DIRECTORY "${OrbbecSDK_BIN_DIR}/extensions" 
           DESTINATION ${thirdparty_dest_dir} 
           COMPONENT runtime 
           FILES_MATCHING
           PATTERN "*.lib" EXCLUDE
           PATTERN "*")
-	ENDIF(WIN32)
+    ELSEIF(APPLE)
+        # OrbbecSDK loads its extensions (frame processor, filters like
+        # FrameUnpacker) via dlopen relative to libOrbbecSDK. fixup_bundle puts
+        # libOrbbecSDK in Contents/Frameworks, so the extensions must sit next to
+        # it in Frameworks/extensions (they reference @rpath/libOrbbecSDK, which
+        # resolves via the app executable's @executable_path/../Frameworks rpath).
+        # Without this the camera is detected but frame processing fails.
+        get_filename_component(OrbbecSDK_LIB_DIR "${OrbbecSDK_DIR}/../.." ABSOLUTE)
+        INSTALL(DIRECTORY "${OrbbecSDK_LIB_DIR}/extensions"
+          DESTINATION Frameworks
+          COMPONENT runtime)
+        IF(EXISTS "${OrbbecSDK_LIB_DIR}/OrbbecSDKConfig.xml")
+          INSTALL(FILES "${OrbbecSDK_LIB_DIR}/OrbbecSDKConfig.xml"
+            DESTINATION Frameworks
+            COMPONENT runtime)
+        ENDIF()
+    ENDIF(WIN32)
   ENDIF(OrbbecSDK_FOUND)
   
   IF(Torch_FOUND)
@@ -241,7 +279,42 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	ENDIF(WIN32)
   ENDIF(Python3_FOUND)
   
-  IF(Qt6_FOUND)
+  IF(Qt6_FOUND AND APPLE)
+    # On macOS we do NOT use qt_deploy_runtime_dependencies (macdeployqt):
+    # macdeployqt cannot deploy VTK 9.6+, whose libraries reference each other
+    # via @rpath relative to "@loader_path/../lib". Instead we install the Qt plugins
+    # manually and let fixup_bundle() below deploy all libraries.
+    IF(TARGET Qt6::QCocoaIntegrationPlugin)
+      get_target_property(_qt_plugin_loc Qt6::QCocoaIntegrationPlugin LOCATION)
+      get_filename_component(_qt_plugins_dir "${_qt_plugin_loc}" DIRECTORY) # .../plugins/platforms
+      get_filename_component(_qt_plugins_dir "${_qt_plugins_dir}" DIRECTORY) # .../plugins
+      FOREACH(_qt_plugin_type platforms styles imageformats iconengines)
+        IF(EXISTS "${_qt_plugins_dir}/${_qt_plugin_type}")
+          # Homebrew Qt plugins are symlinks into the Cellar; resolve them to the
+          # real files so they aren't installed as dangling symlinks (which would
+          # break fixup_bundle and codesign).
+          FILE(GLOB _qt_plugin_files "${_qt_plugins_dir}/${_qt_plugin_type}/*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+          SET(_qt_plugin_real "")
+          FOREACH(_qt_plugin_file ${_qt_plugin_files})
+            GET_FILENAME_COMPONENT(_qt_plugin_file "${_qt_plugin_file}" REALPATH)
+            LIST(APPEND _qt_plugin_real "${_qt_plugin_file}")
+          ENDFOREACH()
+          IF(_qt_plugin_real)
+            INSTALL(FILES ${_qt_plugin_real}
+                    DESTINATION ${plugin_dest_dir}/${_qt_plugin_type}
+                    COMPONENT runtime)
+          ENDIF()
+        ENDIF()
+      ENDFOREACH()
+    ELSE()
+      MESSAGE(WARNING "Qt6::QCocoaIntegrationPlugin target not found: Qt plugins may be missing from the bundle")
+    ENDIF()
+    # qt.conf so Qt finds the bundled plugins (path is relative to Contents/)
+    SET(QT_CONF_FILE [Paths]\nPlugins=${plugin_dest_dir})
+    INSTALL(CODE "
+      file(WRITE \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${qtconf_dest_dir}/qt.conf\" \"${QT_CONF_FILE}\")
+      " COMPONENT runtime)
+  ELSEIF(Qt6_FOUND)
 	# Reference: https://doc-snapshots.qt.io/qt6-6.4/qt-deploy-runtime-dependencies.html
 	# The following script must only be executed at install time
 	set(deploy_script "${CMAKE_CURRENT_BINARY_DIR}/deploy_app$<CONFIG>.cmake")
@@ -331,7 +404,10 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   ENDIF()
 
   # directories to look for dependencies
-  SET(DIRS "${QT_LIBRARY_DIRS}" "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib")
+  # CMAKE_LIBRARY_OUTPUT_DIRECTORY is where rtabmap's own libraries (e.g.
+  # librtabmap_core) are built; fixup_bundle needs it to resolve the app's
+  # @rpath references to them (macdeployqt used to handle this via rpath).
+  SET(DIRS "${QT_LIBRARY_DIRS}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}" "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib")
   IF(APPLE)
     SET(DIRS ${DIRS} /usr/local /usr/local/lib /opt/homebrew /opt/homebrew/lib /opt/homebrew/lib/gcc/current)
   ENDIF(APPLE)
@@ -345,7 +421,17 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   install(CODE "
     # Glob Qt Plugins
     file(GLOB_RECURSE ALL_LIBS \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
-    
+
+    # OrbbecSDK loads its filter/frame-processor extensions via dlopen, and they
+    # link @rpath/libOrbbecSDK. Feed them to fixup_bundle so their reference is
+    # rewritten to the embedded libOrbbecSDK
+    file(GLOB ORBBEC_EXT_LIBS
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Frameworks/extensions/filters/*${CMAKE_SHARED_LIBRARY_SUFFIX}\"
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Frameworks/extensions/frameprocessor/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+    if(ORBBEC_EXT_LIBS)
+        list(APPEND ALL_LIBS \${ORBBEC_EXT_LIBS})
+    endif()
+
     if(NOT \"${python_pyd_dir}\" STREQUAL \"\")
         file(GLOB_RECURSE PYD_FILES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${python_pyd_dir}/*.pyd\")
         if(PYD_FILES)
@@ -361,8 +447,37 @@ IF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
 	
     set(BU_CHMOD_BUNDLE_ITEMS ON)
     include(\"BundleUtilities\")
+    # nvcuvid.dll (NVDEC) and nvEncodeAPI64.dll (NVENC), and the CUDA driver API
+    # nvcuda.dll, ship with the NVIDIA GPU driver (System32), not the CUDA toolkit,
+    # so they are absent on driver-less CI runners and must never be bundled (they
+    # are resolved at runtime from the end user's driver). Mark them 'system' so
+    # fixup_bundle skips them instead of failing to resolve them.
+    function(gp_resolved_file_type_override resolved_file type_var)
+      if(resolved_file MATCHES \"(nvcuvid|nvEncodeAPI64|nvcuda)\")
+        set(\${type_var} \"system\" PARENT_SCOPE)
+      endif()
+    endfunction()
     fixup_bundle(\"${APPS}\" \"\${ALL_LIBS}\" \"${DIRS}\")
   " COMPONENT runtime)
-  
+
+  IF(APPLE)
+    # Re-sign ad-hoc AFTER fixup_bundle has finished all its install_name_tool
+    # edits.
+    install(CODE "
+      set(_contents \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
+      get_filename_component(_app \"\${_contents}\" DIRECTORY)
+      file(GLOB_RECURSE _nested \"\${_contents}/*${CMAKE_SHARED_LIBRARY_SUFFIX}\")
+      foreach(_f \${_nested})
+        execute_process(COMMAND codesign --force --sign - --timestamp=none \"\${_f}\")
+      endforeach()
+      file(GLOB _frameworks \"\${_contents}/Frameworks/*.framework\")
+      foreach(_f \${_frameworks})
+        execute_process(COMMAND codesign --force --sign - --timestamp=none \"\${_f}\")
+      endforeach()
+      message(STATUS \"Ad-hoc re-signing bundle: \${_app}\")
+      execute_process(COMMAND codesign --force --sign - --timestamp=none \"\${_app}\")
+    " COMPONENT runtime)
+  ENDIF(APPLE)
+
 ENDIF(BUILD_AS_BUNDLE AND (APPLE OR WIN32))
   

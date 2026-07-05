@@ -22,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 23)
-SET(RTABMAP_PATCH_VERSION 7)
+SET(RTABMAP_PATCH_VERSION 8)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -208,7 +208,7 @@ option(WITH_REALSENSE     "Include RealSense support"            ON)
 option(WITH_REALSENSE_SLAM "Include RealSenseSlam support"       ON)
 option(WITH_REALSENSE2    "Include RealSense2 support"           ON)
 option(WITH_MYNTEYE       "Include mynteye-s support"            ON)
-option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
+option(WITH_DEPTHAI       "Include depthai-core v2 support"      OFF)
 option(WITH_XVSDK         "Include XVisio SDK support"           OFF)
 option(WITH_ORBBEC_SDK    "Include Orbbec SDK v2 support"        OFF)
 option(WITH_OCTOMAP       "Include OctoMap support"              ON)
@@ -711,7 +711,9 @@ IF(WITH_MYNTEYE)
 ENDIF(WITH_MYNTEYE)
 
 IF(WITH_DEPTHAI)
-    FIND_PACKAGE(depthai 2.24)
+    # Force DepthAI major version 2 (>=2.24, <3.0): the v3 API is not yet
+    # supported (see CameraDepthAI).
+    FIND_PACKAGE(depthai 2.24...<3.0)
     IF(depthai_FOUND)
        MESSAGE(STATUS "Found depthai-core (targets)")
     ENDIF(depthai_FOUND)
@@ -842,22 +844,7 @@ IF(WITH_VINS_FUSION)
 ENDIF(WITH_VINS_FUSION)
 
 IF(WITH_OPENVINS)
-    FIND_PACKAGE(ov_msckf)
-    # On ROS2, the indirect includes and libraries
-    # are not forwarded by ov_msckf target, append them manually
-    FIND_PACKAGE(ov_core)
-    FIND_PACKAGE(ov_init)
-    IF(ov_msckf_FOUND AND ov_core_FOUND AND ov_init_FOUND)
-      SET(ov_msckf_INCLUDE_DIRS
-         ${ov_msckf_INCLUDE_DIRS}
-         ${ov_core_INCLUDE_DIRS}
-         ${ov_init_INCLUDE_DIRS})
-      SET(ov_msckf_LIBRARIES
-         ${ov_msckf_LIBRARIES}
-         ${ov_core_LIBRARIES}
-         ${ov_init_LIBRARIES})
-      MESSAGE(STATUS "Found OpenVINS: ${ov_msckf_INCLUDE_DIRS}")
-    ENDIF()
+   FIND_PACKAGE(OpenVINS)
 ENDIF(WITH_OPENVINS)
 
 IF(WITH_FASTCV)
@@ -916,6 +903,9 @@ IF(WITH_OPENGV OR okvis_FOUND)
          set(BUILD_TESTS OFF)
          set(CMAKE_BUILD_TYPE Release)
          set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+         # OpenGV's CMakeLists.txt declares cmake_minimum_required(VERSION 2.x),
+         # which CMake >= 4.0 (e.g. recent Ubuntu) rejects. Allow it to configure.
+         set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
          # Eigen should have been already added by PCL, just populate the compatible variables
          IF(EIGEN_INCLUDE_DIRS)
             set(EIGEN_INCLUDE_DIRS "${EIGEN_INCLUDE_DIRS}" CACHE PATH "Eigen include dirs" FORCE)
@@ -1223,7 +1213,7 @@ ENDIF()
 IF(NOT vins_FOUND)
    SET(VINSFUSION "//")
 ENDIF()
-IF(NOT ov_msckf_FOUND)
+IF(NOT OpenVINS_FOUND)
    SET(OPENVINS "//")
 ENDIF()
 IF(NOT CUVSLAM_FOUND)
@@ -1889,7 +1879,7 @@ MESSAGE(STATUS "  With DepthAI ${depthai_VERSION}       = YES (License: MIT)")
 ELSEIF(NOT WITH_DEPTHAI)
 MESSAGE(STATUS "  With DepthAI              = NO (WITH_DEPTHAI=OFF)")
 ELSE()
-MESSAGE(STATUS "  With DepthAI              = NO (depthai-core not found)")
+MESSAGE(STATUS "  With DepthAI              = NO (depthai-core v2 not found)")
 ENDIF()
 
 IF(xvsdk_FOUND)
@@ -1981,7 +1971,7 @@ ELSE()
 MESSAGE(STATUS "  With VINS-Fusion          = NO (VINS-Fusion not found)")
 ENDIF()
 
-IF(ov_msckf_FOUND)
+IF(OpenVINS_FOUND)
 MESSAGE(STATUS "  With OpenVINS             = YES (License: GPLv3)")
 ELSEIF(NOT WITH_OPENVINS)
 MESSAGE(STATUS "  With OpenVINS             = NO (WITH_OPENVINS=OFF)")

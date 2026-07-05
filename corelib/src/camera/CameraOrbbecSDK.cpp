@@ -220,6 +220,12 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
 #ifdef RTABMAP_ORBBEC_SDK
     this->close();
 
+    // The Orbbec SDK reports failures by throwing ob::Error (e.g. uvc_open
+    // access denied on macOS without camera permission, or unsupported config).
+    // Catch them here so init() logs the error and returns false instead of
+    // letting the exception propagate and abort the whole process.
+    try {
+
     std::shared_ptr<ob::Device> device;
 
     ob::Context context;
@@ -276,16 +282,20 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
     }
 
     if(device.get() == nullptr) {
+#ifdef __APPLE__
+        const std::string connectHint = "camera is correctly connected. On macOS the Orbbec "
+            "camera can only be accessed with root privileges, so run the application with sudo.";
+#else
+        const std::string connectHint = "camera is correctly connected and the udev rules are installed.";
+#endif
         if(deviceId_.empty()) {
-            UERROR( "Could not find any orbbec compatible devices! Verify that the "
-                    "camera is correctly connected and the udev rules are installed.");
+            UERROR("Could not find any orbbec compatible devices! Verify that the %s", connectHint.c_str());
         }
         else {
-            UERROR("Could not find an orbbec device with ID \"%s\"! Verify that the "
-                   "camera is correctly connected and the udev rules are installed. "
-                   "Unset the ID to choose the first camera found.");
+            UERROR("Could not find an orbbec device with ID \"%s\"! Verify that the %s "
+                   "Unset the ID to choose the first camera found.", deviceId_.c_str(), connectHint.c_str());
         }
-        
+
         return false;
     }
 
@@ -546,6 +556,22 @@ bool CameraOrbbecSDK::init(const std::string & calibrationFolder, const std::str
         return false;
     }
     
+    }
+    catch(const ob::Error & e)
+    {
+#ifdef __APPLE__
+        UERROR("Failed to initialize Orbbec camera: %s. On macOS the Orbbec SDK accesses "
+               "the camera through libusb, which must take the USB interface from the system "
+               "UVC driver; this requires root privileges. If this is a USB access error "
+               "(e.g. \"uvc_open failed ... Return Code: -3\"), run the application with sudo.",
+               e.what());
+#else
+        UERROR("Failed to initialize Orbbec camera: %s", e.what());
+#endif
+        this->close();
+        return false;
+    }
+
     return true;
 #else
     UERROR("CameraOrbbecSDK: RTAB-Map is not built with Orbbec SDK support!");
@@ -598,13 +624,19 @@ SensorData CameraOrbbecSDK::captureImage(SensorCaptureInfo * info)
         UERROR("Camera is not initialized!");
         return data;
     }
+
+    // The streaming calls below can throw ob::Error (transient frame/USB
+    // errors, filter or profile failures). Catch them so a bad frame is logged
+    // and skipped (empty SensorData) instead of aborting the whole process.
+    try {
+
     auto frameset = pipeline_->waitForFrameset();
     if(frameset == nullptr || frameset->getCount() == 0) {
         UWARN("No frame received!");
         return data;
     }
     if(frameset->getCount() != 2) {
-        UWARN("Received %s frames, expecting 2!", frameset->getCount());
+        UWARN("Received %u frames, expecting 2!", frameset->getCount());
         return data;
     }
 
@@ -731,6 +763,13 @@ SensorData CameraOrbbecSDK::captureImage(SensorCaptureInfo * info)
                 data.setIMU(IMU(cv::Vec3d(imuVec[0], imuVec[1], imuVec[2]), cv::Mat::eye(3, 3, CV_64FC1), cv::Vec3d(imuVec[3], imuVec[4], imuVec[5]), cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform_));
             }
         }
+    }
+
+    }
+    catch(const ob::Error & e)
+    {
+        UERROR("Error capturing Orbbec camera frame: %s", e.what());
+        return data;
     }
 
 #else

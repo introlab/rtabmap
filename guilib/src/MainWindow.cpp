@@ -78,6 +78,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QFileInfo>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QProgressDialog>
+#include <QLabel>
 #include <QGraphicsEllipseItem>
 #include <QDockWidget>
 #include <QtCore/QBuffer>
@@ -958,7 +960,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		else
 		{
 			Q_EMIT cameraInfoReceived(sensorEvent->info());
-			if (_odomThread == 0 && (_sensorCapture->odomProvided()) && _preferencesDialog->isRGBDMode())
+			if (_odomThread == 0 && _sensorCapture && _sensorCapture->odomProvided() && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
 				odomInfo.reg.covariance = sensorEvent->info().odomCovariance;
@@ -5528,6 +5530,10 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveSettings();
 	this->saveFigures();
 	this->setWindowModified(false);
+
+	// If running under sudo, the above writes recreate rtabmap.ini as root;
+	// restore ownership so non-root runs can still save preferences.
+	PreferencesDialog::restoreConfigOwnership(_preferencesDialog->getIniFilePath());
 }
 
 void MainWindow::newDatabase()
@@ -5932,6 +5938,31 @@ void MainWindow::startDetection()
 	Camera * camera = 0;
 	Lidar * lidar = 0;
 
+	// Creating the sensors below opens the devices (createLidar/createCamera/createOdomSensor ->
+	// init(), a few seconds for ZED/RealSense) on the GUI thread; show a busy dialog (min==max==0
+	// => indeterminate) so the window isn't just frozen. Hidden once all sensors are created below.
+	QString startLabel = tr("Starting sensor...");
+	QString initWarn = _preferencesDialog->getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	progress.show();
+	QApplication::processEvents();
+	QApplication::processEvents(); // make sure it is drawn
+
 	if(_preferencesDialog->getLidarSourceDriver() != PreferencesDialog::kSrcUndef)
 	{
 		lidar = _preferencesDialog->createLidar();
@@ -5988,6 +6019,8 @@ void MainWindow::startDetection()
 			odomSensor = camera;
 		}
 	}
+
+	progress.hide(); // all sensors created/opened
 
 	_sensorCapture = new SensorCaptureThread(lidar, camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, waitTime, parameters);
 
@@ -6229,6 +6262,24 @@ void MainWindow::stopDetection()
 	}
 
 	ULOGGER_DEBUG("");
+
+	// Closing the camera runs on the GUI thread in "delete _sensorCapture" below (via
+	// ~SensorCaptureThread -> ~Camera::close()) and can block for a while - e.g. the first 2-3
+	// RealSense closes per launch stall ~20s in the Motion Module stop() (librealsense warm-up).
+	// Show a busy dialog (min==max==0 => indeterminate) so the window isn't just frozen. It is
+	// declared here so it stays visible across the joins/deletes and closes on scope exit.
+	QProgressDialog progress(tr("Stopping sensor..."), QString(), 0, 0, this);
+	if(_sensorCapture)
+	{
+		progress.setWindowModality(Qt::ApplicationModal);
+		progress.setCancelButton(0);
+		progress.setMinimumDuration(0);
+		progress.setValue(0);
+		progress.show();
+		QApplication::processEvents();
+		QApplication::processEvents(); // make sure it is drawn
+	}
+
 	// kill the processes
 	if(_imuThread)
 	{

@@ -126,8 +126,10 @@ public:
 	double verticalFOV() const;   // in degrees
 	bool isFisheye() const {return D_.cols == 6;}
 
-	bool load(const std::string & filePath);
-	bool load(const std::string & directory, const std::string & cameraName);
+	// Set initRectificationMaps=false to skip building the (potentially large)
+	// rectification maps when rectification won't be used (saves time and memory).
+	bool load(const std::string & filePath, bool initRectificationMaps = true);
+	bool load(const std::string & directory, const std::string & cameraName, bool initRectificationMaps = true);
 	bool save(const std::string & directory) const;
 	std::vector<unsigned char> serialize() const;
 	unsigned int deserialize(const std::vector<unsigned char>& data);

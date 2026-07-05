@@ -27,11 +27,11 @@ jobs:
         - build_name: windows-2022
           os: windows-2022
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=OFF'
+          extra_cmake_def: '-DWITH_TORCH=OFF -DWITH_ZED=OFF'
         - build_name: windows-2022-cuda
           os: windows-2022
           extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON -DWITH_PYTHON=ON -DWITH_TORCH=ON'
+          extra_cmake_def: '-DWITH_TORCH=ON -DWITH_ZED=ON -DWITH_CUDASIFT=ON'
 
     steps:
     - uses: actions/checkout@v4
@@ -46,9 +46,24 @@ jobs:
 
     - name: Configure CMake
       run: |
+        # K4A, K4W2 and ZED are located via these env vars (FindK4A.cmake / FindKinectSDK2.cmake
+        # and the install rules), pointing at the export where the bundle staged their SDK files.
+        $env:K4A_ROOT_DIR = "${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
+        $env:KINECTSDK20_DIR = "${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
+        $env:ZED_SDK_ROOT_DIR = "${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release"
         cmake `
           -B ${{github.workspace}}/build `
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} `
+          -DBUILD_AS_BUNDLE=ON `
+          -DWITH_PYTHON=ON `
+          -DWITH_CERES=ON `
+          -DWITH_ORBBEC_SDK=ON `
+          -DWITH_FREENECT2=ON `
+          -DWITH_K4W2=ON `
+          -DWITH_K4A=ON `
+          -DWITH_DEPTHAI=ON `
+          -DWITH_REALSENSE2=ON `
+          -DWITH_CCCORELIB=ON `
           ${{ matrix.extra_cmake_def }} `
           -DVCPKG_MANIFEST_INSTALL=OFF `
           -DVCPKG_TARGET_TRIPLET=x64-windows-release `
@@ -58,6 +73,14 @@ jobs:
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Info
+      # Skipped for CUDA: the binary links ZED (sl_zed64.dll -> nvcuvid/nvEncodeAPI64),
+      # which need the NVIDIA driver; the GPU-less runner can't load the exe.
+      if: matrix.build_name != 'windows-2022-cuda'
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        ./rtabmap-console --version
 
     - name: Build Windows Package
       shell: pwsh
@@ -72,11 +95,6 @@ jobs:
       if: matrix.build_name == 'windows-2022-cuda'
       shell: pwsh
       run: Get-ChildItem -Path "build" -Filter "RTABMap-*" | Rename-Item -NewName { $_.BaseName + "_cuda" + $_.Extension }
-
-    - name: Info
-      working-directory: ${{github.workspace}}/build/bin
-      run: |
-        ./rtabmap-console --version
 
     - name: Upload RTABMap Artifacts (ZIP)
       uses: actions/upload-artifact@v4

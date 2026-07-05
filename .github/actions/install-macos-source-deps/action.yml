@@ -1,0 +1,266 @@
+name: 'Install macOS Source Dependencies'
+description: 'Builds (and per-dependency caches) the source-only deps not available from Homebrew (GTSAM, libnabo+libpointmatcher, OrbbecSDK, depthai) and installs them into /usr/local.'
+inputs:
+  os:
+    description: 'Runner os label (e.g. matrix.os), used to namespace the per-dependency caches. Required because intel/arm produce different binaries with identical Homebrew version strings.'
+    required: true
+  build_type:
+    description: 'CMake build type.'
+    required: false
+    default: 'Release'
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve dependency versions
+      id: depver
+      shell: bash
+      # The source deps link against these Homebrew libraries and are compiled
+      # with Xcode's toolchain, so both are folded into the cache keys: a
+      # Homebrew bump (e.g. a new Eigen) or an Xcode update forces a rebuild.
+      run: |
+        BREW=$(brew list --versions eigen boost yaml-cpp | sort)
+        XCODE=$(xcodebuild -version 2>/dev/null || clang --version | head -1)
+        HASH=$(printf '%s\n%s\n' "$BREW" "$XCODE" | shasum | cut -d' ' -f1)
+        echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+    # ----------------------------- GTSAM -----------------------------
+    - name: Cache GTSAM
+      id: cache-gtsam
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/gtsam
+        key: gtsam-4.2.1-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/gtsam-4.2.1-eigen5.patch') }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build GTSAM
+      if: steps.cache-gtsam.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        PATCHES="${{ github.action_path }}/patches"
+        SRC="${{ runner.temp }}/src-deps/gtsam"
+        STAGE="${{ runner.temp }}/deps-stage/gtsam"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        git clone --depth 1 --branch 4.2.1 https://github.com/borglab/gtsam.git "$SRC/gtsam"
+        cd "$SRC/gtsam"
+        git apply "$PATCHES/gtsam-4.2.1-eigen5.patch"
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
+          -DGTSAM_WITH_TBB=OFF \
+          -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+          -DGTSAM_BUILD_TESTS=OFF \
+          -DGTSAM_BUILD_UNSTABLE=OFF \
+          -DGTSAM_USE_SYSTEM_EIGEN=ON \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
+    # ----------------- libnabo + libpointmatcher --------------------
+    # Built together: libpointmatcher depends on libnabo, so keeping them in one
+    # unit keeps the build order internal (lpm finds libnabo in the unit's stage).
+    - name: Cache pointmatcher
+      id: cache-pointmatcher
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/pointmatcher
+        key: pointmatcher-nabo1.1.2-lpm1.4.4-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/libnabo-1.1.2.patch', '.github/actions/install-macos-source-deps/patches/libpointmatcher-1.4.4-boost.patch') }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build pointmatcher
+      if: steps.cache-pointmatcher.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        PATCHES="${{ github.action_path }}/patches"
+        SRC="${{ runner.temp }}/src-deps/pointmatcher"
+        STAGE="${{ runner.temp }}/deps-stage/pointmatcher"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        # libnabo (required by libpointmatcher)
+        git clone --depth 1 --branch 1.1.2 https://github.com/ethz-asl/libnabo.git "$SRC/libnabo"
+        cd "$SRC/libnabo"
+        git apply "$PATCHES/libnabo-1.1.2.patch"
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ inputs.build_type }}
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+        # libpointmatcher (finds libnabo from the unit's staged prefix)
+        git clone --depth 1 --branch 1.4.4 https://github.com/ethz-asl/libpointmatcher.git "$SRC/libpointmatcher"
+        cd "$SRC/libpointmatcher"
+        git apply "$PATCHES/libpointmatcher-1.4.4-boost.patch"
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} -DCMAKE_PREFIX_PATH="$STAGE/usr/local" -DBUILD_EVALUATIONS=OFF -DBUILD_EXAMPLES=OFF
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
+    # ----------------------------- OrbbecSDK ------------------------
+    - name: Cache OrbbecSDK
+      id: cache-orbbec
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/orbbec
+        key: orbbec-2.8.7-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/orbbecsdk-2.8.7-cmake-config-install.patch') }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build OrbbecSDK
+      if: steps.cache-orbbec.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        PATCHES="${{ github.action_path }}/patches"
+        SRC="${{ runner.temp }}/src-deps/orbbec"
+        STAGE="${{ runner.temp }}/deps-stage/orbbec"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        git clone --depth 1 --branch v2.8.7 https://github.com/orbbec/OrbbecSDK_v2.git "$SRC/OrbbecSDK_v2"
+        cd "$SRC/OrbbecSDK_v2"
+        git apply "$PATCHES/orbbecsdk-2.8.7-cmake-config-install.patch"
+        # OrbbecSDK defaults its install prefix to /opt/OrbbecSDK; force /usr/local
+        # so it stages under usr/local like the other deps and is installed/found.
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} -DCMAKE_INSTALL_PREFIX=/usr/local -DOB_BUILD_DOCS=OFF -DOB_BUILD_EXAMPLES=OFF -DOB_BUILD_TOOLS=OFF -DOB_INSTALL_EXAMPLES_SOURCE=OFF
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
+    # ----------------------------- depthai --------------------------
+    - name: Cache depthai
+      id: cache-depthai
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/depthai
+        key: depthai-2.32.0-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/depthai-2.32.0-hunter-macos.patch') }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build depthai
+      if: steps.cache-depthai.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        PATCHES="${{ github.action_path }}/patches"
+        SRC="${{ runner.temp }}/src-deps/depthai"
+        STAGE="${{ runner.temp }}/deps-stage/depthai"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        # depthai 2.32.0 (Hunter-based; v2 does NOT use vcpkg/CMake presets)
+        git clone --depth 1 --branch v2.32.0 https://github.com/luxonis/depthai-core.git "$SRC/depthai-core"
+        cd "$SRC/depthai-core"
+        git submodule update --init --recursive
+        # Route zlib to Homebrew: Hunter's pinned zlib fork has a classic
+        # TARGET_OS_MAC fdopen block that won't compile against the modern macOS SDK.
+        git apply "$PATCHES/depthai-2.32.0-hunter-macos.patch"
+        # v2 and its old Hunter deps declare cmake_minimum_required < 3.5, which the
+        # runner's CMake 4.x rejects, and CMAKE_POLICY_VERSION_MINIMUM does not
+        # propagate into Hunter's sub-builds. Use a pinned CMake 3.x just for depthai
+        # (Hunter reuses the same cmake binary for its dependency sub-builds).
+        python3 -m venv "$SRC/cmake3-venv"
+        "$SRC/cmake3-venv/bin/pip" install -q "cmake==3.31.6"
+        CMAKE3="$SRC/cmake3-venv/bin/cmake"
+        # DEPTHAI_ENABLE_CURL=OFF: Hunter's CURL drags in the broken zlib and also
+        # fails to configure on this toolchain; rtabmap doesn't need depthai's CURL.
+        # depthai-core defaults its install prefix to <build>/install; force
+        # /usr/local so it stages under usr/local like the other deps.
+        "$CMAKE3" -B build \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DBUILD_SHARED_LIBS=ON \
+          -DDEPTHAI_ENABLE_CURL=OFF \
+          -DDEPTHAI_BUILD_TESTS=OFF \
+          -DDEPTHAI_BUILD_EXAMPLES=OFF \
+          -DCMAKE_PREFIX_PATH="$(brew --prefix zlib)"
+        "$CMAKE3" --build build -j$NPROC
+        DESTDIR="$STAGE" "$CMAKE3" --install build
+
+    # ----------------------------- opengv ---------------------------
+    - name: Cache opengv
+      id: cache-opengv
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/opengv
+        key: opengv-91f4b19c-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/opengv-91f4b19c-macos.patch') }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build opengv
+      if: steps.cache-opengv.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        PATCHES="${{ github.action_path }}/patches"
+        SRC="${{ runner.temp }}/src-deps/opengv"
+        STAGE="${{ runner.temp }}/deps-stage/opengv"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        # opengv pins a commit (not a tag), so clone then checkout.
+        git clone https://github.com/laurentkneip/opengv.git "$SRC/opengv"
+        cd "$SRC/opengv"
+        git checkout 91f4b19c73450833a40e463ad3648aae80b3a7f3
+        # Disable the -march=native/armv7-a/armv8-a flags so it builds portably on
+        # both Intel and Apple Silicon runners.
+        git apply "$PATCHES/opengv-91f4b19c-macos.patch"
+        # CMAKE_POLICY_VERSION_MINIMUM=3.5: opengv declares an ancient
+        # cmake_minimum_required that modern CMake rejects. EIGEN_INCLUDE_DIR points
+        # opengv's bundled FindEigen at Homebrew's eigen (covers /opt/homebrew on arm64).
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DBUILD_TESTS=OFF \
+          -DBUILD_SHARED_LIBS=ON \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+          -DEIGEN_INCLUDE_DIR="$(brew --prefix eigen)/include/eigen3"
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
+    # ----------------------------- g2o ------------------------------
+    - name: Cache g2o
+      id: cache-g2o
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/deps-stage/g2o
+        key: g2o-67cbe15c-${{ inputs.os }}-${{ steps.depver.outputs.hash }}
+
+    - name: Build g2o
+      if: steps.cache-g2o.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -e
+        NPROC=$(sysctl -n hw.logicalcpu)
+        SRC="${{ runner.temp }}/src-deps/g2o"
+        STAGE="${{ runner.temp }}/deps-stage/g2o"
+        rm -rf "$SRC"; mkdir -p "$SRC" "$STAGE"
+        # g2o pins a commit (not a tag), so clone then checkout.
+        git clone https://github.com/RainerKuemmerle/g2o.git "$SRC/g2o"
+        cd "$SRC/g2o"
+        git checkout 67cbe15c998737ac6705d3cd18201a72be0d073d
+        # CMAKE_INSTALL_PREFIX=/usr/local so it stages under usr/local like the
+        # other deps. Homebrew's libomp is keg-only and g2o does not propagate
+        # OpenMP's include/lib dirs, so with Apple clang <omp.h> isn't found and
+        # libomp isn't linked; add its include (-I) and lib (-L -lomp) explicitly.
+        LIBOMP=$(brew --prefix libomp)
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DCMAKE_PREFIX_PATH="$LIBOMP" \
+          -DCMAKE_C_FLAGS="-I$LIBOMP/include" \
+          -DCMAKE_CXX_FLAGS="-I$LIBOMP/include" \
+          -DCMAKE_EXE_LINKER_FLAGS="-L$LIBOMP/lib -lomp" \
+          -DCMAKE_SHARED_LINKER_FLAGS="-L$LIBOMP/lib -lomp" \
+          -DG2O_BUILD_APPS=OFF \
+          -DG2O_BUILD_EXAMPLES=OFF \
+          -DG2O_USE_OPENMP=ON \
+          -DG2O_USE_OPENGL=OFF
+        cmake --build build -j$NPROC
+        DESTDIR="$STAGE" cmake --install build
+
+    # ------------------- install all units into /usr/local ----------
+    - name: Install source dependencies into /usr/local
+      shell: bash
+      # Copy each (cached or freshly built) staged tree into /usr/local so
+      # rtabmap's find_package() and the bundle fixup (which search /usr/local)
+      # pick them up. Runs on both cache hit and miss.
+      run: |
+        set -e
+        STAGE="${{ runner.temp }}/deps-stage"
+        found=0
+        for unit in gtsam pointmatcher orbbec depthai opengv g2o; do
+          if [ -d "$STAGE/$unit/usr/local" ]; then
+            sudo cp -a "$STAGE/$unit/usr/local/." /usr/local/
+            found=1
+          fi
+        done
+        if [ "$found" != "1" ]; then
+          echo "No staged source dependencies found under $STAGE" >&2
+          exit 1
+        fi

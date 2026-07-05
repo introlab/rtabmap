@@ -26,32 +26,45 @@ jobs:
         include:
         - build_name: macos-sequoia-intel
           os: macos-15-intel
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
         - build_name: macos-sequoia-apple-silicon
           os: macos-15
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
         - build_name: macos-tahoe-intel
           os: macos-26-intel
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
         - build_name: macos-tahoe-apple-silicon
           os: macos-26
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
-
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Brew Dependencies
       run: |
         # Update brew and install from Brewfile if present, or specific packages
-        brew install pcl opencv octomap g2o pdal
+        brew install pcl opencv octomap pdal yaml-cpp librealsense libfreenect libusb zlib libomp suite-sparse ceres-solver
+
+    - name: Install Source Dependencies
+      # Build (and per-dependency cache) the source-only deps not available from
+      # Homebrew, then install them into /usr/local. See the composite action.
+      uses: ./.github/actions/install-macos-source-deps
+      with:
+        os: ${{ matrix.os }}
+        build_type: ${{ env.BUILD_TYPE }}
 
     - name: Configure CMake
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
+        # Apple clang has no built-in OpenMP; point find_package(OpenMP) at
+        # Homebrew's keg-only libomp so PCL/g2o/rtabmap enable OpenMP instead of
+        # repeatedly logging "Could NOT find OpenMP".
+        LIBOMP=$(brew --prefix libomp)
+        cmake -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DBUILD_AS_BUNDLE=ON \
+          -DWITH_ORBBEC_SDK=ON \
+          -DWITH_DEPTHAI=ON \
+          -DWITH_CERES=ON \
+          -DOpenMP_C_FLAGS="-Xclang -fopenmp -I$LIBOMP/include" \
+          -DOpenMP_C_LIB_NAMES=omp \
+          -DOpenMP_CXX_FLAGS="-Xclang -fopenmp -I$LIBOMP/include" \
+          -DOpenMP_CXX_LIB_NAMES=omp \
+          -DOpenMP_omp_LIBRARY="$LIBOMP/lib/libomp.dylib"
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
@@ -61,19 +74,19 @@ jobs:
       run: |
         ./rtabmap-console --version
 
-#    - name: Build MacOS Package
-#      run: |
-#        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+    - name: Build MacOS Package
+      run: |
+        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
 
-#    - name: Upload RTABMap Artifacts (DMG)
-#      uses: actions/upload-artifact@v4
-#      with:
-#        name: RTABMap-Binaries-${{ matrix.build_name }}-zip
-#        path: |
-#          build/RTABMap-*.dmg
-#        compression-level: 0
-#        if-no-files-found: warn
-#        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+    - name: Upload RTABMap Artifacts (DMG)
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}-nonsigned-zip
+        path: |
+          build/RTABMap-*.dmg
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build
