@@ -347,7 +347,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_initialMousePos(-1,-1),
 		_zoomDebounceTimer(this),
 		_zoomOverlayItem(0),
-		_zoomOverlayActive(false)
+		_zoomOverlayActive(false),
+		_fastZoomMinNodes(0)
 {
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
 	_workingDirectory = QDir::homePath();
@@ -529,6 +530,11 @@ void GraphViewer::setupGraphicsScene()
 
 void GraphViewer::startZoomOverlay()
 {
+	if(_fastZoomMinNodes==0 || _nodeItems.size() < _fastZoomMinNodes)
+	{
+		return;
+	}
+
 	if(_zoomOverlayActive || !_zoomOverlayItem)
  	{
  		return;
@@ -1561,6 +1567,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("orientation_ENU", this->isOrientationENU());
 	settings.setValue("view_plane", (int)this->getViewPlane());
 	settings.setValue("ensure_frame_visible", (int)this->isEnsureFrameVisible());
+	settings.setValue("fast_zoom_min_nodes", this->getFastZoomMinNodes());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1612,6 +1619,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setOrientationENU(settings.value("orientation_ENU", this->isOrientationENU()).toBool());
 	this->setViewPlane((ViewPlane)settings.value("view_plane", (int)this->getViewPlane()).toInt());
 	this->setEnsureFrameVisible(settings.value("ensure_frame_visible", this->isEnsureFrameVisible()).toBool());
+	this->setFastZoomMinNodes(settings.value("fast_zoom_min_nodes", this->getFastZoomMinNodes()).toInt());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1673,6 +1681,10 @@ GraphViewer::ViewPlane GraphViewer::getViewPlane() const
 bool GraphViewer::isEnsureFrameVisible() const
 {
 	return _ensureFrameVisible;
+}
+int GraphViewer::getFastZoomMinNodes() const
+{
+	return _fastZoomMinNodes;
 }
 
 void GraphViewer::setWorkingDirectory(const QString & path)
@@ -2039,6 +2051,11 @@ void GraphViewer::setEnsureFrameVisible(bool visible)
 	_ensureFrameVisible = visible;
 }
 
+void GraphViewer::setFastZoomMinNodes(int value)
+{
+	_fastZoomMinNodes = value;
+}
+
 
 void GraphViewer::restoreDefaults()
 {
@@ -2069,6 +2086,7 @@ void GraphViewer::restoreDefaults()
 	setGlobalPathVisible(true);
 	setLocalPathVisible(true);
 	setGtGraphVisible(true);
+	setFastZoomMinNodes(0);
 }
 
 void GraphViewer::wheelEvent(QWheelEvent * event)
@@ -2271,6 +2289,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideOdomCacheOverlay;
 	QAction * aOrientationENU;
 	QAction * aMouseTracking;
+	QAction * aFastZooming;
 	QAction * aViewPlaneXY;
 	QAction * aViewPlaneXZ;
 	QAction * aViewPlaneYZ;
@@ -2373,6 +2392,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aMouseTracking->setCheckable(true);
 	aMouseTracking->setChecked(_mouseTracking);
 	aMouseTracking->setEnabled(_viewPlane == XY);
+	aFastZooming = menu.addAction(tr("Fast Zooming..."));
 	aShowHideGraph->setEnabled(_viewPlane == XY);
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
@@ -2817,6 +2837,15 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aMouseTracking)
 	{
 		_mouseTracking = aMouseTracking->isChecked();
+	}
+	else if(r == aFastZooming)
+	{
+		bool ok;
+		double value = QInputDialog::getInt(this, tr("Fast Zooming"), tr("Minimum number of nodes to raster the graph\nwhile zooming (0=disabled):"), _fastZoomMinNodes, 0, 2147483647, 100, &ok);
+		if(ok)
+		{
+			setFastZoomMinNodes(value);
+		}
 	}
 	else if(r == aViewPlaneXY)
 	{

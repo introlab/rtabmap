@@ -132,6 +132,7 @@ public:
 	bool isOrientationENU() const;
 	ViewPlane getViewPlane() const;
 	bool isEnsureFrameVisible() const;
+	int getFastZoomMinNodes() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -172,6 +173,7 @@ public:
 	void setOrientationENU(bool enabled);
 	void setViewPlane(ViewPlane plane);
 	void setEnsureFrameVisible(bool visible);
+	void setFastZoomMinNodes(int value);
 
 Q_SIGNALS:
 	void configChanged();
@@ -257,6 +259,7 @@ private:
 	QTimer _zoomDebounceTimer;
 	QGraphicsPixmapItem * _zoomOverlayItem;
 	bool _zoomOverlayActive;
+	int _fastZoomMinNodes;
 };
 
 } /* namespace rtabmap */
