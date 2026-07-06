@@ -1079,7 +1079,7 @@ bool Memory::update(
 	}
 	else
 	{
-		if(_workingMem.size() <= 1)
+		if(this->getWorkingMemSize(true) == 0)
 		{
 			UWARN("The working memory is empty and the memory is not "
 				  "incremental (Mem/IncrementalMemory=False), no loop closure "
@@ -1484,6 +1484,26 @@ Signature * Memory::_getSignature(int id) const
 const VWDictionary * Memory::getVWDictionary() const
 {
 	return _vwd;
+}
+
+size_t Memory::getWorkingMemSize(bool ignoreIntermediateNodes) const
+{
+	if(!ignoreIntermediateNodes)
+	{
+		return _workingMem.size() - 1; // remove virtual place
+	}
+	else
+	{
+		size_t size = 0;
+		for(std::map<int, double>::const_iterator iter=_workingMem.lower_bound(1); iter!=_workingMem.end(); ++iter)
+		{
+			if(this->_getSignature(iter->first)->getWeight() >= 0)
+			{
+				size++;
+			}
+		}
+		return size;
+	}
 }
 
 std::multimap<int, Link> Memory::getNeighborLinks(
@@ -2038,18 +2058,15 @@ void Memory::clear()
 	}
 
 	// Save some stats to the db, save only when the mem is not empty
-	if(_dbDriver && (_stMem.size() || _workingMem.size()))
+	size_t workingMemSize = this->getWorkingMemSize(false);
+	if(_dbDriver && (_stMem.size() || workingMemSize))
 	{
-		unsigned int memSize = (unsigned int)(_workingMem.size() + _stMem.size());
-		if(_workingMem.size() && _workingMem.begin()->first < 0)
-		{
-			--memSize;
-		}
+		unsigned int memSize = workingMemSize + _stMem.size();
 
 		// this is only a safe check...not supposed to occur.
 		UASSERT_MSG(memSize == _signatures.size(),
 				uFormat("The number of signatures don't match! _workingMem=%d, _stMem=%d, _signatures=%d",
-						_workingMem.size(), _stMem.size(), _signatures.size()).c_str());
+						workingMemSize, _stMem.size(), _signatures.size()).c_str());
 
 		UDEBUG("Adding statistics after run...");
 		if(_memoryChanged)
@@ -2482,7 +2499,7 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 				  "poses to force re-update. If you want to use the "
 				  "saved optimized poses, set %s to true",
 				  (int)poses.size(),
-				  (int)_workingMem.size()-1, // less virtual place
+				  (int)this->getWorkingMemSize(false),
 				  Parameters::kMemInitWMWithAllNodes().c_str());
 			return std::map<int, Transform>();
 		}
@@ -2590,18 +2607,21 @@ public:
 	}
 	int weight, age, id;
 };
+
 std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
 {
 	//UDEBUG("");
 	std::list<Signature *> removableSignatures;
 	std::map<WeightAgeIdKey, Signature *> weightAgeIdMap;
 
-	// Find the last index to check...
-	UDEBUG("mem.size()=%d, ignoredIds.size()=%d", (int)_workingMem.size(), (int)ignoredIds.size());
+	size_t workingMemSize = this->getWorkingMemSize(true);
 
-	if(_workingMem.size())
+	// Find the last index to check...
+	UDEBUG("mem.size()=%d, ignoredIds.size()=%d", (int)workingMemSize, (int)ignoredIds.size());
+
+	if(workingMemSize > 0)
 	{
-		int recentWmMaxSize = _recentWmRatio * float(_workingMem.size());
+		int recentWmMaxSize = _recentWmRatio * float(workingMemSize);
 		bool recentWmImmunized = false;
 		// look for the position of the lastLoopClosureId in WM
 		int currentRecentWmSize = 0;
@@ -2618,7 +2638,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 			{
 				recentWmImmunized = true;
 			}
-			else if(currentRecentWmSize == 0 && _workingMem.size() > 1)
+			else if(currentRecentWmSize == 0)
 			{
 				UERROR("Last loop closure id not found in WM (%d)", _lastGlobalLoopClosureId);
 			}
@@ -5194,11 +5214,21 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("time rectification = %fs", t);
 	}
 
-	int treeSize= int(_workingMem.size() + _stMem.size());
-	int meanWordsPerLocation = _feature2D->getMaxFeatures()>0?_feature2D->getMaxFeatures():0;
-	if(meanWordsPerLocation==0 && treeSize > 1)
+	int notIntermediateNodesCount = 0;
+	for(std::set<int>::iterator iter=_stMem.begin(); iter!=_stMem.end(); ++iter)
 	{
-		meanWordsPerLocation = _vwd->getTotalActiveReferences() / (treeSize-1); // ignore virtual signature
+		const Signature * s = this->getSignature(*iter);
+		UASSERT(s != 0);
+		if(s->getWeight() >= 0)
+		{
+			++notIntermediateNodesCount;
+		}
+	}
+	int treeSize= int(this->getWorkingMemSize(true) + notIntermediateNodesCount);
+	int meanWordsPerLocation = _feature2D->getMaxFeatures()>0?_feature2D->getMaxFeatures():0;
+	if(meanWordsPerLocation==0 && treeSize > 0)
+	{
+		meanWordsPerLocation = _vwd->getTotalActiveReferences() / treeSize;
 	}
 	else if(_useOdometryFeatures) {
 		// To not detect first image as bad signature if odometry 

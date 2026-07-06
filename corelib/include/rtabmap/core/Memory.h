@@ -149,6 +149,7 @@ public:
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
+	size_t getWorkingMemSize(bool ignoreIntermediateNodes = false) const;
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
 	std::multimap<int, Link> getNeighborLinks(int signatureId,
