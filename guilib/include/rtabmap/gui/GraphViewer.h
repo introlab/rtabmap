@@ -170,6 +170,8 @@ public:
 	void setOrientationENU(bool enabled);
 	void setViewPlane(ViewPlane plane);
 	void setEnsureFrameVisible(bool visible);
+	QPointF getNodeScenePosition(int id) const;
+	void centerOnNode(int id);
 
 Q_SIGNALS:
 	void configChanged();

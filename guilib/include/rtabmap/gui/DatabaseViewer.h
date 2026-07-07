@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMainWindow>
 #include <QtCore/QByteArray>
 #include <QtCore/QMap>
+#include <QtCore/QPointF>
 #include <QtCore/QSet>
 #include <QtGui/QImage>
 #include <opencv2/core/core.hpp>
@@ -68,6 +69,18 @@ class LinkRefiningDialog;
 class Registration;
 class RegistrationIcp;
 
+struct GraphComponent
+{
+    GraphComponent() : id(-1), rootId(-1), rotationTheta(0.0f), rootCoordinates(), viewScale(-1.0f) {}
+
+    int id;
+    int rootId;
+    float rotationTheta;
+    QPointF rootCoordinates;
+    float viewScale;
+    std::map<int, int> nodeIds;
+};
+
 class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
 {
 	Q_OBJECT
@@ -81,6 +94,11 @@ public:
 
 protected:
 	virtual void showEvent(QShowEvent* anEvent);
+
+private:
+	void backupCurrentComponentView();
+	void restoreCurrentComponentView();
+	void reRootCurrentComponent(int newRootId);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
 	virtual void keyPressEvent(QKeyEvent *event);
@@ -134,6 +152,7 @@ private Q_SLOTS:
 	void resetAllChanges();
 	void graphNodeSelected(int);
 	void graphLinkSelected(int, int);
+	void zoomToNodeFromImage(int);
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
@@ -142,6 +161,7 @@ private Q_SLOTS:
 	void sliderNeighborValueChanged(int);
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
+	void spinBoxOptimizationsFromValueChanged(int);
 	void editConstraint();
 	void updateGrid();
 	void updateOctomapView();
@@ -157,6 +177,8 @@ private Q_SLOTS:
 	void notifyParametersChanged(const QStringList &);
 	void setupMainLayout(bool vertical);
 	void updateConstraintButtons();
+	void tabBarComponentsValueChanged(int);
+	void regenerateGraphComponents();
 
 private:
 	QString getIniFilePath() const;
@@ -201,7 +223,8 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateNeighborsSlider(int from = 0, int to = 0);
-	void updateLoopClosuresSlider(int from = 0, int to = 0);
+	void updateLoopClosuresSlider(int from, int to);
+	void updateLoopClosuresSlider();
 	void updateCovariances(const QList<Link> & links);
 	void refineLinks(const QList<Link> & links);
 	void refineConstraint(int from, int to, Registration * reg, RegistrationIcp * regIcp, bool silent);
@@ -230,6 +253,8 @@ private:
 	std::string databaseFileName_;
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
+	std::vector<GraphComponent> components_;
+	int activeComponentIndex_;
 	std::map<int, rtabmap::Transform> odomPoses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::map<int, rtabmap::Transform> gpsPoses_;

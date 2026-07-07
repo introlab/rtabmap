@@ -2078,6 +2078,28 @@ QIcon createIcon(const QColor & color)
 	return QIcon(pixmap);
 }
 
+QPointF GraphViewer::getNodeScenePosition(int id) const
+{
+	NodeItem * item = _nodeItems.value(id, 0);
+	if(item)
+	{
+		return item->sceneBoundingRect().center();
+	}
+	return QPointF();
+}
+
+void GraphViewer::centerOnNode(int id)
+{
+	QPointF center = this->getNodeScenePosition(id);
+	if(!center.isNull())
+	{
+		const float viewSize = 3.0f * 100.0f; // 3 m in scene units (1 m = 100)
+		QRectF region(center.x() - viewSize/2.0f, center.y() - viewSize/2.0f, viewSize, viewSize);
+		this->fitInView(region, Qt::KeepAspectRatio);
+		this->centerOn(center);
+	}
+}
+
 void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 {
 	QMenu menu;
