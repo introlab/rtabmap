@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <opencv2/calib3d.hpp>
 #include <set>
 
 #include <rtabmap/core/optimizer/OptimizerCeres.h>

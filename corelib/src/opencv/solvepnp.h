@@ -45,9 +45,9 @@
 #define RTABMAP_CORELIB_SRC_OPENCV_SOLVEPNP_H_
 
 #include <opencv2/core/core.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #if CV_MAJOR_VERSION >= 3
-#include <opencv2/calib3d/calib3d_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 #endif
 
 namespace cv3 {

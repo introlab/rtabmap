@@ -46,7 +46,7 @@
 #ifndef CORELIB_SRC_OPENCV_ORB_H_
 #define CORELIB_SRC_OPENCV_ORB_H_
 
-#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/features2d.hpp>
 
 namespace rtabmap {
 

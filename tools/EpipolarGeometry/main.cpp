@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opencv2/core/core.hpp>
-#include <opencv2/core/types_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/core/VWDictionary.h"

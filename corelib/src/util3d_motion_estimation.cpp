@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d.h"
 
+#include <opencv2/calib3d.hpp>
 #include <pcl/common/common.h>
 
 #include "opencv/solvepnp.h"

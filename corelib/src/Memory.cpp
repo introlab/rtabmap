@@ -62,7 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 #include <rtabmap/core/MarkerDetector.h>
-#include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 #include <rtabmap/core/LocalGridMaker.h>
 
 namespace rtabmap {

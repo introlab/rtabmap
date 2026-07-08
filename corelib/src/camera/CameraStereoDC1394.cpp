@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraStereoDC1394.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 
 #ifdef RTABMAP_DC1394
 #include <dc1394/dc1394.h>

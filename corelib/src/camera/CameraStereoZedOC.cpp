@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <opencv2/calib3d.hpp>
 
 #ifdef RTABMAP_ZEDOC
 #define VIDEO_MOD_AVAILABLE

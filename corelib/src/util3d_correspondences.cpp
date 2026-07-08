@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/EpipolarGeometry.h>
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/point_tests.h>
 
