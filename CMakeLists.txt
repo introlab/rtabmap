@@ -248,9 +248,15 @@ SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video video
 SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
 SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
 
-# Try OpenCV 5 first, fall back to OpenCV < 5.
-FIND_PACKAGE(OpenCV 5 QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS})
-IF(NOT OpenCV_FOUND)
+# Probe OpenCV without a version constraint first, then request the components
+# matching the detected major version. A version-constrained find that fails to
+# match (e.g. asking for 5 when only 4 is present) resets OpenCV_DIR to NOTFOUND,
+# which breaks toolchain builds that rely on a -DOpenCV_DIR hint (e.g. Android,
+# where CMAKE_FIND_ROOT_PATH restricts the search).
+FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core)
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS})
+ELSE()
   FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS})
 ENDIF()
 
