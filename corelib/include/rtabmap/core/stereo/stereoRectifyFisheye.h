@@ -32,6 +32,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_SRC_OPENCV_STEREORECTIFYFISHEYE_H_
 #define CORELIB_SRC_OPENCV_STEREORECTIFYFISHEYE_H_
 
+// This header relies on the OpenCV C API (cvRodrigues2, cvProjectPoints2, ...)
+// which was removed in OpenCV 5. Pull in only the version macros (available in
+// all OpenCV versions) so we can fail early with a clear message rather than
+// with cryptic errors from the includes below.
+#include <opencv2/core/version.hpp>
+#if CV_MAJOR_VERSION >= 5
+#error "stereoRectifyFisheye.h is not supported with OpenCV 5 or later (it uses the removed OpenCV C API). Use cv::fisheye::stereoRectify() instead, or guard your include with '#if CV_MAJOR_VERSION < 5'."
+#endif
+
 #include <opencv2/calib3d/calib3d.hpp>
 #if CV_MAJOR_VERSION >= 3
 #include <opencv2/calib3d/calib3d_c.h>

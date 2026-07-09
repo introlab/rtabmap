@@ -1325,6 +1325,14 @@ install(EXPORT rtabmapTargets
 ####
 # Setup RTABMapConfig.cmake
 ####
+# OpenCV split calib3d into "calib"+"geometry" in version 5; record the
+# components this build used so downstream find_package(RTABMap) requests a
+# matching set for the same OpenCV major version.
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  SET(CONF_OPENCV_COMPONENTS "core calib imgproc highgui stitching photo video geometry")
+ELSE()
+  SET(CONF_OPENCV_COMPONENTS "core calib3d imgproc highgui stitching photo video")
+ENDIF()
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
