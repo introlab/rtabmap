@@ -241,11 +241,17 @@ option(BUILD_WITH_RPATH_NOT_RUNPATH "Explicitly disable usage of RUNPATH for the
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
 set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-# Try OpenCV 5 first (calib3d was split into "calib" + "geometry" modules in OpenCV 5)
-FIND_PACKAGE(OpenCV 5 QUIET COMPONENTS core calib imgproc highgui stitching photo video videoio geometry OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+# OpenCV components. calib3d was split into "calib" + "geometry" in OpenCV 5.
+# These lists are reused below to generate RTABMapConfig.cmake so downstream
+# find_package(RTABMap) requests the same components this build used.
+SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video videoio calib geometry)
+SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+
+# Try OpenCV 5 first, fall back to OpenCV < 5.
+FIND_PACKAGE(OpenCV 5 QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS})
 IF(NOT OpenCV_FOUND)
-  # Fall back to OpenCV < 5 (calib3d module)
-  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS})
 ENDIF()
 
 IF(WITH_QT)
@@ -1325,14 +1331,12 @@ install(EXPORT rtabmapTargets
 ####
 # Setup RTABMapConfig.cmake
 ####
-# OpenCV split calib3d into "calib"+"geometry" in version 5; record the
-# components this build used so downstream find_package(RTABMap) requests a
-# matching set for the same OpenCV major version.
 IF(OpenCV_VERSION_MAJOR GREATER 4)
-  SET(CONF_OPENCV_COMPONENTS "core calib imgproc highgui stitching photo video geometry")
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5})
 ELSE()
-  SET(CONF_OPENCV_COMPONENTS "core calib3d imgproc highgui stitching photo video")
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4})
 ENDIF()
+STRING(REPLACE ";" " " CONF_OPENCV_COMPONENTS "${CONF_OPENCV_COMPONENTS}")
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
