@@ -2262,7 +2262,7 @@ bool Rtabmap::process(
 	// no need to do retrieval or immunization of locations if memory management
 	// is disabled and all nodes are in WM.
 	// Also skip memory mangement on intermediate nodes
-	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0) && signature->getWeight()>=0)
+	if(!((_memory->allNodesInWM() || _maxRetrieved==0) && maxLocalLocationsImmunized==0) && signature->getWeight()>=0)
 	{
 		if(retrievalId > 0)
 		{
@@ -2445,7 +2445,7 @@ bool Rtabmap::process(
 			}
 		}
 
-		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0))
+		if(!((_memory->allNodesInWM() || _maxLocalRetrieved==0) && maxLocalLocationsImmunized==0))
 		{
 			// immunize the path from the nearest local location to the current location
 			if(immunizedLocally < maxLocalLocationsImmunized &&
