@@ -71,14 +71,40 @@ class RegistrationIcp;
 
 struct GraphComponent
 {
-    GraphComponent() : id(-1), rootId(-1), rotationTheta(0.0f), rootCoordinates(), viewScale(-1.0f) {}
+    GraphComponent() : id(-1), rootId(-1), rotationValue(0), rootCoordinates(), viewScale(-1.0f) {}
 
     int id;
+	bool isMain;
     int rootId;
-    float rotationTheta;
+    int rotationValue;
+	bool rotationEnabled;
     QPointF rootCoordinates;
     float viewScale;
     std::map<int, int> nodeIds;
+	std::set<int> selectedNodeIds;
+    int optimizationFlavor = 0; 
+    
+	
+	// optimized poses cache
+	std::map<int, rtabmap::Transform> optimizedPoses;
+	Transform lastLocalizationPose;
+
+	/*
+    // 2D map cache
+	cv::Mat map2D;
+    float mapXMin = 0.0f;
+    float mapYMin = 0.0f;
+    float mapCellSize = 0.05f;
+
+	// optimized mesh cache
+	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
+	std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
+	cv::Mat textures;
+	cv::Mat cloudMat;*/
 };
 
 class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
@@ -96,8 +122,10 @@ protected:
 	virtual void showEvent(QShowEvent* anEvent);
 
 private:
-	void backupCurrentComponentView();
+	void backupCurrentComponent();
+	void restoreCurrentComponentConfig();
 	void restoreCurrentComponentView();
+
 	void reRootCurrentComponent(int newRootId);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
@@ -106,6 +134,7 @@ private:
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
 private Q_SLOTS:
+	void updateGraphInteractionMode();
 	void writeSettings();
 	void restoreDefaultSettings();
 	void configModified();
@@ -178,6 +207,7 @@ private Q_SLOTS:
 	void setupMainLayout(bool vertical);
 	void updateConstraintButtons();
 	void tabBarComponentsValueChanged(int);
+	void setCurrentComponentMain();
 	void regenerateGraphComponents();
 
 private:
