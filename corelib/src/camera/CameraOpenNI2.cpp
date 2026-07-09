@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/core/util2d.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENNI2
 #include <OniVersion.h>
@@ -514,7 +513,7 @@ SensorData CameraOpenNI2::captureImage(SensorCaptureInfo * info)
 				cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
 				if(_type==kTypeColorDepth)
 				{
-					cv::cvtColor(tmp, rgb, CV_RGB2BGR);
+					cv::cvtColor(tmp, rgb, cv::COLOR_RGB2BGR);
 				}
 				else // IR
 				{

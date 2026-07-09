@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <opencv2/imgproc/types_c.h>
 
 namespace rtabmap
 {
@@ -339,7 +338,7 @@ SensorData CameraStereoImages::captureImage(SensorCaptureInfo * info)
 		if(rightImage.type() != CV_8UC1 && rightGrayScale_)
 		{
 			cv::Mat tmp;
-			cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
+			cv::cvtColor(rightImage, tmp, cv::COLOR_BGR2GRAY);
 			rightImage = tmp;
 		}
 

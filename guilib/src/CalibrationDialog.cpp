@@ -30,13 +30,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgproc/imgproc_c.h>
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/calib.hpp>
+#include <opencv2/geometry.hpp>
+#else
 #include <opencv2/calib3d/calib3d.hpp>
 #if CV_MAJOR_VERSION >= 3
 #include <opencv2/calib3d/calib3d_c.h>
 #endif
+#endif
 #include <opencv2/highgui/highgui.hpp>
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 #endif
 
@@ -737,7 +741,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
 			if(!viewGray.empty())
 			{
-				int flags = CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE;
+				int flags = cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE;
 
 				if(!viewGray.empty())
 				{
@@ -748,7 +752,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 						if( scale == 1 )
 							timg = viewGray;
 						else
-							cv::resize(viewGray, timg, cv::Size(), scale, scale, CV_INTER_CUBIC);
+							cv::resize(viewGray, timg, cv::Size(), scale, scale, cv::INTER_CUBIC);
 
 #ifdef HAVE_CHARUCO
 						if(ui_->comboBox_board_type->currentIndex() >= 1 )
@@ -833,7 +837,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					float ratio = ui_->comboBox_board_type->currentIndex() >= 1 ?6.0f:2.0f;
 					float radius = minSquareDistance==-1.0f?5.0f:(minSquareDistance/ratio);
 					cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
-							cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
+							cv::TermCriteria( cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1 ));
 					
 					// Filter points that drifted to far (caused by reflection or bad subpixel gradient)
 					float threshold = ui_->doubleSpinBox_subpixel_error->value();
@@ -1473,7 +1477,7 @@ void CalibrationDialog::calibrate()
 			{
 				cv::projectPoints( cv::Mat(objectPoints_[id][i]), rvecs[i], tvecs[i], K, D, imagePoints2);
 			}
-			err = cv::norm(cv::Mat(imagePoints_[id][i]), cv::Mat(imagePoints2), CV_L2);
+			err = cv::norm(cv::Mat(imagePoints_[id][i]), cv::Mat(imagePoints2), cv::NORM_L2);
 
 			int n = (int)objectPoints_[id][i].size();
 			reprojErrs[i] = (float) std::sqrt(err*err/n);
@@ -1750,19 +1754,21 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			UINFO("Compute stereo rectification");
 
 			cv::Mat R1, R2, P1, P2, Q;
+#if CV_MAJOR_VERSION < 5
 			stereoRectifyFisheye(
 					left.K_raw(), D_left,
 					right.K_raw(), D_right,
 					imageSize, R, Tvec, R1, R2, P1, P2, Q,
 					cv::CALIB_ZERO_DISPARITY, 0, imageSize);
-
-			// Very hard to get good results with this one:
-			/*double balance = 0.0, fov_scale = 1.0;
+#else
+			// Very hard to get good results with this one, however we cannot use the previous one anymore in opencv5
+			double balance = 0.0, fov_scale = 1.0;
 			cv::fisheye::stereoRectify(
 					left.K_raw(), D_left,
 					right.K_raw(), D_right,
 					imageSize, R, Tvec, R1, R2, P1, P2, Q,
-					cv::CALIB_ZERO_DISPARITY, imageSize, balance, fov_scale);*/
+					cv::CALIB_ZERO_DISPARITY, imageSize, balance, fov_scale);
+#endif
 
 			std::cout << "R1 = " << R1 << std::endl;
 			std::cout << "R2 = " << R2 << std::endl;

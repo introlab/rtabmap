@@ -26,7 +26,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/camera/CameraOpenNICV.h>
 #include <rtabmap/utilite/UTimer.h>
-#if CV_MAJOR_VERSION > 3
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/videoio.hpp>
+#elif CV_MAJOR_VERSION > 3
 #include <opencv2/videoio/videoio_c.h>
 #endif
 
@@ -59,30 +61,34 @@ bool CameraOpenNICV::init(const std::string & calibrationFolder, const std::stri
 	}
 
 	ULOGGER_DEBUG("Camera::init()");
-	_capture.open( _asus?CV_CAP_OPENNI_ASUS:CV_CAP_OPENNI );
+#if CV_MAJOR_VERSION < 5
+	_capture.open( _asus?cv::CAP_OPENNI_ASUS:cv::CAP_OPENNI );
+#else
+	_capture.open( _asus?cv::CAP_OPENNI2_ASUS:cv::CAP_OPENNI2 );
+#endif
 	if(_capture.isOpened())
 	{
-		_capture.set( CV_CAP_OPENNI_IMAGE_GENERATOR_OUTPUT_MODE, CV_CAP_OPENNI_VGA_30HZ );
-		_depthFocal = _capture.get( CV_CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH );
+		_capture.set( cv::CAP_OPENNI_IMAGE_GENERATOR_OUTPUT_MODE, cv::CAP_OPENNI_VGA_30HZ );
+		_depthFocal = _capture.get( cv::CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH );
 		// Print some avalible device settings.
 		UINFO("Depth generator output mode:");
-		UINFO("FRAME_WIDTH        %f", _capture.get( CV_CAP_PROP_FRAME_WIDTH ));
-		UINFO("FRAME_HEIGHT       %f", _capture.get( CV_CAP_PROP_FRAME_HEIGHT ));
-		UINFO("FRAME_MAX_DEPTH    %f mm", _capture.get( CV_CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
-		UINFO("BASELINE           %f mm", _capture.get( CV_CAP_PROP_OPENNI_BASELINE ));
-		UINFO("FPS                %f", _capture.get( CV_CAP_PROP_FPS ));
-		UINFO("Focal              %f", _capture.get( CV_CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH ));
-		UINFO("REGISTRATION       %f", _capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ));
-		if(_capture.get( CV_CAP_PROP_OPENNI_REGISTRATION ) == 0.0)
+		UINFO("FRAME_WIDTH        %f", _capture.get( cv::CAP_PROP_FRAME_WIDTH ));
+		UINFO("FRAME_HEIGHT       %f", _capture.get( cv::CAP_PROP_FRAME_HEIGHT ));
+		UINFO("FRAME_MAX_DEPTH    %f mm", _capture.get( cv::CAP_PROP_OPENNI_FRAME_MAX_DEPTH ));
+		UINFO("BASELINE           %f mm", _capture.get( cv::CAP_PROP_OPENNI_BASELINE ));
+		UINFO("FPS                %f", _capture.get( cv::CAP_PROP_FPS ));
+		UINFO("Focal              %f", _capture.get( cv::CAP_OPENNI_DEPTH_GENERATOR_FOCAL_LENGTH ));
+		UINFO("REGISTRATION       %f", _capture.get( cv::CAP_PROP_OPENNI_REGISTRATION ));
+		if(_capture.get( cv::CAP_PROP_OPENNI_REGISTRATION ) == 0.0)
 		{
 			UERROR("Depth registration is not activated on this device!");
 		}
-		if( _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR_PRESENT ) )
+		if( _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR_PRESENT ) )
 		{
 			UINFO("Image generator output mode:");
-			UINFO("FRAME_WIDTH    %f", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_WIDTH ));
-			UINFO("FRAME_HEIGHT   %f", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FRAME_HEIGHT ));
-			UINFO("FPS            %f", _capture.get( CV_CAP_OPENNI_IMAGE_GENERATOR+CV_CAP_PROP_FPS ));
+			UINFO("FRAME_WIDTH    %f", _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FRAME_WIDTH ));
+			UINFO("FRAME_HEIGHT   %f", _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FRAME_HEIGHT ));
+			UINFO("FPS            %f", _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FPS ));
 		}
 		else
 		{
@@ -112,8 +118,8 @@ SensorData CameraOpenNICV::captureImage(SensorCaptureInfo * info)
 	{
 		_capture.grab();
 		cv::Mat depth, rgb;
-		_capture.retrieve(depth, CV_CAP_OPENNI_DEPTH_MAP );
-		_capture.retrieve(rgb, CV_CAP_OPENNI_BGR_IMAGE );
+		_capture.retrieve(depth, cv::CAP_OPENNI_DEPTH_MAP );
+		_capture.retrieve(rgb, cv::CAP_OPENNI_BGR_IMAGE );
 
 		depth = depth.clone();
 		rgb = rgb.clone();

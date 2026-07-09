@@ -34,7 +34,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/Transform.h>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/IMU.h>
 #include <rtabmap/core/GPS.h>

@@ -30,6 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/geometry.hpp>
+#endif
+
 #ifdef HAVE_OPENCV_ARUCO
 #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
 namespace cv{

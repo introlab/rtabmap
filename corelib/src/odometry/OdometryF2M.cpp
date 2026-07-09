@@ -42,7 +42,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UConversion.h"
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/geometry.hpp>
+#endif
 #include <rtabmap/core/odometry/OdometryF2M.h>
 #include <pcl/common/io.h>
 

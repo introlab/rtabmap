@@ -241,7 +241,12 @@ option(BUILD_WITH_RPATH_NOT_RUNPATH "Explicitly disable usage of RUNPATH for the
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
 set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+# Try OpenCV 5 first (calib3d was split into "calib" + "geometry" modules in OpenCV 5)
+FIND_PACKAGE(OpenCV 5 QUIET COMPONENTS core calib imgproc highgui stitching photo video videoio geometry OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+IF(NOT OpenCV_FOUND)
+  # Fall back to OpenCV < 5 (calib3d module)
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+ENDIF()
 
 IF(WITH_QT)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)

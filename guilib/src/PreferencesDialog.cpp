@@ -2639,19 +2639,19 @@ void PreferencesDialog::restoreConfigOwnership(const QString & filePath)
 			gid_t gid = (gid_t)atoi(sudoGid);
 			// Restore the config file and its containing directory so the user
 			// can still write preferences without sudo afterwards.
-			if(!filePath.isEmpty() && QFile::exists(filePath))
+			auto restoreOwnership = [uid, gid](const QString & path)
 			{
-				if(chown(filePath.toStdString().c_str(), uid, gid) != 0)
+				if(!path.isEmpty() && QFile::exists(path))
 				{
-					UWARN("Could not restore ownership of \"%s\" to uid=%d (%s).",
-							filePath.toStdString().c_str(), (int)uid, strerror(errno));
+					if(chown(path.toStdString().c_str(), uid, gid) != 0)
+					{
+						UWARN("Could not restore ownership of \"%s\" to uid=%d (%s).",
+								path.toStdString().c_str(), (int)uid, strerror(errno));
+					}
 				}
-			}
-			QString dir = QFileInfo(filePath).absolutePath();
-			if(!dir.isEmpty())
-			{
-				chown(dir.toStdString().c_str(), uid, gid);
-			}
+			};
+			restoreOwnership(filePath);
+			restoreOwnership(QFileInfo(filePath).absolutePath());
 		}
 	}
 #else

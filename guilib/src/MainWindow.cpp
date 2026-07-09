@@ -93,6 +93,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QInputDialog>
 #include <QToolButton>
 
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/geometry.hpp>
+#endif
+
 //RGB-D stuff
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/Odometry.h"

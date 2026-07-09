@@ -752,7 +752,7 @@ void CV_ORB::operator()( InputArray _image, InputArray _mask, std::vector<KeyPoi
 
     Mat image = _image.getMat(), mask = _mask.getMat();
     if( image.type() != CV_8UC1 )
-        cvtColor(_image, image, CV_BGR2GRAY);
+        cvtColor(_image, image, cv::COLOR_BGR2GRAY);
 
     int levelsNum = this->nlevels;
 

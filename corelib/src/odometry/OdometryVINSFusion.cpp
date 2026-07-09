@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UThread.h"
 #include "rtabmap/utilite/UDirectory.h"
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_VINS_FUSION
 #include <estimator/estimator.h>
@@ -444,7 +443,7 @@ Transform OdometryVINSFusion::computeTransform(
 		cv::Mat right;
 		if(data.imageRaw().type() == CV_8UC3)
 		{
-			cv::cvtColor(data.imageRaw(), left, CV_BGR2GRAY);
+			cv::cvtColor(data.imageRaw(), left, cv::COLOR_BGR2GRAY);
 		}
 		else if(data.imageRaw().type() == CV_8UC1)
 		{
@@ -456,7 +455,7 @@ Transform OdometryVINSFusion::computeTransform(
 		}
 		if(data.rightRaw().type() == CV_8UC3)
 		{
-			cv::cvtColor(data.rightRaw(), right, CV_BGR2GRAY);
+			cv::cvtColor(data.rightRaw(), right, cv::COLOR_BGR2GRAY);
 		}
 		else if(data.rightRaw().type() == CV_8UC1)
 		{
