@@ -237,14 +237,14 @@ int main(int argc, char * argv[])
 
 	// Remove orphan nodes
 	std::map<int, double> wm = memory.getWorkingMem();
-	for(auto iter: wm)
+	for(std::map<int, double>::iterator iter=wm.lower_bound(0); iter!=wm.end(); ++iter)
 	{
-		std::multimap<int, rtabmap::Link> links = memory.getLinks(iter.first);
+		std::multimap<int, rtabmap::Link> links = memory.getLinks(iter->first);
 		if(graph::filterLinks(links, Link::kSelfRefLink).empty())
 		{
 			// orphan
-			memory.deleteLocation(iter.first, 0, keepLinked);
-			printf("Removed orphan node %d\n", iter.first);
+			memory.deleteLocation(iter->first, 0, keepLinked);
+			printf("Removed orphan node %d\n", iter->first);
 		}
 	}
 
