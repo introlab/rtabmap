@@ -174,6 +174,7 @@ private Q_SLOTS:
 	void view3DMap();
 	void generate3DMap();
 	void detectMoreLoopClosures();
+	void mergeComponentsUsingSelectedNodes();
 	void updateAllNeighborCovariances();
 	void updateAllLoopClosureCovariances();
 	void updateAllLandmarkCovariances();

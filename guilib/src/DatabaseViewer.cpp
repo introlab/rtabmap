@@ -319,6 +319,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
+	connect(ui_->actionMerge_components_using_selected_nodes, SIGNAL(triggered()), this, SLOT(mergeComponentsUsingSelectedNodes()));
 	connect(ui_->actionUpdate_all_neighbor_covariances, SIGNAL(triggered()), this, SLOT(updateAllNeighborCovariances()));
 	connect(ui_->actionUpdate_all_loop_closure_covariances, SIGNAL(triggered()), this, SLOT(updateAllLoopClosureCovariances()));
 	connect(ui_->actionUpdate_all_landmark_covariances, SIGNAL(triggered()), this, SLOT(updateAllLandmarkCovariances()));
@@ -4542,6 +4543,105 @@ void DatabaseViewer::detectMoreLoopClosures()
 	progressDialog->setValue(progressDialog->maximumSteps());
 }
 
+void DatabaseViewer::mergeComponentsUsingSelectedNodes()
+{
+	int fromCompIndex = activeComponentIndex_;
+	int toCompIndex = -1;
+
+	std::set<int> activeSelection = ui_->graphViewer->getSelectedNodeIds();
+	if(activeSelection.empty())
+	{
+		QMessageBox::warning(this, tr("Merge Components"), tr("Please select nodes in the active component."));
+		return;
+	}
+
+	for(size_t i = 0; i < components_.size(); ++i)
+	{
+		if((int)i != fromCompIndex && !components_[i].selectedNodeIds.empty())
+		{
+			if(toCompIndex == -1)
+			{
+				toCompIndex = (int)i;
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Merge Components"), tr("Please select nodes from exactly two different components."));
+				return;
+			}
+		}
+	}
+
+	if(toCompIndex == -1)
+	{
+		QMessageBox::warning(this, tr("Merge Components"), tr("Please select nodes in exactly one other component to merge with the active one."));
+		return;
+	}
+
+	std::vector<int> N1(activeSelection.begin(), activeSelection.end());
+	std::vector<int> N2(components_[toCompIndex].selectedNodeIds.begin(), components_[toCompIndex].selectedNodeIds.end());
+
+	int totalPairs = (int)(N1.size() * N2.size());
+
+	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+	progressDialog->setMaximumSteps(totalPairs);
+	progressDialog->setCancelButtonVisible(true);
+	progressDialog->setMinimumWidth(800);
+	progressDialog->show();
+	progressDialog->appendText(tr("Looking for loop closure between %1 possible pairs...").arg(totalPairs));
+
+	std::shared_ptr<Registration> reg(Registration::create(ui_->parameters_toolbox->getParameters()));
+
+	bool loopFound = false;
+	int foundFrom = 0;
+	int foundTo = 0;
+	int step = 0;
+
+	for(size_t i = 0; i < N1.size() && !loopFound && !progressDialog->isCanceled(); ++i)
+	{
+		for(size_t j = 0; j < N2.size() && !loopFound && !progressDialog->isCanceled(); ++j)
+		{
+			int from = N1[i];
+			int to = N2[j];
+			progressDialog->appendText(tr("Testing pair %1 and %2... (%3/%4)").arg(from).arg(to).arg(step+1).arg(totalPairs));
+			
+			QApplication::processEvents(); 
+			
+			if(addConstraint(from, to, reg.get(), true, false))
+			{
+				loopFound = true;
+				foundFrom = from;
+				foundTo = to;
+				progressDialog->appendText(tr("Loop closure found between %1 and %2!").arg(from).arg(to));
+			}
+
+			++step;
+			progressDialog->incrementStep();
+			QApplication::processEvents();
+		}
+	}
+
+	progressDialog->setValue(progressDialog->maximumSteps());
+
+	if(loopFound)
+	{
+		QMessageBox::information(this, tr("Merge Components"), tr("Successfully merged components! Loop closure found between %1 and %2.").arg(foundFrom).arg(foundTo));
+
+		regenerateGraphComponents();
+		this->updateGraphView();
+        
+		// Combine both selections so the user can easily run detectMoreLoopClosures if they want
+		std::set<int> finalSelection = activeSelection;
+		finalSelection.insert(N2.begin(), N2.end());
+		ui_->graphViewer->selectNodesFromIds(finalSelection);
+		ui_->graphViewer->centerOnNode(foundFrom);
+	}
+	else if (!progressDialog->isCanceled())
+	{
+		QMessageBox::information(this, tr("Merge Components"), tr("No loop closure found between the selected nodes of the two components."));
+	}
+}
+
 void DatabaseViewer::updateAllNeighborCovariances()
 {
 	std::multimap<int, Link> allLinks = updateLinksWithModifications(links_);
@@ -6451,6 +6551,7 @@ void DatabaseViewer::editConstraint()
 				}
 				if(priorId==0)
 				{
+					regenerateGraphComponents();
 					this->updateGraphView();
 					updateConstraintView();
 				}
@@ -6479,6 +6580,7 @@ void DatabaseViewer::editConstraint()
 				updated = true;
 				if(priorId==0)
 				{
+					regenerateGraphComponents();
 					this->updateGraphView();
 					updateLoopClosuresSlider(from, to);
 				}
@@ -6504,6 +6606,7 @@ void DatabaseViewer::editConstraint()
 			
 			if(!priorsIgnored)
 			{
+				regenerateGraphComponents();
 				this->updateGraphView();
 			}
 		}

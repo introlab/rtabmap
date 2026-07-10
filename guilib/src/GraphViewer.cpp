@@ -1423,7 +1423,8 @@ void GraphViewer::setInteractionMode(InteractionMode mode)
 	}
 	if(mode == HandMode && this->scene())
 	{
-		this->scene()->clearSelection();
+		// for now we keep this commented to allow browsing and selectioning alternatively
+		// this->scene()->clearSelection();
 	}
 }
 

@@ -938,6 +938,7 @@
     <addaction name="actionGenerate_local_graph_dot"/>
     <addaction name="separator"/>
     <addaction name="actionDetect_more_loop_closures"/>
+    <addaction name="actionMerge_components_using_selected_nodes"/>
     <addaction name="actionRefine_links"/>
     <addaction name="actionUpdate_all_neighbor_covariances"/>
     <addaction name="actionUpdate_all_loop_closure_covariances"/>
@@ -1268,6 +1269,34 @@
    <widget class="QWidget" name="dockWidget_graphContents">
     <layout class="QVBoxLayout" name="verticalLayout_9">
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_21">
+       <item>
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Mouse mode</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_graphHand">
+         <property name="text">
+          <string>Hand / Move</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButton_graphSelection">
+         <property name="text">
+          <string>Selection</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <widget class="rtabmap::GraphViewer" name="graphViewer"/>
      </item>
      <item>
@@ -1374,43 +1403,7 @@
            </layout>
           </item>
           <item>
-           <widget class="QGroupBox" name="groupBox_graphInteraction">
-            <property name="title">
-             <string>Mouse mode</string>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_graphInteraction">
-             <item>
-              <widget class="QRadioButton" name="radioButton_graphHand">
-               <property name="text">
-                <string>Hand / Move</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QRadioButton" name="radioButton_graphSelection">
-               <property name="text">
-                <string>Selection</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_graphInteraction">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </widget>
+           <layout class="QHBoxLayout" name="horizontalLayout_20"/>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -1805,7 +1798,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>325</width>
+          <width>248</width>
           <height>178</height>
          </rect>
         </property>
@@ -1961,8 +1954,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>391</width>
-          <height>984</height>
+          <width>217</width>
+          <height>1476</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2909,8 +2902,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>325</width>
-          <height>182</height>
+          <width>142</width>
+          <height>470</height>
          </rect>
         </property>
         <attribute name="label">
@@ -3684,6 +3677,11 @@
   <action name="actionUpdate_all_landmark_covariances">
    <property name="text">
     <string>Update all landmark covariances...</string>
+   </property>
+  </action>
+  <action name="actionMerge_components_using_selected_nodes">
+   <property name="text">
+    <string>Merge components using selected nodes</string>
    </property>
   </action>
  </widget>
