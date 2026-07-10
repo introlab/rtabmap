@@ -3071,13 +3071,15 @@ void Memory::convertToIntermediate(int locationId)
 	}
 }
 
-void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
+void Memory::deleteLocation(int locationId, std::list<int> * deletedWords, bool keepLinked = false)
 {
 	UDEBUG("Deleting location %d", locationId);
 	Signature * location = _getSignature(locationId);
 	if(location)
 	{
-		this->moveToTrash(location, false, deletedWords);
+		this->moveToTrash(location, keepLinked, deletedWords);
+		_linksChanged = true;
+		_memoryChanged = true;
 	}
 }
 

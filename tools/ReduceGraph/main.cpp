@@ -235,6 +235,19 @@ int main(int argc, char * argv[])
 	}
 	printf("Reduced a total of %d nodes out of %ld nodes\n", totalNodesReduced, ids.size());
 
+	// Remove orphan nodes
+	std::map<int, double> wm = memory.getWorkingMem();
+	for(auto iter: wm)
+	{
+		std::multimap<int, rtabmap::Link> links = memory.getLinks(iter.first);
+		if(graph::filterLinks(links, Link::kSelfRefLink).empty())
+		{
+			// orphan
+			memory.deleteLocation(iter.first, 0, keepLinked);
+			printf("Removed orphan node %d\n", iter.first);
+		}
+	}
+
 	if(!optimizedPoses.empty())
 	{
 		size_t removed = 0;
