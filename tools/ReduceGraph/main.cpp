@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/global_map/OccupancyGrid.h>
@@ -57,8 +58,9 @@ void showUsage(const char * exec)
 			"Options:\n"
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
-			"    --pre_cleanup  Remove all user loop closures linking nodes closer than %s in the graph before reducing the graph.\n"
+			"    --pre_cleanup  Remove all user loop closures linking nodes closer than %s nodes in the graph before reducing the graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
+			"    --sync_wm_and_opt_graph  Keep in sync the WM state and the optimized graph, transfering in LTM disconnected nodes from the optimized graph during reduction process.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec, Parameters::kMemSTMSize().c_str());
 	exit(1);
@@ -78,6 +80,7 @@ int main(int argc, char * argv[])
 	bool keepLinked = false;
 	float radius = 1.0f;
 	bool preCleanup = false;
+	bool syncWmAndOptGraph = false;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -95,6 +98,10 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--pre_cleanup") == 0)
 		{
 			preCleanup = true;
+		}
+		else if(std::strcmp(argv[i], "--sync_wm_and_opt_graph") == 0)
+		{
+			syncWmAndOptGraph = true;
 		}
 		else if(std::strcmp(argv[i], "--radius") == 0)
 		{
@@ -118,6 +125,7 @@ int main(int argc, char * argv[])
 	printf("  keep_latest = %s\n", keepLatest?"true":"false");
 	printf("  keep_linked = %s\n", keepLinked?"true":"false");
 	printf("  pre_cleanup = %s\n", preCleanup?"true":"false");
+	printf("  sync_wm_and_opt_graph = %s\n", syncWmAndOptGraph?"true":"false");
 
 #ifdef RTABMAP_PYTHON
 	rtabmap::PythonInterface pythonInterface;
@@ -178,6 +186,37 @@ int main(int argc, char * argv[])
 	float xMin, yMin, cellSize;
 	bool hasOptimizedMap = !memory.load2DMap(xMin, yMin, cellSize).empty();
 
+	bool isWholeWMContainedInOptGraph = !optimizedPoses.empty();
+	bool isWholeGraphConnected = false;
+	std::shared_ptr<Optimizer> optimizer(Optimizer::create(parameters));
+	if(!optimizedPoses.empty())
+	{
+		std::map<int, Transform> tmp;
+		std::multimap<int, Link> optimizedConstraints;
+		memory.getMetricConstraints(uKeysSet(optimizedPoses), tmp, optimizedConstraints, false, true);
+		for(std::map<int, double>::const_iterator iter=memory.getWorkingMem().lower_bound(0); 
+			iter!=memory.getWorkingMem().end() && isWholeWMContainedInOptGraph; 
+			++iter)
+		{
+			if(optimizedPoses.find(iter->first) == optimizedPoses.end())
+			{
+				isWholeWMContainedInOptGraph = false;
+			}
+		}
+		std::map<int, Transform> posesOut;
+		std::multimap<int, Link> linksOut;
+		optimizer->getConnectedGraph(
+			keepLatest?optimizedPoses.rbegin()->first:optimizedPoses.begin()->first,
+			optimizedPoses,
+			optimizedConstraints,
+			posesOut,
+			linksOut);
+		isWholeGraphConnected = posesOut.size() == optimizedPoses.size();
+
+		printf("Whole WM is contained in optimized graph: %s (WM=%ld Graph=%ld)\n", isWholeWMContainedInOptGraph?"true":"false", memory.getWorkingMem().size(), optimizedPoses.size());
+		printf("Whole optimized graph is connected: %s (org=%ld recomputed=%ld)\n", isWholeGraphConnected?"true":"false", optimizedPoses.size(), posesOut.size());
+	}
+
 	int totalNodesReduced = 0;
 	std::vector<int> vids;
 	vids.reserve(ids.size());
@@ -235,19 +274,6 @@ int main(int argc, char * argv[])
 	}
 	printf("Reduced a total of %d nodes out of %ld nodes\n", totalNodesReduced, ids.size());
 
-	// Remove orphan nodes
-	std::map<int, double> wm = memory.getWorkingMem();
-	for(std::map<int, double>::iterator iter=wm.lower_bound(0); iter!=wm.end(); ++iter)
-	{
-		std::multimap<int, rtabmap::Link> links = memory.getLinks(iter->first);
-		if(graph::filterLinks(links, Link::kSelfRefLink).empty())
-		{
-			// orphan
-			memory.deleteLocation(iter->first, 0, keepLinked);
-			printf("Removed orphan node %d\n", iter->first);
-		}
-	}
-
 	if(!optimizedPoses.empty())
 	{
 		size_t removed = 0;
@@ -265,6 +291,72 @@ int main(int argc, char * argv[])
 			}
 		}
 		printf("Updated optimized graph from %ld poses to %ld poses\n", optimizedPoses.size()+removed, optimizedPoses.size());
+		
+		// The optimized graph should be all connected, check if some nodes got disconnected
+		std::map<int, Transform> tmp;
+		std::multimap<int, Link> optimizedConstraints;
+		memory.getMetricConstraints(uKeysSet(optimizedPoses), tmp, optimizedConstraints, false, true);
+		std::map<int, Transform> posesOut;
+		std::multimap<int, Link> linksOut;
+		optimizer->getConnectedGraph(
+			keepLatest?optimizedPoses.rbegin()->first:optimizedPoses.lower_bound(0)->first,
+			optimizedPoses,
+			optimizedConstraints,
+			posesOut,
+			linksOut);
+
+		// Let's warn the user if WM was previously containing only
+		// nodes from optimized graph but now it doesn't
+		if( posesOut.size() != optimizedPoses.size() &&
+			isWholeWMContainedInOptGraph &&
+			isWholeGraphConnected)
+		{
+			int count = 0;
+			std::stringstream stream;
+			for(std::map<int, Transform>::iterator iter = optimizedPoses.begin();
+				iter!=optimizedPoses.end();)
+			{
+				if(posesOut.find(iter->first)==posesOut.end())
+				{
+					stream << iter->first << " ";
+					++count;
+					iter = optimizedPoses.erase(iter);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			UWARN("The optimized graph in working memory got split during graph "
+				"reduction process while it was all connected before! You may re-run "
+				"with --sync_wm_and_opt_graph option if needed. Here are the %d "
+				"nodes still in working memory but not connected to the root ID %d "
+				"of the optimized graph anymore: %s",
+				count,
+				keepLatest?optimizedPoses.rbegin()->first:optimizedPoses.lower_bound(0)->first,
+				stream.str().c_str());
+		}
+
+		if(syncWmAndOptGraph)
+		{
+			printf("Option --sync_wm_and_opt_graph is used, let's cleanup working memory "
+				"from nodes not in the optimized graph anymore.\n");
+			// Synchronize WM and the optimized graph. For all nodes in WM that 
+			// are not in optimized graph, transfer to LTM.
+			std::map<int, double> wm = memory.getWorkingMem();
+			for(std::map<int, double>::iterator iter=wm.lower_bound(0); 
+				iter!=wm.end(); 
+				++iter)
+			{
+				if(optimizedPoses.find(iter->first) == optimizedPoses.end())
+				{
+					memory.deleteLocation(iter->first, 0, true);
+					printf("Transferred %d from WM to LTM.\n", iter->first);
+				}
+			}
+		}
+
+		printf("Saving back %ld optimized poses to database.\n", optimizedPoses.size());
 		memory.saveOptimizedPoses(optimizedPoses, lastLocalizationPose);
 	}
 	if(hasOptimizedMap)
