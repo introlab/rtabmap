@@ -38,7 +38,7 @@ jobs:
         - ros_distribution: 'lyrical'
           skip_keys: "libpointmatcher"
         - ros_distribution: 'rolling'
-          skip_keys: "libpointmatcher"
+          skip_keys: "libpointmatcher gtsam"
           use_ros2_testing: true
     container:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
