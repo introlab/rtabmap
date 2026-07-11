@@ -31,20 +31,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <cstring>
 
 using namespace rtabmap;
 
 void showUsage()
 {
 	printf("\nUpdate a database with a set of changes recorded while another database was opened with\n"
-		   "change tracking enabled (i.e. DBDriverSqlite3::setTrackChangesOutput()). This applies the\n"
-		   "data changes only; it does NOT upgrade the database schema/version.\n"
+		   "change tracking enabled (the --track-changes option of rtabmap-reprocess,\n"
+		   "rtabmap-detectMoreLoopClosures or rtabmap-reduceGraph). This applies the data changes\n"
+		   "only; it does NOT upgrade the database schema/version.\n"
 		   "\n"
 		   "Usage:\n"
-		   "   rtabmap-dbupdate \"database.db\" \"changes.update\"\n"
+		   "   rtabmap-dbupdate [--rewind] \"database.db\" \"changes.update\"\n"
 		   "\n"
-		   "The changes must be applied to the exact database state they were recorded from; otherwise\n"
-		   "the operation is aborted and the database is left unchanged.\n"
+		   "Options:\n"
+		   "   --rewind   Undo a previously applied update instead of applying it (the changeset is\n"
+		   "              inverted). The database must be in the state right after the update was applied.\n"
+		   "\n"
+		   "The changes must be applied to the exact database state they were recorded from (or, with\n"
+		   "--rewind, the state right after they were applied); otherwise the operation is aborted and\n"
+		   "the database is left unchanged.\n"
 		   "\n");
 	exit(1);
 }
@@ -57,6 +64,20 @@ int main(int argc, char * argv[])
 	if(argc < 3)
 	{
 		showUsage();
+	}
+
+	bool rewind = false;
+	for(int i=1; i<argc-2; ++i)
+	{
+		if(std::strcmp(argv[i], "--rewind") == 0)
+		{
+			rewind = true;
+		}
+		else
+		{
+			printf("Unknown option \"%s\".\n", argv[i]);
+			showUsage();
+		}
 	}
 
 	std::string databasePath = argv[argc-2];
@@ -73,12 +94,14 @@ int main(int argc, char * argv[])
 		return 1;
 	}
 
-	printf("Updating database \"%s\" with changes from \"%s\"...\n", databasePath.c_str(), updatePath.c_str());
+	printf("%s database \"%s\" with changes from \"%s\"...\n",
+			rewind?"Rewinding":"Updating", databasePath.c_str(), updatePath.c_str());
 
 	std::string error;
-	if(DBDriverSqlite3::applyChangesFromFile(databasePath, updatePath, &error))
+	if(DBDriverSqlite3::applyChangesFromFile(databasePath, updatePath, rewind, &error))
 	{
-		printf("Done! Database \"%s\" was updated successfully.\n", databasePath.c_str());
+		printf("Done! Database \"%s\" was %s successfully.\n",
+				databasePath.c_str(), rewind?"rewound":"updated");
 		return 0;
 	}
 

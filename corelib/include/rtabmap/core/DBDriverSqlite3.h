@@ -60,15 +60,17 @@ public:
 	// set of changes is small (e.g. appending a few sessions), not for rewriting a whole map.
 	virtual bool trackDatabaseChanges(const std::string & outputUrl);
 
-	// Apply a change delta previously written by setTrackChangesOutput() onto the database
-	// at databasePath (which must be the same database, at the same state, the delta was
-	// generated from). The file is decompressed (same codec as the other rtabmap blobs) then
-	// applied with the SQLite session extension. Returns true on success; on failure returns
-	// false and, if errorMsg is not null, sets a human-readable message. Requires a SQLite
-	// library built with the session extension (both at build and runtime).
+	// Apply a change delta previously written by trackDatabaseChanges() onto the database at
+	// databasePath. The file is decompressed (same codec as the other rtabmap blobs) then
+	// applied with the SQLite session extension. With rewind=false, databasePath must be at the
+	// same state the delta was recorded from; with rewind=true, the delta is inverted first to
+	// undo it, so databasePath must be at the post-update state. Returns true on success; on
+	// failure returns false and, if errorMsg is not null, sets a human-readable message.
+	// Requires a SQLite library built with the session extension (both at build and runtime).
 	static bool applyChangesFromFile(
 			const std::string & databasePath,
-			const std::string & patchsetPath,
+			const std::string & changesetPath,
+			bool rewind = false,
 			std::string * errorMsg = 0);
 
 protected:

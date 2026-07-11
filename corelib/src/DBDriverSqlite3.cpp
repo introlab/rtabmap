@@ -245,7 +245,7 @@ void DBDriverSqlite3::startChangeTracking()
 	else if(sqlite3session_create(_ppDb, "main", &_session) == SQLITE_OK)
 	{
 		sqlite3session_attach(_session, 0); // 0 = track all tables
-		UINFO("Tracking database changes; a patchset will be written to \"%s\" on close.",
+		UINFO("Tracking database changes; a changeset will be written to \"%s\" on close.",
 			  _trackChangesOutput.c_str());
 	}
 	else
@@ -293,7 +293,8 @@ static int rtabmapChangesetConflict(void * pCtx, int eConflict, sqlite3_changese
 
 bool DBDriverSqlite3::applyChangesFromFile(
 		const std::string & databasePath,
-		const std::string & patchsetPath,
+		const std::string & changesetPath,
+		bool rewind,
 		std::string * errorMsg)
 {
 #ifdef RTABMAP_WITH_SQLITE3_SESSION
@@ -303,11 +304,11 @@ bool DBDriverSqlite3::applyChangesFromFile(
 		return false;
 	}
 
-	// Read the compressed patchset file.
-	FILE * fp = fopen(patchsetPath.c_str(), "rb");
+	// Read the compressed changeset file.
+	FILE * fp = fopen(changesetPath.c_str(), "rb");
 	if(!fp)
 	{
-		if(errorMsg) *errorMsg = uFormat("Could not open patchset file \"%s\".", patchsetPath.c_str());
+		if(errorMsg) *errorMsg = uFormat("Could not open changeset file \"%s\".", changesetPath.c_str());
 		return false;
 	}
 	fseek(fp, 0, SEEK_END);
@@ -316,7 +317,7 @@ bool DBDriverSqlite3::applyChangesFromFile(
 	if(fileSize <= 0)
 	{
 		fclose(fp);
-		if(errorMsg) *errorMsg = uFormat("Patchset file \"%s\" is empty or unreadable.", patchsetPath.c_str());
+		if(errorMsg) *errorMsg = uFormat("Changeset file \"%s\" is empty or unreadable.", changesetPath.c_str());
 		return false;
 	}
 	std::vector<unsigned char> fileBytes((size_t)fileSize);
@@ -324,16 +325,37 @@ bool DBDriverSqlite3::applyChangesFromFile(
 	fclose(fp);
 	if((long)bytesRead != fileSize)
 	{
-		if(errorMsg) *errorMsg = uFormat("Could not read patchset file \"%s\".", patchsetPath.c_str());
+		if(errorMsg) *errorMsg = uFormat("Could not read changeset file \"%s\".", changesetPath.c_str());
 		return false;
 	}
 
-	// Decompress to the raw patchset (same codec used to write it).
-	cv::Mat patch = uncompressData(fileBytes.data(), (unsigned long)fileSize);
-	if(patch.empty())
+	// Decompress to the raw changeset (same codec used to write it).
+	cv::Mat changes = uncompressData(fileBytes.data(), (unsigned long)fileSize);
+	if(changes.empty())
 	{
-		if(errorMsg) *errorMsg = uFormat("Could not decompress patchset file \"%s\".", patchsetPath.c_str());
+		if(errorMsg) *errorMsg = uFormat("Could not decompress changeset file \"%s\".", changesetPath.c_str());
 		return false;
+	}
+
+	int nChanges = (int)(changes.total()*changes.elemSize());
+	void * pApply = changes.data;
+	int nApply = nChanges;
+	void * pInverted = 0;
+	if(rewind)
+	{
+		// Invert the changeset so applying it undoes the recorded update (INSERT<->DELETE,
+		// UPDATE reversed). This is why the emit records a changeset, not a patchset: only
+		// changesets carry the old values needed to reverse a change.
+		int nInverted = 0;
+		int rcInv = sqlite3changeset_invert(nChanges, changes.data, &nInverted, &pInverted);
+		if(rcInv != SQLITE_OK || pInverted == 0)
+		{
+			if(errorMsg) *errorMsg = uFormat("Could not invert changeset \"%s\" for rewind (SQLite error %d: %s).",
+					changesetPath.c_str(), rcInv, sqlite3_errstr(rcInv));
+			return false;
+		}
+		pApply = pInverted;
+		nApply = nInverted;
 	}
 
 	// Apply onto the target database.
@@ -343,20 +365,21 @@ bool DBDriverSqlite3::applyChangesFromFile(
 	{
 		if(errorMsg) *errorMsg = uFormat("Could not open database \"%s\": %s", databasePath.c_str(), sqlite3_errmsg(db));
 		sqlite3_close(db);
+		if(pInverted) sqlite3_free(pInverted);
 		return false;
 	}
 
-	int nPatch = (int)(patch.total()*patch.elemSize());
-	rc = sqlite3changeset_apply(db, nPatch, patch.data, 0, rtabmapChangesetConflict, 0);
+	rc = sqlite3changeset_apply(db, nApply, pApply, 0, rtabmapChangesetConflict, 0);
+	sqlite3_close(db);
+	if(pInverted) sqlite3_free(pInverted);
 	if(rc != SQLITE_OK)
 	{
-		if(errorMsg) *errorMsg = uFormat("Failed to apply patchset to \"%s\" (SQLite error %d: %s). Make "
-				"sure it is applied to the exact database state the delta was generated from.",
-				databasePath.c_str(), rc, sqlite3_errstr(rc));
-		sqlite3_close(db);
+		if(errorMsg) *errorMsg = uFormat("Failed to %s \"%s\" (SQLite error %d: %s). Make sure it is applied to the "
+				"exact database state the delta %s.",
+				rewind?"rewind":"update", databasePath.c_str(), rc, sqlite3_errstr(rc),
+				rewind?"was previously applied to":"was recorded from");
 		return false;
 	}
-	sqlite3_close(db);
 	return true;
 #else
 	if(errorMsg) *errorMsg = "rtabmap was built without SQLite session support.";
@@ -645,15 +668,17 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 		}
 
 #ifdef RTABMAP_WITH_SQLITE3_SESSION
-		// If change tracking is active, emit the accumulated patchset before closing.
+		// If change tracking is active, emit the accumulated changeset before closing.
+		// A changeset (not a patchset) is used so it carries the old values too and can be
+		// inverted with sqlite3changeset_invert() to undo the update (see applyChangesFromFile).
 		if(_session)
 		{
 			int nBuf = 0;
 			void * pBuf = 0;
-			int rcp = sqlite3session_patchset(_session, &nBuf, &pBuf);
+			int rcp = sqlite3session_changeset(_session, &nBuf, &pBuf);
 			if(rcp == SQLITE_OK && pBuf && nBuf > 0)
 			{
-				// Compress the patchset with the same zlib-based codec used for every other
+				// Compress the changeset with the same zlib-based codec used for every other
 				// rtabmap blob, so the delta is compact for transfer. To apply it later,
 				// uncompressData() the file and pass the bytes to sqlite3changeset_apply().
 				cv::Mat compressed = compressData2(cv::Mat(1, nBuf, CV_8UC1, pBuf));
@@ -665,23 +690,23 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 					fclose(fp);
 					if(written == toWrite)
 					{
-						UINFO("Wrote compressed database patchset (%d -> %d bytes) to \"%s\".",
+						UINFO("Wrote compressed database changeset (%d -> %d bytes) to \"%s\".",
 							  nBuf, (int)toWrite, _trackChangesOutput.c_str());
 					}
 					else
 					{
-						UERROR("Could only write %d/%d bytes of the database patchset to \"%s\".",
+						UERROR("Could only write %d/%d bytes of the database changeset to \"%s\".",
 							   (int)written, (int)toWrite, _trackChangesOutput.c_str());
 					}
 				}
 				else
 				{
-					UERROR("Could not open \"%s\" to write the database patchset.", _trackChangesOutput.c_str());
+					UERROR("Could not open \"%s\" to write the database changeset.", _trackChangesOutput.c_str());
 				}
 			}
 			else if(rcp != SQLITE_OK)
 			{
-				UERROR("Could not generate the database patchset for \"%s\" (SQLite error %d).",
+				UERROR("Could not generate the database changeset for \"%s\" (SQLite error %d).",
 					   _trackChangesOutput.c_str(), rcp);
 			}
 			else
