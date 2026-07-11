@@ -196,15 +196,32 @@ IF(SQLite3_FOUND)
 		${LIBRARIES}
 		${SQLite3_LIBRARIES}
 	)
-	# The SQLite session extension (used to track DB diffs) needs SQLite >= 3.13.0.
-	# Defining SQLITE_ENABLE_SESSION here only exposes the session declarations in the
-	# system sqlite3.h; whether the linked library was actually built with the extension
-	# is verified at runtime with sqlite3_compileoption_used("ENABLE_SESSION").
-	IF(SQLite3_VERSION VERSION_GREATER_EQUAL "3.13.0")
+	# The SQLite session extension (used to track DB changes) needs a SQLite built with
+	# SQLITE_ENABLE_SESSION. Check if sqlite is built with it.
+	INCLUDE(CheckCXXSourceCompiles)
+	SET(CMAKE_REQUIRED_INCLUDES ${SQLite3_INCLUDE_DIRS})
+	SET(CMAKE_REQUIRED_LIBRARIES ${SQLite3_LIBRARIES})
+	SET(CMAKE_REQUIRED_DEFINITIONS -DSQLITE_ENABLE_SESSION -DSQLITE_ENABLE_PREUPDATE_HOOK)
+	CHECK_CXX_SOURCE_COMPILES("
+#include <sqlite3.h>
+int main() {
+    sqlite3_session * s = 0;
+    sqlite3session_create((sqlite3*)0, \"main\", &s);
+    sqlite3session_attach(s, 0);
+    int n = 0; void * p = 0;
+    sqlite3session_changeset(s, &n, &p);
+    sqlite3changeset_invert(n, p, &n, &p);
+    sqlite3session_delete(s);
+    return 0;
+}" RTABMAP_SQLITE3_SESSION_AVAILABLE)
+	UNSET(CMAKE_REQUIRED_INCLUDES)
+	UNSET(CMAKE_REQUIRED_LIBRARIES)
+	UNSET(CMAKE_REQUIRED_DEFINITIONS)
+	IF(RTABMAP_SQLITE3_SESSION_AVAILABLE)
 		SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
-		MESSAGE(STATUS "  With SQLite3 session ext  = YES (system SQLite3 ${SQLite3_VERSION}, verified at runtime)")
+		MESSAGE(STATUS "  With SQLite3 session ext  = YES (system SQLite3 ${SQLite3_VERSION})")
 	ELSE()
-		MESSAGE(STATUS "  With SQLite3 session ext  = NO (system SQLite3 ${SQLite3_VERSION} < 3.13.0)")
+		MESSAGE(STATUS "  With SQLite3 session ext  = NO (system SQLite3 ${SQLite3_VERSION} has no session extension)")
 	ENDIF()
 ELSE()
 	SET(SRC_FILES
@@ -215,9 +232,17 @@ ELSE()
 	    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
 		${INCLUDE_DIRS}
 	)
-	# We compile the bundled amalgamation ourselves, so enable the session extension in it.
-	SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
-	MESSAGE(STATUS "  With SQLite3 session ext  = YES (bundled SQLite3)")
+	FILE(READ ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3/sqlite3.h RTABMAP_BUNDLED_SQLITE3_HEADER)
+	IF(RTABMAP_BUNDLED_SQLITE3_HEADER MATCHES "sqlite3session_create")
+		SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
+		MESSAGE(STATUS "  With SQLite3 session ext  = YES (bundled SQLite3)")
+	ELSE()
+		MESSAGE(FATAL_ERROR "The bundled SQLite amalgamation (corelib/src/sqlite3/sqlite3.h) does not contain "
+			"the session extension (sqlite3session_create not found). It must be a session-enabled "
+			"amalgamation, as the standard sqlite.org amalgamation does NOT include the session extension "
+			"by default. Please vendor a session-enabled SQLite amalgamation.")
+	ENDIF()
+	UNSET(RTABMAP_BUNDLED_SQLITE3_HEADER)
 ENDIF()
 
 IF(TORCH_FOUND)
