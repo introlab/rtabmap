@@ -62,8 +62,7 @@ void showUsage()
 			"    --track-changes \"changes.update\"\n"
 			"                  Record the changes made to the database (added loop closures) and write a compact\n"
 			"                  delta to the given file, applied later on another copy with rtabmap-dbupdate.\n"
-			"                  Requires the database to be version 0.24 or newer. The changes are held in memory\n"
-			"                  until closing, so use this only when a small amount is added.\n"
+			"                  Requires the database to be version 0.24 or newer.\n"
 			"\n%s", Parameters::showUsage());
 	exit(1);
 }

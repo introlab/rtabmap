@@ -62,8 +62,7 @@ void showUsage(const char * exec)
 			"    --track-changes \"changes.update\"\n"
 			"                   Record the changes made to the database (reduced nodes, removed links) and write a\n"
 			"                   compact delta to the given file, applied later on another copy with rtabmap-dbupdate.\n"
-			"                   Requires the database to be version 0.24 or newer. Changes are held in memory until\n"
-			"                   closing, so use this only when a small amount is modified.\n"
+			"                   Requires the database to be version 0.24 or newer.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec, Parameters::kMemSTMSize().c_str());
 	exit(1);
