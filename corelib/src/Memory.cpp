@@ -1994,6 +1994,11 @@ double Memory::getDbSavingTime() const
 	return _dbDriver?_dbDriver->getEmptyTrashesTime():0;
 }
 
+bool Memory::trackDatabaseChanges(const std::string & outputUrl)
+{
+	return _dbDriver?_dbDriver->trackDatabaseChanges(outputUrl):false;
+}
+
 std::set<int> Memory::getAllSignatureIds(bool ignoreChildren) const
 {
 	std::set<int> ids;

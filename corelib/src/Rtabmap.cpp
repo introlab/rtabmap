@@ -885,6 +885,11 @@ Transform Rtabmap::getPose(int locationId) const
 	return uValue(_optimizedPoses, locationId, Transform());
 }
 
+bool Rtabmap::trackDatabaseChanges(const std::string & outputUrl)
+{
+	return _memory?_memory->trackDatabaseChanges(outputUrl):false;
+}
+
 void Rtabmap::setInitialPose(const Transform & initialPose)
 {
 	if(_memory)

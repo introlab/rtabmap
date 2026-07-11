@@ -196,6 +196,16 @@ IF(SQLite3_FOUND)
 		${LIBRARIES}
 		${SQLite3_LIBRARIES}
 	)
+	# The SQLite session extension (used to track DB diffs) needs SQLite >= 3.13.0.
+	# Defining SQLITE_ENABLE_SESSION here only exposes the session declarations in the
+	# system sqlite3.h; whether the linked library was actually built with the extension
+	# is verified at runtime with sqlite3_compileoption_used("ENABLE_SESSION").
+	IF(SQLite3_VERSION VERSION_GREATER_EQUAL "3.13.0")
+		SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
+		MESSAGE(STATUS "  With SQLite3 session ext  = YES (system SQLite3 ${SQLite3_VERSION}, verified at runtime)")
+	ELSE()
+		MESSAGE(STATUS "  With SQLite3 session ext  = NO (system SQLite3 ${SQLite3_VERSION} < 3.13.0)")
+	ENDIF()
 ELSE()
 	SET(SRC_FILES
 		${SRC_FILES}
@@ -205,6 +215,9 @@ ELSE()
 	    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
 		${INCLUDE_DIRS}
 	)
+	# We compile the bundled amalgamation ourselves, so enable the session extension in it.
+	SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
+	MESSAGE(STATUS "  With SQLite3 session ext  = YES (bundled SQLite3)")
 ENDIF()
 
 IF(TORCH_FOUND)
@@ -830,6 +843,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql.in ${CMA
 
 SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql
+	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_23_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_22_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_20_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_18_3.sql
@@ -886,12 +900,19 @@ target_include_directories(rtabmap_core SYSTEM PUBLIC
   "$<BUILD_INTERFACE:${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
   "$<INSTALL_INTERFACE:${PUBLIC_INCLUDE_DIRS}>")
   
-TARGET_LINK_LIBRARIES(rtabmap_core 
-  PUBLIC 
-    rtabmap_utilite 
+TARGET_LINK_LIBRARIES(rtabmap_core
+  PUBLIC
+    rtabmap_utilite
     ${PUBLIC_LIBRARIES}
-  PRIVATE 
+  PRIVATE
     ${LIBRARIES})
+
+# Enable the SQLite session extension for the core sources (bundled sqlite3.c and
+# DBDriverSqlite3.cpp). Kept PRIVATE so it only affects rtabmap_core's own TUs and
+# never changes the public header layout for downstream consumers.
+IF(SQLITE3_SESSION_DEFINITIONS)
+	target_compile_definitions(rtabmap_core PRIVATE ${SQLITE3_SESSION_DEFINITIONS})
+ENDIF()
 
 SET_TARGET_PROPERTIES(
      rtabmap_core

@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Compression.h"
 #include "DatabaseSchema_sql.h"
+#include "DatabaseSchema_0_23_0_sql.h"
 #include "DatabaseSchema_0_22_0_sql.h"
 #include "DatabaseSchema_0_20_0_sql.h"
 #include "DatabaseSchema_0_18_3_sql.h"
@@ -45,6 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <set>
+#include <cstdio>
 
 #include "rtabmap/utilite/UtiLite.h"
 
@@ -59,7 +61,8 @@ DBDriverSqlite3::DBDriverSqlite3(const ParametersMap & parameters) :
 	_cacheSize(Parameters::defaultDbSqlite3CacheSize()),
 	_journalMode(Parameters::defaultDbSqlite3JournalMode()),
 	_synchronous(Parameters::defaultDbSqlite3Synchronous()),
-	_tempStore(Parameters::defaultDbSqlite3TempStore())
+	_tempStore(Parameters::defaultDbSqlite3TempStore()),
+	_session(0)
 {
 	ULOGGER_DEBUG("treadSafe=%d", sqlite3_threadsafe());
 	this->parseParameters(parameters);
@@ -216,6 +219,149 @@ void DBDriverSqlite3::setDbInMemory(bool dbInMemory)
 			_dbInMemory = dbInMemory;
 		}
 	}
+}
+
+void DBDriverSqlite3::startChangeTracking()
+{
+#ifdef RTABMAP_WITH_SQLITE3_SESSION
+	if(_session != 0 || _trackChangesOutput.empty() || _ppDb == 0)
+	{
+		// Already tracking, nothing requested, or not connected yet.
+		return;
+	}
+	if(uStrNumCmp(_version, "0.24.0") < 0)
+	{
+		UWARN("Database change tracking to \"%s\" was requested but the database "
+			  "version is %s (< 0.24.0). Older schemas lack the primary keys required "
+			  "by the SQLite session extension, so change tracking is disabled.",
+			  _trackChangesOutput.c_str(), _version.c_str());
+	}
+	else if(!sqlite3_compileoption_used("ENABLE_SESSION"))
+	{
+		UWARN("Database change tracking to \"%s\" was requested but the linked SQLite "
+			  "library was not built with the session extension (ENABLE_SESSION); "
+			  "change tracking is disabled.", _trackChangesOutput.c_str());
+	}
+	else if(sqlite3session_create(_ppDb, "main", &_session) == SQLITE_OK)
+	{
+		sqlite3session_attach(_session, 0); // 0 = track all tables
+		UINFO("Tracking database changes; a patchset will be written to \"%s\" on close.",
+			  _trackChangesOutput.c_str());
+	}
+	else
+	{
+		UWARN("Could not create a SQLite session to track database changes to \"%s\".",
+			  _trackChangesOutput.c_str());
+		_session = 0;
+	}
+#endif
+}
+
+bool DBDriverSqlite3::trackDatabaseChanges(const std::string & outputUrl)
+{
+	UDEBUG("outputUrl=%s", outputUrl.c_str());
+	_trackChangesOutput = outputUrl;
+#ifdef RTABMAP_WITH_SQLITE3_SESSION
+	// If the connection is already open (e.g. set after connect(), as rtabmap-reprocess
+	// does after init()), start tracking now on the current baseline state. Otherwise it
+	// will start automatically when the connection is opened.
+	if(!outputUrl.empty() && _ppDb != 0)
+	{
+		this->startChangeTracking();
+	}
+	return _session != 0;
+#else
+	if(!outputUrl.empty())
+	{
+		UWARN("Database change tracking to \"%s\" was requested but rtabmap was built "
+			  "against a SQLite library without the session extension; it is disabled.",
+			  outputUrl.c_str());
+	}
+	return false;
+#endif
+}
+
+#ifdef RTABMAP_WITH_SQLITE3_SESSION
+static int rtabmapChangesetConflict(void * pCtx, int eConflict, sqlite3_changeset_iter * pIter)
+{
+	// A patchset upgrade must apply cleanly onto the exact database it was generated from.
+	// Any conflict means the wrong base database (or an already-applied delta), so abort
+	// rather than silently produce an inconsistent result.
+	return SQLITE_CHANGESET_ABORT;
+}
+#endif
+
+bool DBDriverSqlite3::applyChangesFromFile(
+		const std::string & databasePath,
+		const std::string & patchsetPath,
+		std::string * errorMsg)
+{
+#ifdef RTABMAP_WITH_SQLITE3_SESSION
+	if(!sqlite3_compileoption_used("ENABLE_SESSION"))
+	{
+		if(errorMsg) *errorMsg = "The linked SQLite library was not built with the session extension.";
+		return false;
+	}
+
+	// Read the compressed patchset file.
+	FILE * fp = fopen(patchsetPath.c_str(), "rb");
+	if(!fp)
+	{
+		if(errorMsg) *errorMsg = uFormat("Could not open patchset file \"%s\".", patchsetPath.c_str());
+		return false;
+	}
+	fseek(fp, 0, SEEK_END);
+	long fileSize = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	if(fileSize <= 0)
+	{
+		fclose(fp);
+		if(errorMsg) *errorMsg = uFormat("Patchset file \"%s\" is empty or unreadable.", patchsetPath.c_str());
+		return false;
+	}
+	std::vector<unsigned char> fileBytes((size_t)fileSize);
+	size_t bytesRead = fread(fileBytes.data(), 1, (size_t)fileSize, fp);
+	fclose(fp);
+	if((long)bytesRead != fileSize)
+	{
+		if(errorMsg) *errorMsg = uFormat("Could not read patchset file \"%s\".", patchsetPath.c_str());
+		return false;
+	}
+
+	// Decompress to the raw patchset (same codec used to write it).
+	cv::Mat patch = uncompressData(fileBytes.data(), (unsigned long)fileSize);
+	if(patch.empty())
+	{
+		if(errorMsg) *errorMsg = uFormat("Could not decompress patchset file \"%s\".", patchsetPath.c_str());
+		return false;
+	}
+
+	// Apply onto the target database.
+	sqlite3 * db = 0;
+	int rc = sqlite3_open_v2(databasePath.c_str(), &db, SQLITE_OPEN_READWRITE, 0);
+	if(rc != SQLITE_OK)
+	{
+		if(errorMsg) *errorMsg = uFormat("Could not open database \"%s\": %s", databasePath.c_str(), sqlite3_errmsg(db));
+		sqlite3_close(db);
+		return false;
+	}
+
+	int nPatch = (int)(patch.total()*patch.elemSize());
+	rc = sqlite3changeset_apply(db, nPatch, patch.data, 0, rtabmapChangesetConflict, 0);
+	if(rc != SQLITE_OK)
+	{
+		if(errorMsg) *errorMsg = uFormat("Failed to apply patchset to \"%s\" (SQLite error %d: %s). Make "
+				"sure it is applied to the exact database state the delta was generated from.",
+				databasePath.c_str(), rc, sqlite3_errstr(rc));
+		sqlite3_close(db);
+		return false;
+	}
+	sqlite3_close(db);
+	return true;
+#else
+	if(errorMsg) *errorMsg = "rtabmap was built without SQLite session support.";
+	return false;
+#endif
 }
 
 /*
@@ -406,6 +552,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
 			schemas.push_back(std::make_pair("0.20.0", DATABASESCHEMA_0_20_0_SQL));
 			schemas.push_back(std::make_pair("0.22.0", DATABASESCHEMA_0_22_0_SQL));
+			schemas.push_back(std::make_pair("0.23.0", DATABASESCHEMA_0_23_0_SQL));
 			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
 			for(size_t i=0; i<schemas.size(); ++i)
 			{
@@ -445,6 +592,14 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	this->setJournalMode(_journalMode); // this will call the SQL
 	this->setSynchronous(_synchronous); // this will call the SQL
 	this->setTempStore(_tempStore); // this will call the SQL
+
+	// Start tracking database changes if a recording path was already set (before the
+	// connection was opened). Done here, after any initial load and once the version is
+	// known, so the delta reflects only the changes made between open and close.
+	if(!readOnly)
+	{
+		this->startChangeTracking();
+	}
 
 	return true;
 }
@@ -488,6 +643,56 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 				ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
 			}
 		}
+
+#ifdef RTABMAP_WITH_SQLITE3_SESSION
+		// If change tracking is active, emit the accumulated patchset before closing.
+		if(_session)
+		{
+			int nBuf = 0;
+			void * pBuf = 0;
+			int rcp = sqlite3session_patchset(_session, &nBuf, &pBuf);
+			if(rcp == SQLITE_OK && pBuf && nBuf > 0)
+			{
+				// Compress the patchset with the same zlib-based codec used for every other
+				// rtabmap blob, so the delta is compact for transfer. To apply it later,
+				// uncompressData() the file and pass the bytes to sqlite3changeset_apply().
+				cv::Mat compressed = compressData2(cv::Mat(1, nBuf, CV_8UC1, pBuf));
+				FILE * fp = fopen(_trackChangesOutput.c_str(), "wb");
+				if(fp)
+				{
+					size_t toWrite = compressed.total()*compressed.elemSize();
+					size_t written = fwrite(compressed.data, 1, toWrite, fp);
+					fclose(fp);
+					if(written == toWrite)
+					{
+						UINFO("Wrote compressed database patchset (%d -> %d bytes) to \"%s\".",
+							  nBuf, (int)toWrite, _trackChangesOutput.c_str());
+					}
+					else
+					{
+						UERROR("Could only write %d/%d bytes of the database patchset to \"%s\".",
+							   (int)written, (int)toWrite, _trackChangesOutput.c_str());
+					}
+				}
+				else
+				{
+					UERROR("Could not open \"%s\" to write the database patchset.", _trackChangesOutput.c_str());
+				}
+			}
+			else if(rcp != SQLITE_OK)
+			{
+				UERROR("Could not generate the database patchset for \"%s\" (SQLite error %d).",
+					   _trackChangesOutput.c_str(), rcp);
+			}
+			else
+			{
+				UINFO("No database changes to write; \"%s\" was not created.", _trackChangesOutput.c_str());
+			}
+			sqlite3_free(pBuf);
+			sqlite3session_delete(_session);
+			_session = 0;
+		}
+#endif
 
 		// Then close (delete) the database connection
 		UINFO("Disconnecting database %s...", this->getUrl().c_str());
