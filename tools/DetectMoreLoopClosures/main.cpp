@@ -59,9 +59,10 @@ void showUsage()
 			"    --intra       Add only intra-session loop closures.\n"
 			"    --inter       Add only inter-session loop closures.\n"
 			"    --session #   Add loop closures only from/to that map session ID (use -1 for last session).\n"
-			"    --track-changes \"changes.update\"\n"
+			"    --track-changes \"changes.dbu\"\n"
 			"                  Record the changes made to the database (added loop closures) and write a compact\n"
-			"                  delta to the given file, applied later on another copy with rtabmap-dbupdate.\n"
+			"                  delta to the given file. Apply it later on another copy with rtabmap-dbupdate, or\n"
+			"                  revert the loop closures added to this database with \"rtabmap-dbupdate --rewind\".\n"
 			"                  Requires the database to be version 0.24 or newer.\n"
 			"\n%s", Parameters::showUsage());
 	exit(1);
@@ -127,6 +128,11 @@ int main(int argc, char * argv[])
 			if(i<argc-1)
 			{
 				trackChangesOutput = argv[i];
+				if(UFile::getExtension(trackChangesOutput).compare("dbu") != 0)
+				{
+					printf("--track-changes file \"%s\" must have a \".dbu\" (db update) extension!\n", trackChangesOutput.c_str());
+					showUsage();
+				}
 			}
 			else
 			{

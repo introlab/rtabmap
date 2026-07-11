@@ -183,7 +183,8 @@ public:
 	std::string getDatabaseVersion() const;
 	std::string getDatabaseUrl() const;
 	// Record changes made to the database until it is closed, then write a compact delta
-	// to outputUrl (empty disables). Returns true if recording started. See DBDriver.
+	// to outputUrl (empty disables). outputUrl MUST use the ".dbu" (db update) extension.
+	// Returns true if recording started. See DBDriver.
 	bool trackDatabaseChanges(const std::string & outputUrl);
 	double getDbSavingTime() const;
 	int getMapId(int id, bool lookInDatabase = false) const;

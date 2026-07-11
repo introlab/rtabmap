@@ -260,6 +260,14 @@ void DBDriverSqlite3::startChangeTracking()
 bool DBDriverSqlite3::trackDatabaseChanges(const std::string & outputUrl)
 {
 	UDEBUG("outputUrl=%s", outputUrl.c_str());
+	// The delta file must use the ".dbu" (db update) extension so it is clearly identifiable
+	// and can be applied/rewound with rtabmap-dbupdate.
+	if(!outputUrl.empty() && UFile::getExtension(outputUrl).compare("dbu") != 0)
+	{
+		UERROR("Database change tracking output \"%s\" must have a \".dbu\" (db update) extension; "
+			   "change tracking is disabled.", outputUrl.c_str());
+		return false;
+	}
 	_trackChangesOutput = outputUrl;
 #ifdef RTABMAP_WITH_SQLITE3_SESSION
 	// If the connection is already open (e.g. set after connect(), as rtabmap-reprocess
@@ -297,6 +305,11 @@ bool DBDriverSqlite3::applyChangesFromFile(
 		bool rewind,
 		std::string * errorMsg)
 {
+	if(UFile::getExtension(changesetPath).compare("dbu") != 0)
+	{
+		if(errorMsg) *errorMsg = uFormat("Update file \"%s\" must have a \".dbu\" (db update) extension.", changesetPath.c_str());
+		return false;
+	}
 #ifdef RTABMAP_WITH_SQLITE3_SESSION
 	if(!sqlite3_compileoption_used("ENABLE_SESSION"))
 	{

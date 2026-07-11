@@ -37,13 +37,12 @@ using namespace rtabmap;
 
 void showUsage()
 {
-	printf("\nUpdate a database with a set of changes recorded while another database was opened with\n"
-		   "change tracking enabled (the --track-changes option of rtabmap-reprocess,\n"
-		   "rtabmap-detectMoreLoopClosures or rtabmap-reduceGraph). This applies the data changes\n"
-		   "only; it does NOT upgrade the database schema/version.\n"
+	printf("\nUpdate a database with a set of changes recorded in a \".dbu\" (db update) file, produced with\n"
+		   "the --track-changes option of used by other tools. This applies the data changes only; it does NOT upgrade the database\n"
+		   "schema/version.\n"
 		   "\n"
 		   "Usage:\n"
-		   "   rtabmap-dbupdate [--rewind] \"database.db\" \"changes.update\"\n"
+		   "   rtabmap-dbupdate [--rewind] \"database.db\" \"changes.dbu\"\n"
 		   "\n"
 		   "Options:\n"
 		   "   --rewind   Undo a previously applied update instead of applying it (the changeset is\n"

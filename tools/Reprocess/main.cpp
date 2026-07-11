@@ -85,11 +85,12 @@ void showUsage()
 			"     -stop_loop  Stop after the first loop closure is detected.\n"
 			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
 			"                 then next databases are reprocessed on top of the first one.\n"
-			"     --track-changes \"changes.update\"\n"
+			"     --track-changes \"changes.dbu\"\n"
 			"                 Only with append mode (-a): record the changes made on top of the first (copied) database and\n"
-			"                 write a compact delta to the given file. Apply it later on the original database with\n"
-			"                 rtabmap-dbupdate. Requires the database to be version 0.24 or newer. Note: the recorded\n"
-			"                 changes are held in memory until closing, so use this only when appending a small amount.\n"
+			"                 write a compact delta to the given file. Apply\n"
+			"                 it later on the original database with rtabmap-dbupdate. Requires the database to be version\n"
+			"                 0.24 or newer. Note: the recorded changes are held in memory until closing, so use this only\n"
+			"                 when appending a small amount.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data. Can also be multiple \n"
 			"                 indices split by spaces in a string like \"0 2\" to stream cameras 0 and 2 only.\n"
 			"     -cam_tf \"x y z roll pitch yaw\" Camera local transform override(s) without optical rotation. For multi-cameras, \n"
@@ -442,6 +443,11 @@ int main(int argc, char * argv[])
 			if(i < argc - 2)
 			{
 				trackChangesOutput = argv[i];
+				if(UFile::getExtension(trackChangesOutput).compare("dbu") != 0)
+				{
+					printf("--track-changes file \"%s\" must have a \".dbu\" (db update) extension!\n", trackChangesOutput.c_str());
+					showUsage();
+				}
 				printf("Change tracking enabled, delta will be written to \"%s\" (apply later with rtabmap-dbupdate).\n", trackChangesOutput.c_str());
 			}
 			else
