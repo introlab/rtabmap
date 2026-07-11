@@ -59,6 +59,11 @@ void showUsage()
 			"    --intra       Add only intra-session loop closures.\n"
 			"    --inter       Add only inter-session loop closures.\n"
 			"    --session #   Add loop closures only from/to that map session ID (use -1 for last session).\n"
+			"    --track-changes \"changes.update\"\n"
+			"                  Record the changes made to the database (added loop closures) and write a compact\n"
+			"                  delta to the given file, applied later on another copy with rtabmap-dbupdate.\n"
+			"                  Requires the database to be version 0.24 or newer. The changes are held in memory\n"
+			"                  until closing, so use this only when a small amount is added.\n"
 			"\n%s", Parameters::showUsage());
 	exit(1);
 }
@@ -110,11 +115,24 @@ int main(int argc, char * argv[])
 	bool intraSession = false;
 	bool interSession = false;
 	int fromToMapId = -2;
+	std::string trackChangesOutput;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
+		}
+		else if(std::strcmp(argv[i], "--track-changes") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				trackChangesOutput = argv[i];
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--intra") == 0)
 		{
@@ -217,6 +235,10 @@ int main(int argc, char * argv[])
 	{
 		printf("Inter-session only\n");
 	}
+	if(!trackChangesOutput.empty())
+	{
+		printf("Track changes = %s\n", trackChangesOutput.c_str());
+	}
 
 	if(!intraSession && !interSession)
 	{
@@ -251,6 +273,13 @@ int main(int argc, char * argv[])
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
+
+	// Record the changes made below (added loop closures) into a delta, applied later with
+	// rtabmap-dbupdate. Started after init so the delta reflects only what this tool changes.
+	if(!trackChangesOutput.empty())
+	{
+		rtabmap.trackDatabaseChanges(trackChangesOutput);
+	}
 
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();

@@ -231,14 +231,14 @@ void DBDriverSqlite3::startChangeTracking()
 	}
 	if(uStrNumCmp(_version, "0.24.0") < 0)
 	{
-		UWARN("Database change tracking to \"%s\" was requested but the database "
+		UERROR("Database change tracking to \"%s\" was requested but the database "
 			  "version is %s (< 0.24.0). Older schemas lack the primary keys required "
 			  "by the SQLite session extension, so change tracking is disabled.",
 			  _trackChangesOutput.c_str(), _version.c_str());
 	}
 	else if(!sqlite3_compileoption_used("ENABLE_SESSION"))
 	{
-		UWARN("Database change tracking to \"%s\" was requested but the linked SQLite "
+		UERROR("Database change tracking to \"%s\" was requested but the linked SQLite "
 			  "library was not built with the session extension (ENABLE_SESSION); "
 			  "change tracking is disabled.", _trackChangesOutput.c_str());
 	}
@@ -250,7 +250,7 @@ void DBDriverSqlite3::startChangeTracking()
 	}
 	else
 	{
-		UWARN("Could not create a SQLite session to track database changes to \"%s\".",
+		UERROR("Could not create a SQLite session to track database changes to \"%s\".",
 			  _trackChangesOutput.c_str());
 		_session = 0;
 	}
@@ -273,7 +273,7 @@ bool DBDriverSqlite3::trackDatabaseChanges(const std::string & outputUrl)
 #else
 	if(!outputUrl.empty())
 	{
-		UWARN("Database change tracking to \"%s\" was requested but rtabmap was built "
+		UERROR("Database change tracking to \"%s\" was requested but rtabmap was built "
 			  "against a SQLite library without the session extension; it is disabled.",
 			  outputUrl.c_str());
 	}
