@@ -38,19 +38,21 @@ jobs:
         - ros_distribution: 'lyrical'
           skip_keys: "libpointmatcher"
         - ros_distribution: 'rolling'
-          skip_keys: ""
+          skip_keys: "libpointmatcher"
+          use_ros2_testing: true
     container:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
-    steps:   
+    steps:
     - uses: actions/checkout@v4
-    # Newer osrf/ros images (e.g. rolling) ship "ros2-testing-apt-source", which conflicts
-    # with the "ros2-apt-source" package that setup-ros installs. Remove it first so setup-ros
-    # can install its apt source cleanly (no-op on images that don't have it).
-    - name: Remove conflicting ros2 apt source package
-      run: apt-get remove -y ros2-testing-apt-source || true
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
+        # Rolling is published to the ros2-testing (nightly) repo before it is synced to the
+        # main repo, so enable testing to pick up deps not yet in main (e.g. libg2o, gtsam,
+        # libpointmatcher). See https://docs.ros.org/en/rolling/Installation/Testing.html.
+        # This also matches the osrf/ros:rolling image (which uses ros2-testing-apt-source),
+        # so there is no ros2-apt-source vs ros2-testing-apt-source conflict.
+        use-ros2-testing: ${{ matrix.use_ros2_testing || false }}
     - uses: ros-tooling/action-ros-ci@v0.4
       with:
         package-name: rtabmap
