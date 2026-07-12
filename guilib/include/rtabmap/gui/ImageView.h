@@ -110,6 +110,7 @@ public:
 	void setFeaturesSize(int size);
 	void setLinesWidth(int width);
 	void setSceneRect(const QRectF & rect);
+	void zoomAt(int imageIndex);
 
 	const QMultiMap<int, rtabmap::KeypointItem *> & getFeatures() const {return _features;}
 
@@ -121,6 +122,7 @@ public:
 
 Q_SIGNALS:
 	void configChanged();
+	void zoomToNodeRequested(int imageIndex);
 
 protected:
 	virtual void paintEvent(QPaintEvent *event);
@@ -158,6 +160,7 @@ private:
 	QAction * _setMatchingFeatureColor;
 	QAction * _setMatchingLineColor;
 	QAction * _saveImage;
+	QAction * _zoomToNode;
 	QAction * _setAlpha;
 	QAction * _setFeaturesSize;
 	QAction * _setLinesWidth;
@@ -189,6 +192,7 @@ private:
 	cv::Mat _imageDepthConfidenceCv;
 	std::vector<CameraModel> _models;
 	Transform _pose;
+	int _imageIndex;
 };
 
 }

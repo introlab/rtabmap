@@ -182,7 +182,8 @@ ImageView::ImageView(QWidget * parent) :
 		_depthColorMapMaxRange(0),
 		_imageItem(0),
 		_imageDepthItem(0),
-		_imageDepthConfidenceItem(0)
+		_imageDepthConfidenceItem(0),
+		_imageIndex(-1)
 {
 #if QT_VERSION >= 0x050000
 	_savedFileName = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
@@ -279,6 +280,8 @@ ImageView::ImageView(QWidget * parent) :
 	_mouseTracking = _menu->addAction(tr("Show pixel depth"));
 	_mouseTracking->setCheckable(true);
 	_mouseTracking->setChecked(false);
+	_zoomToNode = _menu->addAction(tr("Zoom to corresponding node"));
+	_zoomToNode->setEnabled(false);
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
 
@@ -926,9 +929,17 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	_setFeatureColor->setIconVisibleInMenu(true);
 	_setMatchingFeatureColor->setIconVisibleInMenu(true);
 	_setMatchingLineColor->setIconVisibleInMenu(true);
+	_zoomToNode->setEnabled(_imageIndex >= 0);
 
 	QAction * action = _menu->exec(e->globalPos());
-	if(action == _saveImage)
+	if(action == _zoomToNode)
+	{
+		if(_imageIndex >= 0)
+		{
+			Q_EMIT zoomToNodeRequested(_imageIndex);
+		}
+	}
+	else if(action == _saveImage)
 	{
 		if(!_graphicsView->scene()->sceneRect().isNull())
 		{
@@ -1632,6 +1643,12 @@ void ImageView::clearFeatures()
 	}
 }
 
+void ImageView::zoomAt(int imageIndex)
+{
+	_imageIndex = imageIndex;
+	_zoomToNode->setEnabled(_imageIndex >= 0);
+}
+
 void ImageView::clear()
 {
 	clearFeatures();
@@ -1665,6 +1682,8 @@ void ImageView::clear()
 
 	_graphicsView->scene()->setSceneRect(QRectF());
 	_graphicsView->setScene(_graphicsView->scene());
+	_imageIndex = -1;
+	_zoomToNode->setEnabled(false);
 
 	if(!_graphicsView->isVisible())
 	{

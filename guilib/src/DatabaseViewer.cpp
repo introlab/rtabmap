@@ -112,6 +112,7 @@ namespace rtabmap {
 DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	QMainWindow(parent),
 	dbDriver_(0),
+	activeComponentIndex_(0),
 	octomap_(0),
 	exportDialog_(new ExportCloudsDialog(this)),
 	editDepthDialog_(new QDialog(this)),
@@ -247,6 +248,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	exportDialog_->setObjectName("ExportCloudsDialog");
 	restoreDefaultSettings();
 	this->readSettings();
+	updateGraphInteractionMode();
 
 	setupMainLayout(ui_->actionVertical_Layout->isChecked());
 	ui_->comboBox_octomap_rendering_type->setVisible(ui_->checkBox_octomap->isChecked());
@@ -274,6 +276,13 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 
 	connect(ui_->graphViewer, SIGNAL(nodeSelected(int)), this , SLOT(graphNodeSelected(int)));
 	connect(ui_->graphViewer, SIGNAL(linkSelected(int,int)), this , SLOT(graphLinkSelected(int,int)));
+	connect(ui_->radioButton_graphHand, SIGNAL(toggled(bool)), this, SLOT(updateGraphInteractionMode()));
+	connect(ui_->radioButton_graphSelection, SIGNAL(toggled(bool)), this, SLOT(updateGraphInteractionMode()));
+	connect(ui_->radioButton_graphHand, SIGNAL(toggled(bool)), this, SLOT(configModified()));
+	connect(ui_->radioButton_graphSelection, SIGNAL(toggled(bool)), this, SLOT(configModified()));
+	connect(ui_->graphicsView_A, SIGNAL(zoomToNodeRequested(int)), this, SLOT(zoomToNodeFromImage(int)));
+	connect(ui_->graphicsView_B, SIGNAL(zoomToNodeRequested(int)), this, SLOT(zoomToNodeFromImage(int)));
+	connect(ui_->pushButton_setMain, SIGNAL(clicked()), this, SLOT(setCurrentComponentMain()));
 
 	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
 
@@ -313,6 +322,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
+	connect(ui_->actionMerge_components_using_selected_nodes, SIGNAL(triggered()), this, SLOT(mergeComponentsUsingSelectedNodes()));
 	connect(ui_->actionUpdate_all_neighbor_covariances, SIGNAL(triggered()), this, SLOT(updateAllNeighborCovariances()));
 	connect(ui_->actionUpdate_all_loop_closure_covariances, SIGNAL(triggered()), this, SLOT(updateAllLoopClosureCovariances()));
 	connect(ui_->actionUpdate_all_landmark_covariances, SIGNAL(triggered()), this, SLOT(updateAllLandmarkCovariances()));
@@ -402,8 +412,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->horizontalSlider_iterations->setEnabled(false);
 	ui_->spinBox_optimizationsFrom->setEnabled(false);
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
-	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(spinBoxOptimizationsFromValueChanged(int)));
 	connect(ui_->comboBox_optimizationFlavor, SIGNAL(activated(int)), this, SLOT(updateGraphView()));
+	connect(ui_->tabBar_components, SIGNAL(currentChanged(int)), this, SLOT(tabBarComponentsValueChanged(int)));
+	ui_->tabBar_components->setEnabled(false);
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_wmState, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->graphViewer, SIGNAL(mapShownRequested()), this, SLOT(updateGraphView()));
@@ -487,6 +499,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_detectMore_interSession, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_minGraphDistance, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_opt_graph_as_guess, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_onlySelectedNodes, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 
 	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
 	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
@@ -580,6 +593,18 @@ void DatabaseViewer::configModified()
 	this->setWindowModified(true);
 }
 
+void DatabaseViewer::updateGraphInteractionMode()
+{
+	if(ui_->radioButton_graphSelection->isChecked())
+	{
+		ui_->graphViewer->setInteractionMode(GraphViewer::SelectionMode);
+	}
+	else
+	{
+		ui_->graphViewer->setInteractionMode(GraphViewer::HandMode);
+	}
+}
+
 QString DatabaseViewer::getIniFilePath() const
 {
 	if(!iniFilePath_.isEmpty())
@@ -640,10 +665,13 @@ void DatabaseViewer::readSettings()
 	ui_->actionConcise_Layout->setChecked(settings.value("conciseLayout", ui_->actionConcise_Layout->isChecked()).toBool());
 	ui_->checkBox_ignoreIntermediateNodes->setChecked(settings.value("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked()).toBool());
 	ui_->checkBox_timeStats->setChecked(settings.value("timeStats", ui_->checkBox_timeStats->isChecked()).toBool());
+	ui_->checkBox_onlySelectedNodes->setChecked(settings.value("graphSelectedNodesOnly", ui_->checkBox_onlySelectedNodes->isChecked()).toBool());
 
 	// GraphViewer settings
 	ui_->graphViewer->loadSettings(settings, "GraphView");
 	ui_->graphViewer->setReferentialVisible(false);
+	ui_->radioButton_graphSelection->setChecked(settings.value("graphInteractionMode", (int)ui_->graphViewer->getInteractionMode()).toInt() == 1);
+	ui_->radioButton_graphHand->setChecked(!ui_->radioButton_graphSelection->isChecked());
 
 	settings.beginGroup("optimization");
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
@@ -737,6 +765,8 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("conciseLayout", ui_->actionConcise_Layout->isChecked());
 	settings.setValue("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked());
 	settings.setValue("timeStats", ui_->checkBox_timeStats->isChecked());
+	settings.setValue("graphInteractionMode", ui_->radioButton_graphSelection->isChecked() ? 1 : 0);
+	settings.setValue("graphSelectedNodesOnly", ui_->checkBox_onlySelectedNodes->isChecked());
 
 	// save GraphViewer settings
 	ui_->graphViewer->saveSettings(settings, "GraphView");
@@ -885,6 +915,9 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_opt_graph_as_guess->setChecked(true);
 	ui_->spinBox_fromToMapId->setValue(-1);
 	ui_->spinBox_minGraphDistance->setValue(10);
+	ui_->radioButton_graphHand->setChecked(true);
+	ui_->radioButton_graphSelection->setChecked(false);
+	ui_->checkBox_onlySelectedNodes->setChecked(false);
 }
 
 void DatabaseViewer::openDatabase()
@@ -1216,6 +1249,9 @@ bool DatabaseViewer::closeDatabase()
 		ui_->horizontalSlider_iterations->setMaximum(0);
 		ui_->horizontalSlider_neighbors->setEnabled(false);
 		ui_->horizontalSlider_neighbors->setMaximum(0);
+		ui_->tabBar_components->setEnabled(false);
+		components_.clear();
+		activeComponentIndex_ = 0;
 		ui_->label_constraint->clear();
 		ui_->label_constraint_opt->clear();
 		ui_->label_variance->clear();
@@ -1416,6 +1452,10 @@ void DatabaseViewer::exportDatabase()
 			double frameRate = dialog.targetFramerate();
 			int sessionExported = dialog.sessionExported();
 			QString path = dialog.outputPath();
+			//bool onlySelectedNodes = dialog.onlySelectedNodes();
+			// Need to update ExportDialog to have this option, for now, use the checkbox for DetectMoreLoops
+			bool onlySelectedNodes = ui_->checkBox_onlySelectedNodes->isChecked();
+			std::set<int> selectedIds = ui_->graphViewer->getSelectedNodeIds();
 			rtabmap::DataRecorder recorder;
 			QList<int> ids;
 
@@ -1437,7 +1477,8 @@ void DatabaseViewer::exportDatabase()
 				std::vector<float> velocity;
 				GPS gps;
 				EnvSensors sensors;
-				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors))
+				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps, sensors) &&
+				   (!onlySelectedNodes || selectedIds.find(ids_[i]) != selectedIds.end()))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -2068,17 +2109,14 @@ void DatabaseViewer::updateIds()
 	}
 
 	float xMin, yMin, cellSize;
-	bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+	bool hasMap  = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+	bool hasMesh = !dbDriver_->loadOptimizedMesh().empty();
 	ui_->actionEdit_optimized_2D_map->setEnabled(hasMap);
 	ui_->actionExport_saved_2D_map->setEnabled(hasMap);
 	ui_->actionImport_2D_map->setEnabled(hasMap);
 	ui_->actionRegenerate_optimized_2D_map->setEnabled(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.17.0") >= 0);
-
-	if(!dbDriver_->loadOptimizedMesh().empty())
-	{
-		ui_->actionView_optimized_mesh->setEnabled(true);
-		ui_->actionExport_optimized_mesh->setEnabled(true);
-	}
+	ui_->actionView_optimized_mesh->setEnabled(hasMesh);
+	ui_->actionExport_optimized_mesh->setEnabled(hasMesh);
 
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)odomPoses_.size(), (int)links_.size());
 
@@ -2975,6 +3013,14 @@ void DatabaseViewer::editSaved2DMap()
 		return;
 	}
 
+	if(!components_[activeComponentIndex_].isMain)
+	{
+		QMessageBox::warning(this, tr("Cannot edit 2D map"),
+				tr("Please select the main component to edit the 2D map."));
+		return;
+	}
+
+
 	float xMin, yMin, cellSize;
 	cv::Mat map = dbDriver_->load2DMap(xMin, yMin, cellSize);
 	if(map.empty())
@@ -3235,6 +3281,13 @@ void DatabaseViewer::exportSaved2DMap()
 		return;
 	}
 
+	if (!components_[activeComponentIndex_].isMain)
+	{
+		QMessageBox::warning(this, tr("Cannot export 2D map"),
+				tr("Please select the main component to export the 2D map."));
+		return;
+	}
+
 	float xMin, yMin, cellSize;
 	cv::Mat map = dbDriver_->load2DMap(xMin, yMin, cellSize);
 	if(map.empty())
@@ -3304,6 +3357,14 @@ void DatabaseViewer::import2DMap()
 				tr("The database has modified links, the 2D optimized map cannot be modified."));
 		return;
 	}
+
+	if(!components_[activeComponentIndex_].isMain)
+	{
+		QMessageBox::warning(this, tr("Cannot import 2D map"),
+				tr("Please select the main component before importing a 2D map."));
+		return;
+	}
+
 
 	float xMin, yMin, cellSize;
 	cv::Mat mapOrg = dbDriver_->load2DMap(xMin, yMin, cellSize);
@@ -3411,17 +3472,19 @@ void DatabaseViewer::regenerateSavedMap()
 	}
 	else
 	{
-		dbDriver_->save2DMap(map, xMin, yMin, gridCellSize);
-		Transform lastlocalizationPose;
-		dbDriver_->loadOptimizedPoses(&lastlocalizationPose);
-		if(lastlocalizationPose.isNull() && !graphes_.back().empty())
-		{
+		if (components_[activeComponentIndex_].isMain) {
+			dbDriver_->save2DMap(map, xMin, yMin, gridCellSize);
+			Transform lastlocalizationPose;
+			dbDriver_->loadOptimizedPoses(&lastlocalizationPose);
+			if(lastlocalizationPose.isNull() && !graphes_.back().empty())
+			{
 			// use last pose by default
-			lastlocalizationPose = graphes_.back().rbegin()->second;
-		}
-		dbDriver_->saveOptimizedPoses(graphes_.back(), lastlocalizationPose);
+				lastlocalizationPose = graphes_.back().rbegin()->second;
+			}
+			dbDriver_->saveOptimizedPoses(graphes_.back(), lastlocalizationPose);
 		// reset optimized mesh as poses have changed
-		dbDriver_->saveOptimizedMesh(cv::Mat());
+			dbDriver_->saveOptimizedMesh(cv::Mat());
+		}
 		QMessageBox::information(this, tr("Regenerate 2D map"), tr("Map regenerated!"));
 		ui_->actionEdit_optimized_2D_map->setEnabled(true);
 		ui_->actionExport_saved_2D_map->setEnabled(true);
@@ -3451,6 +3514,9 @@ void DatabaseViewer::viewOptimizedMesh()
 	}
 	else
 	{
+		if (!components_[activeComponentIndex_].isMain) {
+			QMessageBox::warning(this, tr("Viewing a different component"), tr("The selected component isn't the main one, the optimized mesh is that of the main component."));
+		}
 		CloudViewer * viewer = new CloudViewer(this);
 		viewer->setWindowFlags(Qt::Window);
 		viewer->setAttribute(Qt::WA_DeleteOnClose);
@@ -3607,6 +3673,13 @@ void DatabaseViewer::updateOptimizedMesh()
 	if(!ids_.size() || !dbDriver_)
 	{
 		QMessageBox::warning(this, tr("Cannot generate a graph"), tr("The database is empty..."));
+		return;
+	}
+
+	if(!components_[activeComponentIndex_].isMain)
+	{
+		QMessageBox::warning(this, tr("Cannot update mesh"),
+				tr("Only the main component can be used to update the optimized mesh."));
 		return;
 	}
 
@@ -4329,6 +4402,8 @@ void DatabaseViewer::detectMoreLoopClosures()
 	bool intraSession = ui_->checkBox_detectMore_intraSession->isChecked();
 	bool interSession = ui_->checkBox_detectMore_interSession->isChecked();
 	bool useOptimizedGraphAsGuess = ui_->checkBox_opt_graph_as_guess->isChecked();
+	bool onlySelectedNodes = ui_->checkBox_onlySelectedNodes->isChecked();
+	std::set<int> selectedIds = ui_->graphViewer->getSelectedNodeIds();
 	int fromToMapId = ui_->spinBox_fromToMapId->value();
 	int minimumGraphDistance = ui_->spinBox_minGraphDistance->value();
 	if(!interSession && !intraSession)
@@ -4424,8 +4499,9 @@ void DatabaseViewer::detectMoreLoopClosures()
 			int mapIdFrom = uValue(mapIds_, from, 0);
 			int mapIdTo = uValue(mapIds_, to, 0);
 
-			if((interSession && mapIdFrom != mapIdTo) ||
-		       (intraSession && mapIdFrom == mapIdTo))
+			if(((interSession && mapIdFrom != mapIdTo) ||
+		       (intraSession && mapIdFrom == mapIdTo)) &&
+			   (!onlySelectedNodes || (selectedIds.find(from) != selectedIds.end() && selectedIds.find(to) != selectedIds.end())))
 			{
 				// only add new links and one per cluster per iteration
 				if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
@@ -4459,7 +4535,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 				}
 			}
 			progressDialog->incrementStep();
-			if(i%100)
+			if(!i%100)
 			{
 				QApplication::processEvents();
 			}
@@ -4489,6 +4565,105 @@ void DatabaseViewer::detectMoreLoopClosures()
 
 	progressDialog->appendText(tr("Total new loop closures detected=%1").arg(added));
 	progressDialog->setValue(progressDialog->maximumSteps());
+}
+
+void DatabaseViewer::mergeComponentsUsingSelectedNodes()
+{
+	int fromCompIndex = activeComponentIndex_;
+	int toCompIndex = -1;
+
+	std::set<int> activeSelection = ui_->graphViewer->getSelectedNodeIds();
+	if(activeSelection.empty())
+	{
+		QMessageBox::warning(this, tr("Merge Components"), tr("Please select nodes in the active component."));
+		return;
+	}
+
+	for(size_t i = 0; i < components_.size(); ++i)
+	{
+		if((int)i != fromCompIndex && !components_[i].selectedNodeIds.empty())
+		{
+			if(toCompIndex == -1)
+			{
+				toCompIndex = (int)i;
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Merge Components"), tr("Please select nodes from exactly two different components."));
+				return;
+			}
+		}
+	}
+
+	if(toCompIndex == -1)
+	{
+		QMessageBox::warning(this, tr("Merge Components"), tr("Please select nodes in exactly one other component to merge with the active one."));
+		return;
+	}
+
+	std::vector<int> N1(activeSelection.begin(), activeSelection.end());
+	std::vector<int> N2(components_[toCompIndex].selectedNodeIds.begin(), components_[toCompIndex].selectedNodeIds.end());
+
+	int totalPairs = (int)(N1.size() * N2.size());
+
+	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+	progressDialog->setMaximumSteps(totalPairs);
+	progressDialog->setCancelButtonVisible(true);
+	progressDialog->setMinimumWidth(800);
+	progressDialog->show();
+	progressDialog->appendText(tr("Looking for loop closure between %1 possible pairs...").arg(totalPairs));
+
+	std::shared_ptr<Registration> reg(Registration::create(ui_->parameters_toolbox->getParameters()));
+
+	bool loopFound = false;
+	int foundFrom = 0;
+	int foundTo = 0;
+	int step = 0;
+
+	for(size_t i = 0; i < N1.size() && !loopFound && !progressDialog->isCanceled(); ++i)
+	{
+		for(size_t j = 0; j < N2.size() && !loopFound && !progressDialog->isCanceled(); ++j)
+		{
+			int from = N1[i];
+			int to = N2[j];
+			progressDialog->appendText(tr("Testing pair %1 and %2... (%3/%4)").arg(from).arg(to).arg(step+1).arg(totalPairs));
+			
+			QApplication::processEvents(); 
+			
+			if(addConstraint(from, to, reg.get(), true, false))
+			{
+				loopFound = true;
+				foundFrom = from;
+				foundTo = to;
+				progressDialog->appendText(tr("Loop closure found between %1 and %2!").arg(from).arg(to));
+			}
+
+			++step;
+			progressDialog->incrementStep();
+			QApplication::processEvents();
+		}
+	}
+
+	progressDialog->setValue(progressDialog->maximumSteps());
+
+	if(loopFound)
+	{
+		QMessageBox::information(this, tr("Merge Components"), tr("Successfully merged components! Loop closure found between %1 and %2.").arg(foundFrom).arg(foundTo));
+
+		regenerateGraphComponents();
+		this->updateGraphView();
+        
+		// Combine both selections so the user can easily run detectMoreLoopClosures if they want
+		std::set<int> finalSelection = activeSelection;
+		finalSelection.insert(N2.begin(), N2.end());
+		ui_->graphViewer->selectNodesFromIds(finalSelection);
+		ui_->graphViewer->centerOnNode(foundFrom);
+	}
+	else if (!progressDialog->isCanceled())
+	{
+		QMessageBox::information(this, tr("Merge Components"), tr("No loop closure found between the selected nodes of the two components."));
+	}
 }
 
 void DatabaseViewer::updateAllNeighborCovariances()
@@ -4747,6 +4922,32 @@ void DatabaseViewer::resetAllChanges()
 	}
 }
 
+void DatabaseViewer::zoomToNodeFromImage(int imageIndex)
+{
+	int id = -1;
+	if(imageIndex >= 0 && imageIndex < ids_.size())
+	{
+		id = ids_.at(imageIndex);
+	}
+	if(id > 0 && idToIndex_.contains(id))
+	{
+		int componentIndex = -1;
+		for(int i = 0; i < (int)components_.size(); ++i)
+		{
+			if(components_[i].nodeIds.find(id) != components_[i].nodeIds.end())
+			{
+				componentIndex = i;
+				break;
+			}
+		}
+		if(componentIndex >= 0 && componentIndex != activeComponentIndex_)
+		{
+			ui_->tabBar_components->setCurrentIndex(componentIndex);
+		}
+		ui_->graphViewer->centerOnNode(id);
+	}
+}
+
 void DatabaseViewer::graphNodeSelected(int id)
 {
 	if(id>0 && idToIndex_.contains(id))
@@ -4881,6 +5082,7 @@ void DatabaseViewer::update(int value,
 	{
 		view->clear();
 		int id = ids_.at(value);
+		view->zoomAt(value);
 		int mapId = -1;
 		labelId->setText(QString::number(id));
 		if(id>0)
@@ -6373,6 +6575,7 @@ void DatabaseViewer::editConstraint()
 				}
 				if(priorId==0)
 				{
+					regenerateGraphComponents();
 					this->updateGraphView();
 					updateConstraintView();
 				}
@@ -6401,6 +6604,7 @@ void DatabaseViewer::editConstraint()
 				updated = true;
 				if(priorId==0)
 				{
+					regenerateGraphComponents();
 					this->updateGraphView();
 					updateLoopClosuresSlider(from, to);
 				}
@@ -6423,20 +6627,12 @@ void DatabaseViewer::editConstraint()
 					ui_->parameters_toolbox->updateParameter(Parameters::kOptimizerPriorsIgnored(), "false");
 				}
 			}
-			int indexA = ui_->horizontalSlider_A->value();
-			int indexB = ui_->horizontalSlider_B->value();
+			
 			if(!priorsIgnored)
 			{
+				regenerateGraphComponents();
 				this->updateGraphView();
 			}
-			if(ui_->horizontalSlider_A->value() != indexA)
-				ui_->horizontalSlider_A->setValue(indexA);
-			else
-				sliderAValueChanged(indexA);
-			if(ui_->horizontalSlider_B->value() != indexB)
-				ui_->horizontalSlider_B->setValue(indexB);
-			else
-				sliderBValueChanged(indexB);
 		}
 	}
 }
@@ -7669,12 +7865,287 @@ void DatabaseViewer::updateGraphRotation()
 	}
 }
 
+void DatabaseViewer::backupCurrentComponent()
+{
+    if(activeComponentIndex_ < 0 || activeComponentIndex_ >= (int)components_.size()) return;
+
+    GraphComponent & component = components_[activeComponentIndex_];
+
+    if(!ui_->graphViewer || component.rootId <= 0 || component.nodeIds.find(component.rootId) == component.nodeIds.end())
+    {
+        component.viewScale = -1.0f;
+        component.rootCoordinates = QPointF();
+        return;
+    }
+
+	if(ui_->horizontalSlider_rotation->isEnabled())
+	{
+		component.rotationValue = ui_->horizontalSlider_rotation->value();
+	}
+
+	component.viewScale = ui_->graphViewer->transform().m11();
+    component.rootCoordinates = ui_->graphViewer->mapFromScene(ui_->graphViewer->getNodeScenePosition(component.rootId));
+	component.selectedNodeIds = ui_->graphViewer->getSelectedNodeIds();
+	component.optimizationFlavor = ui_->comboBox_optimizationFlavor->currentIndex();
+	component.rotationEnabled = ui_->horizontalSlider_rotation->isEnabled();
+}
+
+void DatabaseViewer::restoreCurrentComponentConfig()
+{
+    if(activeComponentIndex_ < 0 || activeComponentIndex_ >= (int)components_.size()) return;
+
+    GraphComponent & component = components_[activeComponentIndex_];
+
+	ui_->horizontalSlider_rotation->setEnabled(component.rotationEnabled);
+	ui_->comboBox_optimizationFlavor->setCurrentIndex(component.optimizationFlavor);
+}
+
+void DatabaseViewer::restoreCurrentComponentView()
+{
+    if(activeComponentIndex_ < 0 || activeComponentIndex_ >= (int)components_.size()) return;
+
+    GraphComponent & component = components_[activeComponentIndex_];
+
+    if(!ui_->graphViewer || component.viewScale <= 0.0f || component.rootId <= 0 || component.nodeIds.find(component.rootId) == component.nodeIds.end()) return;
+
+    QPointF rootScenePos = ui_->graphViewer->getNodeScenePosition(component.rootId);
+    
+    ui_->graphViewer->resetTransform();
+    ui_->graphViewer->scale(component.viewScale, component.viewScale);
+
+	if (component.rotationEnabled)
+	{
+		ui_->horizontalSlider_rotation->setValue(component.rotationValue);
+	}
+	
+    QPointF viewportCenter = ui_->graphViewer->viewport()->rect().center();
+    QPointF viewportDelta = viewportCenter - component.rootCoordinates;
+    QPointF sceneDelta = viewportDelta / component.viewScale;
+
+    ui_->graphViewer->centerOn(rootScenePos + sceneDelta);
+	ui_->graphViewer->selectNodesFromIds(component.selectedNodeIds);
+    ui_->graphViewer->update();
+}
+
+void DatabaseViewer::reRootCurrentComponent(int newRootId)
+{
+	if(activeComponentIndex_ < 0 || activeComponentIndex_ >= (int)components_.size()) return;
+
+	GraphComponent & comp = components_[activeComponentIndex_];
+	if(comp.rootId <= 0 || newRootId <= 0 || comp.rootId == newRootId ||
+		comp.nodeIds.find(comp.rootId) == comp.nodeIds.end() ||
+		comp.nodeIds.find(newRootId) == comp.nodeIds.end())
+	{
+		return;
+	}
+
+	comp.rootId = newRootId;
+	comp.rootCoordinates = ui_->graphViewer->mapFromScene(ui_->graphViewer->getNodeScenePosition(newRootId));
+	// graphics updates are to be treated externally
+}
+
+void DatabaseViewer::regenerateGraphComponents()
+{
+    if(odomPoses_.empty()) {
+        components_.clear();
+        ui_->tabBar_components->setEnabled(false);
+        return;
+    }
+
+    std::map<int, rtabmap::Transform> poses = odomPoses_;
+    std::multimap<int, rtabmap::Link> links = updateLinksWithModifications(links_);
+
+    backupCurrentComponent();
+
+    std::vector<GraphComponent> oldComponents = components_;
+    components_.clear();
+
+    std::map<int, rtabmap::Transform> remainingPoses = poses;
+    std::set<int> visited;
+
+    /* Extracting new components */
+    while(!remainingPoses.empty())
+    {
+        int rootId = remainingPoses.begin()->first;
+        GraphComponent comp;
+        comp.rootId = rootId;
+        comp.rotationValue = 0;
+
+        std::list<int> queue;
+        queue.push_back(rootId);
+        visited.insert(rootId);
+
+        while(!queue.empty())
+        {
+            int curr = queue.front();
+            queue.pop_front();
+
+            comp.nodeIds[curr] = curr;
+            remainingPoses.erase(curr);
+
+            for(auto lIter = links.find(curr); lIter != links.end() && lIter->first == curr; ++lIter)
+            {
+                int neighbor = lIter->second.to();
+                if(poses.find(neighbor) != poses.end() && visited.find(neighbor) == visited.end())
+                {
+                    visited.insert(neighbor);
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+
+        if(comp.nodeIds.size() > 0)
+        {
+            comp.id = (int)components_.size();
+            components_.push_back(comp);
+        }
+    }
+
+    /* Mapping old components and new ones */
+	GraphComponent * newMainComp = nullptr;
+	int newActiveIndex = -1;
+	if (!oldComponents.empty())
+	{
+		bool hasActiveComponent = (activeComponentIndex_ >= 0 && activeComponentIndex_ < (int)oldComponents.size());
+
+		// 0 = none, 1 = split, 2 = merge/identity, 3 = active
+		std::vector<int> matchPriority(components_.size(), 0);
+	
+		for(size_t i = 0; i < oldComponents.size(); ++i)
+		{
+			const GraphComponent & oldComp = oldComponents[i];
+			bool isActive = (hasActiveComponent && (int)i == activeComponentIndex_);
+	
+			for(size_t j = 0; j < components_.size(); ++j)
+			{
+				GraphComponent & newComp = components_[j];
+	
+				bool old_le_new = (newComp.nodeIds.find(oldComp.rootId) != newComp.nodeIds.end());
+				bool new_le_old = (oldComp.nodeIds.find(newComp.rootId) != oldComp.nodeIds.end());
+	
+				if(!old_le_new && !new_le_old) continue;
+
+				if(old_le_new && oldComp.isMain) newMainComp = &newComp;
+				if(new_le_old && oldComp.isMain && (newMainComp == nullptr || newMainComp->nodeIds.size() < newComp.nodeIds.size())) newMainComp = &newComp;
+	
+				int currentRelPriority = 0;
+				if(isActive)        currentRelPriority = 3; // active
+				else if(old_le_new) currentRelPriority = 2; // merge
+				else if(new_le_old) currentRelPriority = 1; // split
+	
+				if(currentRelPriority > matchPriority[j])
+				{
+					matchPriority[j] = currentRelPriority;
+	
+					newComp.rotationValue = oldComp.rotationValue;
+					newComp.viewScale = oldComp.viewScale;
+	
+					if(newComp.nodeIds.find(oldComp.rootId) != newComp.nodeIds.end())
+					{
+						newComp.rootId = oldComp.rootId;
+						newComp.rootCoordinates = oldComp.rootCoordinates;
+					}
+					else if(newComp.rootId > 0 && ui_->graphViewer)
+					{
+						// new split component: rerooting coordinates
+						newComp.rootCoordinates = ui_->graphViewer->mapFromScene(
+							ui_->graphViewer->getNodeScenePosition(newComp.rootId)
+						);
+					}
+	
+					if(isActive)
+					{
+						newActiveIndex = (int)j;
+					}
+				}
+
+				if (old_le_new && new_le_old) // components are the same
+				{
+					newComp.optimizedPoses = oldComp.optimizedPoses;
+				}
+			}
+		}
+	}
+	else
+	{
+		for(size_t i = 0; i < components_.size(); ++i) {
+			components_[i].isMain = false;
+			if(newMainComp == nullptr || newMainComp->nodeIds.size() < components_[i].nodeIds.size()) {
+				newMainComp = &components_[i];
+			}
+		}
+	}
+    
+	if (newMainComp) newMainComp->isMain = true;
+
+    if (newActiveIndex != -1) 
+	{
+        activeComponentIndex_ = newActiveIndex;
+    } 
+	else 
+	{
+        for(size_t i = 0; i < components_.size(); ++i) {
+            if (ui_->spinBox_optimizationsFrom->value() == components_[i].rootId) {
+                activeComponentIndex_ = (int)i;
+                break;
+            }
+        }
+    }
+
+    ui_->tabBar_components->blockSignals(true);
+    
+    while(ui_->tabBar_components->count() > 0) {
+        ui_->tabBar_components->removeTab(0);
+    }
+
+    for(size_t i = 0; i < components_.size(); ++i) {
+        QString tabLabel = QString("%1Component %2").arg(components_[i].isMain ? "*" : "").arg(i + 1);
+        ui_->tabBar_components->addTab(tabLabel);
+    }
+
+    ui_->tabBar_components->setCurrentIndex(activeComponentIndex_);
+	ui_->tabBar_components->setEnabled(components_.size() > 1);
+    ui_->tabBar_components->setVisible(components_.size() > 1);
+	ui_->pushButton_setMain->setVisible(components_.size() > 1);
+	ui_->graphComponentText->setText(components_.size() == 1 ? QString("The graph is connected") : QString("Component"));    
+    ui_->tabBar_components->blockSignals(false);
+}
+
+void DatabaseViewer::setCurrentComponentMain()
+{
+	if (activeComponentIndex_ < 0 || activeComponentIndex_ >= (int)components_.size()) return;
+	if (components_[activeComponentIndex_].isMain) return;
+
+	for (size_t i = 0; i < components_.size(); ++i) {
+		components_[i].isMain = ((int)i == activeComponentIndex_);
+		QString tabLabel = QString("%1Component %2").arg(components_[i].isMain ? "*" : "").arg(i + 1);
+		ui_->tabBar_components->setTabText(i, tabLabel);
+	}
+
+	if (dbDriver_) {
+		dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
+		dbDriver_->saveOptimizedMesh(cv::Mat());
+		Transform lastLocalizationPose;
+		if (!dbDriver_->loadOptimizedPoses(&lastLocalizationPose).empty()) {
+			dbDriver_->saveOptimizedPoses(std::map<int, Transform>(), lastLocalizationPose);
+		}
+	}
+
+	updateGraphView();
+}
+
 void DatabaseViewer::updateGraphView()
 {
 	ui_->label_loopClosures->clear();
 	ui_->label_poses->clear();
 	ui_->label_rmse->clear();
+	
+	// Systematic backup & restore, maybe solve the issue at the source instead ?
+	const int indexA = ui_->horizontalSlider_A->value();
+	const int indexB = ui_->horizontalSlider_B->value();
 
+	GraphComponent & comp = components_[activeComponentIndex_];
+	
 	if(sender() == ui_->checkBox_alignPosesWithGPS && ui_->checkBox_alignPosesWithGPS->isChecked())
 	{
 		ui_->checkBox_alignPosesWithGroundTruth->setChecked(false);
@@ -7686,16 +8157,10 @@ void DatabaseViewer::updateGraphView()
 
 	if(odomPoses_.size())
 	{
-		int fromId = ui_->spinBox_optimizationsFrom->value();
-		if(!uContains(odomPoses_, fromId))
-		{
-			QMessageBox::warning(this, tr(""), tr("Graph optimization from id (%1) for which node is not linked to graph.\n Minimum=%2, Maximum=%3")
-						.arg(fromId)
-						.arg(odomPoses_.begin()->first)
-						.arg(odomPoses_.rbegin()->first));
-			return;
-		}
+		if (components_.size() == 0) regenerateGraphComponents();
 
+		int fromId = ui_->spinBox_optimizationsFrom->value();
+		
 		graphes_.clear();
 		graphLinks_.clear();
 
@@ -7992,8 +8457,9 @@ void DatabaseViewer::updateGraphView()
 		if(applyRotation)
 		{
 			float xMin, yMin, cellSize;
-			bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
-			if(hasMap || !dbDriver_->loadOptimizedMesh().empty())
+			bool hasMap  = comp.isMain && !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+			bool hasMesh = comp.isMain && !dbDriver_->loadOptimizedMesh().empty();
+			if(hasMap || hasMesh)
 			{
 				QMessageBox::StandardButton r = QMessageBox::question(this,
 					tr("Rotate Optimized Graph"),
@@ -8015,7 +8481,18 @@ void DatabaseViewer::updateGraphView()
 		if(applyRotation ||
 		   ui_->comboBox_optimizationFlavor->currentIndex() == 2)
 		{
-			optPoses = dbDriver_->loadOptimizedPoses(&lastLocalizationPose);
+			if (!comp.optimizedPoses.empty())
+			{
+				optPoses = comp.optimizedPoses;
+				lastLocalizationPose = comp.lastLocalizationPose;
+			}
+			else if(comp.isMain)
+			{
+				std::map<int, Transform> maybeOptPoses = dbDriver_->loadOptimizedPoses(&lastLocalizationPose);
+				optPoses = maybeOptPoses;
+				comp.optimizedPoses = optPoses;
+				comp.lastLocalizationPose = lastLocalizationPose;
+			}
 			if(optPoses.empty())
 			{
 				ui_->comboBox_optimizationFlavor->setCurrentIndex(0);
@@ -8081,11 +8558,18 @@ void DatabaseViewer::updateGraphView()
 					// use last pose by default
 					lastLocalizationPose = finalPoses.rbegin()->second;
 				}
-				dbDriver_->saveOptimizedPoses(finalPoses, lastLocalizationPose);
+				
+				if(comp.isMain) {
+					dbDriver_->saveOptimizedPoses(finalPoses, lastLocalizationPose);
+				}
+				comp.optimizedPoses = finalPoses;
+				comp.lastLocalizationPose = lastLocalizationPose;
+				
 				// reset optimized mesh and map as poses have changed
 				float xMin, yMin, cellSize;
-				bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
-				if(hasMap || !dbDriver_->loadOptimizedMesh().empty())
+				bool hasMap  = comp.isMain && !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+				bool hasMesh = comp.isMain && !dbDriver_->loadOptimizedMesh().empty();
+				if(hasMap || hasMesh)
 				{
 					dbDriver_->saveOptimizedMesh(cv::Mat());
 					dbDriver_->save2DMap(cv::Mat(), 0, 0, 0);
@@ -8184,6 +8668,72 @@ void DatabaseViewer::updateGraphView()
 		ui_->horizontalSlider_iterations->setEnabled(false);
 		ui_->spinBox_optimizationsFrom->setEnabled(false);
 	}
+
+	// Restoring selected images as well as canvas transform
+	if(ui_->horizontalSlider_A->value() != indexA)
+		ui_->horizontalSlider_A->setValue(indexA);
+	else
+		sliderAValueChanged(indexA);
+	if(ui_->horizontalSlider_B->value() != indexB)
+		ui_->horizontalSlider_B->setValue(indexB);
+	else
+		sliderBValueChanged(indexB);
+
+	restoreCurrentComponentView();
+}
+
+void DatabaseViewer::spinBoxOptimizationsFromValueChanged(int value)
+{
+	if(uContains(odomPoses_, value))
+	{
+		int fromIdComponentIndex = -1;
+		for(int i = 0; i < (int)components_.size(); ++i)
+		{
+			if(components_[i].nodeIds.find(value) != components_[i].nodeIds.end())
+			{
+				fromIdComponentIndex = i;
+				break;
+			}
+		}
+
+		if (fromIdComponentIndex >= 0 && fromIdComponentIndex != activeComponentIndex_)
+			ui_->tabBar_components->setCurrentIndex(fromIdComponentIndex);
+		else
+			updateGraphView();
+	}
+	else
+	{
+		QMessageBox::warning(this, tr("Invalid root id"), tr("The root id %1 is not in the graph!").arg(value));
+		ui_->spinBox_optimizationsFrom->setValue(activeComponentIndex_ >= 0 && activeComponentIndex_ < (int)components_.size() ? components_[activeComponentIndex_].rootId : 0);
+	}
+}
+
+void DatabaseViewer::tabBarComponentsValueChanged(int value)
+{
+	if(value < 0 || value >= (int)components_.size() || value == activeComponentIndex_) return;
+	backupCurrentComponent();
+	activeComponentIndex_ = value;
+	const GraphComponent & comp = components_[activeComponentIndex_];
+	
+	ui_->horizontalSlider_rotation->blockSignals(true);
+	ui_->horizontalSlider_rotation->setValue(int(-comp.rotationValue * 1800.0f / M_PI));
+	ui_->label_rotation->setText(QString::number(float(-ui_->horizontalSlider_rotation->value())/10.0f, 'f', 1) + " deg");
+	ui_->horizontalSlider_rotation->blockSignals(false);
+
+	if (comp.nodeIds.find(ui_->spinBox_optimizationsFrom->value()) != comp.nodeIds.end())
+	{
+		// This will happen if this event is triggered by a spinbox_optimizationsFrom change
+		// In which case we keep the user chosen rootId as new root of the component
+		reRootCurrentComponent(ui_->spinBox_optimizationsFrom->value());
+	}
+	else
+	{
+		// no signal deactivation because editingFinished signal
+		ui_->spinBox_optimizationsFrom->setValue(components_[activeComponentIndex_].rootId);
+	}
+
+	restoreCurrentComponentConfig();
+	updateGraphView();
 }
 
 void DatabaseViewer::updateGrid()
@@ -9282,6 +9832,7 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 			if(updateConstraints)
 			{
 				updateLoopClosuresSlider(fromS->id(), toS->id());
+				regenerateGraphComponents();
 				this->updateGraphView();
 				this->updateConstraintView(newLink, false, *fromS, *toS);
 			}
@@ -9309,6 +9860,7 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 		else if(updateConstraints)
 		{
 			updateLoopClosuresSlider(from, to);
+			regenerateGraphComponents();
 			this->updateGraphView();
 		}
 	}
@@ -9423,26 +9975,19 @@ void DatabaseViewer::rejectConstraint()
 	{
 		if(priorId==0)
 		{
+			regenerateGraphComponents();
 			this->updateGraphView();
 		}
 		else
 		{
 			bool priorsIgnored = Parameters::defaultOptimizerPriorsIgnored();
 			Parameters::parse(ui_->parameters_toolbox->getParameters(), Parameters::kOptimizerPriorsIgnored(), priorsIgnored);
-			int indexA = ui_->horizontalSlider_A->value();
-			int indexB = ui_->horizontalSlider_B->value();
+
 			if(!priorsIgnored)
 			{
+				regenerateGraphComponents();
 				this->updateGraphView();
 			}
-			if(ui_->horizontalSlider_A->value() != indexA)
-				ui_->horizontalSlider_A->setValue(indexA);
-			else
-				sliderAValueChanged(indexA);
-			if(ui_->horizontalSlider_B->value() != indexB)
-				ui_->horizontalSlider_B->setValue(indexB);
-			else
-				sliderBValueChanged(indexB);
 		}
 	}
 }
@@ -9641,6 +10186,11 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 		constraintsViewer_->refreshView();
 		updateConstraintButtons();
 	}
+}
+
+void DatabaseViewer::updateLoopClosuresSlider()
+{
+	updateLoopClosuresSlider(ids_.at(ui_->horizontalSlider_A->value()), ids_.at(ui_->horizontalSlider_B->value()));
 }
 
 void DatabaseViewer::notifyParametersChanged(const QStringList & parametersChanged)
