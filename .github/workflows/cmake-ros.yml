@@ -9,7 +9,6 @@ on:
       - '**'
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 concurrency:
@@ -18,10 +17,6 @@ concurrency:
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     name: ${{ matrix.ros_distribution }}
     runs-on: ubuntu-latest
     strategy:
@@ -38,14 +33,16 @@ jobs:
         - ros_distribution: 'lyrical'
           skip_keys: "libpointmatcher"
         - ros_distribution: 'rolling'
-          skip_keys: ""
+          skip_keys: "libpointmatcher gtsam"
+          use_ros2_testing: true # Rolling is using ros2-testing (nightly)
     container:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
-    steps:   
+    steps:
     - uses: actions/checkout@v4
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
+        use-ros2-testing: ${{ matrix.use_ros2_testing || false }}
     - uses: ros-tooling/action-ros-ci@v0.4
       with:
         package-name: rtabmap
