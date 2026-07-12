@@ -131,6 +131,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_memoryChanged(false),
 	_linksChanged(false),
 	_signaturesAdded(0),
+	_workingMemIntermediateNodesCount(0),
 	_allNodesInWM(true),
 	_receivingOdometryFeatures(false),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
@@ -267,6 +268,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				//       global loop closures.
 				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
 				_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
+				if((*iter)->getWeight() < 0)
+				{
+					++_workingMemIntermediateNodesCount;
+				}
 				if(!(*iter)->getGroundTruthPose().isNull()) {
 					_groundTruths.insert(std::make_pair((*iter)->id(), (*iter)->getGroundTruthPose()));
 				}
@@ -1276,6 +1281,10 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	{
 		UDEBUG("Inserting node %d in WM...", signature->id());
 		_workingMem.insert(std::make_pair(signature->id(), UTimer::now()));
+		if(signature->getWeight() < 0)
+		{
+			++_workingMemIntermediateNodesCount;
+		}
 		_signatures.insert(std::pair<int, Signature*>(signature->id(), signature));
 		if(!signature->getGroundTruthPose().isNull()) {
 			_groundTruths.insert(std::make_pair(signature->id(), signature->getGroundTruthPose()));
@@ -1466,6 +1475,10 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 	if(reducedId == 0)
 	{
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
+		if(this->_getSignature(*_stMem.begin())->getWeight() < 0)
+		{
+			++_workingMemIntermediateNodesCount;
+		}
 		_stMem.erase(*_stMem.begin());
 	}
 	// else already removed from STM/WM in reduceNode()
@@ -1488,21 +1501,14 @@ const VWDictionary * Memory::getVWDictionary() const
 
 size_t Memory::getWorkingMemSize(bool ignoreIntermediateNodes) const
 {
+	// -1 removes the virtual place
 	if(!ignoreIntermediateNodes)
 	{
-		return _workingMem.size() - 1; // remove virtual place
+		return _workingMem.size() - 1;
 	}
 	else
 	{
-		size_t size = 0;
-		for(std::map<int, double>::const_iterator iter=_workingMem.lower_bound(1); iter!=_workingMem.end(); ++iter)
-		{
-			if(this->_getSignature(iter->first)->getWeight() >= 0)
-			{
-				size++;
-			}
-		}
-		return size;
+		return _workingMem.size() - 1 - _workingMemIntermediateNodesCount;
 	}
 }
 
@@ -2113,6 +2119,7 @@ void Memory::clear()
 		ULOGGER_ERROR("_workingMem must be empty here, size=%d", _workingMem.size());
 	}
 	_workingMem.clear();
+	_workingMemIntermediateNodesCount = 0;
 	if(_signatures.size()!=0)
 	{
 		ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
@@ -2747,6 +2754,13 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 	//UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
+		// Keep the WM intermediate-node counter in sync now, before the weight
+		// may be set to -9 below.
+		if(this->isInWM(s->id()) && s->getWeight() < 0)
+		{
+			--_workingMemIntermediateNodesCount;
+		}
+
 		// Cleanup landmark indexes
 		if(!s->getLandmarks().empty())
 		{
@@ -3074,6 +3088,12 @@ void Memory::convertToIntermediate(int locationId)
 	Signature * location = _getSignature(locationId);
 	if(location)
 	{
+		// Keep the WM intermediate-node counter in sync if the node is
+		// converted while already resident in working memory.
+		if(location->getWeight() >= 0 && this->isInWM(locationId))
+		{
+			++_workingMemIntermediateNodesCount;
+		}
 		location->setWeight(-1);
 		location->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 		this->disableWordsRef(locationId); // won't be used for loop closure detection anymore

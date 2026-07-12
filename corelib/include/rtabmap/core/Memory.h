@@ -361,6 +361,7 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
+	int _workingMemIntermediateNodesCount; // number of nodes with weight<0 currently in _workingMem
 	bool _allNodesInWM;
 	bool _receivingOdometryFeatures;
 	GPS _gpsOrigin;

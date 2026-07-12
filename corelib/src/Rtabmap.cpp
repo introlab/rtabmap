@@ -2496,12 +2496,13 @@ bool Rtabmap::process(
 									{
 										UWARN("Could not immunize the whole local path (%d) between "
 											  "%d and %d (max location immunized=%d). You may want "
-											  "to increase RGBD/LocalImmunizationRatio (current=%f (%d of WM=%d)) "
+											  "to increase %s (current=%f (%d of WM=%d)) "
 											  "to be able to immunize longer paths.",
 												(int)path.size(),
 												nearestId,
 												signature->id(),
 												maxLocalLocationsImmunized,
+												Parameters::kRGBDLocalImmunizationRatio().c_str(),
 												_localImmunizationRatio,
 												maxLocalLocationsImmunized,
 												(int)_memory->getWorkingMemSize(true));
