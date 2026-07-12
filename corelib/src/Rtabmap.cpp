@@ -2318,7 +2318,13 @@ bool Rtabmap::process(
 							//immunized locations in the neighborhood from being transferred
 							if(immunizedLocations.insert(iter->first).second)
 							{
-								++immunizedGlobally;
+								// Count only non-intermediate nodes (intermediate nodes are still
+								// immunized but don't consume the immunization budget/statistic).
+								const Signature * sImmunized = _memory->getSignature(iter->first);
+								if(sImmunized == 0 || sImmunized->getWeight() >= 0)
+								{
+									++immunizedGlobally;
+								}
 							}
 
 							//UDEBUG("nt=%d m=%d immunized=1", iter->first, iter->second);
@@ -2421,9 +2427,12 @@ bool Rtabmap::process(
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
 
-				if(_memory->getSignature(_path[i].first) != 0)
+				const Signature * sPath = _memory->getSignature(_path[i].first);
+				if(sPath != 0)
 				{
-					if(immunizedLocations.insert(_path[i].first).second)
+					// Count only non-intermediate nodes (intermediate nodes are still
+					// immunized but don't consume the immunization budget/statistic).
+					if(immunizedLocations.insert(_path[i].first).second && sPath->getWeight() >= 0)
 					{
 						++immunizedLocally;
 					}
@@ -2513,7 +2522,13 @@ bool Rtabmap::process(
 								{
 									if(immunizedLocations.insert(iter->first).second)
 									{
-										++immunizedLocally;
+										// Count only non-intermediate nodes (intermediate nodes are still
+										// immunized but don't consume the immunization budget/statistic).
+										const Signature * sLocal = _memory->getSignature(iter->first);
+										if(sLocal == 0 || sLocal->getWeight() >= 0)
+										{
+											++immunizedLocally;
+										}
 									}
 									//UDEBUG("local node %d on path immunized=1", iter->first);
 								}
@@ -2573,7 +2588,9 @@ bool Rtabmap::process(
 					}
 					if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
 					{
-						if(immunizedLocations.insert(s->id()).second)
+						// Count only non-intermediate nodes (intermediate nodes are still
+						// immunized but don't consume the immunization budget/statistic).
+						if(immunizedLocations.insert(s->id()).second && s->getWeight() >= 0)
 						{
 							++immunizedLocally;
 						}
@@ -4711,8 +4728,10 @@ bool Rtabmap::process(
 		statistics_.addStatistic(Statistics::kMemoryImmunized_locally_max(), maxLocalLocationsImmunized);
 
 		// place after transfer because the memory/local graph may have changed
-		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMemSize(false));
-		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
+		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMemSize(true));
+		statistics_.addStatistic(Statistics::kMemoryWorking_memory_inter_size(), _memory->getWorkingMemIntermediateNodesCount());
+		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size()-_memory->getStMemIntermediateNodesCount());
+		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_inter_size(), _memory->getStMemIntermediateNodesCount());
 		statistics_.addStatistic(Statistics::kMemoryDatabase_memory_used(), _memory->getDatabaseMemoryUsed());
 
 		// Set local graph

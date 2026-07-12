@@ -132,6 +132,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_linksChanged(false),
 	_signaturesAdded(0),
 	_workingMemIntermediateNodesCount(0),
+	_stMemIntermediateNodesCount(0),
 	_allNodesInWM(true),
 	_receivingOdometryFeatures(false),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
@@ -1260,6 +1261,10 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 
 		_signatures.insert(_signatures.end(), std::pair<int, Signature *>(signature->id(), signature));
 		_stMem.insert(_stMem.end(), signature->id());
+		if(signature->getWeight() < 0)
+		{
+			++_stMemIntermediateNodesCount;
+		}
 		if(!signature->getGroundTruthPose().isNull()) {
 			_groundTruths.insert(std::make_pair(signature->id(), signature->getGroundTruthPose()));
 		}
@@ -1478,6 +1483,7 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 		if(this->_getSignature(*_stMem.begin())->getWeight() < 0)
 		{
 			++_workingMemIntermediateNodesCount;
+			--_stMemIntermediateNodesCount;
 		}
 		_stMem.erase(*_stMem.begin());
 	}
@@ -2048,6 +2054,7 @@ void Memory::clear()
 		ULOGGER_ERROR("_stMem must be empty here, size=%d", _stMem.size());
 	}
 	_stMem.clear();
+	_stMemIntermediateNodesCount = 0;
 
 	this->cleanUnusedWords();
 
@@ -2754,11 +2761,18 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 	//UDEBUG("id=%d", s?s->id():0);
 	if(s)
 	{
-		// Keep the WM intermediate-node counter in sync now, before the weight
+		// Keep the WM/STM intermediate-node counters in sync now, before the weight
 		// may be set to -9 below.
-		if(this->isInWM(s->id()) && s->getWeight() < 0)
+		if(s->getWeight() < 0)
 		{
-			--_workingMemIntermediateNodesCount;
+			if(this->isInWM(s->id()))
+			{
+				--_workingMemIntermediateNodesCount;
+			}
+			else if(this->isInSTM(s->id()))
+			{
+				--_stMemIntermediateNodesCount;
+			}
 		}
 
 		// Cleanup landmark indexes
@@ -3088,11 +3102,18 @@ void Memory::convertToIntermediate(int locationId)
 	Signature * location = _getSignature(locationId);
 	if(location)
 	{
-		// Keep the WM intermediate-node counter in sync if the node is
-		// converted while already resident in working memory.
-		if(location->getWeight() >= 0 && this->isInWM(locationId))
+		// Keep the WM/STM intermediate-node counters in sync if the node is
+		// converted while already resident in memory.
+		if(location->getWeight() >= 0)
 		{
-			++_workingMemIntermediateNodesCount;
+			if(this->isInWM(locationId))
+			{
+				++_workingMemIntermediateNodesCount;
+			}
+			else if(this->isInSTM(locationId))
+			{
+				++_stMemIntermediateNodesCount;
+			}
 		}
 		location->setWeight(-1);
 		location->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());

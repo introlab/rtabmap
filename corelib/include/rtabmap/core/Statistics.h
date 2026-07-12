@@ -137,7 +137,9 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(NeighborLinkRefining, Pts,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
+	RTABMAP_STATS(Memory, Working_memory_inter_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);
+	RTABMAP_STATS(Memory, Short_time_memory_inter_size,);
 	RTABMAP_STATS(Memory, Database_memory_used, MB);
 	RTABMAP_STATS(Memory, Signatures_removed,);
 	RTABMAP_STATS(Memory, Immunized_globally,);
