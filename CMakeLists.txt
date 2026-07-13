@@ -1347,6 +1347,9 @@ ELSE()
 ENDIF()
 STRING(REPLACE ";" " " CONF_OPENCV_COMPONENTS "${CONF_OPENCV_COMPONENTS}")
 STRING(REPLACE ";" " " CONF_OPENCV_OPTIONAL_COMPONENTS "${CONF_OPENCV_OPTIONAL_COMPONENTS}")
+# Pin the OpenCV major version so downstream projects find the same major RTAB-Map was
+# built against
+SET(CONF_OPENCV_VERSION_MAJOR ${OpenCV_VERSION_MAJOR})
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
