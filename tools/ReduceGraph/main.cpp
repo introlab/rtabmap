@@ -344,20 +344,41 @@ int main(int argc, char * argv[])
 			// Synchronize WM and the optimized graph. For all nodes in WM that 
 			// are not in optimized graph, transfer to LTM.
 			std::map<int, double> wm = memory.getWorkingMem();
-			bool alreadySync = true;
+			int numToDelete = 0;
+			// first pass, just doublecheck we are not removing too many nodes
 			for(std::map<int, double>::iterator iter=wm.lower_bound(0); 
 				iter!=wm.end(); 
 				++iter)
 			{
 				if(optimizedPoses.find(iter->first) == optimizedPoses.end())
 				{
+					++numToDelete;
 					memory.deleteLocation(iter->first, 0, true);
 					printf("Transferred %d from WM to LTM.\n", iter->first);
-					alreadySync = false;
 				}
 			}
-			if(alreadySync) {
+			if(numToDelete==0) {
 				printf("All nodes in WM are in the optimized graph, no need to transfer anything.\n");
+			} 
+			else if(numToDelete > (int)optimizedPoses.size())
+			{
+				UERROR("Something is wrong, there are more nodes in "
+					"WM (%ld) not in optimized graph (%d) than there are in (%ld). "
+					"--sync_wm_and_opt_graph is aborted!", wm.size(), numToDelete, optimizedPoses.size());
+			}
+			else
+			{
+				printf("%d/%ld nodes from WM (opt graph=%ld) are transferred to LTM.", numToDelete, wm.size(), optimizedPoses.size());
+				for(std::map<int, double>::iterator iter=wm.lower_bound(0); 
+					iter!=wm.end(); 
+					++iter)
+				{
+					if(optimizedPoses.find(iter->first) == optimizedPoses.end())
+					{
+						memory.deleteLocation(iter->first, 0, true);
+						printf("Transferred %d from WM to LTM.\n", iter->first);
+					}
+				}
 			}
 		}
 
