@@ -61,6 +61,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMainWindow>
 #include <QProgressDialog>
 #include <QApplication>
+#include <QEventLoop>
+#include <QElapsedTimer>
+#include <QtGui/QWindow>
 #include <QLabel>
 #include <functional>
 #include <QScrollBar>
@@ -70,6 +73,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QCloseEvent>
 
 #include "ui_preferencesDialog.h"
+#include "GuiUtil.h"
 
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Parameters.h"
@@ -506,10 +510,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_showOdomFrustums->setChecked(false);
 #endif
 
-#if !defined(HAVE_OPENCV_ARUCO) && !defined(RTABMAP_APRILTAG)
+#if !((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) && !defined(HAVE_OPENCV_ARUCO) && !defined(RTABMAP_APRILTAG)
 	_ui->label_markerDetection->setText(_ui->label_markerDetection->text()+" This option works only if OpenCV has been built with \"aruco\" module and/or RTAB-Map has been built with AprilTag library support.");
 #endif
-#ifndef HAVE_OPENCV_ARUCO
+#if !(((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO))
 	_ui->MarkerStrategy->setItemData(0, 0, Qt::UserRole - 1);
 #endif
 #ifndef RTABMAP_APRILTAG
@@ -7846,9 +7850,7 @@ void PreferencesDialog::testOdometry()
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
 	progress.setValue(0);
-	progress.show();
-	QApplication::processEvents();
-	QApplication::processEvents(); // make sure it is drawn
+	showAndWaitExposed(&progress);
 
 	Camera * camera = this->createCamera();
 	progress.hide();
@@ -7989,9 +7991,7 @@ void PreferencesDialog::testOdometry()
 	// at function scope end (not in join()), so 'progress' stays visible across it. On Windows
 	// the first 2-3 RealSense closes per launch stall ~20s in the Motion Module stop().
 	progress.setLabelText(tr("Closing camera..."));
-	progress.show();
-	QApplication::processEvents();
-	QApplication::processEvents(); // make sure it is drawn
+	showAndWaitExposed(&progress);
 	cameraThread.join(true);
 	odomThread.join(true);
 
@@ -8033,9 +8033,7 @@ void PreferencesDialog::testCamera()
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
 	progress.setValue(0);
-	progress.show();
-	QApplication::processEvents();
-	QApplication::processEvents(); // make sure it is drawn
+	showAndWaitExposed(&progress);
 
 	// createCamera() init()s the device on the GUI thread (required by ZED) and takes a few seconds.
 	Camera * camera = this->createCamera();
@@ -8092,9 +8090,7 @@ void PreferencesDialog::testCamera()
 		// stays visible across it. On Windows the first 2-3 RealSense closes per launch stall
 		// ~20s in the Motion Module stop() (librealsense warm-up); this keeps the user informed.
 		progress.setLabelText(tr("Closing camera..."));
-		progress.show();
-		QApplication::processEvents();
-		QApplication::processEvents(); // make sure it is drawn
+		showAndWaitExposed(&progress);
 		cameraThread.join(true); // cameraThread's destructor (scope end) closes the device
 		// deleteLater() (not delete): defer destruction to the event loop so Qt finishes
 		// tearing down the OpenGL widget's context and window-proc subclass and drains
@@ -8582,9 +8578,7 @@ void PreferencesDialog::testLidar()
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
 	progress.setValue(0);
-	progress.show();
-	QApplication::processEvents();
-	QApplication::processEvents(); // make sure it is drawn
+	showAndWaitExposed(&progress);
 
 	Lidar * lidar = this->createLidar();
 	progress.hide();
@@ -8613,9 +8607,7 @@ void PreferencesDialog::testLidar()
 		// destructor at scope end (not in join()), so 'progress' - declared in the outer
 		// scope - stays visible across it.
 		progress.setLabelText(tr("Closing sensor..."));
-		progress.show();
-		QApplication::processEvents();
-		QApplication::processEvents(); // make sure it is drawn
+		showAndWaitExposed(&progress);
 		lidarThread.join(true); // lidarThread's destructor (scope end) closes the device
 		// deleteLater() (not delete): see testCamera() - avoids a dangling OpenGL platform
 		// window that crashes in QWindowsWindow::alertWindow when Preferences later closes.

@@ -85,7 +85,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	showScanCheckbox_->setChecked(true);
 
 	markerCheckbox_ = new QCheckBox("Detect markers", this);
-#if defined(HAVE_OPENCV_ARUCO) || defined(RTABMAP_APRILTAG)
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO) || defined(RTABMAP_APRILTAG)
 	markerCheckbox_->setEnabled(true);
 	markerDetector_ = new MarkerDetector(parameters);
 #else
@@ -175,7 +175,8 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		if(!models.empty() && models[0].isValidForProjection())
 		{
 			cv::Mat imageWithDetections;
-			detections = markerDetector_->detect(left, models, depthOrRight, _landmarksSize, &imageWithDetections);
+			cv::Mat depth = (depthOrRight.type()==CV_16UC1 || depthOrRight.type()==CV_32FC1) ? depthOrRight : cv::Mat();
+			detections = markerDetector_->detect(left, models, depth, _landmarksSize, &imageWithDetections);
 			imageView_->setImage(uCvMat2QImage(imageWithDetections));
 			for(std::map<int, MarkerInfo>::iterator iter=detections.begin(); iter!=detections.end(); ++iter)
 			{

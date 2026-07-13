@@ -76,7 +76,7 @@ extern "C" {
 #include "apriltag/tag36h11.h"
 }
 
-#ifndef HAVE_OPENCV_ARUCO
+#if !((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) && !defined(HAVE_OPENCV_ARUCO)
 // To match opencv::aruco module, add opencv::aruco dictionary enum
 namespace cv{
 namespace aruco {
@@ -204,7 +204,7 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
 	apriltagLibDetector_(NULL),
 	apriltagLibFamily_(NULL)
 {
-#ifdef HAVE_OPENCV_ARUCO
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
     detectorParams_.reset(new cv::aruco::DetectorParameters());
 #elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
@@ -314,7 +314,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		}
 	}
 
-#ifdef HAVE_OPENCV_ARUCO
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
 	detectorParams_->adaptiveThreshWinSizeMin = 3;
 	detectorParams_->adaptiveThreshWinSizeMax = 23;
 	detectorParams_->adaptiveThreshWinSizeStep = 10;
@@ -368,6 +368,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		dictionaryId_ = Parameters::defaultMarkerDictionary();
 	}
 #endif
+
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
     dictionary_.reset(new cv::aruco::Dictionary());
     *dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionaryId_));
@@ -377,6 +378,11 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	dictionary_.reset(new cv::aruco::Dictionary());
 	*dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionaryId_));
 #endif
+
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)
+	arucoDetector_.reset(new cv::aruco::ArucoDetector(*dictionary_, *detectorParams_));
+#endif
+
 #else
 	if(strategy_ == 0)
 	{
@@ -445,7 +451,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 #else
 	if(strategy_ == 1)
 	{
-#ifdef HAVE_OPENCV_ARUCO
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
 		UERROR("RTAB-Map is not built with apriltag library! Fallback to OpenCV (%s=0).", Parameters::kMarkerStrategy().c_str());
 		strategy_ = kStrategyOpencv;
 #else
@@ -475,6 +481,34 @@ std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const Cam
     return detections;
 }
 
+#if (((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)) && (CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7))
+// Drop-in replacement for cv::aruco::estimatePoseSingleMarkers(), which was deprecated
+// in OpenCV 4.7 and removed in OpenCV 5. It reproduces the legacy default behavior (marker
+// object points ordered as ARUCO_CCW_CENTER + SOLVEPNP_ITERATIVE) using cv::solvePnP() per
+// marker. For OpenCV < 4.7 the native cv::aruco::estimatePoseSingleMarkers() is still used.
+static void estimatePoseSingleMarkers(
+		const std::vector<std::vector<cv::Point2f> > & corners,
+		float markerLength,
+		const cv::Mat & cameraMatrix,
+		const cv::Mat & distCoeffs,
+		std::vector<cv::Vec3d> & rvecs,
+		std::vector<cv::Vec3d> & tvecs)
+{
+	cv::Mat objPoints(4, 1, CV_32FC3);
+	objPoints.ptr<cv::Vec3f>(0)[0] = cv::Vec3f(-markerLength/2.f,  markerLength/2.f, 0);
+	objPoints.ptr<cv::Vec3f>(0)[1] = cv::Vec3f( markerLength/2.f,  markerLength/2.f, 0);
+	objPoints.ptr<cv::Vec3f>(0)[2] = cv::Vec3f( markerLength/2.f, -markerLength/2.f, 0);
+	objPoints.ptr<cv::Vec3f>(0)[3] = cv::Vec3f(-markerLength/2.f, -markerLength/2.f, 0);
+
+	rvecs.resize(corners.size());
+	tvecs.resize(corners.size());
+	for(size_t i=0; i<corners.size(); ++i)
+	{
+		cv::solvePnP(objPoints, corners[i], cameraMatrix, distCoeffs, rvecs[i], tvecs[i]);
+	}
+}
+#endif
+
 std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
                            const std::vector<CameraModel> & models,
                            const cv::Mat & depth,
@@ -486,20 +520,27 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	UASSERT(int((depth.cols/models.size())*models.size()) == depth.cols);
 	int subRGBWidth = image.cols/models.size();
 
+	// Only a real depth map (CV_16UC1/CV_32FC1) can be used for marker length estimation.
+	// Ignore anything else (e.g. a stereo right image passed by mistake) instead of crashing
+	// later in util2d::getDepth().
+	cv::Mat depthMap = depth;
+	if(!depthMap.empty() && depthMap.type()!=CV_16UC1 && depthMap.type()!=CV_32FC1)
+	{
+		UWARN("Marker detection: ignoring depth image with unsupported type=%d (expected CV_16UC1 or CV_32FC1).", depthMap.type());
+		depthMap = cv::Mat();
+	}
+
 	float rgbToDepthFactorX = 1.0f;
 	float rgbToDepthFactorY = 1.0f;
-	if(!depth.empty())
+	if(!depthMap.empty())
 	{
-		rgbToDepthFactorX = float(depth.cols) / float(image.cols);
-		rgbToDepthFactorY = float(depth.rows) / float(image.rows);
+		rgbToDepthFactorX = float(depthMap.cols) / float(image.cols);
+		rgbToDepthFactorY = float(depthMap.rows) / float(image.rows);
 	}
 	else if(markerLength_ == 0)
 	{
-		if(depth.empty())
-		{
-			UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kMarkerLength().c_str());
-			return std::map<int, MarkerInfo>();
-		}
+		UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kMarkerLength().c_str());
+		return std::map<int, MarkerInfo>();
 	}
 
 	std::vector< int > ids;
@@ -636,8 +677,10 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	{
 		std::vector< int > cvIds;
 		std::vector< std::vector< cv::Point2f > > cvCorners, cvRejected;
-#ifdef HAVE_OPENCV_ARUCO
-#if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)
+        arucoDetector_->detectMarkers(image, cvCorners, cvIds, cvRejected);
+#elif CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION >=2)
 		cv::aruco::detectMarkers(image, dictionary_, cvCorners, cvIds, detectorParams_, cvRejected);
 #else
 		cv::aruco::detectMarkers(image, *dictionary_, cvCorners, cvIds, *detectorParams_, cvRejected);
@@ -690,9 +733,15 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 		for(size_t cam=0; cam < cvCornersPerCam.size(); ++cam)
 		{
-			std::vector< cv::Vec3d > rvecs, tvecs;
 			const CameraModel & model = models[cam];
+
+			std::vector< cv::Vec3d > rvecs, tvecs;
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
+			estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs);
+#else
 			cv::aruco::estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs);
+#endif
+
 			float offsetX = cam*subRGBWidth;
 			for(size_t i=0; i<cvIdsPerCam[cam].size(); ++i)
 			{
@@ -729,13 +778,13 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	{
 		float length = 0.0f;
 		std::map<int, float>::const_iterator findIter = extraMarkerLengths.find(ids[i]);
-		if(markerLengths_.empty() && !depth.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==extraMarkerLengths.end())))
+		if(markerLengths_.empty() && !depthMap.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==extraMarkerLengths.end())))
 		{
-			float d = util2d::getDepth(depth, (corners[i][0].x + (corners[i][2].x-corners[i][0].x)/2.0f)*rgbToDepthFactorX, (corners[i][0].y + (corners[i][2].y-corners[i][0].y)/2.0f)*rgbToDepthFactorY, true, 0.02f, true);
-			float d1 = util2d::getDepth(depth, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
-			float d2 = util2d::getDepth(depth, corners[i][1].x*rgbToDepthFactorX, corners[i][1].y*rgbToDepthFactorY, true, 0.02f, true);
-			float d3 = util2d::getDepth(depth, corners[i][2].x*rgbToDepthFactorX, corners[i][2].y*rgbToDepthFactorY, true, 0.02f, true);
-			float d4 = util2d::getDepth(depth, corners[i][3].x*rgbToDepthFactorX, corners[i][3].y*rgbToDepthFactorY, true, 0.02f, true);
+			float d = util2d::getDepth(depthMap, (corners[i][0].x + (corners[i][2].x-corners[i][0].x)/2.0f)*rgbToDepthFactorX, (corners[i][0].y + (corners[i][2].y-corners[i][0].y)/2.0f)*rgbToDepthFactorY, true, 0.02f, true);
+			float d1 = util2d::getDepth(depthMap, corners[i][0].x*rgbToDepthFactorX, corners[i][0].y*rgbToDepthFactorY, true, 0.02f, true);
+			float d2 = util2d::getDepth(depthMap, corners[i][1].x*rgbToDepthFactorX, corners[i][1].y*rgbToDepthFactorY, true, 0.02f, true);
+			float d3 = util2d::getDepth(depthMap, corners[i][2].x*rgbToDepthFactorX, corners[i][2].y*rgbToDepthFactorY, true, 0.02f, true);
+			float d4 = util2d::getDepth(depthMap, corners[i][3].x*rgbToDepthFactorX, corners[i][3].y*rgbToDepthFactorY, true, 0.02f, true);
 			// Accept measurement only if all 4 depth values are valid and
 			// they are at the same depth (camera should be perpendicular to marker for
 			// best depth estimation)
@@ -891,7 +940,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 		if(!ids.empty())
 		{
-#ifdef HAVE_OPENCV_ARUCO
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
 			cv::aruco::drawDetectedMarkers(*imageWithDetections, corners, ids);
 #else
 			UWARN("RTAB-Map is not built with \"aruco\" module from OpenCV. Cannot draw markers on image.");

@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/MainWindow.h"
 
 #include "ui_mainWindow.h"
+#include "GuiUtil.h"
 
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
@@ -127,10 +128,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_GRIDMAP
 #include <rtabmap/core/global_map/GridMap.h>
-#endif
-
-#ifdef HAVE_OPENCV_ARUCO
-#include <opencv2/aruco.hpp>
 #endif
 
 #define LOG_FILE_NAME "LogRtabmap.txt"
@@ -5963,9 +5960,7 @@ void MainWindow::startDetection()
 	progress.setCancelButton(0);
 	progress.setMinimumDuration(0);
 	progress.setValue(0);
-	progress.show();
-	QApplication::processEvents();
-	QApplication::processEvents(); // make sure it is drawn
+	showAndWaitExposed(&progress);
 
 	if(_preferencesDialog->getLidarSourceDriver() != PreferencesDialog::kSrcUndef)
 	{
@@ -6279,9 +6274,7 @@ void MainWindow::stopDetection()
 		progress.setCancelButton(0);
 		progress.setMinimumDuration(0);
 		progress.setValue(0);
-		progress.show();
-		QApplication::processEvents();
-		QApplication::processEvents(); // make sure it is drawn
+		showAndWaitExposed(&progress);
 	}
 
 	// kill the processes
