@@ -344,6 +344,7 @@ int main(int argc, char * argv[])
 			// Synchronize WM and the optimized graph. For all nodes in WM that 
 			// are not in optimized graph, transfer to LTM.
 			std::map<int, double> wm = memory.getWorkingMem();
+			bool alreadySync = true;
 			for(std::map<int, double>::iterator iter=wm.lower_bound(0); 
 				iter!=wm.end(); 
 				++iter)
@@ -352,7 +353,11 @@ int main(int argc, char * argv[])
 				{
 					memory.deleteLocation(iter->first, 0, true);
 					printf("Transferred %d from WM to LTM.\n", iter->first);
+					alreadySync = false;
 				}
+			}
+			if(alreadySync) {
+				printf("All nodes in WM are in the optimized graph, no need to transfer anything.\n");
 			}
 		}
 
