@@ -1479,7 +1479,7 @@ int main(int argc, char * argv[])
 			printf("Sessions linked to the last pose: %ld/%d\n", mapIds.size(), firstDbMapIds + newDbMapIds);
 			if(appendMode)
 			{
-				printf("New sessions connected to the latest optimized graph: %ld/%d\n", newMapIds.size(), newDbMapIds);
+				printf("New sessions connected to the global graph: %ld/%d\n", newMapIds.size(), newDbMapIds);
 				// Check if all new sessions were appended to the original graph.
 				if(abortDisconnectedSessions)
 				{
