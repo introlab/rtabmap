@@ -1461,7 +1461,7 @@ int main(int argc, char * argv[])
 		{
 			std::map<int, Transform> poses;
 			std::multimap<int, Link> constraints;
-			rtabmap.getGraph(poses, constraints, 0, 1, 0, false, false, false, false, false, false);
+			rtabmap.getGraph(poses, constraints, /*optimized*/ false, /*global*/ true, 0, false, false, false, false, false, false);
 			std::set<int> mapIds;
 			std::set<int> newMapIds;
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
