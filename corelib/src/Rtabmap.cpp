@@ -378,9 +378,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
 	if(!_memory->isIncremental())
 	{
-		if(_optimizedPoses.empty() &&
-			_memory->getWorkingMem().size()>1 &&
-			_memory->getWorkingMem().lower_bound(1)!=_memory->getWorkingMem().end())
+		if(_optimizedPoses.empty() && _memory->getWorkingMemSize(true) > 0)
 		{
 			cv::Mat cov;
 			this->optimizeCurrentMap(
@@ -810,7 +808,7 @@ int Rtabmap::getWMSize() const
 {
 	if(_memory)
 	{
-		return (int)_memory->getWorkingMem().size()-1; // remove virtual place
+		return (int)_memory->getWorkingMemSize(false);
 	}
 	return 0;
 }
@@ -1998,7 +1996,7 @@ bool Rtabmap::process(
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to
 		// fill the short-time memory before a signature is added to the working memory).
-		if(_memory->getWorkingMem().size())
+		if(_memory->getWorkingMemSize(true))
 		{
 			//============================================================
 			// Likelihood computation
@@ -2174,7 +2172,7 @@ bool Rtabmap::process(
 				}
 				if(	(( _memory->isIncremental() && !uContains(_optimizedPoses, _highestHypothesis.first)) || // not linked to previous map of that hypothesis
 					 (!_memory->isIncremental() && !hasLoopClosureConstraints)) && // not yet localized to any previous sessions
-					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
+					_memory->getWorkingMemSize(true)>0 && // should have an old map
 					_rgbdSlamMode &&
 					loopThr > _aggressiveLoopThr)
 				{
@@ -2227,7 +2225,7 @@ bool Rtabmap::process(
 				hypothesisRatio = _loopClosureHypothesis.second>0?_highestHypothesis.second/_loopClosureHypothesis.second:0;
 			}
 		} // if(_memory->getWorkingMemSize())
-	}// !isBadSignature
+	} // !isBadSignature
 	else if(!signature->isBadSignature() && signature->getWeight()>=0 && (smallDisplacement || tooFastMovement))
 	{
 		_highestHypothesis = lastHighestHypothesis;
@@ -2259,12 +2257,12 @@ bool Rtabmap::process(
 	if(_maxTimeAllowed != 0 || _maxMemoryAllowed != 0)
 	{
 		// with memory management, we have to immunize some nodes
-		maxLocalLocationsImmunized = _localImmunizationRatio * float(_memory->getWorkingMem().size());
+		maxLocalLocationsImmunized = _localImmunizationRatio * float(_memory->getWorkingMemSize(true));
 	}
 	// no need to do retrieval or immunization of locations if memory management
 	// is disabled and all nodes are in WM.
 	// Also skip memory mangement on intermediate nodes
-	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0) && signature->getWeight()>=0)
+	if(!((_memory->allNodesInWM() || _maxRetrieved==0) && maxLocalLocationsImmunized==0) && signature->getWeight()>=0)
 	{
 		if(retrievalId > 0)
 		{
@@ -2320,7 +2318,13 @@ bool Rtabmap::process(
 							//immunized locations in the neighborhood from being transferred
 							if(immunizedLocations.insert(iter->first).second)
 							{
-								++immunizedGlobally;
+								// Count only non-intermediate nodes (intermediate nodes are still
+								// immunized but don't consume the immunization budget/statistic).
+								const Signature * sImmunized = _memory->getSignature(iter->first);
+								if(sImmunized == 0 || sImmunized->getWeight() >= 0)
+								{
+									++immunizedGlobally;
+								}
 							}
 
 							//UDEBUG("nt=%d m=%d immunized=1", iter->first, iter->second);
@@ -2423,9 +2427,12 @@ bool Rtabmap::process(
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
 
-				if(_memory->getSignature(_path[i].first) != 0)
+				const Signature * sPath = _memory->getSignature(_path[i].first);
+				if(sPath != 0)
 				{
-					if(immunizedLocations.insert(_path[i].first).second)
+					// Count only non-intermediate nodes (intermediate nodes are still
+					// immunized but don't consume the immunization budget/statistic).
+					if(immunizedLocations.insert(_path[i].first).second && sPath->getWeight() >= 0)
 					{
 						++immunizedLocally;
 					}
@@ -2447,7 +2454,7 @@ bool Rtabmap::process(
 			}
 		}
 
-		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0))
+		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized==0))
 		{
 			// immunize the path from the nearest local location to the current location
 			if(immunizedLocally < maxLocalLocationsImmunized &&
@@ -2498,15 +2505,16 @@ bool Rtabmap::process(
 									{
 										UWARN("Could not immunize the whole local path (%d) between "
 											  "%d and %d (max location immunized=%d). You may want "
-											  "to increase RGBD/LocalImmunizationRatio (current=%f (%d of WM=%d)) "
+											  "to increase %s (current=%f (%d of WM=%d)) "
 											  "to be able to immunize longer paths.",
 												(int)path.size(),
 												nearestId,
 												signature->id(),
 												maxLocalLocationsImmunized,
+												Parameters::kRGBDLocalImmunizationRatio().c_str(),
 												_localImmunizationRatio,
 												maxLocalLocationsImmunized,
-												(int)_memory->getWorkingMem().size());
+												(int)_memory->getWorkingMemSize(true));
 									}
 									break;
 								}
@@ -2514,7 +2522,13 @@ bool Rtabmap::process(
 								{
 									if(immunizedLocations.insert(iter->first).second)
 									{
-										++immunizedLocally;
+										// Count only non-intermediate nodes (intermediate nodes are still
+										// immunized but don't consume the immunization budget/statistic).
+										const Signature * sLocal = _memory->getSignature(iter->first);
+										if(sLocal == 0 || sLocal->getWeight() >= 0)
+										{
+											++immunizedLocally;
+										}
 									}
 									//UDEBUG("local node %d on path immunized=1", iter->first);
 								}
@@ -2538,7 +2552,7 @@ bool Rtabmap::process(
 					maxLocalLocationsImmunized,
 					immunizedLocally,
 					_localImmunizationRatio,
-					(int)_memory->getWorkingMem().size());
+					(int)_memory->getWorkingMemSize(true));
 			std::list<int> retrievalLocalIdsIntermediate;
 			for(std::multimap<float, int>::iterator iter=nearNodesByDist.begin();
 				iter!=nearNodesByDist.end() && (retrievalLocalIds.size() < _maxLocalRetrieved || immunizedLocally < maxLocalLocationsImmunized);
@@ -2574,7 +2588,9 @@ bool Rtabmap::process(
 					}
 					if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
 					{
-						if(immunizedLocations.insert(s->id()).second)
+						// Count only non-intermediate nodes (intermediate nodes are still
+						// immunized but don't consume the immunization budget/statistic).
+						if(immunizedLocations.insert(s->id()).second && s->getWeight() >= 0)
 						{
 							++immunizedLocally;
 						}
@@ -2685,7 +2701,7 @@ bool Rtabmap::process(
 	   signature->getWeight() >= 0) // not an intermediate node
 	{
 		if(_startNewMapOnLoopClosure &&
-			_memory->getWorkingMem().size()>=2 && // must have an old map (+1 virtual place)
+			_memory->getWorkingMemSize(true)>0 && // must have an old map
 			_localizationCovariance.empty() && // if we didn't localize yet
 			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session
 		{
@@ -4451,7 +4467,7 @@ bool Rtabmap::process(
 			_memory->isIncremental() &&              // only in mapping mode
 			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 &&      // alone in the current map
 			(landmarksDetected.empty() || rejectedLoopClosure) &&      // if we re not seeing a landmark from a previous map
-			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
+			_memory->getWorkingMemSize(true)>0)       // The working memory should not be empty
 		{
 			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
 					signature->id());
@@ -4538,26 +4554,29 @@ bool Rtabmap::process(
 	//============================================================
 	double totalTime = timerTotal.ticks();
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
-	if(!lastSignatureWasIntermediateNode && // skip memory management on intermediate nodes
-		((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
-		 (_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)))
+	if(!lastSignatureWasIntermediateNode) // skip memory management on intermediate nodes
 	{
-		if(_maxTimeAllowed!=0 && totalTime*1000>_maxTimeAllowed)
+		size_t workingMemSize = _memory->getWorkingMemSize(true);
+		if((_maxTimeAllowed != 0 && totalTime*1000 > _maxTimeAllowed) ||
+			(_maxMemoryAllowed != 0 && workingMemSize > _maxMemoryAllowed))
 		{
-			ULOGGER_INFO("Removing old signatures because time limit is reached %f ms > %f ms...",
-				totalTime*1000, _maxTimeAllowed);
-		}
-		if(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)
-		{
-			ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
-				_memory->getWorkingMem().size(), _maxMemoryAllowed);
-		}
-		immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
-		std::list<int> transferred = _memory->forget(immunizedLocations);
-		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
-		if(!_someNodesHaveBeenTransferred && transferred.size())
-		{
-			_someNodesHaveBeenTransferred = true; // only used to hide a warning on close nodes immunization
+			if(_maxTimeAllowed!=0 && totalTime*1000 > _maxTimeAllowed)
+			{
+				ULOGGER_INFO("Removing old signatures because time limit is reached %f ms > %f ms...",
+					totalTime*1000, _maxTimeAllowed);
+			}
+			if(_maxMemoryAllowed != 0 && workingMemSize > _maxMemoryAllowed)
+			{
+				ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
+					workingMemSize, _maxMemoryAllowed);
+			}
+			immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
+			std::list<int> transferred = _memory->forget(immunizedLocations);
+			signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
+			if(!_someNodesHaveBeenTransferred && transferred.size())
+			{
+				_someNodesHaveBeenTransferred = true; // only used to hide a warning on close nodes immunization
+			}
 		}
 	}
 	_lastProcessTime = totalTime;
@@ -4709,8 +4728,10 @@ bool Rtabmap::process(
 		statistics_.addStatistic(Statistics::kMemoryImmunized_locally_max(), maxLocalLocationsImmunized);
 
 		// place after transfer because the memory/local graph may have changed
-		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
-		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
+		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMemSize(true));
+		statistics_.addStatistic(Statistics::kMemoryWorking_memory_inter_size(), _memory->getWorkingMemIntermediateNodesCount());
+		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size()-_memory->getStMemIntermediateNodesCount());
+		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_inter_size(), _memory->getStMemIntermediateNodesCount());
 		statistics_.addStatistic(Statistics::kMemoryDatabase_memory_used(), _memory->getDatabaseMemoryUsed());
 
 		// Set local graph
@@ -4859,7 +4880,7 @@ bool Rtabmap::process(
 		}
 
 		std::vector<int> ids;
-		ids.reserve(_memory->getWorkingMem().size() + _memory->getStMem().size());
+		ids.reserve(_memory->getWorkingMemSize(false) + _memory->getStMem().size());
 		for(std::set<int>::const_iterator iter=_memory->getStMem().begin(); iter!=_memory->getStMem().end(); ++iter)
 		{
 			ids.push_back(*iter);
@@ -4921,7 +4942,7 @@ bool Rtabmap::process(
 									0,
 									refWordsCount,
 									dictionarySize,
-									int(_memory->getWorkingMem().size()),
+									int(_memory->getWorkingMemSize(false)),
 									rejectedLoopClosure?1:0,
 									0,
 									0,
@@ -5948,7 +5969,7 @@ void Rtabmap::getGraph(
 			}
 		}
 	}
-	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
+	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMemSize(!global) > 0))
 	{
 		UERROR("Last working signature is null!?");
 	}
