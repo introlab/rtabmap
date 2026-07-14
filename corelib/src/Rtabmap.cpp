@@ -2454,7 +2454,7 @@ bool Rtabmap::process(
 			}
 		}
 
-		if(!((_memory->allNodesInWM() || _maxLocalRetrieved==0) && maxLocalLocationsImmunized==0))
+		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized==0))
 		{
 			// immunize the path from the nearest local location to the current location
 			if(immunizedLocally < maxLocalLocationsImmunized &&
