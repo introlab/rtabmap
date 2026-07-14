@@ -269,7 +269,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				//       global loop closures.
 				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
 				_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
-				if((*iter)->getWeight() < 0)
+				if((*iter)->getWeight() == -1)
 				{
 					++_workingMemIntermediateNodesCount;
 				}
@@ -1261,7 +1261,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 
 		_signatures.insert(_signatures.end(), std::pair<int, Signature *>(signature->id(), signature));
 		_stMem.insert(_stMem.end(), signature->id());
-		if(signature->getWeight() < 0)
+		if(signature->getWeight() == -1)
 		{
 			++_stMemIntermediateNodesCount;
 		}
@@ -1286,7 +1286,7 @@ void Memory::addSignatureToWmFromLTM(Signature * signature)
 	{
 		UDEBUG("Inserting node %d in WM...", signature->id());
 		_workingMem.insert(std::make_pair(signature->id(), UTimer::now()));
-		if(signature->getWeight() < 0)
+		if(signature->getWeight() == -1)
 		{
 			++_workingMemIntermediateNodesCount;
 		}
@@ -1480,7 +1480,7 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 	if(reducedId == 0)
 	{
 		_workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
-		if(this->_getSignature(*_stMem.begin())->getWeight() < 0)
+		if(this->_getSignature(*_stMem.begin())->getWeight() == -1)
 		{
 			++_workingMemIntermediateNodesCount;
 			--_stMemIntermediateNodesCount;
@@ -2763,7 +2763,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 	{
 		// Keep the WM/STM intermediate-node counters in sync now, before the weight
 		// may be set to -9 below.
-		if(s->getWeight() < 0)
+		if(s->getWeight() == -1)
 		{
 			if(this->isInWM(s->id()))
 			{
