@@ -149,6 +149,9 @@ public:
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
+	size_t getWorkingMemSize(bool ignoreIntermediateNodes = false) const;
+	int getWorkingMemIntermediateNodesCount() const {return _workingMemIntermediateNodesCount;}
+	int getStMemIntermediateNodesCount() const {return _stMemIntermediateNodesCount;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
 	std::multimap<int, Link> getNeighborLinks(int signatureId,
@@ -360,6 +363,8 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
+	int _workingMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _workingMem
+	int _stMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _stMem
 	bool _allNodesInWM;
 	bool _receivingOdometryFeatures;
 	GPS _gpsOrigin;
