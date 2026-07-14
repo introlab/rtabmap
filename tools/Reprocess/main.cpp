@@ -698,14 +698,14 @@ int main(int argc, char * argv[])
 	std::list<std::string> databases = uSplit(inputDatabasePath, ';');
 	if (databases.empty())
 	{
-		printf("ERROR: No input database \"%s\" detected!\n", inputDatabasePath.c_str());
+		printf("[Error] No input database \"%s\" detected!\n", inputDatabasePath.c_str());
 		return 1;
 	}
 	for (std::list<std::string>::iterator iter = databases.begin(); iter != databases.end(); ++iter)
 	{
 		if (!UFile::exists(*iter))
 		{
-			printf("ERROR: Input database \"%s\" doesn't exist!\n", iter->c_str());
+			printf("[Error] Input database \"%s\" doesn't exist!\n", iter->c_str());
 			if(uStrContains(inputDatabasePath,":"))
 			{
 				printf("Did you mean \"%s\"?\n", uReplaceChar(inputDatabasePath, ':', ";").c_str());
@@ -715,14 +715,14 @@ int main(int argc, char * argv[])
 
 		if (UFile::getExtension(*iter).compare("db") != 0)
 		{
-			printf("ERROR: File \"%s\" is not a database format (*.db)! Aborting.\n", iter->c_str());
+			printf("[Error] File \"%s\" is not a database format (*.db)! Aborting.\n", iter->c_str());
 			return 1;
 		}
 	}
 
 	if(UFile::getExtension(outputDatabasePath).compare("db") != 0)
 	{
-		printf("ERROR: File \"%s\" is not a database format (*.db)! Aborting.\n", outputDatabasePath.c_str());
+		printf("[Error] File \"%s\" is not a database format (*.db)! Aborting.\n", outputDatabasePath.c_str());
 		return 1;
 	}
 
@@ -735,7 +735,7 @@ int main(int argc, char * argv[])
 	std::shared_ptr<DBDriver> dbDriver(DBDriver::create());
 	if(!dbDriver->openConnection(databases.front(), false))
 	{
-		printf("ERROR: Failed opening the input database!\n");
+		printf("[Error] Failed opening the input database!\n");
 		return 1;
 	}
 
@@ -749,7 +749,7 @@ int main(int argc, char * argv[])
 			std::shared_ptr<DBDriver> lastDbDriver(DBDriver::create());
 			if(!lastDbDriver->openConnection(databases.back(), true))
 			{
-				printf("ERROR: Failed opening the last input database!\n");
+				printf("[Error] Failed opening the last input database!\n");
 				return 1;
 			}
 			parameters = lastDbDriver->getLastParameters();
@@ -762,7 +762,7 @@ int main(int argc, char * argv[])
 		}
 		if(parameters.empty())
 		{
-			printf("WARNING: Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", targetVersion.c_str());
+			printf("[Warning] Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", targetVersion.c_str());
 		}
 		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
 	}
@@ -861,7 +861,7 @@ int main(int argc, char * argv[])
 	dbDriver->getAllNodeIds(ids, false, false, !pubInterNodesAsNormalNodes && !intermediateNodes);
 	if(ids.empty())
 	{
-		printf("ERROR: Input database doesn't have any nodes saved in it.\n");
+		printf("[Error] Input database doesn't have any nodes saved in it.\n");
 		dbDriver->closeConnection(false);
 		return 1;
 	}
@@ -874,10 +874,10 @@ int main(int argc, char * argv[])
 		if(databases.size() < 2)
 		{
 			if(appendMode) {
-				printf("ERROR: -a (append mode) requires at least 2 input databases, provided \"%s\"! Aborting.\n", inputDatabasePath.c_str());
+				printf("[Error] -a (append mode) requires at least 2 input databases, provided \"%s\"! Aborting.\n", inputDatabasePath.c_str());
 			}
 			else if(!incrementalMemory) {
-				printf("ERROR: Localization mode is enabled (%s=false), but it requires at least 2 input databases, provided \"%s\"! Aborting.\n",
+				printf("[Error] Localization mode is enabled (%s=false), but it requires at least 2 input databases, provided \"%s\"! Aborting.\n",
 					Parameters::kMemIncrementalMemory().c_str(), inputDatabasePath.c_str());
 			}
 			return 1;
@@ -903,7 +903,7 @@ int main(int argc, char * argv[])
 	{
 		if (!dbDriver->openConnection(*iter, false))
 		{
-			printf("ERROR: Failed opening input database!\n");
+			printf("[Error] Failed opening input database!\n");
 			return 1;
 		}
 		ids.clear();
@@ -946,11 +946,30 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
 	bool odometryIgnored = !rgbdEnabled;
 
+	if(rgbdEnabled && appendMode)
+	{
+		// Get the number of sessions linked in the current global graph
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> constraints;
+		rtabmap.getGraph(poses, constraints, /*optimized*/ false, /*global*/ true, 0, false, false, false, false, false, false);
+		std::set<int> mapIds;
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			int id;
+			if((id=rtabmap.getMemory()->getMapId(iter->first, true))>=0)
+			{
+				mapIds.insert(id);
+			}
+		}
+		printf("Sessions in global graph of the initial database: %ld/%d\n", mapIds.size(), firstDbMapIds);
+		firstDbMapIds = mapIds.size();
+	}
+
 	if(!cameraLocalTransformOffsetOverrides.empty())
 	{
 		if(!cameraLocalTransformOverrides.empty() && cameraLocalTransformOffsetOverrides.size() > 1 && cameraLocalTransformOffsetOverrides.size() != cameraLocalTransformOverrides.size())
 		{
-			printf("ERROR: -cam_tf_lens_offset size (%ld) is not equal to -cam_tf argument (%ld). "
+			printf("[Error] -cam_tf_lens_offset size (%ld) is not equal to -cam_tf argument (%ld). "
 				   "-cam_tf_lens_offset should be one to affect all cameras or same size than -cam_tf argument.\n",
 				   cameraLocalTransformOffsetOverrides.size(), cameraLocalTransformOverrides.size());
 			showUsage();
@@ -960,7 +979,7 @@ int main(int argc, char * argv[])
 		{
 			if(cameraLocalTransformOffsetOverrides.size() > 1)
 			{
-				printf("ERROR: -cam_tf_lens_offset size (%ld) should be one if -cam_tf is not set.\n",
+				printf("[Error] -cam_tf_lens_offset size (%ld) should be one if -cam_tf is not set.\n",
 				   cameraLocalTransformOffsetOverrides.size());
 				showUsage();
 				return 1;
@@ -1481,26 +1500,32 @@ int main(int argc, char * argv[])
 			{
 				printf("New sessions connected to the global graph: %ld/%d\n", newMapIds.size(), newDbMapIds);
 				// Check if all new sessions were appended to the original graph.
-				if(abortDisconnectedSessions)
+				if((int)newMapIds.size() != newDbMapIds)
 				{
-					if((int)newMapIds.size() != newDbMapIds)
-					{
-						printf("ERROR: Aborting (option -abort_disconnected_sessions is set). Not all new sessions are connected.\n");
+					if(abortDisconnectedSessions) {
+						printf("[Error] Not all new sessions are connected (option -abort_disconnected_sessions is set).\n");
 						return 1;
 					}
-					if(mapIds.size() == newMapIds.size())
-					{
-						printf("ERROR: Aborting (option -abort_disconnected_sessions is set). The new sessions are not connected to original map.\n");
+					printf("[Warning] Not all new sessions are connected. Add option -abort_disconnected_sessions to report this as an error.\n");
+				}
+				if(mapIds.size() == newMapIds.size())
+				{
+					if(abortDisconnectedSessions) {
+						printf("[Error] The new sessions are not connected to original map (option -abort_disconnected_sessions is set).\n");
 						return 1;
 					}
+					printf("[Warning] The new sessions are not connected to original map. Add option -abort_disconnected_sessions to report this as an error.\n");
 				}
 			}
 			else // we reprocessed everything
 			{
-				if(abortDisconnectedSessions && (int)mapIds.size() != firstDbMapIds + newDbMapIds)
+				if((int)mapIds.size() != firstDbMapIds + newDbMapIds)
 				{
-					printf("ERROR: Aborting (option -abort_disconnected_sessions is set). Not all sessions are connected.\n");
-					return 1;
+					if(abortDisconnectedSessions) {
+						printf("[Error] Not all sessions are connected (option -abort_disconnected_sessions is set).\n");
+						return 1;
+					}
+					printf("[Warning] Not all sessions are connected. Add option -abort_disconnected_sessions to report this as an error.\n");
 				}
 			}
 		}
