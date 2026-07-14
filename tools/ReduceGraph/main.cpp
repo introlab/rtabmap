@@ -353,8 +353,6 @@ int main(int argc, char * argv[])
 				if(optimizedPoses.find(iter->first) == optimizedPoses.end())
 				{
 					++numToDelete;
-					memory.deleteLocation(iter->first, 0, true);
-					printf("Transferred %d from WM to LTM.\n", iter->first);
 				}
 			}
 			if(numToDelete==0) {
