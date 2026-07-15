@@ -60,7 +60,7 @@ void showUsage(const char * exec)
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
 			"    --pre_cleanup  Remove all user loop closures linking nodes closer than %s nodes in the graph before reducing the graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
-			"    --remove_orphan_nodes  Remove all orphan nodes created by graph reduction from WM and LTM. This assumes that the global graph connects all nodes in WM and LTM, otherwise it is skipped.\n"
+			"    --remove_orphan_nodes  Remove all orphan nodes created by graph reduction from WM and LTM. This assumes that the original global graph connected all nodes in WM and LTM, otherwise it is skipped.\n"
 			"    --remove_all_orphan_nodes Remove all orphan nodes created or not by graph reduction from WM and LTM. Warning: this could remove completly unconnected graphes from WM and LTM. Usage of --remove_orphan_nodes is safer. Backup you database before trying this.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec, Parameters::kMemSTMSize().c_str());
