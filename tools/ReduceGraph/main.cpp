@@ -207,7 +207,7 @@ int main(int argc, char * argv[])
 			linksOut);
 		isWholeGraphConnected = posesOut.size() == poses.size();	
 
-		printf("Whole optimized graph%s is connected (%ld/%ld)\n", isWholeGraphConnected?"":" not", posesOut.size(), ids.size());
+		printf("Whole global graph is%s connected to all nodes of WM/LTM (%ld/%ld)\n", isWholeGraphConnected?"":" not", posesOut.size(), ids.size());
 	}
 
 	int totalNodesReduced = 0;
