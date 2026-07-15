@@ -213,11 +213,7 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
 int RANSACUpdateNumIters( double p, double ep, int modelPoints, int maxIters )
 {
     if( modelPoints <= 0 )
-#if CV_MAJOR_VERSION < 5
-        CV_Error( 0, "the number of model points should be positive" );
-#else
         CV_Error( cv::Error::Code::StsBadArg, "the number of model points should be positive" );
-#endif
 
     p = MAX(p, 0.);
     p = MIN(p, 1.);

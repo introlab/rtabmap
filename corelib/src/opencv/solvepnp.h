@@ -49,9 +49,6 @@
 #include <opencv2/geometry.hpp>
 #else
 #include <opencv2/calib3d/calib3d.hpp>
-#if CV_MAJOR_VERSION >= 3
-#include <opencv2/calib3d/calib3d_c.h>
-#endif
 #endif
 
 namespace cv3 {

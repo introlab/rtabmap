@@ -40,7 +40,6 @@
 
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/imgproc/imgproc_c.h"
 #include <algorithm>
 #include <iterator>
 
@@ -252,7 +251,7 @@ static void computeOrbDescriptor(const KeyPoint& kpt,
         }
     }
     else
-        CV_Error( CV_StsBadSize, "Wrong WTA_K. It can be only 2, 3 or 4." );
+        CV_Error( cv::Error::StsBadSize, "Wrong WTA_K. It can be only 2, 3 or 4." );
 
     #undef GET_VALUE
 }

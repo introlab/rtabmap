@@ -40,11 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsManager.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#if CV_MAJOR_VERSION >= 5
-#include <opencv2/videoio.hpp>
-#elif CV_MAJOR_VERSION >= 3
-#include <opencv2/videoio/videoio_c.h>
-#endif
 #include <pcl/visualization/cloud_viewer.h>
 #include <stdio.h>
 #include <signal.h>

@@ -34,11 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/Graph.h>
-#if CV_MAJOR_VERSION < 5
-#include <opencv2/imgproc/imgproc.hpp>
-#else
 #include <opencv2/imgproc.hpp>
-#endif
 #include <fstream>
 
 namespace rtabmap

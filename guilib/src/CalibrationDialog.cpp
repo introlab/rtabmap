@@ -36,9 +36,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/geometry.hpp>
 #else
 #include <opencv2/calib3d/calib3d.hpp>
-#if CV_MAJOR_VERSION >= 3
-#include <opencv2/calib3d/calib3d_c.h>
-#endif
 #endif
 #include <opencv2/highgui/highgui.hpp>
 #if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
