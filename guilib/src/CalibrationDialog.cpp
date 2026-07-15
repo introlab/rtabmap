@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/CalibrationDialog.h"
 #include "ui_calibrationDialog.h"
 
+#include <algorithm>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #if CV_MAJOR_VERSION >= 5
@@ -1397,6 +1398,13 @@ void CalibrationDialog::calibrate()
 		UINFO("Calibrating camera %d (samples=%d)", id, (int)imagePoints_[id].size());
 		logStream << "Calibrating camera " << id << " (samples=" << imagePoints_[id].size() << ")" << ENDL;
 
+		// Work on local copies: the fisheye auto-prune below removes ill-conditioned views,
+		// and we must NOT mutate the persistent buffers, otherwise clicking Calibrate again
+		// would run on a smaller (already-pruned) sample set and give different results.
+		std::vector<std::vector<cv::Point3f> > objectPoints = objectPoints_[id];
+		std::vector<std::vector<cv::Point2f> > imagePoints = imagePoints_[id];
+		std::vector<int> imageIds = imageIds_[id];
+
 		//calibrate
 		std::vector<cv::Mat> rvecs, tvecs;
 		std::vector<float> reprojErrs;
@@ -1422,8 +1430,8 @@ void CalibrationDialog::calibrate()
 				try
 				{
 					rms = cv::fisheye::calibrate(
-						objectPoints_[id],
-						imagePoints_[id],
+						objectPoints,
+						imagePoints,
 						imageSize_[id],
 						K,
 						D,
@@ -1452,24 +1460,25 @@ void CalibrationDialog::calibrate()
 						}
 					}
 
-					if(badIndex >= 0 && badIndex < (int)objectPoints_[id].size() &&
-						(int)objectPoints_[id].size() > minFisheyeViews)
+					if(badIndex >= 0 && badIndex < (int)objectPoints.size() &&
+						(int)objectPoints.size() > minFisheyeViews)
 					{
-						int removedImageId = badIndex < (int)imageIds_[id].size() ? imageIds_[id][badIndex] : -1;
+						int removedImageId = badIndex < (int)imageIds.size() ? imageIds[badIndex] : -1;
 						UWARN("Fisheye calibration: view %d (image %d) is ill-conditioned, "
 							  "removing it and retrying (%d views left).",
-							  badIndex, removedImageId, (int)objectPoints_[id].size()-1);
+							  badIndex, removedImageId, (int)objectPoints.size()-1);
 						logStream << "Fisheye calibration: removed ill-conditioned view " << badIndex
 								  << " (image " << removedImageId << "), "
-								  << (int)objectPoints_[id].size()-1 << " views left" << ENDL;
+								  << (int)objectPoints.size()-1 << " views left" << ENDL;
 
-						// Keep objectPoints_/imagePoints_/imageIds_ aligned: the per-view
-						// reprojection loop below indexes them together with rvecs/tvecs.
-						objectPoints_[id].erase(objectPoints_[id].begin()+badIndex);
-						imagePoints_[id].erase(imagePoints_[id].begin()+badIndex);
-						if(badIndex < (int)imageIds_[id].size())
+						// Prune the local copies only (never the persistent buffers). Keep them
+						// aligned: the per-view reprojection loop below indexes them together
+						// with rvecs/tvecs.
+						objectPoints.erase(objectPoints.begin()+badIndex);
+						imagePoints.erase(imagePoints.begin()+badIndex);
+						if(badIndex < (int)imageIds.size())
 						{
-							imageIds_[id].erase(imageIds_[id].begin()+badIndex);
+							imageIds.erase(imageIds.begin()+badIndex);
 						}
 						// loop and retry with the pruned set
 					}
@@ -1489,8 +1498,8 @@ void CalibrationDialog::calibrate()
 			cv::Mat stdDevsMatInt, stdDevsMatExt;
 			cv::Mat perViewErrorsMat;
 			rms = cv::calibrateCamera(
-					objectPoints_[id],
-					imagePoints_[id],
+					objectPoints,
+					imagePoints,
 					imageSize_[id],
 					K,
 					D,
@@ -1500,14 +1509,14 @@ void CalibrationDialog::calibrate()
 					stdDevsMatExt,
 					perViewErrorsMat,
 					ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0);
-			if((int)imageIds_[id].size() == perViewErrorsMat.rows)
+			if((int)imageIds.size() == perViewErrorsMat.rows)
 			{
 				UINFO("Per view errors:");
 				logStream << "Per view errors:" << ENDL;
 				for(int i=0; i<perViewErrorsMat.rows; ++i)
 				{
-					UINFO("Image %d: %f", imageIds_[id][i], perViewErrorsMat.at<double>(i,0));
-					logStream << "Image " << imageIds_[id][i] << ": " << perViewErrorsMat.at<double>(i,0) << ENDL;
+					UINFO("Image %d: %f", imageIds[i], perViewErrorsMat.at<double>(i,0));
+					logStream << "Image " << imageIds[i] << ": " << perViewErrorsMat.at<double>(i,0) << ENDL;
 				}
 			}
 		}
@@ -1519,23 +1528,23 @@ void CalibrationDialog::calibrate()
 		std::vector<cv::Point2f> imagePoints2;
 		int i, totalPoints = 0;
 		double totalErr = 0, err;
-		reprojErrs.resize(objectPoints_[id].size());
+		reprojErrs.resize(objectPoints.size());
 
-		for( i = 0; i < (int)objectPoints_[id].size(); ++i )
+		for( i = 0; i < (int)objectPoints.size(); ++i )
 		{
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 			if(fishEye)
 			{
-				cv::fisheye::projectPoints( cv::Mat(objectPoints_[id][i]), imagePoints2, rvecs[i], tvecs[i], K, D);
+				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], K, D);
 			}
 			else
 #endif
 			{
-				cv::projectPoints( cv::Mat(objectPoints_[id][i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+				cv::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
 			}
-			err = cv::norm(cv::Mat(imagePoints_[id][i]), cv::Mat(imagePoints2), cv::NORM_L2);
+			err = cv::norm(cv::Mat(imagePoints[i]), cv::Mat(imagePoints2), cv::NORM_L2);
 
-			int n = (int)objectPoints_[id][i].size();
+			int n = (int)objectPoints[i].size();
 			reprojErrs[i] = (float) std::sqrt(err*err/n);
 			totalErr        += err*err;
 			totalPoints     += n;
