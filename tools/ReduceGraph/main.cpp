@@ -207,7 +207,7 @@ int main(int argc, char * argv[])
 			linksOut);
 		isWholeGraphConnected = posesOut.size() == poses.size();	
 
-		printf("Whole optimized graph is connected: %s (%ld/%ld)\n", isWholeGraphConnected?"true":"false", posesOut.size(), ids.size());
+		printf("Whole optimized graph%s is connected (%ld/%ld)\n", isWholeGraphConnected?"":" not", posesOut.size(), ids.size());
 	}
 
 	int totalNodesReduced = 0;
@@ -252,6 +252,11 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	// Get local optimized graph before reduction
+	Transform lastLocalizationPose;
+	std::map<int, Transform> optimizedPoses = memory.loadOptimizedPoses(&lastLocalizationPose);
+
+	// Graph reduction
 	for(auto id: vids)
 	{
 		// Nodes can be already reduced by other nodes, check if they are still there
@@ -323,8 +328,6 @@ int main(int argc, char * argv[])
 		}
 	} // else: we cannot detect orphan nodes if the original graph was not all connected.
 
-	Transform lastLocalizationPose;
-	std::map<int, Transform> optimizedPoses = memory.loadOptimizedPoses(&lastLocalizationPose);
 	if(!optimizedPoses.empty())
 	{
 		size_t removed = 0;
