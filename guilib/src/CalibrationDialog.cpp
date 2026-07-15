@@ -2027,8 +2027,8 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			{
 				int npt = (int)stereoImagePoints_[0][i].size();
 
-				cv::Mat imgpt0 = cv::Mat(stereoImagePoints_[0][i]);
-				cv::Mat imgpt1 = cv::Mat(stereoImagePoints_[1][i]);
+				std::vector<cv::Point2f> imgpt0 = stereoImagePoints_[0][i];
+				std::vector<cv::Point2f> imgpt1 = stereoImagePoints_[1][i];
 				cv::undistortPoints(imgpt0, imgpt0, left.K_raw(), left.D_raw(), R1, P1);
 				cv::undistortPoints(imgpt1, imgpt1, right.K_raw(), right.D_raw(), R2, P2);
 				computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
@@ -2037,10 +2037,10 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				double sampleErr = 0.0;
 				for(int j = 0; j < npt; j++ )
 				{
-					double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
-										stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
-								   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
-										stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
+					double errij = fabs(imgpt0[j].x*lines[1][j][0] +
+										imgpt0[j].y*lines[1][j][1] + lines[1][j][2]) +
+								   fabs(imgpt1[j].x*lines[0][j][0] +
+										imgpt1[j].y*lines[0][j][1] + lines[0][j][2]);
 					sampleErr += errij;
 				}
 				UINFO("Stereo image %d: %f", stereoImageIds_[i], sampleErr/npt);
