@@ -141,11 +141,12 @@ public:
 			const std::map<int, Transform> & optimizedPoses,
 			int maxGraphDepth) const;
 	void convertToIntermediate(int locationId);
-	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
+	void deleteLocation(int locationId, std::list<int> * deletedWords = 0, bool keepLinkedInDb = false);
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
 	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false, int direction = 0);
+	void setDummyDictionary(bool enabled);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
@@ -396,6 +397,8 @@ private:
 	MarkerDetector * _markerDetector;
 
 	GlobalDescriptorExtractor * _globalDescriptorExtractor;
+
+	bool _dummyDictionary;
 };
 
 } // namespace rtabmap

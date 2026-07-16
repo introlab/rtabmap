@@ -73,7 +73,8 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	useDistanceL1_(false),
 	_flannIndex(new FlannIndex()),
 	_modified(true),
-	_strategy(kNNBruteForce)
+	_strategy(kNNBruteForce),
+	_autoUpdate(true)
 {
 	this->setNNStrategy((NNStrategy)Parameters::defaultKpNNStrategy());
 	this->parseParameters(parameters);
@@ -108,7 +109,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 		incrementalDictionary = uStr2Bool((*iter).second.c_str());
 	}
 
-	// Verifying hypotheses strategy
+	// Verifying NN strategy
 	bool treeUpdated = false;
 	if((iter=parameters.find(Parameters::kKpNNStrategy())) != parameters.end())
 	{
@@ -121,7 +122,12 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 		_dataTree = cv::Mat();
 		_notIndexedWords = uKeysSet(_visualWords);
 		_removedIndexedWords.clear();
-		this->update();
+		if(_autoUpdate) {
+			this->update();
+		}
+		else {
+			UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
+		}
 	}
 
 	if(incrementalDictionary)
@@ -266,7 +272,12 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 				_dictionaryPath = dictionaryPath;
 				_newDictionaryPath = dictionaryPath;
 				_incrementalDictionary = false;
-				this->update();
+				if(_autoUpdate) {
+					this->update();
+				}
+				else {
+					UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
+				}
 				UWARN("Loaded %d words!", (int)_visualWords.size());
 			}
 		}
@@ -345,7 +356,12 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 		_dataTree = cv::Mat();
 		_notIndexedWords = uKeysSet(_visualWords);
 		_removedIndexedWords.clear();
-		this->update();
+		if(_autoUpdate)	{
+			this->update();
+		}
+		else {
+			UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
+		}
 		return true;
 	}
 	return false;

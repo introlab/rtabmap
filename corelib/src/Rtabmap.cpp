@@ -6934,6 +6934,16 @@ void Rtabmap::addNodesToRepublish(const std::vector<int> & ids)
 	}
 }
 
+void Rtabmap::setDummyDictionary(bool enabled)
+{
+	if(_memory) {
+		_memory->setDummyDictionary(enabled);
+	}
+	else {
+		UERROR("Memory is null, cannot set dummy dictionary.");
+	}
+}
+
 void Rtabmap::clearPath(int status)
 {
 	UINFO("status=%d", status);

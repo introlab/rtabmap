@@ -138,7 +138,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
-	_registrationVis(0)
+	_registrationVis(0),
+	_dummyDictionary(false)
 {
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
@@ -411,11 +412,23 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			{
 				if(wordIds.size())
 				{
-					std::list<VisualWord*> words;
-					_dbDriver->loadWords(wordIds, words);
-					for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+					if(_dummyDictionary)
 					{
-						_vwd->addWord(*iter);
+						for(std::set<int>::iterator iter = wordIds.begin(); iter!=wordIds.end(); ++iter)
+						{
+							VisualWord * w  = new VisualWord(*iter, cv::Mat());
+							w->setSaved(true);
+							_vwd->addWord(w); // placeholder descriptor
+						}
+					}
+					else
+					{
+						std::list<VisualWord*> words;
+						_dbDriver->loadWords(wordIds, words);
+						for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+						{
+							_vwd->addWord(*iter);
+						}
 					}
 					// Get Last word id
 					int id = 0;
@@ -435,7 +448,12 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			_dbDriver->load(*_vwd, _vwd->isIncremental());
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
-		_vwd->update();
+		if(_vwd->isAutoUpdateEnabled())	{
+			_vwd->update();
+		}
+		else {
+			UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
+		}
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
@@ -561,7 +579,12 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
 				_memoryChanged = true; // This will force rtabmap to save back the dictionary even if we don't process any new data
-				_vwd->update();
+				if(_vwd->isAutoUpdateEnabled())	{
+					_vwd->update();
+				}
+				else {
+					UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
+				}
 			}
 		}
 
@@ -593,6 +616,22 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 	UDEBUG("ids start with %d", _idCount+1);
 	UDEBUG("map ids start with %d", _idMapCount);
+}
+
+void Memory::setDummyDictionary(bool enabled)
+{
+	if(_dbDriver != 0) {
+		UERROR("Dummy dictionary can only be set if the memory is not yet initialized. Ignoring.");
+		return;
+	}
+	if(enabled) {
+		UINFO("Dummy dictionary enabled.");
+	}
+	else {
+		UINFO("Dummy dictionary disabled.");
+	}
+	_dummyDictionary = enabled;
+	_vwd->setAutoUpdate(!_dummyDictionary);
 }
 
 void Memory::saveFlannIndex(bool postInitClosingEvents)
@@ -1455,10 +1494,10 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 		else
 		{
 			std::multimap<int, Link> links = s->getLinks();
-			// Setting true to make sure we save all visual
+			// Setting keepLinkedInDb=true to make sure we save all visual
 			// words that could be referenced in a previously
 			// transferred node in LTM (#979)
-			reducedId = reduceNode(s->id(), 0, true);
+			reducedId = reduceNode(s->id(), 0, /*keepLinkedInDb*/ true);
 			if(reducedToOut) {
 				*reducedToOut = reducedId;
 			}
@@ -3132,13 +3171,13 @@ void Memory::convertToIntermediate(int locationId)
 	}
 }
 
-void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
+void Memory::deleteLocation(int locationId, std::list<int> * deletedWords, bool keepLinkedInDb)
 {
-	UDEBUG("Deleting location %d", locationId);
+	UDEBUG("Deleting location %d (keepLinkedInDb=%s)", locationId, keepLinkedInDb?"true":"false");
 	Signature * location = _getSignature(locationId);
 	if(location)
 	{
-		this->moveToTrash(location, false, deletedWords);
+		this->moveToTrash(location, keepLinkedInDb, deletedWords);
 		_memoryChanged = true;
 	}
 }
@@ -5093,6 +5132,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1, CV_8UC3).c_str());
+	UASSERT_MSG(!_dummyDictionary, "Memory::createSignature() cannot be called if the memory has been initialized with a dummy dictionary.");
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().empty() &&

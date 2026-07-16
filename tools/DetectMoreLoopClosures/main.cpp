@@ -198,6 +198,7 @@ int main(int argc, char * argv[])
 	// Add some optimizations (soft set, can be overriden by arguments)
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
 	inputParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // should be incremental to update links
+	inputParams.insert(ParametersPair(Parameters::kKpAutoUpdate(), "false")); // don't build the dictionary (don't need it) 
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
@@ -249,6 +250,11 @@ int main(int argc, char * argv[])
 	UTimer timer;
 	ParametersMap originalParameters = parameters;
 	uInsert(parameters, inputParams);
+
+	// This avoids to load original descriptors in the dictionary
+	// to save RAM and intialization time (we don't need the dictionary for this tool)
+	rtabmap.setDummyDictionary(true); // should be set before Rtabmap::init()
+	
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
 

@@ -108,6 +108,8 @@ public:
 	void setIncrementalDictionary();
 	void setFixedDictionary(const std::string & dictionaryPath);
 	bool isModified() const;
+	void setAutoUpdate(bool enabled) {_autoUpdate = enabled;} // Enable/Disable internal update when parameters change, update() has to be externally triggered if disabled.
+	bool isAutoUpdateEnabled() const {return _autoUpdate;}
 
 	std::vector<unsigned char> serializeIndex() const;
 	void deserializeIndex(const std::vector<unsigned char> & data);
@@ -137,6 +139,7 @@ private:
 	bool _incrementalFlann;
 	float _rebalancingFactor;
 	bool _byteToFloat;
+	bool _autoUpdate;
 	float _nndrRatio;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt or .db)
 	std::string _newDictionaryPath; // a pre-computed dictionary (.txt or .db)

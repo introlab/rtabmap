@@ -57,11 +57,19 @@ void showUsage(const char * exec)
 			"%s [Options] database.db\n"
 			"Options:\n"
 			"    --keep_latest  Merge old nodes to newer nodes, thus keeping only latest nodes.\n"
-			"    --keep_linked  Keep reduced nodes linked to graph.\n"
+			"    --keep_linked  Keep reduced nodes linked to graph (by only child->parent link)\n"
+			"                   instead of invalidating them. When --remove_orphan_nodes is used,\n"
+			"                   orphan nodes are simply transfered to LTM instead of being invalidated.\n"
 			"    --pre_cleanup  Remove all user loop closures linking nodes closer than %s nodes in the graph before reducing the graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
-			"    --remove_orphan_nodes  Remove all orphan nodes created by graph reduction from WM and LTM. This assumes that the original global graph connected all nodes in WM and LTM, otherwise it is skipped.\n"
-			"    --remove_all_orphan_nodes Remove all orphan nodes created or not by graph reduction from WM and LTM. Warning: this could remove completly unconnected graphes from WM and LTM. Usage of --remove_orphan_nodes is safer. Backup you database before trying this.\n"
+			"    --remove_orphan_nodes  Remove all orphan nodes created by graph reduction \n"
+			"                           from WM and LTM. This assumes that the original global \n"
+			"                           graph connected all nodes in WM and LTM, otherwise it is skipped.\n"
+			"    --remove_all_orphan_nodes Remove all orphan nodes created or not by graph \n"
+			"                              reduction from WM and LTM. Warning: this could remove \n"
+			"                              completly unconnected graphes from WM and LTM. Usage of \n"
+			"                              --remove_orphan_nodes is safer. Backup your database \n"
+			"                              before trying this.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec, Parameters::kMemSTMSize().c_str());
 	exit(1);
@@ -146,6 +154,7 @@ int main(int argc, char * argv[])
 	ParametersMap inputParams;
 	inputParams.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true")); // load the whole map in RAM
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
+	inputParams.insert(ParametersPair(Parameters::kKpAutoUpdate(), "false")); // don't build the dictionary (don't need it) 
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
@@ -159,9 +168,11 @@ int main(int argc, char * argv[])
 	// Get parameters
 	ParametersMap parameters;
 	DBDriver * driver = DBDriver::create();
+	std::set<int> wm;
 	if(driver->openConnection(dbPath))
 	{
 		parameters = driver->getLastParameters();
+		driver->getLastNodeIds(wm);
 		driver->closeConnection(false);
 	}
 	else
@@ -170,7 +181,13 @@ int main(int argc, char * argv[])
 	}
 	delete driver;
 
+	size_t wmOrgSize = wm.size();
 	Memory memory;
+
+	// This avoids to load original descriptors in the dictionary
+	// to save RAM and intialization time (we don't need the dictionary for this tool)
+	memory.setDummyDictionary(true); // should be set before Memory::init()
+
 	printf("Initialization...\n");
 	UTimer timer;
 	ParametersMap originalParameters = parameters;
@@ -205,9 +222,36 @@ int main(int argc, char * argv[])
 			constraints,
 			posesOut,
 			linksOut);
-		isWholeGraphConnected = posesOut.size() == poses.size();	
+		isWholeGraphConnected = posesOut.size() == poses.size();
 
-		printf("Whole global graph is%s connected to all nodes of WM/LTM (%ld/%ld)\n", isWholeGraphConnected?"":" not", posesOut.size(), ids.size());
+		if(isWholeGraphConnected)
+		{
+			printf("The whole global graph is connected to all nodes of WM/LTM (%ld/%ld).\n",
+				posesOut.size(), ids.size());
+		}
+		else {
+			//Count number of nodes not in global graph that are in WM
+			int missing = 0;
+			for(auto id:wm)
+			{
+				if(posesOut.find(id) == posesOut.end()) {
+					++missing;
+				}
+			}
+			if(missing>0)
+			{
+				printf("The whole global graph is not connected to all nodes of WM/LTM (%ld/%ld) "
+					"with some (%d) of the disconnected nodes in WM.%s\n",
+					posesOut.size(), ids.size(), missing,
+					removeAllOrphanNodes?"":" You may consider using --remove_all_orphan_nodes to remove these nodes from WM if necessary.");
+			}
+			else
+			{
+				printf("The whole global graph is not connected to all nodes of WM/LTM (%ld/%ld), "
+					"though no disconnected nodes are in WM.\n",
+					posesOut.size(), ids.size());
+			}
+		}
 	}
 
 	int totalNodesReduced = 0;
@@ -224,6 +268,7 @@ int main(int argc, char * argv[])
 		vids.insert(vids.end(), ids.rbegin(), ids.rend());
 	}
 
+	int totalLinksRemoved = 0;
 	if(preCleanup)
 	{
 		if(memory.getMaxStMemSize() <= 1)
@@ -232,7 +277,6 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			int totalRemoved = 0;
 			for(auto id: vids)
 			{
 				auto nids = memory.getNeighborsId(id, memory.getMaxStMemSize(), -1, true, true, true);
@@ -243,12 +287,12 @@ int main(int argc, char * argv[])
 						nids.find(link.first)!=nids.end())
 					{
 						memory.removeLink(id, link.first);
-						++totalRemoved;
+						++totalLinksRemoved;
 					}
 				}
 			}
 			printf("Removed %d user links that were linking nodes that were close in the graph (below %s=%d)\n",
-				totalRemoved, Parameters::kMemSTMSize().c_str(), memory.getMaxStMemSize());
+				totalLinksRemoved, Parameters::kMemSTMSize().c_str(), memory.getMaxStMemSize());
 		}
 	}
 
@@ -271,6 +315,12 @@ int main(int argc, char * argv[])
 		}
 	}
 	printf("Reduced a total of %d nodes out of %ld nodes\n", totalNodesReduced, ids.size());
+	if(totalNodesReduced==0 && totalLinksRemoved==0 && !removeOrphanNodes)
+	{
+		printf("Nothing to do, exiting without updating the database.\n");
+		memory.close(false);
+		return 0;
+	}
 
 	if(isWholeGraphConnected || removeAllOrphanNodes)
 	{
@@ -308,8 +358,14 @@ int main(int argc, char * argv[])
 				{
 					if(posesOut.find(iter->first) == posesOut.end())
 					{
-						memory.deleteLocation(iter->first, 0);
-						printf("Removed %d from WM/LTM.\n", iter->first);
+						memory.deleteLocation(iter->first, 0, keepLinked);
+						if(keepLinked) {
+							printf("Transferred %d to LTM (--keep_linked).\n", iter->first);
+						}
+						else {
+							printf("Removed %d from WM/LTM.\n", iter->first);
+						}
+						wm.erase(iter->first);
 					}
 				}
 			}
@@ -377,6 +433,33 @@ int main(int argc, char * argv[])
 
 	// Restore original parameters before saving back the database
 	memory.parseParameters(originalParameters);
+
+	// Restore Working Memory (Mem/InitWMWithAllNodes is used above):
+	// When memory is closing, it updates the Info table with current time,
+	// then move to trash the nodes afterwards so that nodes's update time
+	// in the database is greater than last info entry. This is how rtabmap
+	// knows which nodes are in working memory. The idea here is the move to
+	// trash nodes that were not in original WM before closing Memory. We can
+	// use deleteLocation with keepLinkedInDb=true to achieve what Memory::clear() does.
+	ids = memory.getAllSignatureIds(); // LTM ids
+	// Count number of nodes in WM that were reduced (directly/indirectly)
+	int wmReduced = 0;
+	for(auto id:wm)
+	{
+		if(ids.find(id) == ids.end()) {
+			++wmReduced;
+		}
+	}
+	printf("Restoring Working Memory (org:%ld -> reduced:%ld)...\n", wmOrgSize, wm.size() - wmReduced);
+	int transferred = 0;
+	for(auto id:ids)
+	{
+		if(wm.find(id) == wm.end()) {
+			memory.deleteLocation(id, 0, /*keepLinkedInDb*/ true);
+			++transferred;
+		}
+	}
+	printf("Restoring Working Memory... done! Transferred %d nodes.\n", transferred);
 	
 	printf("Saving all changes to database...\n");
 	memory.close(true);
