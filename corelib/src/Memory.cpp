@@ -435,10 +435,14 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					_dbDriver->getLastWordId(id);
 					_vwd->setLastWordId(id);
 				}
+				else {
+					_dummyDictionary = false;
+				}
 			}
 			else
 			{
 				_dbDriver->load(*_vwd, false);
+				_dummyDictionary = false;
 			}
 		}
 		else
@@ -446,6 +450,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			if(_dummyDictionary)
 			{
 				UWARN("A dummy dictionary is requested but %s is false, loading the dictionary as usual.", Parameters::kMemInitWMWithAllNodes().c_str());
+				_dummyDictionary = false;
 			}
 			UDEBUG("load words");
 			// load the last dictionary
@@ -453,11 +458,11 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		UDEBUG("Dictionary memory usage: %ld Bytes", _vwd->getMemoryUsed());
-		if(_vwd->isAutoUpdateEnabled())	{
+		if(!_dummyDictionary)	{
 			_vwd->update();
 		}
 		else {
-			UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
+			UDEBUG("Dictionary update skipped (dummy dictionary is enabled)");
 		}
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 
@@ -518,6 +523,24 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					signatures.size());
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+
+				if(_dummyDictionary)
+				{
+					UWARN("Dummy dictionary cannot be used when repairing the dictionary, disabling dummy dictionary.");
+					for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+					{
+						Signature * s = this->_getSignature(i->first);
+						UASSERT(s != 0);
+						if(!s->isEnabled())
+						{
+							break;
+						}
+						this->disableWordsRef(s->id());
+					}
+					_vwd->deleteUnusedWords();
+					_vwd->clear();
+					_dummyDictionary = false;
+				}
 
 				//remove all words ref
 
@@ -584,12 +607,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
 				_memoryChanged = true; // This will force rtabmap to save back the dictionary even if we don't process any new data
-				if(_vwd->isAutoUpdateEnabled())	{
-					_vwd->update();
-				}
-				else {
-					UDEBUG("Dictionary update skipped (%s=true)", Parameters::kKpAutoUpdate().c_str());
-				}
+				_vwd->update();
 			}
 		}
 
@@ -636,7 +654,6 @@ void Memory::setDummyDictionary(bool enabled)
 		UINFO("Dummy dictionary disabled.");
 	}
 	_dummyDictionary = enabled;
-	_vwd->setAutoUpdate(!_dummyDictionary);
 }
 
 void Memory::saveFlannIndex(bool postInitClosingEvents)

@@ -154,7 +154,6 @@ int main(int argc, char * argv[])
 	ParametersMap inputParams;
 	inputParams.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true")); // load the whole map in RAM
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
-	inputParams.insert(ParametersPair(Parameters::kKpAutoUpdate(), "false")); // don't build the dictionary (don't need it) 
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))

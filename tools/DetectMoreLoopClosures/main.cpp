@@ -198,7 +198,6 @@ int main(int argc, char * argv[])
 	// Add some optimizations (soft set, can be overriden by arguments)
 	inputParams.insert(ParametersPair(Parameters::kMemLoadVisualLocalFeaturesOnInit(), "false")); // don't need features already loaded in RAM
 	inputParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // should be incremental to update links
-	inputParams.insert(ParametersPair(Parameters::kKpAutoUpdate(), "false")); // don't build the dictionary (don't need it) 
 
 	std::string dbPath = argv[argc-1];
 	if(!UFile::exists(dbPath))
