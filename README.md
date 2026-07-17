@@ -58,7 +58,7 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
             <td><a href="http://build.ros.org/job/Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary/"><img src="http://build.ros.org/buildStatus/icon?job=Nbin_ufv8_uFv8__rtabmap__ubuntu_focal_arm64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
-            <td rowspan="4">ROS 2</td>
+            <td rowspan="5">ROS 2</td>
             <td>Humble</td>
             <td><a href="http://build.ros2.org/job/Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Hbin_uJ64__rtabmap__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
         </tr>
@@ -68,6 +68,10 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
         </tr>
         <tr>
             <td>Kilted</td>
+            <td><a href="http://build.ros2.org/job/Lbin_uR64__rtabmap__ubuntu_resolute_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Lbin_uR64__rtabmap__ubuntu_resolute_amd64__binary" alt="Build Status"/></td>
+        </tr>
+        <tr>
+            <td>Lyrical</td>
             <td><a href="http://build.ros2.org/job/Kbin_uN64__rtabmap__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Kbin_uN64__rtabmap__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
         </tr>
         <tr>
