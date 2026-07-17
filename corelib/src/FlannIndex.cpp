@@ -412,13 +412,12 @@ bool FlannIndex::loadIndex(
 	 memcpy(&savedCrc, &header[10], sizeof(header[10]));
 	int savedIndexSize = header[11];
 
-	UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f (deprecated, using %s=%f instead) data(%dx%d type=%d, crc=%X) %d", 
+	UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f (deprecated, using %f instead) data(%dx%d type=%d, crc=%X) index size = %d bytes", 
 				header[0],header[1],header[2],
 				header[3],
 				header[4],
 				header[5],
 				savedRebalancingFactor, // Deprecated
-				rtabmap::Parameters::kKpFlannIndexSaved().c_str(),
 				rebalancingFactor,
 				header[7], header[8], header[9], savedCrc, 
 				header[11]);
