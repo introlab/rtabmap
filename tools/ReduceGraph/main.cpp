@@ -321,6 +321,8 @@ int main(int argc, char * argv[])
 		memory.close(false);
 		return 0;
 	}
+	memory.emptyTrash();
+	memory.joinTrashThread();
 
 	if(isWholeGraphConnected || removeAllOrphanNodes)
 	{
@@ -354,6 +356,7 @@ int main(int argc, char * argv[])
 					totalBefore, ids.size(), posesOut.size());
 				// Not all graph is connected anymore while it was before reduction: 
 				// that means we created orphan nodes, remove them
+				int transferred = 0;
 				for(std::map<int, Transform>::iterator iter=poses.lower_bound(0); iter!=poses.end(); ++iter)
 				{
 					if(posesOut.find(iter->first) == posesOut.end())
@@ -366,7 +369,12 @@ int main(int argc, char * argv[])
 							printf("Removed %d from WM/LTM.\n", iter->first);
 						}
 						wm.erase(iter->first);
+						++transferred;
 					}
+				}
+				if(transferred>0) {
+					memory.emptyTrash();
+					memory.joinTrashThread();
 				}
 			}
 			else {
@@ -454,10 +462,14 @@ int main(int argc, char * argv[])
 	int transferred = 0;
 	for(auto id:ids)
 	{
-		if(wm.find(id) == wm.end()) {
+		if(wm.find(id) == wm.end() && memory.getWorkingMem().find(id) != memory.getWorkingMem().end()) {
 			memory.deleteLocation(id, 0, /*keepLinkedInDb*/ true);
 			++transferred;
 		}
+	}
+	if(transferred>0) {
+		memory.emptyTrash();
+		memory.joinTrashThread();
 	}
 	printf("Restoring Working Memory... done! Transferred %d nodes.\n", transferred);
 	

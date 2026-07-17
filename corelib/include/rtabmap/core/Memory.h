@@ -280,7 +280,6 @@ private:
 	std::list<Signature *> getRemovableSignatures(int count,
 			const std::set<int> & ignoredIds = std::set<int>());
 	int getNextId();
-	void initCountId();
 	void rehearsal(Signature * signature, Statistics * stats = 0);
 	bool rehearsalMerge(int oldId, int newId);
 	bool canBeReduced(const Link & link, float maxDistance, int direction);

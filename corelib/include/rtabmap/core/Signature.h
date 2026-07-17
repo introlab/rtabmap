@@ -70,10 +70,10 @@ public:
 	int id() const {return _id;}
 	int mapId() const {return _mapId;}
 
-	void setWeight(int weight) {_modified=_weight!=weight;_weight = weight;}
+	void setWeight(int weight) {_modified=_modified || _weight!=weight;_weight = weight;}
 	int getWeight() const {return _weight;}
 
-	void setLabel(const std::string & label) {_modified=_label.compare(label)!=0;_label = label;}
+	void setLabel(const std::string & label) {_modified=_modified || _label.compare(label)!=0;_label = label;}
 	const std::string & getLabel() const {return _label;}
 
 	double getStamp() const {return _stamp;}

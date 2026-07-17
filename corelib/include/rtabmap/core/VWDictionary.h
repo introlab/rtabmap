@@ -139,7 +139,6 @@ private:
 	bool _incrementalFlann;
 	float _rebalancingFactor;
 	bool _byteToFloat;
-	bool _autoUpdate;
 	float _nndrRatio;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt or .db)
 	std::string _newDictionaryPath; // a pre-computed dictionary (.txt or .db)
@@ -151,6 +150,7 @@ private:
 	cv::Mat _dataTree;
 	bool _modified;
 	NNStrategy _strategy;
+	bool _autoUpdate;
 	std::map<int ,int> _mapIndexId;
 	std::map<int ,int> _mapIdIndex;
 	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords

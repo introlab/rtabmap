@@ -443,11 +443,16 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		}
 		else
 		{
+			if(_dummyDictionary)
+			{
+				UWARN("A dummy dictionary is requested but %s is false, loading the dictionary as usual.", Parameters::kMemInitWMWithAllNodes().c_str());
+			}
 			UDEBUG("load words");
 			// load the last dictionary
 			_dbDriver->load(*_vwd, _vwd->isIncremental());
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+		UDEBUG("Dictionary memory usage: %ld Bytes", _vwd->getMemoryUsed());
 		if(_vwd->isAutoUpdateEnabled())	{
 			_vwd->update();
 		}
@@ -3179,6 +3184,10 @@ void Memory::deleteLocation(int locationId, std::list<int> * deletedWords, bool 
 	{
 		this->moveToTrash(location, keepLinkedInDb, deletedWords);
 		_memoryChanged = true;
+	}
+	else
+	{
+		UWARN("Location %d has not been found in STM/WM, cannot delete it.", locationId);
 	}
 }
 
