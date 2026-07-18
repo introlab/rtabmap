@@ -138,7 +138,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
 	_parallelized(Parameters::defaultKpParallelized()),
-	_registrationVis(0)
+	_registrationVis(0),
+	_dummyDictionary(false)
 {
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
@@ -411,31 +412,55 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			{
 				if(wordIds.size())
 				{
-					std::list<VisualWord*> words;
-					_dbDriver->loadWords(wordIds, words);
-					for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+					if(_dummyDictionary)
 					{
-						_vwd->addWord(*iter);
+						for(std::set<int>::iterator iter = wordIds.begin(); iter!=wordIds.end(); ++iter)
+						{
+							VisualWord * w  = new VisualWord(*iter, cv::Mat());
+							w->setSaved(true);
+							_vwd->addWord(w); // placeholder descriptor
+						}
+					}
+					else
+					{
+						std::list<VisualWord*> words;
+						_dbDriver->loadWords(wordIds, words);
+						for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+						{
+							_vwd->addWord(*iter);
+						}
 					}
 					// Get Last word id
 					int id = 0;
 					_dbDriver->getLastWordId(id);
 					_vwd->setLastWordId(id);
 				}
+				else {
+					_dummyDictionary = false;
+				}
 			}
 			else
 			{
-				_dbDriver->load(*_vwd, false);
+				_dbDriver->load(*_vwd, false, _dummyDictionary);
 			}
 		}
 		else
 		{
 			UDEBUG("load words");
 			// load the last dictionary
-			_dbDriver->load(*_vwd, _vwd->isIncremental());
+			_dbDriver->load(*_vwd, _vwd->isIncremental(), _dummyDictionary);
 		}
-		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
-		_vwd->update();
+		UDEBUG("%d words loaded! (type=%s, dim=%d)",
+			_vwd->getUnusedWordsSize(),
+			_vwd->getVisualWords().empty()?"NA":_vwd->getVisualWords().begin()->second->getDescriptor().empty()?"dummy":_vwd->getVisualWords().begin()->second->getDescriptor().type() == CV_32FC1?"float":"binary",
+			_vwd->getVisualWords().empty()?0:_vwd->getVisualWords().begin()->second->getDescriptor().cols);
+		UDEBUG("Dictionary memory usage: %ld Bytes (%ld MB)", _vwd->getMemoryUsed(), _vwd->getMemoryUsed()/(1024*1024));
+		if(!_dummyDictionary)	{
+			_vwd->update();
+		}
+		else {
+			UDEBUG("Dictionary update skipped (dummy dictionary is enabled)");
+		}
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
 
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
@@ -495,6 +520,24 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					signatures.size());
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+
+				if(_dummyDictionary)
+				{
+					UWARN("Dummy dictionary cannot be used when repairing the dictionary, disabling dummy dictionary.");
+					for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+					{
+						Signature * s = this->_getSignature(i->first);
+						UASSERT(s != 0);
+						if(!s->isEnabled())
+						{
+							break;
+						}
+						this->disableWordsRef(s->id());
+					}
+					_vwd->deleteUnusedWords();
+					_vwd->clear();
+					_dummyDictionary = false;
+				}
 
 				//remove all words ref
 
@@ -593,6 +636,21 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 	UDEBUG("ids start with %d", _idCount+1);
 	UDEBUG("map ids start with %d", _idMapCount);
+}
+
+void Memory::setDummyDictionary(bool enabled)
+{
+	if(_dbDriver != 0) {
+		UERROR("Dummy dictionary can only be set if the memory is not yet initialized. Ignoring.");
+		return;
+	}
+	if(enabled) {
+		UINFO("Dummy dictionary enabled.");
+	}
+	else {
+		UINFO("Dummy dictionary disabled.");
+	}
+	_dummyDictionary = enabled;
 }
 
 void Memory::saveFlannIndex(bool postInitClosingEvents)
@@ -1324,6 +1382,11 @@ int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direc
 		UWARN("Node %d is not in WM/STM, cannot reduce it.", id);
 		return 0;
 	}
+	else if(s->getWeight() == -1)
+	{
+		UWARN("Cannot reduce intermediate node %d (not supported).", id);
+		return 0;
+	}
 
 	if(!s->getLabel().empty())
 	{
@@ -1340,6 +1403,11 @@ int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direc
 		{
 			float distance = iter->second.transform().getNorm();
 			reducedTo = iter->second.to();
+			if(this->_getSignature(reducedTo) == 0)
+			{
+				UWARN("Node %d is not in WM/STM, cannot reduce %d to it.", reducedTo, id);
+				return 0;
+			}
 			UDEBUG("Reduce %d to %d (distance=%f)",
 				s->id(), iter->second.to(), distance);
 		}
@@ -1347,6 +1415,18 @@ int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direc
 		if(iter->second.type() == Link::kNeighbor)
 		{
 			neighbors.insert(*iter);
+			// neighbors should not be intermediate nodes
+			Signature * sTo = this->_getSignature(iter->first);
+			if(sTo == 0)
+			{
+				UWARN("Neighbor node %d is not in WM/STM, cannot reduce %d.", iter->first, id);
+				return 0;
+			}
+			else if(sTo->getWeight() == -1)
+			{
+				UWARN("Neighbor node %d is an intermediate node (not supported), cannot reduce %d.", iter->first, id);
+				return 0;
+			}
 		}
 	}
 	if(reducedTo>0)
@@ -1455,10 +1535,10 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedToOut)
 		else
 		{
 			std::multimap<int, Link> links = s->getLinks();
-			// Setting true to make sure we save all visual
+			// Setting keepLinkedInDb=true to make sure we save all visual
 			// words that could be referenced in a previously
 			// transferred node in LTM (#979)
-			reducedId = reduceNode(s->id(), 0, true);
+			reducedId = reduceNode(s->id(), 0, /*keepLinkedInDb*/ true);
 			if(reducedToOut) {
 				*reducedToOut = reducedId;
 			}
@@ -3132,13 +3212,18 @@ void Memory::convertToIntermediate(int locationId)
 	}
 }
 
-void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
+void Memory::deleteLocation(int locationId, std::list<int> * deletedWords, bool keepLinkedInDb)
 {
-	UDEBUG("Deleting location %d", locationId);
+	UDEBUG("Deleting location %d (keepLinkedInDb=%s)", locationId, keepLinkedInDb?"true":"false");
 	Signature * location = _getSignature(locationId);
 	if(location)
 	{
-		this->moveToTrash(location, false, deletedWords);
+		this->moveToTrash(location, keepLinkedInDb, deletedWords);
+		_memoryChanged = true;
+	}
+	else
+	{
+		UWARN("Location %d has not been found in STM/WM, cannot delete it.", locationId);
 	}
 }
 
@@ -5092,6 +5177,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1, CV_8UC3).c_str());
+	UASSERT_MSG(!_dummyDictionary, "Memory::createSignature() cannot be called if the memory has been initialized with a dummy dictionary.");
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().empty() &&

@@ -180,7 +180,8 @@ Rtabmap::Rtabmap() :
 	_pathGoalIndex(0),
 	_pathTransformToGoal(Transform::getIdentity()),
 	_pathStuckCount(0),
-	_pathStuckDistance(0.0f)
+	_pathStuckDistance(0.0f),
+	_dummyDictionary(false)
 #ifdef RTABMAP_PYTHON
 	,_python(new PythonInterface())
 #endif
@@ -360,6 +361,10 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	if(!_memory)
 	{
 		_memory = new Memory(allParameters);
+		if(_dummyDictionary)
+		{
+			_memory->setDummyDictionary(true);
+		}
 		_memory->init(_databasePath, false, allParameters, true);
 	}
 
@@ -6931,6 +6936,18 @@ void Rtabmap::addNodesToRepublish(const std::vector<int> & ids)
 	else //_publishLastSignatureData=false
 	{
 		UWARN("%s=false, so cannot republish the %d requested nodes.", Parameters::kRtabmapPublishLastSignature().c_str(), (int)ids.size());
+	}
+}
+
+void Rtabmap::setDummyDictionary(bool enabled)
+{
+	if(_memory) {
+		UERROR("Memory is already initialized, cannot set dummy dictionary. This "
+			"function can only be called after Rtabmap object is created, but "
+			"before init() is called.");
+	}
+	else {
+		_dummyDictionary = true;
 	}
 }
 

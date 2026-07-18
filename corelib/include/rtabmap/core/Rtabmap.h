@@ -229,6 +229,7 @@ public:
 	bool addLink(const Link & link);
 	cv::Mat getInformation(const cv::Mat & covariance) const;
 	void addNodesToRepublish(const std::vector<int> & ids);
+	void setDummyDictionary(bool enabled);
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
 	void clearPath(int status); // -1=failed 0=idle/executing 1=success
@@ -401,6 +402,8 @@ private:
 	Transform _pathTransformToGoal;
 	int _pathStuckCount;
 	float _pathStuckDistance;
+
+	bool _dummyDictionary;
 
 #ifdef RTABMAP_PYTHON
 	PythonInterface * _python;

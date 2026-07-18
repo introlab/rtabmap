@@ -249,9 +249,15 @@ int main(int argc, char * argv[])
 	UTimer timer;
 	ParametersMap originalParameters = parameters;
 	uInsert(parameters, inputParams);
+
+	// This avoids to load original descriptors in the dictionary
+	// to save RAM and intialization time (we don't need the dictionary for this tool)
+	rtabmap.setDummyDictionary(true); // should be set before Rtabmap::init()
+	
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
 
+	// detectMoreLoopClosures would clear the optimized map if loop closures are detected
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
 
@@ -311,7 +317,7 @@ int main(int argc, char * argv[])
 	// Restore original parameters before saving back the database
 	rtabmap.parseParameters(originalParameters);
 
-	rtabmap.close();
+	rtabmap.close(detected>0);
 
-	return 0;
+	return detected>=0;
 }
