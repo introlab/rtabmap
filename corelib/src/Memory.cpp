@@ -450,8 +450,11 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			// load the last dictionary
 			_dbDriver->load(*_vwd, _vwd->isIncremental(), _dummyDictionary);
 		}
-		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
-		UDEBUG("Dictionary memory usage: %ld Bytes", _vwd->getMemoryUsed());
+		UDEBUG("%d words loaded! (type=%s, dim=%d)",
+			_vwd->getUnusedWordsSize(),
+			_vwd->getVisualWords().empty()?"NA":_vwd->getVisualWords().begin()->second->getDescriptor().empty()?"dummy":_vwd->getVisualWords().begin()->second->getDescriptor().type() == CV_32FC1?"float":"binary",
+			_vwd->getVisualWords().empty()?0:_vwd->getVisualWords().begin()->second->getDescriptor().cols);
+		UDEBUG("Dictionary memory usage: %ld Bytes (%ld MB)", _vwd->getMemoryUsed(), _vwd->getMemoryUsed()/(1024*1024));
 		if(!_dummyDictionary)	{
 			_vwd->update();
 		}
