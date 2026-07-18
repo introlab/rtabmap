@@ -257,6 +257,7 @@ int main(int argc, char * argv[])
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
 
+	// detectMoreLoopClosures would clear the optimized map if loop closures are detected
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
 
@@ -316,7 +317,7 @@ int main(int argc, char * argv[])
 	// Restore original parameters before saving back the database
 	rtabmap.parseParameters(originalParameters);
 
-	rtabmap.close();
+	rtabmap.close(detected>0);
 
-	return 0;
+	return detected>=0;
 }

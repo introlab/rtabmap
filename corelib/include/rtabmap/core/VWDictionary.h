@@ -108,8 +108,6 @@ public:
 	void setIncrementalDictionary();
 	void setFixedDictionary(const std::string & dictionaryPath);
 	bool isModified() const;
-	void setAutoUpdate(bool enabled) {_autoUpdate = enabled;} // Enable/Disable internal update when parameters change, update() has to be externally triggered if disabled.
-	bool isAutoUpdateEnabled() const {return _autoUpdate;}
 
 	std::vector<unsigned char> serializeIndex() const;
 	void deserializeIndex(const std::vector<unsigned char> & data);
@@ -150,7 +148,6 @@ private:
 	cv::Mat _dataTree;
 	bool _modified;
 	NNStrategy _strategy;
-	bool _autoUpdate;
 	std::map<int ,int> _mapIndexId;
 	std::map<int ,int> _mapIdIndex;
 	std::map<int, VisualWord*> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords

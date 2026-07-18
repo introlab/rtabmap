@@ -441,20 +441,14 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			}
 			else
 			{
-				_dbDriver->load(*_vwd, false);
-				_dummyDictionary = false;
+				_dbDriver->load(*_vwd, false, _dummyDictionary);
 			}
 		}
 		else
 		{
-			if(_dummyDictionary)
-			{
-				UWARN("A dummy dictionary is requested but %s is false, loading the dictionary as usual.", Parameters::kMemInitWMWithAllNodes().c_str());
-				_dummyDictionary = false;
-			}
 			UDEBUG("load words");
 			// load the last dictionary
-			_dbDriver->load(*_vwd, _vwd->isIncremental());
+			_dbDriver->load(*_vwd, _vwd->isIncremental(), _dummyDictionary);
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		UDEBUG("Dictionary memory usage: %ld Bytes", _vwd->getMemoryUsed());
@@ -1385,6 +1379,11 @@ int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direc
 		UWARN("Node %d is not in WM/STM, cannot reduce it.", id);
 		return 0;
 	}
+	else if(s->getWeight() == -1)
+	{
+		UWARN("Cannot reduce intermediate node %d (not supported).", id);
+		return 0;
+	}
 
 	if(!s->getLabel().empty())
 	{
@@ -1401,6 +1400,11 @@ int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direc
 		{
 			float distance = iter->second.transform().getNorm();
 			reducedTo = iter->second.to();
+			if(this->_getSignature(reducedTo) == 0)
+			{
+				UWARN("Node %d is not in WM/STM, cannot reduce %d to it.", reducedTo, id);
+				return 0;
+			}
 			UDEBUG("Reduce %d to %d (distance=%f)",
 				s->id(), iter->second.to(), distance);
 		}
@@ -1408,6 +1412,18 @@ int Memory::reduceNode(int id, float maxDistance, bool keepLinkedInDb, int direc
 		if(iter->second.type() == Link::kNeighbor)
 		{
 			neighbors.insert(*iter);
+			// neighbors should not be intermediate nodes
+			Signature * sTo = this->_getSignature(iter->first);
+			if(sTo == 0)
+			{
+				UWARN("Neighbor node %d is not in WM/STM, cannot reduce %d.", iter->first, id);
+				return 0;
+			}
+			else if(sTo->getWeight() == -1)
+			{
+				UWARN("Neighbor node %d is an intermediate node (not supported), cannot reduce %d.", iter->first, id);
+				return 0;
+			}
 		}
 	}
 	if(reducedTo>0)

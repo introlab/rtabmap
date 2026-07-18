@@ -138,7 +138,7 @@ protected:
 	virtual void saveFlannIndexQuery(const std::vector<unsigned char> & indexData) const;
 
 	// Load objects
-	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true) const;
+	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true, bool idsOnly = false) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures, bool loadWordIdsOnly) const;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool loadWordIdsOnly) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;

@@ -162,7 +162,7 @@ public:
 	void executeNoResult(const std::string & sql) const;
 
 	// Load objects
-	void load(VWDictionary & dictionary, bool lastStateOnly = true) const;
+	void load(VWDictionary & dictionary, bool lastStateOnly = true, bool idsOnly = false) const;
 	void loadLastNodes(std::list<Signature *> & signatures, bool loadWordIdsOnly = false) const; // returned signatures must be freed after usage
 	Signature * loadSignature(int id, bool * loadedFromTrash = 0); // returned signature must be freed after usage, call loadSignatures() instead if more than one signature should be loaded
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0, bool loadWordIdsOnly = false); // returned signatures must be freed after usage
@@ -279,7 +279,7 @@ protected:
 	virtual void saveFlannIndexQuery(const std::vector<unsigned char> & indexData) const = 0;
 
 	// Load objects
-	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true) const = 0;
+	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true, bool idsOnly = false) const = 0;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures, bool loadWordIdsOnly) const = 0;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool loadWordIdsOnly) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;

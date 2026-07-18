@@ -403,6 +403,8 @@ private:
 	int _pathStuckCount;
 	float _pathStuckDistance;
 
+	bool _dummyDictionary;
+
 #ifdef RTABMAP_PYTHON
 	PythonInterface * _python;
 #endif

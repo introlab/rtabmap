@@ -539,10 +539,10 @@ void DBDriver::updateLaserScan(int nodeId, const LaserScan & scan)
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::load(VWDictionary & dictionary, bool lastStateOnly) const
+void DBDriver::load(VWDictionary & dictionary, bool lastStateOnly, bool idsOnly) const
 {
 	_dbSafeAccessMutex.lock();
-	this->loadQuery(dictionary, lastStateOnly);
+	this->loadQuery(dictionary, lastStateOnly, idsOnly);
 	_dbSafeAccessMutex.unlock();
 }
 
