@@ -345,10 +345,10 @@
             <item row="2" column="0">
              <widget class="QLabel" name="label_15">
               <property name="toolTip">
-               <string/>
+               <string>Number of inner squares on the board</string>
               </property>
               <property name="text">
-               <string>Square Size</string>
+               <string>Board Size</string>
               </property>
              </widget>
             </item>
@@ -385,10 +385,10 @@
             <item row="3" column="0">
              <widget class="QLabel" name="label_12">
               <property name="toolTip">
-               <string>Number of inner squares on the board</string>
+               <string/>
               </property>
               <property name="text">
-               <string>Board Size</string>
+               <string>Square Size</string>
               </property>
              </widget>
             </item>

@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_VISO2
 #include <viso_stereo.h>
@@ -131,7 +130,7 @@ Transform OdometryViso2::computeTransform(
 	cv::Mat leftGray;
 	if(data.imageRaw().type() == CV_8UC3)
 	{
-		cv::cvtColor(data.imageRaw(), leftGray, CV_BGR2GRAY);
+		cv::cvtColor(data.imageRaw(), leftGray, cv::COLOR_BGR2GRAY);
 	}
 	else if(data.imageRaw().type() == CV_8UC1)
 	{
@@ -144,7 +143,7 @@ Transform OdometryViso2::computeTransform(
 	cv::Mat rightGray;
 	if(data.rightRaw().type() == CV_8UC3)
 	{
-		cv::cvtColor(data.rightRaw(), rightGray, CV_BGR2GRAY);
+		cv::cvtColor(data.rightRaw(), rightGray, cv::COLOR_BGR2GRAY);
 	}
 	else if(data.rightRaw().type() == CV_8UC1)
 	{

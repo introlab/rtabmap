@@ -62,8 +62,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 #include <rtabmap/core/MarkerDetector.h>
-#include <opencv2/imgproc/types_c.h>
 #include <rtabmap/core/LocalGridMaker.h>
+#if CV_MAJOR_VERSION >=5
+#include <opencv2/geometry.hpp>
+#endif
 
 namespace rtabmap {
 
@@ -5444,7 +5446,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			cv::Mat imageMono;
 			if(decimatedData.imageRaw().channels() == 3)
 			{
-				cv::cvtColor(decimatedData.imageRaw(), imageMono, CV_BGR2GRAY);
+				cv::cvtColor(decimatedData.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
 			}
 			else
 			{
@@ -5752,7 +5754,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				cv::Mat imageMono;
 				if(data.imageRaw().channels() == 3)
 				{
-					cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+					cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
 				}
 				else
 				{

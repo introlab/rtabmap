@@ -39,8 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UTimer.h"
-#include <opencv2/core/core_c.h>
-#include <opencv2/imgproc/types_c.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
@@ -1745,7 +1743,7 @@ cv::Mat mergeTextures(
 							if(resizedImage.type() == CV_8UC1)
 							{
 								cv::Mat resizedImageColor;
-								cv::cvtColor(resizedImage, resizedImageColor, CV_GRAY2BGR);
+								cv::cvtColor(resizedImage, resizedImageColor, cv::COLOR_GRAY2BGR);
 								resizedImage = resizedImageColor;
 							}
 							UASSERT(resizedImage.type() == globalTextures.type());
@@ -2609,7 +2607,7 @@ bool multiBandTexturing(
 				if(imageRoi.channels() == 1)
 				{
 					cv::Mat imageRoiColor;
-					cv::cvtColor(imageRoi, imageRoiColor, CV_GRAY2BGR);
+					cv::cvtColor(imageRoi, imageRoiColor, cv::COLOR_GRAY2BGR);
 					imageRoi = imageRoiColor;
 				}
 
@@ -3218,7 +3216,7 @@ float computeNormalsComplexity(
 		}
 		if(oi>1)
 		{
-			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
 
 			if(pcaEigenVectors)
 			{
@@ -3279,7 +3277,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3335,7 +3333,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3391,7 +3389,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{
@@ -3447,7 +3445,7 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
 
 		if(pcaEigenVectors)
 		{

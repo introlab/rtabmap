@@ -39,7 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/IMUFilter.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
-#include <opencv2/imgproc/types_c.h>
 #include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -757,11 +756,11 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 			else if(data.imageRaw().type() == CV_8UC3)
 			{
 				cv::Mat channels[3];
-				cv::cvtColor(data.imageRaw(), image, CV_BGR2YCrCb);
+				cv::cvtColor(data.imageRaw(), image, cv::COLOR_BGR2YCrCb);
 				cv::split(image, channels);
 				cv::equalizeHist(channels[0], channels[0]);
 				cv::merge(channels, 3, image);
-				cv::cvtColor(image, image, CV_YCrCb2BGR);
+				cv::cvtColor(image, image, cv::COLOR_YCrCb2BGR);
 			}
 			if(!data.depthRaw().empty())
 			{
@@ -777,11 +776,11 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 				else if(data.rightRaw().type() == CV_8UC3)
 				{
 					cv::Mat channels[3];
-					cv::cvtColor(data.rightRaw(), right, CV_BGR2YCrCb);
+					cv::cvtColor(data.rightRaw(), right, cv::COLOR_BGR2YCrCb);
 					cv::split(right, channels);
 					cv::equalizeHist(channels[0], channels[0]);
 					cv::merge(channels, 3, right);
-					cv::cvtColor(right, right, CV_YCrCb2BGR);
+					cv::cvtColor(right, right, cv::COLOR_YCrCb2BGR);
 				}
 				data.setStereoImage(image, right, data.stereoCameraModels()[0]);
 			}
@@ -796,11 +795,11 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 			else if(data.imageRaw().type() == CV_8UC3)
 			{
 				cv::Mat channels[3];
-				cv::cvtColor(data.imageRaw(), image, CV_BGR2YCrCb);
+				cv::cvtColor(data.imageRaw(), image, cv::COLOR_BGR2YCrCb);
 				cv::split(image, channels);
 				clahe->apply(channels[0], channels[0]);
 				cv::merge(channels, 3, image);
-				cv::cvtColor(image, image, CV_YCrCb2BGR);
+				cv::cvtColor(image, image, cv::COLOR_YCrCb2BGR);
 			}
 			if(!data.depthRaw().empty())
 			{
@@ -816,11 +815,11 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 				else if(data.rightRaw().type() == CV_8UC3)
 				{
 					cv::Mat channels[3];
-					cv::cvtColor(data.rightRaw(), right, CV_BGR2YCrCb);
+					cv::cvtColor(data.rightRaw(), right, cv::COLOR_BGR2YCrCb);
 					cv::split(right, channels);
 					clahe->apply(channels[0], channels[0]);
 					cv::merge(channels, 3, right);
-					cv::cvtColor(right, right, CV_YCrCb2BGR);
+					cv::cvtColor(right, right, cv::COLOR_YCrCb2BGR);
 				}
 				data.setStereoImage(image, right, data.stereoCameraModels()[0]);
 			}

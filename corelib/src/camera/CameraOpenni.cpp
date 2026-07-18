@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENNI
 #include <pcl/io/openni_grabber.h>
@@ -94,7 +93,7 @@ void CameraOpenni::image_cb (
 
 	cv::Mat rgbFrame(rgb->getHeight(), rgb->getWidth(), CV_8UC3);
 	rgb->fillRGB(rgb->getWidth(), rgb->getHeight(), rgbFrame.data);
-	cv::cvtColor(rgbFrame, rgb_, CV_RGB2BGR);
+	cv::cvtColor(rgbFrame, rgb_, cv::COLOR_RGB2BGR);
 
 	depth_ = cv::Mat(rgb->getHeight(), rgb->getWidth(), CV_16UC1);
 	depth->fillDepthImageRaw(rgb->getWidth(), rgb->getHeight(), (unsigned short*)depth_.data);

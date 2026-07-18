@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/Graph.h>
-#include <opencv2/imgproc/types_c.h>
+#include <opencv2/imgproc.hpp>
 #include <fstream>
 
 namespace rtabmap
@@ -1111,7 +1111,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 					{
 						UWARN("Conversion from 4 channels to 3 channels (file=%s)", imageFilePath.c_str());
 						cv::Mat out;
-						cv::cvtColor(img, out, CV_BGRA2BGR);
+						cv::cvtColor(img, out, cv::COLOR_BGRA2BGR);
 						img = out;
 					}
 					else if(!img.empty() && _bayerMode >= 0 && _bayerMode <=3)
@@ -1119,7 +1119,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 						cv::Mat debayeredImg;
 						try
 						{
-							cv::cvtColor(img, debayeredImg, CV_BayerBG2BGR + _bayerMode);
+							cv::cvtColor(img, debayeredImg, cv::COLOR_BayerBG2BGR + _bayerMode);
 							img = debayeredImg;
 						}
 						catch(const cv::Exception & e)

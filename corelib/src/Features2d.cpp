@@ -36,7 +36,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
-#include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/core/version.hpp>
 #include <opencv2/opencv_modules.hpp>
 
@@ -865,7 +864,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		cv::cornerSubPix( image, corners,
 				cv::Size( _subPixWinSize, _subPixWinSize ),
 				cv::Size( -1, -1 ),
-				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _subPixIterations, _subPixEps ) );
+				cv::TermCriteria( cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, _subPixIterations, _subPixEps ) );
 
 		for(unsigned int i=0;i<corners.size(); ++i)
 		{
@@ -2377,8 +2376,13 @@ void BRISK::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kBRISKThresh(), thresh_);
 	Parameters::parse(parameters, Parameters::kBRISKOctaves(), octaves_);
 	Parameters::parse(parameters, Parameters::kBRISKPatternScale(), patternScale_);
-
-#if CV_MAJOR_VERSION < 3
+#if CV_MAJOR_VERSION > 4
+#ifdef HAVE_OPENCV_XFEATURES2D
+	brisk_ = CV_BRISK::create(thresh_, octaves_, patternScale_);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so BRISK cannot be used!");
+#endif
+#elif CV_MAJOR_VERSION < 3
 	brisk_ = cv::Ptr<CV_BRISK>(new CV_BRISK(thresh_, octaves_, patternScale_));
 #else
 	brisk_ = CV_BRISK::create(thresh_, octaves_, patternScale_);
@@ -2389,6 +2393,7 @@ std::vector<cv::KeyPoint> BRISK::generateKeypointsImpl(const cv::Mat & image, co
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
+#if CV_MAJOR_VERSION < 5 || (CV_MAJOR_VERSION > 4 && defined(HAVE_OPENCV_XFEATURES2D))
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
@@ -2396,6 +2401,9 @@ std::vector<cv::KeyPoint> BRISK::generateKeypointsImpl(const cv::Mat & image, co
 		maskRoi = cv::Mat(mask, roi);
 	}
 	brisk_->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
+#else
+	UWARN("RTAB-Map is not built with BRISK feature support!");
+#endif
 	return keypoints;
 }
 
@@ -2403,7 +2411,11 @@ cv::Mat BRISK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Ke
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
+#if CV_MAJOR_VERSION < 5 || (CV_MAJOR_VERSION > 4 && defined(HAVE_OPENCV_XFEATURES2D))
 	brisk_->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with BRISK feature support!");
+#endif
 	return descriptors;
 }
 
@@ -2436,10 +2448,16 @@ void KAZE::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKAZENOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kKAZEDiffusivity(), diffusivity_);
 
-#if CV_MAJOR_VERSION > 3
-	kaze_ = cv::KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, (cv::KAZE::DiffusivityType)diffusivity_);
+#if CV_MAJOR_VERSION > 4
+#ifdef HAVE_OPENCV_XFEATURES2D
+	kaze_ = CV_KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, (CV_KAZE::DiffusivityType)diffusivity_);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so KAZE cannot be used!");
+#endif
+#elif CV_MAJOR_VERSION > 3
+	kaze_ = CV_KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, (CV_KAZE::DiffusivityType)diffusivity_);
 #elif CV_MAJOR_VERSION > 2
-	kaze_ = cv::KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, diffusivity_);
+	kaze_ = CV_KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, diffusivity_);
 #else
 	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
 #endif
@@ -2449,7 +2467,7 @@ std::vector<cv::KeyPoint> KAZE::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#if CV_MAJOR_VERSION > 2
+#if (CV_MAJOR_VERSION > 2 && CV_MAJOR_VERSION < 5) || (CV_MAJOR_VERSION > 4 && defined(HAVE_OPENCV_XFEATURES2D))
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if (!mask.empty())
@@ -2458,7 +2476,7 @@ std::vector<cv::KeyPoint> KAZE::generateKeypointsImpl(const cv::Mat & image, con
 	}
 	kaze_->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #else
-	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
+	UWARN("RTAB-Map is not built with Kaze feature support!");
 #endif
 	return keypoints;
 }
@@ -2467,10 +2485,10 @@ cv::Mat KAZE::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION > 2
+#if (CV_MAJOR_VERSION > 2 && CV_MAJOR_VERSION < 5) || (CV_MAJOR_VERSION > 4 && defined(HAVE_OPENCV_XFEATURES2D))
 	kaze_->compute(image, keypoints, descriptors);
 #else
-	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
+	UWARN("RTAB-Map is not built with Kaze feature support!");
 #endif
 	return descriptors;
 }

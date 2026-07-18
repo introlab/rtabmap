@@ -34,9 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/utilite/UConversion.h>
-#if CV_MAJOR_VERSION > 3
-#include <opencv2/videoio/videoio_c.h>
-#endif
+#include <opencv2/videoio.hpp>
 
 namespace rtabmap
 {
@@ -81,18 +79,18 @@ bool CameraStereoTara::init(const std::string & calibrationFolder, const std::st
 
 		capture_.open(usbDevice_);
 
-		capture_.set(CV_CAP_PROP_FOURCC, CV_FOURCC('Y', '1', '6', ' '));
-		capture_.set(CV_CAP_PROP_FPS, 60);
-		capture_.set(CV_CAP_PROP_FRAME_WIDTH, 752);
-		capture_.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
-		capture_.set(CV_CAP_PROP_CONVERT_RGB,false);
+		capture_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('Y', '1', '6', ' '));
+		capture_.set(cv::CAP_PROP_FPS, 60);
+		capture_.set(cv::CAP_PROP_FRAME_WIDTH, 752);
+		capture_.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+		capture_.set(cv::CAP_PROP_CONVERT_RGB,false);
 
 		ULOGGER_DEBUG("CameraStereoTara: Usb device initialization on device %d", usbDevice_);
 
 
 	if (cameraName_.empty())
 	{
-		unsigned int guid = (unsigned int)capture_.get(CV_CAP_PROP_GUID);
+		unsigned int guid = (unsigned int)capture_.get(cv::CAP_PROP_GUID);
 		if (guid != 0 && guid != 0xffffffff)
 		{
 			cameraName_ = uFormat("%08x", guid);

@@ -46,8 +46,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <opencv2/core/core_c.h>
-#include <opencv2/imgproc/types_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
@@ -5980,7 +5978,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		cv::Mat leftMono;
 		if(data->imageRaw().channels() == 3)
 		{
-			cv::cvtColor(data->imageRaw(), leftMono, CV_BGR2GRAY);
+			cv::cvtColor(data->imageRaw(), leftMono, cv::COLOR_BGR2GRAY);
 		}
 		else
 		{
@@ -5989,7 +5987,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		cv::Mat rightMono;
 		if(data->rightRaw().channels() == 3)
 		{
-			cv::cvtColor(data->rightRaw(), rightMono, CV_BGR2GRAY);
+			cv::cvtColor(data->rightRaw(), rightMono, cv::COLOR_BGR2GRAY);
 		}
 		else
 		{

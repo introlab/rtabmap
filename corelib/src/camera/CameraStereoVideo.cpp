@@ -28,13 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraStereoVideo.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <opencv2/imgproc/types_c.h>
-#if CV_MAJOR_VERSION > 3
-#include <opencv2/videoio/videoio_c.h>
-#if CV_MAJOR_VERSION > 4
-#include <opencv2/videoio/legacy/constants_c.h>
-#endif
-#endif
+#include <opencv2/videoio.hpp>
 
 namespace rtabmap
 {
@@ -172,7 +166,7 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 
 	if (cameraName_.empty())
 	{
-		unsigned int guid = (unsigned int)capture_.get(CV_CAP_PROP_GUID);
+		unsigned int guid = (unsigned int)capture_.get(cv::CAP_PROP_GUID);
 		if (guid != 0 && guid != 0xffffffff)
 		{
 			cameraName_ = uFormat("%08x", guid);
@@ -214,17 +208,17 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 			if(capture_.isOpened())
 			{
 				bool resolutionSet = false;
-				resolutionSet = capture_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2));
-				resolutionSet = resolutionSet && capture_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.left().imageHeight());
+				resolutionSet = capture_.set(cv::CAP_PROP_FRAME_WIDTH, stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2));
+				resolutionSet = resolutionSet && capture_.set(cv::CAP_PROP_FRAME_HEIGHT, stereoModel_.left().imageHeight());
 				if(capture2_.isOpened())
 				{
-					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_WIDTH, stereoModel_.right().imageWidth());
-					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, stereoModel_.right().imageHeight());
+					resolutionSet = resolutionSet && capture2_.set(cv::CAP_PROP_FRAME_WIDTH, stereoModel_.right().imageWidth());
+					resolutionSet = resolutionSet && capture2_.set(cv::CAP_PROP_FRAME_HEIGHT, stereoModel_.right().imageHeight());
 				}
 
 				// Check if the resolution was set successfully
-				int actualWidth = int(capture_.get(CV_CAP_PROP_FRAME_WIDTH));
-				int actualHeight = int(capture_.get(CV_CAP_PROP_FRAME_HEIGHT));
+				int actualWidth = int(capture_.get(cv::CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(capture_.get(cv::CAP_PROP_FRAME_HEIGHT));
 				if(!resolutionSet ||
 				   actualWidth != stereoModel_.left().imageWidth()*(capture2_.isOpened()?1:2) ||
 				   actualHeight != stereoModel_.left().imageHeight())
@@ -244,17 +238,17 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 			if(capture_.isOpened())
 			{
 				bool resolutionSet = false;
-				resolutionSet = capture_.set(CV_CAP_PROP_FRAME_WIDTH, _width*(capture2_.isOpened()?1:2));
-				resolutionSet = resolutionSet && capture_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+				resolutionSet = capture_.set(cv::CAP_PROP_FRAME_WIDTH, _width*(capture2_.isOpened()?1:2));
+				resolutionSet = resolutionSet && capture_.set(cv::CAP_PROP_FRAME_HEIGHT, _height);
 				if(capture2_.isOpened())
 				{
-					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_WIDTH, _width);
-					resolutionSet = resolutionSet && capture2_.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+					resolutionSet = resolutionSet && capture2_.set(cv::CAP_PROP_FRAME_WIDTH, _width);
+					resolutionSet = resolutionSet && capture2_.set(cv::CAP_PROP_FRAME_HEIGHT, _height);
 				}
 
 				// Check if the resolution was set successfully
-				int actualWidth = int(capture_.get(CV_CAP_PROP_FRAME_WIDTH));
-				int actualHeight = int(capture_.get(CV_CAP_PROP_FRAME_HEIGHT));
+				int actualWidth = int(capture_.get(cv::CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(capture_.get(cv::CAP_PROP_FRAME_HEIGHT));
 				if(!resolutionSet ||
 				   actualWidth != _width*(capture2_.isOpened()?1:2) ||
 				   actualHeight != _height)
@@ -273,10 +267,10 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 		if (this->getFrameRate() > 0)
 		{
 			bool fpsSupported = false;
-			fpsSupported = capture_.set(CV_CAP_PROP_FPS, this->getFrameRate());
+			fpsSupported = capture_.set(cv::CAP_PROP_FPS, this->getFrameRate());
 			if (capture2_.isOpened())
 			{
-				fpsSupported = fpsSupported && capture2_.set(CV_CAP_PROP_FPS, this->getFrameRate());
+				fpsSupported = fpsSupported && capture2_.set(cv::CAP_PROP_FPS, this->getFrameRate());
 			}
 			if(fpsSupported)
 			{
@@ -310,14 +304,14 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 				std::string fourccUpperCase = uToUpperCase(_fourcc);
 				int fourcc = cv::VideoWriter::fourcc(fourccUpperCase.at(0), fourccUpperCase.at(1), fourccUpperCase.at(2), fourccUpperCase.at(3));
 				bool fourccSupported = false;
-				fourccSupported = capture_.set(CV_CAP_PROP_FOURCC, fourcc);
+				fourccSupported = capture_.set(cv::CAP_PROP_FOURCC, fourcc);
 				if (capture2_.isOpened())
 				{
-					fourccSupported = fourccSupported && capture2_.set(CV_CAP_PROP_FOURCC, fourcc);
+					fourccSupported = fourccSupported && capture2_.set(cv::CAP_PROP_FOURCC, fourcc);
 				}
 
 				// Check if the FOURCC was set successfully
-				int actualFourcc = int(capture_.get(CV_CAP_PROP_FOURCC));
+				int actualFourcc = int(capture_.get(cv::CAP_PROP_FOURCC));
 
 				if(!fourccSupported || actualFourcc != fourcc)
 				{
@@ -386,7 +380,7 @@ SensorData CameraStereoVideo::captureImage(SensorCaptureInfo * info)
 		if(rightImage.type() != CV_8UC1 && rightGrayScale_)
 		{
 			cv::Mat tmp;
-			cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
+			cv::cvtColor(rightImage, tmp, cv::COLOR_BGR2GRAY);
 			rightImage = tmp;
 			rightCvt = true;
 		}

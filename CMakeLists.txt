@@ -241,7 +241,25 @@ option(BUILD_WITH_RPATH_NOT_RUNPATH "Explicitly disable usage of RUNPATH for the
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
 set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+# OpenCV components. calib3d was split into "calib" + "geometry" in OpenCV 5.
+# These lists are reused below to generate RTABMapConfig.cmake so downstream
+# find_package(RTABMap) requests the same components this build used.
+SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video videoio calib geometry)
+SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5 objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4 aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+
+# Probe OpenCV without a version constraint first, then request the components
+# matching the detected major version. A version-constrained find that fails to
+# match (e.g. asking for 5 when only 4 is present) resets OpenCV_DIR to NOTFOUND,
+# which breaks toolchain builds that rely on a -DOpenCV_DIR hint (e.g. Android,
+# where CMAKE_FIND_ROOT_PATH restricts the search).
+FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core)
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ELSE()
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4})
+ENDIF()
 
 IF(WITH_QT)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
@@ -1320,6 +1338,18 @@ install(EXPORT rtabmapTargets
 ####
 # Setup RTABMapConfig.cmake
 ####
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5})
+  SET(CONF_OPENCV_OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ELSE()
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4})
+  SET(CONF_OPENCV_OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4})
+ENDIF()
+STRING(REPLACE ";" " " CONF_OPENCV_COMPONENTS "${CONF_OPENCV_COMPONENTS}")
+STRING(REPLACE ";" " " CONF_OPENCV_OPTIONAL_COMPONENTS "${CONF_OPENCV_OPTIONAL_COMPONENTS}")
+# Pin the OpenCV major version so downstream projects find the same major RTAB-Map was
+# built against
+SET(CONF_OPENCV_VERSION_MAJOR ${OpenCV_VERSION_MAJOR})
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
@@ -1486,7 +1516,8 @@ ENDIF(PCL_COMPILE_OPTIONS)
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Optional dependencies ('*' affects some default parameters) :")
 IF(OpenCV_FOUND)
-  IF(OPENCV_ARUCO_FOUND)
+  IF((OpenCV_VERSION_MAJOR LESS 4 AND OPENCV_ARUCO_FOUND) OR 
+     (OpenCV_VERSION_MAJOR GREATER 4 AND OPENCV_OBJDETECT_FOUND))
     set(ARUCO_STR "YES")
   ELSE()
     set(ARUCO_STR "NO")

@@ -38,6 +38,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <zed-open-capture/sensorcapture.hpp>
 #include "SimpleIni.h"
 
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/geometry.hpp>
+#endif
+
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright (c) 2018, STEREOLABS.

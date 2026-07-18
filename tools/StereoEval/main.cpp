@@ -37,7 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
-#include <opencv2/imgproc/types_c.h>
 #include <fstream>
 #include <string>
 
@@ -222,7 +221,7 @@ int main(int argc, char * argv[])
 		cv::Mat leftMono;
 		if(left.channels() == 3)
 		{
-			cv::cvtColor(left, leftMono, CV_BGR2GRAY);
+			cv::cvtColor(left, leftMono, cv::COLOR_BGR2GRAY);
 		}
 		else
 		{
@@ -231,7 +230,7 @@ int main(int argc, char * argv[])
 		cv::Mat rightMono;
 		if(right.channels() == 3)
 		{
-			cv::cvtColor(right, rightMono, CV_BGR2GRAY);
+			cv::cvtColor(right, rightMono, cv::COLOR_BGR2GRAY);
 		}
 		else
 		{
@@ -266,7 +265,7 @@ int main(int argc, char * argv[])
 			cv::cornerSubPix(leftMono, leftCorners,
 				cv::Size( subPixWinSize, subPixWinSize ),
 				cv::Size( -1, -1 ),
-				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, subPixIterations, subPixEps ) );
+				cv::TermCriteria( cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, subPixIterations, subPixEps ) );
 			UDEBUG("cv::cornerSubPix() end");
 		}
 

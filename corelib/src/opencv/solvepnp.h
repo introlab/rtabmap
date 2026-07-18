@@ -45,9 +45,10 @@
 #define RTABMAP_CORELIB_SRC_OPENCV_SOLVEPNP_H_
 
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/geometry.hpp>
+#else
 #include <opencv2/calib3d/calib3d.hpp>
-#if CV_MAJOR_VERSION >= 3
-#include <opencv2/calib3d/calib3d_c.h>
 #endif
 
 namespace cv3 {
@@ -95,7 +96,7 @@ bool solvePnPRansac( cv::InputArray objectPoints, cv::InputArray imagePoints,
 					cv::OutputArray rvec, cv::OutputArray tvec,
 					bool useExtrinsicGuess = false, int iterationsCount = 100,
 					float reprojectionError = 8.0, double confidence = 0.99,
-					cv::OutputArray inliers = cv::noArray(), int flags = CV_ITERATIVE );
+					cv::OutputArray inliers = cv::noArray(), int flags = cv::SOLVEPNP_ITERATIVE );
 
 int RANSACUpdateNumIters( double p, double ep, int modelPoints, int maxIters );
 

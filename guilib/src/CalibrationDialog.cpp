@@ -28,15 +28,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/CalibrationDialog.h"
 #include "ui_calibrationDialog.h"
 
+#include <algorithm>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgproc/imgproc_c.h>
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/calib.hpp>
+#include <opencv2/geometry.hpp>
+#else
 #include <opencv2/calib3d/calib3d.hpp>
-#if CV_MAJOR_VERSION >= 3
-#include <opencv2/calib3d/calib3d_c.h>
 #endif
 #include <opencv2/highgui/highgui.hpp>
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 #endif
 
@@ -276,18 +278,23 @@ void CalibrationDialog::generateBoard()
 	if(ui_->comboBox_board_type->currentIndex() >= 1 )
 	{
 		try {
+			const int marginInPixels = squareSizeInPixels/4;
+			cv::Size size(
+				squareSizeInPixels*ui_->spinBox_boardWidth->value()  + 2*marginInPixels,
+				squareSizeInPixels*ui_->spinBox_boardHeight->value() + 2*marginInPixels);
+			UINFO("Creating board image of %dx%d pixels (%dx%d squares)",
+				size.width, size.height,
+				ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
 			charucoBoard_->generateImage(
-				cv::Size(squareSizeInPixels*ui_->spinBox_boardWidth->value(),
-						squareSizeInPixels*ui_->spinBox_boardHeight->value()), 
+				size, 
 				image, 
-				squareSizeInPixels/4, 1);
+				marginInPixels, 1);
 #else
 			charucoBoard_->draw(
-				cv::Size(squareSizeInPixels*ui_->spinBox_boardWidth->value(),
-						squareSizeInPixels*ui_->spinBox_boardHeight->value()), 
+				size, 
 				image, 
-				squareSizeInPixels/4, 1);
+				marginInPixels, 1);
 #endif
 
 			int arucoDict = ui_->comboBox_marker_dictionary->currentIndex();
@@ -297,7 +304,7 @@ void CalibrationDialog::generateBoard()
 		}
 		catch(const cv::Exception & e)
 		{
-			UERROR("%f", e.what());
+			UERROR("%s", e.what());
 			QMessageBox::critical(this, tr("Generating Board"),
 				tr("Cannot generate the board. Make sure the dictionary "
 				   "selected is big enough for the board size. Error:\"%1\"").arg(e.what()));
@@ -737,7 +744,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
 			if(!viewGray.empty())
 			{
-				int flags = CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE;
+				int flags = cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE;
 
 				if(!viewGray.empty())
 				{
@@ -748,7 +755,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 						if( scale == 1 )
 							timg = viewGray;
 						else
-							cv::resize(viewGray, timg, cv::Size(), scale, scale, CV_INTER_CUBIC);
+							cv::resize(viewGray, timg, cv::Size(), scale, scale, cv::INTER_CUBIC);
 
 #ifdef HAVE_CHARUCO
 						if(ui_->comboBox_board_type->currentIndex() >= 1 )
@@ -833,7 +840,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 					float ratio = ui_->comboBox_board_type->currentIndex() >= 1 ?6.0f:2.0f;
 					float radius = minSquareDistance==-1.0f?5.0f:(minSquareDistance/ratio);
 					cv::cornerSubPix( viewGray, pointBuf[id], cv::Size(radius, radius), cv::Size(-1,-1),
-							cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ));
+							cv::TermCriteria( cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1 ));
 					
 					// Filter points that drifted to far (caused by reflection or bad subpixel gradient)
 					float threshold = ui_->doubleSpinBox_subpixel_error->value();
@@ -1388,6 +1395,13 @@ void CalibrationDialog::calibrate()
 		UINFO("Calibrating camera %d (samples=%d)", id, (int)imagePoints_[id].size());
 		logStream << "Calibrating camera " << id << " (samples=" << imagePoints_[id].size() << ")" << ENDL;
 
+		// Work on local copies: the fisheye auto-prune below removes ill-conditioned views,
+		// and we must NOT mutate the persistent buffers, otherwise clicking Calibrate again
+		// would run on a smaller (already-pruned) sample set and give different results.
+		std::vector<std::vector<cv::Point3f> > objectPoints = objectPoints_[id];
+		std::vector<std::vector<cv::Point2f> > imagePoints = imagePoints_[id];
+		std::vector<int> imageIds = imageIds_[id];
+
 		//calibrate
 		std::vector<cv::Mat> rvecs, tvecs;
 		std::vector<float> reprojErrs;
@@ -1401,26 +1415,78 @@ void CalibrationDialog::calibrate()
 
 		if(fishEye)
 		{
-			try
+			// cv::fisheye::calibrate() with CALIB_CHECK_COND throws as soon as a single
+			// view is ill-conditioned (e.g. too few / poorly spread ChArUco corners),
+			// aborting the whole calibration. Auto-prune the offending view (its index is
+			// reported in the exception message) and retry until it succeeds, keeping the
+			// CHECK_COND safety without discarding every good view.
+			const int minFisheyeViews = COUNT_MIN/2;
+			bool calibrated = false;
+			while(!calibrated)
 			{
-				rms = cv::fisheye::calibrate(
-					objectPoints_[id],
-					imagePoints_[id],
-					imageSize_[id],
-					K,
-					D,
-					rvecs,
-					tvecs,
-					cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC |
-					cv::fisheye::CALIB_CHECK_COND |
-					cv::fisheye::CALIB_FIX_SKEW);
-			}
-			catch(const cv::Exception & e)
-			{
-				UERROR("Error: %s (try restarting the calibration)", e.what());
-				QMessageBox::warning(this, tr("Calibration failed!"), tr("Error: %1 (try restarting the calibration)").arg(e.what()));
-				processingData_ = false;
-				return;
+				try
+				{
+					rms = cv::fisheye::calibrate(
+						objectPoints,
+						imagePoints,
+						imageSize_[id],
+						K,
+						D,
+						rvecs,
+						tvecs,
+						cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC |
+						cv::fisheye::CALIB_CHECK_COND |
+						cv::fisheye::CALIB_FIX_SKEW);
+					calibrated = true;
+				}
+				catch(const cv::Exception & e)
+				{
+					// Parse the ill-conditioned view index, e.g.
+					// "CALIB_CHECK_COND - Ill-conditioned matrix for input array 43"
+					int badIndex = -1;
+					const QString token = "input array ";
+					QString msg = e.what();
+					int tokenPos = msg.indexOf(token);
+					if(tokenPos >= 0)
+					{
+						bool ok = false;
+						int v = msg.mid(tokenPos + token.length()).section(' ', 0, 0).toInt(&ok);
+						if(ok)
+						{
+							badIndex = v;
+						}
+					}
+
+					if(badIndex >= 0 && badIndex < (int)objectPoints.size() &&
+						(int)objectPoints.size() > minFisheyeViews)
+					{
+						int removedImageId = badIndex < (int)imageIds.size() ? imageIds[badIndex] : -1;
+						UWARN("Fisheye calibration: view %d (image %d) is ill-conditioned, "
+							  "removing it and retrying (%d views left).",
+							  badIndex, removedImageId, (int)objectPoints.size()-1);
+						logStream << "Fisheye calibration: removed ill-conditioned view " << badIndex
+								  << " (image " << removedImageId << "), "
+								  << (int)objectPoints.size()-1 << " views left" << ENDL;
+
+						// Prune the local copies only (never the persistent buffers). Keep them
+						// aligned: the per-view reprojection loop below indexes them together
+						// with rvecs/tvecs.
+						objectPoints.erase(objectPoints.begin()+badIndex);
+						imagePoints.erase(imagePoints.begin()+badIndex);
+						if(badIndex < (int)imageIds.size())
+						{
+							imageIds.erase(imageIds.begin()+badIndex);
+						}
+						// loop and retry with the pruned set
+					}
+					else
+					{
+						UERROR("Error: %s (try restarting the calibration)", e.what());
+						QMessageBox::warning(this, tr("Calibration failed!"), tr("Error: %1 (try restarting the calibration)").arg(e.what()));
+						processingData_ = false;
+						return;
+					}
+				}
 			}
 		}
 		else
@@ -1429,8 +1495,8 @@ void CalibrationDialog::calibrate()
 			cv::Mat stdDevsMatInt, stdDevsMatExt;
 			cv::Mat perViewErrorsMat;
 			rms = cv::calibrateCamera(
-					objectPoints_[id],
-					imagePoints_[id],
+					objectPoints,
+					imagePoints,
 					imageSize_[id],
 					K,
 					D,
@@ -1440,14 +1506,14 @@ void CalibrationDialog::calibrate()
 					stdDevsMatExt,
 					perViewErrorsMat,
 					ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0);
-			if((int)imageIds_[id].size() == perViewErrorsMat.rows)
+			if((int)imageIds.size() == perViewErrorsMat.rows)
 			{
 				UINFO("Per view errors:");
 				logStream << "Per view errors:" << ENDL;
 				for(int i=0; i<perViewErrorsMat.rows; ++i)
 				{
-					UINFO("Image %d: %f", imageIds_[id][i], perViewErrorsMat.at<double>(i,0));
-					logStream << "Image " << imageIds_[id][i] << ": " << perViewErrorsMat.at<double>(i,0) << ENDL;
+					UINFO("Image %d: %f", imageIds[i], perViewErrorsMat.at<double>(i,0));
+					logStream << "Image " << imageIds[i] << ": " << perViewErrorsMat.at<double>(i,0) << ENDL;
 				}
 			}
 		}
@@ -1459,23 +1525,23 @@ void CalibrationDialog::calibrate()
 		std::vector<cv::Point2f> imagePoints2;
 		int i, totalPoints = 0;
 		double totalErr = 0, err;
-		reprojErrs.resize(objectPoints_[id].size());
+		reprojErrs.resize(objectPoints.size());
 
-		for( i = 0; i < (int)objectPoints_[id].size(); ++i )
+		for( i = 0; i < (int)objectPoints.size(); ++i )
 		{
 #if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 			if(fishEye)
 			{
-				cv::fisheye::projectPoints( cv::Mat(objectPoints_[id][i]), imagePoints2, rvecs[i], tvecs[i], K, D);
+				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], K, D);
 			}
 			else
 #endif
 			{
-				cv::projectPoints( cv::Mat(objectPoints_[id][i]), rvecs[i], tvecs[i], K, D, imagePoints2);
+				cv::projectPoints( cv::Mat(objectPoints[i]), rvecs[i], tvecs[i], K, D, imagePoints2);
 			}
-			err = cv::norm(cv::Mat(imagePoints_[id][i]), cv::Mat(imagePoints2), CV_L2);
+			err = cv::norm(cv::Mat(imagePoints[i]), cv::Mat(imagePoints2), cv::NORM_L2);
 
-			int n = (int)objectPoints_[id][i].size();
+			int n = (int)objectPoints[i].size();
 			reprojErrs[i] = (float) std::sqrt(err*err/n);
 			totalErr        += err*err;
 			totalPoints     += n;
@@ -1576,9 +1642,14 @@ void CalibrationDialog::calibrate()
 			cv::Mat P = stereoModel_.right().P().clone();
 			P.at<double>(0,3) = -P.at<double>(0,0)*ui_->doubleSpinBox_stereoBaseline->value();
 			double scale = ui_->doubleSpinBox_stereoBaseline->value() / stereoModel_.baseline();
-			UWARN("Scale %f (setting square size from %f to %f)", scale, ui_->doubleSpinBox_squareSize->value(), ui_->doubleSpinBox_squareSize->value()*scale);
-			logStream << "Baseline rescaled from " << stereoModel_.baseline() << " to " << ui_->doubleSpinBox_stereoBaseline->value() << " scale=" << scale << ENDL;
-			ui_->doubleSpinBox_squareSize->setValue(ui_->doubleSpinBox_squareSize->value()*scale);
+			UWARN("Scale %f applied to stereo baseline (computed %f m -> expected %f m). "
+				  "If the mismatch is caused by the measured square size, it would be %f m instead of %f m.",
+					scale, stereoModel_.baseline(), ui_->doubleSpinBox_stereoBaseline->value(),
+					ui_->doubleSpinBox_squareSize->value()*scale, ui_->doubleSpinBox_squareSize->value());
+			logStream << "Baseline rescaled from " << stereoModel_.baseline() << " to " << ui_->doubleSpinBox_stereoBaseline->value()
+					  << " scale=" << scale << " (implied square size " << ui_->doubleSpinBox_squareSize->value()*scale
+					  << " m instead of " << ui_->doubleSpinBox_squareSize->value() << " m)" << ENDL;
+			UASSERT(!stereoModel_.T().empty());
 			stereoModel_ = StereoCameraModel(
 					stereoModel_.name(),
 					stereoModel_.left().imageSize(),stereoModel_.left().K_raw(), stereoModel_.left().D_raw(), stereoModel_.left().R(), stereoModel_.left().P(),
@@ -1708,26 +1779,58 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		cv::Vec4d D_right(right.D_raw().at<double>(0,0), right.D_raw().at<double>(0,1), right.D_raw().at<double>(0,4), right.D_raw().at<double>(0,5));
 
 		UASSERT(stereoImagePoints_[0].size() == stereoImagePoints_[1].size());
+		UASSERT(stereoObjectPoints_.size() == stereoImagePoints_[0].size());
+		// cv::fisheye::stereoCalibrate() reads the number of points from the first view and
+		// lays out its Jacobian assuming EVERY view has that same count (fisheye.cpp
+		// "reshape(1, n_points*2)"). ChArUco detects a variable number of corners per view,
+		// so we make the counts uniform by evenly subsampling every view down to the common
+		// minimum count (kept spatially spread, not just the first N).
+		size_t minPoints = stereoImagePoints_[0][0].size();
+		for(unsigned int i =0; i<stereoImagePoints_[0].size(); ++i)
+		{
+			minPoints = std::min(minPoints, stereoImagePoints_[0][i].size());
+		}
+		std::vector<std::vector<cv::Point3d> > objectPoints(stereoObjectPoints_.size());
 		std::vector<std::vector<cv::Point2d> > leftPoints(stereoImagePoints_[0].size());
 		std::vector<std::vector<cv::Point2d> > rightPoints(stereoImagePoints_[1].size());
+		bool subsampled = false;
 		for(unsigned int i =0; i<stereoImagePoints_[0].size(); ++i)
 		{
 			UASSERT(stereoImagePoints_[0][i].size() == stereoImagePoints_[1][i].size());
-			leftPoints[i].resize(stereoImagePoints_[0][i].size());
-			rightPoints[i].resize(stereoImagePoints_[1][i].size());
-			for(unsigned int j =0; j<stereoImagePoints_[0][i].size(); ++j)
+			UASSERT(stereoObjectPoints_[i].size() == stereoImagePoints_[0][i].size());
+			const size_t n = stereoImagePoints_[0][i].size();
+			if(n != minPoints)
 			{
-				leftPoints[i][j].x = stereoImagePoints_[0][i][j].x;
-				leftPoints[i][j].y = stereoImagePoints_[0][i][j].y;
-				rightPoints[i][j].x = stereoImagePoints_[1][i][j].x;
-				rightPoints[i][j].y = stereoImagePoints_[1][i][j].y;
+				subsampled = true;
 			}
+			objectPoints[i].resize(minPoints);
+			leftPoints[i].resize(minPoints);
+			rightPoints[i].resize(minPoints);
+			for(size_t k =0; k<minPoints; ++k)
+			{
+				// evenly spread the kept indices over [0, n-1]
+				size_t j = minPoints>1 ? (size_t)((k*(n-1))/(minPoints-1)) : 0;
+				objectPoints[i][k].x = stereoObjectPoints_[i][j].x;
+				objectPoints[i][k].y = stereoObjectPoints_[i][j].y;
+				objectPoints[i][k].z = stereoObjectPoints_[i][j].z;
+				leftPoints[i][k].x = stereoImagePoints_[0][i][j].x;
+				leftPoints[i][k].y = stereoImagePoints_[0][i][j].y;
+				rightPoints[i][k].x = stereoImagePoints_[1][i][j].x;
+				rightPoints[i][k].y = stereoImagePoints_[1][i][j].y;
+			}
+		}
+		if(subsampled)
+		{
+			UWARN("Fisheye stereo calibration requires the same number of points in every "
+				  "view; sub-sampled all %d views to the common minimum of %d points.",
+				  (int)stereoImagePoints_[0].size(), (int)minPoints);
+			if(logStream) (*logStream) << "Fisheye stereo: sub-sampled all views to " << (int)minPoints << " points" << ENDL;
 		}
 
 		try
 		{
 			rms = cv::fisheye::stereoCalibrate(
-					stereoObjectPoints_,
+					objectPoints,
 					leftPoints,
 					rightPoints,
 					left.K_raw(), D_left, right.K_raw(), D_right,
@@ -1739,30 +1842,41 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 		catch(const cv::Exception & e)
 		{
 			UERROR("Error: %s (try restarting the calibration)", e.what());
+			QMessageBox::warning(const_cast<CalibrationDialog*>(this), tr("Calibration failed!"), tr("Error: %1 (try restarting the calibration)").arg(e.what()));
 			return output;
 		}
 
 		std::cout << "R = " << R << std::endl;
 		std::cout << "T = " << Tvec << std::endl;
 
+		// cv::fisheye::stereoCalibrate() returns the translation as a Vec3d (Tvec) and does
+		// not fill the cv::Mat T; populate it here so the returned model always carries a
+		// valid 3x1 extrinsic translation (used e.g. by the baseline rescaling below).
+		T = cv::Mat(3, 1, CV_64FC1);
+		T.at<double>(0,0) = Tvec[0];
+		T.at<double>(1,0) = Tvec[1];
+		T.at<double>(2,0) = Tvec[2];
+
 		if(imageSize_[0] == imageSize_[1] && !ignoreStereoRectification)
 		{
 			UINFO("Compute stereo rectification");
 
 			cv::Mat R1, R2, P1, P2, Q;
+#if CV_MAJOR_VERSION < 5
 			stereoRectifyFisheye(
 					left.K_raw(), D_left,
 					right.K_raw(), D_right,
 					imageSize, R, Tvec, R1, R2, P1, P2, Q,
 					cv::CALIB_ZERO_DISPARITY, 0, imageSize);
-
-			// Very hard to get good results with this one:
-			/*double balance = 0.0, fov_scale = 1.0;
+#else
+			// Very hard to get good results with this one, however we cannot use the previous one anymore in opencv5
+			double balance = 0.0, fov_scale = 1.0;
 			cv::fisheye::stereoRectify(
 					left.K_raw(), D_left,
 					right.K_raw(), D_right,
 					imageSize, R, Tvec, R1, R2, P1, P2, Q,
-					cv::CALIB_ZERO_DISPARITY, imageSize, balance, fov_scale);*/
+					cv::CALIB_ZERO_DISPARITY, imageSize, balance, fov_scale);
+#endif
 
 			std::cout << "R1 = " << R1 << std::endl;
 			std::cout << "R2 = " << R2 << std::endl;
@@ -1791,11 +1905,6 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			std::cout << "P1n = " << P1 << std::endl;
 			std::cout << "P2n = " << P2 << std::endl;
 
-
-			cv::Mat T(3,1,CV_64FC1);
-			T.at <double>(0,0) = Tvec[0];
-			T.at <double>(1,0) = Tvec[1];
-			T.at <double>(2,0) = Tvec[2];
 			output = StereoCameraModel(
 							cameraName_.toStdString(),
 							imageSize_[0], left.K_raw(), left.D_raw(), R1, P1,
@@ -1915,8 +2024,8 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			{
 				int npt = (int)stereoImagePoints_[0][i].size();
 
-				cv::Mat imgpt0 = cv::Mat(stereoImagePoints_[0][i]);
-				cv::Mat imgpt1 = cv::Mat(stereoImagePoints_[1][i]);
+				std::vector<cv::Point2f> imgpt0 = stereoImagePoints_[0][i];
+				std::vector<cv::Point2f> imgpt1 = stereoImagePoints_[1][i];
 				cv::undistortPoints(imgpt0, imgpt0, left.K_raw(), left.D_raw(), R1, P1);
 				cv::undistortPoints(imgpt1, imgpt1, right.K_raw(), right.D_raw(), R2, P2);
 				computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
@@ -1925,10 +2034,10 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				double sampleErr = 0.0;
 				for(int j = 0; j < npt; j++ )
 				{
-					double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
-										stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
-								   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
-										stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
+					double errij = fabs(imgpt0[j].x*lines[1][j][0] +
+										imgpt0[j].y*lines[1][j][1] + lines[1][j][2]) +
+								   fabs(imgpt1[j].x*lines[0][j][0] +
+										imgpt1[j].y*lines[0][j][1] + lines[0][j][2]);
 					sampleErr += errij;
 				}
 				UINFO("Stereo image %d: %f", stereoImageIds_[i], sampleErr/npt);
