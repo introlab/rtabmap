@@ -38,9 +38,9 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 
-#include "opencv2/features2d/features2d.hpp"
+#include "opencv2/features2d.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/imgproc/imgproc_c.h"
+#include <rtabmap/core/opencv2_compat.h>
 #include <algorithm>
 #include <iterator>
 

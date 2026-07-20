@@ -70,6 +70,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UPlot.h"
 #include "rtabmap/utilite/UCv2Qt.h"
 
+#include <opencv2/calib3d.hpp>
+
 #include <QtGui/QCloseEvent>
 #include <QtGui/QPixmap>
 #include <QtCore/QDir>

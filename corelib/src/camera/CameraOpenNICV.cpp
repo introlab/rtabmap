@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraOpenNICV.h>
 #include <rtabmap/utilite/UTimer.h>
 #if CV_MAJOR_VERSION > 3
-#include <opencv2/videoio/videoio_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 #endif
 
 namespace rtabmap
@@ -59,6 +59,7 @@ bool CameraOpenNICV::init(const std::string & calibrationFolder, const std::stri
 	}
 
 	ULOGGER_DEBUG("Camera::init()");
+#if CV_MAJOR_VERSION < 5
 	_capture.open( _asus?CV_CAP_OPENNI_ASUS:CV_CAP_OPENNI );
 	if(_capture.isOpened())
 	{
@@ -98,6 +99,10 @@ bool CameraOpenNICV::init(const std::string & calibrationFolder, const std::stri
 		return false;
 	}
 	return true;
+#else
+	UERROR("CameraOpenNICV requires OpenCV's OpenNI (v1) VideoCapture backend, which was removed in OpenCV 5. Use CameraOpenNI2 instead.");
+	return false;
+#endif
 }
 
 bool CameraOpenNICV::isCalibrated() const
@@ -112,8 +117,10 @@ SensorData CameraOpenNICV::captureImage(SensorCaptureInfo * info)
 	{
 		_capture.grab();
 		cv::Mat depth, rgb;
+#if CV_MAJOR_VERSION < 5
 		_capture.retrieve(depth, CV_CAP_OPENNI_DEPTH_MAP );
 		_capture.retrieve(rgb, CV_CAP_OPENNI_BGR_IMAGE );
+#endif
 
 		depth = depth.clone();
 		rgb = rgb.clone();

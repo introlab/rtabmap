@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include <opencv2/core/eigen.hpp>
-#include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 
 #ifdef RTABMAP_OPENVINS
 #include "core/VioManager.h"

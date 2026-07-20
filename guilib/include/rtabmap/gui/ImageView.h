@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QRectF>
 #include <QtCore/QMultiMap>
 #include <QtCore/QSettings>
-#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <map>
 #include "rtabmap/utilite/UCv2Qt.h"
 #include <rtabmap/core/CameraModel.h>

@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UDirectory.h>
-#include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 
 #ifdef RTABMAP_REALSENSE2
 #include <librealsense2/rsutil.h>

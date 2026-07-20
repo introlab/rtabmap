@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include <pcl/common/transforms.h>
-#include <opencv2/imgproc/types_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 #include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2

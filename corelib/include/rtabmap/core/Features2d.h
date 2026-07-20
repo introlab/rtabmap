@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <list>
 #include <numeric>
 #include "rtabmap/core/Parameters.h"
@@ -70,6 +70,10 @@ class BriefDescriptorExtractor;
 class SIFT;
 #endif
 class SURF;
+#if CV_MAJOR_VERSION >= 5
+class BRISK;
+class KAZE;
+#endif
 }
 namespace cuda {
 class FastFeatureDetector;
@@ -78,6 +82,13 @@ class SURF_CUDA;
 class CornersDetector;
 }
 }
+#if CV_MAJOR_VERSION >= 5
+// OpenCV 5 moved BRISK/KAZE from the core module to xfeatures2d (contrib).
+namespace cv {
+using xfeatures2d::BRISK;
+using xfeatures2d::KAZE;
+}
+#endif
 #if (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <= 3) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<11)))
 typedef cv::xfeatures2d::SIFT CV_SIFT;
 #else

@@ -31,7 +31,7 @@
 
 #include <vector>
 #include <list>
-#include <opencv2/core/core_c.h>
+#include <rtabmap/core/opencv2_compat.h>
 
 
 namespace rtabmap

@@ -32,12 +32,115 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_SRC_OPENCV_STEREORECTIFYFISHEYE_H_
 #define CORELIB_SRC_OPENCV_STEREORECTIFYFISHEYE_H_
 
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #if CV_MAJOR_VERSION >= 3
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/calib3d/calib3d_c.h>
+#endif
 
 #if CV_MAJOR_VERSION >= 4
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/core/core_c.h>
+#else
+// OpenCV 5 removed the legacy C API. Provide the minimal CvMat compatibility the
+// vendored code below relies on, backed by cv::Mat so numerical behavior is unchanged.
+struct CvMat
+{
+	int type;
+	int step;
+	int rows;
+	int cols;
+	union { uchar* ptr; short* s; int* i; float* fl; double* db; } data;
+	cv::Mat backing; // owns storage for cvCreateMat/cvCloneMat; empty for headers
+};
+typedef struct CvSize { int width, height; } CvSize;
+typedef struct CvPoint2D32f { float x, y; } CvPoint2D32f;
+typedef struct CvPoint2D64f { double x, y; } CvPoint2D64f;
+typedef struct CvPoint3D32f { float x, y, z; } CvPoint3D32f;
+typedef struct CvPoint3D64f { double x, y, z; } CvPoint3D64f;
+typedef struct CvScalar { double val[4]; } CvScalar;
+
+#define CV_IS_MAT(m) ((m) != NULL)
+#define CV_ARE_DEPTHS_EQ(m1, m2) (CV_MAT_DEPTH((m1)->type) == CV_MAT_DEPTH((m2)->type))
+#define CV_DEFAULT(val) = val
+#define CV_GEMM_B_T 2
+#define CV_L2 cv::NORM_L2
+#define CV_StsBadArg cv::Error::StsBadArg
+#define CV_StsBadSize cv::Error::StsBadSize
+#define CV_StsNullPtr cv::Error::StsNullPtr
+#define CV_StsUnmatchedFormats cv::Error::StsUnmatchedFormats
+#define CV_StsUnsupportedFormat cv::Error::StsUnsupportedFormat
+
+static inline CvSize cvSize(int w, int h) { CvSize s; s.width = w; s.height = h; return s; }
+static inline CvSize cvSize(const cv::Size& sz) { CvSize s; s.width = sz.width; s.height = sz.height; return s; }
+static inline CvPoint2D32f cvPoint2D32f(double x, double y) { CvPoint2D32f p; p.x = (float)x; p.y = (float)y; return p; }
+static inline CvPoint2D64f cvPoint2D64f(double x, double y) { CvPoint2D64f p; p.x = x; p.y = y; return p; }
+
+static inline cv::Mat cvMatView(const CvMat* m)
+{ return cv::Mat(m->rows, m->cols, CV_MAT_TYPE(m->type), m->data.ptr, (size_t)m->step); }
+namespace cv { static inline cv::Mat cvarrToMat(const ::CvMat* m) { return cvMatView(m); } }
+
+static inline CvMat cvMat(const cv::Mat& m)
+{
+	CvMat self;
+	self.type = m.type() | (m.isContinuous() ? CV_MAT_CONT_FLAG : 0);
+	self.rows = m.rows;
+	self.cols = m.cols;
+	self.step = (int)m.step;
+	self.data.ptr = m.data;
+	return self;
+}
+static inline CvMat cvMat(int rows, int cols, int type, void* data = NULL)
+{
+	CvMat self;
+	self.type = CV_MAT_TYPE(type) | CV_MAT_CONT_FLAG;
+	self.rows = rows;
+	self.cols = cols;
+	self.step = cols * (int)CV_ELEM_SIZE(type);
+	self.data.ptr = (uchar*)data;
+	return self;
+}
+static inline CvMat* cvCreateMat(int rows, int cols, int type)
+{
+	CvMat* m = new CvMat();
+	m->backing = cv::Mat(rows, cols, CV_MAT_TYPE(type));
+	m->type = CV_MAT_TYPE(type) | CV_MAT_CONT_FLAG;
+	m->rows = rows;
+	m->cols = cols;
+	m->step = (int)m->backing.step;
+	m->data.ptr = m->backing.data;
+	return m;
+}
+static inline CvMat* cvCloneMat(const CvMat* src)
+{
+	CvMat* m = cvCreateMat(src->rows, src->cols, CV_MAT_TYPE(src->type));
+	cvMatView(src).copyTo(m->backing);
+	return m;
+}
+static inline void cvReleaseMat(CvMat** m) { if (m && *m) { delete *m; *m = NULL; } }
+static inline void cvZero(CvMat* m) { cv::Mat d = cvMatView(m); d.setTo(cv::Scalar::all(0)); }
+static inline void cvCopy(const CvMat* src, CvMat* dst) { cv::Mat d = cvMatView(dst); cvMatView(src).copyTo(d); }
+static inline void cvConvert(const CvMat* src, CvMat* dst) { cv::Mat d = cvMatView(dst); cvMatView(src).convertTo(d, d.type()); }
+static inline void cvConvertScale(const CvMat* src, CvMat* dst, double scale, double shift = 0) { cv::Mat d = cvMatView(dst); cvMatView(src).convertTo(d, d.type(), scale, shift); }
+static inline void cvTranspose(const CvMat* src, CvMat* dst) { cv::Mat d = cvMatView(dst); cv::transpose(cvMatView(src), d); }
+static inline void cvGEMM(const CvMat* A, const CvMat* B, double alpha, const CvMat* C, double beta, CvMat* D, int flags = 0) { cv::Mat d = cvMatView(D); cv::gemm(cvMatView(A), cvMatView(B), alpha, C ? cvMatView(C) : cv::Mat(), beta, d, flags); }
+static inline void cvMatMul(const CvMat* A, const CvMat* B, CvMat* D) { cvGEMM(A, B, 1, 0, 0, D, 0); }
+static inline void cvSetIdentity(CvMat* m, double value = 1) { cv::Mat d = cvMatView(m); cv::setIdentity(d, cv::Scalar::all(value)); }
+static inline double cvNorm(const CvMat* A, const CvMat* B, int normType) { return B ? cv::norm(cvMatView(A), cvMatView(B), normType) : cv::norm(cvMatView(A), normType); }
+static inline CvScalar cvAvg(const CvMat* m) { cv::Scalar s = cv::mean(cvMatView(m)); CvScalar r; for (int i = 0; i < 4; ++i) r.val[i] = s[i]; return r; }
+static inline double cvmGet(const CvMat* m, int row, int col) { return ((const double*)((const uchar*)m->data.ptr + (size_t)m->step * row))[col]; }
+static inline void cvmSet(CvMat* m, int row, int col, double val) { ((double*)((uchar*)m->data.ptr + (size_t)m->step * row))[col] = val; }
+static inline double cvVecElem(const CvMat* m, int k) { return m->rows == 1 ? ((const double*)m->data.ptr)[k] : *(const double*)((const uchar*)m->data.ptr + (size_t)m->step * k); }
+static inline void cvSetVecElem(CvMat* m, int k, double v) { if (m->rows == 1) ((double*)m->data.ptr)[k] = v; else *(double*)((uchar*)m->data.ptr + (size_t)m->step * k) = v; }
+static inline void cvCrossProduct(const CvMat* a, const CvMat* b, CvMat* c)
+{
+	double a0 = cvVecElem(a, 0), a1 = cvVecElem(a, 1), a2 = cvVecElem(a, 2);
+	double b0 = cvVecElem(b, 0), b1 = cvVecElem(b, 1), b2 = cvVecElem(b, 2);
+	cvSetVecElem(c, 0, a1 * b2 - a2 * b1);
+	cvSetVecElem(c, 1, a2 * b0 - a0 * b2);
+	cvSetVecElem(c, 2, a0 * b1 - a1 * b0);
+}
+#endif
 
 // Opencv4 doesn't expose those functions below anymore, we should recopy all of them!
 int cvRodrigues2( const CvMat* src, CvMat* dst, CvMat* jacobian CV_DEFAULT(0))
