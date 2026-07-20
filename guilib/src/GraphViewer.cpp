@@ -342,6 +342,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_orientationENU(false),
 		_mouseTracking(false),
 		_viewPlane(XY),
+		_interactionMode(HandMode),
 		_ensureFrameVisible(true),
 		_previousMousePos(-1,-1),
 		_initialMousePos(-1,-1),
@@ -664,6 +665,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			item->setZValue(iter->first<0?21:20);
 			item->setColor(color);
 			item->setParentItem(_graphRoot);
+			item->setFlag(QGraphicsItem::ItemIsSelectable, _interactionMode == SelectionMode);
 			item->show();
 			_nodeItems.insert(iter->first, item);
 			++iter;
@@ -674,6 +676,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			// NodeItem exists for the pose, copy data and increase both iterators
 			UASSERT(iter->first == nter.key());
 			nter.value()->setColor(color); // reset color
+			nter.value()->setFlag(QGraphicsItem::ItemIsSelectable, _interactionMode == SelectionMode);
 			nter.value()->setToolTipInfo(QString());
 			nter.value()->setZValue(iter->first<0?21:20);
 			nter.value()->setPose(iter->second, _viewPlane);
@@ -937,6 +940,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 					item->setZValue(20);
 					item->setColor(_gtPathColor);
 					item->setParentItem(_gtGraphRoot);
+					item->setFlag(QGraphicsItem::ItemIsSelectable, false);
 					item->setVisible(_nodeVisible);
 					_gtNodeItems.insert(iter->first, item);
 				}
@@ -1071,6 +1075,7 @@ void GraphViewer::updateGPSGraph(
 					item->setZValue(20);
 					item->setColor(_gpsPathColor);
 					item->setParentItem(_gpsGraphRoot);
+					item->setFlag(QGraphicsItem::ItemIsSelectable, false);
 					item->setVisible(_nodeVisible);
 					_gpsNodeItems.insert(iter->first, item);
 				}
@@ -1453,6 +1458,53 @@ void GraphViewer::highlightNode(int nodeId, int highlightIndex)
 	}
 }
 
+std::set<int> GraphViewer::getSelectedNodeIds()
+{
+	std::set<int> ids;
+	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter != _nodeItems.end(); iter++)
+	{
+		if(iter.value() && iter.value()->isSelected()) 
+			ids.insert(iter.key());
+	}
+	return ids;
+}
+
+void GraphViewer::selectNodesFromIds(const std::set<int> & ids)
+{
+    this->scene()->blockSignals(true);
+
+    for (QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter != _nodeItems.end(); ++iter)
+    {
+		if(iter.value())
+			iter.value()->setSelected(ids.find(iter.key()) != ids.end());
+    }
+
+    this->scene()->blockSignals(false);
+}
+
+void GraphViewer::setInteractionMode(InteractionMode mode)
+{
+	if(_interactionMode == mode)
+	{
+		return;
+	}
+	_interactionMode = mode;
+	this->setDragMode(mode == HandMode ? QGraphicsView::ScrollHandDrag : QGraphicsView::RubberBandDrag);
+	this->setRubberBandSelectionMode(Qt::IntersectsItemShape);
+	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter != _nodeItems.end(); iter++)
+	{
+		if(iter.value())
+		{
+			iter.value()->setFlag(QGraphicsItem::ItemIsSelectable, mode == SelectionMode);
+		}
+	}
+	if(mode == HandMode && this->scene())
+	{
+		// for now we keep this commented to allow browsing and selectioning alternatively
+		// this->scene()->clearSelection();
+	}
+}
+
 void GraphViewer::clearGraph()
 {
 	qDeleteAll(_nodeItems);
@@ -1566,6 +1618,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("odom_cache_overlay", this->isOdomCacheOverlayVisible());
 	settings.setValue("orientation_ENU", this->isOrientationENU());
 	settings.setValue("view_plane", (int)this->getViewPlane());
+	settings.setValue("interaction_mode", (int)this->getInteractionMode());
 	settings.setValue("ensure_frame_visible", (int)this->isEnsureFrameVisible());
 	settings.setValue("fast_zoom_min_nodes", this->getFastZoomMinNodes());
 	if(!group.isEmpty())
@@ -1618,6 +1671,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setOdomCacheOverlayVisible(settings.value("odom_cache_overlay", this->isOdomCacheOverlayVisible()).toBool());
 	this->setOrientationENU(settings.value("orientation_ENU", this->isOrientationENU()).toBool());
 	this->setViewPlane((ViewPlane)settings.value("view_plane", (int)this->getViewPlane()).toInt());
+	this->setInteractionMode((InteractionMode)settings.value("interaction_mode", (int)this->getInteractionMode()).toInt());
 	this->setEnsureFrameVisible(settings.value("ensure_frame_visible", this->isEnsureFrameVisible()).toBool());
 	this->setFastZoomMinNodes(settings.value("fast_zoom_min_nodes", this->getFastZoomMinNodes()).toInt());
 	if(!group.isEmpty())
@@ -2087,6 +2141,7 @@ void GraphViewer::restoreDefaults()
 	setLocalPathVisible(true);
 	setGtGraphVisible(true);
 	setFastZoomMinNodes(0);
+	setInteractionMode(HandMode);
 }
 
 void GraphViewer::wheelEvent(QWheelEvent * event)
@@ -2123,7 +2178,7 @@ void GraphViewer::mouseMoveEvent(QMouseEvent * event)
 	{
 		QToolTip::hideText();
 	}
-	if (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier) && event->buttons() & Qt::LeftButton) {
+	if (_interactionMode == HandMode && event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier) && event->buttons() & Qt::LeftButton) {
 		// same modifiers than 3D view, change zoom
 		if(_previousMousePos.y()!=0) {
 			qreal factor = (event->pos().y() - _previousMousePos.y() > 0) ? 0.98 : 1.02;
@@ -2198,6 +2253,28 @@ QIcon createIcon(const QColor & color)
 	QPixmap pixmap(50, 50);
 	pixmap.fill(color);
 	return QIcon(pixmap);
+}
+
+QPointF GraphViewer::getNodeScenePosition(int id) const
+{
+	NodeItem * item = _nodeItems.value(id, 0);
+	if(item)
+	{
+		return item->sceneBoundingRect().center();
+	}
+	return QPointF();
+}
+
+void GraphViewer::centerOnNode(int id)
+{
+	QPointF center = this->getNodeScenePosition(id);
+	if(!center.isNull())
+	{
+		const float viewSize = 3.0f * 100.0f; // 3 m in scene units (1 m = 100)
+		QRectF region(center.x() - viewSize/2.0f, center.y() - viewSize/2.0f, viewSize, viewSize);
+		this->fitInView(region, Qt::KeepAspectRatio);
+		this->centerOn(center);
+	}
 }
 
 void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
