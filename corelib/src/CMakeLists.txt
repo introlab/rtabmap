@@ -196,6 +196,33 @@ IF(SQLite3_FOUND)
 		${LIBRARIES}
 		${SQLite3_LIBRARIES}
 	)
+	# The SQLite session extension (used to track DB changes) needs a SQLite built with
+	# SQLITE_ENABLE_SESSION. Check if sqlite is built with it.
+	INCLUDE(CheckCXXSourceCompiles)
+	SET(CMAKE_REQUIRED_INCLUDES ${SQLite3_INCLUDE_DIRS})
+	SET(CMAKE_REQUIRED_LIBRARIES ${SQLite3_LIBRARIES})
+	SET(CMAKE_REQUIRED_DEFINITIONS -DSQLITE_ENABLE_SESSION -DSQLITE_ENABLE_PREUPDATE_HOOK)
+	CHECK_CXX_SOURCE_COMPILES("
+#include <sqlite3.h>
+int main() {
+    sqlite3_session * s = 0;
+    sqlite3session_create((sqlite3*)0, \"main\", &s);
+    sqlite3session_attach(s, 0);
+    int n = 0; void * p = 0;
+    sqlite3session_changeset(s, &n, &p);
+    sqlite3changeset_invert(n, p, &n, &p);
+    sqlite3session_delete(s);
+    return 0;
+}" RTABMAP_SQLITE3_SESSION_AVAILABLE)
+	UNSET(CMAKE_REQUIRED_INCLUDES)
+	UNSET(CMAKE_REQUIRED_LIBRARIES)
+	UNSET(CMAKE_REQUIRED_DEFINITIONS)
+	IF(RTABMAP_SQLITE3_SESSION_AVAILABLE)
+		SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
+		MESSAGE(STATUS "  With SQLite3 session ext  = YES (system SQLite3 ${SQLite3_VERSION})")
+	ELSE()
+		MESSAGE(STATUS "  With SQLite3 session ext  = NO (system SQLite3 ${SQLite3_VERSION} has no session extension)")
+	ENDIF()
 ELSE()
 	SET(SRC_FILES
 		${SRC_FILES}
@@ -205,6 +232,17 @@ ELSE()
 	    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
 		${INCLUDE_DIRS}
 	)
+	FILE(READ ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3/sqlite3.h RTABMAP_BUNDLED_SQLITE3_HEADER)
+	IF(RTABMAP_BUNDLED_SQLITE3_HEADER MATCHES "sqlite3session_create")
+		SET(SQLITE3_SESSION_DEFINITIONS SQLITE_ENABLE_SESSION SQLITE_ENABLE_PREUPDATE_HOOK RTABMAP_WITH_SQLITE3_SESSION)
+		MESSAGE(STATUS "  With SQLite3 session ext  = YES (bundled SQLite3)")
+	ELSE()
+		MESSAGE(FATAL_ERROR "The bundled SQLite amalgamation (corelib/src/sqlite3/sqlite3.h) does not contain "
+			"the session extension (sqlite3session_create not found). It must be a session-enabled "
+			"amalgamation, as the standard sqlite.org amalgamation does NOT include the session extension "
+			"by default. Please vendor a session-enabled SQLite amalgamation.")
+	ENDIF()
+	UNSET(RTABMAP_BUNDLED_SQLITE3_HEADER)
 ENDIF()
 
 IF(TORCH_FOUND)
@@ -830,6 +868,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql.in ${CMA
 
 SET(RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/DatabaseSchema.sql
+	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_23_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_22_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_20_0.sql
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/backward_compatibility/DatabaseSchema_0_18_3.sql
@@ -886,12 +925,19 @@ target_include_directories(rtabmap_core SYSTEM PUBLIC
   "$<BUILD_INTERFACE:${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
   "$<INSTALL_INTERFACE:${PUBLIC_INCLUDE_DIRS}>")
   
-TARGET_LINK_LIBRARIES(rtabmap_core 
-  PUBLIC 
-    rtabmap_utilite 
+TARGET_LINK_LIBRARIES(rtabmap_core
+  PUBLIC
+    rtabmap_utilite
     ${PUBLIC_LIBRARIES}
-  PRIVATE 
+  PRIVATE
     ${LIBRARIES})
+
+# Enable the SQLite session extension for the core sources (bundled sqlite3.c and
+# DBDriverSqlite3.cpp). Kept PRIVATE so it only affects rtabmap_core's own TUs and
+# never changes the public header layout for downstream consumers.
+IF(SQLITE3_SESSION_DEFINITIONS)
+	target_compile_definitions(rtabmap_core PRIVATE ${SQLITE3_SESSION_DEFINITIONS})
+ENDIF()
 
 SET_TARGET_PROPERTIES(
      rtabmap_core

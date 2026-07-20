@@ -146,6 +146,14 @@ public:
 	Transform getPose(int locationId) const;
 	Transform getMapCorrection() const {return _mapCorrection;}
 	const Memory * getMemory() const {return _memory;}
+	// Record changes made to the working database from now until it is closed, then write a
+	// compact delta to outputUrl (empty disables). outputUrl MUST use the ".dbu" (db update)
+	// extension. Call after init(), so the delta reflects only what is added/modified afterwards.
+	// Returns true if recording started (requires the SQLite session extension and a database
+	// version >= 0.24). See DBDriver.
+	// NOTE: recorded changes are held in RAM until the database is closed, so only enable this
+	// when the expected set of changes is small (e.g. appending a few sessions).
+	bool trackDatabaseChanges(const std::string & outputUrl);
 	float getGoalReachedRadius() const {return _goalReachedRadius;}
 	float getLocalRadius() const {return _localRadius;}
 	const Transform & getLastLocalizationPose() const {return _lastLocalizationPose;}

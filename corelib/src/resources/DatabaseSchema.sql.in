@@ -52,6 +52,7 @@ CREATE TABLE Data (
 );
 
 CREATE TABLE Link (
+	id INTEGER PRIMARY KEY,   -- required by the SQLite session extension (DB diff tracking); (from_id,to_id) is not unique (a node pair can have several links)
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
 	type INTEGER NOT NULL,    -- kNeighbor=0, kGlobalClosure=1, kLocalSpaceClosure=2, kLocalTimeClosure=3, kUserClosure=4, kVirtualClosure=5, kNeighborMerged=6, kPosePrior=7, kLandmark=8
@@ -72,6 +73,7 @@ CREATE TABLE Word (
 );
 
 CREATE TABLE Feature (
+	id INTEGER PRIMARY KEY,   -- required by the SQLite session extension (DB diff tracking)
 	node_id INTEGER NOT NULL,
 	word_id INTEGER NOT NULL,
 	pos_x FLOAT NOT NULL,
@@ -89,6 +91,7 @@ CREATE TABLE Feature (
 );
 
 CREATE TABLE GlobalDescriptor (
+	id INTEGER PRIMARY KEY,   -- required by the SQLite session extension (DB diff tracking)
 	node_id INTEGER NOT NULL,
 	type INTEGER NOT NULL,
 	info BLOB,
@@ -99,6 +102,7 @@ CREATE TABLE GlobalDescriptor (
 --
 
 CREATE TABLE Info (
+	id INTEGER PRIMARY KEY,   -- required by the SQLite session extension (DB diff tracking)
 	STM_size INTEGER,
 	last_sign_added INTEGER,
 	process_mem_used INTEGER,
@@ -113,11 +117,12 @@ CREATE TABLE Statistics (
 	stamp FLOAT,
 	data BLOB,              -- compressed string
 	wm_state BLOB,	        -- compressed data
+	PRIMARY KEY (id),
 	FOREIGN KEY (id) REFERENCES Node(id)
 );
 
 CREATE TABLE Admin (
-	version TEXT,
+	version TEXT PRIMARY KEY,
 	preview_image BLOB,      -- compressed image
 	
 	opt_cloud BLOB,          -- compressed data
@@ -176,7 +181,6 @@ CREATE INDEX IDX_Feature_node_id on Feature (node_id);
 CREATE INDEX IDX_GlobalDescriptor_node_id on GlobalDescriptor (node_id);
 CREATE INDEX IDX_Link_from_id on Link (from_id);
 CREATE UNIQUE INDEX IDX_node_label on Node (label);
-CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
 
 -- *******************************************************************
 -- VERSION

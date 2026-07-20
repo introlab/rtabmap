@@ -303,3 +303,13 @@ cd ios
 cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=$sysroot -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_FIND_ROOT_PATH=$prefix -DWITH_QT=OFF -DBUILD_APP=OFF -DBUILD_TOOLS=OFF -DWITH_TORO=OFF -DWITH_VERTIGO=OFF -DWITH_MADGWICK=OFF -DWITH_ORB_OCTREE=ON  -DBUILD_EXAMPLES=OFF -DWITH_LIBLAS=ON -DWITH_OPENGV=OFF ../../../../../..
 cmake --build . --config Release
 cmake --build . --config Release --target install
+
+# rtabmap installs its headers into a version-stamped "rtabmap-<major>.<minor>" directory.
+# Create a version-agnostic "rtabmap-latest" symlink to the just-installed one (newest by
+# modification time) so the Xcode project's header search path does not need updating on every
+# rtabmap minor-version bump. ls -t is used instead of "sort -V" for BSD/macOS portability.
+rtabmap_versioned=$(cd "$prefix/include" && ls -td rtabmap-[0-9]* 2>/dev/null | head -n1)
+if [ -n "$rtabmap_versioned" ]; then
+  ln -sfn "$rtabmap_versioned" "$prefix/include/rtabmap-latest"
+  echo "Linked $prefix/include/rtabmap-latest -> $rtabmap_versioned"
+fi

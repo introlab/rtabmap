@@ -59,6 +59,11 @@ void showUsage(const char * exec)
 			"    --keep_linked  Keep reduced nodes linked to graph.\n"
 			"    --pre_cleanup  Remove all user loop closures linking nodes closer than %s in the graph before reducing the graph.\n"
 			"    --radius #.#   Maximum loop closure distance that can be merged. Default is 1 m. Should be > 0.\n"
+			"    --track-changes \"changes.dbu\"\n"
+			"                   Record the changes made to the database (reduced nodes, removed links) and write a\n"
+			"                   compact delta to the given file. Apply it later on another copy with\n"
+			"                   rtabmap-dbupdate, or revert the reduction done to this database with\n"
+			"                   \"rtabmap-dbupdate --rewind\". Requires the database to be version 0.24 or newer.\n"
 			"    --udebug/--uinfo/--warn can also be used to change verbosity.\n"
 			"\n", exec, Parameters::kMemSTMSize().c_str());
 	exit(1);
@@ -78,11 +83,29 @@ int main(int argc, char * argv[])
 	bool keepLinked = false;
 	float radius = 1.0f;
 	bool preCleanup = false;
+	std::string trackChangesOutput;
 	for(int i=1; i<argc; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
 			showUsage(argv[0]);
+		}
+		else if(std::strcmp(argv[i], "--track-changes") == 0)
+		{
+			++i;
+			if(i < argc-1)
+			{
+				trackChangesOutput = argv[i];
+				if(UFile::getExtension(trackChangesOutput).compare("dbu") != 0)
+				{
+					printf("--track-changes file \"%s\" must have a \".dbu\" (db update) extension!\n", trackChangesOutput.c_str());
+					showUsage(argv[0]);
+				}
+			}
+			else
+			{
+				showUsage(argv[0]);
+			}
 		}
 		else if(std::strcmp(argv[i], "--keep_latest") == 0)
 		{
@@ -118,6 +141,10 @@ int main(int argc, char * argv[])
 	printf("  keep_latest = %s\n", keepLatest?"true":"false");
 	printf("  keep_linked = %s\n", keepLinked?"true":"false");
 	printf("  pre_cleanup = %s\n", preCleanup?"true":"false");
+	if(!trackChangesOutput.empty())
+	{
+		printf("  track-changes = %s\n", trackChangesOutput.c_str());
+	}
 
 #ifdef RTABMAP_PYTHON
 	rtabmap::PythonInterface pythonInterface;
@@ -166,6 +193,14 @@ int main(int argc, char * argv[])
 	}
 	std::set<int> ids = memory.getAllSignatureIds();
 	printf("Initialization... done! %ld nodes loaded. (%f sec)\n", ids.size(), timer.ticks());
+
+	// Record the changes made below (reduced/merged nodes and removed links) into a delta,
+	// applied later on another copy with rtabmap-dbupdate. Started after init so the delta
+	// reflects only what this tool changes.
+	if(!trackChangesOutput.empty())
+	{
+		memory.trackDatabaseChanges(trackChangesOutput);
+	}
 
 	if(ids.empty())
 	{

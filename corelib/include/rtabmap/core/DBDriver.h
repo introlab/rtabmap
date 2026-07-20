@@ -72,6 +72,14 @@ public:
 	const std::string & getUrl() const {return _url;}
 	const std::string & getTargetVersion() const {return _targetVersion;}
 
+	// Start recording changes made to the database until it is closed, then write a compact
+	// delta of those changes to outputUrl (empty disables). outputUrl MUST use the ".dbu"
+	// (db update) extension. Returns true if recording is active. Only the SQLite backend
+	// supports it (session extension + database version >= 0.24); other backends return false.
+	// NOTE: recorded changes are held in RAM until the database is closed, so only enable
+	// this when the expected set of changes is small.
+	virtual bool trackDatabaseChanges(const std::string & outputUrl) {(void)outputUrl; return false;}
+
 	void beginTransaction() const;
 	void commit() const;
 

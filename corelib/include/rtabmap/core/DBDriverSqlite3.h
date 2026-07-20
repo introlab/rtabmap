@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef struct sqlite3_stmt sqlite3_stmt;
 typedef struct sqlite3 sqlite3;
+typedef struct sqlite3_session sqlite3_session;
 
 namespace rtabmap {
 
@@ -49,6 +50,29 @@ public:
 	void setCacheSize(unsigned int cacheSize);
 	void setSynchronous(int synchronous);
 	void setTempStore(int tempStore);
+	// Start recording changes made to the database from now until it is closed, then write
+	// a compact changeset delta to outputUrl (empty disables). outputUrl MUST use the ".dbu"
+	// (db update) extension. Can be called before the connection is opened or on an already-open
+	// connection (e.g. after init(), so the baseline is the current content). Returns true if
+	// recording is active. Only effective if the build/runtime SQLite has the session extension
+	// and the database is version >= 0.24.
+	// NOTE: the SQLite session extension holds ALL recorded changes in RAM until the database
+	// is closed (there is no incremental spill to disk), so only enable this when the expected
+	// set of changes is small (e.g. appending a few sessions), not for rewriting a whole map.
+	virtual bool trackDatabaseChanges(const std::string & outputUrl);
+
+	// Apply a ".dbu" change delta previously written by trackDatabaseChanges() onto the database
+	// at databasePath. The file (which must have the ".dbu" extension) is decompressed (same codec
+	// as the other rtabmap blobs) then applied with the SQLite session extension. With rewind=false,
+	// databasePath must be at the same state the delta was recorded from; with rewind=true, the
+	// delta is inverted first to undo it, so databasePath must be at the post-update state. Returns
+	// true on success; on failure returns false and, if errorMsg is not null, sets a human-readable
+	// message. Requires a SQLite library built with the session extension (both build and runtime).
+	static bool applyChangesFromFile(
+			const std::string & databasePath,
+			const std::string & changesetPath,
+			bool rewind = false,
+			std::string * errorMsg = 0);
 
 protected:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false, bool readOnly = false);
@@ -197,6 +221,7 @@ private:
 	void loadWordIdsQuery(std::list<Signature *> & signatures) const;
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
+	void startChangeTracking(); // attach the change-tracking session on the open connection
 
 protected:
 	sqlite3 * _ppDb;
@@ -209,6 +234,12 @@ private:
 	int _journalMode;
 	int _synchronous;
 	int _tempStore;
+
+	// DB change tracking (SQLite session extension). Members are always present to keep
+	// the class layout stable regardless of RTABMAP_WITH_SQLITE3_SESSION; the session is
+	// only created/used when the feature is compiled in and enabled.
+	sqlite3_session * _session;
+	std::string _trackChangesOutput;
 };
 
 }

@@ -39,6 +39,11 @@ jobs:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
     steps:
     - uses: actions/checkout@v4
+    # Newer osrf/ros images (e.g. rolling) ship "ros2-testing-apt-source", which conflicts
+    # with the "ros2-apt-source" package that setup-ros installs. Remove it first so setup-ros
+    # can install its apt source cleanly (no-op on images that don't have it).
+    - name: Remove conflicting ros2 apt source package
+      run: apt-get remove -y ros2-testing-apt-source || true
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}

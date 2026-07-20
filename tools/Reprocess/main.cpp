@@ -85,6 +85,12 @@ void showUsage()
 			"     -stop_loop  Stop after the first loop closure is detected.\n"
 			"     -a          Append mode: if Mem/IncrementalMemory is true, RTAB-Map is initialized with the first input database,\n"
 			"                 then next databases are reprocessed on top of the first one.\n"
+			"     --track-changes \"changes.dbu\"\n"
+			"                 Only with append mode (-a): record the changes made on top of the first (copied) database and\n"
+			"                 write a compact delta to the given file. Apply\n"
+			"                 it later on the original database with rtabmap-dbupdate. Requires the database to be version\n"
+			"                 0.24 or newer. Note: the recorded changes are held in memory until closing, so use this only\n"
+			"                 when appending a small amount.\n"
 			"     -cam #      Camera index to stream. Ignored if a database doesn't contain multi-camera data. Can also be multiple \n"
 			"                 indices split by spaces in a string like \"0 2\" to stream cameras 0 and 2 only.\n"
 			"     -cam_tf \"x y z roll pitch yaw\" Camera local transform override(s) without optical rotation. For multi-cameras, \n"
@@ -298,6 +304,7 @@ int main(int argc, char * argv[])
 	int stopMapId = -1;
 	bool stopOnLoopClosure = false;
 	bool appendMode = false;
+	std::string trackChangesOutput;
 	std::vector<unsigned int> cameraIndices;
 	std::vector<Transform> cameraLocalTransformOverrides;
 	std::vector<float> cameraLocalTransformOffsetOverrides;
@@ -454,6 +461,25 @@ int main(int argc, char * argv[])
 		{
 			appendMode = true;
 			printf("Append mode enabled (initialize with first database then reprocess next ones)\n");
+		}
+		else if (strcmp(argv[i], "--track-changes") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				trackChangesOutput = argv[i];
+				if(UFile::getExtension(trackChangesOutput).compare("dbu") != 0)
+				{
+					printf("--track-changes file \"%s\" must have a \".dbu\" (db update) extension!\n", trackChangesOutput.c_str());
+					showUsage();
+				}
+				printf("Change tracking enabled, delta will be written to \"%s\" (apply later with rtabmap-dbupdate).\n", trackChangesOutput.c_str());
+			}
+			else
+			{
+				printf("Missing value for --track-changes option!\n");
+				showUsage();
+			}
 		}
 		else if (strcmp(argv[i], "-cam") == 0 || strcmp(argv[i], "--cam") == 0)
 		{
@@ -936,6 +962,22 @@ int main(int argc, char * argv[])
 
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
+
+	// Start change tracking now, after init loaded the copied baseline database, so the
+	// delta captures only what reprocessing appends. Only meaningful in append mode, where
+	// the output starts as a copy of the first input database.
+	if(!trackChangesOutput.empty())
+	{
+		if(appendMode)
+		{
+			rtabmap.trackDatabaseChanges(trackChangesOutput);
+		}
+		else
+		{
+			printf("Warning: --track-changes requires append mode (-a); it is ignored because "
+				   "append mode is not enabled.\n");
+		}
+	}
 
 	if(!incrementalMemory && locNull)
 	{

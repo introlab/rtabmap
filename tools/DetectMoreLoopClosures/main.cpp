@@ -59,6 +59,11 @@ void showUsage()
 			"    --intra       Add only intra-session loop closures.\n"
 			"    --inter       Add only inter-session loop closures.\n"
 			"    --session #   Add loop closures only from/to that map session ID (use -1 for last session).\n"
+			"    --track-changes \"changes.dbu\"\n"
+			"                  Record the changes made to the database (added loop closures) and write a compact\n"
+			"                  delta to the given file. Apply it later on another copy with rtabmap-dbupdate, or\n"
+			"                  revert the loop closures added to this database with \"rtabmap-dbupdate --rewind\".\n"
+			"                  Requires the database to be version 0.24 or newer.\n"
 			"\n%s", Parameters::showUsage());
 	exit(1);
 }
@@ -110,11 +115,29 @@ int main(int argc, char * argv[])
 	bool intraSession = false;
 	bool interSession = false;
 	int fromToMapId = -2;
+	std::string trackChangesOutput;
 	for(int i=1; i<argc-1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
 		{
 			showUsage();
+		}
+		else if(std::strcmp(argv[i], "--track-changes") == 0)
+		{
+			++i;
+			if(i<argc-1)
+			{
+				trackChangesOutput = argv[i];
+				if(UFile::getExtension(trackChangesOutput).compare("dbu") != 0)
+				{
+					printf("--track-changes file \"%s\" must have a \".dbu\" (db update) extension!\n", trackChangesOutput.c_str());
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
 		}
 		else if(std::strcmp(argv[i], "--intra") == 0)
 		{
@@ -217,6 +240,10 @@ int main(int argc, char * argv[])
 	{
 		printf("Inter-session only\n");
 	}
+	if(!trackChangesOutput.empty())
+	{
+		printf("Track changes = %s\n", trackChangesOutput.c_str());
+	}
 
 	if(!intraSession && !interSession)
 	{
@@ -251,6 +278,13 @@ int main(int argc, char * argv[])
 	uInsert(parameters, inputParams);
 	rtabmap.init(parameters, dbPath);
 	printf("Initialization... done! (%f sec)\n", timer.ticks());
+
+	// Record the changes made below (added loop closures) into a delta, applied later with
+	// rtabmap-dbupdate. Started after init so the delta reflects only what this tool changes.
+	if(!trackChangesOutput.empty())
+	{
+		rtabmap.trackDatabaseChanges(trackChangesOutput);
+	}
 
 	float xMin, yMin, cellSize;
 	bool haveOptimizedMap = !rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty();
