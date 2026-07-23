@@ -1959,7 +1959,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			models.insert(std::make_pair(2, cameraModelsTo));
 
 			std::map<int, std::map<int, FeatureBA> > wordReferences;
-			std::set<int> sbaOutliers;
+			BAOutliers sbaOutliers;
 			UDEBUG("");
 			for(unsigned int i=0; i<inliers.size(); ++i)
 			{
@@ -2036,25 +2036,35 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				UDEBUG("Pose optimization: %s -> %s", transform.prettyPrint().c_str(), optimizedPoses.rbegin()->second.prettyPrint().c_str());
 
-				if(sbaOutliers.size())
+				int sbaOutliersCount = 0;
+				for(unsigned int i=0; i<inliers.size(); ++i)
+				{
+					BAOutliers::const_iterator iter = sbaOutliers.find(inliers[i]);
+					if(iter != sbaOutliers.end() && iter->second.find(2) != iter->second.end())
+					{
+						++sbaOutliersCount;
+					}
+				}
+				if(sbaOutliersCount)
 				{
 					std::vector<int> newInliers(inliers.size());
 					int oi=0;
 					for(unsigned int i=0; i<inliers.size(); ++i)
 					{
-						if(sbaOutliers.find(inliers[i]) == sbaOutliers.end())
+						BAOutliers::const_iterator iter = sbaOutliers.find(inliers[i]);
+						if(iter == sbaOutliers.end() || iter->second.find(2) == iter->second.end())
 						{
 							newInliers[oi++] = inliers[i];
 						}
 					}
 					newInliers.resize(oi);
-					UDEBUG("BA outliers ratio %f", float(sbaOutliers.size())/float(inliers.size()));
+					UDEBUG("BA outliers ratio %f", float(sbaOutliersCount)/float(inliers.size()));
 					inliers = newInliers;
 				}
 				if((int)inliers.size() < _minInliers)
 				{
 					msg = uFormat("Not enough inliers after bundle adjustment %d/%d (matches=%d) between %d and %d",
-							(int)inliers.size(), _minInliers, (int)inliers.size()+sbaOutliers.size(), fromSignature.id(), toSignature.id());
+							(int)inliers.size(), _minInliers, (int)inliers.size()+sbaOutliersCount, fromSignature.id(), toSignature.id());
 					transform.setNull();
 				}
 				else

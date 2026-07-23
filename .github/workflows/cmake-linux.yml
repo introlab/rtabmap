@@ -31,7 +31,7 @@ jobs:
         - build_name: ubuntu-24.04
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_TESTING=ON"
         - build_name: ubuntu-24.04-with-opengv
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
@@ -66,6 +66,11 @@ jobs:
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Test G2O bundle adjustment outlier handling
+      if: matrix.build_name == 'ubuntu-24.04'
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure -R '^optimizer_g2o_ba_outliers$'
 
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
