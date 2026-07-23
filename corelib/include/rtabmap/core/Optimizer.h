@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <map>
 #include <list>
+#include <set>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
@@ -54,6 +55,8 @@ public:
 	cv::Mat descriptor;
 	int cameraIndex;
 };
+
+typedef std::map<int, std::set<int> > BAOutliers; // <word ID, rejected pose IDs>, matching wordReferences
 
 ////////////////////////////////////////////
 // Graph optimizers
@@ -140,7 +143,7 @@ public:
 			const std::map<int, std::vector<CameraModel> > & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/depth/descriptor>
-			std::set<int> * outliers = 0);
+			BAOutliers * outliers = 0);
 
 	std::map<int, Transform> optimizeBA(
 			int rootId,
@@ -165,7 +168,7 @@ public:
 			const CameraModel & model,
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-			std::set<int> * outliers = 0);
+			BAOutliers * outliers = 0);
 
 	void computeBACorrespondences(
 			const std::map<int, Transform> & poses,

@@ -467,14 +467,23 @@ Transform OdometryF2M::computeTransform(
 
 							UDEBUG("sba...start");
 							// set root negative to fix all other poses
-							std::set<int> sbaOutliers;
+							BAOutliers sbaOutliers;
 							UTimer bundleTimer;
 							bundlePoses = sba_->optimizeBA(-lastFrame_->id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 							bundleTime = bundleTimer.ticks();
 							UDEBUG("sba...end");
-							totalBundleOutliers = (int)sbaOutliers.size();
+							int sbaOutliersCount = 0;
+							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
+							{
+								BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
+								if(iter != sbaOutliers.end() && iter->second.find(lastFrame_->id()) != iter->second.end())
+								{
+									++sbaOutliersCount;
+								}
+							}
+							totalBundleOutliers = sbaOutliersCount;
 
-							UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime, (int)bundlePoses.size(), (int)bundleWordReferences_.size(), (int)sbaOutliers.size());
+							UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime, (int)bundlePoses.size(), (int)bundleWordReferences_.size(), sbaOutliersCount);
 							if(info)
 							{
 								info->localBundlePoses = bundlePoses;
@@ -491,14 +500,15 @@ Transform OdometryF2M::computeTransform(
 									{
 										info->localBundleOutliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 									}
-									if(sbaOutliers.size())
+									if(sbaOutliersCount)
 									{
 										regInfo.inliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 										std::vector<int> newInliers(regInfo.inliersIDs.size());
 										int oi=0;
 										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 										{
-											if(sbaOutliers.find(regInfo.inliersIDs[i]) == sbaOutliers.end())
+											BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
+											if(iter == sbaOutliers.end() || iter->second.find(lastFrame_->id()) == iter->second.end())
 											{
 												newInliers[oi++] = regInfo.inliersIDs[i];
 												regInfo.inliersPerCam[wordReferences.at(regInfo.inliersIDs[i]).at(lastFrame_->id()).cameraIndex] += 1;
@@ -509,7 +519,7 @@ Transform OdometryF2M::computeTransform(
 											}
 										}
 										newInliers.resize(oi);
-										UDEBUG("BA outliers ratio %f", float(sbaOutliers.size())/float(regInfo.inliersIDs.size()));
+										UDEBUG("BA outliers ratio %f", float(sbaOutliersCount)/float(regInfo.inliersIDs.size()));
 										regInfo.inliers = (int)newInliers.size();
 										regInfo.inliersIDs = newInliers;
 									}

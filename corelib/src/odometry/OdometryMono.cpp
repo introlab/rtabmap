@@ -472,9 +472,8 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 								}
 							}
 
-							std::set<int> outliers;
 							UWARN("Bundle adjustment begin");
-							poses = ba->optimizeBA(poses.begin()->first, poses, links, models, localMap_, wordReferences, &outliers);
+							poses = ba->optimizeBA(poses.begin()->first, poses, links, models, localMap_, wordReferences);
 							UWARN("Bundle adjustment end");
 							if(!poses.empty())
 							{
