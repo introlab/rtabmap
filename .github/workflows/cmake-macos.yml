@@ -26,29 +26,29 @@ jobs:
         include:
         - build_name: macos-sequoia-intel
           os: macos-15-intel
-          deps: opencv@4
+          cv: opencv@4
         - build_name: macos-sequoia-apple-silicon
           os: macos-15
-          deps: opencv@4
+          cv: opencv@4
         - build_name: macos-tahoe-intel
           os: macos-26-intel
-          deps: opencv@4
+          cv: opencv@4
         - build_name: macos-tahoe-apple-silicon
           os: macos-26
-          deps: opencv@4
+          cv: opencv@4
         - build_name: macos-tahoe-intel-cv5
           os: macos-26-intel
-          deps: opencv
+          cv: opencv
         - build_name: macos-tahoe-apple-silicon-cv5
           os: macos-26
-          deps: opencv
+          cv: opencv
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Brew Dependencies
       run: |
         # Update brew and install from Brewfile if present, or specific packages
-        brew install pcl octomap pdal yaml-cpp librealsense libfreenect libusb zlib libomp suite-sparse ceres-solver
+        brew install pcl octomap pdal yaml-cpp librealsense libfreenect libusb zlib libomp suite-sparse ceres-solver ${{ matrix.cv }}
 
     - name: Install Source Dependencies
       # Build (and per-dependency cache) the source-only deps not available from
