@@ -26,6 +26,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "rtabmap/core/Graph.h"
 
+#if CV_MAJOR_VERSION < 5
+#include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/geometry.hpp>
+#endif
+
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
