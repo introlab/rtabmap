@@ -31,9 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Version.h>
-#ifdef WIN32
 #include <rtabmap/core/Parameters.h>
-#endif
 
 #include "rtflann/flann.hpp"
 #include <boost/crc.hpp>
@@ -179,8 +177,8 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 			
 			indexData.resize(bytes_written+headerSizeBytes);
 			indexData.shrink_to_fit();
-			int rebalancingFactorAsInt;
-			memcpy(&rebalancingFactorAsInt, &rebalancingFactor_, sizeof(rebalancingFactor_));
+			int rebalancingFactorAsInt; // Deprecated
+			memcpy(&rebalancingFactorAsInt, &rebalancingFactor_, sizeof(rebalancingFactor_)); // Deprecated
 			int crcValueAsInt;
 			memcpy(&crcValueAsInt, &crcValue, sizeof(crcValue));
 			int header[FLANN_INDEX_HEADER_SIZE] = {
@@ -188,7 +186,7 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 					algorithm_,                                                          // 3,
 					featuresDim_,                                                        // 4,
 					useDistanceL1_?1:0,                                                  // 5,
-					rebalancingFactorAsInt,                                              // 6,
+					rebalancingFactorAsInt,                                              // 6, Deprecated
 					dataRows,                                                            // 7,
 					dataCols,                                                            // 8,			
 					dataType,                                                            // 9,
@@ -199,7 +197,7 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 				header[3],
 				header[4],
 				header[5],
-				rebalancingFactor_,
+				rebalancingFactor_, // Deprecated
 				header[7], header[8], header[9], crcValueAsInt, 
 				header[11]);
 			memcpy(indexData.data(), header, headerSizeBytes);
@@ -405,8 +403,8 @@ bool FlannIndex::loadIndex(
 	int savedAlgorithm = header[3];
 	int savedDim = header[4];
 	bool savedDistanceL1 = header[5]==1;
-	float savedRebalancingFactor;
-	memcpy(&savedRebalancingFactor, &header[6], sizeof(header[6]));
+	float savedRebalancingFactor; // Deprecated
+	memcpy(&savedRebalancingFactor, &header[6], sizeof(header[6])); // Deprecated
 	int savedRows = header[7];
 	int savedCols = header[8];
 	int savedType = header[9];
@@ -414,12 +412,13 @@ bool FlannIndex::loadIndex(
 	 memcpy(&savedCrc, &header[10], sizeof(header[10]));
 	int savedIndexSize = header[11];
 
-	UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f data(%dx%d type=%d, crc=%X) %d", 
+	UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f (deprecated, using %f instead) data(%dx%d type=%d, crc=%X) index size = %d bytes", 
 				header[0],header[1],header[2],
 				header[3],
 				header[4],
 				header[5],
-				savedRebalancingFactor,
+				savedRebalancingFactor, // Deprecated
+				rebalancingFactor,
 				header[7], header[8], header[9], savedCrc, 
 				header[11]);
 
@@ -438,12 +437,6 @@ bool FlannIndex::loadIndex(
 	if(savedDistanceL1 != useDistanceL1) {
 		if(error) {
 			*error = uFormat("Serialized \"use distance L1\" (%s) doesn't match the expected one (%s).", savedDistanceL1?"true":"false", useDistanceL1?"true":"false");
-		}
-		return false;
-	}
-	if(savedRebalancingFactor != rebalancingFactor) {
-		if(error) {
-			*error = uFormat("Serialized \"rebalancing factor\" (%f) doesn't match the expected one (%f).", savedRebalancingFactor, rebalancingFactor);
 		}
 		return false;
 	}
