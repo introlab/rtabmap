@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/core/util2d.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_K4W2
 #include <Kinect.h>
@@ -486,11 +485,11 @@ SensorData CameraK4W2::captureImage(SensorCaptureInfo * info)
 									{
 										cv::Mat tmp;
 										cv::resize(cv::Mat(nColorHeight, nColorWidth, CV_8UC4, pColorBuffer), tmp, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
-										cv::cvtColor(tmp, imageColor, CV_BGRA2BGR);
+										cv::cvtColor(tmp, imageColor, cv::COLOR_BGRA2BGR);
 									}
 									else
 									{
-										cv::cvtColor(cv::Mat(nColorHeight, nColorWidth, CV_8UC4, pColorBuffer), imageColor, CV_BGRA2BGR);
+										cv::cvtColor(cv::Mat(nColorHeight, nColorWidth, CV_8UC4, pColorBuffer), imageColor, cv::COLOR_BGRA2BGR);
 									}
 									// loop over output pixels
 									for (int depthIndex = 0; depthIndex < (nDepthWidth*nDepthHeight); ++depthIndex)

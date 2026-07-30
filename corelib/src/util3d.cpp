@@ -41,7 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/transforms.h>
 #include <pcl/common/common.h>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgproc/types_c.h>
 
 namespace rtabmap
 {
@@ -892,7 +891,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	cv::Mat leftMono;
 	if(leftColor.channels() == 3)
 	{
-		cv::cvtColor(leftColor, leftMono, CV_BGR2GRAY);
+		cv::cvtColor(leftColor, leftMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
@@ -902,7 +901,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	cv::Mat rightMono;
 	if(rightColor.channels() == 3)
 	{
-		cv::cvtColor(rightColor, rightMono, CV_BGR2GRAY);
+		cv::cvtColor(rightColor, rightMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
@@ -1038,7 +1037,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		cv::Mat leftMono;
 		if(sensorData.imageRaw().channels() == 3)
 		{
-			cv::cvtColor(sensorData.imageRaw(), leftMono, CV_BGR2GRAY);
+			cv::cvtColor(sensorData.imageRaw(), leftMono, cv::COLOR_BGR2GRAY);
 		}
 		else
 		{
@@ -1048,7 +1047,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsFromSensorData(
 		cv::Mat rightMono;
 		if(sensorData.rightRaw().channels() == 3)
 		{
-			cv::cvtColor(sensorData.rightRaw(), rightMono, CV_BGR2GRAY);
+			cv::cvtColor(sensorData.rightRaw(), rightMono, cv::COLOR_BGR2GRAY);
 		}
 		else
 		{

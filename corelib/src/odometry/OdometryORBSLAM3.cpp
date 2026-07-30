@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UFile.h"
 #include <pcl/common/transforms.h>
-#include <opencv2/imgproc/types_c.h>
 #include <rtabmap/core/odometry/OdometryORBSLAM3.h>
 
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
@@ -469,12 +468,12 @@ Transform OdometryORBSLAM3::computeTransform(
 		cv::Mat leftMono = data.imageRaw();
         if(data.imageRaw().channels() == 3) {
 			leftMono = cv::Mat();
-			cv::cvtColor(data.imageRaw(), leftMono, CV_BGR2GRAY);
+			cv::cvtColor(data.imageRaw(), leftMono, cv::COLOR_BGR2GRAY);
 		}
 		cv::Mat rightMono = data.rightRaw();
         if(data.rightRaw().channels() == 3) {
 			rightMono = cv::Mat();
-			cv::cvtColor(data.imageRaw(), rightMono, CV_BGR2GRAY);
+			cv::cvtColor(data.imageRaw(), rightMono, cv::COLOR_BGR2GRAY);
 		}
 		UDEBUG("Adding Stereo Frame %f", data.stamp());
 		Tcw = orbslam_->TrackStereo(leftMono, rightMono, data.stamp(), orbslamImus_);

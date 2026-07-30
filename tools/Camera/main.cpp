@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UConversion.h"
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/highgui/highgui_c.h>
 #include <stdio.h>
 
 void showUsage()
@@ -178,7 +177,7 @@ int main(int argc, char * argv[])
 
 	cv::Mat rgb;
 	rgb = camera->takeImage().imageRaw();
-	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
+	cv::namedWindow("Video", cv::WINDOW_AUTOSIZE); // create window
 	while(!rgb.empty())
 	{
 		cv::imshow("Video", rgb); // show frame

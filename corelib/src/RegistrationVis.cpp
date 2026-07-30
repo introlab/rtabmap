@@ -43,7 +43,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
-#include <opencv2/core/core_c.h>
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/geometry.hpp>
+#endif
 
 #if defined(HAVE_OPENCV_XFEATURES2D) && (CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1))
 #include <opencv2/xfeatures2d.hpp> // For GMS matcher
@@ -2172,7 +2174,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			if(!transform.isNull() && !pcaData.empty())
 			{
 				cv::Mat pcaEigenVectors, pcaEigenValues;
-				cv::PCA pca_analysis(pcaData, cv::Mat(), CV_PCA_DATA_AS_ROW);
+				cv::PCA pca_analysis(pcaData, cv::Mat(), cv::PCA::DATA_AS_ROW);
 				// We take the second eigen value
 				info.inliersDistribution = pca_analysis.eigenvalues.at<float>(0, 1);
 

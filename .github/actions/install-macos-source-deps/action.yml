@@ -124,7 +124,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.temp }}/deps-stage/depthai
-        key: depthai-2.32.0-usrlocal-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/depthai-2.32.0-hunter-macos.patch') }}-${{ steps.depver.outputs.hash }}
+        key: depthai-2.32.0-usrlocal-nocv-${{ inputs.os }}-${{ hashFiles('.github/actions/install-macos-source-deps/patches/depthai-2.32.0-hunter-macos.patch') }}-${{ steps.depver.outputs.hash }}
 
     - name: Build depthai
       if: steps.cache-depthai.outputs.cache-hit != 'true'
@@ -161,6 +161,7 @@ runs:
           -DDEPTHAI_ENABLE_CURL=OFF \
           -DDEPTHAI_BUILD_TESTS=OFF \
           -DDEPTHAI_BUILD_EXAMPLES=OFF \
+          -DDEPTHAI_OPENCV_SUPPORT=OFF \
           -DCMAKE_PREFIX_PATH="$(brew --prefix zlib)"
         "$CMAKE3" --build build -j$NPROC
         DESTDIR="$STAGE" "$CMAKE3" --install build

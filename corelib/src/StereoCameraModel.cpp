@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 #endif
 
@@ -179,12 +179,20 @@ void StereoCameraModel::updateStereoRectification()
 	{
 		cv::Vec4d D_left(left_.D_raw().at<double>(0,0), left_.D_raw().at<double>(0,1), left_.D_raw().at<double>(0,4), left_.D_raw().at<double>(0,5));
 		cv::Vec4d D_right(right_.D_raw().at<double>(0,0), right_.D_raw().at<double>(0,1), right_.D_raw().at<double>(0,4), right_.D_raw().at<double>(0,5));
-
+#if CV_MAJOR_VERSION < 5
 		stereoRectifyFisheye(
 				left_.K_raw(), D_left,
 				right_.K_raw(), D_right,
 				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
 				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+#else
+		double balance = 0.0, fov_scale = 1.0;
+		cv::fisheye::stereoRectify(
+				left_.K_raw(), D_left,
+				right_.K_raw(), D_right,
+				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+				cv::CALIB_ZERO_DISPARITY, left_.imageSize(), balance, fov_scale);
+#endif
 
 		// Re-zoom to original focal distance
 		if(P1.at<double>(0,0) < 0)

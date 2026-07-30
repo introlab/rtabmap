@@ -32,7 +32,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <list>
 #include <numeric>
 #include "rtabmap/core/Parameters.h"
@@ -70,6 +74,10 @@ class BriefDescriptorExtractor;
 class SIFT;
 #endif
 class SURF;
+#if (CV_MAJOR_VERSION == 5)
+class BRISK;
+class KAZE;
+#endif
 }
 namespace cuda {
 class FastFeatureDetector;
@@ -89,7 +97,13 @@ typedef cv::xfeatures2d::FREAK CV_FREAK;
 typedef cv::xfeatures2d::DAISY CV_DAISY;
 typedef cv::GFTTDetector CV_GFTT;
 typedef cv::xfeatures2d::BriefDescriptorExtractor CV_BRIEF;
+#if (CV_MAJOR_VERSION < 5)
 typedef cv::BRISK CV_BRISK;
+typedef cv::KAZE CV_KAZE;
+#else
+typedef cv::xfeatures2d::BRISK CV_BRISK;
+typedef cv::xfeatures2d::KAZE CV_KAZE;
+#endif
 typedef cv::ORB CV_ORB;
 typedef cv::cuda::SURF_CUDA CV_SURF_GPU;
 typedef cv::cuda::ORB CV_ORB_GPU;
@@ -578,7 +592,7 @@ private:
 	int diffusivity_;
 
 #if CV_MAJOR_VERSION > 2
-	cv::Ptr<cv::KAZE> kaze_;
+	cv::Ptr<CV_KAZE> kaze_;
 #endif
 };
 

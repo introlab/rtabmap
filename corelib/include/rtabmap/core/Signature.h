@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/point_types.h>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <opencv2/imgproc/imgproc.hpp>
 #include <map>
 #include <list>
@@ -70,10 +74,10 @@ public:
 	int id() const {return _id;}
 	int mapId() const {return _mapId;}
 
-	void setWeight(int weight) {_modified=_weight!=weight;_weight = weight;}
+	void setWeight(int weight) {_modified=_modified || _weight!=weight;_weight = weight;}
 	int getWeight() const {return _weight;}
 
-	void setLabel(const std::string & label) {_modified=_label.compare(label)!=0;_label = label;}
+	void setLabel(const std::string & label) {_modified=_modified || _label.compare(label)!=0;_label = label;}
 	const std::string & getLabel() const {return _label;}
 
 	double getStamp() const {return _stamp;}

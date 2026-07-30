@@ -34,16 +34,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/StereoDense.h>
-#include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/types_c.h>
 #include <map>
 #include <Eigen/Core>
 
 #if CV_MAJOR_VERSION >= 3
 #include <opencv2/photo/photo.hpp>
+#endif
+
+#if CV_MAJOR_VERSION < 5
+#include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/geometry.hpp>
 #endif
 
 namespace rtabmap
@@ -747,7 +751,7 @@ cv::Mat disparityFromStereoImages(
 	cv::Mat leftMono;
 	if(leftImage.channels() == 3)
 	{
-		cv::cvtColor(leftImage, leftMono, CV_BGR2GRAY);
+		cv::cvtColor(leftImage, leftMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
@@ -2042,8 +2046,8 @@ cv::Mat brightnessAndContrastAuto(const cv::Mat &src, const cv::Mat & mask, floa
     //to calculate grayscale histogram
     cv::Mat gray;
     if (src.type() == CV_8UC1) gray = src;
-    else if (src.type() == CV_8UC3) cvtColor(src, gray, CV_BGR2GRAY);
-    else if (src.type() == CV_8UC4) cvtColor(src, gray, CV_BGRA2GRAY);
+    else if (src.type() == CV_8UC3) cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+    else if (src.type() == CV_8UC4) cvtColor(src, gray, cv::COLOR_BGRA2GRAY);
     if (clipLowHistPercent == 0 && clipHighHistPercent == 0)
     {
         // keep full available range

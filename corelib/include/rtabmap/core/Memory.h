@@ -41,7 +41,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <pcl/pcl_config.h>
 
 namespace rtabmap {
@@ -141,14 +145,18 @@ public:
 			const std::map<int, Transform> & optimizedPoses,
 			int maxGraphDepth) const;
 	void convertToIntermediate(int locationId);
-	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
+	void deleteLocation(int locationId, std::list<int> * deletedWords = 0, bool keepLinkedInDb = false);
 	void saveLocationData(int locationId);
 	void removeLink(int idA, int idB);
 	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true, bool occupancyGrid = true);
 	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false, int direction = 0);
+	void setDummyDictionary(bool enabled);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
+	size_t getWorkingMemSize(bool ignoreIntermediateNodes = false) const;
+	int getWorkingMemIntermediateNodesCount() const {return _workingMemIntermediateNodesCount;}
+	int getStMemIntermediateNodesCount() const {return _stMemIntermediateNodesCount;}
 	const std::set<int> & getStMem() const {return _stMem;}
 	int getMaxStMemSize() const {return _maxStMemSize;}
 	std::multimap<int, Link> getNeighborLinks(int signatureId,
@@ -276,7 +284,6 @@ private:
 	std::list<Signature *> getRemovableSignatures(int count,
 			const std::set<int> & ignoredIds = std::set<int>());
 	int getNextId();
-	void initCountId();
 	void rehearsal(Signature * signature, Statistics * stats = 0);
 	bool rehearsalMerge(int oldId, int newId);
 	bool canBeReduced(const Link & link, float maxDistance, int direction);
@@ -360,6 +367,8 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
+	int _workingMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _workingMem
+	int _stMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _stMem
 	bool _allNodesInWM;
 	bool _receivingOdometryFeatures;
 	GPS _gpsOrigin;
@@ -391,6 +400,8 @@ private:
 	MarkerDetector * _markerDetector;
 
 	GlobalDescriptorExtractor * _globalDescriptorExtractor;
+
+	bool _dummyDictionary;
 };
 
 } // namespace rtabmap

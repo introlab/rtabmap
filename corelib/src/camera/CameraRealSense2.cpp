@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UDirectory.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_REALSENSE2
 #include <librealsense2/rsutil.h>
@@ -1440,7 +1439,7 @@ SensorData CameraRealSense2::captureImage(SensorCaptureInfo * info)
 				cv::Mat bgr;
 				if(rgb.channels() == 3)
 				{
-					cv::cvtColor(rgb, bgr, CV_RGB2BGR);
+					cv::cvtColor(rgb, bgr, cv::COLOR_RGB2BGR);
 				}
 				else
 				{

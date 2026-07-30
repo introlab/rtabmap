@@ -204,7 +204,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
         uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), "0"));      // deactivate global retrieval
         uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDMaxLocalRetrieved(), "0"));    // deactivate local retrieval
         uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemMapLabelsAdded(), "false"));    // don't create map labels
-        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMemoryThr(), "2"));         // keep the WM empty
+        uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMemoryThr(), "1"));         // keep the WM empty
         uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "1"));               // STM=1 -->
         uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), "false"));
         uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), "0"));
