@@ -140,10 +140,12 @@ public:
 
 	/*
 	 * Try to acquire the semaphore, not a blocking call.
-	 * @return true if the semaphore could be acquired with the number specified, false otherwise
+	 * @return 0 if the semaphore was acquired, EAGAIN if it couldn't be taken
+	 *         without waiting.
+	 * @note The Windows overload takes no argument (it always acquires 1).
 	 */
 #ifdef _WIN32
-	bool acquireTry() const
+	int acquireTry() const
 	{
 		// Non-blocking try-acquire: timeout 0, not INFINITE. INFINITE here
 		// turned this into a blocking acquire and hung tests when the count
@@ -151,48 +153,54 @@ public:
 		if(WaitForSingleObject((HANDLE)S, 0) == WAIT_OBJECT_0)
 		{
 			--_count;
-			return true;
+			return 0;
 		}
-		return false;
+		return EAGAIN;
 	}
 #else
-	bool acquireTry(int n)
+	/**
+	 * @param n the number to acquire.
+	 */
+	int acquireTry(int n)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		if(n > _available)
 		{
 			pthread_mutex_unlock(&_waitMutex);
-			return false;
+			return EAGAIN;
 		}
 		_available -= n;
 		pthread_mutex_unlock(&_waitMutex);
-		return true;
+		return 0;
 	}
 #endif
 
 	/**
-	 * Release the semaphore, increasing its value by 1 and
+	 * Release the semaphore, increasing its value by n and
 	 * signaling waiting threads (which called acquire()).
-	 * @return true on success, false otherwise
+	 * @param n the number to release.
+	 * @return 0 on success, ERANGE if the release would push the semaphore over
+	 *         SEM_VALUE_MAX (the count is then left unchanged). The Unix
+	 *         implementation cannot fail and always returns 0.
 	 */
 #ifdef _WIN32
-	bool release(int n = 1) const
+	int release(int n = 1) const
 	{
 		if(ReleaseSemaphore((HANDLE)S, n, 0))
 		{
 			_count += n;
-			return true;
+			return 0;
 		}
-		return false;
+		return ERANGE;
 	}
 #else
-	bool release(int n = 1)
+	int release(int n = 1)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		_available += n;
 		pthread_cond_broadcast(&_cond);
 		pthread_mutex_unlock(&_waitMutex);
-		return true;
+		return 0;
 	}
 #endif
 

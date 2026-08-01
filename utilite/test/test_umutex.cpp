@@ -15,16 +15,17 @@ TEST(UMutexTest, Constructor)
 TEST(UMutexTest, LockUnlock)
 {
     UMutex mutex;
-    EXPECT_TRUE(mutex.lock());
-    EXPECT_TRUE(mutex.unlock());
+    // lock()/unlock() return 0 on success (an error code otherwise).
+    EXPECT_EQ(mutex.lock(), 0);
+    EXPECT_EQ(mutex.unlock(), 0);
 }
 
 TEST(UMutexTest, LockTry)
 {
     UMutex mutex;
     
-    // Try to lock when not locked
-    EXPECT_TRUE(mutex.lockTry());
+    // Try to lock when not locked: lockTry() returns 0 when it took the lock.
+    EXPECT_EQ(mutex.lockTry(), 0);
     
     // Unlock
     mutex.unlock();
@@ -38,14 +39,14 @@ TEST(UMutexTest, LockTryWhenLocked)
     mutex.lock();
     
     // Try to lock from another thread
-    std::atomic<bool> tryResult(false);
+    std::atomic<int> tryResult(0);
     std::thread t([&mutex, &tryResult]() {
-        tryResult = mutex.lockTry(); // Should fail (busy or similar)
+        tryResult = mutex.lockTry(); // Should fail (EBUSY or similar)
     });
     
     t.join();
     
-    EXPECT_FALSE(tryResult);
+    EXPECT_NE(tryResult, 0);
     
     mutex.unlock();
 }
@@ -91,14 +92,14 @@ TEST(UMutexTest, RecursiveLock)
     UMutex mutex;
     
     // Lock multiple times from same thread (should work on Unix)
-    EXPECT_TRUE(mutex.lock());
-    EXPECT_TRUE(mutex.lock());
-    EXPECT_TRUE(mutex.lock());
+    EXPECT_EQ(mutex.lock(), 0);
+    EXPECT_EQ(mutex.lock(), 0);
+    EXPECT_EQ(mutex.lock(), 0);
     
     // Unlock multiple times
-    EXPECT_TRUE(mutex.unlock());
-    EXPECT_TRUE(mutex.unlock());
-    EXPECT_TRUE(mutex.unlock());
+    EXPECT_EQ(mutex.unlock(), 0);
+    EXPECT_EQ(mutex.unlock(), 0);
+    EXPECT_EQ(mutex.unlock(), 0);
 }
 
 TEST(UMutexTest, UScopeMutex)
@@ -110,7 +111,7 @@ TEST(UMutexTest, UScopeMutex)
 
         // Try to lock from another thread
         std::thread t([&mutex]() {
-            EXPECT_FALSE(mutex.lockTry()); // Should fail
+            EXPECT_NE(mutex.lockTry(), 0); // Should fail
         });
         t.join();
     }
@@ -118,7 +119,7 @@ TEST(UMutexTest, UScopeMutex)
     
     // Try to lock from another thread
     std::thread t([&mutex]() {
-        EXPECT_TRUE(mutex.lockTry()); // Should succeed
+        EXPECT_EQ(mutex.lockTry(), 0); // Should succeed
         mutex.unlock();
     });
     t.join();
@@ -134,7 +135,7 @@ TEST(UMutexTest, UScopeMutexWithPointer)
 
         // Try to lock from another thread
         std::thread t([&mutex]() {
-            EXPECT_FALSE(mutex.lockTry()); // Should fail
+            EXPECT_NE(mutex.lockTry(), 0); // Should fail
         });
         t.join();
     }
@@ -142,7 +143,7 @@ TEST(UMutexTest, UScopeMutexWithPointer)
     
     // Try to lock from another thread
     std::thread t([&mutex]() {
-        EXPECT_TRUE(mutex.lockTry()); // Should succeed
+        EXPECT_EQ(mutex.lockTry(), 0); // Should succeed
         mutex.unlock();
     });
     t.join();

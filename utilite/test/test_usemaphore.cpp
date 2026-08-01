@@ -107,30 +107,32 @@ TEST(USemaphoreTest, AcquireTry)
     
     // Try to acquire when available
 #ifdef _WIN32
-    bool result = sem.acquireTry();
-    EXPECT_TRUE(result);
+    // Windows overload returns 0 on success, EAGAIN when nothing is available.
+    int result = sem.acquireTry();
+    EXPECT_EQ(result, 0);
     EXPECT_EQ(sem.value(), 2);
     result = sem.acquireTry();
-    EXPECT_TRUE(result);
+    EXPECT_EQ(result, 0);
     EXPECT_EQ(sem.value(), 1);
     result = sem.acquireTry();
-    EXPECT_TRUE(result);
+    EXPECT_EQ(result, 0);
     EXPECT_EQ(sem.value(), 0);
     // Semaphore is exhausted: the next non-blocking try must fail.
     result = sem.acquireTry();
-    EXPECT_FALSE(result);
+    EXPECT_NE(result, 0);
 #else
+    // Same convention as the Windows overload: 0 on success, EAGAIN otherwise.
     int result = sem.acquireTry(1);
-    EXPECT_TRUE(result);
+    EXPECT_EQ(result, 0);
     EXPECT_EQ(sem.value(), 2);
-    
+
     result = sem.acquireTry(2);
-    EXPECT_TRUE(result);
+    EXPECT_EQ(result, 0);
     EXPECT_EQ(sem.value(), 0);
-    
+
     // Try to acquire when not available
     result = sem.acquireTry(1);
-    EXPECT_FALSE(result);
+    EXPECT_NE(result, 0);
 #endif
 }
 
