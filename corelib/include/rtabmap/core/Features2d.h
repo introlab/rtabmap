@@ -323,13 +323,13 @@ public:
 	SURF(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSurf;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSurf;}
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	double hessianThreshold_;
@@ -351,13 +351,13 @@ public:
 	SIFT(const ParametersMap & parameters = ParametersMap());
 	virtual ~SIFT();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSift;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSift;}
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int nOctaveLayers_;
@@ -386,13 +386,13 @@ public:
 	ORB(const ParametersMap & parameters = ParametersMap());
 	virtual ~ORB();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureOrb;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureOrb;}
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	float scaleFactor_;
@@ -418,13 +418,13 @@ public:
 	FAST(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureUndef;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureUndef;}
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat &, std::vector<cv::KeyPoint> &) const {return cv::Mat();}
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat &, std::vector<cv::KeyPoint> &) const override {return cv::Mat();}
 
 private:
 	int threshold_;
@@ -455,11 +455,11 @@ public:
 	FAST_BRIEF(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST_BRIEF();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureFastBrief;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureFastBrief;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int bytes_;
@@ -474,11 +474,11 @@ public:
 	FAST_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST_FREAK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureFastFreak;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureFastFreak;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -496,11 +496,11 @@ public:
 	GFTT(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT();
 
-	virtual void parseParameters(const ParametersMap & parameters);
+	virtual void parseParameters(const ParametersMap & parameters) override;
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
 
 private:
 	double _qualityLevel;
@@ -521,11 +521,11 @@ public:
 	GFTT_BRIEF(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_BRIEF();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttBrief;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttBrief;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int bytes_;
@@ -540,11 +540,11 @@ public:
 	GFTT_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_FREAK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttFreak;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttFreak;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -562,11 +562,11 @@ public:
 	SURF_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF_FREAK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSurfFreak;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSurfFreak;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -584,11 +584,11 @@ public:
 	GFTT_ORB(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_ORB();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttOrb;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttOrb;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	ORB _orb;
@@ -601,12 +601,12 @@ public:
 	BRISK(const ParametersMap & parameters = ParametersMap());
 	virtual ~BRISK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureBrisk;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureBrisk;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int thresh_;
@@ -623,12 +623,12 @@ public:
 	KAZE(const ParametersMap & parameters = ParametersMap());
 	virtual ~KAZE();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const { return kFeatureKaze; }
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureKaze; }
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool extended_;
@@ -650,12 +650,12 @@ public:
 	ORBOctree(const ParametersMap & parameters = ParametersMap());
 	virtual ~ORBOctree();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureOrbOctree;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureOrbOctree;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	float scaleFactor_;
@@ -676,13 +676,13 @@ public:
 	SuperPointTorch(const ParametersMap & parameters = ParametersMap());
 	virtual ~SuperPointTorch();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const { return kFeatureSuperPointTorch; }
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureSuperPointTorch; }
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 	cv::Ptr<SPDetector> superPoint_;
 
@@ -700,13 +700,13 @@ public:
 	SuperPointRpautrat(const ParametersMap & parameters = ParametersMap());
 	virtual ~SuperPointRpautrat();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const { return kFeatureSuperPointRpautrat; }
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureSuperPointRpautrat; }
 	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 	cv::Ptr<SPDetectorRpautrat> superPoint_;
 
@@ -726,11 +726,11 @@ public:
 	GFTT_DAISY(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_DAISY();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttDaisy;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttDaisy;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -750,11 +750,11 @@ public:
 	SURF_DAISY(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF_DAISY();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSurfDaisy;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSurfDaisy;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
