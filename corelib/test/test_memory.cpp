@@ -897,6 +897,215 @@ TEST_F(MemoryFixture, MoveToTrashBreaksNeighborLinksOnPeers)
 	EXPECT_FALSE(cS->hasLink(B));
 }
 
+TEST(MemoryTest, DeleteLocationKeepLinkedInDbPreservesLinksInLtm)
+{
+	// deleteLocation(id, deletedWords, keepLinkedInDb) forwards keepLinkedInDb as
+	// moveToTrash's keepLinkedToGraph. Here Mem/NotLinkedNodesKept keeps its default
+	// (true), so the node reaches LTM either way and what changes is whether it stays
+	// part of the graph there (see DeleteLocationNotLinkedNodesKeptFalseDiscardsNode
+	// for what happens when that parameter is false):
+	//  - true:  the link-cleanup branch is skipped entirely, so peers keep their
+	//           links to it and its weight/label survive. It remains a normal node.
+	//  - false: (the default) it is unlinked from the graph before being saved --
+	//           links removed on both sides, weight invalidated to -9, label
+	//           cleared -- so it is kept as history only and no longer shows up in
+	//           getAllSignatureIds().
+	// Both runs use the same 3-node chain A-B-C and remove B.
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		const bool keepLinkedInDb = (pass == 0);
+		SCOPED_TRACE(uFormat("keepLinkedInDb=%s", keepLinkedInDb?"true":"false"));
+
+		const std::string dbPath = uniqueDbPath();
+		Memory memory(defaultMemoryParams());
+		ASSERT_TRUE(memory.init(dbPath, true));
+
+		const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		for(int i = 0; i < 3; ++i)
+		{
+			SensorData data(image);
+			ASSERT_TRUE(memory.update(data, Transform(float(i), 0.0f, 0.0f, 0, 0, 0), covariance));
+		}
+		const std::set<int> idsSet = memory.getAllSignatureIds();
+		ASSERT_EQ(idsSet.size(), 3u);
+		std::vector<int> ids(idsSet.begin(), idsSet.end());
+		const int A = ids[0];
+		const int B = ids[1];
+		const int C = ids[2];
+
+		// Give B a distinctive weight/label so we can tell whether moveToTrash
+		// reset them (it sets weight=-9 and clears the label when unlinking).
+		{
+			Signature * bS = const_cast<Signature *>(memory.getSignature(B));
+			ASSERT_NE(bS, nullptr);
+			bS->setWeight(5);
+		}
+		ASSERT_TRUE(memory.labelSignature(B, "middle"));
+		ASSERT_TRUE(memory.getSignature(A)->hasLink(B));
+		ASSERT_TRUE(memory.getSignature(C)->hasLink(B));
+
+		memory.deleteLocation(B, 0, keepLinkedInDb);
+		memory.emptyTrash();
+		memory.joinTrashThread(); // emptyTrash() is async; wait for the DB write
+
+		// Either way B leaves WM/STM.
+		EXPECT_EQ(memory.getSignature(B), nullptr);
+
+		// Peers keep their links to B only when it stays linked in the database.
+		ASSERT_NE(memory.getSignature(A), nullptr);
+		ASSERT_NE(memory.getSignature(C), nullptr);
+		EXPECT_EQ(memory.getSignature(A)->hasLink(B), keepLinkedInDb);
+		EXPECT_EQ(memory.getSignature(C)->hasLink(B), keepLinkedInDb);
+
+		// Same on B's own side, read back from LTM.
+		const std::multimap<int, Link> bLinks = memory.getNeighborLinks(B, true);
+		EXPECT_EQ(!bLinks.empty(), keepLinkedInDb);
+
+		// Mem/NotLinkedNodesKept defaults to true, so the row is in the database in
+		// both cases -- but unlinking also invalidates its weight (-9) and drops its
+		// label, and getAllSignatureIds() filters invalid nodes out by default.
+		EXPECT_EQ(memory.getAllSignatureIds(/*ignoreChildren=*/false).count(B), 1u);
+		EXPECT_EQ(memory.getAllSignatureIds().count(B), keepLinkedInDb ? 1u : 0u);
+		Transform odomPose, groundTruth;
+		int mapId = 0, weight = 0;
+		std::string label;
+		double stamp = 0.0;
+		std::vector<float> velocity;
+		GPS gps;
+		EnvSensors sensors;
+		ASSERT_TRUE(memory.getNodeInfo(B, odomPose, mapId, weight, label, stamp,
+				groundTruth, velocity, gps, sensors, true));
+		EXPECT_EQ(weight, keepLinkedInDb ? 5 : -9);
+		EXPECT_EQ(label, keepLinkedInDb ? std::string("middle") : std::string());
+
+		memory.close(false);
+		UFile::erase(dbPath.c_str());
+	}
+}
+
+TEST(MemoryTest, DeleteLocationNotLinkedNodesKeptFalseDiscardsNode)
+{
+	// Mem/NotLinkedNodesKept=false removes the fallback that keeps unlinked nodes in
+	// LTM, so moveToTrash's save condition
+	//   (_notLinkedNodesKeptInDb || keepLinkedToGraph || s->isSaved())
+	// only holds when the node stays linked (or was already saved). Deleting a
+	// never-saved node with keepLinkedInDb=false therefore drops it outright -- it is
+	// not written to the database at all -- while keepLinkedInDb=true still saves it.
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		const bool keepLinkedInDb = (pass == 0);
+		SCOPED_TRACE(uFormat("keepLinkedInDb=%s", keepLinkedInDb?"true":"false"));
+
+		const std::string dbPath = uniqueDbPath();
+		ParametersMap params = defaultMemoryParams();
+		uInsert(params, ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(dbPath, true));
+
+		const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		for(int i = 0; i < 3; ++i)
+		{
+			SensorData data(image);
+			ASSERT_TRUE(memory.update(data, Transform(float(i), 0.0f, 0.0f, 0, 0, 0), covariance));
+		}
+		const std::set<int> idsSet = memory.getAllSignatureIds();
+		ASSERT_EQ(idsSet.size(), 3u);
+		std::vector<int> ids(idsSet.begin(), idsSet.end());
+		const int B = ids[1];
+
+		// Still in STM, so never written to the database yet.
+		ASSERT_TRUE(memory.isInSTM(B));
+
+		memory.deleteLocation(B, 0, keepLinkedInDb);
+		memory.emptyTrash();
+		memory.joinTrashThread(); // emptyTrash() is async; wait for the DB write
+
+		EXPECT_EQ(memory.getSignature(B), nullptr);
+
+		// Unlinked and not kept -> no row at all; kept linked -> saved as usual.
+		EXPECT_EQ(memory.getAllSignatureIds(/*ignoreChildren=*/false).count(B),
+				keepLinkedInDb ? 1u : 0u);
+
+		Transform odomPose, groundTruth;
+		int mapId = 0, weight = 0;
+		std::string label;
+		double stamp = 0.0;
+		std::vector<float> velocity;
+		GPS gps;
+		EnvSensors sensors;
+		EXPECT_EQ(memory.getNodeInfo(B, odomPose, mapId, weight, label, stamp,
+				groundTruth, velocity, gps, sensors, true), keepLinkedInDb);
+
+		memory.close(false);
+		UFile::erase(dbPath.c_str());
+	}
+}
+
+TEST(MemoryTest, DeleteLocationAlreadySavedNodeIsWrittenBackUnlinked)
+{
+	// Third term of moveToTrash's save condition: even with
+	// Mem/NotLinkedNodesKept=false and keepLinkedInDb=false, a node that was already
+	// pushed to the database (s->isSaved()) is written back rather than discarded --
+	// but unlinked, so the stored row keeps no links and an invalid weight.
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = defaultMemoryParams();
+	uInsert(params, ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
+	Memory memory(params);
+	ASSERT_TRUE(memory.init(dbPath, true));
+
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	for(int i = 0; i < 3; ++i)
+	{
+		SensorData data(image);
+		ASSERT_TRUE(memory.update(data, Transform(float(i), 0.0f, 0.0f, 0, 0, 0), covariance));
+	}
+	const std::set<int> idsSet = memory.getAllSignatureIds();
+	ASSERT_EQ(idsSet.size(), 3u);
+	std::vector<int> ids(idsSet.begin(), idsSet.end());
+	const int A = ids[0];
+	const int B = ids[1];
+	const int C = ids[2];
+
+	// Flush B to the database so it is flagged as saved.
+	memory.saveLocationData(B);
+	memory.emptyTrash();
+	memory.joinTrashThread(); // emptyTrash() is async; wait for the DB write
+	ASSERT_TRUE(memory.getSignature(B)->isSaved());
+
+	memory.deleteLocation(B, 0, /*keepLinkedInDb=*/false);
+	memory.emptyTrash();
+	memory.joinTrashThread(); // emptyTrash() is async; wait for the DB write
+
+	EXPECT_EQ(memory.getSignature(B), nullptr);
+
+	// Kept in the database thanks to isSaved(), unlike the never-saved node of
+	// DeleteLocationNotLinkedNodesKeptFalseDiscardsNode.
+	EXPECT_EQ(memory.getAllSignatureIds(/*ignoreChildren=*/false).count(B), 1u);
+
+	// ... but stored unlinked: peers dropped their links and so did B.
+	EXPECT_FALSE(memory.getSignature(A)->hasLink(B));
+	EXPECT_FALSE(memory.getSignature(C)->hasLink(B));
+	EXPECT_TRUE(memory.getNeighborLinks(B, true).empty());
+
+	Transform odomPose, groundTruth;
+	int mapId = 0, weight = 0;
+	std::string label;
+	double stamp = 0.0;
+	std::vector<float> velocity;
+	GPS gps;
+	EnvSensors sensors;
+	ASSERT_TRUE(memory.getNodeInfo(B, odomPose, mapId, weight, label, stamp,
+			groundTruth, velocity, gps, sensors, true));
+	EXPECT_EQ(weight, -9);
+	EXPECT_EQ(memory.getAllSignatureIds().count(B), 0u);
+
+	memory.close(false);
+	UFile::erase(dbPath.c_str());
+}
+
 TEST_F(MemoryFixture, MoveToTrashTransfersGlobalLoopClosureWeight)
 {
 	// When a removed signature has a kGlobalClosure link to a peer and a positive

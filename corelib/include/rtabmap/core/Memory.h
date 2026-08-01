@@ -352,8 +352,15 @@ public:
 	 * @brief Removes @p locationId from WM/STM and the database.
 	 * @param locationId Id of the signature to delete.
 	 * @param deletedWords Optional output: words whose reference count dropped to zero.
-	 * @param keepLinkedInDb If true, the location is kept in the database with its links
-	 *                       (history only) instead of being removed from the graph.
+	 * @param keepLinkedInDb If true, the location keeps its links, weight and label and
+	 *                       stays part of the graph in the database. If false (default),
+	 *                       it is unlinked first -- links removed on both sides, weight
+	 *                       invalidated, label cleared -- so at best it is kept as
+	 *                       history only and no longer appears in
+	 *                       @ref getAllSignatureIds(). An unlinked location is written
+	 *                       to the database only if it was already saved there or if
+	 *                       @ref Parameters::kMemNotLinkedNodesKept() is true (default);
+	 *                       otherwise it is discarded outright.
 	 */
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0, bool keepLinkedInDb = false);
 	/** @brief Forces @p locationId to be flushed to the database. */
@@ -366,7 +373,15 @@ public:
 	 * @brief Merges @p id with a close neighbor (graph reduction).
 	 * @param id Node to reduce.
 	 * @param maxDistance Maximum distance to a neighbor to allow the merge (meters).
-	 * @param keepLinkedInDb If true, the merged node is kept in the database (history only).
+	 * @param keepLinkedInDb Same meaning as in @ref deleteLocation(): if true, the merged
+	 *                       node keeps its links, weight and label and stays part of the
+	 *                       graph in the database. If false (default), it is unlinked
+	 *                       first -- links removed on both sides, weight invalidated,
+	 *                       label cleared -- so at best it is kept as history only and no
+	 *                       longer appears in @ref getAllSignatureIds(). An unlinked node
+	 *                       is written to the database only if it was already saved there
+	 *                       or if @ref Parameters::kMemNotLinkedNodesKept() is true
+	 *                       (default); otherwise it is discarded outright.
 	 * @param direction Restrict merge target: 0=any, 1=previous neighbor, 2=next neighbor.
 	 * @return Id of the node @p id was merged into, or 0 if no reduction was performed.
 	 */
