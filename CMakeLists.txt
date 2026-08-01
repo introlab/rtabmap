@@ -168,6 +168,12 @@ OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 
+# The unit tests are host executables run by ctest, which can't be done from a
+# cross-compiled Android/iOS build.
+if(ANDROID OR IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+   set(BUILD_TESTING OFF CACHE BOOL "Build the testing tree." FORCE)
+endif()
+
 include(CTest)
 if(BUILD_TESTING)
    # Add GTest using FetchContent
