@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include "rtabmap/core/Stereo.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/utilite/ULogger.h"

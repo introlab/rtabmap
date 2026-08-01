@@ -4,7 +4,11 @@
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Transform.h>
 #include <opencv2/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <cmath>
 
 using namespace rtabmap;

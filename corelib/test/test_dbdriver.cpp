@@ -16,7 +16,11 @@
 #include <rtabmap/utilite/UConversion.h>
 #include "TestUtils.h"
 #include <opencv2/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <chrono>
 #include <cmath>
 #include <cstdio>
