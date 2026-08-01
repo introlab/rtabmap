@@ -343,21 +343,27 @@ Transform runIcp(
 	return t;
 }
 
-// Per-backend recovery tolerance.  PCL and libpointmatcher converge to
-// sub-mm / sub-mrad on the clustered cloud; CCCoreLib runs ~2x looser per
-// axis on the same data because its KD-tree-only correspondence pass can't
-// average out as much noise as the PM matcher chain or PCL's RANSAC reject.
-float recoveryTol(RegistrationIcp::IcpStrategy s)
-{
-	return s == RegistrationIcp::kIcpCCCoreLib ? 1e-2f : 5e-3f;
-}
+// Recovery tolerance, shared by every backend.
+//
+// It must stay comfortably above Icp/Epsilon (1e-3, see baseIcpParams): that is
+// the differential-convergence stop condition, so ICP deliberately stops once an
+// iteration moves less than ~1 mm and a residual of a few mm is expected by
+// construction. Exactly where each backend stops shifts with the library version
+// and the platform's floating-point behaviour -- measured on the same clustered
+// cloud, PCL lands around 3.0 mm and libpointmatcher around 4.6 mm on Linux,
+// while libpointmatcher reaches 5.6 mm on macOS. A 5e-3 bound left no margin over
+// that spread and failed on macOS only; 1e-2 (16% of the 62 mm motion under test)
+// still catches a genuinely broken registration.
+//
+// Tighten this only together with Icp/Epsilon, never on its own.
+constexpr float kRecoveryTol = 1e-2f;
 
 // Parameterized fixture: each test instance runs once per available backend.
 class RegistrationIcpStrategyTest : public ::testing::TestWithParam<RegistrationIcp::IcpStrategy>
 {
 protected:
 	RegistrationIcp::IcpStrategy strategy() const { return GetParam(); }
-	float tol() const { return recoveryTol(strategy()); }
+	float tol() const { return kRecoveryTol; }
 };
 
 }  // namespace
