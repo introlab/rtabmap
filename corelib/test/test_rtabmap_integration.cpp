@@ -2342,29 +2342,38 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					"at default threshold (sortedTP=" << tp << ", sortedFP=" << fp
 					<< ")\n";
 		}
-		else if(acceptedPrec < 0.5f)
-		{
-			std::cerr << "[" << detectorLabel << "] note: accepted-loop precision "
-					<< acceptedPrec << " below 0.5 (TP=" << acceptedTp
-					<< ", FP=" << acceptedFp << ")\n";
-		}
 
+		// Assert on the precision/recall actually delivered at the default
+		// loop-closure threshold rather than on recall@100%P. The latter is
+		// gated by the single highest-scoring false positive, so one
+		// visually-similar frame that the ground truth happens not to flag
+		// drops it from ~0.9 to ~0.2 without the detector getting
+		// meaningfully worse -- which is what made this check flaky. The
+		// accepted P/R is stable across detectors and is what a deployment
+		// observes.
+		//
 		// Binary-descriptor detectors (Hamming-distance BoW: ORB, BRIEF,
 		// FREAK, BRISK) carry less per-keypoint discrimination than the
-		// strong float descriptors (SIFT, SURF, KAZE, SuperPoint) on
-		// this 84-img low-texture set. DAISY descriptors are float but
-		// behave closer to the binary group on this dataset (weaker
-		// per-keypoint discrimination than SIFT/SURF), so they share the
-		// looser floor.
+		// strong float descriptors (SIFT, SURF, KAZE, SuperPoint) on this
+		// 84-img low-texture set, so they miss a few more closures and get
+		// a looser recall floor. DAISY descriptors are float but behave
+		// closer to the binary group on this dataset, so they share it.
+		// Precision is held to the same bar for all.
 		const bool daisyDescriptor =
 				detectorType == Feature2D::kFeatureGfttDaisy ||
 				detectorType == Feature2D::kFeatureSurfDaisy;
-		const float recallFloor =
-				(binaryDescriptors || daisyDescriptor) ? 0.5f : 0.9f;
-		EXPECT_GE(recallAt100p, recallFloor)
-				<< detectorLabel << " recall@100%P=" << recallAt100p
-				<< " is below " << recallFloor
-				<< " (sortedTP=" << tp << ", sortedFP=" << fp << ")";
+		const float kMinPrecision = 0.9f;
+		const float kMinRecall    =
+				(binaryDescriptors || daisyDescriptor) ? 0.8f : 0.9f;
+		EXPECT_GE(acceptedPrec, kMinPrecision)
+				<< detectorLabel << " accepted precision=" << acceptedPrec
+				<< " is below " << kMinPrecision
+				<< " (tp=" << acceptedTp << ", fp=" << acceptedFp << ")";
+		EXPECT_GE(acceptedRec, kMinRecall)
+				<< detectorLabel << " accepted recall=" << acceptedRec
+				<< " is below " << kMinRecall
+				<< " (tp=" << acceptedTp << ", gtPositives=" << gtTotalPositives
+				<< ", missed=" << acceptedFn << ")";
 
 		++detectorsTested;
 		}  // end for(tfIdfUsed)

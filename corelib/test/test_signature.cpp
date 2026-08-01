@@ -108,7 +108,13 @@ TEST(SignatureTest, SetWeight)
     sig.setWeight(10);
     EXPECT_EQ(sig.getWeight(), 10);
     EXPECT_TRUE(sig.isModified());
-    
+
+    // Re-setting the same value doesn't clear a pending modification.
+    sig.setWeight(10);
+    EXPECT_TRUE(sig.isModified());
+
+    // ... but on a clean signature, a no-op set leaves it clean.
+    sig.setModified(false);
     sig.setWeight(10); // Same value
     EXPECT_FALSE(sig.isModified());
 }
@@ -123,10 +129,16 @@ TEST(SignatureTest, SetLabel)
     sig.setLabel("room1");
     EXPECT_EQ(sig.getLabel(), "room1");
     EXPECT_TRUE(sig.isModified());
-    
+
+    // Re-setting the same label doesn't clear a pending modification.
+    sig.setLabel("room1");
+    EXPECT_TRUE(sig.isModified());
+
+    // ... but on a clean signature, a no-op set leaves it clean.
+    sig.setModified(false);
     sig.setLabel("room1"); // Same label
     EXPECT_FALSE(sig.isModified());
-    
+
     sig.setLabel("room2");
     EXPECT_EQ(sig.getLabel(), "room2");
     EXPECT_TRUE(sig.isModified());
