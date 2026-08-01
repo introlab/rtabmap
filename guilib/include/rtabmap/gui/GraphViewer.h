@@ -187,6 +187,7 @@ Q_SIGNALS:
 	void mapShownRequested();
 	void nodeSelected(int);
 	void linkSelected(int, int);
+	void nodesSelected(); // Nodes selected by rubber band, call getSelectedNodeIds() to get ids selected
 
 public Q_SLOTS:
 	void restoreDefaults();

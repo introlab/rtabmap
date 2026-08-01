@@ -53,6 +53,8 @@ public:
 	int framesIgnored() const;
 	double targetFramerate() const;
 	int sessionExported() const;
+	bool currentComponentOnly() const;
+	bool selectedNodesOnly() const;
 	bool isRgbExported() const;
 	bool isDepthExported() const;
 	bool isDepth2dExported() const;

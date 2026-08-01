@@ -87,6 +87,20 @@ void LinkRefiningDialog::setMinMax(
 		restoreDefaults();
 	}
 }
+void LinkRefiningDialog::setRangesEnabled(bool selectedNodes, bool currentComponent)
+{
+	ui_->radioButton_selected_nodes->setEnabled(selectedNodes);
+	if(!selectedNodes && ui_->radioButton_selected_nodes->isChecked())
+	{
+		ui_->radioButton_nodes->setChecked(true);
+	}
+
+	ui_->radioButton_current_component->setEnabled(currentComponent);
+	if(!currentComponent && ui_->radioButton_current_component->isChecked())
+	{
+		ui_->radioButton_nodes->setChecked(true);
+	}
+}
 
 Link::Type LinkRefiningDialog::getLinkType() const
 {
@@ -101,6 +115,16 @@ void LinkRefiningDialog::getIntraInterSessions(bool & intra, bool & inter) const
 {
 	intra = ui_->comboBox_link_inter_intra->currentIndex() == 0 || ui_->comboBox_link_inter_intra->currentIndex() == 1 || getLinkType() == Link::kNeighbor;
 	inter = ui_->comboBox_link_inter_intra->currentIndex() == 0 || ui_->comboBox_link_inter_intra->currentIndex() == 2;
+}
+
+bool LinkRefiningDialog::isRangeByCurrentComponent() const
+{
+	return ui_->radioButton_current_component->isChecked();
+}
+
+bool LinkRefiningDialog::isRangeBySelectedNodeIds() const
+{
+	return ui_->radioButton_selected_nodes->isChecked();
 }
 
 bool LinkRefiningDialog::isRangeByNodeId() const

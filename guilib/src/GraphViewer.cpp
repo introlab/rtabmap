@@ -389,6 +389,7 @@ void GraphViewer::setupGraphicsScene()
 	_zoomOverlayItem->setVisible(false);
 	_zoomOverlayItem->setAcceptedMouseButtons(Qt::NoButton);
 	_zoomOverlayItem->setAcceptHoverEvents(false);
+	connect(this->scene(), &QGraphicsScene::selectionChanged, this, &GraphViewer::nodesSelected);
 	
 	_world = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_root = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
@@ -665,7 +666,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			item->setZValue(iter->first<0?21:20);
 			item->setColor(color);
 			item->setParentItem(_graphRoot);
-			item->setFlag(QGraphicsItem::ItemIsSelectable, _interactionMode == SelectionMode);
+			item->setFlag(QGraphicsItem::ItemIsSelectable, iter->first>0 && _interactionMode == SelectionMode);
 			item->show();
 			_nodeItems.insert(iter->first, item);
 			++iter;
@@ -676,7 +677,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 			// NodeItem exists for the pose, copy data and increase both iterators
 			UASSERT(iter->first == nter.key());
 			nter.value()->setColor(color); // reset color
-			nter.value()->setFlag(QGraphicsItem::ItemIsSelectable, _interactionMode == SelectionMode);
+			nter.value()->setFlag(QGraphicsItem::ItemIsSelectable, iter->first > 0 && _interactionMode == SelectionMode);
 			nter.value()->setToolTipInfo(QString());
 			nter.value()->setZValue(iter->first<0?21:20);
 			nter.value()->setPose(iter->second, _viewPlane);
@@ -1475,7 +1476,7 @@ void GraphViewer::selectNodesFromIds(const std::set<int> & ids)
 
     for (QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter != _nodeItems.end(); ++iter)
     {
-		if(iter.value())
+		if(iter.value() && iter.key()>0)
 			iter.value()->setSelected(ids.find(iter.key()) != ids.end());
     }
 
@@ -1493,15 +1494,10 @@ void GraphViewer::setInteractionMode(InteractionMode mode)
 	this->setRubberBandSelectionMode(Qt::IntersectsItemShape);
 	for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter != _nodeItems.end(); iter++)
 	{
-		if(iter.value())
+		if(iter.key()>0 && iter.value())
 		{
 			iter.value()->setFlag(QGraphicsItem::ItemIsSelectable, mode == SelectionMode);
 		}
-	}
-	if(mode == HandMode && this->scene())
-	{
-		// for now we keep this commented to allow browsing and selectioning alternatively
-		// this->scene()->clearSelection();
 	}
 }
 
@@ -2270,9 +2266,6 @@ void GraphViewer::centerOnNode(int id)
 	QPointF center = this->getNodeScenePosition(id);
 	if(!center.isNull())
 	{
-		const float viewSize = 3.0f * 100.0f; // 3 m in scene units (1 m = 100)
-		QRectF region(center.x() - viewSize/2.0f, center.y() - viewSize/2.0f, viewSize, viewSize);
-		this->fitInView(region, Qt::KeepAspectRatio);
 		this->centerOn(center);
 	}
 }

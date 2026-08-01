@@ -72,43 +72,23 @@ class EditMapArea;
 class LinkRefiningDialog;
 class Registration;
 class RegistrationIcp;
+class ExportDialog;
 
-struct GraphComponent
+class GraphComponent
 {
-    GraphComponent() : id(-1), rootId(-1), rotationValue(0), rootCoordinates(), viewScale(-1.0f) {}
+public:
+	GraphComponent() : id(0), rootId(0), firstNodeId(0), lastNodeId(0), rotationValue(0), viewScale(-1.0f), optimizationFlavor(0) {}
 
     int id;
-	bool isMain;
     int rootId;
+	int firstNodeId;
+	int lastNodeId;
     int rotationValue;
-	bool rotationEnabled;
     QPointF rootCoordinates;
     float viewScale;
-    std::map<int, int> nodeIds;
+    std::set<int> nodeIds;
 	std::set<int> selectedNodeIds;
-    int optimizationFlavor = 0; 
-    
-	
-	// optimized poses cache
-	std::map<int, rtabmap::Transform> optimizedPoses;
-	Transform lastLocalizationPose;
-
-	/*
-    // 2D map cache
-	cv::Mat map2D;
-    float mapXMin = 0.0f;
-    float mapYMin = 0.0f;
-    float mapCellSize = 0.05f;
-
-	// optimized mesh cache
-	std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
-#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
-#else
-	std::vector<std::vector<Eigen::Vector2f> > texCoords;
-#endif
-	cv::Mat textures;
-	cv::Mat cloudMat;*/
+    int optimizationFlavor; 
 };
 
 class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
@@ -127,10 +107,7 @@ protected:
 
 private:
 	void backupCurrentComponent();
-	void restoreCurrentComponentConfig();
-	void restoreCurrentComponentView();
 
-	void reRootCurrentComponent(int newRootId);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
 	virtual void keyPressEvent(QKeyEvent *event);
@@ -178,7 +155,7 @@ private Q_SLOTS:
 	void view3DMap();
 	void generate3DMap();
 	void detectMoreLoopClosures();
-	void mergeComponentsUsingSelectedNodes();
+	void mergeComponents();
 	void updateAllNeighborCovariances();
 	void updateAllLoopClosureCovariances();
 	void updateAllLandmarkCovariances();
@@ -186,7 +163,7 @@ private Q_SLOTS:
 	void resetAllChanges();
 	void graphNodeSelected(int);
 	void graphLinkSelected(int, int);
-	void zoomToNodeFromImage(int);
+	void zoomToNode();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
@@ -195,7 +172,7 @@ private Q_SLOTS:
 	void sliderNeighborValueChanged(int);
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
-	void spinBoxOptimizationsFromValueChanged(int);
+	void updateGraphViewRootId();
 	void editConstraint();
 	void updateGrid();
 	void updateOctomapView();
@@ -211,9 +188,12 @@ private Q_SLOTS:
 	void notifyParametersChanged(const QStringList &);
 	void setupMainLayout(bool vertical);
 	void updateConstraintButtons();
+	void optimizationIgnoredStateChanged();
+	void fitInViewClicked();
 	void tabBarComponentsValueChanged(int);
-	void setCurrentComponentMain();
 	void regenerateGraphComponents();
+	void updateComponentSelectedNodes();
+	void clearAllSelectedNodes();
 
 private:
 	QString getIniFilePath() const;
@@ -228,7 +208,7 @@ private:
 				QLabel * label,
 				QLabel * stamp,
 				rtabmap::ImageView * view,
-				QLabel * labelId,
+				QToolButton * buttonNodeId,
 				QLabel * labelMapId,
 				QLabel * labelPose,
 				QLabel * labelOptPose,
@@ -290,6 +270,7 @@ private:
 	std::multimap<int, rtabmap::Link> graphLinks_;
 	std::vector<GraphComponent> components_;
 	int activeComponentIndex_;
+	int lastValidNodeId_;
 	std::map<int, rtabmap::Transform> odomPoses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::map<int, rtabmap::Transform> gpsPoses_;
@@ -309,6 +290,7 @@ private:
 	QDialog * editMapDialog_;
 	EditMapArea * editMapArea_;
 	LinkRefiningDialog * linkRefiningDialog_;
+	ExportDialog * exportDataDialog_;
 
 	bool savedMaximized_;
 	bool firstCall_;
