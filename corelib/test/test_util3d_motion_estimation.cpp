@@ -29,6 +29,19 @@ float randomNoise(float max) {
     return dist(randomNoiseEngine());
 }
 
+// estimateMotion3DTo2D() returns sqrt(mean squared reprojection error) + 1e-6 on
+// the covariance diagonal, so with exact synthetic data the value collapses onto
+// that 1e-6 floor. Asserting equality to the floor within 1e-6 leaves no room for
+// floating-point noise in solvePnP/projectPoints: macOS/Accelerate lands at
+// 2.6e-6 -- an RMS reprojection error of ~1.6e-6 px -- where Linux gives ~1e-6.
+// Assert what the test actually means instead: never below the floor, and still
+// negligible (< 1e-4, i.e. an RMS reprojection error under 1e-4 px, where any
+// real error would be orders of magnitude larger).
+void expectCovarianceAtFloor(double value) {
+    EXPECT_GE(value, 1e-6);
+    EXPECT_LT(value, 1e-4);
+}
+
 TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DBasic) {
 
     // Two triangles in front of the camera at two different depths, centered with the middle of the image frame
@@ -95,8 +108,8 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DBasic) {
     // covariance must be 6x6
     EXPECT_EQ(covariance.rows, 6);
     EXPECT_EQ(covariance.cols, 6);
-    EXPECT_NEAR(covariance.at<double>(0,0), 1e-6, 1e-6);
-    EXPECT_NEAR(covariance.at<double>(3,3), 1e-6, 1e-6);
+    expectCovarianceAtFloor(covariance.at<double>(0,0));
+    expectCovarianceAtFloor(covariance.at<double>(3,3));
 
     // Test with image size set to compute covariance differently: 
     // 3D points of A reprojected in B frame with 10 % error. For the angle, 
@@ -134,7 +147,7 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DBasic) {
     EXPECT_EQ(covariance.rows, 6);
     EXPECT_EQ(covariance.cols, 6);
     EXPECT_NEAR(covariance.at<double>(0,0), 0.066, 1e-3);
-    EXPECT_NEAR(covariance.at<double>(3,3), 1e-6, 1e-6);
+    expectCovarianceAtFloor(covariance.at<double>(3,3));
 
     // Test with exact same 3D points, covariance in xyz expected to be close to 0 (or epsilon 1e-6)
     result = util3d::estimateMotion3DTo2D(
@@ -168,8 +181,8 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo2DBasic) {
     // covariance must be 6x6
     EXPECT_EQ(covariance.rows, 6);
     EXPECT_EQ(covariance.cols, 6);
-    EXPECT_NEAR(covariance.at<double>(0,0), 1e-6, 1e-6);
-    EXPECT_NEAR(covariance.at<double>(3,3), 1e-6, 1e-6);
+    expectCovarianceAtFloor(covariance.at<double>(0,0));
+    expectCovarianceAtFloor(covariance.at<double>(3,3));
 }
 
 // Same test than above, but with added noise on the points and pixels
@@ -548,8 +561,8 @@ TEST(Util3dMotionEstimationTest, EstimateMotion3DTo3DBasic) {
     // covariance must be 6x6
     EXPECT_EQ(covariance.rows, 6);
     EXPECT_EQ(covariance.cols, 6);
-    EXPECT_NEAR(covariance.at<double>(0,0), 1e-6, 1e-6);
-    EXPECT_NEAR(covariance.at<double>(3,3), 1e-6, 1e-6);
+    expectCovarianceAtFloor(covariance.at<double>(0,0));
+    expectCovarianceAtFloor(covariance.at<double>(3,3));
 }
 
 // Same as above but with noise
