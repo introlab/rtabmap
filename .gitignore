@@ -22,7 +22,6 @@ lcov.info
 
 # Doxygen (docs-report.sh / .github/workflows/docs.yml)
 doc/
-.doxygen-input
 
 # rosdoc2 (rosdoc-report.sh / .github/workflows/rosdoc.yml)
 cross_reference/

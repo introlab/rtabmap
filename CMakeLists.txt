@@ -1299,6 +1299,34 @@ ENDIF()
 
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
+# Doxygen HTML header carrying the version-switcher scripts. The template is
+# regenerated with `doxygen -w` so it always matches the locally installed
+# Doxygen (a committed header goes stale and warns on every run); we only insert
+# two <script> tags before </head>. $relpath^ is Doxygen's path from the current
+# page back to this build's root, which is how the switcher locates versions.js
+# one level above (the API root) without knowing the site prefix.
+FIND_PROGRAM(RTABMAP_DOXYGEN_EXECUTABLE doxygen)
+SET(RTABMAP_DOXYGEN_HEADER "")
+IF(RTABMAP_DOXYGEN_EXECUTABLE)
+   SET(RTABMAP_DOXYGEN_HEADER ${CMAKE_CURRENT_BINARY_DIR}/doxygen-header.html)
+   EXECUTE_PROCESS(
+      COMMAND ${RTABMAP_DOXYGEN_EXECUTABLE} -w html
+              ${RTABMAP_DOXYGEN_HEADER}
+              ${CMAKE_CURRENT_BINARY_DIR}/doxygen-footer.html
+              ${CMAKE_CURRENT_BINARY_DIR}/doxygen-stylesheet.css
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      OUTPUT_QUIET ERROR_QUIET)
+   IF(EXISTS ${RTABMAP_DOXYGEN_HEADER})
+      FILE(READ ${RTABMAP_DOXYGEN_HEADER} RTABMAP_DOXYGEN_HEADER_CONTENT)
+      STRING(REPLACE "</head>"
+         "<script type=\"text/javascript\">window.RTABMAP_DOC_ROOT=\"$relpath^\";</script>\n<script type=\"text/javascript\" src=\"$relpath^../versions.js\"></script>\n<script type=\"text/javascript\" src=\"$relpath^version-switcher.js\"></script>\n</head>"
+         RTABMAP_DOXYGEN_HEADER_CONTENT "${RTABMAP_DOXYGEN_HEADER_CONTENT}")
+      FILE(WRITE ${RTABMAP_DOXYGEN_HEADER} "${RTABMAP_DOXYGEN_HEADER_CONTENT}")
+   ELSE()
+      SET(RTABMAP_DOXYGEN_HEADER "")
+   ENDIF()
+ENDIF()
+
 # Doxyfile with PROJECT_NUMBER filled from RTABMAP_VERSION, so the generated
 # documentation can never drift from the actual version. Its INPUT/OUTPUT paths
 # are relative to the source tree, so run it from there:

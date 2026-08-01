@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Generate Doxygen HTML at doc/html/index.html
-# Run from anywhere; defaults: build dir = build-docs, output = doc/html/
-# Override build tree: DOCS_BUILD_DIR=/path/to/build ./docs-report.sh
+# Generate the C++ API documentation, laid out like the published site:
+#   build-docs/api/versions.js   <- shared version list (drives the dropdown)
+#   build-docs/api/latest/       <- this build
+# Serve build-docs/ over HTTP to preview it (the last line prints the command).
+# Run from anywhere; defaults: build dir = build-docs, output = build-docs/api/latest
+# Override: DOCS_BUILD_DIR=/path/to/build DOCS_HTML_DIR=/path/to/out ./docs-report.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${DOCS_BUILD_DIR:-$ROOT/build-docs}"
-HTML_DIR="${DOCS_HTML_DIR:-$ROOT/doc/html}"
-DOXY_INPUT_OVERRIDE="${DOCS_DOXY_INPUT:-$ROOT/.doxygen-input}"
+HTML_DIR="${DOCS_HTML_DIR:-$BUILD_DIR/api/latest}"
+API_DIR="$(dirname "$HTML_DIR")"
 
 need_cmd() {
 	command -v "$1" >/dev/null 2>&1 || {
@@ -61,21 +64,32 @@ if [[ ! -f "$export_header" ]]; then
 	exit 1
 fi
 
-default_build_dir="$ROOT/build-docs"
-if [[ "$BUILD_DIR" == "$default_build_dir" ]]; then
-	echo "Running Doxygen..."
-	doxygen "$BUILD_DIR/Doxyfile"
-else
-	printf 'INPUT = corelib/include utilite/include %s/corelib/src/include\n' "$BUILD_DIR" \
-		>"$DOXY_INPUT_OVERRIDE"
-	echo "Running Doxygen (INPUT override: $DOXY_INPUT_OVERRIDE)..."
-	doxygen "$BUILD_DIR/Doxyfile" "$DOXY_INPUT_OVERRIDE"
-fi
+# Overrides are appended to the generated Doxyfile and fed on stdin: a later
+# assignment wins, and `doxygen -` is the only supported way to combine files
+# (passing a second config file on the command line is silently ignored).
+# INPUT is relative, so Doxygen must run from the source root.
+mkdir -p "$HTML_DIR"
+echo "Running Doxygen -> $HTML_DIR ..."
+{
+	cat "$BUILD_DIR/Doxyfile"
+	printf 'INPUT = corelib/include utilite/include %s/corelib/src/include\n' "$BUILD_DIR"
+	printf 'OUTPUT_DIRECTORY = %s\n' "$HTML_DIR"
+	printf 'HTML_OUTPUT = .\n'
+} | (cd "$ROOT" && doxygen -)
+
+# The version list lives at the API root, one level above this build, so every
+# published version shares it (see doxygen/versions.js).
+cp "$ROOT/doxygen/versions.js" "$API_DIR/versions.js"
 
 if [[ ! -f "$HTML_DIR/index.html" ]]; then
 	echo "Error: expected $HTML_DIR/index.html after Doxygen run" >&2
 	exit 1
 fi
 
+serve_dir="$(dirname "$API_DIR")"
 echo ""
 echo "Done: $HTML_DIR/index.html"
+echo ""
+echo "Preview (the version dropdown needs HTTP, not file://):"
+echo "  python3 -m http.server 8899 --directory $serve_dir"
+echo "  http://127.0.0.1:8899/api/$(basename "$HTML_DIR")/"
