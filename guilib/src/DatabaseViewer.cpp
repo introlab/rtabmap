@@ -4095,7 +4095,11 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 	}
 
 	std::set<int> selectedIds = ui_->graphViewer->getSelectedNodeIds();
-	QSet<int> idsSet(selectedIds.begin(), selectedIds.end());
+	QSet<int> idsSet;
+	for(auto id : selectedIds)
+	{
+		idsSet.insert(id);
+	}
 	if(idsSet.empty())
 	{
 		// legacy behavior: used currently shown nodes
