@@ -1521,7 +1521,10 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		pcg->epsilon_abs = 1e-10;
 		pcg->epsilon_rel = 1e-10;
 #else
-		pcg->setPreconditionerParams(preconditioner);
+		// Assign the member directly instead of calling setPreconditionerParams():
+		// the setter does exactly this but was only added after 4.0, and the
+		// Android build pins GTSAM 4.0.0.
+		pcg->preconditioner_ = preconditioner;
 		pcg->epsilon_abs_ = 1e-10;
 		pcg->epsilon_rel_ = 1e-10;
 #endif
