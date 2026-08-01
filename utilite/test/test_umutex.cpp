@@ -62,7 +62,7 @@ TEST(UMutexTest, ThreadSafety)
     
     for(int i = 0; i < numThreads; ++i)
     {
-        threads.emplace_back([&mutex, &counter, iterations]() {
+        threads.emplace_back([&mutex, &counter]() {
             for(int j = 0; j < iterations; ++j)
             {
                 mutex.lock();

@@ -700,7 +700,7 @@ TEST(ULoggerTest, ThreadSafety)
     
     for(int i = 0; i < numThreads; ++i)
     {
-        threads.emplace_back([i, messagesPerThread]() {
+        threads.emplace_back([i]() {
             for(int j = 0; j < messagesPerThread; ++j)
             {
                 UINFO("Thread %d message %d", i, j);

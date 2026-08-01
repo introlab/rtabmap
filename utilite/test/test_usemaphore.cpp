@@ -164,7 +164,7 @@ TEST(USemaphoreTest, ThreadSafety)
     // Create threads that will wait on semaphore
     for(int i = 0; i < numThreads; ++i)
     {
-        threads.emplace_back([&sem, &counter, iterations]() {
+        threads.emplace_back([&sem, &counter]() {
             for(int j = 0; j < iterations; ++j)
             {
                 sem.acquire();
@@ -174,7 +174,7 @@ TEST(USemaphoreTest, ThreadSafety)
     }
     
     // Release semaphore to allow threads to proceed
-    std::thread releaseThread([&sem, numThreads, iterations]() {
+    std::thread releaseThread([&sem]() {
         for(int i = 0; i < numThreads * iterations; ++i)
         {
             sem.release();
@@ -208,7 +208,7 @@ TEST(USemaphoreTest, ProducerConsumer)
     std::atomic<int> consumed(0);
     
     // Producer thread
-    std::thread producer([&full, &empty, &buffer, &bufferMutex, &produced, items]() {
+    std::thread producer([&full, &empty, &buffer, &bufferMutex, &produced]() {
         for(int i = 0; i < items; ++i)
         {
             empty.acquire();
@@ -222,7 +222,7 @@ TEST(USemaphoreTest, ProducerConsumer)
     });
     
     // Consumer thread
-    std::thread consumer([&full, &empty, &buffer, &bufferMutex, &consumed, items]() {
+    std::thread consumer([&full, &empty, &buffer, &bufferMutex, &consumed]() {
         for(int i = 0; i < items; ++i)
         {
             full.acquire();
