@@ -621,6 +621,48 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTripIgnoreTransform)
     EXPECT_DOUBLE_EQ(loaded.right().fx(), original.right().fx());
 }
 
+TEST_F(StereoCameraModelTest, LoadInitRectificationMaps)
+{
+    // Create a temporary directory for testing
+    std::string testDir = "test_stereo_calibration5";
+    UDirectory::makeDir(testDir);
+
+    // A stereo pair valid for rectification, so both left and right maps
+    // would be built on load.
+    std::string cameraName = "rect_stereo";
+    CameraModel left("left", imageSize_, K_, D_, R_, P_left_);
+    CameraModel right("right", imageSize_, K_, D_, R_, P_right_);
+    StereoCameraModel original(cameraName, left, right, R_stereo_, T_);
+    ASSERT_TRUE(original.isValidForRectification());
+    ASSERT_TRUE(original.save(testDir, false));
+
+    // Default: rectification maps are built for both cameras while loading.
+    StereoCameraModel withMaps;
+    EXPECT_TRUE(withMaps.load(testDir, cameraName, false));
+    EXPECT_TRUE(withMaps.isRectificationMapInitialized());
+    EXPECT_TRUE(withMaps.left().isRectificationMapInitialized());
+    EXPECT_TRUE(withMaps.right().isRectificationMapInitialized());
+
+    // initRectificationMaps=false: both cameras are loaded but neither builds
+    // its maps, so the pair can be inspected without paying for them twice.
+    StereoCameraModel withoutMaps;
+    EXPECT_TRUE(withoutMaps.load(testDir, cameraName, false, false));
+    EXPECT_FALSE(withoutMaps.isRectificationMapInitialized());
+    EXPECT_FALSE(withoutMaps.left().isRectificationMapInitialized());
+    EXPECT_FALSE(withoutMaps.right().isRectificationMapInitialized());
+
+    // The calibration itself must be untouched by the flag.
+    EXPECT_TRUE(withoutMaps.isValidForRectification());
+    EXPECT_EQ(withoutMaps.name(), withMaps.name());
+    EXPECT_NEAR(withoutMaps.baseline(), withMaps.baseline(), 0.001);
+    EXPECT_DOUBLE_EQ(withoutMaps.left().fx(), withMaps.left().fx());
+    EXPECT_DOUBLE_EQ(withoutMaps.right().fx(), withMaps.right().fx());
+
+    // ... so the maps can still be built afterwards on demand.
+    withoutMaps.initRectificationMap();
+    EXPECT_TRUE(withoutMaps.isRectificationMapInitialized());
+}
+
 TEST_F(StereoCameraModelTest, SaveLoadRoundTripMinimal)
 {
     // Create a temporary directory for testing

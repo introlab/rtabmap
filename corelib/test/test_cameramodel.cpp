@@ -669,6 +669,55 @@ TEST_F(CameraModelTest, SaveLoadRoundTripFullPath)
     EXPECT_EQ(loaded.isValidForRectification(), original.isValidForRectification());
 }
 
+TEST_F(CameraModelTest, LoadInitRectificationMaps)
+{
+    // Create a temporary directory for testing
+    std::string testDir = "test_camera_calibration5";
+    UDirectory::makeDir(testDir);
+
+    // A model valid for rectification, so the maps would be built on load.
+    std::string cameraName = "rect_camera";
+    CameraModel original(cameraName, imageSize_, K_, D_, R_, P_);
+    ASSERT_TRUE(original.isValidForRectification());
+    ASSERT_TRUE(original.save(testDir));
+
+    const std::string filePath = testDir + "/" + cameraName + ".yaml";
+
+    // Default: rectification maps are built while loading.
+    CameraModel withMaps;
+    EXPECT_TRUE(withMaps.load(filePath));
+    EXPECT_TRUE(withMaps.isRectificationMapInitialized());
+
+    // initRectificationMaps=false: everything is loaded but the maps are not
+    // built, so the model can be inspected without paying for them.
+    CameraModel withoutMaps;
+    EXPECT_TRUE(withoutMaps.load(filePath, false));
+    EXPECT_FALSE(withoutMaps.isRectificationMapInitialized());
+
+    // The calibration itself must be untouched by the flag.
+    EXPECT_TRUE(withoutMaps.isValidForRectification());
+    EXPECT_EQ(withoutMaps.name(), withMaps.name());
+    EXPECT_EQ(withoutMaps.imageSize(), withMaps.imageSize());
+    EXPECT_DOUBLE_EQ(withoutMaps.fx(), withMaps.fx());
+    EXPECT_DOUBLE_EQ(withoutMaps.fy(), withMaps.fy());
+    EXPECT_DOUBLE_EQ(withoutMaps.cx(), withMaps.cx());
+    EXPECT_DOUBLE_EQ(withoutMaps.cy(), withMaps.cy());
+
+    // ... so the maps can still be built afterwards on demand.
+    EXPECT_TRUE(withoutMaps.initRectificationMap());
+    EXPECT_TRUE(withoutMaps.isRectificationMapInitialized());
+
+    // Same behavior through the directory+name overload.
+    CameraModel withoutMapsByName;
+    EXPECT_TRUE(withoutMapsByName.load(testDir, cameraName, false));
+    EXPECT_FALSE(withoutMapsByName.isRectificationMapInitialized());
+    EXPECT_TRUE(withoutMapsByName.isValidForRectification());
+
+    CameraModel withMapsByName;
+    EXPECT_TRUE(withMapsByName.load(testDir, cameraName));
+    EXPECT_TRUE(withMapsByName.isRectificationMapInitialized());
+}
+
 TEST_F(CameraModelTest, SaveLoadRoundTripMinimal)
 {
     // Create a temporary directory for testing
