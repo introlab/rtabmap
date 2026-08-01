@@ -156,8 +156,8 @@ TEST(USemaphoreTest, ThreadSafety)
 {
     USemaphore sem(0);
     std::atomic<int> counter(0);
-    const int numThreads = 4;
-    const int iterations = 100;
+    static constexpr int numThreads = 4;
+    static constexpr int iterations = 100;
     
     std::vector<std::thread> threads;
     
@@ -203,7 +203,7 @@ TEST(USemaphoreTest, ProducerConsumer)
     USemaphore empty(10);
     std::vector<int> buffer;
     UMutex bufferMutex;
-    const int items = 20;
+    static constexpr int items = 20;
     std::atomic<int> produced(0);
     std::atomic<int> consumed(0);
     

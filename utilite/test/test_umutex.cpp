@@ -55,8 +55,8 @@ TEST(UMutexTest, ThreadSafety)
 {
     UMutex mutex;
     std::atomic<int> counter(0);
-    const int numThreads = 4;
-    const int iterations = 1000;
+    static constexpr int numThreads = 4;
+    static constexpr int iterations = 1000;
     
     std::vector<std::thread> threads;
     

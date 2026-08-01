@@ -693,8 +693,8 @@ TEST(ULoggerTest, ThreadSafety)
     ULogger::setPrintColored(false);
     ULogger::setPrintThreadId(false);
     
-    const int numThreads = 5;
-    const int messagesPerThread = 9;
+    static constexpr int numThreads = 5;
+    static constexpr int messagesPerThread = 9;
     
     std::vector<std::thread> threads;
     
