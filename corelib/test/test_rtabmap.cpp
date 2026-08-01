@@ -3,6 +3,8 @@
 #include <rtabmap/core/GPS.h>
 #include <rtabmap/core/Landmark.h>
 #include <rtabmap/core/Memory.h>
+#include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
@@ -149,6 +151,126 @@ TEST(RtabmapTest, InitFileBackedDatabaseCreatesFile)
 		rtabmap.close(true);
 	}
 	EXPECT_TRUE(UFile::exists(dbPath.c_str()));
+	UFile::erase(dbPath.c_str());
+}
+
+namespace {
+
+// Builds a database holding a few signatures with pre-baked visual words, so a
+// later init() has a real dictionary to load. Returns the word count.
+int buildRtabmapDictionaryDb(const std::string & dbPath)
+{
+	const int kKeypointsPerFrame = 3;
+	const int kFrames = 3;
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kKpMaxFeatures()] = "10";
+	params[Parameters::kKpIncrementalFlann()] = "false";
+	params[Parameters::kMemUseOdomFeatures()] = "true";
+
+	Rtabmap rtabmap;
+	rtabmap.init(params, dbPath);
+	if(rtabmap.getMemory() == 0)
+	{
+		return 0;
+	}
+	for(int frame = 0; frame < kFrames; ++frame)
+	{
+		cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		SensorData data(image);
+		data.setId(frame + 1);
+		std::vector<cv::KeyPoint> kpts(kKeypointsPerFrame, cv::KeyPoint(1.f, 1.f, 1.f));
+		std::vector<cv::Point3f> pts3(kKeypointsPerFrame, cv::Point3f(0.f, 0.f, 1.f));
+		// One-hot descriptors so every keypoint becomes its own visual word.
+		cv::Mat descriptors = cv::Mat::zeros(kKeypointsPerFrame, kFrames*kKeypointsPerFrame, CV_32F);
+		for(int row = 0; row < kKeypointsPerFrame; ++row)
+		{
+			descriptors.at<float>(row, frame*kKeypointsPerFrame + row) = 1000.0f;
+		}
+		data.setFeatures(kpts, pts3, descriptors);
+		rtabmap.process(data, Transform(float(frame), 0.0f, 0.0f, 0, 0, 0));
+	}
+	const int wordCount = (int)rtabmap.getMemory()->getVWDictionary()->getVisualWords().size();
+	rtabmap.close(true);
+	return wordCount;
+}
+
+int countWordsWithDescriptor(const Rtabmap & rtabmap)
+{
+	int count = 0;
+	const std::map<int, VisualWord *> & words =
+			rtabmap.getMemory()->getVWDictionary()->getVisualWords();
+	for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		if(!iter->second->getDescriptor().empty())
+		{
+			++count;
+		}
+	}
+	return count;
+}
+
+} // namespace
+
+TEST(RtabmapTest, SetDummyDictionaryForwardsToMemoryOnInit)
+{
+	// Rtabmap::setDummyDictionary() only stores the flag; it is forwarded to the
+	// Memory created by init(), which then loads word ids without descriptors.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildRtabmapDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 0);
+
+	// Reference: without the flag, every word carries its descriptor.
+	{
+		Rtabmap rtabmap;
+		rtabmap.init(defaultRtabmapParams(), dbPath);
+		ASSERT_NE(rtabmap.getMemory(), nullptr);
+		EXPECT_EQ((int)rtabmap.getMemory()->getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_EQ(countWordsWithDescriptor(rtabmap), wordCount);
+		rtabmap.close(false);
+	}
+
+	// With the flag set before init(): same words, none with a descriptor.
+	{
+		Rtabmap rtabmap;
+		rtabmap.setDummyDictionary(true);
+		rtabmap.init(defaultRtabmapParams(), dbPath);
+		ASSERT_NE(rtabmap.getMemory(), nullptr);
+		EXPECT_EQ((int)rtabmap.getMemory()->getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_EQ(countWordsWithDescriptor(rtabmap), 0);
+		rtabmap.close(false);
+	}
+
+	// setDummyDictionary(false) must leave it disabled (it is the default, and the
+	// argument used to be ignored, which silently enabled the dummy dictionary).
+	{
+		Rtabmap rtabmap;
+		rtabmap.setDummyDictionary(false);
+		rtabmap.init(defaultRtabmapParams(), dbPath);
+		ASSERT_NE(rtabmap.getMemory(), nullptr);
+		EXPECT_EQ(countWordsWithDescriptor(rtabmap), wordCount);
+		rtabmap.close(false);
+	}
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(RtabmapTest, SetDummyDictionaryIgnoredAfterInit)
+{
+	// Once init() created the Memory, the setter is refused (an error is logged)
+	// and the already loaded descriptors stay in place.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildRtabmapDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 0);
+
+	Rtabmap rtabmap;
+	rtabmap.init(defaultRtabmapParams(), dbPath);
+	ASSERT_NE(rtabmap.getMemory(), nullptr);
+	ASSERT_EQ(countWordsWithDescriptor(rtabmap), wordCount);
+
+	rtabmap.setDummyDictionary(true); // too late
+	EXPECT_EQ(countWordsWithDescriptor(rtabmap), wordCount);
+
+	rtabmap.close(false);
 	UFile::erase(dbPath.c_str());
 }
 

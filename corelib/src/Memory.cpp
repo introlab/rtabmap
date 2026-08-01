@@ -444,6 +444,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			else
 			{
 				_dbDriver->load(*_vwd, false, _dummyDictionary);
+				if(_dummyDictionary && _vwd->getVisualWords().empty())
+				{
+					_dummyDictionary = false;
+				}
 			}
 		}
 		else
@@ -451,6 +455,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			UDEBUG("load words");
 			// load the last dictionary
 			_dbDriver->load(*_vwd, _vwd->isIncremental(), _dummyDictionary);
+			if(_dummyDictionary && _vwd->getVisualWords().empty())
+			{
+				_dummyDictionary = false;
+			}
 		}
 		UDEBUG("%d words loaded! (type=%s, dim=%d)",
 			_vwd->getUnusedWordsSize(),

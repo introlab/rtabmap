@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/Compression.h>
+#include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Landmark.h>
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/Memory.h>
@@ -10,6 +11,7 @@
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -1727,6 +1729,237 @@ TEST(MemoryTest, ForgetTransfersOldestWmSignaturesToLtm)
 	EXPECT_TRUE(memory.isInSTM(ids[4]));
 
 	memory.close(false);
+}
+
+namespace {
+
+// Populates dbPath with a few signatures carrying pre-baked visual words, so a
+// later Memory::init() has a real dictionary to load. Uses the "odom features"
+// path (kMemUseOdomFeatures) to avoid running real feature extraction.
+ParametersMap dictionaryDbParams()
+{
+	ParametersMap params = defaultMemoryParams(5);
+	params[Parameters::kKpMaxFeatures()] = "10";
+	params[Parameters::kKpIncrementalFlann()] = "false";
+	params[Parameters::kMemUseOdomFeatures()] = "true";
+	return params;
+}
+
+int buildDictionaryDb(const std::string & dbPath)
+{
+	const int kKeypointsPerFrame = 3;
+	const int kFrames = 3;
+	Memory memory(dictionaryDbParams());
+	if(!memory.init(dbPath, true))
+	{
+		return 0;
+	}
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	for(int frame = 0; frame < kFrames; ++frame)
+	{
+		cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		SensorData data(image);
+		std::vector<cv::KeyPoint> kpts(kKeypointsPerFrame, cv::KeyPoint(1.f, 1.f, 1.f));
+		std::vector<cv::Point3f> pts3(kKeypointsPerFrame, cv::Point3f(0.f, 0.f, 1.f));
+		// One-hot descriptors so every keypoint becomes its own visual word.
+		cv::Mat descriptors = cv::Mat::zeros(kKeypointsPerFrame, kFrames*kKeypointsPerFrame, CV_32F);
+		for(int row = 0; row < kKeypointsPerFrame; ++row)
+		{
+			descriptors.at<float>(row, frame*kKeypointsPerFrame + row) = 1000.0f;
+		}
+		data.setFeatures(kpts, pts3, descriptors);
+		if(!memory.update(data, Transform(float(frame), 0.0f, 0.0f, 0, 0, 0), covariance))
+		{
+			return 0;
+		}
+	}
+	const int wordCount = (int)memory.getVWDictionary()->getVisualWords().size();
+	memory.close(true); // save dictionary + signatures to the database
+	return wordCount;
+}
+
+} // namespace
+
+TEST(MemoryTest, SetDummyDictionaryLoadsWordIdsWithoutDescriptors)
+{
+	// With a dummy dictionary, init() fills VWDictionary with placeholder words
+	// (same ids, empty descriptors) and skips the dictionary update, so a large
+	// map can be opened without paying for the descriptors or the FLANN index.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 0);
+
+	// Reference: normal load brings the descriptors back.
+	std::set<int> fullIds;
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+		ASSERT_EQ((int)words.size(), wordCount);
+		for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			fullIds.insert(iter->first);
+			EXPECT_FALSE(iter->second->getDescriptor().empty());
+		}
+		memory.close(false);
+	}
+
+	// Dummy dictionary: same word ids, no descriptors.
+	{
+		Memory memory(dictionaryDbParams());
+		memory.setDummyDictionary(true);
+		ASSERT_TRUE(memory.init(dbPath));
+		const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+		std::set<int> dummyIds;
+		for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			dummyIds.insert(iter->first);
+			EXPECT_TRUE(iter->second->getDescriptor().empty());
+		}
+		EXPECT_EQ(dummyIds, fullIds);
+		memory.close(false);
+	}
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, SetDummyDictionaryDisablesItselfWhenDatabaseHasNoWords)
+{
+	// The dummy dictionary only makes sense when there is a dictionary to skip
+	// loading. When the loaded nodes reference no word at all, init() silently
+	// clears the flag, so the memory keeps behaving like a normal (mapping-capable)
+	// one instead of staying in the read-only dummy state.
+	// Checked on both dictionary-loading paths: Mem/InitWMWithAllNodes=true walks
+	// the words referenced by the loaded nodes, false loads the stored dictionary
+	// wholesale through DBDriver::load().
+	const std::string dbPath = uniqueDbPath();
+	{
+		// defaultMemoryParams disables feature extraction, so these nodes carry no
+		// visual words and the Word table stays empty.
+		Memory memory(defaultMemoryParams());
+		ASSERT_TRUE(memory.init(dbPath, true));
+		const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		for(int i = 0; i < 2; ++i)
+		{
+			SensorData data(image);
+			ASSERT_TRUE(memory.update(data, Transform(float(i), 0.0f, 0.0f, 0, 0, 0), covariance));
+		}
+		ASSERT_TRUE(memory.getVWDictionary()->getVisualWords().empty());
+		memory.close(true);
+	}
+
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		const bool initWMWithAllNodes = (pass == 0);
+		SCOPED_TRACE(uFormat("Mem/InitWMWithAllNodes=%s", initWMWithAllNodes?"true":"false"));
+
+		ParametersMap params = dictionaryDbParams();
+		params[Parameters::kMemInitWMWithAllNodes()] = initWMWithAllNodes?"true":"false";
+		Memory memory(params);
+		memory.setDummyDictionary(true);
+		ASSERT_TRUE(memory.init(dbPath));
+		EXPECT_TRUE(memory.getVWDictionary()->getVisualWords().empty());
+
+		// The flag was cleared, so adding a node still works and populates the
+		// dictionary normally (a memory left in dummy mode cannot create signatures).
+		const int kKeypoints = 3;
+		cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		SensorData data(image);
+		std::vector<cv::KeyPoint> kpts(kKeypoints, cv::KeyPoint(1.f, 1.f, 1.f));
+		std::vector<cv::Point3f> pts3(kKeypoints, cv::Point3f(0.f, 0.f, 1.f));
+		cv::Mat descriptors = cv::Mat::zeros(kKeypoints, kKeypoints, CV_32F);
+		for(int row = 0; row < kKeypoints; ++row)
+		{
+			descriptors.at<float>(row, row) = 1000.0f;
+		}
+		data.setFeatures(kpts, pts3, descriptors);
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		ASSERT_TRUE(memory.update(data, Transform(5.0f, 0.0f, 0.0f, 0, 0, 0), covariance));
+		EXPECT_EQ((int)memory.getVWDictionary()->getVisualWords().size(), kKeypoints);
+
+		memory.close(false); // don't persist the extra node: next pass reuses the db
+	}
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, SetDummyDictionaryDisabledWhenDictionaryMustBeRepaired)
+{
+	// When the stored dictionary is missing words that loaded nodes still reference,
+	// init() rebuilds it from the nodes' descriptors. Placeholder words carry no
+	// descriptor, so the dummy dictionary cannot be used for that: it is disabled
+	// first and the repaired dictionary comes back with real descriptors.
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_GT(buildDictionaryDb(dbPath), 0);
+
+	// Corrupt the dictionary: drop *some* of the stored words while the nodes keep
+	// referencing them (what happens when rtabmap is killed before saving it).
+	// Only a subset, so the dictionary still loads non-empty and it is really the
+	// repair branch -- not the empty-dictionary check -- that disables the flag.
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->executeNoResult("DELETE FROM Word WHERE id IN (SELECT id FROM Word LIMIT 2);");
+		driver->closeConnection(false);
+		delete driver;
+	}
+
+	Memory memory(dictionaryDbParams());
+	memory.setDummyDictionary(true);
+	ASSERT_TRUE(memory.init(dbPath));
+
+	// Repaired from the nodes: words are back, with real descriptors rather than
+	// the empty placeholders a dummy dictionary would have produced.
+	const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+	ASSERT_FALSE(words.empty());
+	for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		EXPECT_FALSE(iter->second->getDescriptor().empty());
+	}
+
+	// The flag was cleared, so the memory can still add nodes.
+	const int kKeypoints = 3;
+	cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	SensorData data(image);
+	std::vector<cv::KeyPoint> kpts(kKeypoints, cv::KeyPoint(1.f, 1.f, 1.f));
+	std::vector<cv::Point3f> pts3(kKeypoints, cv::Point3f(0.f, 0.f, 1.f));
+	cv::Mat descriptors = cv::Mat::zeros(kKeypoints, 9, CV_32F);
+	for(int row = 0; row < kKeypoints; ++row)
+	{
+		descriptors.at<float>(row, row) = 1000.0f;
+	}
+	data.setFeatures(kpts, pts3, descriptors);
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	EXPECT_TRUE(memory.update(data, Transform(9.0f, 0.0f, 0.0f, 0, 0, 0), covariance));
+
+	memory.close(false);
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, SetDummyDictionaryIgnoredAfterInit)
+{
+	// The flag is only read while loading the dictionary, so setting it once the
+	// database driver exists is refused (an error is logged) and the already
+	// loaded descriptors stay in place.
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_GT(buildDictionaryDb(dbPath), 0);
+
+	Memory memory(dictionaryDbParams());
+	ASSERT_TRUE(memory.init(dbPath));
+	ASSERT_FALSE(memory.getVWDictionary()->getVisualWords().empty());
+
+	memory.setDummyDictionary(true); // too late
+
+	const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+	for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		EXPECT_FALSE(iter->second->getDescriptor().empty());
+	}
+
+	memory.close(false);
+	UFile::erase(dbPath.c_str());
 }
 
 TEST(MemoryTest, ForgetTransfersBasedOnWordCountInWordRegime)

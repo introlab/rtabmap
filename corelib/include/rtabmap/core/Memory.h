@@ -390,6 +390,9 @@ public:
 	 * @brief Enables a dummy visual word dictionary (no descriptors kept, word ids only).
 	 * @note Must be called before @ref init(); ignored (with an error logged) once the
 	 *       database driver is set.
+	 * @note Silently disabled by @ref init() when the database holds no dictionary,
+	 *       since there would be nothing to skip loading, and the memory would
+	 *       otherwise be left unable to add new nodes.
 	 */
 	void setDummyDictionary(bool enabled);
 
