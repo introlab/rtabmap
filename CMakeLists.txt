@@ -22,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 23)
-SET(RTABMAP_PATCH_VERSION 9)
+SET(RTABMAP_PATCH_VERSION 10)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -1298,6 +1298,12 @@ IF(NOT WITH_MADGWICK)
 ENDIF()
 
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
+
+# Doxyfile with PROJECT_NUMBER filled from RTABMAP_VERSION, so the generated
+# documentation can never drift from the actual version. Its INPUT/OUTPUT paths
+# are relative to the source tree, so run it from there:
+#   doxygen <build dir>/Doxyfile
+CONFIGURE_FILE(Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
 
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )

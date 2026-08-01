@@ -64,7 +64,7 @@ jobs:
             -DWITH_REALSENSE=OFF
 
       - name: Generate Doxygen HTML
-        run: doxygen Doxyfile
+        run: doxygen ${{ github.workspace }}/build-docs/Doxyfile
 
       - name: Upload Doxygen HTML artifact
         uses: actions/upload-artifact@v4

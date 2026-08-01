@@ -64,12 +64,12 @@ fi
 default_build_dir="$ROOT/build-docs"
 if [[ "$BUILD_DIR" == "$default_build_dir" ]]; then
 	echo "Running Doxygen..."
-	doxygen "$ROOT/Doxyfile"
+	doxygen "$BUILD_DIR/Doxyfile"
 else
 	printf 'INPUT = corelib/include utilite/include %s/corelib/src/include\n' "$BUILD_DIR" \
 		>"$DOXY_INPUT_OVERRIDE"
 	echo "Running Doxygen (INPUT override: $DOXY_INPUT_OVERRIDE)..."
-	doxygen "$ROOT/Doxyfile" "$DOXY_INPUT_OVERRIDE"
+	doxygen "$BUILD_DIR/Doxyfile" "$DOXY_INPUT_OVERRIDE"
 fi
 
 if [[ ! -f "$HTML_DIR/index.html" ]]; then
