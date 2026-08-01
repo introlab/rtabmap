@@ -994,6 +994,20 @@ TEST_F(DbDriverFixture, LoadVWDictionaryFromDatabase)
 	EXPECT_TRUE(dictionary.getVisualWords().count(1));
 	EXPECT_TRUE(dictionary.getVisualWords().count(2));
 	EXPECT_EQ(cv::norm(d1, dictionary.getVisualWords().at(1)->getDescriptor(), cv::NORM_INF), 0);
+	EXPECT_EQ(cv::norm(d2, dictionary.getVisualWords().at(2)->getDescriptor(), cv::NORM_INF), 0);
+
+	// idsOnly=true: same word ids, but placeholder words with no descriptor,
+	// so a large dictionary can be opened without paying for the descriptors.
+	VWDictionary idsOnly;
+	driver_->load(idsOnly, false, true);
+	EXPECT_EQ(idsOnly.getVisualWords().size(), dictionary.getVisualWords().size());
+	ASSERT_TRUE(idsOnly.getVisualWords().count(1));
+	ASSERT_TRUE(idsOnly.getVisualWords().count(2));
+	EXPECT_TRUE(idsOnly.getVisualWords().at(1)->getDescriptor().empty());
+	EXPECT_TRUE(idsOnly.getVisualWords().at(2)->getDescriptor().empty());
+
+	// That is the point of the flag: less memory than the full load.
+	EXPECT_LT(idsOnly.getMemoryUsed(), dictionary.getMemoryUsed());
 }
 
 TEST_F(DbDriverFixture, UpdateSignatureRoundTrip)
