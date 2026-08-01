@@ -23,6 +23,18 @@ pcl::PointCloud<pcl::PointNormal> createFlatNormalCloud(int count, const cv::Poi
     return cloud;
 }
 
+// Concatenate two point clouds. pcl::concatenate() only exists since PCL 1.10,
+// and the older pcl::concatenatePointCloud() only handles PCLPointCloud2, so
+// neither is portable. PointCloud<T>::operator+= works on every version.
+pcl::PointCloud<pcl::PointNormal> concatenated(
+        const pcl::PointCloud<pcl::PointNormal> & a,
+        const pcl::PointCloud<pcl::PointNormal> & b)
+{
+    pcl::PointCloud<pcl::PointNormal> out = a;
+    out += b;
+    return out;
+}
+
 TEST(Util3dSurfaceTest, ComputeNormalsComplexityVaryingNormals3D)
 {
     auto floor = createFlatNormalCloud(100, cv::Point3f(0.0f, 0.0f, 1.0f));
@@ -34,35 +46,20 @@ TEST(Util3dSurfaceTest, ComputeNormalsComplexityVaryingNormals3D)
     float complexity = util3d::computeNormalsComplexity(floor);
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
-    pcl::PointCloud<pcl::PointNormal> cloudA;
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-    pcl::concatenate(floor, wallA, cloudA);
-#else
-    pcl::concatenatePointCloud(floor, wallA, cloudA);
-#endif
+    pcl::PointCloud<pcl::PointNormal> cloudA = concatenated(floor, wallA);
     // Two perpendicular surfaces
     complexity = util3d::computeNormalsComplexity(cloudA);
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
     // Three perpendicular surfaces
-    pcl::PointCloud<pcl::PointNormal> cloudB;
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-    pcl::concatenate(cloudA, wallB, cloudB);
-#else
-    pcl::concatenatePointCloud(cloudA, wallB, cloudB);
-#endif
+    pcl::PointCloud<pcl::PointNormal> cloudB = concatenated(cloudA, wallB);
     
     complexity = util3d::computeNormalsComplexity(cloudB);
     // Smallest PCA eigenvalue is ~0 for discrete normals on orthogonal axes.
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
     // Three perpendicular surfaces (one small)
-    pcl::PointCloud<pcl::PointNormal> smallCloudB;
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-    pcl::concatenate(cloudA, smallWallB, smallCloudB);
-#else
-    pcl::concatenatePointCloud(cloudA, smallWallB, smallCloudB);
-#endif
+    pcl::PointCloud<pcl::PointNormal> smallCloudB = concatenated(cloudA, smallWallB);
     
     complexity = util3d::computeNormalsComplexity(smallCloudB);
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
@@ -107,32 +104,17 @@ TEST(Util3dSurfaceTest, ComputeNormalsComplexityVaryingNormals2D)
     complexity = util3d::computeNormalsComplexity(wallB, Transform(), true);
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
-    pcl::PointCloud<pcl::PointNormal> cloud;
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-    pcl::concatenate(wallA, wallB, cloud);
-#else
-    pcl::concatenatePointCloud(wallA, wallB, cloud);
-#endif
+    pcl::PointCloud<pcl::PointNormal> cloud = concatenated(wallA, wallB);
     // Two perpendicular surfaces
     complexity = util3d::computeNormalsComplexity(cloud, Transform(), true);
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
-    pcl::PointCloud<pcl::PointNormal> cloudB;
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-    pcl::concatenate(wallA, smalllWallB, cloudB);
-#else
-    pcl::concatenatePointCloud(wallA, smalllWallB, cloudB);
-#endif
+    pcl::PointCloud<pcl::PointNormal> cloudB = concatenated(wallA, smalllWallB);
     // Two perpendicular surfaces (one small)
     complexity = util3d::computeNormalsComplexity(cloudB, Transform(), true);
     EXPECT_NEAR(complexity, 0.0f, 1e-3);
 
-    pcl::PointCloud<pcl::PointNormal> corridorLikeCloud;
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-    pcl::concatenate(wallA, negWallA, corridorLikeCloud);
-#else
-    pcl::concatenatePointCloud(wallA, negWallA, corridorLikeCloud);
-#endif
+    pcl::PointCloud<pcl::PointNormal> corridorLikeCloud = concatenated(wallA, negWallA);
     // Two parallel surfaces simulating a corridor
     cv::Mat vector,values;
     complexity = util3d::computeNormalsComplexity(corridorLikeCloud, Transform(), true, &vector, &values);
