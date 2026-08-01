@@ -640,6 +640,84 @@ TEST_F(MemoryFixture, ConvertToIntermediateSetsWeightMinusOne)
 	EXPECT_EQ(s->getWeight(), -1);
 }
 
+TEST(MemoryTest, WorkingMemSizeAndIntermediateNodeCounters)
+{
+	// getWorkingMemSize() reports the WM size without the virtual place, optionally
+	// without the intermediate nodes (weight=-1) too. The two counters backing it are
+	// maintained incrementally at every place a node enters/leaves STM or WM, so this
+	// walks a node through all of them: added to STM, converted to intermediate,
+	// transferred STM->WM, then deleted.
+	Memory memory(defaultMemoryParams(/*stmSize=*/2));
+	ASSERT_TRUE(memory.init(""));
+
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	int updateCount = 0;
+	auto addNode = [&]() {
+		SensorData data(image);
+		EXPECT_TRUE(memory.update(data, Transform(float(updateCount++), 0.0f, 0.0f, 0, 0, 0), covariance));
+		return memory.getLastSignatureId();
+	};
+
+	// Only the virtual place is in WM at this point.
+	EXPECT_EQ(memory.getWorkingMemSize(false), 0u);
+	EXPECT_EQ(memory.getWorkingMemSize(true), 0u);
+	EXPECT_EQ(memory.getWorkingMemIntermediateNodesCount(), 0);
+	EXPECT_EQ(memory.getStMemIntermediateNodesCount(), 0);
+
+	const int A = addNode();
+	const int B = addNode();
+	ASSERT_TRUE(memory.isInSTM(A));
+	ASSERT_TRUE(memory.isInSTM(B));
+	EXPECT_EQ(memory.getWorkingMemSize(false), 0u);
+
+	// STM is full (size 2), so the oldest node moves to WM.
+	const int C = addNode();
+	ASSERT_TRUE(memory.isInWM(A));
+	ASSERT_TRUE(memory.isInSTM(B));
+	ASSERT_TRUE(memory.isInSTM(C));
+	EXPECT_EQ(memory.getWorkingMemSize(false), 1u);
+	EXPECT_EQ(memory.getWorkingMemSize(true), 1u);
+
+	// Converting a WM node bumps the WM counter, and only the "ignore intermediate"
+	// flavour of getWorkingMemSize() reacts.
+	memory.convertToIntermediate(A);
+	EXPECT_EQ(memory.getWorkingMemIntermediateNodesCount(), 1);
+	EXPECT_EQ(memory.getStMemIntermediateNodesCount(), 0);
+	EXPECT_EQ(memory.getWorkingMemSize(false), 1u);
+	EXPECT_EQ(memory.getWorkingMemSize(true), 0u);
+
+	// Converting an STM node bumps the STM counter instead.
+	memory.convertToIntermediate(B);
+	EXPECT_EQ(memory.getWorkingMemIntermediateNodesCount(), 1);
+	EXPECT_EQ(memory.getStMemIntermediateNodesCount(), 1);
+
+	// The STM budget itself only counts non-intermediate nodes, so this node does
+	// not push B out even though STM now holds three signatures.
+	addNode();
+	EXPECT_TRUE(memory.isInSTM(B));
+	EXPECT_EQ(memory.getStMemIntermediateNodesCount(), 1);
+
+	// One more non-intermediate node exceeds the budget: B (oldest) is transferred
+	// first, and since it doesn't count against the budget C follows immediately.
+	addNode();
+	ASSERT_TRUE(memory.isInWM(B));
+	ASSERT_TRUE(memory.isInWM(C));
+	// The tally moved with B from STM to WM.
+	EXPECT_EQ(memory.getWorkingMemIntermediateNodesCount(), 2);
+	EXPECT_EQ(memory.getStMemIntermediateNodesCount(), 0);
+	EXPECT_EQ(memory.getWorkingMemSize(false), 3u);
+	EXPECT_EQ(memory.getWorkingMemSize(true), 1u); // only C is a regular node
+
+	// Removing an intermediate node decrements the WM counter.
+	memory.deleteLocation(A);
+	EXPECT_EQ(memory.getWorkingMemIntermediateNodesCount(), 1);
+	EXPECT_EQ(memory.getWorkingMemSize(false), 2u);
+	EXPECT_EQ(memory.getWorkingMemSize(true), 1u);
+
+	memory.close(false);
+}
+
 TEST(MemoryTest, ConvertToIntermediateClearsAllPayloadsByDefault)
 {
 	// kMemBinDataKept=true so update() leaves compressed binary data in the signature
