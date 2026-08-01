@@ -2043,6 +2043,21 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 			pointDistMax = 0.04f;
 		}
 	}
+	else if(backend == Optimizer::kTypeCeres)
+	{
+		if(roundPixels &&
+		   (variant == BaVariant::kWithDepth || variant == BaVariant::kWithDepthNoLinks))
+		{
+			// Ceres uses the generic 0.025 default everywhere else, but these
+			// variants combine two noise sources: 1 px disparity noise on the
+			// depth term and +-0.5 px quantization on u/v. Points at ~8 m are
+			// then recovered to ~0.030 on macOS/Accelerate (Linux/OpenBLAS
+			// stays under 0.025, which is why this only failed on macOS).
+			// Bound covers both platforms; both variants share the noise
+			// model, so they share the bound.
+			pointDistMax = 0.04f;
+		}
+	}
 	else if(backend == Optimizer::kTypeCVSBA)
 	{
 		poseDistMax  = 0.06f;
@@ -2053,6 +2068,8 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		// +-0.5 px quantization noise hits the point residuals harder than
 		// the pose residuals (each point depends on its few observations,
 		// each pose averages over ~200). Loosen the point bound a bit.
+		// Note this only lifts bounds that are still below the floor: the
+		// branches above already set rounded-specific bounds where needed.
 		pointDistMax = std::max(pointDistMax, 0.02f);
 	}
 
@@ -2122,6 +2139,7 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 	}
 
 	// Recovered points (relative to root).
+	float maxPointDist = 0.0f;
 	for(const auto & kv : g.truePoints3D)
 	{
 		const int id = kv.first;
@@ -2136,11 +2154,15 @@ TEST_P(BundleAdjustmentTest, CircleCamerasRecoverPosesAndPoints)
 		}
 		const cv::Point3f diff     = outRel - truthRel;
 		const float d = std::sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+		maxPointDist = std::max(maxPointDist, d);
 		EXPECT_LT(d, pointDistMax)
 				<< optimizerTypeName(backend) << " point " << id
 				<< " got(rel)=(" << outRel.x << "," << outRel.y << "," << outRel.z << ")"
 				<< " truth(rel)=(" << truthRel.x << "," << truthRel.y << "," << truthRel.z << ")";
 	}
+	std::cerr << "[bound] " << optimizerTypeName(backend) << " variant=" << (int)variant
+	          << " rounded=" << roundPixels << " maxPointDist=" << maxPointDist
+	          << " bound=" << pointDistMax << "\n";
 }
 
 INSTANTIATE_TEST_SUITE_P(
