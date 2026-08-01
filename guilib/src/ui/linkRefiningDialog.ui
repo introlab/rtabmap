@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>333</width>
-    <height>286</height>
+    <width>369</width>
+    <height>344</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,28 +51,21 @@
       <string>Range</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="1">
+      <item row="1" column="1">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>From</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
-       <widget class="QLabel" name="label_2">
+      <item row="3" column="0">
+       <widget class="QRadioButton" name="radioButton_maps">
         <property name="text">
-         <string>To</string>
+         <string>Maps:</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QRadioButton" name="radioButton_nodes">
-        <property name="text">
-         <string>Nodes:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
+      <item row="2" column="1">
        <widget class="QSpinBox" name="spinBox_node_from">
         <property name="minimum">
          <number>1</number>
@@ -82,7 +75,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
+      <item row="2" column="2">
        <widget class="QSpinBox" name="spinBox_node_to">
         <property name="minimum">
          <number>1</number>
@@ -92,14 +85,21 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QRadioButton" name="radioButton_maps">
+      <item row="4" column="0">
+       <widget class="QRadioButton" name="radioButton_selected_nodes">
         <property name="text">
-         <string>Maps:</string>
+         <string>Nodes selected</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>To</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
        <widget class="QSpinBox" name="spinBox_map_from">
         <property name="minimum">
          <number>0</number>
@@ -112,7 +112,7 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="2">
+      <item row="3" column="2">
        <widget class="QSpinBox" name="spinBox_map_to">
         <property name="minimum">
          <number>0</number>
@@ -122,6 +122,20 @@
         </property>
         <property name="value">
          <number>0</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QRadioButton" name="radioButton_nodes">
+        <property name="text">
+         <string>Nodes:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QRadioButton" name="radioButton_current_component">
+        <property name="text">
+         <string>Current component</string>
         </property>
        </widget>
       </item>

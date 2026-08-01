@@ -58,7 +58,7 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-lidar_viewer IP PORT driver\n"
-			"  driver       Driver number to use: 0=VLP16 (default IP and port are 192.168.1.201 2368)\n");
+			"  driver       Driver number to use: 0=VLP16 (default IP and port are 0.0.0.0 2368)\n");
 	exit(1);
 }
 

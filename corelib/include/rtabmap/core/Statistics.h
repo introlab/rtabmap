@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <opencv2/imgproc/imgproc.hpp>
 #include <list>
 #include <vector>
@@ -187,7 +191,9 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(NeighborLinkRefining, Pts,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
+	RTABMAP_STATS(Memory, Working_memory_inter_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);
+	RTABMAP_STATS(Memory, Short_time_memory_inter_size,);
 	RTABMAP_STATS(Memory, Database_memory_used, MB);
 	RTABMAP_STATS(Memory, Signatures_removed,);
 	RTABMAP_STATS(Memory, Immunized_globally,);

@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_FOVIS
 #include <libfovis/fovis.hpp>
@@ -137,7 +136,7 @@ Transform OdometryFovis::computeTransform(
 	cv::Mat gray;
 	if(data.imageRaw().type() == CV_8UC3)
 	{
-		cv::cvtColor(data.imageRaw(), gray, CV_BGR2GRAY);
+		cv::cvtColor(data.imageRaw(), gray, cv::COLOR_BGR2GRAY);
 	}
 	else if(data.imageRaw().type() == CV_8UC1)
 	{
@@ -302,7 +301,7 @@ Transform OdometryFovis::computeTransform(
 		}
 		if(data.rightRaw().type() == CV_8UC3)
 		{
-			cv::cvtColor(data.rightRaw(), right, CV_BGR2GRAY);
+			cv::cvtColor(data.rightRaw(), right, cv::COLOR_BGR2GRAY);
 		}
 		else if(data.rightRaw().type() == CV_8UC1)
 		{

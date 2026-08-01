@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Compression.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_K4A
 #include <k4a/k4a.h>
@@ -508,7 +507,7 @@ SensorData CameraK4A::captureImage(SensorCaptureInfo * info)
 						CV_8UC4,
 						(void*)k4a_image_get_buffer(rgb_image_));
 
-				cv::cvtColor(bgra, bgrCV, CV_BGRA2BGR);
+				cv::cvtColor(bgra, bgrCV, cv::COLOR_BGRA2BGR);
 			}
 			bgrCV = model_.rectifyImage(bgrCV);
 

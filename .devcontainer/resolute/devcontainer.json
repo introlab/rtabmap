@@ -1,0 +1,30 @@
+{
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+          "extensions": ["ms-vscode.cpptools-themes", "ms-vscode.cmake-tools", "ms-vscode.cpptools-extension-pack"]
+        }
+      },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/rtabmap,type=bind",
+    "workspaceFolder": "/home/vscode/rtabmap",
+    //"mounts": ["source=${localEnv:HOME}/Documents/RTAB-Map,target=/home/vscode/Documents/RTAB-Map,type=bind,consistency=cached"],
+    "settings": {
+      "terminal.integrated.defaultProfile.linux": "bash"
+    },
+    "remoteUser": "vscode",
+    "hostRequirements": {
+        "gpu": "optional"
+    },
+    "runArgs": ["--privileged",
+                "--network=host",
+                "--gpus=all",
+                //"--runtime=nvidia", // uncommment this if rtabmap doesn't show up in nvidia-smi on the host computer
+                "--env=DISPLAY",
+                "--env=QT_X11_NO_MITSHM=1",
+                "--volume=/tmp/.X11-unix:/tmp/.X11-unix"],
+    "containerEnv": {
+        "NVIDIA_VISIBLE_DEVICES": "all"
+    }
+}

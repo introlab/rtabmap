@@ -113,6 +113,18 @@
         "kinectsdk2"
       ]
     },
+    "libfreenect2-deps": {
+      "description": "Build libfreenect2's dependencies",
+      "dependencies": [
+        "libusb",
+        "libjpeg-turbo",
+        "glfw3",
+        {
+          "name": "pkgconf",
+          "host": true
+        }
+      ]
+    },
     "libpointmatcher-deps": {
       "description": "Build libpointmatcher's dependencies",
       "dependencies": [

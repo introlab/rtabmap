@@ -76,6 +76,28 @@ public:
 	{
 		_hasConfigForEachFrame = value;
 	}
+	bool isConfigForEachFrame() const {return _hasConfigForEachFrame;}
+
+	// Enable multi-camera mode. Each image in the folder is expected to be the
+	// horizontal concatenation of N sub-camera images of a rig, sharing the same
+	// base name (timestamp or node id), e.g. "1780687370.031791.jpg" or "1.jpg".
+	// One calibration file per sub-camera must exist in the calibrationFolder
+	// passed to init(), named "<prefix>_<index>.yaml" with index starting at 0
+	// (e.g. "1_0.yaml", "1_1.yaml", ...). The number of cameras is auto-detected.
+	// Each sub-image width is taken from the corresponding model's calibrated image
+	// size; if a model has no size, a uniform split (stackedWidth / N) is assumed.
+	// If setConfigForEachFrame() is enabled, one calibration set is loaded per frame
+	// using each image's base name as prefix. Otherwise a single calibration set is
+	// loaded and reused for all frames, using the cameraName passed to init() as
+	// prefix (it may differ from any image name), falling back to the first image's
+	// base name when cameraName is empty.
+	// Note that it is not recommended to use setConfigForEachFrame() if images have
+	// to be rectified, a rectification matrix would need to be re-initilaized for
+	// each frame.
+	void setMultiCameraCalibration(bool enabled)
+	{
+		_multiCameraCalib = enabled;
+	}
 
 	void setScanPath(
 			const std::string & dir,
@@ -121,6 +143,22 @@ public:
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
+	// File name (with extension, no directory) of the image returned by the last
+	// captureImage() call. Used by subclasses (e.g. stereo) to key per-frame
+	// calibration loaded on demand. Empty if no image was read.
+	const std::string & lastImageFileName() const {return _lastImageFileName;}
+
+	// Calibration folder passed to init(), kept to load per-frame calibration on
+	// demand. Shared with subclasses (e.g. stereo) that load calibration themselves.
+	std::string _calibrationFolder;
+
+	// Multi-camera mode state, shared with subclasses (e.g. stereo) that layer their
+	// own multi-camera handling over the base reader. Such subclasses temporarily set
+	// _multiCameraCalib to false while delegating to base init()/captureImage() so the
+	// base returns the raw stacked image instead of doing its own split, then restore it.
+	bool _multiCameraCalib;
+	int _multiCameraCount; // number of sub-cameras detected in multi-camera mode
+
 private:
 	bool readPoses(
 		std::list<Transform> & outputPoses,
@@ -128,6 +166,16 @@ private:
 		const std::string & filePath,
 		int format,
 		double maxTimeDiff) const;
+
+	// Load the sub-camera models of a multi-camera rig from calibration files named
+	// "<baseName>_<index>.yaml" (index 0.._multiCameraCount-1) in _calibrationFolder.
+	// Returns an empty vector (and logs an error) if any model is missing or invalid.
+	std::vector<CameraModel> loadMultiCameraModels(const std::string & baseName) const;
+
+	// Load the single-camera model for one frame from a per-frame config file (RTAB-Map
+	// calibration or 3DScannerApp format). Returns an invalid model (and logs an error)
+	// on failure.
+	CameraModel loadConfigModel(const std::string & filePath);
 
 private:
 	std::string _path;
@@ -144,6 +192,7 @@ private:
 	int _framesPublished;
 	UDirectory * _dir;
 	std::string _lastFileName;
+	std::string _lastImageFileName; // file name of the image returned by the last captureImage()
 
 	int _countScan;
 	UDirectory * _scanDir;
@@ -173,7 +222,9 @@ private:
 	std::list<cv::Mat> covariances_;
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
-	std::list<CameraModel> _models;
+	std::list<std::string> _modelFileNames; // per-frame single-camera config file paths (config-for-each-frame)
+	bool _configLocalTransformWarned; // warn only once when a per-frame config has no local_transform
+	std::vector<CameraModel> _multiModels; // sub-camera models, shared by all frames (multi-camera mode); empty when loaded per-frame
 
 	UTimer _captureTimer;
 	double _captureDelay;

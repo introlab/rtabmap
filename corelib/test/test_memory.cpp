@@ -119,7 +119,8 @@ TEST(MemoryTest, ParameterizedConstructor)
 
 TEST(MemoryTest, ConstantIds)
 {
-	// kIdStart is the seed used by Memory::initCountId(); first generated id is kIdStart + 1.
+	// kIdStart is the seed of Memory::_idCount; Memory::getNextId() pre-increments it,
+	// so the first generated id is kIdStart + 1.
 	// kIdVirtual is the negative id used by the Bayes filter for the "new place" hypothesis.
 	// kIdInvalid is the sentinel returned when no id is available.
 	EXPECT_EQ(Memory::kIdStart, 0);

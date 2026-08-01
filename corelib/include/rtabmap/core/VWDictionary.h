@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <list>
 #include <set>
 #include "rtabmap/core/Parameters.h"

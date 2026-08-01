@@ -22,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 23)
-SET(RTABMAP_PATCH_VERSION 7)
+SET(RTABMAP_PATCH_VERSION 9)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -238,7 +238,7 @@ option(WITH_REALSENSE     "Include RealSense support"            ON)
 option(WITH_REALSENSE_SLAM "Include RealSenseSlam support"       ON)
 option(WITH_REALSENSE2    "Include RealSense2 support"           ON)
 option(WITH_MYNTEYE       "Include mynteye-s support"            ON)
-option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
+option(WITH_DEPTHAI       "Include depthai-core v2 support"      OFF)
 option(WITH_XVSDK         "Include XVisio SDK support"           OFF)
 option(WITH_ORBBEC_SDK    "Include Orbbec SDK v2 support"        OFF)
 option(WITH_OCTOMAP       "Include OctoMap support"              ON)
@@ -271,7 +271,25 @@ option(BUILD_WITH_RPATH_NOT_RUNPATH "Explicitly disable usage of RUNPATH for the
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
 set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+# OpenCV components. calib3d was split into "calib" + "geometry" in OpenCV 5.
+# These lists are reused below to generate RTABMapConfig.cmake so downstream
+# find_package(RTABMap) requests the same components this build used.
+SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video videoio calib geometry)
+SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5 objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4 aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+
+# Probe OpenCV without a version constraint first, then request the components
+# matching the detected major version. A version-constrained find that fails to
+# match (e.g. asking for 5 when only 4 is present) resets OpenCV_DIR to NOTFOUND,
+# which breaks toolchain builds that rely on a -DOpenCV_DIR hint (e.g. Android,
+# where CMAKE_FIND_ROOT_PATH restricts the search).
+FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core)
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ELSE()
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4})
+ENDIF()
 
 IF(WITH_QT)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
@@ -741,7 +759,9 @@ IF(WITH_MYNTEYE)
 ENDIF(WITH_MYNTEYE)
 
 IF(WITH_DEPTHAI)
-    FIND_PACKAGE(depthai 2.24)
+    # Force DepthAI major version 2 (>=2.24, <3.0): the v3 API is not yet
+    # supported (see CameraDepthAI).
+    FIND_PACKAGE(depthai 2.24...<3.0)
     IF(depthai_FOUND)
        MESSAGE(STATUS "Found depthai-core (targets)")
     ENDIF(depthai_FOUND)
@@ -931,6 +951,9 @@ IF(WITH_OPENGV OR okvis_FOUND)
          set(BUILD_TESTS OFF)
          set(CMAKE_BUILD_TYPE Release)
          set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+         # OpenGV's CMakeLists.txt declares cmake_minimum_required(VERSION 2.x),
+         # which CMake >= 4.0 (e.g. recent Ubuntu) rejects. Allow it to configure.
+         set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
          # Eigen should have been already added by PCL, just populate the compatible variables
          IF(EIGEN_INCLUDE_DIRS)
             set(EIGEN_INCLUDE_DIRS "${EIGEN_INCLUDE_DIRS}" CACHE PATH "Eigen include dirs" FORCE)
@@ -1345,6 +1368,18 @@ install(EXPORT rtabmapTargets
 ####
 # Setup RTABMapConfig.cmake
 ####
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5})
+  SET(CONF_OPENCV_OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ELSE()
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4})
+  SET(CONF_OPENCV_OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4})
+ENDIF()
+STRING(REPLACE ";" " " CONF_OPENCV_COMPONENTS "${CONF_OPENCV_COMPONENTS}")
+STRING(REPLACE ";" " " CONF_OPENCV_OPTIONAL_COMPONENTS "${CONF_OPENCV_OPTIONAL_COMPONENTS}")
+# Pin the OpenCV major version so downstream projects find the same major RTAB-Map was
+# built against
+SET(CONF_OPENCV_VERSION_MAJOR ${OpenCV_VERSION_MAJOR})
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
@@ -1513,7 +1548,8 @@ ENDIF(PCL_COMPILE_OPTIONS)
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Optional dependencies ('*' affects some default parameters) :")
 IF(OpenCV_FOUND)
-  IF(OPENCV_ARUCO_FOUND)
+  IF((OpenCV_VERSION_MAJOR LESS 4 AND OPENCV_ARUCO_FOUND) OR 
+     (OpenCV_VERSION_MAJOR GREATER 4 AND OPENCV_OBJDETECT_FOUND))
     set(ARUCO_STR "YES")
   ELSE()
     set(ARUCO_STR "NO")
@@ -1906,7 +1942,7 @@ MESSAGE(STATUS "  With DepthAI ${depthai_VERSION}       = YES (License: MIT)")
 ELSEIF(NOT WITH_DEPTHAI)
 MESSAGE(STATUS "  With DepthAI              = NO (WITH_DEPTHAI=OFF)")
 ELSE()
-MESSAGE(STATUS "  With DepthAI              = NO (depthai-core not found)")
+MESSAGE(STATUS "  With DepthAI              = NO (depthai-core v2 not found)")
 ENDIF()
 
 IF(xvsdk_FOUND)

@@ -404,19 +404,28 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormal
  * are aligned (e.g., flat surface), while a high value indicates variation in orientation (e.g., curved or rough surface).
  *
  * If a transformation is provided, the normals are rotated accordingly before PCA. The result is normalized
- * to lie between 0 and 0.25, where 0 represents minimal complexity and 0.25 represents maximal complexity.
+ * to lie between 0 and 1, where 0 represents minimal complexity (the normals are confined to a
+ * lower-dimensional subspace, e.g. a flat surface) and 1 represents maximal complexity (the normal
+ * directions are isotropic).
  *
  * @param cloud              The input point cloud or laser scan containing normals (pcl::PointNormal), or simply normals.
  * @param t                  The transform to apply to the normals (only the rotation is used).
  * @param is2d               Set to true if the data is 2D (normals will be analyzed in 2D space).
  * @param pcaEigenVectors    (Optional) Output matrix containing the eigenvectors computed by PCA.
  * @param pcaEigenValues     (Optional) Output matrix containing the eigenvalues computed by PCA.
+ * @param centered           When true (default), use covariance PCA (centered at mean).
+ *                           Use false for the uncentered second-moment matrix
+ *                           `M = (1/N) sum(n_i * n_i^T)`, which measures span of normal
+ *                           directions and correctly identifies degeneracy even when there
+ *                           are only N (rather than N+1) distinct viewpoint-flipped normal
+ *                           directions in N-D space.
  *
- * @return A float value between 0 and 0.25 representing the complexity of the normal distribution.
+ * @return A float value between 0 and 1 representing the complexity of the normal distribution.
  *         Returns 0 if not enough valid normals are available.
  *
  * @note Invalid normals (containing NaN or Inf) are automatically filtered out.
- *       The result is based on the smallest eigenvalue from PCA (for 2D: 2nd eigenvalue, for 3D: 3rd eigenvalue).
+ *       The result is the smallest eigenvalue (2nd in 2D, 3rd in 3D) scaled by the number of
+ *       dimensions (2 or 3), so that it is normalized against the unit-norm normals.
  *
  */
 /**
@@ -432,12 +441,6 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 /**
  * @ingroup ComputeNormalsComplexity
  * @brief Computes the complexity of surface normals in a point cloud of type `pcl::Normal`.
- *
- * @param centered When true (default), use covariance PCA (centered at mean).
- * Use false for the uncentered second-moment matrix `M = (1/N) sum(n_i * n_i^T)`,
- * which measures span of normal directions and correctly identifies degeneracy
- * even when there are only N (rather than N+1) distinct viewpoint-flipped
- * normal directions in N-D space.
  */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::Normal> & normals,

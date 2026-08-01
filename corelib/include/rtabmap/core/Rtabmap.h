@@ -748,6 +748,29 @@ public:
 	 * @ref Parameters::kRtabmapPublishLastSignature() = true.
 	 */
 	void addNodesToRepublish(const std::vector<int> & ids);
+	/**
+	 * @brief Loads the visual word dictionary as ids only, without descriptors.
+	 *
+	 * With a dummy dictionary, @ref init() populates @ref VWDictionary with placeholder
+	 * @ref VisualWord objects carrying an empty descriptor, and the dictionary update
+	 * (FLANN index construction) is skipped. This makes opening a large database much
+	 * faster and lighter in RAM when the word descriptors are not needed, e.g. to inspect
+	 * or post-process an existing map rather than to localize in it.
+	 *
+	 * The dummy dictionary is silently disabled if the database has no words, or if the
+	 * dictionary has to be rebuilt from the nodes because it was not saved properly.
+	 *
+	 * @param enabled True to load ids only, false to load the full dictionary (default).
+	 *
+	 * @note Must be called before @ref init(); an error is logged and the call ignored
+	 *       once the memory exists.
+	 * @warning Incompatible with mapping: adding new nodes asserts in
+	 *          @ref Memory::createSignature(). Loop closure detection also cannot match
+	 *          new observations against a descriptor-less dictionary.
+	 *
+	 * @see Memory::setDummyDictionary()
+	 */
+	void setDummyDictionary(bool enabled = true);
 
 	/** @return Current path status: -1 = failed, 0 = idle / executing, 1 = success. */
 	int getPathStatus() const {return _pathStatus;}
@@ -1039,6 +1062,8 @@ private:
 	Transform _pathTransformToGoal;
 	int _pathStuckCount;
 	float _pathStuckDistance;
+
+	bool _dummyDictionary;
 };
 
 } // namespace rtabmap

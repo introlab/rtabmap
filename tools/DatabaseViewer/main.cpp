@@ -50,6 +50,12 @@ int main(int argc, char * argv[])
     QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
 #endif
 
+	// Recommended by VTK when using QVTKOpenGLNativeWidget (a QOpenGLWidget): let all VTK
+	// render widgets share a single OpenGL context, which is needed for correct rendering
+	// when render widgets live in / move across multiple top-level windows. Must be set
+	// before QApplication is constructed.
+	QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
 	QApplication * app = new QApplication(argc, argv);
 	rtabmap::DatabaseViewer * mainWindow = new rtabmap::DatabaseViewer();
 

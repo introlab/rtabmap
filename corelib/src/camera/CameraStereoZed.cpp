@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMath.h>
 
 #ifdef RTABMAP_ZED
 #include <sl/Camera.hpp>
@@ -77,7 +78,7 @@ static cv::Mat slMat2cvMat(sl::Mat& input) {
 #endif
 }
 
-Transform zedPoseToTransform(const sl::Pose & pose)
+static Transform zedPoseToTransform(const sl::Pose & pose)
 {
 	return Transform(
 			pose.pose_data.m[0], pose.pose_data.m[1], pose.pose_data.m[2], pose.pose_data.m[3],
@@ -86,7 +87,7 @@ Transform zedPoseToTransform(const sl::Pose & pose)
 }
 
 #if ZED_SDK_MAJOR_VERSION < 3
-IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform)
+static IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform)
 {
 	sl::Orientation orientation = imuData.pose_data.getOrientation();
 
@@ -124,7 +125,7 @@ IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTransform
 			imuLocalTransform);
 }
 #else
-IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTransform)
+static IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTransform)
 {
     sl::Orientation orientation = sensorData.imu.pose.getOrientation();
 
@@ -160,6 +161,23 @@ IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imuLocalTr
             cv::Vec3d(accT[0], accT[1], accT[2]),
             accCov,
             imuLocalTransform);
+}
+
+// sl::SensorsData::imu.is_available only means the camera has an IMU; a returned
+// sample can still contain NaN pose/accel/gyro (e.g. before the IMU fusion has
+// initialized, or in SVO/STREAM mode). Validate the actual measurements.
+static bool isImuValid(const sl::SensorsData & sensorData)
+{
+	if(!sensorData.imu.is_available)
+	{
+		return false;
+	}
+	const sl::float3 & acc = sensorData.imu.linear_acceleration;
+	const sl::float3 & gyr = sensorData.imu.angular_velocity;
+	const sl::Orientation ori = sensorData.imu.pose.getOrientation();
+	return uIsFinite(acc.v[0]) && uIsFinite(acc.v[1]) && uIsFinite(acc.v[2]) &&
+	       uIsFinite(gyr.v[0]) && uIsFinite(gyr.v[1]) && uIsFinite(gyr.v[2]) &&
+	       uIsFinite(ori.ox) && uIsFinite(ori.oy) && uIsFinite(ori.oz) && uIsFinite(ori.ow);
 }
 #endif
 
@@ -217,7 +235,7 @@ private:
 #else
         sl::SensorsData sensordata;
         sl::ERROR_CODE res = zed_->getSensorsData(sensordata, sl::TIME_REFERENCE::CURRENT);
-        if(res == sl::ERROR_CODE::SUCCESS && sensordata.imu.is_available)
+        if(res == sl::ERROR_CODE::SUCCESS && isImuValid(sensordata))
         {
         	camera_->postInterIMUPublic(zedIMUtoIMU(sensordata, imuLocalTransform_), double(sensordata.imu.timestamp.getNanoseconds())/10e8);
         }
@@ -251,6 +269,56 @@ int CameraStereoZed::sdkVersion()
 #endif
 }
 
+#ifdef RTABMAP_ZED
+static void backwardCompatibility(int & resolution, int & quality)
+{
+	// -1 = AUTO, 0=HD4K 1=QHDPLUS 2=HD2K 3=HD1536 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA 9=XVGA 10=TXVGA
+#if ZED_SDK_MAJOR_VERSION < 4
+	// Zed3 Supported: 2=HD2K 4=HD1080 6=HD720 8=VGA
+	if(resolution == 0 || resolution == 1) // 0=HD4K 1=QHDPLUS
+	{
+		UWARN("Zed SDK v3 doesn't support HD4K and QHDPLUS, setting HD2K.");
+		resolution = 2; // 2=HD2K
+	}
+	if(resolution == 3 || resolution == 5) // 3=HD1536 5=HD1200
+	{
+		UWARN("Zed SDK v3 doesn't support HD1536 and HD1200, setting HD1080.");
+		resolution = 4; // 4=HD1080
+	}
+	if(resolution == 7 || resolution >=9) // 7=SVGA 9=XVGA 10=TXVGA
+	{
+		UWARN("Zed SDK v3 doesn't support SVGA, XVGA and TXVGA, setting VGA.");
+		resolution = 8; // 8=VGA
+	}
+	if(quality == 4) { // 4=NEURAL_LIGHT 6=NEURAL_PLUS
+		UWARN("Zed SDK v3 doesn't support NEURAL_LIGHT and NEURAL PLUS, setting NEURAL.");
+		quality = 5; // NEURAL
+	}
+#else 
+	if(resolution == -1)
+	{
+		resolution = int(sl::RESOLUTION::AUTO); // AUTO
+	}
+#if ZED_SDK_MAJOR_VERSION < 5
+	// Zed4 Supported: 0=HD4K 1=QHDPLUS 2=HD2K 4=HD1080 5=HD1200 6=HD720 7=SVGA 8=VGA
+	if(resolution == 3) // 3=HD1536
+	{
+		UWARN("Zed SDK v4 doesn't support HD1536, setting HD1200.");
+		resolution_ = 5; // 5=HD1200
+	}
+	if(resolution >=9) // 9=XVGA 10=TXVGA
+	{
+		UWARN("Zed SDK v4 doesn't support XVGA and TXVGA, setting VGA.");
+		resolution = 8; // 8=VGA
+	}
+	if(quality > 5) { // NEURAL_PLUS
+		UWARN("Zed SDK v4 doesn't support NEURAL_LIGHT and NEURAL PLUS, setting NEURAL.");
+		quality = 5; // NEURAL
+	}
+#endif
+#endif
+}
+#endif
 
 CameraStereoZed::CameraStereoZed(
 		int deviceId,
@@ -285,29 +353,8 @@ CameraStereoZed::CameraStereoZed(
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
-#if ZED_SDK_MAJOR_VERSION < 4
-	if(resolution_ == 1 || resolution_ == 2) // HD2K, HD1080
-	{
-		resolution_ -= 1; // HD2K=0, HD1080=1
-	}
-	if(resolution_ == 3) // HD1200
-	{
-		resolution_ = 1; // HD1080=1
-	}
-	if(resolution_ == 4 || resolution_ == -1)
-	{
-		resolution_ = 2; // HD720=2
-	}
-	else if(resolution_ == 5 || resolution_ == 6) // SVGA, VGA
-	{
-		resolution_ = 3; // VGA=3
-	}
-#else // ZED=4
-	if(resolution_ == -1)
-	{
-		resolution_ = int(sl::RESOLUTION::AUTO); // AUTO
-	}
-#endif
+	
+	backwardCompatibility(resolution_, quality_);
 
 #if ZED_SDK_MAJOR_VERSION < 3
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
@@ -371,6 +418,7 @@ CameraStereoZed::CameraStereoZed(
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
+	backwardCompatibility(resolution_, quality_);
 #if ZED_SDK_MAJOR_VERSION < 3
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
 	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
@@ -404,6 +452,33 @@ CameraStereoZed::~CameraStereoZed()
 	delete imuPublishingThread_;
 	delete zed_;
 #endif
+}
+
+std::string CameraStereoZed::getNeuralModelWarning(int quality)
+{
+	(void)quality;
+#if defined(RTABMAP_ZED) && ZED_SDK_MAJOR_VERSION >= 5
+	sl::DEPTH_MODE depthMode = (sl::DEPTH_MODE)quality;
+	if(depthMode == sl::DEPTH_MODE::NEURAL_LIGHT ||
+	   depthMode == sl::DEPTH_MODE::NEURAL ||
+	   depthMode == sl::DEPTH_MODE::NEURAL_PLUS)
+	{
+		sl::AI_MODELS aiModel =
+			depthMode == sl::DEPTH_MODE::NEURAL_LIGHT ? sl::AI_MODELS::NEURAL_LIGHT_DEPTH :
+			depthMode == sl::DEPTH_MODE::NEURAL_PLUS  ? sl::AI_MODELS::NEURAL_PLUS_DEPTH :
+			                                            sl::AI_MODELS::NEURAL_DEPTH;
+		sl::AI_Model_status status = sl::checkAIModelStatus(aiModel);
+		if(!status.downloaded || !status.optimized)
+		{
+			return uFormat("The selected ZED NEURAL depth model is not ready yet (downloaded=%s, "
+			               "optimized=%s): the first start may take significantly longer while the "
+			               "ZED SDK downloads and/or optimizes the model for your GPU. Subsequent "
+			               "starts will be faster.",
+			               status.downloaded?"true":"false", status.optimized?"true":"false");
+		}
+	}
+#endif
+	return std::string();
 }
 
 bool CameraStereoZed::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -463,9 +538,35 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		r = zed_->open(param);
 	}
 
+#if ZED_SDK_MAJOR_VERSION >= 3
+	// CORRUPTED_SDK_INSTALLATION on open() is typically a NEURAL depth mode whose optional
+	// neural/TensorRT runtime files aren't installed. Give a clear, actionable error.
+	if(r == sl::ERROR_CODE::CORRUPTED_SDK_INSTALLATION &&
+#if ZED_SDK_MAJOR_VERSION >= 5
+		param.depth_mode >= sl::DEPTH_MODE::NEURAL_LIGHT)
+#else
+		param.depth_mode >= sl::DEPTH_MODE::NEURAL)
+#endif
+	{
+		UERROR("ZED open() returned \"%s\": the optional NEURAL/TensorRT runtime files are "
+		       "likely missing. Install ZED SDK %d.%d, or select a non-NEURAL depth mode "
+		       "(e.g. PERFORMANCE).", toString(r).c_str(), ZED_SDK_MAJOR_VERSION, ZED_SDK_MINOR_VERSION);
+		// Do NOT delete zed_ here: after a CORRUPTED_SDK_INSTALLATION open failure (NEURAL depth
+		// mode selected but the TensorRT/neural runtime isn't installed) the ZED SDK is left in a
+		// bad state and ~sl::Camera() crashes inside sl_zed64.dll. Leak the object (one-time,
+		// terminal error path) so we fail gracefully with the message above instead of crashing.
+		zed_ = 0;
+		return false;
+	}
+#endif
+
 	if(r!=sl::ERROR_CODE::SUCCESS)
 	{
+#if ZED_SDK_MAJOR_VERSION >= 4
+		UERROR("Camera initialization failed: \"%s\": %s", toString(r).c_str(), toVerbose(r).c_str());
+#else
 		UERROR("Camera initialization failed: \"%s\"", toString(r).c_str());
+#endif
 		delete zed_;
 		zed_ = 0;
 		return false;
@@ -502,7 +603,11 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 #endif
         if(r!=sl::ERROR_CODE::SUCCESS)
 		{
+#if ZED_SDK_MAJOR_VERSION >= 4
+			UERROR("Camera tracking initialization failed: \"%s\": %s", toString(r).c_str(), toVerbose(r).c_str());
+#else
 			UERROR("Camera tracking initialization failed: \"%s\"", toString(r).c_str());
+#endif
 		}
 	}
 
@@ -731,15 +836,23 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 			res = zed_->grab(rparam);
 			timestamp = zed_->getTimestamp(sl::TIME_REFERENCE::IMAGE);
 
-			// If the sensor supports IMU, wait IMU to be available before sending data.
+			// If the sensor supports IMU, wait for IMU to be available before sending data.
 			if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull())
 			{
 				 sl::SensorsData imudatatmp;
 				res = zed_->getSensorsData(imudatatmp, sl::TIME_REFERENCE::IMAGE);
-				imuReceived = res == sl::ERROR_CODE::SUCCESS && imudatatmp.imu.is_available && imudatatmp.imu.timestamp.getNanoseconds() != 0;
+				imuReceived = res == sl::ERROR_CODE::SUCCESS && isImuValid(imudatatmp) && imudatatmp.imu.timestamp.getNanoseconds() != 0;
 			}
 		}
 		while(src_ == CameraVideo::kUsbDevice && (res!=sl::ERROR_CODE::SUCCESS || !imuReceived) && timer.elapsed() < 2.0);
+
+		// If no valid IMU arrived within the 2 sec startup window, null the IMU transform so
+		// we don't re-wait 2 sec on every subsequent frame (camera likely has no working IMU).
+		if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull() && !imuReceived)
+		{
+			UWARN("No valid IMU received within 2 sec; ignoring IMU for the rest of this session.");
+			imuLocalTransform_.setNull();
+		}
 
         if(res==sl::ERROR_CODE::SUCCESS)
 #endif
@@ -794,7 +907,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #endif
 			}
 
-			if(imuPublishingThread_ == 0)
+			if(imuPublishingThread_ == 0 && !imuLocalTransform_.isNull())
 			{
 #if ZED_SDK_MAJOR_VERSION < 3
 				sl::IMUData imudata;
@@ -803,7 +916,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #else
                 sl::SensorsData imudata;
                 res = zed_->getSensorsData(imudata, sl::TIME_REFERENCE::IMAGE);
-                if(res == sl::ERROR_CODE::SUCCESS && imudata.imu.is_available)
+                if(res == sl::ERROR_CODE::SUCCESS && isImuValid(imudata))
 #endif
 				{
 					//ZED-Mini
@@ -876,7 +989,11 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 		}
 		else if(src_ == CameraVideo::kUsbDevice)
 		{
+#if ZED_SDK_MAJOR_VERSION >= 4
+			UERROR("CameraStereoZed: Failed to grab images after 2 seconds! (%s: %s)", toString(res).c_str(), toVerbose(res).c_str());
+#else
 			UERROR("CameraStereoZed: Failed to grab images after 2 seconds!");
+#endif
 		}
 		else
 		{

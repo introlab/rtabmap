@@ -175,6 +175,18 @@ cd $pwd
 #rm -rf g2o
 fi
 
+# g2o's installed CMake config hard-codes the absolute build-time prefix of its
+# external dependencies (e.g. suitesparse) in INTERFACE_INCLUDE_DIRECTORIES. That
+# path doesn't exist when the prebuilt Libraries archive is unpacked on another
+# machine (CI), breaking find_package(g2o) with "includes non-existent path".
+# Rewrite those absolute paths to be relocatable (relative to the config file).
+# Run unconditionally (outside the build guard above) so it also fixes the prebuilt
+# archive in CI, where the g2o build step is skipped.
+find "$prefix/lib" -path '*/cmake/g2o/*.cmake' -print0 | while IFS= read -r -d '' f
+do
+  sed -i '' -E 's#[^";]*/Libraries#${CMAKE_CURRENT_LIST_DIR}/../../..#g' "$f"
+done
+
 # VTK
 if [ ! -e $prefix/lib/vtk.framework ]
 then

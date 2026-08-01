@@ -275,11 +275,13 @@ public:
 	 * @param directory The directory where the calibration files are located.
 	 * @param cameraName The base name of the stereo camera (used to derive filenames).
 	 * @param ignoreStereoTransform If true, skips loading stereo extrinsic parameters.
+	 * @param initRectificationMaps Set to false to skip building the (potentially large) left/right
+	 *                              rectification maps when rectification won't be used (saves time and memory).
 	 * @return true if loading is successful, false otherwise.
 	 *
-	 * @see save(), saveStereoTransform()
+	 * @see save(), saveStereoTransform(), CameraModel::initRectificationMap()
 	 */
-	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
+	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true, bool initRectificationMaps = true);
 
 	/**
 	 * @brief Saves stereo camera calibration data to disk.

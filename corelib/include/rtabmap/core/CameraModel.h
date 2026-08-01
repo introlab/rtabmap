@@ -304,11 +304,15 @@ public:
 	 * is valid for rectification, the rectification map is initialized.
 	 *
 	 * @param filePath Absolute or relative path to the YAML file.
+	 * @param initRectificationMaps Set to false to skip building the (potentially large) rectification
+	 *                              maps when rectification won't be used (saves time and memory).
 	 * @return True if the file was successfully loaded and parsed, false otherwise.
 	 *
 	 * @warning Logs warnings if any fields are missing. If file does not exist or parsing fails, returns false.
+	 *
+	 * @see initRectificationMap()
 	 */
-	bool load(const std::string & filePath);
+	bool load(const std::string & filePath, bool initRectificationMaps = true);
 
 	/**
 	 * @brief Loads the camera model by constructing a file path from a directory and camera name.
@@ -318,9 +322,11 @@ public:
 	 *
 	 * @param directory Path to the folder containing the camera YAML file.
 	 * @param cameraName Base name of the camera file (without extension).
+	 * @param initRectificationMaps Set to false to skip building the (potentially large) rectification
+	 *                              maps when rectification won't be used (saves time and memory).
 	 * @return True if loading from the constructed path succeeds, false otherwise.
 	 */
-	bool load(const std::string & directory, const std::string & cameraName);
+	bool load(const std::string & directory, const std::string & cameraName, bool initRectificationMaps = true);
 
 	/**
 	 * @brief Saves the camera model parameters to a YAML calibration file in ROS format.

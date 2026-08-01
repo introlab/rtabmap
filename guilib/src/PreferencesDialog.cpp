@@ -39,8 +39,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QtCore/QSettings>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QFileInfo>
+#include <QtCore/QStandardPaths>
 #include <QtCore/QTimer>
 #include <QUrl>
+
+#ifndef _WIN32
+#include <unistd.h>   // geteuid, chown
+#include <sys/types.h>
+#include <cstdlib>    // atoi, getenv
+#include <cerrno>
+#include <cstring>    // strerror
+#endif
 
 #include <QButtonGroup>
 #include <QFileDialog>
@@ -49,6 +60,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QStandardItemModel>
 #include <QMainWindow>
 #include <QProgressDialog>
+#include <QApplication>
+#include <QEventLoop>
+#include <QElapsedTimer>
+#include <QtGui/QWindow>
+#include <QLabel>
+#include <functional>
 #include <QScrollBar>
 #include <QStatusBar>
 #include <QFormLayout>
@@ -56,6 +73,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QCloseEvent>
 
 #include "ui_preferencesDialog.h"
+#include "GuiUtil.h"
 
 #include "rtabmap/core/Version.h"
 #include "rtabmap/core/Parameters.h"
@@ -437,12 +455,29 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZed - kSrcStereo, 0, Qt::UserRole - 1);
 		_ui->comboBox_odom_sensor->setItemData(2, 0, Qt::UserRole - 1);
 	}
-	else if(CameraStereoZed::sdkVersion() < 4)
+	else
 	{
-		_ui->comboBox_stereoZed_resolution->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_stereoZed_resolution->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1);
+		if(CameraStereoZed::sdkVersion() < 5)
+		{
+			// SDK 4.X
+			_ui->comboBox_stereoZed_quality->setItemData(5, 0, Qt::UserRole - 1); // NEURAL_ULTRA
+			_ui->comboBox_stereoZed_resolution->setItemData(4, 0, Qt::UserRole - 1); //HD1536
+			_ui->comboBox_stereoZed_resolution->setItemData(10, 0, Qt::UserRole - 1); //XVGA
+			_ui->comboBox_stereoZed_resolution->setItemData(11, 0, Qt::UserRole - 1); //TXGA 
+		}
+		if(CameraStereoZed::sdkVersion() < 4)
+		{
+			// SDK 3.X
+			_ui->comboBox_stereoZed_quality->setItemData(3, 0, Qt::UserRole - 1); // NEURAL_LIGHT
+			_ui->comboBox_stereoZed_resolution->setItemData(1, 0, Qt::UserRole - 1); // HD4K
+			_ui->comboBox_stereoZed_resolution->setItemData(2, 0, Qt::UserRole - 1); // QHDPLUS
+			_ui->comboBox_stereoZed_resolution->setItemData(6, 0, Qt::UserRole - 1); // HD1200
+			_ui->comboBox_stereoZed_resolution->setItemData(8, 0, Qt::UserRole - 1); // SVGA
+		}
+		if(CameraStereoZed::sdkVersion() < 3)
+		{
+			_ui->comboBox_stereoZed_quality->setItemData(4, 0, Qt::UserRole - 1); // NEURAL
+		}
 	}
     if (!CameraStereoTara::available())
     {
@@ -475,10 +510,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_showOdomFrustums->setChecked(false);
 #endif
 
-#if !defined(HAVE_OPENCV_ARUCO) && !defined(RTABMAP_APRILTAG)
+#if !((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) && !defined(HAVE_OPENCV_ARUCO) && !defined(RTABMAP_APRILTAG)
 	_ui->label_markerDetection->setText(_ui->label_markerDetection->text()+" This option works only if OpenCV has been built with \"aruco\" module and/or RTAB-Map has been built with AprilTag library support.");
 #endif
-#ifndef HAVE_OPENCV_ARUCO
+#if !(((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO))
 	_ui->MarkerStrategy->setItemData(0, 0, Qt::UserRole - 1);
 #endif
 #ifndef RTABMAP_APRILTAG
@@ -843,6 +878,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraRGBDImages_path_rgb, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraRGBDImages_path_depth, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_cameraImages_configForEachFrame, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_cameraImages_multiCameraCalibration, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_cameraImages_timestamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_cameraImages_syncTimeStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_cameraRGBDImages_scale, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -984,7 +1020,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_vlp16_pcap_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_ip1, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_ip2, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->spinBox_vlp16_ip2, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_vlp16_ip3, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_ip4, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_vlp16_port, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_vlp16_organized, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2391,6 +2427,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_depthai_blob_path->clear();
 
 		_ui->checkBox_cameraImages_configForEachFrame->setChecked(false);
+		_ui->checkBox_cameraImages_multiCameraCalibration->setChecked(false);
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
 		_ui->lineEdit_cameraImages_timestamps->setText("");
@@ -2440,10 +2477,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->lineEdit_lidar_local_transform->setText("0 0 0 0 0 0");
 		_ui->lineEdit_vlp16_pcap_path->clear();
-		_ui->spinBox_vlp16_ip1->setValue(192);
-		_ui->spinBox_vlp16_ip2->setValue(168);
-		_ui->spinBox_vlp16_ip3->setValue(1);
-		_ui->spinBox_vlp16_ip4->setValue(201);
+		_ui->spinBox_vlp16_ip1->setValue(0);
+		_ui->spinBox_vlp16_ip2->setValue(0);
+		_ui->spinBox_vlp16_ip3->setValue(0);
+		_ui->spinBox_vlp16_ip4->setValue(0);
 		_ui->spinBox_vlp16_port->setValue(2368);
 		_ui->checkBox_vlp16_organized->setChecked(false);
 		_ui->checkBox_vlp16_hostTime->setChecked(true);
@@ -2559,17 +2596,73 @@ QString PreferencesDialog::getWorkingDirectory() const
 
 QString PreferencesDialog::getIniFilePath() const
 {
+#ifdef WIN32
+	// Windows: store settings in the standard per-user config location (%LOCALAPPDATA%\rtabmap)
+	// instead of a Unix-style dotfile in the home root. A fixed "rtabmap" folder (not the app name)
+	// is used so the main GUI and DatabaseViewer share the same rtabmap.ini. Other platforms keep
+	// ~/.rtabmap for consistency.
+	QString privatePath = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/rtabmap";
+#else
 	QString privatePath = QDir::homePath() + "/.rtabmap";
+#endif
 	if(!QDir(privatePath).exists())
 	{
-		QDir::home().mkdir(".rtabmap");
+		QDir().mkpath(privatePath);
 	}
-	return privatePath + "/rtabmap.ini";
+	QString iniPath = privatePath + "/rtabmap.ini";
+#ifdef WIN32
+	// One-time migration: if there's no ini at the new location but the legacy ~/.rtabmap/rtabmap.ini
+	// exists, copy it over so users keep their existing settings.
+	if(!QFile::exists(iniPath))
+	{
+		QString legacyIni = QDir::homePath() + "/.rtabmap/rtabmap.ini";
+		if(QFile::exists(legacyIni))
+		{
+			QFile::copy(legacyIni, iniPath);
+		}
+	}
+#endif
+	return iniPath;
 }
 
 QString PreferencesDialog::getTmpIniFilePath() const
 {
 	return getIniFilePath()+".tmp";
+}
+
+void PreferencesDialog::restoreConfigOwnership(const QString & filePath)
+{
+#ifndef _WIN32
+	// Only relevant when the process is effectively root (e.g. launched with
+	// sudo). getenv("SUDO_UID"/"SUDO_GID") give the invoking user.
+	if(geteuid() == 0)
+	{
+		const char * sudoUid = getenv("SUDO_UID");
+		const char * sudoGid = getenv("SUDO_GID");
+		if(sudoUid && sudoGid)
+		{
+			uid_t uid = (uid_t)atoi(sudoUid);
+			gid_t gid = (gid_t)atoi(sudoGid);
+			// Restore the config file and its containing directory so the user
+			// can still write preferences without sudo afterwards.
+			auto restoreOwnership = [uid, gid](const QString & path)
+			{
+				if(!path.isEmpty() && QFile::exists(path))
+				{
+					if(chown(path.toStdString().c_str(), uid, gid) != 0)
+					{
+						UWARN("Could not restore ownership of \"%s\" to uid=%d (%s).",
+								path.toStdString().c_str(), (int)uid, strerror(errno));
+					}
+				}
+			};
+			restoreOwnership(filePath);
+			restoreOwnership(QFileInfo(filePath).absolutePath());
+		}
+	}
+#else
+	Q_UNUSED(filePath);
+#endif
 }
 
 void PreferencesDialog::loadConfigFrom()
@@ -2926,6 +3019,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_cameraImages_bayerMode->setCurrentIndex(settings.value("bayerMode",_ui->comboBox_cameraImages_bayerMode->currentIndex()).toInt());
 
 	_ui->checkBox_cameraImages_configForEachFrame->setChecked(settings.value("config_each_frame",_ui->checkBox_cameraImages_configForEachFrame->isChecked()).toBool());
+	_ui->checkBox_cameraImages_multiCameraCalibration->setChecked(settings.value("multi_camera_calibration",_ui->checkBox_cameraImages_multiCameraCalibration->isChecked()).toBool());
 	_ui->checkBox_cameraImages_timestamps->setChecked(settings.value("filenames_as_stamps",_ui->checkBox_cameraImages_timestamps->isChecked()).toBool());
 	_ui->checkBox_cameraImages_syncTimeStamps->setChecked(settings.value("sync_stamps",_ui->checkBox_cameraImages_syncTimeStamps->isChecked()).toBool());
 	_ui->lineEdit_cameraImages_timestamps->setText(settings.value("stamps", _ui->lineEdit_cameraImages_timestamps->text()).toString());
@@ -3241,6 +3335,9 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 	uInsert(_parameters, _modifiedParameters); // update cached parameters
 	_modifiedParameters.clear();
 	_obsoletePanels = kPanelDummy;
+
+	// Keep the ini writable by the invoking user even if we are running as root.
+	restoreConfigOwnership(filePath.isEmpty() ? getIniFilePath() : filePath);
 }
 
 void PreferencesDialog::writeGuiSettings(const QString & filePath) const
@@ -3548,6 +3645,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("maxFrames", 		_ui->source_images_spinBox_maxFrames->value());
 	settings.setValue("bayerMode", 	    _ui->comboBox_cameraImages_bayerMode->currentIndex());
 	settings.setValue("config_each_frame", _ui->checkBox_cameraImages_configForEachFrame->isChecked());
+	settings.setValue("multi_camera_calibration", _ui->checkBox_cameraImages_multiCameraCalibration->isChecked());
 	settings.setValue("filenames_as_stamps", _ui->checkBox_cameraImages_timestamps->isChecked());
 	settings.setValue("sync_stamps",    _ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	settings.setValue("stamps",              _ui->lineEdit_cameraImages_timestamps->text());
@@ -4624,7 +4722,12 @@ void PreferencesDialog::selectCalibrationPath()
 	{
 		dir = getWorkingDirectory()+"/camera_info/"+dir;
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml)"));
+#if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && CV_MAJOR_VERSION < 2)
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml *.xml)"));
+#else
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml *.xml *.json)"));
+#endif
+	
 	if(path.size())
 	{
 		_ui->lineEdit_calibrationFile->setText(path);
@@ -6628,6 +6731,16 @@ QString PreferencesDialog::getSourceDriverStr() const
 	return "";
 }
 
+QString PreferencesDialog::getSourceInitWarningMsg() const
+{
+	if(getSourceDriver() == kSrcStereoZed)
+	{
+		return QString::fromStdString(
+			CameraStereoZed::getNeuralModelWarning(_ui->comboBox_stereoZed_quality->currentIndex()));
+	}
+	return QString();
+}
+
 QString PreferencesDialog::getSourceDevice() const
 {
 	return _ui->lineEdit_sourceDevice->text();
@@ -6813,11 +6926,11 @@ double PreferencesDialog::getSourceScanForceGroundNormalsUp() const
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
 	return createCamera(
-		this->getSourceDriver(), 
-		_ui->lineEdit_sourceDevice->text(), 
-		_ui->lineEdit_calibrationFile->text(), 
-		useRawImages, 
-		useColor, 
+		this->getSourceDriver(),
+		_ui->lineEdit_sourceDevice->text(),
+		_ui->lineEdit_calibrationFile->text(),
+		useRawImages,
+		useColor,
 		false,
 		false);
 }
@@ -7071,6 +7184,7 @@ Camera * PreferencesDialog::createCamera(
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 		((CameraRGBDImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraRGBDImages*)camera)->setMultiCameraCalibration(_ui->checkBox_cameraImages_multiCameraCalibration->isChecked());
 	}
 	else if(driver == kSrcDC1394)
 	{
@@ -7117,6 +7231,7 @@ Camera * PreferencesDialog::createCamera(
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 		((CameraStereoImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraStereoImages*)camera)->setMultiCameraCalibration(_ui->checkBox_cameraImages_multiCameraCalibration->isChecked());
 		((CameraStereoImages*)camera)->setRightGrayScale(_ui->checkBox_stereo_rightGrayScale->isChecked());
 	}
 	else if (driver == kSrcStereoUsb)
@@ -7321,7 +7436,8 @@ Camera * PreferencesDialog::createCamera(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
-		((CameraRGBDImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraImages*)camera)->setConfigForEachFrame(_ui->checkBox_cameraImages_configForEachFrame->isChecked());
+		((CameraImages*)camera)->setMultiCameraCalibration(_ui->checkBox_cameraImages_multiCameraCalibration->isChecked());
 	}
 	else if(driver == kSrcDatabase)
 	{
@@ -7718,7 +7834,28 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
+	QString startLabel = tr("Starting camera...");
+	QString initWarn = getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	showAndWaitExposed(&progress);
+
 	Camera * camera = this->createCamera();
+	progress.hide();
 	if(!camera)
 	{
 		return;
@@ -7766,12 +7903,13 @@ void PreferencesDialog::testOdometry()
 			_ui->odom_dataBufferSize->value());
 	odomThread.registerToEventsManager();
 
+	// parent = 0 (not 'this'): see testCamera() - avoids the nested-modality crash.
 	OdometryViewer * odomViewer = new OdometryViewer(10,
 					_ui->spinBox_decimation_odom->value(),
 					0.0f,
 					_ui->doubleSpinBox_maxDepth_odom->value(),
 					this->getOdomQualityWarnThr(),
-					this,
+					0,
 					this->getAllParameters());
 	odomViewer->setWindowTitle(tr("Odometry viewer"));
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
@@ -7833,25 +7971,75 @@ void PreferencesDialog::testOdometry()
 	}
 
 	odomViewer->exec();
-	delete odomViewer;
+	UDEBUG("Dialog closed, stopping sensor...");
+
+	// Tear down the pipes first so no more events are routed to the threads/viewer being
+	// destroyed, then stop the threads, then delete the viewer. This avoids delivering
+	// events to a handler that is being torn down.
+	UEventsManager::removePipe(&cameraThread, &odomThread, "SensorEvent");
+	if(imuThread)
+	{
+		UEventsManager::removePipe(imuThread, &odomThread, "IMUEvent");
+	}
+	UEventsManager::removePipe(&odomThread, odomViewer, "OdometryEvent");
+	UEventsManager::removePipe(odomViewer, &odomThread, "OdometryResetEvent");
 
 	if(imuThread)
 	{
 		imuThread->join(true);
-		delete imuThread;
 	}
+
+	// Reuse the same dialog for the close. The device close() runs in cameraThread's destructor
+	// at function scope end (not in join()), so 'progress' stays visible across it. On Windows
+	// the first 2-3 RealSense closes per launch stall ~20s in the Motion Module stop().
+	progress.setLabelText(tr("Closing camera..."));
+	showAndWaitExposed(&progress);
 	cameraThread.join(true);
 	odomThread.join(true);
+
+	// deleteLater() (not delete): see testCamera() - avoids a dangling OpenGL platform
+	// window that crashes in QWindowsWindow::alertWindow when Preferences later closes.
+	odomViewer->deleteLater();
+	if(imuThread)
+	{
+		delete imuThread;
+	}
 }
 
 void PreferencesDialog::testCamera()
 {
-	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
+	// Not parented to 'this': the Preferences dialog is itself application-modal, and making
+	// the viewer a modal *child* of it (nested modality) with an OpenGL/VTK native window
+	// crashes Qt (QWindowsWindow::alertWindow, this==nullptr) when Preferences later closes.
+	// exec() below still makes the viewer application-modal, so interaction stays blocked.
+	CameraViewer * window = new CameraViewer(nullptr, this->getAllParameters());
 	window->setWindowTitle(tr("Camera viewer"));
 	window->resize(1280, 480+QPushButton().minimumHeight());
 	window->registerToEventsManager();
 
+	QString startLabel = tr("Starting camera...");
+	QString initWarn = getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	showAndWaitExposed(&progress);
+
+	// createCamera() init()s the device on the GUI thread (required by ZED) and takes a few seconds.
 	Camera * camera = this->createCamera();
+	progress.hide();
 	if(camera)
 	{
 		SensorCaptureThread cameraThread(camera, this->getAllParameters());
@@ -7896,12 +8084,24 @@ void PreferencesDialog::testCamera()
 
 		cameraThread.start();
 		window->exec();
-		delete window;
-		cameraThread.join(true);
+		UDEBUG("Dialog closed, stopping sensor...");
+		UEventsManager::removePipe(&cameraThread, window, "SensorEvent");
+
+		// Reuse the same dialog for the close. The device close() runs in cameraThread's
+		// destructor at scope end (not in join()), so 'progress' - declared in the outer scope -
+		// stays visible across it. On Windows the first 2-3 RealSense closes per launch stall
+		// ~20s in the Motion Module stop() (librealsense warm-up); this keeps the user informed.
+		progress.setLabelText(tr("Closing camera..."));
+		showAndWaitExposed(&progress);
+		cameraThread.join(true); // cameraThread's destructor (scope end) closes the device
+		// deleteLater() (not delete): defer destruction to the event loop so Qt finishes
+		// tearing down the OpenGL widget's context and window-proc subclass and drains
+		// pending activation messages first.
+		window->deleteLater();
 	}
 	else
 	{
-		delete window;
+		window->deleteLater();
 	}
 }
 
@@ -8367,14 +8567,23 @@ void PreferencesDialog::calibrateOdomSensorExtrinsics()
 
 void PreferencesDialog::testLidar()
 {
-	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
+	// Not parented to 'this': see testCamera() - avoids the nested-modality crash.
+	CameraViewer * window = new CameraViewer(nullptr, this->getAllParameters());
 	window->setWindowTitle(tr("Lidar viewer"));
 	window->setWindowFlags(Qt::Window);
 	window->resize(1280, 480+QPushButton().minimumHeight());
 	window->registerToEventsManager();
 	window->setDecimation(1);
 
+	QProgressDialog progress(tr("Starting lidar..."), QString(), 0, 0, this);
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	showAndWaitExposed(&progress);
+
 	Lidar * lidar = this->createLidar();
+	progress.hide();
 	if(lidar)
 	{
 		SensorCaptureThread lidarThread(lidar, this->getAllParameters());
@@ -8393,12 +8602,22 @@ void PreferencesDialog::testLidar()
 
 		lidarThread.start();
 		window->exec();
-		delete window;
-		lidarThread.join(true);
+		UDEBUG("Dialog closed, stopping sensor...");
+		UEventsManager::removePipe(&lidarThread, window, "SensorEvent");
+
+		// Reuse the same dialog for the close. The device close() runs in lidarThread's
+		// destructor at scope end (not in join()), so 'progress' - declared in the outer
+		// scope - stays visible across it.
+		progress.setLabelText(tr("Closing sensor..."));
+		showAndWaitExposed(&progress);
+		lidarThread.join(true); // lidarThread's destructor (scope end) closes the device
+		// deleteLater() (not delete): see testCamera() - avoids a dangling OpenGL platform
+		// window that crashes in QWindowsWindow::alertWindow when Preferences later closes.
+		window->deleteLater();
 	}
 	else
 	{
-		delete window;
+		window->deleteLater();
 	}
 }
 

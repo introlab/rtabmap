@@ -8,6 +8,10 @@
 #ifndef CORELIB_SRC_OPENCV_FIVE_POINT_H_
 #define CORELIB_SRC_OPENCV_FIVE_POINT_H_
 
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/geometry.hpp>
+#endif
+
 namespace cv3
 {
 

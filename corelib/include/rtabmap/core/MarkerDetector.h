@@ -32,7 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraModel.h>
 #include <opencv2/opencv_modules.hpp>
 
-#ifdef HAVE_OPENCV_ARUCO
+#if (CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)
+#include <opencv2/objdetect.hpp>
+#elif defined(HAVE_OPENCV_ARUCO)
 #include <opencv2/aruco.hpp>
 #endif
 
@@ -97,8 +99,11 @@ private:
 	float maxRange_;
 	float minRange_;
 	int dictionaryId_;
-#ifdef HAVE_OPENCV_ARUCO
-	cv::Ptr<cv::aruco::DetectorParameters> detectorParams_;
+#if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)
+  cv::Ptr<cv::aruco::ArucoDetector> arucoDetector_;
+#endif
+  cv::Ptr<cv::aruco::DetectorParameters> detectorParams_;
 	cv::Ptr<cv::aruco::Dictionary> dictionary_;
 #endif
   void * apriltagLibDetector_;

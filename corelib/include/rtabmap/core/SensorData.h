@@ -33,7 +33,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/StereoCameraModel.h>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/IMU.h>
 #include <rtabmap/core/GPS.h>
@@ -906,9 +910,11 @@ public:
 	/**
 	 * @brief Sets IMU data
 	 * @param imu IMU data (accelerometer, gyroscope, orientation)
+	 * @warning Asserts that all orientation, angular velocity and linear acceleration
+	 *          values are finite.
 	 */
-	void setIMU(const IMU & imu) {imu_ = imu; }
-	
+	void setIMU(const IMU & imu);
+
 	/**
 	 * @brief Returns IMU data
 	 * @return Const reference to IMU data

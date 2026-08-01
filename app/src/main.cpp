@@ -52,6 +52,10 @@ int main(int argc, char* argv[])
 	ULogger::setLevel(ULogger::kWarning);
 
 #ifdef WIN32
+	// STA (single-threaded apartment) is required for the native file dialogs / File Explorer
+	// (see commit d75cc04, "Fixed File Explorer hanging (Qt 5.12)"). Do NOT switch to MTA
+	// (CoInitializeEx COINIT_MULTITHREADED): it deadlocks the
+	// native file dialogs.
 	CoInitialize(nullptr);
 #endif
 
@@ -59,6 +63,12 @@ int main(int argc, char* argv[])
     // needed to ensure appropriate OpenGL context is created for VTK rendering.
     QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
 #endif
+
+	// Recommended by VTK when using QVTKOpenGLNativeWidget (a QOpenGLWidget): let all VTK
+	// render widgets share a single OpenGL context, which is needed for correct rendering
+	// when render widgets live in / move across multiple top-level windows. Must be set
+	// before QApplication is constructed.
+	QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);

@@ -1,0 +1,309 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9660f55..0186da4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -31,12 +31,12 @@ IF(MSVC)
+   add_definitions(-D_USE_MATH_DEFINES)
+ ELSE()
+   IF (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+-    add_definitions (-march=armv8-a)
++    #add_definitions (-march=armv8-a)
+   ELSEIF (CMAKE_SYSTEM_PROCESSOR MATCHES 
+           "(arm)|(ARM)|(armhf)|(ARMHF)|(armel)|(ARMEL)")
+-    add_definitions (-march=armv7-a)
++    #add_definitions (-march=armv7-a)
+   ELSE ()
+-    add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
++    #add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
+   ENDIF()
+   add_definitions (
+     -O3
+@@ -181,7 +181,7 @@ add_library( random_generators test/random_generators.cpp test/random_generators
+ set_target_properties( opengv random_generators PROPERTIES
+                     SOVERSION ${PROJECT_VERSION}
+                     VERSION ${PROJECT_VERSION}
+-                    CXX_STANDARD 11
++                    CXX_STANDARD 14
+                     CXX_STANDARD_REQUIRED ON
+                     DEBUG_POSTFIX d )
+ 
+@@ -329,7 +329,7 @@ IF (BUILD_TESTS)
+     test_Sturm
+ 
+     PROPERTIES
+-    CXX_STANDARD 11
++    CXX_STANDARD 14
+     CXX_STANDARD_REQUIRED ON
+     DEBUG_POSTFIX d )
+ 
+diff --git a/modules/FindEigen.cmake b/modules/FindEigen.cmake
+index 126f4a0..39b5524 100644
+--- a/modules/FindEigen.cmake
++++ b/modules/FindEigen.cmake
+@@ -30,7 +30,13 @@ if(NOT Eigen_FIND_VERSION)
+ endif(NOT Eigen_FIND_VERSION)
+ 
+ macro(_eigen3_check_version)
+-  file(READ "${EIGEN_INCLUDE_DIR}/Eigen/src/Core/util/Macros.h" _eigen3_version_header)
++  # Since Eigen 5.0.0 the version macros moved from Eigen/src/Core/util/Macros.h
++  # to a dedicated Eigen/Version header, so check the new location first.
++  if(EXISTS "${EIGEN_INCLUDE_DIR}/Eigen/Version")
++    file(READ "${EIGEN_INCLUDE_DIR}/Eigen/Version" _eigen3_version_header)
++  else()
++    file(READ "${EIGEN_INCLUDE_DIR}/Eigen/src/Core/util/Macros.h" _eigen3_version_header)
++  endif()
+ 
+   string(REGEX MATCH "define[ \t]+EIGEN_WORLD_VERSION[ \t]+([0-9]+)" _eigen3_world_version_match "${_eigen3_version_header}")
+   set(EIGEN_WORLD_VERSION "${CMAKE_MATCH_1}")
+diff --git a/src/absolute_pose/CentralAbsoluteAdapter.cpp b/src/absolute_pose/CentralAbsoluteAdapter.cpp
+index 684fa7e..a4ff2bd 100644
+--- a/src/absolute_pose/CentralAbsoluteAdapter.cpp
++++ b/src/absolute_pose/CentralAbsoluteAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
+ 
+ 
+diff --git a/src/absolute_pose/MACentralAbsolute.cpp b/src/absolute_pose/MACentralAbsolute.cpp
+index 6edbabc..1687d45 100644
+--- a/src/absolute_pose/MACentralAbsolute.cpp
++++ b/src/absolute_pose/MACentralAbsolute.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/absolute_pose/MACentralAbsolute.hpp>
+ 
+ 
+diff --git a/src/absolute_pose/MANoncentralAbsolute.cpp b/src/absolute_pose/MANoncentralAbsolute.cpp
+index d9b5b09..a7ae689 100644
+--- a/src/absolute_pose/MANoncentralAbsolute.cpp
++++ b/src/absolute_pose/MANoncentralAbsolute.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/absolute_pose/MANoncentralAbsolute.hpp>
+ 
+ opengv::absolute_pose::MANoncentralAbsolute::MANoncentralAbsolute(
+diff --git a/src/absolute_pose/NoncentralAbsoluteAdapter.cpp b/src/absolute_pose/NoncentralAbsoluteAdapter.cpp
+index 30176aa..6a0e405 100644
+--- a/src/absolute_pose/NoncentralAbsoluteAdapter.cpp
++++ b/src/absolute_pose/NoncentralAbsoluteAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/absolute_pose/NoncentralAbsoluteAdapter.hpp>
+ 
+ opengv::absolute_pose::NoncentralAbsoluteAdapter::NoncentralAbsoluteAdapter(
+diff --git a/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp b/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp
+index 88c237a..58a82f4 100644
+--- a/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp
++++ b/src/absolute_pose/NoncentralAbsoluteMultiAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/absolute_pose/NoncentralAbsoluteMultiAdapter.hpp>
+ 
+ opengv::absolute_pose::NoncentralAbsoluteMultiAdapter::NoncentralAbsoluteMultiAdapter(
+diff --git a/src/absolute_pose/methods.cpp b/src/absolute_pose/methods.cpp
+index b1f0889..19c4eaf 100644
+--- a/src/absolute_pose/methods.cpp
++++ b/src/absolute_pose/methods.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/absolute_pose/methods.hpp>
+ #include <opengv/Indices.hpp>
+ 
+diff --git a/src/absolute_pose/modules/main.cpp b/src/absolute_pose/modules/main.cpp
+index ed0c271..99f7f35 100644
+--- a/src/absolute_pose/modules/main.cpp
++++ b/src/absolute_pose/modules/main.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <Eigen/NonLinearOptimization>
+ #include <Eigen/NumericalDiff>
+ 
+diff --git a/src/math/arun.cpp b/src/math/arun.cpp
+index a0d6296..f5c0ac3 100644
+--- a/src/math/arun.cpp
++++ b/src/math/arun.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/math/arun.hpp>
+ 
+ opengv::rotation_t
+diff --git a/src/point_cloud/MAPointCloud.cpp b/src/point_cloud/MAPointCloud.cpp
+index 81fd5dd..cdccae3 100644
+--- a/src/point_cloud/MAPointCloud.cpp
++++ b/src/point_cloud/MAPointCloud.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/point_cloud/MAPointCloud.hpp>
+ 
+ opengv::point_cloud::MAPointCloud::MAPointCloud(
+diff --git a/src/point_cloud/PointCloudAdapter.cpp b/src/point_cloud/PointCloudAdapter.cpp
+index f9faaeb..28fbb7e 100644
+--- a/src/point_cloud/PointCloudAdapter.cpp
++++ b/src/point_cloud/PointCloudAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/point_cloud/PointCloudAdapter.hpp>
+ 
+ opengv::point_cloud::PointCloudAdapter::PointCloudAdapter(
+diff --git a/src/point_cloud/methods.cpp b/src/point_cloud/methods.cpp
+index 5409eeb..7a26e6a 100644
+--- a/src/point_cloud/methods.cpp
++++ b/src/point_cloud/methods.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/point_cloud/methods.hpp>
+ #include <opengv/Indices.hpp>
+ 
+diff --git a/src/relative_pose/CentralRelativeAdapter.cpp b/src/relative_pose/CentralRelativeAdapter.cpp
+index 38e9a62..5018bd8 100644
+--- a/src/relative_pose/CentralRelativeAdapter.cpp
++++ b/src/relative_pose/CentralRelativeAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/CentralRelativeAdapter.hpp>
+ 
+ opengv::relative_pose::CentralRelativeAdapter::CentralRelativeAdapter(
+diff --git a/src/relative_pose/CentralRelativeMultiAdapter.cpp b/src/relative_pose/CentralRelativeMultiAdapter.cpp
+index 2ab7476..49a3a07 100644
+--- a/src/relative_pose/CentralRelativeMultiAdapter.cpp
++++ b/src/relative_pose/CentralRelativeMultiAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/CentralRelativeMultiAdapter.hpp>
+ 
+ opengv::relative_pose::CentralRelativeMultiAdapter::CentralRelativeMultiAdapter(
+diff --git a/src/relative_pose/CentralRelativeWeightingAdapter.cpp b/src/relative_pose/CentralRelativeWeightingAdapter.cpp
+index a6ab478..7684526 100644
+--- a/src/relative_pose/CentralRelativeWeightingAdapter.cpp
++++ b/src/relative_pose/CentralRelativeWeightingAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/CentralRelativeWeightingAdapter.hpp>
+ 
+ opengv::relative_pose::CentralRelativeWeightingAdapter::CentralRelativeWeightingAdapter(
+diff --git a/src/relative_pose/MACentralRelative.cpp b/src/relative_pose/MACentralRelative.cpp
+index ec2959f..75e76d5 100644
+--- a/src/relative_pose/MACentralRelative.cpp
++++ b/src/relative_pose/MACentralRelative.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/MACentralRelative.hpp>
+ 
+ opengv::relative_pose::MACentralRelative::MACentralRelative(
+diff --git a/src/relative_pose/MANoncentralRelative.cpp b/src/relative_pose/MANoncentralRelative.cpp
+index cea9c14..8566aeb 100644
+--- a/src/relative_pose/MANoncentralRelative.cpp
++++ b/src/relative_pose/MANoncentralRelative.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/MANoncentralRelative.hpp>
+ 
+ opengv::relative_pose::MANoncentralRelative::MANoncentralRelative(
+diff --git a/src/relative_pose/MANoncentralRelativeMulti.cpp b/src/relative_pose/MANoncentralRelativeMulti.cpp
+index 49f8ecf..8b62e07 100644
+--- a/src/relative_pose/MANoncentralRelativeMulti.cpp
++++ b/src/relative_pose/MANoncentralRelativeMulti.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/MANoncentralRelativeMulti.hpp>
+ 
+ opengv::relative_pose::MANoncentralRelativeMulti::MANoncentralRelativeMulti(
+diff --git a/src/relative_pose/NoncentralRelativeAdapter.cpp b/src/relative_pose/NoncentralRelativeAdapter.cpp
+index 552f180..775d520 100644
+--- a/src/relative_pose/NoncentralRelativeAdapter.cpp
++++ b/src/relative_pose/NoncentralRelativeAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/NoncentralRelativeAdapter.hpp>
+ 
+ opengv::relative_pose::NoncentralRelativeAdapter::NoncentralRelativeAdapter(
+diff --git a/src/relative_pose/NoncentralRelativeMultiAdapter.cpp b/src/relative_pose/NoncentralRelativeMultiAdapter.cpp
+index f41edbe..733023c 100644
+--- a/src/relative_pose/NoncentralRelativeMultiAdapter.cpp
++++ b/src/relative_pose/NoncentralRelativeMultiAdapter.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/NoncentralRelativeMultiAdapter.hpp>
+ 
+ opengv::relative_pose::NoncentralRelativeMultiAdapter::NoncentralRelativeMultiAdapter(
+diff --git a/src/relative_pose/methods.cpp b/src/relative_pose/methods.cpp
+index 0027dae..7678567 100644
+--- a/src/relative_pose/methods.cpp
++++ b/src/relative_pose/methods.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/methods.hpp>
+ #include <opengv/Indices.hpp>
+ 
+diff --git a/src/relative_pose/modules/fivept_nister/modules.cpp b/src/relative_pose/modules/fivept_nister/modules.cpp
+index 4b134c5..258d416 100644
+--- a/src/relative_pose/modules/fivept_nister/modules.cpp
++++ b/src/relative_pose/modules/fivept_nister/modules.cpp
+@@ -29,6 +29,7 @@
+  ******************************************************************************/
+ 
+ 
++#include <cassert>
+ #include <opengv/relative_pose/modules/fivept_nister/modules.hpp>
+ #include <Eigen/NonLinearOptimization>
+ #include <Eigen/NumericalDiff>

@@ -28,3 +28,9 @@ doc/
 cross_reference/
 docs_build/
 docs_output/
+
+# Windows bundle: vcpkg tree, build output, and deps built from source (bundle_windows_deps.bat)
+vcpkg/
+vcpkg_installed/
+vcpkg_binaries/
+vcpkg_deps_from_source/

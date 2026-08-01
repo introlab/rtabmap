@@ -27,9 +27,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/stereo/StereoBM.h>
 #include <rtabmap/utilite/ULogger.h>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/stereo.hpp>
+#include <opencv2/geometry.hpp>
+#endif
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgproc/types_c.h>
 
 namespace rtabmap {
 
@@ -88,7 +92,7 @@ cv::Mat StereoBM::computeDisparity(
 	cv::Mat leftMono;
 	if(leftImage.channels() == 3)
 	{
-		cv::cvtColor(leftImage, leftMono, CV_BGR2GRAY);
+		cv::cvtColor(leftImage, leftMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
@@ -98,7 +102,7 @@ cv::Mat StereoBM::computeDisparity(
 	cv::Mat rightMono;
 	if(rightImage.channels() == 3)
 	{
-		cv::cvtColor(rightImage, rightMono, CV_BGR2GRAY);
+		cv::cvtColor(rightImage, rightMono, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{

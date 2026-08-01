@@ -41,7 +41,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 #include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <pcl/pcl_config.h>
 
 namespace rtabmap {
@@ -348,8 +352,10 @@ public:
 	 * @brief Removes @p locationId from WM/STM and the database.
 	 * @param locationId Id of the signature to delete.
 	 * @param deletedWords Optional output: words whose reference count dropped to zero.
+	 * @param keepLinkedInDb If true, the location is kept in the database with its links
+	 *                       (history only) instead of being removed from the graph.
 	 */
-	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
+	void deleteLocation(int locationId, std::list<int> * deletedWords = 0, bool keepLinkedInDb = false);
 	/** @brief Forces @p locationId to be flushed to the database. */
 	void saveLocationData(int locationId);
 	/** @brief Removes any link between @p idA and @p idB (both directions). */
@@ -365,9 +371,24 @@ public:
 	 * @return Id of the node @p id was merged into, or 0 if no reduction was performed.
 	 */
 	int reduceNode(int id, float maxDistance = 0.0f, bool keepLinkedInDb = false, int direction = 0);
+	/**
+	 * @brief Enables a dummy visual word dictionary (no descriptors kept, word ids only).
+	 * @note Must be called before @ref init(); ignored (with an error logged) once the
+	 *       database driver is set.
+	 */
+	void setDummyDictionary(bool enabled);
 
 	/** @return Working memory as { signature id, age } (does not include STM). */
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
+	/**
+	 * @brief Returns the number of signatures in working memory, excluding the virtual place.
+	 * @param ignoreIntermediateNodes If true, intermediate nodes (weight = -1) are not counted.
+	 */
+	size_t getWorkingMemSize(bool ignoreIntermediateNodes = false) const;
+	/** @return Number of intermediate nodes (weight = -1) currently in working memory. */
+	int getWorkingMemIntermediateNodesCount() const {return _workingMemIntermediateNodesCount;}
+	/** @return Number of intermediate nodes (weight = -1) currently in short-term memory. */
+	int getStMemIntermediateNodesCount() const {return _stMemIntermediateNodesCount;}
 	/** @return Set of signature ids currently in short-term memory. */
 	const std::set<int> & getStMem() const {return _stMem;}
 	/** @return Configured maximum STM size (@ref Parameters::kMemSTMSize()). */
@@ -757,7 +778,6 @@ private:
 	std::list<Signature *> getRemovableSignatures(int count,
 			const std::set<int> & ignoredIds = std::set<int>());
 	int getNextId();
-	void initCountId();
 	void rehearsal(Signature * signature, Statistics * stats = 0);
 	bool rehearsalMerge(int oldId, int newId);
 	bool canBeReduced(const Link & link, float maxDistance, int direction);
@@ -842,6 +862,8 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
+	int _workingMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _workingMem
+	int _stMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _stMem
 	bool _allNodesInWM;
 	bool _receivingOdometryFeatures;
 	GPS _gpsOrigin;
@@ -873,6 +895,8 @@ private:
 	MarkerDetector * _markerDetector;
 
 	GlobalDescriptorExtractor * _globalDescriptorExtractor;
+
+	bool _dummyDictionary;
 };
 
 } // namespace rtabmap

@@ -34,7 +34,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RegistrationInfo.h"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/LaserScan.h"
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 
 namespace rtabmap {
 

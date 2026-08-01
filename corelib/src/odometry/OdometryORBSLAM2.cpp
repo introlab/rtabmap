@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include <pcl/common/transforms.h>
-#include <opencv2/imgproc/types_c.h>
 #include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
 #if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
@@ -426,7 +425,7 @@ public:
 	        }
 	        else
 	        {
-	            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+	            cvtColor(mImGray,mImGray,cv::COLOR_BGR2GRAY);
 	        }
 	    }
 	    else if(mImGray.channels()==4)
@@ -437,7 +436,7 @@ public:
 	        }
 	        else
 	        {
-	            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+	            cvtColor(mImGray,mImGray,cv::COLOR_BGRA2GRAY);
 	        }
 	    }
 	    if(imGrayRight.channels()==3)
@@ -448,7 +447,7 @@ public:
 			}
 			else
 			{
-				cvtColor(imGrayRight,imGrayRight,CV_BGR2GRAY);
+				cvtColor(imGrayRight,imGrayRight,cv::COLOR_BGR2GRAY);
 			}
 		}
 		else if(imGrayRight.channels()==4)
@@ -459,7 +458,7 @@ public:
 			}
 			else
 			{
-				cvtColor(imGrayRight,imGrayRight,CV_BGRA2GRAY);
+				cvtColor(imGrayRight,imGrayRight,cv::COLOR_BGRA2GRAY);
 			}
 		}
 
@@ -480,14 +479,14 @@ public:
 	        if(mbRGB)
 	            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
 	        else
-	            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+	            cvtColor(mImGray,mImGray,cv::COLOR_BGR2GRAY);
 	    }
 	    else if(mImGray.channels()==4)
 	    {
 	        if(mbRGB)
 	            cvtColor(mImGray,mImGray,CV_RGBA2GRAY);
 	        else
-	            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+	            cvtColor(mImGray,mImGray,cv::COLOR_BGRA2GRAY);
 	    }
 
 	    UASSERT(imDepth.type()==CV_32F);

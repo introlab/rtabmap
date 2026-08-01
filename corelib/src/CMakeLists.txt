@@ -392,7 +392,6 @@ IF(depthai_FOUND)
 	SET(PUBLIC_LIBRARIES
 		${PUBLIC_LIBRARIES}
 		depthai::core
-		depthai::opencv
 	)
 ENDIF(depthai_FOUND)
 

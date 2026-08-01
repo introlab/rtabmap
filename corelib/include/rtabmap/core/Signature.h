@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/point_types.h>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <opencv2/imgproc/imgproc.hpp>
 #include <map>
 #include <list>
@@ -179,9 +183,10 @@ public:
 	 * 
 	 * @param weight The weight value
 	 * 
-	 * @note Automatically marks the signature as modified if the weight changes.
+	 * @note Marks the signature as modified if the weight changes. A signature already
+	 *       flagged as modified stays modified.
 	 */
-	void setWeight(int weight) {_modified=_weight!=weight;_weight = weight;}
+	void setWeight(int weight) {_modified=_modified || _weight!=weight;_weight = weight;}
 	
 	/**
 	 * @brief Returns the weight/importance of this signature
@@ -197,10 +202,11 @@ public:
 	 * 
 	 * @param label The label string
 	 * 
-	 * @note Automatically marks the signature as modified if the label changes.
+	 * @note Marks the signature as modified if the label changes. A signature already
+	 *       flagged as modified stays modified.
 	 */
-	void setLabel(const std::string & label) {_modified=_label.compare(label)!=0;_label = label;}
-	
+	void setLabel(const std::string & label) {_modified=_modified || _label.compare(label)!=0;_label = label;}
+
 	/**
 	 * @brief Returns the label/name of this signature
 	 * @return The label string (empty if not set)

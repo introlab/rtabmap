@@ -404,13 +404,16 @@ int main (int argc, char * argv[])
 		{
 			printf("The camera is not calibrated! You should calibrate the camera first.\n");
 			delete camera;
+			return 1;
 		}
 	}
 	else
 	{
 		printf("Failed to initialize the camera! Please select another driver (see \"--help\").\n");
 		delete camera;
+		return 1;
 	}
 
+	printf("Exiting cleanly.\n");
 	return 0;
 }

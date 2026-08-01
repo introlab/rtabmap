@@ -108,7 +108,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 		incrementalDictionary = uStr2Bool((*iter).second.c_str());
 	}
 
-	// Verifying hypotheses strategy
+	// Verifying NN strategy
 	bool treeUpdated = false;
 	if((iter=parameters.find(Parameters::kKpNNStrategy())) != parameters.end())
 	{

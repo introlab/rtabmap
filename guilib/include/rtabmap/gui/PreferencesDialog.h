@@ -130,6 +130,12 @@ public:
 
 	virtual QString getIniFilePath() const;
 	virtual QString getTmpIniFilePath() const;
+	// When running under sudo, Qt's QSettings replaces the ini with a
+	// root-owned file (write-temp + rename), so later non-root runs can no
+	// longer save preferences. Restore the invoking user's ownership (from
+	// SUDO_UID/SUDO_GID) on the config file and its directory. No-op on Windows
+	// and when not running as root. Best-effort (ignores failures).
+	static void restoreConfigOwnership(const QString & filePath);
 	void init(const QString & iniFilePath = "");
 	void setCurrentPanelToSource();
 	virtual QString getDefaultWorkingDirectory() const;
@@ -263,6 +269,9 @@ public:
 	PreferencesDialog::Src getSourceDriver() const;
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
+	// Non-empty warning to show before opening the selected source when init() is expected to be
+	// unusually slow; empty otherwise.
+	QString getSourceInitWarningMsg() const;
 	PreferencesDialog::Src getLidarSourceDriver() const;
 	PreferencesDialog::Src getOdomSourceDriver() const;
 
