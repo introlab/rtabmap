@@ -101,6 +101,11 @@ add_executable(test_memory test_memory.cpp)
 target_link_libraries(test_memory gtest_main rtabmap_core)
 add_test(NAME test_memory COMMAND test_memory)
 
+#MarkerDetector.h
+add_executable(test_markerdetector test_markerdetector.cpp)
+target_link_libraries(test_markerdetector gtest_main rtabmap_core)
+add_test(NAME test_markerdetector COMMAND test_markerdetector)
+
 #Rtabmap.h
 add_executable(test_rtabmap test_rtabmap.cpp)
 target_link_libraries(test_rtabmap gtest_main rtabmap_core)

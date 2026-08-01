@@ -40,8 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-typedef std::map<int, Transform> MapIdPose;
-
 class MarkerInfo {
 public:
     MarkerInfo(int id, float length, Transform pose) :
@@ -70,14 +68,6 @@ public:
 	MarkerDetector(const ParametersMap & parameters = ParametersMap());
 	virtual ~MarkerDetector();
 	void parseParameters(const ParametersMap & parameters);
-
-	// Use the other detect(), in which the returned map contains the length of each marker detected.
-    RTABMAP_DEPRECATED
-    MapIdPose detect(const cv::Mat & image,
-			const CameraModel & model,
-			const cv::Mat & depth = cv::Mat(),
-			float * estimatedMarkerLength = 0,
-			cv::Mat * imageWithDetections = 0);
 
     std::map<int, MarkerInfo> detect(const cv::Mat & image,
 		    const std::vector<CameraModel> & models,
