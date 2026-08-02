@@ -62,6 +62,20 @@ jobs:
       - name: Generate C++ API documentation (Doxygen)
         run: ./docs-report.sh
 
+      # The theme emits absolute asset links built from site.baseurl, which
+      # GitHub's own Jekyll infers from the repository (/rtabmap). A PR preview
+      # is served from a deeper path, so those links would 404 there. Pin
+      # baseurl to the path this particular build gets published to.
+      - name: Set Jekyll baseurl
+        run: |
+          set -eux
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            baseurl="/${{ github.event.repository.name }}/preview/pr-${{ github.event.number }}"
+          else
+            baseurl="/${{ github.event.repository.name }}"
+          fi
+          echo "baseurl: ${baseurl}" >> website/_config.yml
+
       # Landing page: built here rather than by GitHub's own Jekyll, so that
       # .nojekyll can be set below and the Doxygen output is served untouched.
       - name: Build landing page (Jekyll)
@@ -151,6 +165,12 @@ jobs:
           publish_dir: ./_site
           destination_dir: ${{ github.event_name == 'pull_request' && format('preview/pr-{0}', github.event.number) || '' }}
           keep_files: true
+          # Do not let the action drop a .nojekyll at the *branch root*: that
+          # disables Jekyll for everything on the branch, including content
+          # published outside this deployment. The site we publish carries its
+          # own .nojekyll inside destination_dir, which is the only place it
+          # should apply.
+          enable_jekyll: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: >-
