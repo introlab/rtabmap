@@ -22,11 +22,8 @@ lcov.info
 
 # Doxygen (docs-report.sh / .github/workflows/docs.yml)
 doc/
-
-# rosdoc2 (rosdoc-report.sh / .github/workflows/rosdoc.yml)
-cross_reference/
-docs_build/
-docs_output/
+# Generated from Doxyfile.in by CMake.
+Doxyfile
 
 # Windows bundle: vcpkg tree, build output, and deps built from source (bundle_windows_deps.bat)
 vcpkg/

@@ -74,6 +74,11 @@ jobs:
         id: site
         run: |
           set -eux
+          # jekyll-build-pages is a container action running as root, so _site
+          # comes back owned by root and the steps below (running as the runner
+          # user) cannot write into it.
+          sudo chown -R "$(id -u):$(id -g)" _site
+
           # Serve everything verbatim: the site is already built, and Jekyll
           # would otherwise skip Doxygen files/folders starting with '_'.
           touch _site/.nojekyll
