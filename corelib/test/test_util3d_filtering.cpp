@@ -384,39 +384,88 @@ TEST(Util3dFilteringTest, CommonFilteringNormalVoxelI) {
     }
 }
 
+// Checks the two independent rules that commonFiltering()'s groundNormalsUp option
+// applies through adjustNormalsToViewPoint(), for a normal n at a point p:
+//   1) view point rule: reverse n when (V - p).dot(n) < 0, so that every normal
+//      faces the sensor.
+//   2) ground rule: reverse n when nz < -groundNormalsUp AND p.z < V.z, so that a
+//      steep normal on the ground below the sensor points up. Far velodyne rays on a
+//      road can produce such downward normals, and rule 1 keeps them as-is because
+//      the sensor is seen edge-on.
+// commonFiltering() keeps the scan in sensor frame, so V is the sensor origin (0,0,0)
+// and the scan local transform set below is deliberately non-trivial to confirm it is
+// not used as view point. Ground is therefore z < 0, i.e. the points are laid out as
+// seen by a sensor mounted 2 m above a flat floor.
+//
+// The 7 points cover, in order:
+//   0: floor, normal up             -> faces V, both rules idle          -> kept  +1
+//   1: floor, normal down           -> rule 1 reverses it                -> up    +1
+//   2: ceiling, normal up           -> rule 1 reverses it (V is below)   -> down  -1
+//   3: ceiling, normal down         -> faces V, rule 2 idle (p.z > V.z)  -> kept  -1
+//   4: floor, normal 45 deg up      -> faces V, both rules idle          -> kept  +0.707
+//   5: floor, normal 45 deg down    -> faces V, too shallow for rule 2   -> kept  -0.707
+//   6: floor, normal 30 deg down    -> faces V, rule 2 reverses it       -> up    +0.866
+// Point 6 is the only one where rule 2 alone decides the outcome; 3 and 5 are its
+// counterparts failing one of its two conditions each. Point 3 also guards the view
+// point itself: a view point above the sensor would reverse that ceiling normal
+// through rule 1 and then force it up through rule 2.
 TEST(Util3dFilteringTest, CommonFilteringGroundNormalsUp) {
-    cv::Mat data = cv::Mat::zeros(1, 6, CV_32FC(6));
+    cv::Mat data = cv::Mat::zeros(1, 7, CV_32FC(6));
+    // p=(0,0,-2), V-p=(0,0,2), dot=+2 -> kept
+    data.at<cv::Vec6f>(0,0)[2] = -2; // z
     data.at<cv::Vec6f>(0,0)[5] = 1; // nz
-    
+
+    // p=(0,0,-2), V-p=(0,0,2), dot=-2 -> reversed by rule 1
+    data.at<cv::Vec6f>(0,1)[2] = -2; // z
     data.at<cv::Vec6f>(0,1)[5] = -1; // nz
 
-    data.at<cv::Vec6f>(0,2)[2] = 15; // z
+    // p=(0,0,3), V-p=(0,0,-3), dot=-3 -> reversed by rule 1
+    data.at<cv::Vec6f>(0,2)[2] = 3; // z
     data.at<cv::Vec6f>(0,2)[5] = 1; // nz
 
-    data.at<cv::Vec6f>(0,3)[2] = 15; // z
+    // p=(0,0,3), V-p=(0,0,-3), dot=+3 -> kept. nz passes rule 2's -0.8 threshold but
+    // the point is above V, so it is a ceiling, not ground, and must stay facing down.
+    data.at<cv::Vec6f>(0,3)[2] = 3; // z
     data.at<cv::Vec6f>(0,3)[5] = -1; // nz
 
-    data.at<cv::Vec6f>(0,4)[0] = 5; // x
-    data.at<cv::Vec6f>(0,4)[2] = 5; // z
+    // Those two 45 deg normals are below the 0.8 groundNormalsUp threshold, so only
+    // rule 1 should apply to them. Keep x far enough from the view point so that
+    // view point vector and normal are clearly not perpendicular, otherwise the sign
+    // of their dot product would be decided by float rounding only.
+    data.at<cv::Vec6f>(0,4)[0] = 10; // x
+    data.at<cv::Vec6f>(0,4)[2] = -2; // z
     data.at<cv::Vec6f>(0,4)[3] = -cos(M_PI/4); // nx
-    data.at<cv::Vec6f>(0,4)[5] = sin(M_PI/4); // nz (~0.707)
+    data.at<cv::Vec6f>(0,4)[5] = sin(M_PI/4); // nz (~0.707), dot=+8.49 -> kept
 
-    data.at<cv::Vec6f>(0,5)[0] = 5; // x
-    data.at<cv::Vec6f>(0,5)[2] = 5; // z
+    data.at<cv::Vec6f>(0,5)[0] = 10; // x
+    data.at<cv::Vec6f>(0,5)[2] = -2; // z
     data.at<cv::Vec6f>(0,5)[3] = -cos(M_PI/4); // nx
-    data.at<cv::Vec6f>(0,5)[5] = -sin(M_PI/4); // nz (-0.707)
-    LaserScan scan(data, data.total(), 0, LaserScan::kXYZNormal, Transform(0,0,10,0,0,0));
+    data.at<cv::Vec6f>(0,5)[5] = -sin(M_PI/4); // nz (-0.707), dot=+5.66 -> kept
+
+    // Normal tilted 30 deg from straight down, on the floor far ahead of the sensor:
+    // p=(20,0,-2), V-p=(-20,0,2), dot=+8.27 so rule 1 keeps it, while nz=-0.866 is
+    // past the -0.8 threshold and p.z=-2 < V.z=0, so rule 2 flips it up.
+    data.at<cv::Vec6f>(0,6)[0] = 20; // x
+    data.at<cv::Vec6f>(0,6)[2] = -2; // z
+    data.at<cv::Vec6f>(0,6)[3] = -sin(M_PI/6); // nx (-0.5)
+    data.at<cv::Vec6f>(0,6)[5] = -cos(M_PI/6); // nz (~-0.866)
+
+    LaserScan scan(data, data.total(), 0, LaserScan::kXYZNormal, Transform(0,0,2,0,0,0));
 
     LaserScan result = util3d::commonFiltering(scan, 1, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0.8f);
-    EXPECT_EQ(result.size(), 6);
+    EXPECT_EQ(result.size(), 7);
     EXPECT_TRUE(result.hasNormals());
-    int nz = result.getNormalsOffset()+2;
+    int nx = result.getNormalsOffset();
+    int nz = nx+2;
     EXPECT_EQ(result.field(0, nz), 1.0f);
     EXPECT_EQ(result.field(1, nz), 1.0f);
     EXPECT_EQ(result.field(2, nz), -1.0f);
     EXPECT_EQ(result.field(3, nz), -1.0f);
     EXPECT_FLOAT_EQ(result.field(4, nz), sin(M_PI/4));
     EXPECT_FLOAT_EQ(result.field(5, nz), -sin(M_PI/4));
+    // Reversing negates the whole normal, not only nz
+    EXPECT_FLOAT_EQ(result.field(6, nz), cos(M_PI/6));
+    EXPECT_FLOAT_EQ(result.field(6, nx), sin(M_PI/6));
 }
 
 TEST(Util3dFilteringTest, RangeFilteringNoFilteringAppliedWhenEmpty)

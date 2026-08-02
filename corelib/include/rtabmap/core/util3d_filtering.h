@@ -50,8 +50,10 @@ namespace util3d
  * - Range filtering: Removes points outside the specified minimum and maximum range.
  * - Voxel grid filtering: Reduces point density using a voxel grid.
  * - Normal estimation: Computes surface normals using k-nearest neighbors or radius search.
- * - Normal reorientation: Optionally orients normals upward if this condition is fulfilled: for each normal, 
- *   if normal.z < `-groundNormalsUp` and the corresponding point is below viewpoint, it is flipped upward.
+ * - Normal reorientation: normals are first flipped to face the view point, then optionally oriented upward
+ *   if this condition is fulfilled: for each normal, if normal.z < `-groundNormalsUp` and the corresponding
+ *   point is below viewpoint, it is flipped upward. The view point is the sensor origin, as the scan is kept
+ *   in sensor frame (its local transform is not applied), so "below" and "upward" are along the sensor Z axis.
  *
  * The function supports both 2D and 3D scans and adapts behavior based on whether the scan contains RGB or intensity data.
  * 

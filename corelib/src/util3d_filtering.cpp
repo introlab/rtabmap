@@ -328,8 +328,11 @@ LaserScan commonFiltering(
 
 		if(scan.size() && !scan.is2d() && scan.hasNormals() && groundNormalsUp>0.0f)
 		{
-			// FIXME: the viewpoint should be 0,0,0 here as we don't apply the local transform
-			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,10), groundNormalsUp);
+			// The scan is still in sensor frame here (we never apply its local transform),
+			// so the view point is the sensor origin. Note that this makes the ground test
+			// of adjustNormalsToViewPoint() use the sensor Z axis, which is vertical only
+			// if the sensor is mounted level.
+			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,0), groundNormalsUp);
 		}
 	}
 	return scan;
