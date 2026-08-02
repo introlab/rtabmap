@@ -93,9 +93,18 @@ TEST(GeodeticCoordsTest, FromEnuWgs84RoundTrip)
 	GeodeticCoords restored;
 	restored.fromENU_WGS84(enu, origin);
 
-	EXPECT_NEAR(restored.latitude(), expected.latitude(), 1e-5);
-	EXPECT_NEAR(restored.longitude(), expected.longitude(), 1e-5);
-	EXPECT_NEAR(restored.altitude(), expected.altitude(), 0.1);
+	// The ENU <-> geodetic round trip is exact (both directions rotate through
+	// the ellipsoid normal at the origin), so these bounds are floating-point
+	// noise, not a modelling allowance: 1e-9 deg is ~0.1 mm, and the measured
+	// error over +-1.1 km / +-100 m of altitude is ~3e-9 m.
+	//
+	// Do not loosen them. The previous 0.1 m altitude bound was wide enough to
+	// hide a systematic error (ENU_WGS84ToGeocentric_WGS84() building its frame
+	// from the geocentric vertical instead of the geodetic one, which cost
+	// ~0.11 m at 40 m out and grew linearly with distance).
+	EXPECT_NEAR(restored.latitude(), expected.latitude(), 1e-9);
+	EXPECT_NEAR(restored.longitude(), expected.longitude(), 1e-9);
+	EXPECT_NEAR(restored.altitude(), expected.altitude(), 1e-6);
 }
 
 TEST(GeodeticCoordsTest, StaticGeocentricToEnuMatchesMemberMethod)
@@ -127,7 +136,16 @@ TEST(GeodeticCoordsTest, StaticEnuToGeocentricMatchesMemberPath)
 	GeodeticCoords restored;
 	restored.fromGeocentric_WGS84(geocentricStatic);
 
-	EXPECT_NEAR(restored.latitude(), expected.latitude(), 1e-5);
-	EXPECT_NEAR(restored.longitude(), expected.longitude(), 1e-5);
-	EXPECT_NEAR(restored.altitude(), expected.altitude(), 0.1);
+	// The ENU <-> geodetic round trip is exact (both directions rotate through
+	// the ellipsoid normal at the origin), so these bounds are floating-point
+	// noise, not a modelling allowance: 1e-9 deg is ~0.1 mm, and the measured
+	// error over +-1.1 km / +-100 m of altitude is ~3e-9 m.
+	//
+	// Do not loosen them. The previous 0.1 m altitude bound was wide enough to
+	// hide a systematic error (ENU_WGS84ToGeocentric_WGS84() building its frame
+	// from the geocentric vertical instead of the geodetic one, which cost
+	// ~0.11 m at 40 m out and grew linearly with distance).
+	EXPECT_NEAR(restored.latitude(), expected.latitude(), 1e-9);
+	EXPECT_NEAR(restored.longitude(), expected.longitude(), 1e-9);
+	EXPECT_NEAR(restored.altitude(), expected.altitude(), 1e-6);
 }

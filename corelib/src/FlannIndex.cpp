@@ -123,6 +123,22 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 		if(bytes_written < long(indexData.size()-headerSizeBytes))
 		{
 			//Expected data size and type
+			//
+			// dataType is stored in the header as a raw cv::Mat type and
+			// compared against features.type() on load. That value is NOT
+			// stable across OpenCV major versions: OpenCV 5 changed
+			// CV_CN_SHIFT from 3 to 5, so a multi-channel type serializes to
+			// a different integer than under OpenCV 4 (see the encoding
+			// helpers in Compression.cpp, which normalize it for the data
+			// blobs stored in the database).
+			//
+			// It is safe here only because descriptors are always
+			// single-channel (asserted CV_32FC1 or CV_8UC1 in buildKDTreeIndex()
+			// and friends), and 1-channel types have the same value in both
+			// versions. A mismatch would only make loadIndex() refuse the
+			// index and rebuild it, never corrupt data -- but if descriptors
+			// ever become multi-channel, this field needs the same
+			// normalization as Compression.cpp.
 			int dataRows = 0;
 			int dataCols = 0;
 			int dataType = -1;
@@ -453,6 +469,10 @@ bool FlannIndex::loadIndex(
 		}
 		return false;
 	}
+	// Raw cv::Mat type comparison: safe only because descriptors are always
+	// single-channel, whose type value is identical under OpenCV 4 and 5
+	// (OpenCV 5 changed CV_CN_SHIFT, which only shifts multi-channel types).
+	// See the note where the header is written in serializeIndex().
 	if(savedType != features.type()) {
 		if(error) {
 			*error = uFormat("Serialized feature type (%d) doesn't match the expected one (%d).", savedType, features.type());

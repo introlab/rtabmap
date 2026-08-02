@@ -2359,12 +2359,24 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// accept a few more wrong ones, so they get looser precision and
 		// recall floors. DAISY descriptors are float but behave closer to
 		// the binary group on this dataset, so they share those floors.
+		//
+		// OpenCV 5 changed the binary descriptors enough to shift recall
+		// noticeably: across the loose bucket it spans 0.73 (FAST+FREAK) to
+		// 0.98 (ORB-OCTREE), versus 0.89-0.98 on OpenCV 4. The looser floor is
+		// therefore applied only where it is needed, so OpenCV 4 builds keep
+		// guarding the tighter bound. Precision is unaffected (0.89-0.98 on
+		// both), as is the float bucket (SURF/SIFT/KAZE: 0.93-0.98 recall).
 		const bool daisyDescriptor =
 				detectorType == Feature2D::kFeatureGfttDaisy ||
 				detectorType == Feature2D::kFeatureSurfDaisy;
 		const bool looseFloors = binaryDescriptors || daisyDescriptor;
+#if CV_MAJOR_VERSION >= 5
+		const float kLooseMinRecall = 0.7f;
+#else
+		const float kLooseMinRecall = 0.8f;
+#endif
 		const float kMinPrecision = looseFloors ? 0.85f : 0.9f;
-		const float kMinRecall    = looseFloors ? 0.8f  : 0.9f;
+		const float kMinRecall    = looseFloors ? kLooseMinRecall : 0.9f;
 		EXPECT_GE(acceptedPrec, kMinPrecision)
 				<< detectorLabel << " accepted precision=" << acceptedPrec
 				<< " is below " << kMinPrecision
