@@ -1,0 +1,7 @@
+<map id="rtabmap::GFTT_DAISY" name="rtabmap::GFTT_DAISY">
+<area shape="rect" id="Node000001" title="GFTT corners + DAISY descriptors (OpenCV 3+ xfeatures2d)." alt="" coords="5,152,169,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1GFTT.html" title="Good&#45;features&#45;to&#45;track detector (Shi–Tomasi / Harris)." alt="" coords="28,79,147,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="90,118,90,152,85,152,85,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="11,5,163,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="90,44,90,79,85,79,85,44"/>
+</map>
