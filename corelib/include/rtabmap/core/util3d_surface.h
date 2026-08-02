@@ -427,21 +427,16 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_CORE_EXPORT computeFastOrganizedNormal
  *       The result is the smallest eigenvalue (2nd in 2D, 3rd in 3D) scaled by the number of
  *       dimensions (2 or 3), so that it is normalized against the unit-norm normals.
  *
+ * @{
  */
-/**
- * @ingroup ComputeNormalsComplexity
- * @brief Computes the complexity of surface normals in a point cloud of type `LaserScan`.
- */
+/** @brief Computes the complexity of surface normals in a point cloud of type `LaserScan`. */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const LaserScan & scan,
 		const Transform & t = Transform::getIdentity(),
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0,
 		bool centered = true);
-/**
- * @ingroup ComputeNormalsComplexity
- * @brief Computes the complexity of surface normals in a point cloud of type `pcl::Normal`.
- */
+/** @brief Computes the complexity of surface normals in a point cloud of type `pcl::Normal`. */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::Normal> & normals,
 		const Transform & t = Transform::getIdentity(),
@@ -449,10 +444,7 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0,
 		bool centered = true);
-/**
- * @ingroup ComputeNormalsComplexity
- * @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointNormal`. */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointNormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
@@ -460,10 +452,7 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0,
 		bool centered = true);
-/**
- * @ingroup ComputeNormalsComplexity
- * @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointXYZINormal`. */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
@@ -471,10 +460,7 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0,
 		bool centered = true);
-/**
- * @ingroup ComputeNormalsComplexity
- * @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Computes the complexity of surface normals in a point cloud of type `pcl::PointXYZRGBNormal`. */
 float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const Transform & t = Transform::getIdentity(),
@@ -482,6 +468,7 @@ float RTABMAP_CORE_EXPORT computeNormalsComplexity(
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0,
 		bool centered = true);
+/**@} */
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,

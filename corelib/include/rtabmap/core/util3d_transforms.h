@@ -87,98 +87,64 @@ LaserScan RTABMAP_CORE_EXPORT transformLaserScan(
  * @param indices Optional subset of indices of the points to transform.
  * @param transform The transform to apply.
  * @return A new point cloud with the transform applied.
+ * @{
  */
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZ` point cloud type.
- */
+/** @brief Transforms `pcl::PointXYZ` point cloud type. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZI` point cloud type.
- */
+/** @brief Transforms `pcl::PointXYZI` point cloud type. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZRGB` point cloud type.
- */
+/** @brief Transforms `pcl::PointXYZRGB` point cloud type. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointNormal` point cloud type.
- */
+/** @brief Transforms `pcl::PointNormal` point cloud type. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZRGBNormal` point cloud type.
- */
+/** @brief Transforms `pcl::PointXYZRGBNormal` point cloud type. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZINormal` point cloud type.
- */
+/** @brief Transforms `pcl::PointXYZINormal` point cloud type. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const Transform & transform);
 
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZ` point cloud type with specified indices.
- */
+/** @brief Transforms `pcl::PointXYZ` point cloud type with specified indices. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZI` point cloud type with specified indices.
- */
+/** @brief Transforms `pcl::PointXYZI` point cloud type with specified indices. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZRGB` point cloud type with specified indices.
- */
+/** @brief Transforms `pcl::PointXYZRGB` point cloud type with specified indices. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointNormal` point cloud type with specified indices.
- */
+/** @brief Transforms `pcl::PointNormal` point cloud type with specified indices. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZRGBNormal` point cloud type with specified indices.
- */
+/** @brief Transforms `pcl::PointXYZRGBNormal` point cloud type with specified indices. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
-/**
- * @ingroup TransformPointcloud
- * @brief Transforms `pcl::PointXYZINormal` point cloud type with specified indices.
- */
+/** @brief Transforms `pcl::PointXYZINormal` point cloud type with specified indices. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
+/**@} */
 
 /**
  * @defgroup TransformPoint Transform a single point
@@ -189,63 +155,41 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT transformPointClo
  * @param pt The input point.
  * @param transform The transform to apply.
  * @return A new point with the transform applied.
+ * @{
  */
-/**
- * @ingroup TransformPoint
- * @brief Transforms `cv::Point3f` point type.
- */
+/** @brief Transforms `cv::Point3f` point type. */
 cv::Point3f RTABMAP_CORE_EXPORT transformPoint(
 		const cv::Point3f & pt,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `cv::Point3d` point type.
- */
+/** @brief Transforms `cv::Point3d` point type. */
 cv::Point3d RTABMAP_CORE_EXPORT transformPoint(
 		const cv::Point3d & pt,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `pcl::PointXYZ` point type.
- */
+/** @brief Transforms `pcl::PointXYZ` point type. */
 pcl::PointXYZ RTABMAP_CORE_EXPORT transformPoint(
 		const pcl::PointXYZ & pt,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `pcl::PointXYZI` point type.
- */
+/** @brief Transforms `pcl::PointXYZI` point type. */
 pcl::PointXYZI RTABMAP_CORE_EXPORT transformPoint(
 		const pcl::PointXYZI & pt,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `pcl::PointXYZRGB` point type.
- */
+/** @brief Transforms `pcl::PointXYZRGB` point type. */
 pcl::PointXYZRGB RTABMAP_CORE_EXPORT transformPoint(
 		const pcl::PointXYZRGB & pt,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `pcl::PointNormal` point type.
- */
+/** @brief Transforms `pcl::PointNormal` point type. */
 pcl::PointNormal RTABMAP_CORE_EXPORT transformPoint(
 		const pcl::PointNormal & point,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `pcl::PointXYZRGBNormal` point type.
- */
+/** @brief Transforms `pcl::PointXYZRGBNormal` point type. */
 pcl::PointXYZRGBNormal RTABMAP_CORE_EXPORT transformPoint(
 		const pcl::PointXYZRGBNormal & point,
 		const Transform & transform);
-/**
- * @ingroup TransformPoint
- * @brief Transforms `pcl::PointXYZINormal` point type.
- */
+/** @brief Transforms `pcl::PointXYZINormal` point type. */
 pcl::PointXYZINormal RTABMAP_CORE_EXPORT transformPoint(
 		const pcl::PointXYZINormal & point,
 		const Transform & transform);
+/**@} */
 
 } // namespace util3d
 } // namespace rtabmap

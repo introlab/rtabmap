@@ -133,11 +133,9 @@ Transform RTABMAP_CORE_EXPORT transformFromXYZCorrespondences(
  * @note The computed `variance` is based on a robust estimator using the median squared distance of correspondences.
  *
  * @see pcl::registration::CorrespondenceEstimation
+ * @{
  */
-/**
- * @ingroup ComputeVarianceAndCorrespondences
- * @brief Compute with variance and correspondences of `pcl::PointNormal` point cloud type.
- */
+/** @brief Compute with variance and correspondences of `pcl::PointNormal` point cloud type. */
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudB,
@@ -146,10 +144,7 @@ void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		double & variance,
 		int & correspondencesOut,
 		bool reciprocal);
-/**
- * @ingroup ComputeVarianceAndCorrespondences
- * @brief Compute with variance and correspondences of `pcl::PointXYZINormal` point cloud type.
- */
+/** @brief Compute with variance and correspondences of `pcl::PointXYZINormal` point cloud type. */
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZINormal>::ConstPtr & cloudB,
@@ -158,10 +153,7 @@ void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		double & variance,
 		int & correspondencesOut,
 		bool reciprocal);
-/**
- * @ingroup ComputeVarianceAndCorrespondences
- * @brief Compute with variance and correspondences of `pcl::PointXYZ` point cloud type.
- */
+/** @brief Compute with variance and correspondences of `pcl::PointXYZ` point cloud type. */
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloudB,
@@ -169,10 +161,7 @@ void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		double & variance,
 		int & correspondencesOut,
 		bool reciprocal);
-/**
- * @ingroup ComputeVarianceAndCorrespondences
- * @brief Compute with variance and correspondences of `pcl::PointXYZI` point cloud type.
- */
+/** @brief Compute with variance and correspondences of `pcl::PointXYZI` point cloud type. */
 void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloudB,
@@ -180,6 +169,7 @@ void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(
 		double & variance,
 		int & correspondencesOut,
 		bool reciprocal);
+/**@} */
 
 /**
  * @brief Performs Iterative Closest Point (ICP) alignment between two point clouds and returns the resulting transform.

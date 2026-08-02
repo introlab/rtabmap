@@ -688,100 +688,48 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_CORE_EXPORT laserScanFromDepthImages(
  * @return A LaserScan object containing scan data in appropriate format.
  *
  * @see laserScan2dFromPointCloud() for 2D-only extraction.
+ * @{
  */
 
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZ` → (x, y, z) → LaserScan::kXYZ
-  */
+/** @brief `pcl::PointXYZ` → (x, y, z) → LaserScan::kXYZ */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZ` → (x, y, z) → LaserScan::kXYZ
-  */
+/** @brief `pcl::PointXYZ` → (x, y, z) → LaserScan::kXYZ */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointNormal` → (x, y, z, nx, ny, nz) → LaserScan::kXYZNormal
-  */
+/** @brief `pcl::PointNormal` → (x, y, z, nx, ny, nz) → LaserScan::kXYZNormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointNormal` → (x, y, z, nx, ny, nz) → LaserScan::kXYZNormal
-  */
+/** @brief `pcl::PointNormal` → (x, y, z, nx, ny, nz) → LaserScan::kXYZNormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointNormal` → (x, y, z, nx, ny, nz) → LaserScan::kXYZNormal
-  */
+/** @brief `pcl::PointNormal` → (x, y, z, nx, ny, nz) → LaserScan::kXYZNormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZRGB` → (x, y, z, rgb) → LaserScan::kXYZRGB
-  */
+/** @brief `pcl::PointXYZRGB` → (x, y, z, rgb) → LaserScan::kXYZRGB */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZRGB` → (x, y, z, rgb) → LaserScan::kXYZRGB
-  */
+/** @brief `pcl::PointXYZRGB` → (x, y, z, rgb) → LaserScan::kXYZRGB */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZI` → (x, y, z, intensity) → LaserScan::kXYZI
-  */
+/** @brief `pcl::PointXYZI` → (x, y, z, intensity) → LaserScan::kXYZI */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZI` → (x, y, z, intensity) → LaserScan::kXYZI
-  */
+/** @brief `pcl::PointXYZI` → (x, y, z, intensity) → LaserScan::kXYZI */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `rtabmap::PointXYZIRT` → (x, y, z, intensity, ring time) → LaserScan::kXYZIRT
-  */
+/** @brief `rtabmap::PointXYZIRT` → (x, y, z, intensity, ring time) → LaserScan::kXYZIRT */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `rtabmap::PointXYZIRT` → (x, y, z, intensity, ring time) → LaserScan::kXYZIRT
-  */
+/** @brief `rtabmap::PointXYZIRT` → (x, y, z, intensity, ring time) → LaserScan::kXYZIRT */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<rtabmap::PointXYZIRT> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
-/**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal
-  */
+/** @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal
-  */
+/** @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal
-  */
+/** @brief `pcl::PointXYZRGBNormal` → (x, y, z, rgb, nx, ny, nz) → LaserScan::kXYZRGBNormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZINormal` → (x, y, z, intensity, nx, ny, nz) → LaserScan::kXYZINormal
-  */
+/** @brief `pcl::PointXYZINormal` → (x, y, z, intensity, nx, ny, nz) → LaserScan::kXYZINormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZINormal` → (x, y, z, intensity, nx, ny, nz) → LaserScan::kXYZINormal
-  */
+/** @brief `pcl::PointXYZINormal` → (x, y, z, intensity, nx, ny, nz) → LaserScan::kXYZINormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief `pcl::PointXYZINormal` → (x, y, z, intensity, nx, ny, nz) → LaserScan::kXYZINormal
-  */
+/** @brief `pcl::PointXYZINormal` → (x, y, z, intensity, nx, ny, nz) → LaserScan::kXYZINormal */
 LaserScan RTABMAP_CORE_EXPORT laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
 
- /**
-  * @ingroup LaserScanFromPointCloud
-  * @brief Convert `pcl::PCLPointCloud2` to rtabmap::LaserScan with all supported fields (see rtabmap::LaserScan::Format)
-  */
+/** @brief Convert `pcl::PCLPointCloud2` to rtabmap::LaserScan with all supported fields (see rtabmap::LaserScan::Format) */
 template<typename PointCloud2T>
 LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs = true, bool is2D = false, const Transform & transform = Transform());
+/**@} */
 
 /**
  * @defgroup LaserScan2dFromPointCloud PCL to 2D LaserScan
@@ -802,37 +750,21 @@ LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs = 
  * @return A 2D LaserScan.
  * 
  * @see laserScanFromPointCloud() for 3D extraction.
+ * @{
  */
-/**
- * @ingroup LaserScan2dFromPointCloud
- * @brief `PointXYZ` → LaserScan::kXY
- */
+/** @brief `PointXYZ` → LaserScan::kXY */
 LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
-/**
- * @ingroup LaserScan2dFromPointCloud
- * @brief `PointXYZI` → LaserScan::kXYI (x, y, intensity)
- */
+/** @brief `PointXYZI` → LaserScan::kXYI (x, y, intensity) */
 LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
-/**
- * @ingroup LaserScan2dFromPointCloud
- * @brief `PointNormal` → LaserScan::kXYNormal (x, y, nx, ny, nz)
- */
+/** @brief `PointNormal` → LaserScan::kXYNormal (x, y, nx, ny, nz) */
 LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
-/**
- * @ingroup LaserScan2dFromPointCloud
- * @brief `PointXYZ + Normal` → LaserScan::kXYNormal (x, y, nx, ny, nz)
- */
+/** @brief `PointXYZ + Normal` → LaserScan::kXYNormal (x, y, nx, ny, nz) */
 LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
-/**
- * @ingroup LaserScan2dFromPointCloud
- * @brief `PointXYZINormal` → LaserScan::kXYINormal (x, y, inensity, nx, ny, nz)
- */
+/** @brief `PointXYZINormal` → LaserScan::kXYINormal (x, y, inensity, nx, ny, nz) */
 LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
-/**
- * @ingroup LaserScan2dFromPointCloud
- * @brief `PointXYZI + Normal` → LaserScan::kXYINormal (x, y, inensity, nx, ny, nz)
- */
+/** @brief `PointXYZI + Normal` → LaserScan::kXYINormal (x, y, inensity, nx, ny, nz) */
 LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
+/**@} */
 
 /** @defgroup LaserScanToPointCloud LaserScan to PCL
  *  @brief Functions to convert LaserScan data to various PCL point cloud formats.
@@ -851,19 +783,31 @@ LaserScan RTABMAP_CORE_EXPORT laserScan2dFromPointCloud(const pcl::PointCloud<pc
  * @brief Convert rtabmap::LaserScan to `pcl::PCLPointCloud2` with all supported fields (see rtabmap::LaserScan::Format)
  */
 pcl::PCLPointCloud2::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloud2(const LaserScan & laserScan, const Transform & transform = Transform());
+/** @brief LaserScan &rarr; `PointXYZ` (x, y, z); any other field of the scan is dropped. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloud(const LaserScan & laserScan, const Transform & transform = Transform());
+/** @brief LaserScan &rarr; `PointNormal` (x, y, z, nx, ny, nz); normals are zeroed if the scan has none. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloudNormal(const LaserScan & laserScan, const Transform & transform = Transform());
+/** @brief LaserScan &rarr; `PointXYZRGB` (x, y, z, rgb); @p r, @p g and @p b are used if the scan has no color. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloudRGB(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 100, unsigned char g = 100, unsigned char b = 100);
+/** @brief LaserScan &rarr; `PointXYZI` (x, y, z, intensity); @p intensity is used if the scan has none. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloudI(const LaserScan & laserScan, const Transform & transform = Transform(), float intensity = 0.0f);
+/** @brief LaserScan &rarr; `PointXYZRGBNormal` (x, y, z, rgb, nx, ny, nz); missing color and normals are filled as above. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloudRGBNormal(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 100, unsigned char g = 100, unsigned char b = 100);
+/** @brief LaserScan &rarr; `PointXYZINormal` (x, y, z, intensity, nx, ny, nz); missing intensity and normals are filled as above. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT laserScanToPointCloudINormal(const LaserScan & laserScan, const Transform & transform = Transform(), float intensity = 0.0f);
 
 
+/** @brief The point at @p index of the scan, as `PointXYZ`. */
 pcl::PointXYZ RTABMAP_CORE_EXPORT laserScanToPoint(const LaserScan & laserScan, int index);
+/** @brief The point at @p index of the scan, as `PointNormal`. */
 pcl::PointNormal RTABMAP_CORE_EXPORT laserScanToPointNormal(const LaserScan & laserScan, int index);
+/** @brief The point at @p index of the scan, as `PointXYZRGB`. */
 pcl::PointXYZRGB RTABMAP_CORE_EXPORT laserScanToPointRGB(const LaserScan & laserScan, int index, unsigned char r = 100, unsigned char g = 100, unsigned char b = 100);
+/** @brief The point at @p index of the scan, as `PointXYZI`. */
 pcl::PointXYZI RTABMAP_CORE_EXPORT laserScanToPointI(const LaserScan & laserScan, int index, float intensity);
+/** @brief The point at @p index of the scan, as `PointXYZRGBNormal`. */
 pcl::PointXYZRGBNormal RTABMAP_CORE_EXPORT laserScanToPointRGBNormal(const LaserScan & laserScan, int index, unsigned char r, unsigned char g, unsigned char b);
+/** @brief The point at @p index of the scan, as `PointXYZINormal`. */
 pcl::PointXYZINormal RTABMAP_CORE_EXPORT laserScanToPointINormal(const LaserScan & laserScan, int index, float intensity);
 
 /**@} */

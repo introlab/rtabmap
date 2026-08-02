@@ -135,43 +135,33 @@ LaserScan RTABMAP_CORE_EXPORT rangeFiltering(
  *
  * @note Both rangeMin and rangeMax must be non-negative. If both are zero, no filtering is applied.
  * @throws Assertion failure if rangeMin or rangeMax is negative.
+ * @{
  */
-/**
- * @ingroup PointCloudRangeFiltering
- * @brief Filters a point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Filters a point cloud of type `pcl::PointXYZ`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
-/**
- * @ingroup PointCloudRangeFiltering
- * @brief Filters a point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Filters a point cloud of type `pcl::PointXYZRGB`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
-/**
- * @ingroup PointCloudRangeFiltering
- * @brief Filters a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Filters a point cloud of type `pcl::PointNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
-/**
- * @ingroup PointCloudRangeFiltering
- * @brief Filters a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Filters a point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float rangeMin,
 		float rangeMax);
+/**@} */
 
 /**
  * @defgroup PointCloudSplitRangeFiltering Split Range Filtering of PCL Point Clouds
@@ -190,47 +180,37 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(
  *
  * @note The function resets and fills both output index containers.
  *       If the input cloud is empty, both outputs will also be empty.
+ * @{
  */
-/**
- * @ingroup PointCloudSplitRangeFiltering
- * @brief Splits a point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Splits a point cloud of type `pcl::PointXYZ`. */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range, 
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
-/**
- * @ingroup PointCloudSplitRangeFiltering
- * @brief Splits a point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Splits a point cloud of type `pcl::PointXYZRGB`. */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range,
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
-/**
- * @ingroup PointCloudSplitRangeFiltering
- * @brief Splits a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Splits a point cloud of type `pcl::PointNormal`. */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range,
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
-/**
- * @ingroup PointCloudSplitRangeFiltering
- * @brief Splits a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Splits a point cloud of type `pcl::PointXYZRGBNormal`. */
 void RTABMAP_CORE_EXPORT rangeSplitFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float range,
 		pcl::IndicesPtr & closeIndices,
 		pcl::IndicesPtr & farIndices);
+/**@} */
 
 /**
  * @defgroup PointCloudDownSampling Point Cloud Downsampling
@@ -251,56 +231,37 @@ void RTABMAP_CORE_EXPORT rangeSplitFiltering(
  *
  * @note If `step <= 1` or the cloud has fewer points than `step`, the function returns a copy of the input cloud.
  * @throws Assertion failure if `step <= 0` or, in the case of depth-image-style clouds, if the width and height are not divisible by `step`.
+ * @{
  */
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a LaserScan.
- */
+/** @brief Downsamples a LaserScan. */
 LaserScan RTABMAP_CORE_EXPORT downsample(
 	const LaserScan & cloud,
 	int step);
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Downsamples a point cloud of type `pcl::PointXYZ`. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int step);
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Downsamples a point cloud of type `pcl::PointXYZRGB`. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int step);
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Downsamples a point cloud of type `pcl::PointXYZI`. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int step);
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Downsamples a point cloud of type `pcl::PointNormal`. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		int step);
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Downsamples a point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int step);
-/**
- * @ingroup PointCloudDownSampling
- * @brief Downsamples a point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Downsamples a point cloud of type `pcl::PointXYZINormal`. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT downsample(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		int step);
+/**@} */
 
 /**
  * @defgroup VoxelFiltering Voxel Filtering
@@ -323,97 +284,63 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT downsample(
  * @throws Assertion failure if voxelSize <= 0.
  *
  * @see pcl::VoxelGrid, util3d::cropBox
+ * @{
  */
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZ` on provided indices.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZ` on provided indices. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointNormal` on provided indices.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointNormal` on provided indices. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGB` on provided indices.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGB` on provided indices. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGBNormal` on provided indices.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGBNormal` on provided indices. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZI` on provided indices.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZI` on provided indices. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZINormal` on provided indices.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZINormal` on provided indices. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZ`. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointNormal`. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGB`. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZI`. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		float voxelSize);
-/**
- * @ingroup VoxelFiltering
- * @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Performs voxel grid downsampling on a point cloud of type `pcl::PointXYZINormal`. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT voxelize(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		float voxelSize);
+/**@} */
 
 /**
  * @brief DEPRECATED: Use voxelize() instead.
@@ -484,49 +411,33 @@ inline pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr uniformSampling(
  * @return A pointer to a new point cloud containing the randomly sampled points.
  *
  * @throws Assertion failure if `samples <= 0`.
+ * @{
  */
-/**
- * @ingroup RandomSampling
- * @brief Performs random sampling on a point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Performs random sampling on a point cloud of type `pcl::PointXYZ`. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int samples);
-/**
- * @ingroup RandomSampling
- * @brief Performs random sampling on a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Performs random sampling on a point cloud of type `pcl::PointNormal`. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		int samples);
-/**
- * @ingroup RandomSampling
- * @brief Performs random sampling on a point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Performs random sampling on a point cloud of type `pcl::PointXYZRGB`. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int samples);
-/**
- * @ingroup RandomSampling
- * @brief Performs random sampling on a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Performs random sampling on a point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		int samples);
-/**
- * @ingroup RandomSampling
- * @brief Performs random sampling on a point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Performs random sampling on a point cloud of type `pcl::PointXYZI`. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int samples);
-/**
- * @ingroup RandomSampling
- * @brief Performs random sampling on a point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Performs random sampling on a point cloud of type `pcl::PointXYZINormal`. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		int samples);
+/**@} */
 
 /**
  * @defgroup PassThrough Pass-through Filtering
@@ -549,11 +460,9 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT randomSampling(
  *         passed to the function, or the new filtered point cloud otherwise.
  *
  * @throws Assertion failure if `max <= min` or if `axis` is not `"x"`, `"y"`, or `"z"`.
+ * @{
  */
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -561,10 +470,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGB` and returns filtered indices.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGB` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -572,10 +478,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZI` and returns filtered indices.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZI` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -583,10 +486,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointNormal` and returns filtered indices.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointNormal` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -594,10 +494,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns filtered indices.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -605,10 +502,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZINormal` and returns filtered indices.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZINormal` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -616,66 +510,49 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZI` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZI` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointNormal` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointNormal` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
-/**
- * @ingroup PassThrough
- * @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZINormal` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs pass-through filtering on a point cloud of type `pcl::PointXYZINormal` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const std::string & axis,
 		float min,
 		float max,
 		bool negative = false);
+/**@} */
 
 /**
  * @defgroup CropBox Crop Box Filtering
@@ -697,11 +574,9 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT passThrough(
  * @return The indices corresponding to the points that passed the filter, or the new filtered point cloud otherwise.
  *
  * @throws Assertion failure if any of `min[x] >= max[x]`, `min[y] >= max[y]`, or `min[z] >= max[z]`.
+ * @{
  */
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PCLPointCloud2` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PCLPointCloud2` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PCLPointCloud2::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -709,10 +584,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -720,10 +592,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointNormal` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointNormal` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -731,10 +600,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGB` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGB` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -742,10 +608,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -753,10 +616,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZI` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZI` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -764,10 +624,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZINormal` and returns filtered indices.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZINormal` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -775,66 +632,49 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT cropBox(
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointNormal` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointNormal` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZI` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZI` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZINormal` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZINormal` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
-/**
- * @ingroup CropBox
- * @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs crop box filtering on a point cloud of type `pcl::PointXYZRGBNormal` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Eigen::Vector4f & min,
 		const Eigen::Vector4f & max,
 		const Transform & transform = Transform::getIdentity(),
 		bool negative = false);
+/**@} */
 
 /**
  * @defgroup FrustumFiltering Frustum Filtering
@@ -865,11 +705,9 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT cropBox(
  * - `horizontalFOV <= 0` or `verticalFOV <= 0`,
  * - `farClipPlaneDistance <= nearClipPlaneDistance`,
  * - `cameraPose` is null.
+ * @{
  */
-/**
- * @ingroup FrustumFiltering
- * @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices.
- */
+/** @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZ` and returns filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -879,10 +717,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT frustumFiltering(
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative = false);
-/**
- * @ingroup FrustumFiltering
- * @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZ` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & cameraPose,
@@ -891,10 +726,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative = false);
-/**
- * @ingroup FrustumFiltering
- * @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points.
- */
+/** @brief Performs frustum filtering on a point cloud of type `pcl::PointXYZRGB` and returns a new point cloud of the filtered points. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & cameraPose,
@@ -903,6 +735,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
 		float nearClipPlaneDistance,
 		float farClipPlaneDistance,
 		bool negative = false);
+/**@} */
 
 /**
  * @defgroup RemoveNaNFromPointCloud Remove NaN Points from a Point Cloud
@@ -918,31 +751,21 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT frustumFiltering(
  * @param cloud The organized input point cloud containing possible NaN values.
  * @return A new dense point cloud with NaN points removed.
  *
+ * @{
  */
-/**
- * @ingroup RemoveNaNFromPointCloud
- * @brief Remove NaN points from a point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Remove NaN points from a point cloud of type `pcl::PointXYZ`. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
-/**
- * @ingroup RemoveNaNFromPointCloud
- * @brief Remove NaN points from a point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Remove NaN points from a point cloud of type `pcl::PointXYZRGB`. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
-/**
- * @ingroup RemoveNaNFromPointCloud
- * @brief Remove NaN points from a point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Remove NaN points from a point cloud of type `pcl::PointXYZI`. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud);
-/**
- * @ingroup RemoveNaNFromPointCloud
- * @brief Remove NaN points from a point cloud of type `pcl::PCLPointCloud2`.
- */
+/** @brief Remove NaN points from a point cloud of type `pcl::PCLPointCloud2`. */
 pcl::PCLPointCloud2::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
 		const pcl::PCLPointCloud2::Ptr & cloud);
+/**@} */
 
 
 /**
@@ -956,25 +779,18 @@ pcl::PCLPointCloud2::Ptr RTABMAP_CORE_EXPORT removeNaNFromPointCloud(
  * @param cloud The input point cloud, which may contain NaN normal values.
  * @return A new point cloud with all NaN normals removed.
  *
+ * @{
  */
-/**
- * @ingroup RemoveNaNNormalsFromPointCloud
- * @brief Removes points with NaN normal values from a point cloud of type `pcl::PointNormal`.
- */
+/** @brief Removes points with NaN normal values from a point cloud of type `pcl::PointNormal`. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud);
-/**
- * @ingroup RemoveNaNNormalsFromPointCloud
- * @brief Removes points with NaN normal values from a point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Removes points with NaN normal values from a point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
-/**
- * @ingroup RemoveNaNNormalsFromPointCloud
- * @brief Removes points with NaN normal values from a point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Removes points with NaN normal values from a point cloud of type `pcl::PointXYZINormal`. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud);
+/**@} */
 
 /**
  * @defgroup RadiusFiltering Radius Filtering
@@ -997,109 +813,75 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsF
  * @note Uses a KdTree for efficient neighbor search. The `+1` in `minNeighborsInRadius + 1`
  * accounts for the point itself being included in the neighbor list.
  *
+ * @{
  */
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZ`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointNormal`.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZRGB`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZI`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZINormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZ` with indices.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZ` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointNormal` with indices.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointNormal` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZRGB` with indices.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZRGB` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZRGBNormal` with indices.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZRGBNormal` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZI` with indices.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZI` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
-/**
- * @ingroup RadiusFiltering
- * @brief Radius filtering for point cloud of type `pcl::PointXYZINormal` with indices.
- */
+/** @brief Radius filtering for point cloud of type `pcl::PointXYZINormal` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);
+/**@} */
 
 /**
  * @defgroup ProportionalRadiusFiltering Proportional Radius Filtering
@@ -1136,61 +918,44 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT radiusFiltering(
  * - OpenMP is used to parallelize the full-cloud version for performance.
  * - The function throws exceptions to enforce internal assumptions (e.g., input sizes and valid viewpoint mappings).
  *
+ * @{
  */
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZ`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::vector<int> & viewpointIndices,
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointNormal`.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const std::vector<int> & viewpointIndices,
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGB`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::vector<int> & viewpointIndices,
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const std::vector<int> & viewpointIndices,
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZI`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const std::vector<int> & viewpointIndices,
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZINormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const std::vector<int> & viewpointIndices,
@@ -1198,10 +963,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		float factor=0.01f,
 		float neighborScale=2.0f);
 
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZ` with indices.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZ` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1209,10 +971,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointNormal` with indices.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointNormal` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1220,10 +979,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGB` with indices.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGB` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1231,10 +987,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGBNormal` with indices.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZRGBNormal` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1242,10 +995,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZI` with indices.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZI` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1253,10 +1003,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
-/**
- * @ingroup ProportionalRadiusFiltering
- * @brief Proportional radius filtering for point cloud of type `pcl::PointXYZINormal` with indices.
- */
+/** @brief Proportional radius filtering for point cloud of type `pcl::PointXYZINormal` with indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1264,6 +1011,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
 		const std::map<int, Transform> & viewpoints,
 		float factor=0.01f,
 		float neighborScale=2.0f);
+/**@} */
 
 /**
  * @defgroup SubtractFiltering Subtract Filtering
@@ -1284,11 +1032,9 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT proportionalRadiusFiltering(
  *        a point in `cloud` as not filtered out. Points with fewer neighbors are kept.
  *
  * @return The indices of points from `cloud` that passed the filter, or the new filtered point cloud otherwise.
+ * @{
  */
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZ`, returning filtered indices.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZ`, returning filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 	const pcl::IndicesPtr & indices,
@@ -1296,10 +1042,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 	const pcl::IndicesPtr & subtractIndices,
 	float radiusSearch,
 	int minNeighborsInRadius = 1);
- /**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZRGB`, returning filtered indices.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZRGB`, returning filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1307,10 +1050,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::IndicesPtr & subtractIndices,
 		float radiusSearch,
 		int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointNormal`, returning filtered indices.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointNormal`, returning filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1319,10 +1059,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZINormal`, returning filtered indices.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZINormal`, returning filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 	const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 	const pcl::IndicesPtr & indices,
@@ -1331,10 +1068,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 	float radiusSearch,
 	float maxAngle = M_PI/4.0f,
 	int minNeighborsInRadius = 1);
-/**
-* @ingroup SubtractFiltering
-* @brief Subtract filtering for point cloud of type `pcl::PointXYZRGBNormal`, returning filtered indices.
-*/
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZRGBNormal`, returning filtered indices. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 	const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 	const pcl::IndicesPtr & indices,
@@ -1343,54 +1077,40 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(
 	float radiusSearch,
 	float maxAngle = M_PI/4.0f,
 	int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZ`, returning a new filtered point cloud.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZ`, returning a new filtered point cloud. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 	const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 	const pcl::PointCloud<pcl::PointXYZ>::Ptr & subtractCloud,
 	float radiusSearch,
 	int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZRGB`, returning a new filtered point cloud.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZRGB`, returning a new filtered point cloud. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & subtractCloud,
 	float radiusSearch,
 	int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointNormal`, returning a new filtered point cloud.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointNormal`, returning a new filtered point cloud. */
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZINormal`, returning a new filtered point cloud.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZINormal`, returning a new filtered point cloud. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
-/**
- * @ingroup SubtractFiltering
- * @brief Subtract filtering for point cloud of type `pcl::PointXYZRGBNormal`, returning a new filtered point cloud.
- */
+/** @brief Subtract filtering for point cloud of type `pcl::PointXYZRGBNormal`, returning a new filtered point cloud. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & subtractCloud,
 		float radiusSearch,
 		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
+/**@} */
 
 /**
  * @brief Performs adaptive radius-based subtraction filtering on a point cloud.
@@ -1487,11 +1207,9 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(
  *
  * @note This function uses PCL's `NormalEstimationOMP` for efficient multi-threaded normal estimation when input cloud doesn't have normals.
  * @note Normal flipping is typically used to correct misoriented normals on flat ground surfaces.
+ * @{
  */
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZ`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float angleMax,
@@ -1499,10 +1217,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZRGB`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float angleMax,
@@ -1510,10 +1225,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZ`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1522,10 +1234,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZRGB`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1534,10 +1243,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZI`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1546,10 +1252,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointNormal`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1558,10 +1261,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1570,10 +1270,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
-/**
- * @ingroup PointNormalFiltering
- * @brief Point normal filtering for point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Point normal filtering for point cloud of type `pcl::PointXYZINormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1582,6 +1279,7 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint,
 		float groundNormalsUp = 0.0f);
+/**@} */
 
 /**
  * @defgroup ExtractClusters Point Cloud Cluster Extraction
@@ -1605,31 +1303,23 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(
  * @note Internally, this uses a KdTree for spatial searches and `pcl::EuclideanClusterExtraction` for segmentation.
  * @note The order of clusters in the output is not guaranteed to reflect size or position.
  * @note If no clusters are found, the output vector will be empty and biggestClusterIndex will be set to -1.
+ * @{
  */
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZ`. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float clusterTolerance,
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZRGB`. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float clusterTolerance,
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZ` inside provided indices.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZ` inside provided indices. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1637,10 +1327,7 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointNormal` inside provided indices.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointNormal` inside provided indices. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1648,10 +1335,7 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZRGB` inside provided indices.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZRGB` inside provided indices. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1659,10 +1343,7 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZRGBNormal` inside provided indices.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZRGBNormal` inside provided indices. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1670,10 +1351,7 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZI` inside provided indices.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZI` inside provided indices. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1681,10 +1359,7 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
-/**
- * @ingroup ExtractClusters
- * @brief Extract clusters from point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Extract clusters from point cloud of type `pcl::PointXYZ`. */
 std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -1692,6 +1367,7 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
 		int minClusterSize,
 		int maxClusterSize = std::numeric_limits<int>::max(),
 		int * biggestClusterIndex = 0);
+/**@} */
 
 /**
  * @defgroup ExtractIndices Point Cloud Indices Extraction
@@ -1714,100 +1390,69 @@ std::vector<pcl::IndicesPtr> RTABMAP_CORE_EXPORT extractClusters(
  *
  * @note This function uses PCL's `ExtractIndices` filter to extract or remove the points based on the provided indices.
  * @note The returned `output` indices correspond to the points that are either extracted or excluded from the input cloud.
+ * @{
  */
-/**
- * @ingroup ExtractIndices
- * @brief Extract indices from point cloud of type `pcl::PointXYZ`.
- */
+/** @brief Extract indices from point cloud of type `pcl::PointXYZ`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-/**
- * @ingroup ExtractIndices
- * @brief Extract indices from point cloud of type `pcl::PointNormal`.
- */
+/** @brief Extract indices from point cloud of type `pcl::PointNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-/**
- * @ingroup ExtractIndices
- * @brief Extract indices from point cloud of type `pcl::PointXYZRGB`.
- */
+/** @brief Extract indices from point cloud of type `pcl::PointXYZRGB`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-/**
- * @ingroup ExtractIndices
- * @brief Extract indices from point cloud of type `pcl::PointXYZRGBNormal`.
- */
+/** @brief Extract indices from point cloud of type `pcl::PointXYZRGBNormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-/**
- * @ingroup ExtractIndices
- * @brief Extract indices from point cloud of type `pcl::PointXYZI`.
- */
+/** @brief Extract indices from point cloud of type `pcl::PointXYZI`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-/**
- * @ingroup ExtractIndices
- * @brief Extract indices from point cloud of type `pcl::PointXYZINormal`.
- */
+/** @brief Extract indices from point cloud of type `pcl::PointXYZINormal`. */
 pcl::IndicesPtr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-/**
- * @ingroup ExtractIndices
- * @brief Extract points from point cloud of type `pcl::PointXYZ` with corresponding indices.
- */
+/** @brief Extract points from point cloud of type `pcl::PointXYZ` with corresponding indices. */
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
-/**
- * @ingroup ExtractIndices
- * @brief Extract points from point cloud of type `pcl::PointXYZRGB` with corresponding indices.
- */
+/** @brief Extract points from point cloud of type `pcl::PointXYZRGB` with corresponding indices. */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
-/**
- * @ingroup ExtractIndices
- * @brief Extract points from point cloud of type `pcl::PointXYZRGBNormal` with corresponding indices.
- */
+/** @brief Extract points from point cloud of type `pcl::PointXYZRGBNormal` with corresponding indices. */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
-/**
- * @ingroup ExtractIndices
- * @brief Extract points from point cloud of type `pcl::PointXYZI` with corresponding indices.
- */
+/** @brief Extract points from point cloud of type `pcl::PointXYZI` with corresponding indices. */
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
-/**
- * @ingroup ExtractIndices
- * @brief Extract points from point cloud of type `pcl::PointXYZINormal` with corresponding indices.
- */
+/** @brief Extract points from point cloud of type `pcl::PointXYZINormal` with corresponding indices. */
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_CORE_EXPORT extractIndices(
 		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
+/**@} */
 
 /**
  * @brief Extracts the indices of the inliers that belong to a plane using RANSAC.
