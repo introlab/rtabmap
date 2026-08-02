@@ -49,8 +49,8 @@ namespace rtabmap {
  * `(qx, qy, qz, qw)` in the same convention as @ref IMU (body frame).
  *
  * Filter tuning parameters are read from @ref ParametersMap (ImuFilter/... keys);
- * see @ref ComplementaryFilter and @ref MadgwickFilter (when RTAB-Map is built
- * with Madgwick support).
+ * see @ref kComplementaryFilter and @ref kMadgwick (the latter only when RTAB-Map
+ * is built with Madgwick support).
  *
  * @see IMU
  * @see SensorCaptureThread::enableIMUFiltering()
@@ -63,7 +63,8 @@ public:
 	 */
 	enum Type {
 		kMadgwick = 0,              /**< Madgwick AHRS (attitude and heading reference system). RTAB-Map must be built with Madgwick support. */
-		kComplementaryFilter = 1};  /**< Complementary filter (always available). */
+		kComplementaryFilter = 1    /**< Complementary filter (always available). */
+	};
 
 	/**
 	 * @brief Creates a filter using type parsed from @p parameters.

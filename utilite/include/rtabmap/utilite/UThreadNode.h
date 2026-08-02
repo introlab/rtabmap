@@ -22,7 +22,12 @@
 
 #include "rtabmap/utilite/UThread.h"
 
-//For backward compatibility
+/**
+ * \file UThreadNode.h
+ * \brief Backward-compatible alias header for \ref UThread.
+ */
+
+/** @brief Alias for @ref UThread, kept for backward compatibility. */
 typedef UThread UThreadNode;
 
 

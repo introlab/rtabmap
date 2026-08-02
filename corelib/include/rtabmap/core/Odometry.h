@@ -44,7 +44,7 @@ class ParticleFilter;
  * @brief Abstract base class for visual, lidar and visual-inertial odometry backends.
  *
  * Odometry estimates the incremental motion between consecutive @ref SensorData frames.
- * Concrete implementations override @ref computeTransform(); the public @ref process()
+ * Concrete implementations override @c computeTransform(); the public @ref process()
  * pipeline handles IMU caching, optional motion guesses, filtering (Kalman or particle),
  * image decimation, deskewing and pose integration.
  *
@@ -96,7 +96,7 @@ public:
 	 * @param info Optional output statistics and debug data.
 	 * @return Updated integrated pose (@ref getPose()) after the frame is processed,
 	 *         or a null transform if odometry is lost. The incremental transform is
-	 *         available in @ref OdometryInfo::transform when @p info is provided.
+	 *         available in @c OdometryInfo::transform when @p info is provided.
 	 */
 	Transform process(SensorData & data, OdometryInfo * info = 0);
 	/**

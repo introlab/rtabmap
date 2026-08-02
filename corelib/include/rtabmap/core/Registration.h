@@ -41,11 +41,11 @@ namespace rtabmap {
  * @brief Abstract base for registering two observations (visual, ICP, or both).
  *
  * Factory @ref create() builds @ref RegistrationVis, @ref RegistrationIcp, or
- * @ref RegistrationVisIcp from **Reg/Strategy** in a @ref ParametersMap.
+ * the two chained (@ref kTypeVisIcp) from **Reg/Strategy** in a @ref ParametersMap.
  *
  * @ref computeTransformation() wraps signatures and delegates to
  * @ref computeTransformationMod(), which calls @ref computeTransformationImpl()
- * on the concrete strategy, optionally chains a @ref child_ registration (e.g. ICP
+ * on the concrete strategy, optionally chains a child registration (e.g. ICP
  * after visual), applies **Reg/Force3DoF**, and may repeat once with the first
  * result as guess when **Reg/RepeatOnce** is enabled.
  *
@@ -62,10 +62,10 @@ class RTABMAP_CORE_EXPORT Registration
 public:
 	/** @brief Registration strategy selected by **Reg/Strategy**. */
 	enum Type {
-		kTypeUndef = -1,
-		kTypeVis = 0,
-		kTypeIcp = 1,
-		kTypeVisIcp = 2
+		kTypeUndef = -1, /**< Undefined / invalid strategy. */
+		kTypeVis = 0,    /**< Visual registration only (@ref RegistrationVis). */
+		kTypeIcp = 1,    /**< Geometric registration only (@ref RegistrationIcp). */
+		kTypeVisIcp = 2  /**< Visual registration refined by ICP (@ref RegistrationVis chained with @ref RegistrationIcp). */
 	};
 	/** @brief Minimum diagonal value for linear covariance (m²). */
 	static double COVARIANCE_LINEAR_EPSILON;
@@ -80,7 +80,7 @@ public:
 
 public:
 	virtual ~Registration();
-	/** @brief Parses **Reg/RepeatOnce**, **Reg/Force3DoF** and forwards to @ref child_ if set. */
+	/** @brief Parses **Reg/RepeatOnce**, **Reg/Force3DoF** and forwards to the child registration if set. */
 	virtual void parseParameters(const ParametersMap & parameters);
 
 	/** @brief True if images are needed (parent or child). */
@@ -103,7 +103,7 @@ public:
 	/** @return Value of **Reg/Force3DoF**. */
 	bool force3DoF() const {return force3DoF_;}
 
-	/** @brief Replaces @ref child_; takes ownership of @p child. */
+	/** @brief Replaces the current child registration; takes ownership of @p child. */
 	void setChildRegistration(Registration * child);
 
 	/** @brief Registers @p from to @p to using immutable signatures (copied internally). */
@@ -133,7 +133,7 @@ protected:
 	/**
 	 * @brief Strategy-specific registration.
 	 *
-	 * May modify @p from and @p to; a @ref child_ registration reuses those changes.
+	 * May modify @p from and @p to; a child registration reuses those changes.
 	 */
 	virtual Transform computeTransformationImpl(
 			Signature & from,

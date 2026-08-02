@@ -279,7 +279,7 @@ RTABMAP_DEPRECATED bool RTABMAP_CORE_EXPORT multiBandTexturing(
  * @param cloud input Cloud of the mesh.
  * @param polygons Input polygons of the mesh.
  * @param cameraPoses Poses of the cameras.
- * @param vertexToPixels Output from {@link #createTextureMesh()}.
+ * @param vertexToPixels Output from `createTextureMesh()`.
  * @param images Images corresponding to cameraPoses, raw or compressed, can be empty if memory or dbDriver should be used.
  * @param cameraModels Camera calibrations corresponding to cameraPoses.
  * @param memory Should be set if images and dbDriver are not set.

@@ -41,7 +41,7 @@ namespace rtabmap {
 class Memory;
 
 /**
- * @namespace graph
+ * @namespace rtabmap::graph
  * @brief Pose-graph I/O, trajectory metrics, link utilities, and path planning.
  *
  * Functions operate on maps of signature ids to @ref Transform poses and
@@ -299,34 +299,39 @@ std::multimap<int, Link>::iterator RTABMAP_CORE_EXPORT findLink(
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
-/** @overload `std::multimap<int, std::pair<int, Link::Type>>`. */
+/** @overload
+ *  `std::multimap<int, std::pair<int, Link::Type>>`. */
 std::multimap<int, std::pair<int, Link::Type> >::iterator RTABMAP_CORE_EXPORT findLink(
 		std::multimap<int, std::pair<int, Link::Type> > & links,
 		int from,
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
-/** @overload `std::multimap<int, int>`. */
+/** @overload
+ *  `std::multimap<int, int>`. */
 std::multimap<int, int>::iterator RTABMAP_CORE_EXPORT findLink(
 		std::multimap<int, int> & links,
 		int from,
 		int to,
 		bool checkBothWays = true);
-/** @overload const `std::multimap<int, Link>`. */
+/** @overload
+ *  Const `std::multimap<int, Link>`. */
 std::multimap<int, Link>::const_iterator RTABMAP_CORE_EXPORT findLink(
 		const std::multimap<int, Link> & links,
 		int from,
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
-/** @overload const `std::multimap<int, std::pair<int, Link::Type>>`. */
+/** @overload
+ *  Const `std::multimap<int, std::pair<int, Link::Type>>`. */
 std::multimap<int, std::pair<int, Link::Type> >::const_iterator RTABMAP_CORE_EXPORT findLink(
 		const std::multimap<int, std::pair<int, Link::Type> > & links,
 		int from,
 		int to,
 		bool checkBothWays = true,
 		Link::Type type = Link::kUndef);
-/** @overload const `std::multimap<int, int>`. */
+/** @overload
+ *  Const `std::multimap<int, int>`. */
 std::multimap<int, int>::const_iterator RTABMAP_CORE_EXPORT findLink(
 		const std::multimap<int, int> & links,
 		int from,
@@ -363,7 +368,7 @@ std::multimap<int, Link> RTABMAP_CORE_EXPORT filterDuplicateLinks(
 /**
  * @brief Filters links by type or self-reference.
  *
- * - If @p filteredType is @ref Link::kSelfRefLink: exclude self-references (`from == to`),
+ * - If @p filteredType is @ref Link::kSelfRefLink "kSelfRefLink": exclude self-references (`from == to`),
  *   or include only them when @p inverted is true.
  * - Otherwise: exclude links of @p filteredType, or keep only that type when @p inverted is true.
  *
@@ -376,7 +381,8 @@ std::multimap<int, Link> RTABMAP_CORE_EXPORT filterLinks(
 		const std::multimap<int, Link> & links,
 		Link::Type filteredType,
 		bool inverted = false);
-/** @overload for `std::map<int, Link>`. */
+/** @overload
+ *  For `std::map<int, Link>`. */
 std::map<int, Link> RTABMAP_CORE_EXPORT filterLinks(
 		const std::map<int, Link> & links,
 		Link::Type filteredType,
@@ -606,7 +612,8 @@ std::map<int, Transform> RTABMAP_CORE_EXPORT findNearestPoses(
 		float radius,
 		float angle = 0.0f,
 		int k=0);
-/** @overload query by @ref Transform instead of node id. */
+/** @overload
+ *  Query by @ref Transform instead of node id. */
 std::map<int, Transform> RTABMAP_CORE_EXPORT findNearestPoses(
 		const Transform & targetPose,
 		const std::map<int, Transform> & poses,

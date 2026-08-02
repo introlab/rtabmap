@@ -72,11 +72,12 @@ public:
 		kPosePrior,          /**< Absolute pose prior in the world frame (@p from == @p to). */
 		kLandmark,           /**< Observation of a landmark: @p from is the observer node, @p to is a negative landmark id. */
 		kGravity,            /**< Gravity direction constraint on the base frame (@p from == @p to). */
-		kEnd,
+		kEnd,                /**< Sentinel: number of link types that can be stored. */
 		kSelfRefLink = 97,   /**< Filter: links where @p from == @p to (e.g. @ref kPosePrior, @ref kGravity). */
 		kAllWithLandmarks = 98,    /**< Filter: all link types including @ref kLandmark. */
 		kAllWithoutLandmarks = 99, /**< Filter: all link types except @ref kLandmark. */
-		kUndef = 99};              /**< Undefined type or invalid link. */
+		kUndef = 99                /**< Undefined type or invalid link. */
+	};
 
 	/** @return Human-readable name for @p type (e.g. "Neighbor", "GlobalClosure"). */
 	static std::string typeName(Type type);
@@ -102,9 +103,13 @@ public:
 	/** @return True if ids, transform, and type are valid for use in the graph. */
 	bool isValid() const {return from_ != 0 && to_ != 0 && !transform_.isNull() && type_!=kUndef;}
 
+	/** @return Source signature id. */
 	int from() const {return from_;}
+	/** @return Target signature id (negative for a landmark). */
 	int to() const {return to_;}
+	/** @return Relative transform, from the @ref from() frame to the @ref to() frame. */
 	const Transform & transform() const {return transform_;}
+	/** @return Link category (see @ref Type). */
 	Type type() const {return type_;}
 	std::string typeName() const {return typeName(type_);}
 	const cv::Mat & infMatrix() const {return infMatrix_;}
@@ -128,7 +133,9 @@ public:
 	/** @brief Sets the 6x6 information matrix (@c CV_64FC1); diagonal entries must be positive and finite. */
     void setInfMatrix(const cv::Mat & infMatrix);
 
+	/** @return Uncompressed user data, empty unless it was set raw or @ref uncompressUserData() was called. */
 	const cv::Mat & userDataRaw() const {return _userDataRaw;}
+	/** @return User data as stored/persisted, in compressed form. */
 	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
 	/** @brief Decompresses user data into @ref userDataRaw() if compressed data is stored. */
 	void uncompressUserData();
@@ -142,7 +149,7 @@ public:
 	 * @return Single link from @ref from() to @p link.to() with transform
 	 *         \(T_{ac} = T_{ab} T_{bc}\) (or null if either input transform is null).
 	 *         Information matrix handling depends on @p outputType:
-	 *         - @ref kNeighborMerged: \(\Omega_{ac} = (\Omega_{ab}^{-1} + \Omega_{bc}^{-1})^{-1}\)
+	 *         - @ref kNeighborMerged "kNeighborMerged": \(\Omega_{ac} = (\Omega_{ab}^{-1} + \Omega_{bc}^{-1})^{-1}\)
 	 *           (covariances add when both legs are diagonal and independent).
 	 *         - Other types: keeps the full information matrix of @p link unless
 	 *           \(\Omega_{ab}(0,0) < \Omega_{bc}(0,0)\) (i.e. the smaller x information entry).

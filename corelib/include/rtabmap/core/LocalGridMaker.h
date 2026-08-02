@@ -117,7 +117,7 @@ public:
 	 *                     sweeps unknown angular gaps between the first and last hit (sparse FOV /
 	 *                     “holes” in coverage) out to `Grid/RangeMax` or scan max range.
 	 *                   - **Other cases** (3D scan, depth, `Grid/Sensor`=2, etc.): see
-	 *                     @ref createLocalMap(const LaserScan&,...).
+	 *                     the @ref LaserScan overload of @ref createLocalMap().
 	 * @param viewPoint Output view point used for the grid.
 	 */
 	void createLocalMap(

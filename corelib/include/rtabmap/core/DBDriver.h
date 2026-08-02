@@ -58,7 +58,7 @@ class VisualWord;
  * read or write \c .db files. The default implementation is @ref DBDriverSqlite3, created
  * by @ref create().
  *
- * The driver extends @ref UThreadNode: pending @ref Signature and @ref VisualWord objects
+ * The driver extends @ref UThreadNode. Pending @ref Signature and @ref VisualWord objects
  * are queued with @ref asyncSave() and flushed to the database by @ref emptyTrashes()
  * (also called from the background thread on @ref closeConnection()).
  *
@@ -151,13 +151,13 @@ public:
 	 * @brief Update the depth image stored for a node.
 	 * @param image Raw depth image, or pre-compressed blob (@c CV_8UC1, single row).
 	 * @param format Compression format when @p image is raw (e.g. @c ".png"); ignored if already compressed.
-	 * Uncompressed images are compressed with @ref Compression::compressImage2() before writing.
+	 * Uncompressed images are compressed with @ref compressImage2() before writing.
 	 */
 	void updateDepthImage(int nodeId, const cv::Mat & image, const std::string & format);
 	/**
 	 * @brief Update the laser scan stored for a node.
 	 * @param scan Uncompressed scan, or already compressed (@ref LaserScan::isCompressed()).
-	 * Uncompressed data is compressed with @ref Compression::compressData2() before writing.
+	 * Uncompressed data is compressed with @ref compressData2() before writing.
 	 */
 	void updateLaserScan(int nodeId, const LaserScan & scan);
 	/** @} */
@@ -262,7 +262,7 @@ public:
 	 * @brief Run a SQL statement that does not return result rows.
 	 *
 	 * Executes @p sql on the open database (e.g. @c INSERT, @c UPDATE, @c DELETE,
-	 * @c CREATE, @c PRAGMA). Thread-safe wrapper around @ref executeNoResultQuery().
+	 * @c CREATE, @c PRAGMA). Thread-safe wrapper around the backend's SQL execution.
 	 *
 	 * For reads, use the dedicated @ref loadSignature(), @ref loadLinks() and related
 	 * query methods instead of raw SQL.

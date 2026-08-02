@@ -42,6 +42,11 @@ namespace rtabmap
 /** 
  * @brief This namespace contains 2D image processing utilities.
  */
+/**
+ * @namespace rtabmap::util2d
+ * @brief 2D image utilities: disparity and depth conversion, interpolation,
+ *        decimation, sub-pixel refinement and similarity measures.
+ */
 namespace util2d
 {
 

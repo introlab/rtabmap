@@ -274,7 +274,7 @@ Transform RTABMAP_CORE_EXPORT icpPointToPlane(
 		float ransacOutlierRatio = 0.0f,
 		int * iterationsDone = nullptr);
 /**
- * @briefPerforms Iterative Closest Point (ICP) alignment using a point-to-plane error metric.
+ * @brief Performs Iterative Closest Point (ICP) alignment using a point-to-plane error metric.
  * @see util3d::icpPointToPlane()
  *
  * @param ransacOutlierRatio If > 0 and < 1, install a PCL RANSAC

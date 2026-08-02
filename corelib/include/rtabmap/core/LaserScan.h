@@ -179,6 +179,7 @@ public:
 	bool hasIntensity() const {return isScanHasIntensity(format_);}
 	bool hasTime() const {return isScanHasTime(format_);}
 	bool hasRing() const {return isScanHasRing(format_);}
+	/** @brief True if the scan is stored compressed (single-row @c CV_8UC1 blob) instead of raw points. */
 	bool isCompressed() const {return !data_.empty() && data_.type()==CV_8UC1;}
 	bool isOrganized() const {return data_.rows > 1;}
 	LaserScan clone() const;

@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+/** @brief Parameter keys mapped to their values, as used by every configurable class (see @ref Parameters). */
 typedef std::map<std::string, std::string> ParametersMap; // Key, value
+/** @brief A single parameter key/value pair, the entry type of @ref ParametersMap. */
 typedef std::pair<std::string, std::string> ParametersPair;
 
 /**

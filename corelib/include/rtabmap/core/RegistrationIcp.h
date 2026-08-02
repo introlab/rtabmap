@@ -51,8 +51,8 @@ public:
 	/**
 	 * @brief Returns true if @p strategy is built into this rtabmap binary.
 	 *
-	 * @ref kPCL is always available; @ref kPointMatcher requires the
-	 * RTABMAP_POINTMATCHER build flag; @ref kCCCoreLib requires
+	 * @ref kIcpPCL is always available; @ref kIcpPointMatcher requires the
+	 * RTABMAP_POINTMATCHER build flag; @ref kIcpCCCoreLib requires
 	 * RTABMAP_CCCORELIB.
 	 */
 	static bool available(IcpStrategy strategy);

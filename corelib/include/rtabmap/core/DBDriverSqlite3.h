@@ -80,7 +80,7 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 	/**
 	 * @brief True when the database runs in RAM instead of on disk.
-	 * @return True if @ref getUrl() is empty or @ref setDbInMemory(true) was used.
+	 * @return True if @ref getUrl() is empty or @ref setDbInMemory() was used.
 	 */
 	virtual bool isInMemory() const {return getUrl().empty() || _dbInMemory;}
 	/**

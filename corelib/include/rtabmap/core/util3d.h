@@ -63,6 +63,14 @@ struct EIGEN_ALIGN16 PointXYZIRT
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+/**
+ * @namespace rtabmap::util3d
+ * @brief 3D utilities: point cloud conversion and filtering, projection, registration,
+ *        surface reconstruction, mapping and transforms.
+ *
+ * Declared across `util3d.h`, `util3d_filtering.h`, `util3d_mapping.h`,
+ * `util3d_registration.h`, `util3d_surface.h` and `util3d_transforms.h`.
+ */
 namespace util3d
 {
 

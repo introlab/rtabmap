@@ -101,7 +101,7 @@ class GlobalDescriptorExtractor;
 class RTABMAP_CORE_EXPORT Memory
 {
 public:
-	/** @brief First valid signature id assigned by @ref getNextId() (positive integer). */
+	/** @brief First valid signature id assigned to a new signature (positive integer). */
 	static const int kIdStart;
 	/** @brief Reserved id for the "virtual place" used by the Bayes filter (negative). */
 	static const int kIdVirtual;
@@ -575,7 +575,7 @@ public:
 	 *        loaded or reset. @ref close() uses this flag to decide whether the database
 	 *        needs to be rewritten.
 	 *
-	 * The flag is cleared to @c false on construction and by @ref close() / @ref clear(),
+	 * The flag is cleared to @c false on construction, by @ref close() and when the memory is cleared,
 	 * and is raised to @c true on any of the following events:
 	 *
 	 * - **@ref update() in mapping mode** (@ref Parameters::kMemIncrementalMemory() == @c true,

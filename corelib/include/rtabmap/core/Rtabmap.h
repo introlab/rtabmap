@@ -105,7 +105,7 @@ class Optimizer;
  *     consistency check (see @ref Parameters::kRGBDOptimizeMaxError()).
  *
  * The optimization used by the consistency check depends on the operating mode:
- *   - In **mapping mode**, @ref optimizeCurrentMap() re-optimizes the local map
+ *   - In **mapping mode**, the local map is re-optimized
  *     around the current signature including the new link, then
  *     @ref graph::computeMaxGraphErrors() measures the worst per-link residual / its
  *     standard deviation. If the ratio exceeds @ref Parameters::kRGBDOptimizeMaxError(),
@@ -117,7 +117,7 @@ class Optimizer;
  *     applied; on failure the localization is rejected for this iteration but the
  *     persisted map and its links are left untouched.
  *
- * In both modes, if the same link is rejected twice in a row, @ref repairGraph() may
+ * In both modes, if the same link is rejected twice in a row, a graph repair may
  * also be attempted (within @ref Parameters::kRGBDOptimizeMaxErrorRepairRadius()) to
  * drop the offending link instead of the new candidate.
  *
@@ -218,7 +218,7 @@ public:
 	 * @param odomCovariance 6x6 odometry covariance (default: identity).
 	 * @param odomVelocity Optional 6-vector (vx, vy, vz, vroll, vpitch, vyaw).
 	 * @param externalStats Extra named statistics to record in the database for this iteration.
-	 * @return True if @p data was added to the map (i.e. an @ref update() succeeded).
+	 * @return True if @p data was added to the map (i.e. the memory update succeeded).
 	 */
 	bool process(
 			const SensorData & data,
@@ -765,7 +765,7 @@ public:
 	 * @note Must be called before @ref init(); an error is logged and the call ignored
 	 *       once the memory exists.
 	 * @warning Incompatible with mapping: adding new nodes asserts in
-	 *          @ref Memory::createSignature(). Loop closure detection also cannot match
+	 *          @c Memory::createSignature(). Loop closure detection also cannot match
 	 *          new observations against a descriptor-less dictionary.
 	 *
 	 * @see Memory::setDummyDictionary()

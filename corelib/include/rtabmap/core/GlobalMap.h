@@ -46,7 +46,7 @@ namespace rtabmap {
  *
  * @ref update() decides which poses need assembly (not yet in @ref addedNodes(), present in
  * cache, id &gt; 0) and may call @ref clear() when @ref fullUpdateNeeded() detects graph
- * optimization or a disjoint pose set (see @ref kGridGlobalUpdateError).
+ * optimization or a disjoint pose set (see @ref Parameters::kGridGlobalUpdateError()).
  *
  * Log-odds helpers @ref logodds() and @ref probability() convert between occupancy
  * probability and the internal log-odds representation used for global hit/miss/clamping

@@ -57,6 +57,23 @@ What each iteration does, and which parameters influence it, is documented on
 rtabmap::Rtabmap itself -- memory update, loop-closure hypothesis, hypothesis
 selection, retrieval, proximity detection and transfer to long-term memory.
 
+Configuration
+-------------
+
+Every tunable is a string key/value pair in a rtabmap::ParametersMap, declared
+with its default and description in `Parameters.h`
+(for example `Parameters::kMemSTMSize()`, `Parameters::kRGBDLinearUpdate()`).
+The same keys are used by the applications, the ROS wrappers and the
+`--Param value` command-line arguments of the tools, so a setting found here
+applies everywhere.
+
+~~~{.cpp}
+rtabmap::ParametersMap parameters;
+parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "20"));
+rtabmap.init(parameters, "map.db");
+~~~
+
+
 The map
 -------
 
@@ -94,19 +111,3 @@ Building blocks
 Free functions for point cloud, image and geometry processing are grouped in
 `util2d.h`, `util3d.h`, `util3d_filtering.h`, `util3d_registration.h`,
 `util3d_surface.h`, `util3d_transforms.h` and `util3d_mapping.h`.
-
-Configuration
--------------
-
-Every tunable is a string key/value pair in a rtabmap::ParametersMap, declared
-with its default and description in `Parameters.h`
-(for example `Parameters::kMemSTMSize()`, `Parameters::kRGBDLinearUpdate()`).
-The same keys are used by the applications, the ROS wrappers and the
-`--Param value` command-line arguments of the tools, so a setting found here
-applies everywhere.
-
-~~~{.cpp}
-rtabmap::ParametersMap parameters;
-parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "20"));
-rtabmap.init(parameters, "map.db");
-~~~

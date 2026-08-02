@@ -43,7 +43,7 @@ namespace rtabmap
 namespace util3d
 {
 
-// Use interface with \"viewpoint\" parameter to make sure the ray tracing origin is from the sensor and not the base.
+/** @deprecated Use the overload taking a @p viewpoint, so that ray tracing starts from the sensor and not from the base frame. */
 RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		const cv::Mat & scan, // in /base_link frame
 		cv::Mat & empty,
@@ -52,7 +52,7 @@ RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f);
 
-// Use interface with scanHit/scanNoHit parameters: scanNoHit set to null matrix has the same functionality than this method.
+/** @deprecated Use the overload taking @p scanHit / @p scanNoHit; passing a null @p scanNoHit is equivalent to this one. */
 RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(
 		const cv::Mat & scan, // in /base_link frame
 		const cv::Point3f & viewpoint, // /base_link -> /base_scan
@@ -145,7 +145,7 @@ cv::Mat RTABMAP_CORE_EXPORT create2DMapFromOccupancyLocalMaps(
 		bool erode = false,
 		float footprintRadius = 0.0f);
 
-// Use interface with \"viewpoints\" parameter to make sure the ray tracing origin is from the sensor and not the base.
+/** @deprecated Use the overload taking @p viewpoints, so that ray tracing starts from the sensor and not from the base frame. */
 RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans, // in /base_link frame
 		float cellSize,
@@ -155,7 +155,7 @@ RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, T
 		float minMapSize = 0.0f,
 		float scanMaxRange = 0.0f);
 
-// Use interface with cv::Mat scans.
+/** @deprecated Use the overload taking `cv::Mat` scans. */
 RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans, // in /base_link frame
 		const std::map<int, cv::Point3f > & viewpoints, // /base_link -> /base_scan

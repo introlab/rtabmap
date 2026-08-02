@@ -43,7 +43,6 @@
   * std::vector<char> bytes = uHex2Bytes(hex);
   * @endcode
   *
-  * A generated \ref findUtilitePage "FindUtiLite.cmake" is also provided for easy linking with the library.
   *
   *
   * \section logger ULogger
@@ -196,7 +195,7 @@
  * ADD_LIBRARY(mylib ${SRC_FILES} ${RESOURCES})
  * ADD_EXECUTABLE(myexecutable ${SRC_FILES} ${RESOURCES})
  * @endcode
- * The variable URESOURCEGENERATOR_EXEC is set when FIND_PACKAGE(UtiLite) is done, you would need to add \ref findUtilitePage "FindUtiLite.cmake".
+ * The variable URESOURCEGENERATOR_EXEC is set when FIND_PACKAGE(UtiLite) is done, you would need to add `FindUtiLite.cmake`.
  */
 
 #include "rtabmap/utilite/UStl.h"

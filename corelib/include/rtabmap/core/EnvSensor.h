@@ -65,14 +65,14 @@ public:
 		kAmbientRelativeHumidity,    ///< Relative humidity (%).
 
 		kCustomSensor1 = 100,        ///< User-defined sensor slot 1.
-		kCustomSensor2,
-		kCustomSensor3,
-		kCustomSensor4,
-		kCustomSensor5,
-		kCustomSensor6,
-		kCustomSensor7,
-		kCustomSensor8,
-		kCustomSensor9
+		kCustomSensor2,             ///< User-defined sensor slot 2.
+		kCustomSensor3,             ///< User-defined sensor slot 3.
+		kCustomSensor4,             ///< User-defined sensor slot 4.
+		kCustomSensor5,             ///< User-defined sensor slot 5.
+		kCustomSensor6,             ///< User-defined sensor slot 6.
+		kCustomSensor7,             ///< User-defined sensor slot 7.
+		kCustomSensor8,             ///< User-defined sensor slot 8.
+		kCustomSensor9              ///< User-defined sensor slot 9.
 	};
 
 public:

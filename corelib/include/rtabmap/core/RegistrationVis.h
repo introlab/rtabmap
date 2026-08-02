@@ -50,7 +50,7 @@ class PyMatcher;
  * (@ref CameraModel + depth), stereo (@ref StereoCameraModel), optical flow, GMS,
  * and optional Python matchers when built with Python support.
  *
- * Can chain a @ref child_ registration (e.g. @ref RegistrationIcp in
+ * Can chain a child registration (e.g. @ref RegistrationIcp in
  * @ref Registration::kTypeVisIcp). Feature-related Vis/ parameters are mapped
  * to Kp/ for @ref Feature2D::create().
  *
