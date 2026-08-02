@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1EnvSensor.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1EnvSensor.html">EnvSensor</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">rtabmap::EnvSensor Member List</div></div>
 </div><!--header-->
@@ -90,14 +107,14 @@ $(function() {
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7c238626943b1254027ed1b5454ae101">kAmbientRelativeHumidity</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa9e348acef07abec64edef43b58ea1b83">kAmbientTemperature</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa88e60173d5f413f4ab490a99c034453e">kCustomSensor1</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>kCustomSensor2</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kCustomSensor3</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>kCustomSensor4</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kCustomSensor5</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>kCustomSensor6</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kCustomSensor7</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>kCustomSensor8</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kCustomSensor9</b> enum value (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa9bb90358c0c69177bb8a918cd38aee8a">kCustomSensor2</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7bcfccab26830a87edcf9dbf7d7b166b">kCustomSensor3</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa53762a7b85a4a07845e8c447e0ba19e7">kCustomSensor4</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fafd5342a456a7e150c2d7598a7b297c92">kCustomSensor5</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faef0358209e8fe8218ab939fa9ab4a693">kCustomSensor6</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faeb1ce734601c915d6a411c76ff4bb8f8">kCustomSensor7</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa24c103c2769770dd36d87e0567be9140">kCustomSensor8</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa669f9ca8a243a813b981ff2b672b0f89">kCustomSensor9</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fad06ac95d82e3fceb18e1f3dfd190931a">kUndefined</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa1bc42ead6237eb515f301b39e162dee2">kWifiSignalStrength</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a1bbcf9a834523dd2e91ef1ab8d31d5e4">stamp</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
@@ -106,9 +123,12 @@ $(function() {
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html#a27b343c9be68fd326c10157102bb750f">value</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>~EnvSensor</b>() (defined in <a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1EnvSensor.html">rtabmap::EnvSensor</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">virtual</span></td></tr>
 </table></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

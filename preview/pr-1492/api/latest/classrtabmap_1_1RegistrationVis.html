@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1RegistrationVis.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RegistrationVis.html">RegistrationVis</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -98,7 +115,7 @@ Inheritance diagram for rtabmap::RegistrationVis:</div>
 <area shape="rect" href="classrtabmap_1_1Registration.html" title="Abstract base for registering two observations (visual, ICP, or both)." alt="" coords="15,5,179,31"/>
 <area shape="poly" title=" " alt="" coords="100,44,100,79,95,79,95,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::RegistrationVis:</div>
 <div class="dyncontent">
@@ -108,15 +125,15 @@ Collaboration diagram for rtabmap::RegistrationVis:</div>
 <area shape="rect" href="classrtabmap_1_1Registration.html" title="Abstract base for registering two observations (visual, ICP, or both)." alt="" coords="15,5,179,31"/>
 <area shape="poly" title=" " alt="" coords="100,44,100,79,95,79,95,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:aa845f7fbbfc8fc340dba96a2a6550d03" id="r_aa845f7fbbfc8fc340dba96a2a6550d03"><td class="memItemLeft" align="right" valign="top"><a id="aa845f7fbbfc8fc340dba96a2a6550d03" name="aa845f7fbbfc8fc340dba96a2a6550d03"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>RegistrationVis</b> (const ParametersMap &amp;parameters=ParametersMap(), <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *child=0)</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>RegistrationVis</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>(), <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *child=0)</td></tr>
 <tr class="memdesc:aa845f7fbbfc8fc340dba96a2a6550d03"><td class="mdescLeft">&#160;</td><td class="mdescRight"><code>child</code> is owned and deleted in the destructor. <br /></td></tr>
 <tr class="separator:aa845f7fbbfc8fc340dba96a2a6550d03"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6560046940995044d7a51cb0066d420e" id="r_a6560046940995044d7a51cb0066d420e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#a6560046940995044d7a51cb0066d420e">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:a6560046940995044d7a51cb0066d420e" id="r_a6560046940995044d7a51cb0066d420e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#a6560046940995044d7a51cb0066d420e">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a6560046940995044d7a51cb0066d420e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses Vis/ and feature parameters; recreates feature detectors.  <br /></td></tr>
 <tr class="separator:a6560046940995044d7a51cb0066d420e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a488ecb8a7423996abdad98b0044cd7f2" id="r_a488ecb8a7423996abdad98b0044cd7f2"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#a488ecb8a7423996abdad98b0044cd7f2">getInlierDistance</a> () const</td></tr>
@@ -164,7 +181,7 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>getMinGeometryCorres
 <tr class="separator:abb255bdab60a262f9cfc5d868e50cc9c inherit pub_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac105402feeb2ec6551235296604145aa inherit pub_methods_classrtabmap_1_1Registration" id="r_ac105402feeb2ec6551235296604145aa"><td class="memItemLeft" align="right" valign="top">
 void&#160;</td><td class="memItemRight" valign="bottom"><b>setChildRegistration</b> (<a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *child)</td></tr>
-<tr class="memdesc:ac105402feeb2ec6551235296604145aa inherit pub_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Replaces child_; takes ownership of <code>child</code>. <br /></td></tr>
+<tr class="memdesc:ac105402feeb2ec6551235296604145aa inherit pub_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Replaces the current child registration; takes ownership of <code>child</code>. <br /></td></tr>
 <tr class="separator:ac105402feeb2ec6551235296604145aa inherit pub_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa6b81a6f4137138a1b49510cc3f97679 inherit pub_methods_classrtabmap_1_1Registration" id="r_aa6b81a6f4137138a1b49510cc3f97679"><td class="memItemLeft" align="right" valign="top">
 <a class="el" href="classrtabmap_1_1Transform.html">Transform</a>&#160;</td><td class="memItemRight" valign="bottom"><b>computeTransformation</b> (const <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;from, const <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;to, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> guess=<a class="el" href="classrtabmap_1_1Transform.html#a8ea4368f2018d751d2733038081d56a2">Transform::getIdentity</a>(), <a class="el" href="classrtabmap_1_1RegistrationInfo.html">RegistrationInfo</a> *info=0) const</td></tr>
@@ -192,7 +209,7 @@ Protected Member Functions</h2></td></tr>
 <tr class="separator:a57cd358ce95d2ac839bab72c4fc37a06"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
 <tr class="memitem:a7d0ff4149da7f5839308ff543932b067 inherit pro_methods_classrtabmap_1_1Registration" id="r_a7d0ff4149da7f5839308ff543932b067"><td class="memItemLeft" align="right" valign="top">
-&#160;</td><td class="memItemRight" valign="bottom"><b>Registration</b> (const ParametersMap &amp;parameters=ParametersMap(), <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *child=0)</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Registration</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>(), <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *child=0)</td></tr>
 <tr class="memdesc:a7d0ff4149da7f5839308ff543932b067 inherit pro_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight"><code>child</code> is owned and deleted in the destructor. <br /></td></tr>
 <tr class="separator:a7d0ff4149da7f5839308ff543932b067 inherit pro_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0a352c12a797bd500bf535a4e1495def inherit pro_methods_classrtabmap_1_1Registration" id="r_a0a352c12a797bd500bf535a4e1495def"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Registration.html#a0a352c12a797bd500bf535a4e1495def">isScanRequiredImpl</a> () const</td></tr>
@@ -205,21 +222,21 @@ Protected Member Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
 <tr class="inherit_header pub_types_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pub_types_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Public Types inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
-<tr class="memitem:ae693713cd8b7ece4b147eae99880b849 inherit pub_types_classrtabmap_1_1Registration" id="r_ae693713cd8b7ece4b147eae99880b849"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> { <b>kTypeUndef</b> = -1
-, <b>kTypeVis</b> = 0
-, <b>kTypeIcp</b> = 1
-, <b>kTypeVisIcp</b> = 2
+<tr class="memitem:ae693713cd8b7ece4b147eae99880b849 inherit pub_types_classrtabmap_1_1Registration" id="r_ae693713cd8b7ece4b147eae99880b849"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> { <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a1e25205ebb65fe2315a0b7050e613c6d">kTypeUndef</a> = -1
+, <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8e6dbf98a9a843c34d16b8c7e546c724">kTypeVis</a> = 0
+, <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8638e369c895a337f587e727e1a712ab">kTypeIcp</a> = 1
+, <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849ad03189dad590b6e2d81adbc7d20bf662">kTypeVisIcp</a> = 2
  }</td></tr>
 <tr class="memdesc:ae693713cd8b7ece4b147eae99880b849"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Registration.html" title="Abstract base for registering two observations (visual, ICP, or both).">Registration</a> strategy selected by <b>Reg/Strategy</b>.  <a href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">More...</a><br /></td></tr>
 <tr class="separator:ae693713cd8b7ece4b147eae99880b849 inherit pub_types_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_methods_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
 <tr class="memitem:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration" id="r_a516e8d64cdb3e7a743a3aa40ab026def"><td class="memItemLeft" align="right" valign="top">
-static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const ParametersMap &amp;parameters)</td></tr>
+static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration from <b>Reg/Strategy</b> in <code>parameters</code>. Caller owns the pointer. <br /></td></tr>
 <tr class="separator:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration" id="r_a1e3493a850551c98f9e814fed74400e6"><td class="memItemLeft" align="right" valign="top">
-static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (<a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> &amp;type, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
-<tr class="memdesc:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration of <code>type</code> (may be adjusted, e.g. to kTypeVis). Caller owns the pointer. <br /></td></tr>
+static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (<a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> &amp;type, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
+<tr class="memdesc:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration of <code>type</code> (may be adjusted, e.g. to <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8e6dbf98a9a843c34d16b8c7e546c724">kTypeVis</a>). Caller owns the pointer. <br /></td></tr>
 <tr class="separator:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_attribs_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pub_static_attribs_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Static Public Attributes inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
 <tr class="memitem:a7c8c2d7a65357ef9f5d60ce3f763f4b3 inherit pub_static_attribs_classrtabmap_1_1Registration" id="r_a7c8c2d7a65357ef9f5d60ce3f763f4b3"><td class="memItemLeft" align="right" valign="top">static double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Registration.html#a7c8c2d7a65357ef9f5d60ce3f763f4b3">COVARIANCE_LINEAR_EPSILON</a></td></tr>
@@ -232,7 +249,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Visual registration between two signatures using features and geometry. </p>
 <p>Extracts and matches features (<a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a>), then estimates motion with <b>Vis/EstimationType</b> (3D→3D, 3D→2D PnP, or 2D→2D epipolar). Supports RGB-D (<a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> + depth), stereo (<a class="el" href="classrtabmap_1_1StereoCameraModel.html">StereoCameraModel</a>), optical flow, GMS, and optional Python matchers when built with Python support.</p>
-<p>Can chain a child_ registration (e.g. <a class="el" href="classrtabmap_1_1RegistrationIcp.html">RegistrationIcp</a> in Registration::kTypeVisIcp). Feature-related Vis/ parameters are mapped to Kp/ for <a class="el" href="classrtabmap_1_1Feature2D.html#a58ac3dff96e882f0e4bbbf8a8ffc435d">Feature2D::create()</a>.</p>
+<p>Can chain a child registration (e.g. <a class="el" href="classrtabmap_1_1RegistrationIcp.html">RegistrationIcp</a> in <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849ad03189dad590b6e2d81adbc7d20bf662">Registration::kTypeVisIcp</a>). Feature-related Vis/ parameters are mapped to Kp/ for <a class="el" href="classrtabmap_1_1Feature2D.html#a58ac3dff96e882f0e4bbbf8a8ffc435d">Feature2D::create()</a>.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Registration.html" title="Abstract base for registering two observations (visual, ICP, or both).">Registration</a> </dd>
 <dd>
 <a class="el" href="classrtabmap_1_1RegistrationInfo.html" title="Statistics and diagnostics returned by Registration.">RegistrationInfo</a> </dd></dl>
@@ -251,7 +268,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
         <tr>
           <td class="memname">virtual void rtabmap::RegistrationVis::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -512,7 +529,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 </div><div class="memdoc">
 
 <p>Strategy-specific registration. </p>
-<p>May modify <code>from</code> and <code>to</code>; a child_ registration reuses those changes. </p>
+<p>May modify <code>from</code> and <code>to</code>; a child registration reuses those changes. </p>
 
 <p>Implements <a class="el" href="classrtabmap_1_1Registration.html#a21635a391a85b64bc33787179a6cd71b">rtabmap::Registration</a>.</p>
 
@@ -609,9 +626,13 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 <li>corelib/include/rtabmap/core/<a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RegistrationVis.html">RegistrationVis</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

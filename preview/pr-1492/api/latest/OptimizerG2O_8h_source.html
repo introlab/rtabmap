@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('OptimizerG2O_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><a class="el" href="dir_3587399b7774227770d0fd39c2d22121.html">optimizer</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">OptimizerG2O.h</div></div>
 </div><!--header-->
@@ -136,12 +153,12 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>      std::multimap&lt;int, Link&gt; &amp; edgeConstraints);</div>
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span> </div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>  <a class="code hl_class" href="classrtabmap_1_1OptimizerG2O.html">OptimizerG2O</a>(<span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>  <a class="code hl_class" href="classrtabmap_1_1OptimizerG2O.html">OptimizerG2O</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1OptimizerG2O.html">~OptimizerG2O</a>() {}</div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span> </div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno"><a class="line" href="classrtabmap_1_1OptimizerG2O.html#af69edaad65a7f7f936fa99f8c617e10b">   54</a></span>  <span class="keyword">virtual</span> <a class="code hl_enumeration" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16">Type</a> <a class="code hl_function" href="classrtabmap_1_1OptimizerG2O.html#af69edaad65a7f7f936fa99f8c617e10b">type</a>()<span class="keyword"> const </span>{<span class="keywordflow">return</span> kTypeG2O;}</div>
 <div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span> </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno"><a class="line" href="classrtabmap_1_1OptimizerG2O.html#a07b598444b99584b6f2bed6baca5e8bb">   56</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1OptimizerG2O.html#a07b598444b99584b6f2bed6baca5e8bb">parseParameters</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno"><a class="line" href="classrtabmap_1_1OptimizerG2O.html#a07b598444b99584b6f2bed6baca5e8bb">   56</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1OptimizerG2O.html#a07b598444b99584b6f2bed6baca5e8bb">parseParameters</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span> </div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno"><a class="line" href="classrtabmap_1_1OptimizerG2O.html#a9400bdf57331af310cf6b02e661d0a03">   58</a></span>  <span class="keyword">virtual</span> std::map&lt;int, Transform&gt; <a class="code hl_function" href="classrtabmap_1_1OptimizerG2O.html#a9400bdf57331af310cf6b02e661d0a03">optimize</a>(</div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>        <span class="keywordtype">int</span> rootId,</div>
@@ -186,10 +203,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1Optimizer_html"><div class="ttname"><a href="classrtabmap_1_1Optimizer.html">rtabmap::Optimizer</a></div><div class="ttdoc">Abstract base for pose-graph and bundle-adjustment optimizers.</div><div class="ttdef"><b>Definition</b> <a href="Optimizer_8h_source.html#l00087">Optimizer.h:88</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Optimizer_html_a18ae8ac76346d1adc68ab176a5b02d16"><div class="ttname"><a href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16">rtabmap::Optimizer::Type</a></div><div class="ttdeci">Type</div><div class="ttdoc">Graph-optimizer back-end identifier.</div><div class="ttdef"><b>Definition</b> <a href="Optimizer_8h_source.html#l00091">Optimizer.h:91</a></div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
+<div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><a class="el" href="dir_3587399b7774227770d0fd39c2d22121.html">optimizer</a></li><li class="navelem"><b>OptimizerG2O.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

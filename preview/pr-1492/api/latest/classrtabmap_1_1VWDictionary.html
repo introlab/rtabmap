@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1VWDictionary.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1VWDictionary.html">VWDictionary</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -111,13 +128,13 @@ Public Types</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ada3980b520d8411a1ebb3ce14e2f8734" id="r_ada3980b520d8411a1ebb3ce14e2f8734"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734">VWDictionary</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:ada3980b520d8411a1ebb3ce14e2f8734" id="r_ada3980b520d8411a1ebb3ce14e2f8734"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734">VWDictionary</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:ada3980b520d8411a1ebb3ce14e2f8734"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor.  <br /></td></tr>
 <tr class="separator:ada3980b520d8411a1ebb3ce14e2f8734"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af7f669f103368e30e31a028efbcac89d" id="r_af7f669f103368e30e31a028efbcac89d"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#af7f669f103368e30e31a028efbcac89d">~VWDictionary</a> ()</td></tr>
 <tr class="memdesc:af7f669f103368e30e31a028efbcac89d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Destructor.  <br /></td></tr>
 <tr class="separator:af7f669f103368e30e31a028efbcac89d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a89893faef6c96e3b19bfeab86094af81" id="r_a89893faef6c96e3b19bfeab86094af81"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#a89893faef6c96e3b19bfeab86094af81">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:a89893faef6c96e3b19bfeab86094af81" id="r_a89893faef6c96e3b19bfeab86094af81"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#a89893faef6c96e3b19bfeab86094af81">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a89893faef6c96e3b19bfeab86094af81"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse and apply parameters from a parameters map.  <br /></td></tr>
 <tr class="separator:a89893faef6c96e3b19bfeab86094af81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a844ae27eb6d1f0674c8f7777451812c5" id="r_a844ae27eb6d1f0674c8f7777451812c5"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#a844ae27eb6d1f0674c8f7777451812c5">update</a> ()</td></tr>
@@ -315,8 +332,8 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::VWDictionary::VWDictionary </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -410,7 +427,7 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="memname">virtual void rtabmap::VWDictionary::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -1663,9 +1680,13 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <li>corelib/include/rtabmap/core/<a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1VWDictionary.html">VWDictionary</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

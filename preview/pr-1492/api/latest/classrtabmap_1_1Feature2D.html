@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1Feature2D.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -134,7 +151,7 @@ Inheritance diagram for rtabmap::Feature2D:</div>
 <area shape="rect" href="classrtabmap_1_1SURF__FREAK.html" title="SURF detector + FREAK descriptors." alt="" coords="464,399,635,424"/>
 <area shape="poly" title=" " alt="" coords="385,392,464,400,463,405,384,397"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
@@ -194,9 +211,9 @@ std::vector&lt; cv::Point3f &gt;&#160;</td><td class="memItemRight" valign="bott
 <tr class="memdesc:ae01a548fe993a7aa309cce96645693ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Back-projects keypoints to 3D using depth or stereo in <code>data</code>. <br /></td></tr>
 <tr class="separator:ae01a548fe993a7aa309cce96645693ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5ba06900b00cf2786165d01c8c9a59a1" id="r_a5ba06900b00cf2786165d01c8c9a59a1"><td class="memItemLeft" align="right" valign="top"><a id="a5ba06900b00cf2786165d01c8c9a59a1" name="a5ba06900b00cf2786165d01c8c9a59a1"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParameters</b> (const ParametersMap &amp;parameters)</td></tr>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParameters</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="separator:a5ba06900b00cf2786165d01c8c9a59a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c52665128219cb0e923febe2b25c852" id="r_a9c52665128219cb0e923febe2b25c852"><td class="memItemLeft" align="right" valign="top">virtual const ParametersMap &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Feature2D.html#a9c52665128219cb0e923febe2b25c852">getParameters</a> () const</td></tr>
+<tr class="memitem:a9c52665128219cb0e923febe2b25c852" id="r_a9c52665128219cb0e923febe2b25c852"><td class="memItemLeft" align="right" valign="top">virtual const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Feature2D.html#a9c52665128219cb0e923febe2b25c852">getParameters</a> () const</td></tr>
 <tr class="separator:a9c52665128219cb0e923febe2b25c852"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa9292a8f0c85f2bdbdaf2de861110c2c" id="r_aa9292a8f0c85f2bdbdaf2de861110c2c"><td class="memItemLeft" align="right" valign="top"><a id="aa9292a8f0c85f2bdbdaf2de861110c2c" name="aa9292a8f0c85f2bdbdaf2de861110c2c"></a>
 virtual <a class="el" href="classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fde">Feature2D::Type</a>&#160;</td><td class="memItemRight" valign="bottom"><b>getType</b> () const =0</td></tr>
@@ -210,11 +227,11 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a98050ef4da598e5b35bc32317bc58b84" id="r_a98050ef4da598e5b35bc32317bc58b84"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Feature2D.html#a98050ef4da598e5b35bc32317bc58b84">typeName</a> (<a class="el" href="classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fde">Type</a> type)</td></tr>
 <tr class="separator:a98050ef4da598e5b35bc32317bc58b84"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a58ac3dff96e882f0e4bbbf8a8ffc435d" id="r_a58ac3dff96e882f0e4bbbf8a8ffc435d"><td class="memItemLeft" align="right" valign="top"><a id="a58ac3dff96e882f0e4bbbf8a8ffc435d" name="a58ac3dff96e882f0e4bbbf8a8ffc435d"></a>
-static <a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+static <a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a58ac3dff96e882f0e4bbbf8a8ffc435d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a detector from <b>Kp/DetectorStrategy</b> in <code>parameters</code>. Caller owns the pointer. <br /></td></tr>
 <tr class="separator:a58ac3dff96e882f0e4bbbf8a8ffc435d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab9deec7c0e26722736aeeaeb5541ac3a" id="r_ab9deec7c0e26722736aeeaeb5541ac3a"><td class="memItemLeft" align="right" valign="top"><a id="ab9deec7c0e26722736aeeaeb5541ac3a" name="ab9deec7c0e26722736aeeaeb5541ac3a"></a>
-static <a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (<a class="el" href="classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fde">Feature2D::Type</a> type, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+static <a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (<a class="el" href="classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fde">Feature2D::Type</a> type, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:ab9deec7c0e26722736aeeaeb5541ac3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a detector of the given <code>type</code>. Caller owns the pointer. <br /></td></tr>
 <tr class="separator:ab9deec7c0e26722736aeeaeb5541ac3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6020550480c25d36f0b4255629e75ee2" id="r_a6020550480c25d36f0b4255629e75ee2"><td class="memItemLeft" align="right" valign="top"><a id="a6020550480c25d36f0b4255629e75ee2" name="a6020550480c25d36f0b4255629e75ee2"></a>
@@ -265,12 +282,12 @@ static cv::Rect&#160;</td><td class="memItemRight" valign="bottom"><b>computeRoi
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:a698973e11d04dcd87ed15f61c328facd" id="r_a698973e11d04dcd87ed15f61c328facd"><td class="memItemLeft" align="right" valign="top"><a id="a698973e11d04dcd87ed15f61c328facd" name="a698973e11d04dcd87ed15f61c328facd"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Feature2D</b> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Feature2D</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a698973e11d04dcd87ed15f61c328facd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstract 2D feature detector and descriptor extractor for visual SLAM. </p>
-<p>Factory <a class="el" href="classrtabmap_1_1Feature2D.html#a58ac3dff96e882f0e4bbbf8a8ffc435d">create()</a> builds a concrete detector from <a class="el" href="classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fde">Type</a> or from <b>Kp/DetectorStrategy</b> in a ParametersMap. Common tuning keys include <b>Kp/MaxFeatures</b>, <b>Kp/GridRows</b>, <b>Kp/GridCols</b>, <b>Kp/SSC</b>, depth filters (<b>Kp/MinDepth</b>, <b>Kp/MaxDepth</b>), ROI (<b>Kp/RoiRatios</b>), and sub-pixel refinement.</p>
+<p>Factory <a class="el" href="classrtabmap_1_1Feature2D.html#a58ac3dff96e882f0e4bbbf8a8ffc435d">create()</a> builds a concrete detector from <a class="el" href="classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fde">Type</a> or from <b>Kp/DetectorStrategy</b> in a <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>. Common tuning keys include <b>Kp/MaxFeatures</b>, <b>Kp/GridRows</b>, <b>Kp/GridCols</b>, <b>Kp/SSC</b>, depth filters (<b>Kp/MinDepth</b>, <b>Kp/MaxDepth</b>), ROI (<b>Kp/RoiRatios</b>), and sub-pixel refinement.</p>
 <p>Pipeline: <a class="el" href="classrtabmap_1_1Feature2D.html#a78d70d2150b42203ffd1c94d79661248">generateKeypoints()</a> (grid + ROI + optional mask) then <a class="el" href="classrtabmap_1_1Feature2D.html#abaca942668ac3d2f16d3e78797ff0fb9">generateDescriptors()</a>. Static helpers filter or cap keypoints before/after matching. <a class="el" href="classrtabmap_1_1Feature2D.html#ae01a548fe993a7aa309cce96645693ce">generateKeypoints3D()</a> projects features using stereo or depth when available in <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a>.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> </dd>
 <dd>
@@ -498,7 +515,7 @@ Protected Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual const ParametersMap &amp; rtabmap::Feature2D::getParameters </td>
+          <td class="memname">virtual const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; rtabmap::Feature2D::getParameters </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -550,9 +567,13 @@ Protected Member Functions</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="Features2d_8h_source.html">Features2d.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Feature2D.html">Feature2D</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

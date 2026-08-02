@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1GlobalDescriptorExtractor.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -99,7 +116,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:af0079b90bbb342b637be7f825d7930c0" id="r_af0079b90bbb342b637be7f825d7930c0"><td class="memItemLeft" align="right" valign="top"><a id="af0079b90bbb342b637be7f825d7930c0" name="af0079b90bbb342b637be7f825d7930c0"></a>
 virtual <a class="el" href="classrtabmap_1_1GlobalDescriptor.html">GlobalDescriptor</a>&#160;</td><td class="memItemRight" valign="bottom"><b>extract</b> (const <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;data) const =0</td></tr>
 <tr class="separator:af0079b90bbb342b637be7f825d7930c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:affbc9bc7fc7acf7ddabd320a5a790c41" id="r_affbc9bc7fc7acf7ddabd320a5a790c41"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html#affbc9bc7fc7acf7ddabd320a5a790c41">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:affbc9bc7fc7acf7ddabd320a5a790c41" id="r_affbc9bc7fc7acf7ddabd320a5a790c41"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html#affbc9bc7fc7acf7ddabd320a5a790c41">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="separator:affbc9bc7fc7acf7ddabd320a5a790c41"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c6463a1a7954219d43f6f3719b0a651" id="r_a7c6463a1a7954219d43f6f3719b0a651"><td class="memItemLeft" align="right" valign="top"><a id="a7c6463a1a7954219d43f6f3719b0a651" name="a7c6463a1a7954219d43f6f3719b0a651"></a>
 virtual GlobalDescriptorExtractor::Type&#160;</td><td class="memItemRight" valign="bottom"><b>getType</b> () const =0</td></tr>
@@ -110,16 +127,16 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:aefa3abcd36ea0b0ed00870b5e85eae54" id="r_aefa3abcd36ea0b0ed00870b5e85eae54"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html#aefa3abcd36ea0b0ed00870b5e85eae54">typeName</a> (Type type)</td></tr>
 <tr class="separator:aefa3abcd36ea0b0ed00870b5e85eae54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a44bfe65a365474bf9d81d90b388fdc24" id="r_a44bfe65a365474bf9d81d90b388fdc24"><td class="memItemLeft" align="right" valign="top"><a id="a44bfe65a365474bf9d81d90b388fdc24" name="a44bfe65a365474bf9d81d90b388fdc24"></a>
-static <a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+static <a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a44bfe65a365474bf9d81d90b388fdc24"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a555fae5f364a27a474706c8052f0e0af" id="r_a555fae5f364a27a474706c8052f0e0af"><td class="memItemLeft" align="right" valign="top"><a id="a555fae5f364a27a474706c8052f0e0af" name="a555fae5f364a27a474706c8052f0e0af"></a>
-static <a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (GlobalDescriptorExtractor::Type type, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+static <a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (GlobalDescriptorExtractor::Type type, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a555fae5f364a27a474706c8052f0e0af"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:ab611952daf1e8e77d46b66b6f3fe0d0c" id="r_ab611952daf1e8e77d46b66b6f3fe0d0c"><td class="memItemLeft" align="right" valign="top"><a id="ab611952daf1e8e77d46b66b6f3fe0d0c" name="ab611952daf1e8e77d46b66b6f3fe0d0c"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>GlobalDescriptorExtractor</b> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>GlobalDescriptorExtractor</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:ab611952daf1e8e77d46b66b6f3fe0d0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -183,7 +200,7 @@ Protected Member Functions</h2></td></tr>
         <tr>
           <td class="memname">virtual void rtabmap::GlobalDescriptorExtractor::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -203,9 +220,13 @@ Protected Member Functions</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="GlobalDescriptorExtractor_8h_source.html">GlobalDescriptorExtractor.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

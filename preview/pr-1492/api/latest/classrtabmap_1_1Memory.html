@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1Memory.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Memory.html">Memory</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -103,17 +120,17 @@ Collaboration diagram for rtabmap::Memory:</div>
 <area shape="rect" href="classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
 <area shape="poly" title=" " alt="" coords="80,45,80,80,75,80,75,45"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a24d451cdf46a9cc04cce995142a101d4" id="r_a24d451cdf46a9cc04cce995142a101d4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4">Memory</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a24d451cdf46a9cc04cce995142a101d4" id="r_a24d451cdf46a9cc04cce995142a101d4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4">Memory</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a24d451cdf46a9cc04cce995142a101d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> instance with the given parameters.  <br /></td></tr>
 <tr class="separator:a24d451cdf46a9cc04cce995142a101d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abbf54d2a34838cc13ce98d41a9991918" id="r_abbf54d2a34838cc13ce98d41a9991918"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#abbf54d2a34838cc13ce98d41a9991918">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:abbf54d2a34838cc13ce98d41a9991918" id="r_abbf54d2a34838cc13ce98d41a9991918"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#abbf54d2a34838cc13ce98d41a9991918">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:abbf54d2a34838cc13ce98d41a9991918"><td class="mdescLeft">&#160;</td><td class="mdescRight">Re-parses parameters and propagates them to owned sub-objects.  <br /></td></tr>
 <tr class="separator:abbf54d2a34838cc13ce98d41a9991918"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af4cc965870dd757517b126af4860d34d" id="r_af4cc965870dd757517b126af4860d34d"><td class="memItemLeft" align="right" valign="top">virtual const ParametersMap &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#af4cc965870dd757517b126af4860d34d">getParameters</a> () const</td></tr>
+<tr class="memitem:af4cc965870dd757517b126af4860d34d" id="r_af4cc965870dd757517b126af4860d34d"><td class="memItemLeft" align="right" valign="top">virtual const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#af4cc965870dd757517b126af4860d34d">getParameters</a> () const</td></tr>
 <tr class="separator:af4cc965870dd757517b126af4860d34d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3c029b2788f3b599480d5150120a6bee" id="r_a3c029b2788f3b599480d5150120a6bee"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update</a> (const <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;data, <a class="el" href="classrtabmap_1_1Statistics.html">Statistics</a> *stats=0)</td></tr>
 <tr class="memdesc:a3c029b2788f3b599480d5150120a6bee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a sensor observation to the map (overload without odometry pose).  <br /></td></tr>
@@ -121,7 +138,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aae43fd080c6bc9773fa58f1c36e6684f" id="r_aae43fd080c6bc9773fa58f1c36e6684f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#aae43fd080c6bc9773fa58f1c36e6684f">update</a> (const <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;data, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;pose, const cv::Mat &amp;covariance, const std::vector&lt; float &gt; &amp;velocity=std::vector&lt; float &gt;(), <a class="el" href="classrtabmap_1_1Statistics.html">Statistics</a> *stats=0)</td></tr>
 <tr class="memdesc:aae43fd080c6bc9773fa58f1c36e6684f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a sensor observation with odometry pose and velocity to the map.  <br /></td></tr>
 <tr class="separator:aae43fd080c6bc9773fa58f1c36e6684f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeeabc78648bf7dc14ea1356828cdeddd" id="r_aeeabc78648bf7dc14ea1356828cdeddd"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">init</a> (const std::string &amp;dbUrl, bool dbOverwritten=false, const ParametersMap &amp;parameters=ParametersMap(), bool postInitClosingEvents=false)</td></tr>
+<tr class="memitem:aeeabc78648bf7dc14ea1356828cdeddd" id="r_aeeabc78648bf7dc14ea1356828cdeddd"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">init</a> (const std::string &amp;dbUrl, bool dbOverwritten=false, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>(), bool postInitClosingEvents=false)</td></tr>
 <tr class="memdesc:aeeabc78648bf7dc14ea1356828cdeddd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens or creates a database and loads existing state into WM.  <br /></td></tr>
 <tr class="separator:aeeabc78648bf7dc14ea1356828cdeddd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a44023158524dee3471a8dff43ea132db" id="r_a44023158524dee3471a8dff43ea132db"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">close</a> (bool databaseSaved=true, bool postInitClosingEvents=false, const std::string &amp;ouputDatabasePath=&quot;&quot;)</td></tr>
@@ -404,7 +421,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>dumpDictionary</b> (c
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
 <tr class="memitem:a12042e10017298c4dcf6e435c5a2290a" id="r_a12042e10017298c4dcf6e435c5a2290a"><td class="memItemLeft" align="right" valign="top">static const int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#a12042e10017298c4dcf6e435c5a2290a">kIdStart</a></td></tr>
-<tr class="memdesc:a12042e10017298c4dcf6e435c5a2290a"><td class="mdescLeft">&#160;</td><td class="mdescRight">First valid signature id assigned by getNextId() (positive integer).  <br /></td></tr>
+<tr class="memdesc:a12042e10017298c4dcf6e435c5a2290a"><td class="mdescLeft">&#160;</td><td class="mdescRight">First valid signature id assigned to a new signature (positive integer).  <br /></td></tr>
 <tr class="separator:a12042e10017298c4dcf6e435c5a2290a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a539ccf650a81905db46dd6d98112f603" id="r_a539ccf650a81905db46dd6d98112f603"><td class="memItemLeft" align="right" valign="top">static const int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Memory.html#a539ccf650a81905db46dd6d98112f603">kIdVirtual</a></td></tr>
 <tr class="memdesc:a539ccf650a81905db46dd6d98112f603"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reserved id for the "virtual place" used by the Bayes filter (negative).  <br /></td></tr>
@@ -423,7 +440,7 @@ Protected Attributes</h2></td></tr>
 <div class="textblock"><p>Three-tiered memory management (STM, WM, LTM) for RTAB-Map. </p>
 <p><a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> is the core map data structure used by <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a>. It stores observations as <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> nodes connected by <a class="el" href="classrtabmap_1_1Link.html">Link</a> edges and orchestrates their lifecycle across three tiers:</p>
 <ul>
-<li><b>Short-Term <a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> (STM)</b>: most recently added signatures, kept at a fixed size (see Parameters::kMemSTMSize()). Used to delay recently observed places before they become candidates for loop closure.</li>
+<li><b>Short-Term <a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> (STM)</b>: most recently added signatures, kept at a fixed size (see <a class="el" href="classrtabmap_1_1Parameters.html#a46dc1a24b02bb00014262f7f4d818a49">Parameters::kMemSTMSize()</a>). Used to delay recently observed places before they become candidates for loop closure.</li>
 <li><b>Working <a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> (WM)</b>: signatures available for loop-closure likelihood computation in the current iteration. Older signatures are transferred from WM to LTM by <a class="el" href="classrtabmap_1_1Memory.html#a51e89ccab2261912b09a5b7178fdd46c">forget()</a> to bound iteration time.</li>
 <li><b>Long-Term <a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> (LTM)</b>: persisted in the database via <a class="el" href="classrtabmap_1_1DBDriver.html">DBDriver</a>. Signatures can be brought back to WM with <a class="el" href="classrtabmap_1_1Memory.html#aa244b8581684b85e35d2056cf972e377">reactivateSignatures()</a> when their neighbors still in WM are good loop-closure candidates.</li>
 </ul>
@@ -448,8 +465,8 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::Memory::Memory </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -473,7 +490,7 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="memname">virtual void rtabmap::Memory::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -500,7 +517,7 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual const ParametersMap &amp; rtabmap::Memory::getParameters </td>
+          <td class="memname">virtual const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; rtabmap::Memory::getParameters </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -638,8 +655,8 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>, </td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -1163,7 +1180,7 @@ Protected Attributes</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">locationId</td><td>Id of the signature to delete. </td></tr>
     <tr><td class="paramname">deletedWords</td><td>Optional output: words whose reference count dropped to zero. </td></tr>
-    <tr><td class="paramname">keepLinkedInDb</td><td>If true, the location keeps its links, weight and label and stays part of the graph in the database. If false (default), it is unlinked first &ndash; links removed on both sides, weight invalidated, label cleared &ndash; so at best it is kept as history only and no longer appears in <a class="el" href="classrtabmap_1_1Memory.html#a4c7c344a7f3733a8f30a6e82fbb4f20a">getAllSignatureIds()</a>. An unlinked location is written to the database only if it was already saved there or if Parameters::kMemNotLinkedNodesKept() is true (default); otherwise it is discarded outright. </td></tr>
+    <tr><td class="paramname">keepLinkedInDb</td><td>If true, the location keeps its links, weight and label and stays part of the graph in the database. If false (default), it is unlinked first &ndash; links removed on both sides, weight invalidated, label cleared &ndash; so at best it is kept as history only and no longer appears in <a class="el" href="classrtabmap_1_1Memory.html#a4c7c344a7f3733a8f30a6e82fbb4f20a">getAllSignatureIds()</a>. An unlinked location is written to the database only if it was already saved there or if <a class="el" href="classrtabmap_1_1Parameters.html#aa64b9331ee411f41941ca5635da09f81">Parameters::kMemNotLinkedNodesKept()</a> is true (default); otherwise it is discarded outright. </td></tr>
   </table>
   </dd>
 </dl>
@@ -1213,7 +1230,7 @@ Protected Attributes</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">id</td><td>Node to reduce. </td></tr>
     <tr><td class="paramname">maxDistance</td><td>Maximum distance to a neighbor to allow the merge (meters). </td></tr>
-    <tr><td class="paramname">keepLinkedInDb</td><td>Same meaning as in <a class="el" href="classrtabmap_1_1Memory.html#a2b91d8b5d651fbaa12a31e364c793a21">deleteLocation()</a>: if true, the merged node keeps its links, weight and label and stays part of the graph in the database. If false (default), it is unlinked first &ndash; links removed on both sides, weight invalidated, label cleared &ndash; so at best it is kept as history only and no longer appears in <a class="el" href="classrtabmap_1_1Memory.html#a4c7c344a7f3733a8f30a6e82fbb4f20a">getAllSignatureIds()</a>. An unlinked node is written to the database only if it was already saved there or if Parameters::kMemNotLinkedNodesKept() is true (default); otherwise it is discarded outright. </td></tr>
+    <tr><td class="paramname">keepLinkedInDb</td><td>Same meaning as in <a class="el" href="classrtabmap_1_1Memory.html#a2b91d8b5d651fbaa12a31e364c793a21">deleteLocation()</a>: if true, the merged node keeps its links, weight and label and stays part of the graph in the database. If false (default), it is unlinked first &ndash; links removed on both sides, weight invalidated, label cleared &ndash; so at best it is kept as history only and no longer appears in <a class="el" href="classrtabmap_1_1Memory.html#a4c7c344a7f3733a8f30a6e82fbb4f20a">getAllSignatureIds()</a>. An unlinked node is written to the database only if it was already saved there or if <a class="el" href="classrtabmap_1_1Parameters.html#aa64b9331ee411f41941ca5635da09f81">Parameters::kMemNotLinkedNodesKept()</a> is true (default); otherwise it is discarded outright. </td></tr>
     <tr><td class="paramname">direction</td><td>Restrict merge target: 0=any, 1=previous neighbor, 2=next neighbor. </td></tr>
   </table>
   </dd>
@@ -1405,7 +1422,7 @@ Silently disabled by <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648
   </tr>
 </table>
 </div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>Configured maximum STM size (Parameters::kMemSTMSize()). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Configured maximum STM size (<a class="el" href="classrtabmap_1_1Parameters.html#a46dc1a24b02bb00014262f7f4d818a49">Parameters::kMemSTMSize()</a>). </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00413">413</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -1505,7 +1522,7 @@ Silently disabled by <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648
   </tr>
 </table>
 </div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>Similarity threshold used by rehearsal (Parameters::kMemRehearsalSimilarity()). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Similarity threshold used by rehearsal (<a class="el" href="classrtabmap_1_1Parameters.html#a634f4790c9c84772935bf406265bc692">Parameters::kMemRehearsalSimilarity()</a>). </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00434">434</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -2241,10 +2258,10 @@ Silently disabled by <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648
 </div><div class="memdoc">
 
 <p>Reports whether the in-memory map has been modified since the database was last loaded or reset. <a class="el" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">close()</a> uses this flag to decide whether the database needs to be rewritten. </p>
-<p>The flag is cleared to <code>false</code> on construction and by <a class="el" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">close()</a> / clear(), and is raised to <code>true</code> on any of the following events:</p>
+<p>The flag is cleared to <code>false</code> on construction, by <a class="el" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">close()</a> and when the memory is cleared, and is raised to <code>true</code> on any of the following events:</p>
 <ul>
-<li><b><a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> in mapping mode</b> (Parameters::kMemIncrementalMemory() == <code>true</code>, see <a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">isIncremental()</a>): every successful call sets the flag, since a new <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> is added to the graph and the visual word dictionary may grow.</li>
-<li><b><a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> in localization mode</b> (<a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">isIncremental()</a> == <code>false</code>): the flag is set only when Parameters::kMemLocalizationDataSaved() is enabled (see <a class="el" href="classrtabmap_1_1Memory.html#a32ed69b783e53be29fca6102ab198a4e">isLocalizationDataSaved()</a>), i.e. when the new node must be persisted back to the database. Pure localization (the default, Parameters::kMemLocalizationDataSaved() == <code>false</code>) leaves the flag at <code>false</code> even after many <a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> calls, because nothing needs to be saved.</li>
+<li><b><a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> in mapping mode</b> (<a class="el" href="classrtabmap_1_1Parameters.html#acdc74cd2b096ba28d9c1e00040b69d42">Parameters::kMemIncrementalMemory()</a> == <code>true</code>, see <a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">isIncremental()</a>): every successful call sets the flag, since a new <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> is added to the graph and the visual word dictionary may grow.</li>
+<li><b><a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> in localization mode</b> (<a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">isIncremental()</a> == <code>false</code>): the flag is set only when <a class="el" href="classrtabmap_1_1Parameters.html#aa5a4f5d2c71072ea2896c7ae2c8dda12">Parameters::kMemLocalizationDataSaved()</a> is enabled (see <a class="el" href="classrtabmap_1_1Memory.html#a32ed69b783e53be29fca6102ab198a4e">isLocalizationDataSaved()</a>), i.e. when the new node must be persisted back to the database. Pure localization (the default, <a class="el" href="classrtabmap_1_1Parameters.html#aa5a4f5d2c71072ea2896c7ae2c8dda12">Parameters::kMemLocalizationDataSaved()</a> == <code>false</code>) leaves the flag at <code>false</code> even after many <a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> calls, because nothing needs to be saved.</li>
 <li><b><a class="el" href="classrtabmap_1_1Memory.html#ac9e6bfaf161d4bd1a9f99d2352492a1d">reduceNode()</a></b>: merging a node into a neighbor mutates the graph and marks the memory as changed (and also raises the link-changed flag).</li>
 <li><b><a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">init()</a> dictionary repair</b>: when <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">init()</a> rebuilds the visual word dictionary because words are missing from the database, the flag is forced to <code>true</code> so the regenerated dictionary is saved back on <a class="el" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">close()</a>, even if no new data was processed.</li>
 </ul>
@@ -2278,7 +2295,7 @@ Silently disabled by <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>True if the memory grows on <a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> (mapping mode), false in localization mode. </dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kMemIncrementalMemory() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#acdc74cd2b096ba28d9c1e00040b69d42" title="Key of parameter Mem/IncrementalMemory : &quot;SLAM mode, otherwise it is Localization mode....">Parameters::kMemIncrementalMemory()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00607">607</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -2306,10 +2323,10 @@ Silently disabled by <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648
   </tr>
 </table>
 </div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>True in localization mode when database writes are disabled (i.e. <a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">isIncremental()</a> is false and Parameters::kMemLocalizationReadOnly() is enabled). </dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kMemIncrementalMemory() </dd>
+<dl class="section return"><dt>Returns</dt><dd>True in localization mode when database writes are disabled (i.e. <a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">isIncremental()</a> is false and <a class="el" href="classrtabmap_1_1Parameters.html#a326e79acb5a39f7da481f9771501030c">Parameters::kMemLocalizationReadOnly()</a> is enabled). </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#acdc74cd2b096ba28d9c1e00040b69d42" title="Key of parameter Mem/IncrementalMemory : &quot;SLAM mode, otherwise it is Localization mode....">Parameters::kMemIncrementalMemory()</a> </dd>
 <dd>
-Parameters::kMemLocalizationReadOnly() </dd></dl>
+<a class="el" href="classrtabmap_1_1Parameters.html#a326e79acb5a39f7da481f9771501030c" title="Key of parameter Mem/LocalizationReadOnly : uFormat(&quot;In localization mode, open the database in read-...">Parameters::kMemLocalizationReadOnly()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00614">614</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -2338,7 +2355,7 @@ Parameters::kMemLocalizationReadOnly() </dd></dl>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>True if data added during localization is persisted to the database. </dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kMemLocalizationDataSaved() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#aa5a4f5d2c71072ea2896c7ae2c8dda12" title="Key of parameter Mem/LocalizationDataSaved : uFormat(&quot;Save localization data during localization sess...">Parameters::kMemLocalizationDataSaved()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00619">619</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -2556,7 +2573,7 @@ Parameters::kMemLocalizationReadOnly() </dd></dl>
   </tr>
 </table>
 </div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>True if graph reduction is enabled (Parameters::kMemReduceGraph()). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>True if graph reduction is enabled (<a class="el" href="classrtabmap_1_1Parameters.html#a5b838d1204f572de9f39904de5e22ed5">Parameters::kMemReduceGraph()</a>). </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00635">635</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -2586,8 +2603,8 @@ Parameters::kMemLocalizationReadOnly() </dd></dl>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>Running per-axis maximum of the diagonal of every neighbor (odometry) link's information matrix observed so far, as a 6-vector (x, y, z, roll, pitch, yaw). Empty until at least one 6x6 neighbor link information matrix has been seen.</dd></dl>
 <p>This is a runtime statistic, not a configurable parameter: it is updated on <a class="el" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">init()</a> (over all loaded neighbor links) and on every <a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a> that adds a new neighbor link.</p>
-<p>It is consumed by <a class="el" href="classrtabmap_1_1Rtabmap.html#aeea47830776fe57c456ae6a673069ddc">Rtabmap::getInformation()</a> when Parameters::kRGBDLoopCovLimited() is enabled, to clip loop-closure information matrices so a loop never claims higher confidence than odometry itself ever provided.</p>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRGBDLoopCovLimited() </dd></dl>
+<p>It is consumed by <a class="el" href="classrtabmap_1_1Rtabmap.html#aeea47830776fe57c456ae6a673069ddc">Rtabmap::getInformation()</a> when <a class="el" href="classrtabmap_1_1Parameters.html#a2f0e34d58229d94e6368223be2dd4fc6">Parameters::kRGBDLoopCovLimited()</a> is enabled, to clip loop-closure information matrices so a loop never claims higher confidence than odometry itself ever provided.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a2f0e34d58229d94e6368223be2dd4fc6" title="Key of parameter RGBD/LoopCovLimited : &quot;Limit covariance of non-neighbor links to minimum covariance ...">Parameters::kRGBDLoopCovLimited()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00653">653</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -2617,10 +2634,10 @@ Parameters::kMemLocalizationReadOnly() </dd></dl>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>True if the odometry pose orientation is used (instead of the <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> orientation) as the source of each new node's gravity link.</dd></dl>
 <p>When enabled, every new node gets a self-loop <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea37d186f2447908a27d531be74a2f6983">Link::kGravity</a> holding the rotation of the odometry pose passed to <a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update()</a>. This assumes odometry is already gravity-aligned (e.g. a VIO front-end). When disabled, the gravity link is built from the <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> orientation in <a class="el" href="classrtabmap_1_1SensorData.html#a056056de80edf1bc20505fd992cdc6e7">SensorData::imu()</a> if available.</p>
-<p>Gravity links are consumed by graph optimization only when Parameters::kOptimizerGravitySigma() is non-zero.</p>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kMemUseOdomGravity() </dd>
+<p>Gravity links are consumed by graph optimization only when <a class="el" href="classrtabmap_1_1Parameters.html#ae30f9e3d2e17c3543801cdd9fa51ffcc">Parameters::kOptimizerGravitySigma()</a> is non-zero.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#ab53fe6e9b2e23d37c6a7af8f52354848" title="Key of parameter Mem/UseOdomGravity : uFormat(&quot;Use odometry instead of IMU orientation to add gravity...">Parameters::kMemUseOdomGravity()</a> </dd>
 <dd>
-Parameters::kOptimizerGravitySigma() </dd></dl>
+<a class="el" href="classrtabmap_1_1Parameters.html#ae30f9e3d2e17c3543801cdd9fa51ffcc" title="Key of parameter Optimizer/GravitySigma : uFormat(&quot;Gravity sigma value (&gt;=0, typically between 0....">Parameters::kOptimizerGravitySigma()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00669">669</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -3013,7 +3030,7 @@ Parameters::kOptimizerGravitySigma() </dd></dl>
 </table>
 </div><div class="memdoc">
 
-<p>First valid signature id assigned by getNextId() (positive integer). </p>
+<p>First valid signature id assigned to a new signature (positive integer). </p>
 
 <p class="definition">Definition at line <a class="el" href="Memory_8h_source.html#l00105">105</a> of file <a class="el" href="Memory_8h_source.html">Memory.h</a>.</p>
 
@@ -3101,9 +3118,13 @@ Parameters::kOptimizerGravitySigma() </dd></dl>
 <li>corelib/include/rtabmap/core/<a class="el" href="Memory_8h_source.html">Memory.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Memory.html">Memory</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

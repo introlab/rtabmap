@@ -34,6 +34,7 @@
 * [Installation](https://github.com/introlab/rtabmap/wiki/Installation) instructions. 
 * [Tutorials](https://github.com/introlab/rtabmap/wiki/Tutorials).
 * [Tools](https://github.com/introlab/rtabmap/wiki/Tools).
+* [C++ API documentation]({{ site.baseurl }}/api/) of the rtabmap library.
 * For **ROS** users, take a look to [rtabmap](http://wiki.ros.org/rtabmap) page on the ROS wiki for a package overview. See also [SetupOnYourRobot](http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot) to know how to integrate RTAB-Map on your robot.
 
 

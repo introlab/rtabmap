@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1LocalGridMaker.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1LocalGridMaker.html">LocalGridMaker</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -93,11 +110,11 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a70040df32d1949125f24a193581b8183" id="r_a70040df32d1949125f24a193581b8183"><td class="memItemLeft" align="right" valign="top"><a id="a70040df32d1949125f24a193581b8183" name="a70040df32d1949125f24a193581b8183"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>LocalGridMaker</b> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>LocalGridMaker</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a70040df32d1949125f24a193581b8183"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs with <a class="el" href="classrtabmap_1_1LocalGridMaker.html#a6395948673108c87dd371cb7b4a29026">parseParameters()</a> on <code>parameters</code> (or defaults). <br /></td></tr>
 <tr class="separator:a70040df32d1949125f24a193581b8183"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6395948673108c87dd371cb7b4a29026" id="r_a6395948673108c87dd371cb7b4a29026"><td class="memItemLeft" align="right" valign="top"><a id="a6395948673108c87dd371cb7b4a29026" name="a6395948673108c87dd371cb7b4a29026"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParameters</b> (const ParametersMap &amp;parameters)</td></tr>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParameters</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a6395948673108c87dd371cb7b4a29026"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates grid settings from <code>Grid/</code> entries in <code>parameters</code>. <br /></td></tr>
 <tr class="separator:a6395948673108c87dd371cb7b4a29026"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a305865c8f98b498b13a35ef0b790f926" id="r_a305865c8f98b498b13a35ef0b790f926"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LocalGridMaker.html#a305865c8f98b498b13a35ef0b790f926">getCellSize</a> () const</td></tr>
@@ -119,7 +136,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParamete
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:ac87cd571c91fe470775c7d9d4c0de5f5" id="r_ac87cd571c91fe470775c7d9d4c0de5f5"><td class="memItemLeft" align="right" valign="top">ParametersMap&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LocalGridMaker.html#ac87cd571c91fe470775c7d9d4c0de5f5">parameters_</a></td></tr>
+<tr class="memitem:ac87cd571c91fe470775c7d9d4c0de5f5" id="r_ac87cd571c91fe470775c7d9d4c0de5f5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LocalGridMaker.html#ac87cd571c91fe470775c7d9d4c0de5f5">parameters_</a></td></tr>
 <tr class="separator:ac87cd571c91fe470775c7d9d4c0de5f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1b5b85fc47fe3652c9d40c2d922e0208" id="r_a1b5b85fc47fe3652c9d40c2d922e0208"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LocalGridMaker.html#a1b5b85fc47fe3652c9d40c2d922e0208">cloudDecimation_</a></td></tr>
 <tr class="separator:a1b5b85fc47fe3652c9d40c2d922e0208"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -186,7 +203,7 @@ Protected Attributes</h2></td></tr>
 <li><code>1</code> — depth image(s) only (default)</li>
 <li><code>2</code> — laser scan and depth</li>
 </ul>
-<p><b>2D laser path:</b> projects a 2D <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> with util3d::occupancy2DFromLaserScan().</p>
+<p><b>2D laser path:</b> projects a 2D <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> with <a class="el" href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">util3d::occupancy2DFromLaserScan()</a>.</p>
 <p><b>3D path:</b> segments the scan/cloud into ground and obstacles (<a class="el" href="classrtabmap_1_1LocalGridMaker.html#ad54b92f6d04b76a550483a7a68f45bda">segmentCloud()</a>), then outputs <a class="el" href="classrtabmap_1_1LocalGrid.html">LocalGrid</a> cell matrices (2D projection or 3D cells per <code>Grid/3D</code>).</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1LocalGrid.html" title="Local occupancy grid cells for one map node (ground, obstacles, empty).">LocalGrid</a> </dd>
 <dd>
@@ -407,8 +424,8 @@ template&lt;typename PointT &gt; </div>
     <tr><td class="paramname">groundCells</td><td>Output ground cells (<a class="el" href="classrtabmap_1_1LocalGrid.html">LocalGrid</a> format). </td></tr>
     <tr><td class="paramname">obstacleCells</td><td>Output obstacle cells. </td></tr>
     <tr><td class="paramname">emptyCells</td><td>Output empty/free cells. Behavior depends on the sensor path:<ul>
-<li><b>2D laser, laser-only mode</b> (<code>Grid/Sensor</code>=0 and a 2D <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a>): uses util3d::occupancy2DFromLaserScan() / util3d::create2DMap(). Free space along each hit beam is always ray-traced (sensor → obstacle). <code>Grid/Scan2dUnknownSpaceFilled</code> is separate: when true, it additionally sweeps unknown angular gaps between the first and last hit (sparse FOV / “holes” in coverage) out to <code>Grid/RangeMax</code> or scan max range.</li>
-<li><b>Other cases</b> (3D scan, depth, <code>Grid/Sensor</code>=2, etc.): see createLocalMap(const LaserScan&amp;,...). </li>
+<li><b>2D laser, laser-only mode</b> (<code>Grid/Sensor</code>=0 and a 2D <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a>): uses <a class="el" href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">util3d::occupancy2DFromLaserScan()</a> / <a class="el" href="namespacertabmap_1_1util3d.html#ae7dca67101116f7de0114cea5442ec23">util3d::create2DMap()</a>. Free space along each hit beam is always ray-traced (sensor → obstacle). <code>Grid/Scan2dUnknownSpaceFilled</code> is separate: when true, it additionally sweeps unknown angular gaps between the first and last hit (sparse FOV / “holes” in coverage) out to <code>Grid/RangeMax</code> or scan max range.</li>
+<li><b>Other cases</b> (3D scan, depth, <code>Grid/Sensor</code>=2, etc.): see the <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> overload of <a class="el" href="classrtabmap_1_1LocalGridMaker.html#a97d17a585226dcffe580406736e00117">createLocalMap()</a>. </li>
 </ul>
 </td></tr>
     <tr><td class="paramname">viewPoint</td><td>Output view point used for the grid. </td></tr>
@@ -494,7 +511,7 @@ template&lt;typename PointT &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">ParametersMap rtabmap::LocalGridMaker::parameters_</td>
+          <td class="memname"><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> rtabmap::LocalGridMaker::parameters_</td>
         </tr>
       </table>
   </td>
@@ -1185,9 +1202,13 @@ template&lt;typename PointT &gt; </div>
 <li>corelib/include/rtabmap/core/impl/<a class="el" href="LocalMapMaker_8hpp_source.html">LocalMapMaker.hpp</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1LocalGridMaker.html">LocalGridMaker</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

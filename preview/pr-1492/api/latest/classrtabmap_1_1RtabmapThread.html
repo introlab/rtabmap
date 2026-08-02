@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1RtabmapThread.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -85,12 +102,17 @@ $(function() {
   <div class="headertitle"><div class="title">rtabmap::RtabmapThread Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Runs a <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> instance in its own thread, driven by events.  
+ <a href="classrtabmap_1_1RtabmapThread.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>&gt;</code></p>
 <div class="dynheader">
 Inheritance diagram for rtabmap::RtabmapThread:</div>
 <div class="dyncontent">
 <div class="center"><img src="classrtabmap_1_1RtabmapThread__inherit__graph.png" border="0" usemap="#artabmap_1_1RtabmapThread_inherit__map" alt="Inheritance graph"/></div>
 <map name="artabmap_1_1RtabmapThread_inherit__map" id="artabmap_1_1RtabmapThread_inherit__map">
-<area shape="rect" title=" " alt="" coords="60,152,249,177"/>
+<area shape="rect" title="Runs a Rtabmap instance in its own thread, driven by events." alt="" coords="60,152,249,177"/>
 <area shape="rect" href="classUThread.html" title=" " alt="" coords="29,79,139,104"/>
 <area shape="poly" title=" " alt="" coords="107,112,145,150,141,154,103,116"/>
 <area shape="rect" href="classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
@@ -100,13 +122,13 @@ Inheritance diagram for rtabmap::RtabmapThread:</div>
 <area shape="rect" href="classUEventsSender.html" title=" " alt="" coords="174,5,295,31"/>
 <area shape="poly" title=" " alt="" coords="236,45,234,79,229,78,231,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::RtabmapThread:</div>
 <div class="dyncontent">
 <div class="center"><img src="classrtabmap_1_1RtabmapThread__coll__graph.png" border="0" usemap="#artabmap_1_1RtabmapThread_coll__map" alt="Collaboration graph"/></div>
 <map name="artabmap_1_1RtabmapThread_coll__map" id="artabmap_1_1RtabmapThread_coll__map">
-<area shape="rect" title=" " alt="" coords="60,152,249,177"/>
+<area shape="rect" title="Runs a Rtabmap instance in its own thread, driven by events." alt="" coords="60,152,249,177"/>
 <area shape="rect" href="classUThread.html" title=" " alt="" coords="29,79,139,104"/>
 <area shape="poly" title=" " alt="" coords="107,112,145,150,141,154,103,116"/>
 <area shape="rect" href="classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
@@ -116,13 +138,14 @@ Collaboration diagram for rtabmap::RtabmapThread:</div>
 <area shape="rect" href="classUEventsSender.html" title=" " alt="" coords="174,5,295,31"/>
 <area shape="poly" title=" " alt="" coords="236,45,234,79,229,78,231,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:a037a7b9aaacca152e0f087920e8a5fae" id="r_a037a7b9aaacca152e0f087920e8a5fae"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><b>State</b> { <b>kStateDetecting</b>
-, <b>kStateProcessCommand</b>
+<tr class="memitem:a037a7b9aaacca152e0f087920e8a5fae" id="r_a037a7b9aaacca152e0f087920e8a5fae"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#a037a7b9aaacca152e0f087920e8a5fae">State</a> { <a class="el" href="classrtabmap_1_1RtabmapThread.html#a037a7b9aaacca152e0f087920e8a5faea733e80c5ec27718bd9551646f99d352c">kStateDetecting</a>
+, <a class="el" href="classrtabmap_1_1RtabmapThread.html#a037a7b9aaacca152e0f087920e8a5faeab07a30b69b21efdccbb6c040a5208001">kStateProcessCommand</a>
  }</td></tr>
+<tr class="memdesc:a037a7b9aaacca152e0f087920e8a5fae"><td class="mdescLeft">&#160;</td><td class="mdescRight">What the main loop does on its next wake-up.  <a href="classrtabmap_1_1RtabmapThread.html#a037a7b9aaacca152e0f087920e8a5fae">More...</a><br /></td></tr>
 <tr class="separator:a037a7b9aaacca152e0f087920e8a5fae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_types_classUThread"><td colspan="2" onclick="javascript:toggleInherit('pub_types_classUThread')"><img src="closed.png" alt="-"/>&#160;Public Types inherited from <a class="el" href="classUThread.html">UThread</a></td></tr>
 <tr class="memitem:a731ef4dd5a8d15abcc06e7cfa53cd153 inherit pub_types_classUThread" id="r_a731ef4dd5a8d15abcc06e7cfa53cd153"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classUThread.html#a731ef4dd5a8d15abcc06e7cfa53cd153">Priority</a> { <br />
@@ -147,20 +170,21 @@ Public Types</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a5c5752b0b0a0e05e8e97308c74f9b955" id="r_a5c5752b0b0a0e05e8e97308c74f9b955"><td class="memItemLeft" align="right" valign="top"><a id="a5c5752b0b0a0e05e8e97308c74f9b955" name="a5c5752b0b0a0e05e8e97308c74f9b955"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>RtabmapThread</b> (<a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> *rtabmap)</td></tr>
+<tr class="memitem:a5c5752b0b0a0e05e8e97308c74f9b955" id="r_a5c5752b0b0a0e05e8e97308c74f9b955"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#a5c5752b0b0a0e05e8e97308c74f9b955">RtabmapThread</a> (<a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> *rtabmap)</td></tr>
+<tr class="memdesc:a5c5752b0b0a0e05e8e97308c74f9b955"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor.  <br /></td></tr>
 <tr class="separator:a5c5752b0b0a0e05e8e97308c74f9b955"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aea5c7a61adab9ed8382066806420bfac" id="r_aea5c7a61adab9ed8382066806420bfac"><td class="memItemLeft" align="right" valign="top"><a id="aea5c7a61adab9ed8382066806420bfac" name="aea5c7a61adab9ed8382066806420bfac"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>clearBufferedData</b> ()</td></tr>
+<tr class="memdesc:aea5c7a61adab9ed8382066806420bfac"><td class="mdescLeft">&#160;</td><td class="mdescRight">Drops the buffered frames, the pending user data and the odometry state. <br /></td></tr>
 <tr class="separator:aea5c7a61adab9ed8382066806420bfac"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ff95633544be0d87c1dc977cb52a064" id="r_a8ff95633544be0d87c1dc977cb52a064"><td class="memItemLeft" align="right" valign="top"><a id="a8ff95633544be0d87c1dc977cb52a064" name="a8ff95633544be0d87c1dc977cb52a064"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setDetectorRate</b> (float rate)</td></tr>
+<tr class="memitem:a8ff95633544be0d87c1dc977cb52a064" id="r_a8ff95633544be0d87c1dc977cb52a064"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#a8ff95633544be0d87c1dc977cb52a064">setDetectorRate</a> (float rate)</td></tr>
+<tr class="memdesc:a8ff95633544be0d87c1dc977cb52a064"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the maximum rate at which frames are processed (Hz, 0 = unlimited).  <br /></td></tr>
 <tr class="separator:a8ff95633544be0d87c1dc977cb52a064"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9b4e64c65264f12bfeb1814aff59cbe" id="r_ab9b4e64c65264f12bfeb1814aff59cbe"><td class="memItemLeft" align="right" valign="top"><a id="ab9b4e64c65264f12bfeb1814aff59cbe" name="ab9b4e64c65264f12bfeb1814aff59cbe"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setDataBufferSize</b> (unsigned int bufferSize)</td></tr>
+<tr class="memitem:ab9b4e64c65264f12bfeb1814aff59cbe" id="r_ab9b4e64c65264f12bfeb1814aff59cbe"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#ab9b4e64c65264f12bfeb1814aff59cbe">setDataBufferSize</a> (unsigned int bufferSize)</td></tr>
+<tr class="memdesc:ab9b4e64c65264f12bfeb1814aff59cbe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets how many frames may wait in the buffer (0 = unlimited).  <br /></td></tr>
 <tr class="separator:ab9b4e64c65264f12bfeb1814aff59cbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a78271ce60d00219c4fdd86813136a116" id="r_a78271ce60d00219c4fdd86813136a116"><td class="memItemLeft" align="right" valign="top"><a id="a78271ce60d00219c4fdd86813136a116" name="a78271ce60d00219c4fdd86813136a116"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>createIntermediateNodes</b> (bool enabled)</td></tr>
+<tr class="memitem:a78271ce60d00219c4fdd86813136a116" id="r_a78271ce60d00219c4fdd86813136a116"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#a78271ce60d00219c4fdd86813136a116">createIntermediateNodes</a> (bool enabled)</td></tr>
+<tr class="memdesc:a78271ce60d00219c4fdd86813136a116"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keeps the frames skipped by <a class="el" href="classrtabmap_1_1RtabmapThread.html#a8ff95633544be0d87c1dc977cb52a064">setDetectorRate()</a> as intermediate nodes.  <br /></td></tr>
 <tr class="separator:a78271ce60d00219c4fdd86813136a116"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac788245b9aa70ebc9e7148fad3b92ed1" id="r_ac788245b9aa70ebc9e7148fad3b92ed1"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#ac788245b9aa70ebc9e7148fad3b92ed1">getDetectorRate</a> () const</td></tr>
 <tr class="separator:ac788245b9aa70ebc9e7148fad3b92ed1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -169,6 +193,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>createIntermediateNod
 <tr class="memitem:a3dffee6fb4ae760c140144fd47923643" id="r_a3dffee6fb4ae760c140144fd47923643"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#a3dffee6fb4ae760c140144fd47923643">getCreateIntermediateNodes</a> () const</td></tr>
 <tr class="separator:a3dffee6fb4ae760c140144fd47923643"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aabea5cf86e55d6669d41b0b569dac574" id="r_aabea5cf86e55d6669d41b0b569dac574"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#aabea5cf86e55d6669d41b0b569dac574">close</a> (bool databaseSaved, const std::string &amp;databasePath=&quot;&quot;)</td></tr>
+<tr class="memdesc:aabea5cf86e55d6669d41b0b569dac574"><td class="mdescLeft">&#160;</td><td class="mdescRight">Joins the thread and closes rtabmap. This will delete rtabmap object if set.  <br /></td></tr>
 <tr class="separator:aabea5cf86e55d6669d41b0b569dac574"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classUThread"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classUThread')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classUThread.html">UThread</a></td></tr>
 <tr class="memitem:a05a92f95e2a8900f27b09ddf907b97be inherit pub_methods_classUThread" id="r_a05a92f95e2a8900f27b09ddf907b97be"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classUThread.html#a05a92f95e2a8900f27b09ddf907b97be">UThread</a> (<a class="el" href="classUThread.html#a731ef4dd5a8d15abcc06e7cfa53cd153">Priority</a> priority=kPNormal)</td></tr>
@@ -217,6 +242,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>unregisterFromEventsM
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:ab2556f7773329963038d876c86e97d09" id="r_ab2556f7773329963038d876c86e97d09"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html#ab2556f7773329963038d876c86e97d09">handleEvent</a> (<a class="el" href="classUEvent.html">UEvent</a> *anEvent)</td></tr>
+<tr class="memdesc:ab2556f7773329963038d876c86e97d09"><td class="mdescLeft">&#160;</td><td class="mdescRight">Receives the events listed in the class description.  <br /></td></tr>
 <tr class="separator:ab2556f7773329963038d876c86e97d09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classUEventsHandler"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classUEventsHandler')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classUEventsHandler.html">UEventsHandler</a></td></tr>
 <tr class="memitem:abfe2ba3d1fb92e59aff1978cbc21d134 inherit pro_methods_classUEventsHandler" id="r_abfe2ba3d1fb92e59aff1978cbc21d134"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classUEventsHandler.html#abfe2ba3d1fb92e59aff1978cbc21d134">UEventsHandler</a> ()</td></tr>
@@ -264,8 +290,39 @@ Additional Inherited Members</h2></td></tr>
 <tr class="separator:afed28b5b5bb00d4addbb0cd7f2ce0ce2 inherit pro_static_methods_classUThreadC_3_01void_01_4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock">
-<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00051">51</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
+<div class="textblock"><p>Runs a <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> instance in its own thread, driven by events. </p>
+<p>The thread owns the <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> object and calls <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">Rtabmap::process()</a> on the data it receives, so that mapping never blocks the sensor or odometry threads. It is the last stage of the event-based pipeline: <a class="el" href="classrtabmap_1_1SensorCaptureThread.html">SensorCaptureThread</a> &rarr; <a class="el" href="classrtabmap_1_1OdometryThread.html">OdometryThread</a> &rarr; <a class="el" href="classrtabmap_1_1RtabmapThread.html" title="Runs a Rtabmap instance in its own thread, driven by events.">RtabmapThread</a>.</p>
+<p><b>Input events</b> (handled in <a class="el" href="classrtabmap_1_1RtabmapThread.html#ab2556f7773329963038d876c86e97d09">handleEvent()</a>, i.e. in the caller's thread):</p><ul>
+<li><a class="el" href="classrtabmap_1_1OdometryEvent.html">OdometryEvent</a> and <a class="el" href="classrtabmap_1_1SensorEvent.html">SensorEvent</a> &ndash; the frame and its odometry pose are buffered for the main loop. A null pose means odometry is lost and the frame is dropped (unless the memory is in localization mode).</li>
+<li><a class="el" href="classrtabmap_1_1UserDataEvent.html">UserDataEvent</a> &ndash; user data attached to the next processed frame.</li>
+<li><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html">RtabmapEventCmd</a> &ndash; a command (see <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">RtabmapEventCmd::Cmd</a>), such as initializing or closing the map, triggering a new map, pausing, setting a goal, labelling a node or requesting the map.</li>
+<li><a class="el" href="classrtabmap_1_1ParamEvent.html">ParamEvent</a> &ndash; applies new parameters, equivalent to a <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801afc8f39bbe51260a2743dc2b8dfc2b6f3">RtabmapEventCmd::kCmdUpdateParams</a> command.</li>
+</ul>
+<p><b>Output events</b>, posted from the thread:</p><ul>
+<li><a class="el" href="classrtabmap_1_1RtabmapEvent.html">RtabmapEvent</a> with the <a class="el" href="classrtabmap_1_1Statistics.html">Statistics</a> of an iteration that added a node.</li>
+<li><a class="el" href="classrtabmap_1_1RtabmapEvent3DMap.html">RtabmapEvent3DMap</a> in answer to a map request.</li>
+<li><a class="el" href="classrtabmap_1_1RtabmapGlobalPathEvent.html">RtabmapGlobalPathEvent</a> and <a class="el" href="classrtabmap_1_1RtabmapGoalStatusEvent.html">RtabmapGoalStatusEvent</a> for path planning.</li>
+<li><a class="el" href="classrtabmap_1_1RtabmapLabelErrorEvent.html">RtabmapLabelErrorEvent</a> when a label could not be set.</li>
+</ul>
+<p><b>Input regulation</b>, on top of what <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> does:</p><ul>
+<li>Frames are queued in a buffer of <a class="el" href="classrtabmap_1_1Parameters.html#ad2924fa9a31709c3cc88e2079e1c9b43">Parameters::kRtabmapImageBufferSize()</a> elements; when it is full the oldest frame is dropped, so a slow map update never delays the live pipeline.</li>
+<li>Frames arriving faster than <a class="el" href="classrtabmap_1_1Parameters.html#ab4330bb97358203a6e229a7e7d3b3160">Parameters::kRtabmapDetectionRate()</a> are skipped, which is the rate limiting that <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">Rtabmap::process()</a> itself does not do. With <a class="el" href="classrtabmap_1_1Parameters.html#a563ebee29786f2168b90306ded8ee17c">Parameters::kRtabmapCreateIntermediateNodes()</a> enabled they are kept instead, and added as intermediate nodes (odometry-only, not used for loop closure detection).</li>
+<li>An identity odometry pose, or a covariance &ge; 9999, is read as an odometry reset and triggers a new map id on the next processed frame. The largest covariance seen between two processed frames is the one passed on, so the link weight does not depend on the odometry frame rate.</li>
+</ul>
+<p>The object registers itself as a <a class="el" href="classUEventsHandler.html">UEventsHandler</a>, so posting an event to <a class="el" href="classUEventsManager.html">UEventsManager</a> is enough to feed it: </p><div class="fragment"><div class="line"><a class="code hl_class" href="classrtabmap_1_1RtabmapThread.html">rtabmap::RtabmapThread</a> rtabmapThread(<span class="keyword">new</span> <a class="code hl_class" href="classrtabmap_1_1Rtabmap.html">rtabmap::Rtabmap</a>()); <span class="comment">// takes ownership</span></div>
+<div class="line">rtabmapThread.start();</div>
+<div class="line"><a class="code hl_function" href="classUEventsManager.html#a3bb033062e4a0eb59efdf5f84d170388">UEventsManager::addHandler</a>(&amp;rtabmapThread);</div>
+<div class="line">UEventsManager::createPipe(&amp;odomThread, &amp;rtabmapThread, <span class="stringliteral">&quot;OdometryEvent&quot;</span>);</div>
+<div class="ttc" id="aclassUEventsManager_html_a3bb033062e4a0eb59efdf5f84d170388"><div class="ttname"><a href="classUEventsManager.html#a3bb033062e4a0eb59efdf5f84d170388">UEventsManager::addHandler</a></div><div class="ttdeci">static void addHandler(UEventsHandler *handler)</div></div>
+<div class="ttc" id="aclassrtabmap_1_1RtabmapThread_html"><div class="ttname"><a href="classrtabmap_1_1RtabmapThread.html">rtabmap::RtabmapThread</a></div><div class="ttdoc">Runs a Rtabmap instance in its own thread, driven by events.</div><div class="ttdef"><b>Definition</b> <a href="RtabmapThread_8h_source.html#l00104">RtabmapThread.h:107</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1Rtabmap_html"><div class="ttname"><a href="classrtabmap_1_1Rtabmap.html">rtabmap::Rtabmap</a></div><div class="ttdoc">Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).</div><div class="ttdef"><b>Definition</b> <a href="Rtabmap_8h_source.html#l00193">Rtabmap.h:194</a></div></div>
+</div><!-- fragment --><dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">Rtabmap</a> </dd>
+<dd>
+<a class="el" href="classrtabmap_1_1OdometryThread.html" title="Runs an Odometry front-end in its own thread, driven by events.">OdometryThread</a> </dd>
+<dd>
+<a class="el" href="classrtabmap_1_1SensorCaptureThread.html" title="Thread-based sensor data capture and event posting for RTAB-Map.">SensorCaptureThread</a> </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00104">104</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
 </div><h2 class="groupheader">Member Enumeration Documentation</h2>
 <a id="a037a7b9aaacca152e0f087920e8a5fae" name="a037a7b9aaacca152e0f087920e8a5fae"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a037a7b9aaacca152e0f087920e8a5fae">&#9670;&#160;</a></span>State</h2>
@@ -274,16 +331,115 @@ Additional Inherited Members</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">enum rtabmap::RtabmapThread::State</td>
+          <td class="memname">enum <a class="el" href="classrtabmap_1_1RtabmapThread.html#a037a7b9aaacca152e0f087920e8a5fae">rtabmap::RtabmapThread::State</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00056">56</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
+<p>What the main loop does on its next wake-up. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a037a7b9aaacca152e0f087920e8a5faea733e80c5ec27718bd9551646f99d352c" name="a037a7b9aaacca152e0f087920e8a5faea733e80c5ec27718bd9551646f99d352c"></a>kStateDetecting&#160;</td><td class="fielddoc"><p>Process the next buffered frame. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a037a7b9aaacca152e0f087920e8a5faeab07a30b69b21efdccbb6c040a5208001" name="a037a7b9aaacca152e0f087920e8a5faeab07a30b69b21efdccbb6c040a5208001"></a>kStateProcessCommand&#160;</td><td class="fielddoc"><p>Execute the next queued <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html">RtabmapEventCmd</a>. </p>
+</td></tr>
+</table>
+
+<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00110">110</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a5c5752b0b0a0e05e8e97308c74f9b955" name="a5c5752b0b0a0e05e8e97308c74f9b955"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5c5752b0b0a0e05e8e97308c74f9b955">&#9670;&#160;</a></span>RtabmapThread()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">rtabmap::RtabmapThread::RtabmapThread </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> *&#160;</td>
+          <td class="paramname"><em>rtabmap</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructor. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">rtabmap</td><td>The map to run; must not be null. The thread takes ownership and deletes it in <a class="el" href="classrtabmap_1_1RtabmapThread.html#aabea5cf86e55d6669d41b0b569dac574">close()</a>, which the destructor calls.</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>The buffer size, detection rate and intermediate node settings are taken from the default parameters here, then updated by every <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801af03efbff0b297b981f75f077aac49856">RtabmapEventCmd::kCmdInit</a> and <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801afc8f39bbe51260a2743dc2b8dfc2b6f3">RtabmapEventCmd::kCmdUpdateParams</a> command. </p>
 
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a8ff95633544be0d87c1dc977cb52a064" name="a8ff95633544be0d87c1dc977cb52a064"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ff95633544be0d87c1dc977cb52a064">&#9670;&#160;</a></span>setDetectorRate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::RtabmapThread::setDetectorRate </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>rate</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sets the maximum rate at which frames are processed (Hz, 0 = unlimited). </p>
+<p>Same setting as <a class="el" href="classrtabmap_1_1Parameters.html#ab4330bb97358203a6e229a7e7d3b3160">Parameters::kRtabmapDetectionRate()</a>. Frames arriving faster are dropped, or added as intermediate nodes if <a class="el" href="classrtabmap_1_1RtabmapThread.html#a78271ce60d00219c4fdd86813136a116">createIntermediateNodes()</a> is enabled. </p>
+
+</div>
+</div>
+<a id="ab9b4e64c65264f12bfeb1814aff59cbe" name="ab9b4e64c65264f12bfeb1814aff59cbe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab9b4e64c65264f12bfeb1814aff59cbe">&#9670;&#160;</a></span>setDataBufferSize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::RtabmapThread::setDataBufferSize </td>
+          <td>(</td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>bufferSize</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sets how many frames may wait in the buffer (0 = unlimited). </p>
+<p>Same setting as <a class="el" href="classrtabmap_1_1Parameters.html#ad2924fa9a31709c3cc88e2079e1c9b43">Parameters::kRtabmapImageBufferSize()</a>. Once full, the oldest frame is dropped to make room for the new one. </p>
+
+</div>
+</div>
+<a id="a78271ce60d00219c4fdd86813136a116" name="a78271ce60d00219c4fdd86813136a116"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a78271ce60d00219c4fdd86813136a116">&#9670;&#160;</a></span>createIntermediateNodes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::RtabmapThread::createIntermediateNodes </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>enabled</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Keeps the frames skipped by <a class="el" href="classrtabmap_1_1RtabmapThread.html#a8ff95633544be0d87c1dc977cb52a064">setDetectorRate()</a> as intermediate nodes. </p>
+<p>Same setting as <a class="el" href="classrtabmap_1_1Parameters.html#a563ebee29786f2168b90306ded8ee17c">Parameters::kRtabmapCreateIntermediateNodes()</a>. Those nodes carry the odometry link but take no part in loop closure detection. </p>
+
+</div>
+</div>
 <a id="ac788245b9aa70ebc9e7148fad3b92ed1" name="ac788245b9aa70ebc9e7148fad3b92ed1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac788245b9aa70ebc9e7148fad3b92ed1">&#9670;&#160;</a></span>getDetectorRate()</h2>
 
@@ -306,8 +462,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>Maximum processing rate in Hz (0 = unlimited). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00071">71</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00155">155</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
 
 </div>
 </div>
@@ -333,8 +490,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>Maximum number of buffered frames (0 = unlimited). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00072">72</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00157">157</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
 
 </div>
 </div>
@@ -360,8 +518,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>True if skipped frames are added as intermediate nodes. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00073">73</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapThread_8h_source.html#l00159">159</a> of file <a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a>.</p>
 
 </div>
 </div>
@@ -390,13 +549,16 @@ Additional Inherited Members</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Close rtabmap. This will delete rtabmap object if set. </p><dl class="params"><dt>Parameters</dt><dd>
+
+<p>Joins the thread and closes rtabmap. This will delete rtabmap object if set. </p>
+<dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">databaseSaved</td><td>true=database saved, false=database discarded. </td></tr>
-    <tr><td class="paramname">databasePath</td><td>output database file name, ignored if Db/Sqlite3InMemory=false (opened database is then overwritten). </td></tr>
+    <tr><td class="paramname">databasePath</td><td>output database file name, ignored if Db/Sqlite3InMemory=false (opened database is then overwritten).</td></tr>
   </table>
   </dd>
 </dl>
+<p>Called by the destructor with <code>databaseSaved</code> true. The object cannot be used afterwards: the <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> instance it owned is gone. </p>
 
 </div>
 </div>
@@ -413,7 +575,7 @@ Additional Inherited Members</h2></td></tr>
           <td class="memname">virtual bool rtabmap::RtabmapThread::handleEvent </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="classUEvent.html">UEvent</a> *&#160;</td>
-          <td class="paramname"><em>event</em></td><td>)</td>
+          <td class="paramname"><em>anEvent</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -423,9 +585,10 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Method called by the <a class="el" href="classUEventsManager.html">UEventsManager</a> to handle an event. Important : this method must do a minimum of work because the faster the dispatching loop is done; the faster the events are received. If a handling function takes too much time, the events list can grow faster than it is emptied. The event can be modified. </p><dl class="section return"><dt>Returns</dt><dd>"true" to notify <a class="el" href="classUEventsManager.html">UEventsManager</a> that this handler took ownership of the event (meaning it must delete it). The event will not be dispatched to next handlers. </dd>
-<dd>
-"false" to let event be dispatched to next handlers (default behavior). <a class="el" href="classUEventsManager.html">UEventsManager</a> will take care of deleting the event. </dd></dl>
+
+<p>Receives the events listed in the class description. </p>
+<p>Runs in the posting thread: data events are only queued here, the work happens in the thread's main loop. Events are ignored until the thread is started.</p>
+<dl class="section return"><dt>Returns</dt><dd>Always false, so the event keeps being dispatched to other handlers. </dd></dl>
 
 <p>Implements <a class="el" href="classUEventsHandler.html#a0d43b582c19f01196a513f66d3618d8d">UEventsHandler</a>.</p>
 
@@ -435,9 +598,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="RtabmapThread_8h_source.html">RtabmapThread.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

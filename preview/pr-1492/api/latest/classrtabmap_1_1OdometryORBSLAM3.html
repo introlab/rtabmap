@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1OdometryORBSLAM3.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1OdometryORBSLAM3.html">OdometryORBSLAM3</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -92,7 +109,7 @@ Inheritance diagram for rtabmap::OdometryORBSLAM3:</div>
 <area shape="rect" href="classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual&#45;inertial odometry backends." alt="" coords="41,5,192,31"/>
 <area shape="poly" title=" " alt="" coords="119,44,119,79,114,79,114,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::OdometryORBSLAM3:</div>
 <div class="dyncontent">
@@ -102,12 +119,12 @@ Collaboration diagram for rtabmap::OdometryORBSLAM3:</div>
 <area shape="rect" href="classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual&#45;inertial odometry backends." alt="" coords="41,5,192,31"/>
 <area shape="poly" title=" " alt="" coords="119,44,119,79,114,79,114,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a95a903d468363fadee845387c6dd5e9f" id="r_a95a903d468363fadee845387c6dd5e9f"><td class="memItemLeft" align="right" valign="top"><a id="a95a903d468363fadee845387c6dd5e9f" name="a95a903d468363fadee845387c6dd5e9f"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>OdometryORBSLAM3</b> (const rtabmap::ParametersMap &amp;parameters=rtabmap::ParametersMap())</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>OdometryORBSLAM3</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a>())</td></tr>
 <tr class="separator:a95a903d468363fadee845387c6dd5e9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a57626265fa4c23fab95140ca9c1f8f93" id="r_a57626265fa4c23fab95140ca9c1f8f93"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryORBSLAM3.html#a57626265fa4c23fab95140ca9c1f8f93">reset</a> (const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;initialPose=<a class="el" href="classrtabmap_1_1Transform.html#a8ea4368f2018d751d2733038081d56a2">Transform::getIdentity</a>())</td></tr>
 <tr class="memdesc:a57626265fa4c23fab95140ca9c1f8f93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resets internal state and sets the initial pose.  <br /></td></tr>
@@ -165,20 +182,20 @@ Additional Inherited Members</h2></td></tr>
 , <a class="el" href="classrtabmap_1_1Odometry.html#a6427d44c57fd6b7152b62d5b7cca1849ac13bb66a69e4790bfa574c8a0c6c9975">kTypeLIOSAM</a> = 14
 <br />
  }</td></tr>
-<tr class="memdesc:a6427d44c57fd6b7152b62d5b7cca1849"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual-inertial odometry backends.">Odometry</a> backend selected by Parameters::kOdomStrategy().  <a href="classrtabmap_1_1Odometry.html#a6427d44c57fd6b7152b62d5b7cca1849">More...</a><br /></td></tr>
+<tr class="memdesc:a6427d44c57fd6b7152b62d5b7cca1849"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual-inertial odometry backends.">Odometry</a> backend selected by <a class="el" href="classrtabmap_1_1Parameters.html#abba8d5778f27ab7cdf90a900b71916ad">Parameters::kOdomStrategy()</a>.  <a href="classrtabmap_1_1Odometry.html#a6427d44c57fd6b7152b62d5b7cca1849">More...</a><br /></td></tr>
 <tr class="separator:a6427d44c57fd6b7152b62d5b7cca1849 inherit pub_types_classrtabmap_1_1Odometry"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_methods_classrtabmap_1_1Odometry"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classrtabmap_1_1Odometry')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classrtabmap_1_1Odometry.html">rtabmap::Odometry</a></td></tr>
-<tr class="memitem:ac8992df0b92a86c10fe8e8da2b5f3627 inherit pub_static_methods_classrtabmap_1_1Odometry" id="r_ac8992df0b92a86c10fe8e8da2b5f3627"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1Odometry.html">Odometry</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Odometry.html#ac8992df0b92a86c10fe8e8da2b5f3627">create</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
-<tr class="memdesc:ac8992df0b92a86c10fe8e8da2b5f3627 inherit pub_static_methods_classrtabmap_1_1Odometry"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates an odometry instance from Parameters::kOdomStrategy() in <code>parameters</code>.  <br /></td></tr>
+<tr class="memitem:ac8992df0b92a86c10fe8e8da2b5f3627 inherit pub_static_methods_classrtabmap_1_1Odometry" id="r_ac8992df0b92a86c10fe8e8da2b5f3627"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1Odometry.html">Odometry</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Odometry.html#ac8992df0b92a86c10fe8e8da2b5f3627">create</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
+<tr class="memdesc:ac8992df0b92a86c10fe8e8da2b5f3627 inherit pub_static_methods_classrtabmap_1_1Odometry"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates an odometry instance from <a class="el" href="classrtabmap_1_1Parameters.html#abba8d5778f27ab7cdf90a900b71916ad">Parameters::kOdomStrategy()</a> in <code>parameters</code>.  <br /></td></tr>
 <tr class="separator:ac8992df0b92a86c10fe8e8da2b5f3627 inherit pub_static_methods_classrtabmap_1_1Odometry"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1240aaf3a92a75b4c3c9ded9117144bb inherit pub_static_methods_classrtabmap_1_1Odometry" id="r_a1240aaf3a92a75b4c3c9ded9117144bb"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1Odometry.html">Odometry</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Odometry.html#a1240aaf3a92a75b4c3c9ded9117144bb">create</a> (<a class="el" href="classrtabmap_1_1Odometry.html#a6427d44c57fd6b7152b62d5b7cca1849">Type</a> &amp;type, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a1240aaf3a92a75b4c3c9ded9117144bb inherit pub_static_methods_classrtabmap_1_1Odometry" id="r_a1240aaf3a92a75b4c3c9ded9117144bb"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1Odometry.html">Odometry</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Odometry.html#a1240aaf3a92a75b4c3c9ded9117144bb">create</a> (<a class="el" href="classrtabmap_1_1Odometry.html#a6427d44c57fd6b7152b62d5b7cca1849">Type</a> &amp;type, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a1240aaf3a92a75b4c3c9ded9117144bb inherit pub_static_methods_classrtabmap_1_1Odometry"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates an odometry instance of a given <code>type</code>.  <br /></td></tr>
 <tr class="separator:a1240aaf3a92a75b4c3c9ded9117144bb inherit pub_static_methods_classrtabmap_1_1Odometry"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classrtabmap_1_1Odometry"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classrtabmap_1_1Odometry')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classrtabmap_1_1Odometry.html">rtabmap::Odometry</a></td></tr>
 <tr class="memitem:a6c9ed388da42499d2244bb98c8ff0e8d inherit pro_methods_classrtabmap_1_1Odometry" id="r_a6c9ed388da42499d2244bb98c8ff0e8d"><td class="memItemLeft" align="right" valign="top">const std::map&lt; double, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Odometry.html#a6c9ed388da42499d2244bb98c8ff0e8d">imus</a> () const</td></tr>
 <tr class="separator:a6c9ed388da42499d2244bb98c8ff0e8d inherit pro_methods_classrtabmap_1_1Odometry"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af2d9cf4c207d6628b0890064a385856b inherit pro_methods_classrtabmap_1_1Odometry" id="r_af2d9cf4c207d6628b0890064a385856b"><td class="memItemLeft" align="right" valign="top">
-&#160;</td><td class="memItemRight" valign="bottom"><b>Odometry</b> (const rtabmap::ParametersMap &amp;parameters)</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Odometry</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:af2d9cf4c207d6628b0890064a385856b inherit pro_methods_classrtabmap_1_1Odometry"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs the base odometry state from RTAB-Map parameters. <br /></td></tr>
 <tr class="separator:af2d9cf4c207d6628b0890064a385856b inherit pro_methods_classrtabmap_1_1Odometry"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -213,7 +230,7 @@ Additional Inherited Members</h2></td></tr>
 <p>Resets internal state and sets the initial pose. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">initialPose</td><td>Starting pose (must not be null). Z/roll/pitch may be cleared if Parameters::kRegForce3DoF() is enabled. </td></tr>
+    <tr><td class="paramname">initialPose</td><td>Starting pose (must not be null). Z/roll/pitch may be cleared if <a class="el" href="classrtabmap_1_1Parameters.html#adeb11e4b89634351a54bab99b3aeb68c">Parameters::kRegForce3DoF()</a> is enabled. </td></tr>
   </table>
   </dd>
 </dl>
@@ -284,9 +301,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/odometry/<a class="el" href="OdometryORBSLAM3_8h_source.html">OdometryORBSLAM3.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1OdometryORBSLAM3.html">OdometryORBSLAM3</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1Link.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Link.html">Link</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">rtabmap::Link Member List</div></div>
 </div><!--header-->
@@ -83,13 +100,13 @@ $(function() {
 
 <p>This is the complete list of members for <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>, including all inherited members.</p>
 <table class="directory">
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>from</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a185194e8e766ca979e4de7e179f0e534">from</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>infMatrix</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a0d5dcb7392f6ac89ca8b4de202ca07d3">inverse</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a53974a2cea4315106cf12065ace8bb96">isValid</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eacc2cbab0ea322149df37addb91cb75ac">kAllWithLandmarks</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eae8ffae7407e28cf7a125f76bea2864a5">kAllWithoutLandmarks</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kEnd</b> enum value (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eaa071317c0618d61e3b2cde25e1095c00">kEnd</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eae963042a31afec63e8c0683696ac6791">kGlobalClosure</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea37d186f2447908a27d531be74a2f6983">kGravity</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea22912bbbcacce5ee39e61da7ec4640b9">kLandmark</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
@@ -99,7 +116,7 @@ $(function() {
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8fbb6dbe2d16e19ad8fecb6bac65e9db">kNeighborMerged</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea56caa6c8eeab867bb16f763f3ddbd9b1">kPosePrior</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ead52adb0176a83a02833e89111f66497e">kSelfRefLink</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>kUndef</b> enum value (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">kUndef</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea878009c73fbfa2736f438b748afbc1f6">kUserClosure</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eaf74a4b0552da7509b16f8c4b8baf85c7">kVirtualClosure</a> enum value</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a2dce9c7a3ef04085d51f702002107c7b">Link</a>()</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
@@ -111,21 +128,24 @@ $(function() {
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>setTo</b>(int to) (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>setTransform</b>(const Transform &amp;transform) (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>setType</b>(Type type) (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>to</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>transform</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a8d534b311c37d789276dd58bd7dc89e4">to</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a49186880bde84ca3dd43c2d95449fbfb">transform</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a3c4344c01b4f32a8b4a957b979fea84e">transVariance</a>(bool minimum=true) const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>type</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a17ea666cb54c4f7cce1c80bc2e1950c3">type</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Type</a> enum name</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a1fb9569f6435b5a1c800a935b08f0159">typeName</a>(Type type)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">static</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>typeName</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#adb075101cafb535fc4a9b74f7afae521">uncompressUserData</a>()</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#ac425a90800494da64512011315c47e62">uncompressUserDataConst</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>userDataCompressed</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>userDataRaw</b>() const (defined in <a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a>)</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#abdec9d745b1b4679a87b944cd5b48213">userDataCompressed</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classrtabmap_1_1Link.html#a1fce4ae495f2a4f5e0f7ac10551983ac">userDataRaw</a>() const</td><td class="entry"><a class="el" href="classrtabmap_1_1Link.html">rtabmap::Link</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
 </table></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

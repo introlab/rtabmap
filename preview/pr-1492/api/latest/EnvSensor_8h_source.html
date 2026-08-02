@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('EnvSensor_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">EnvSensor.h</div></div>
 </div><!--header-->
@@ -133,15 +150,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00065" name="l00065"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7c238626943b1254027ed1b5454ae101">   65</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7c238626943b1254027ed1b5454ae101">kAmbientRelativeHumidity</a>,    </div>
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span> </div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa88e60173d5f413f4ab490a99c034453e">   67</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa88e60173d5f413f4ab490a99c034453e">kCustomSensor1</a> = 100,        </div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    kCustomSensor2,</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>    kCustomSensor3,</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>    kCustomSensor4,</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>    kCustomSensor5,</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    kCustomSensor6,</div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>    kCustomSensor7,</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>    kCustomSensor8,</div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>    kCustomSensor9</div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>  };</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa9bb90358c0c69177bb8a918cd38aee8a">   68</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa9bb90358c0c69177bb8a918cd38aee8a">kCustomSensor2</a>,             </div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7bcfccab26830a87edcf9dbf7d7b166b">   69</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7bcfccab26830a87edcf9dbf7d7b166b">kCustomSensor3</a>,             </div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa53762a7b85a4a07845e8c447e0ba19e7">   70</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa53762a7b85a4a07845e8c447e0ba19e7">kCustomSensor4</a>,             </div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fafd5342a456a7e150c2d7598a7b297c92">   71</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fafd5342a456a7e150c2d7598a7b297c92">kCustomSensor5</a>,             </div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faef0358209e8fe8218ab939fa9ab4a693">   72</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faef0358209e8fe8218ab939fa9ab4a693">kCustomSensor6</a>,             </div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faeb1ce734601c915d6a411c76ff4bb8f8">   73</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faeb1ce734601c915d6a411c76ff4bb8f8">kCustomSensor7</a>,             </div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa24c103c2769770dd36d87e0567be9140">   74</a></span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa24c103c2769770dd36d87e0567be9140">kCustomSensor8</a>,             </div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>    <a class="code hl_enumvalue" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa669f9ca8a243a813b981ff2b672b0f89">kCustomSensor9</a>              </div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno"><a class="line" href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa669f9ca8a243a813b981ff2b672b0f89">   76</a></span>  };</div>
 </div>
 <div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
 <div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span><span class="keyword">public</span>:</div>
@@ -183,12 +200,20 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1bbcf9a834523dd2e91ef1ab8d31d5e4"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1bbcf9a834523dd2e91ef1ab8d31d5e4">rtabmap::EnvSensor::stamp</a></div><div class="ttdeci">const double &amp; stamp() const</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00105">EnvSensor.h:105</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30f"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30f">rtabmap::EnvSensor::Type</a></div><div class="ttdeci">Type</div><div class="ttdoc">Environmental sensor channel identifier.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00059">EnvSensor.h:59</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa1bc42ead6237eb515f301b39e162dee2"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa1bc42ead6237eb515f301b39e162dee2">rtabmap::EnvSensor::kWifiSignalStrength</a></div><div class="ttdeci">@ kWifiSignalStrength</div><div class="ttdoc">Wi‑Fi signal strength (dBm).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00061">EnvSensor.h:61</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa24c103c2769770dd36d87e0567be9140"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa24c103c2769770dd36d87e0567be9140">rtabmap::EnvSensor::kCustomSensor8</a></div><div class="ttdeci">@ kCustomSensor8</div><div class="ttdoc">User-defined sensor slot 8.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00074">EnvSensor.h:74</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa2659626ccc2aa59e2d83a57f34e400f0"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa2659626ccc2aa59e2d83a57f34e400f0">rtabmap::EnvSensor::kAmbientAirPressure</a></div><div class="ttdeci">@ kAmbientAirPressure</div><div class="ttdoc">Ambient air pressure (hPa).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00063">EnvSensor.h:63</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa53762a7b85a4a07845e8c447e0ba19e7"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa53762a7b85a4a07845e8c447e0ba19e7">rtabmap::EnvSensor::kCustomSensor4</a></div><div class="ttdeci">@ kCustomSensor4</div><div class="ttdoc">User-defined sensor slot 4.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00070">EnvSensor.h:70</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa669f9ca8a243a813b981ff2b672b0f89"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa669f9ca8a243a813b981ff2b672b0f89">rtabmap::EnvSensor::kCustomSensor9</a></div><div class="ttdeci">@ kCustomSensor9</div><div class="ttdoc">User-defined sensor slot 9.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00076">EnvSensor.h:75</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa7bcfccab26830a87edcf9dbf7d7b166b"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7bcfccab26830a87edcf9dbf7d7b166b">rtabmap::EnvSensor::kCustomSensor3</a></div><div class="ttdeci">@ kCustomSensor3</div><div class="ttdoc">User-defined sensor slot 3.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00069">EnvSensor.h:69</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa7c238626943b1254027ed1b5454ae101"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa7c238626943b1254027ed1b5454ae101">rtabmap::EnvSensor::kAmbientRelativeHumidity</a></div><div class="ttdeci">@ kAmbientRelativeHumidity</div><div class="ttdoc">Relative humidity (%).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00065">EnvSensor.h:65</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa88e60173d5f413f4ab490a99c034453e"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa88e60173d5f413f4ab490a99c034453e">rtabmap::EnvSensor::kCustomSensor1</a></div><div class="ttdeci">@ kCustomSensor1</div><div class="ttdoc">User-defined sensor slot 1.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00067">EnvSensor.h:67</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa8eee701051a2603e162a65d4948a64d8"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa8eee701051a2603e162a65d4948a64d8">rtabmap::EnvSensor::kAmbientLight</a></div><div class="ttdeci">@ kAmbientLight</div><div class="ttdoc">Ambient illuminance (lx).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00064">EnvSensor.h:64</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa9bb90358c0c69177bb8a918cd38aee8a"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa9bb90358c0c69177bb8a918cd38aee8a">rtabmap::EnvSensor::kCustomSensor2</a></div><div class="ttdeci">@ kCustomSensor2</div><div class="ttdoc">User-defined sensor slot 2.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00068">EnvSensor.h:68</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fa9e348acef07abec64edef43b58ea1b83"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fa9e348acef07abec64edef43b58ea1b83">rtabmap::EnvSensor::kAmbientTemperature</a></div><div class="ttdeci">@ kAmbientTemperature</div><div class="ttdoc">Ambient temperature (°C).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00062">EnvSensor.h:62</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fad06ac95d82e3fceb18e1f3dfd190931a"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fad06ac95d82e3fceb18e1f3dfd190931a">rtabmap::EnvSensor::kUndefined</a></div><div class="ttdeci">@ kUndefined</div><div class="ttdoc">Uninitialized / unknown channel.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00060">EnvSensor.h:60</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30faeb1ce734601c915d6a411c76ff4bb8f8"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faeb1ce734601c915d6a411c76ff4bb8f8">rtabmap::EnvSensor::kCustomSensor7</a></div><div class="ttdeci">@ kCustomSensor7</div><div class="ttdoc">User-defined sensor slot 7.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00073">EnvSensor.h:73</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30faef0358209e8fe8218ab939fa9ab4a693"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30faef0358209e8fe8218ab939fa9ab4a693">rtabmap::EnvSensor::kCustomSensor6</a></div><div class="ttdeci">@ kCustomSensor6</div><div class="ttdoc">User-defined sensor slot 6.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00072">EnvSensor.h:72</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a1ed69864df2cd8e11429358ba817b30fafd5342a456a7e150c2d7598a7b297c92"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a1ed69864df2cd8e11429358ba817b30fafd5342a456a7e150c2d7598a7b297c92">rtabmap::EnvSensor::kCustomSensor5</a></div><div class="ttdeci">@ kCustomSensor5</div><div class="ttdoc">User-defined sensor slot 5.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00071">EnvSensor.h:71</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a27b343c9be68fd326c10157102bb750f"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a27b343c9be68fd326c10157102bb750f">rtabmap::EnvSensor::value</a></div><div class="ttdeci">const double &amp; value() const</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00103">EnvSensor.h:103</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a512758b1afef465b24ce24de8a705dc9"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a512758b1afef465b24ce24de8a705dc9">rtabmap::EnvSensor::EnvSensor</a></div><div class="ttdeci">EnvSensor()</div><div class="ttdoc">Default constructor: kUndefined type, zero value and stamp.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00080">EnvSensor.h:80</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1EnvSensor_html_a8b2f05e0297750a60ccd05c56f141a1b"><div class="ttname"><a href="classrtabmap_1_1EnvSensor.html#a8b2f05e0297750a60ccd05c56f141a1b">rtabmap::EnvSensor::EnvSensor</a></div><div class="ttdeci">EnvSensor(const Type &amp;type, const double &amp;value, const double &amp;stamp=0)</div><div class="ttdoc">Constructs a reading with the given type, value, and optional stamp.</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00092">EnvSensor.h:92</a></div></div>
@@ -196,9 +221,13 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 <div class="ttc" id="anamespacertabmap_html_ac175ef40b7a4acb632232d3d96a1199a"><div class="ttname"><a href="namespacertabmap.html#ac175ef40b7a4acb632232d3d96a1199a">rtabmap::EnvSensors</a></div><div class="ttdeci">std::map&lt; EnvSensor::Type, EnvSensor &gt; EnvSensors</div><div class="ttdoc">Map of environmental readings keyed by EnvSensor::Type (at most one per type).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00114">EnvSensor.h:114</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>EnvSensor.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

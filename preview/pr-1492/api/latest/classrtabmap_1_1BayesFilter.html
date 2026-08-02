@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1BayesFilter.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1BayesFilter.html">BayesFilter</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -91,10 +108,10 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2955edc4b79110b5bd1bd03f1616056e" id="r_a2955edc4b79110b5bd1bd03f1616056e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a2955edc4b79110b5bd1bd03f1616056e">BayesFilter</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a2955edc4b79110b5bd1bd03f1616056e" id="r_a2955edc4b79110b5bd1bd03f1616056e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a2955edc4b79110b5bd1bd03f1616056e">BayesFilter</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a2955edc4b79110b5bd1bd03f1616056e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a Bayes filter with default or custom parameters.  <br /></td></tr>
 <tr class="separator:a2955edc4b79110b5bd1bd03f1616056e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6d7d48b32c853f46eee9290d5c82cd28" id="r_a6d7d48b32c853f46eee9290d5c82cd28"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a6d7d48b32c853f46eee9290d5c82cd28">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:a6d7d48b32c853f46eee9290d5c82cd28" id="r_a6d7d48b32c853f46eee9290d5c82cd28"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a6d7d48b32c853f46eee9290d5c82cd28">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a6d7d48b32c853f46eee9290d5c82cd28"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates internal settings from the parameter map.  <br /></td></tr>
 <tr class="separator:a6d7d48b32c853f46eee9290d5c82cd28"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ab8bc28ec172a18a80001585161b238" id="r_a7ab8bc28ec172a18a80001585161b238"><td class="memItemLeft" align="right" valign="top">const std::map&lt; int, float &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a7ab8bc28ec172a18a80001585161b238">computePosterior</a> (const <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> *memory, const std::map&lt; int, float &gt; &amp;likelihood)</td></tr>
@@ -133,11 +150,11 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <li><b>Prediction</b>: builds a transition matrix from the memory graph and multiplies it with the previous posterior to obtain the prior.</li>
 <li><b>Update</b>: multiplies the prior by the observation likelihood and normalizes the result.</li>
 </ul>
-<p>The prediction matrix is built from neighbor relationships in <a class="el" href="classrtabmap_1_1Memory.html">Memory</a>, using a Gaussian-like model configured through Parameters::kBayesPredictionLC(). A virtual place (negative signature id, see <a class="el" href="classrtabmap_1_1Memory.html#a539ccf650a81905db46dd6d98112f603">Memory::kIdVirtual</a>) represents the hypothesis that the current observation comes from a new location.</p>
+<p>The prediction matrix is built from neighbor relationships in <a class="el" href="classrtabmap_1_1Memory.html">Memory</a>, using a Gaussian-like model configured through <a class="el" href="classrtabmap_1_1Parameters.html#aabfee3d6757a2269d7bbbbd3ebc20fb1">Parameters::kBayesPredictionLC()</a>. A virtual place (negative signature id, see <a class="el" href="classrtabmap_1_1Memory.html#a539ccf650a81905db46dd6d98112f603">Memory::kIdVirtual</a>) represents the hypothesis that the current observation comes from a new location.</p>
 <p>Related parameters (see <a class="el" href="classrtabmap_1_1Parameters.html">Parameters</a>):</p><ul>
-<li>Parameters::kBayesPredictionLC() — transition probabilities per graph depth level.</li>
-<li>Parameters::kBayesVirtualPlacePriorThr() — prior for the virtual place.</li>
-<li>Parameters::kBayesFullPredictionUpdate() — regenerate the full prediction matrix each iteration.</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#aabfee3d6757a2269d7bbbbd3ebc20fb1">Parameters::kBayesPredictionLC()</a> — transition probabilities per graph depth level.</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#af5f568511dbc4d9213d21acf1cedd65e">Parameters::kBayesVirtualPlacePriorThr()</a> — prior for the virtual place.</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a08f0a214eb15975386b5d06be56e38b4">Parameters::kBayesFullPredictionUpdate()</a> — regenerate the full prediction matrix each iteration.</li>
 </ul>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Memory.html#a521305f39adcdfbedebbe5bdae9efbc6" title="Breadth-first walk of the pose graph from signatureId.">Memory::getNeighborsId()</a> </dd>
 <dd>
@@ -154,8 +171,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
         <tr>
           <td class="memname">rtabmap::BayesFilter::BayesFilter </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -184,7 +201,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
         <tr>
           <td class="memname">virtual void rtabmap::BayesFilter::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -270,7 +287,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <p>Each value must be in [0, 1]. At least two values are required. Invalid strings are rejected and the previous model is kept.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">prediction</td><td>Space-separated list of probabilities (same format as Parameters::kBayesPredictionLC()). </td></tr>
+    <tr><td class="paramname">prediction</td><td>Space-separated list of probabilities (same format as <a class="el" href="classrtabmap_1_1Parameters.html#aabfee3d6757a2269d7bbbbd3ebc20fb1">Parameters::kBayesPredictionLC()</a>). </td></tr>
   </table>
   </dd>
 </dl>
@@ -440,9 +457,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <li>corelib/include/rtabmap/core/<a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1BayesFilter.html">BayesFilter</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('util3d__mapping_8hpp_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><a class="el" href="dir_67ee77bab1d00e5527b3ba66cff8b822.html">impl</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">util3d_mapping.hpp</div></div>
 </div><!--header-->
@@ -125,7 +142,8 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="keyword">namespace </span>util3d{</div>
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span> </div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr projectCloudOnXYPlane(</div>
+<div class="foldopen" id="foldopen00041" data-start="{" data-end="}">
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">   41</a></span><span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">projectCloudOnXYPlane</a>(</div>
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt; &amp; cloud)</div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>{</div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>  <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr output(<span class="keyword">new</span> pcl::PointCloud&lt;PointT&gt;);</div>
@@ -136,6 +154,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  }</div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>  <span class="keywordflow">return</span> output;</div>
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>}</div>
+</div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span> </div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span><span class="keywordtype">void</span> segmentObstaclesFromGround(</div>
@@ -227,11 +246,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>                centroid[2] &lt;= biggestSurfaceMax[2] ||</div>
 <div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>                (maxGroundHeight==0.0f &amp;&amp; !segmentFlatObstacles))</div>
 <div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>              {</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>                ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>                ground = <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aff3c61a08b0fcad7f1c3f7c847190969">util3d::concatenate</a>(ground, clusteredFlatSurfaces.at(i));</div>
 <div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>              }</div>
 <div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>              <span class="keywordflow">else</span> <span class="keywordflow">if</span>(flatObstacles)</div>
 <div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>              {</div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>                *flatObstacles = util3d::concatenate(*flatObstacles, clusteredFlatSurfaces.at(i));</div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>                *flatObstacles = <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aff3c61a08b0fcad7f1c3f7c847190969">util3d::concatenate</a>(*flatObstacles, clusteredFlatSurfaces.at(i));</div>
 <div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>              }</div>
 <div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>            }</div>
 <div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>          }</div>
@@ -259,7 +278,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>      <span class="keywordflow">if</span>(indices-&gt;size())</div>
 <div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>      {</div>
 <div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>        notObstacles = <a class="code hl_function" href="group__ExtractIndices.html#ga8685395807479f06b19d9d41616a03a7">util3d::extractIndices</a>(cloud, indices, <span class="keyword">true</span>);</div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>        notObstacles = util3d::concatenate(notObstacles, ground);</div>
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>        notObstacles = <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aff3c61a08b0fcad7f1c3f7c847190969">util3d::concatenate</a>(notObstacles, ground);</div>
 <div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span>      }</div>
 <div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>      pcl::IndicesPtr otherStuffIndices = <a class="code hl_function" href="group__ExtractIndices.html#ga8685395807479f06b19d9d41616a03a7">util3d::extractIndices</a>(cloud, notObstacles, <span class="keyword">true</span>);</div>
 <div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span> </div>
@@ -279,14 +298,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span>            minClusterSize);</div>
 <div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span> </div>
 <div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>        <span class="comment">// merge indices</span></div>
-<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>        obstacles = util3d::concatenate(clusteredObstaclesSurfaces);</div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>        obstacles = <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aff3c61a08b0fcad7f1c3f7c847190969">util3d::concatenate</a>(clusteredObstaclesSurfaces);</div>
 <div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>      }</div>
 <div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>    }</div>
 <div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>  }</div>
 <div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>}</div>
 <div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span> </div>
 <div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span><span class="keywordtype">void</span> segmentObstaclesFromGround(</div>
+<div class="foldopen" id="foldopen00202" data-start="{" data-end="}">
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a72b271fa98352180241614517ef3b21e">  202</a></span><span class="keywordtype">void</span> segmentObstaclesFromGround(</div>
 <div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>    pcl::IndicesPtr &amp; ground,</div>
 <div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>    pcl::IndicesPtr &amp; obstacles,</div>
@@ -316,9 +336,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>      viewPoint,</div>
 <div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>      groundNormalsUp);</div>
 <div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>}</div>
+</div>
 <div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span> </div>
 <div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span><span class="keywordtype">void</span> occupancy2DFromGroundObstacles(</div>
+<div class="foldopen" id="foldopen00234" data-start="{" data-end="}">
+<div class="line"><a id="l00234" name="l00234"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">  234</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">occupancy2DFromGroundObstacles</a>(</div>
 <div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; groundIndices,</div>
 <div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; obstaclesIndices,</div>
@@ -346,9 +368,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span>      obstacles,</div>
 <div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span>      cellSize);</div>
 <div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span>}</div>
+</div>
 <div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span> </div>
 <div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span><span class="keywordtype">void</span> occupancy2DFromGroundObstacles(</div>
+<div class="foldopen" id="foldopen00264" data-start="{" data-end="}">
+<div class="line"><a id="l00264" name="l00264"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a9b93d07997a94a78b6be6bd573e39148">  264</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">occupancy2DFromGroundObstacles</a>(</div>
 <div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; groundCloud,</div>
 <div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; obstaclesCloud,</div>
 <div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>    cv::Mat &amp; ground,</div>
@@ -360,7 +384,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span>  {</div>
 <div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>    <span class="comment">//project on XY plane</span></div>
 <div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span>    <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr groundCloudProjected;</div>
-<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span>    groundCloudProjected = util3d::projectCloudOnXYPlane(*groundCloud);</div>
+<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span>    groundCloudProjected = <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">util3d::projectCloudOnXYPlane</a>(*groundCloud);</div>
 <div class="line"><a id="l00277" name="l00277"></a><span class="lineno">  277</span>    <span class="comment">//voxelize to grid cell size</span></div>
 <div class="line"><a id="l00278" name="l00278"></a><span class="lineno">  278</span>    groundCloudProjected = <a class="code hl_function" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">util3d::voxelize</a>(groundCloudProjected, cellSize);</div>
 <div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span> </div>
@@ -378,7 +402,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span>  {</div>
 <div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>    <span class="comment">//project on XY plane</span></div>
 <div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span>    <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr obstaclesCloudProjected;</div>
-<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span>    obstaclesCloudProjected = util3d::projectCloudOnXYPlane(*obstaclesCloud);</div>
+<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span>    obstaclesCloudProjected = <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">util3d::projectCloudOnXYPlane</a>(*obstaclesCloud);</div>
 <div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span>    <span class="comment">//voxelize to grid cell size</span></div>
 <div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span>    obstaclesCloudProjected = <a class="code hl_function" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">util3d::voxelize</a>(obstaclesCloudProjected, cellSize);</div>
 <div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span> </div>
@@ -391,9 +415,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>    }</div>
 <div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span>  }</div>
 <div class="line"><a id="l00306" name="l00306"></a><span class="lineno">  306</span>}</div>
+</div>
 <div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span> </div>
 <div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span><span class="keywordtype">void</span> occupancy2DFromCloud3D(</div>
+<div class="foldopen" id="foldopen00309" data-start="{" data-end="}">
+<div class="line"><a id="l00309" name="l00309"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">  309</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">occupancy2DFromCloud3D</a>(</div>
 <div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>    cv::Mat &amp; ground,</div>
@@ -430,9 +456,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span>      obstacles,</div>
 <div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span>      cellSize);</div>
 <div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span>}</div>
+</div>
 <div class="line"><a id="l00346" name="l00346"></a><span class="lineno">  346</span> </div>
 <div class="line"><a id="l00347" name="l00347"></a><span class="lineno">  347</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00348" name="l00348"></a><span class="lineno">  348</span><span class="keywordtype">void</span> occupancy2DFromCloud3D(</div>
+<div class="foldopen" id="foldopen00348" data-start="{" data-end="}">
+<div class="line"><a id="l00348" name="l00348"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a969e2d135e91a6e2ace68850086ae0e9">  348</a></span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">occupancy2DFromCloud3D</a>(</div>
 <div class="line"><a id="l00349" name="l00349"></a><span class="lineno">  349</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00350" name="l00350"></a><span class="lineno">  350</span>    cv::Mat &amp; ground,</div>
 <div class="line"><a id="l00351" name="l00351"></a><span class="lineno">  351</span>    cv::Mat &amp; obstacles,</div>
@@ -445,6 +473,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span>  pcl::IndicesPtr indices(<span class="keyword">new</span> std::vector&lt;int&gt;);</div>
 <div class="line"><a id="l00359" name="l00359"></a><span class="lineno">  359</span>  occupancy2DFromCloud3D&lt;PointT&gt;(cloud, indices, ground, obstacles, cellSize, groundNormalAngle, minClusterSize, segmentFlatObstacles, maxGroundHeight);</div>
 <div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span>}</div>
+</div>
 <div class="line"><a id="l00361" name="l00361"></a><span class="lineno">  361</span> </div>
 <div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span>}</div>
 <div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span>}</div>
@@ -455,11 +484,19 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="agroup__PassThrough_html_ga7bfc95ed4f7fca124b00707708223473"><div class="ttname"><a href="group__PassThrough.html#ga7bfc95ed4f7fca124b00707708223473">rtabmap::util3d::passThrough</a></div><div class="ttdeci">pcl::IndicesPtr RTABMAP_CORE_EXPORT passThrough(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, const std::string &amp;axis, float min, float max, bool negative=false)</div><div class="ttdoc">Performs pass-through filtering on a point cloud of type pcl::PointXYZ and returns filtered indices.</div></div>
 <div class="ttc" id="agroup__PointNormalFiltering_html_ga7c7e3de2ff24fc3aadfb3eb0ae05314d"><div class="ttname"><a href="group__PointNormalFiltering.html#ga7c7e3de2ff24fc3aadfb3eb0ae05314d">rtabmap::util3d::normalFiltering</a></div><div class="ttdeci">pcl::IndicesPtr RTABMAP_CORE_EXPORT normalFiltering(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, float angleMax, const Eigen::Vector4f &amp;normal, int normalKSearch, const Eigen::Vector4f &amp;viewpoint, float groundNormalsUp=0.0f)</div><div class="ttdoc">Point normal filtering for point cloud of type pcl::PointXYZ.</div></div>
 <div class="ttc" id="agroup__VoxelFiltering_html_gad8d88a06174857cf53b1dc2cf2310d89"><div class="ttname"><a href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">rtabmap::util3d::voxelize</a></div><div class="ttdeci">pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr RTABMAP_CORE_EXPORT voxelize(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, float voxelSize)</div><div class="ttdoc">Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a3bdae076cc5054f35393b744f478b980"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">rtabmap::util3d::projectCloudOnXYPlane</a></div><div class="ttdeci">pcl::PointCloud&lt; PointT &gt;::Ptr projectCloudOnXYPlane(const typename pcl::PointCloud&lt; PointT &gt; &amp;cloud)</div><div class="ttdoc">Projects a point cloud onto the XY plane by setting all Z coordinates to zero.</div><div class="ttdef"><b>Definition</b> <a href="util3d__mapping_8hpp_source.html#l00041">util3d_mapping.hpp:41</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a7d90f3a00301f9f7c79cd6fc6cd663c2"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">rtabmap::util3d::occupancy2DFromCloud3D</a></div><div class="ttdeci">void occupancy2DFromCloud3D(const typename pcl::PointCloud&lt; PointT &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, cv::Mat &amp;ground, cv::Mat &amp;obstacles, float cellSize, float groundNormalAngle, int minClusterSize, bool segmentFlatObstacles, float maxGroundHeight)</div><div class="ttdoc">Generates 2D ground and obstacle occupancy data from a 3D point cloud.</div><div class="ttdef"><b>Definition</b> <a href="util3d__mapping_8hpp_source.html#l00309">util3d_mapping.hpp:309</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ab156e4308c21e118ea0aa164a5ae9812"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">rtabmap::util3d::occupancy2DFromGroundObstacles</a></div><div class="ttdeci">void occupancy2DFromGroundObstacles(const typename pcl::PointCloud&lt; PointT &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;groundIndices, const pcl::IndicesPtr &amp;obstaclesIndices, cv::Mat &amp;ground, cv::Mat &amp;obstacles, float cellSize)</div><div class="ttdoc">Projects 3D ground and obstacle point clouds onto the 2D XY plane and voxelizes them into 2D occupanc...</div><div class="ttdef"><b>Definition</b> <a href="util3d__mapping_8hpp_source.html#l00234">util3d_mapping.hpp:234</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_aff3c61a08b0fcad7f1c3f7c847190969"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#aff3c61a08b0fcad7f1c3f7c847190969">rtabmap::util3d::concatenate</a></div><div class="ttdeci">pcl::IndicesPtr RTABMAP_CORE_EXPORT concatenate(const std::vector&lt; pcl::IndicesPtr &gt; &amp;indices)</div><div class="ttdoc">Concatenates multiple sets of indices into a single index vector.</div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><a class="el" href="dir_67ee77bab1d00e5527b3ba66cff8b822.html">impl</a></li><li class="navelem"><b>util3d_mapping.hpp</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

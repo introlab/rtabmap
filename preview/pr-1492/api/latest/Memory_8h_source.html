@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('Memory_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">Memory.h</div></div>
 </div><!--header-->
@@ -161,11 +178,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00109" name="l00109"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#ac78b3a9a3394eb63c50650a4b8ada68e">  109</a></span>  <span class="keyword">static</span> <span class="keyword">const</span> <span class="keywordtype">int</span> <a class="code hl_variable" href="classrtabmap_1_1Memory.html#ac78b3a9a3394eb63c50650a4b8ada68e">kIdInvalid</a>;</div>
 <div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span> </div>
 <div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4">  119</a></span>  <a class="code hl_function" href="classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4">Memory</a>(<span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4">  119</a></span>  <a class="code hl_function" href="classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4">Memory</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1Memory.html">~Memory</a>();</div>
 <div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span> </div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#abbf54d2a34838cc13ce98d41a9991918">  128</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Memory.html#abbf54d2a34838cc13ce98d41a9991918">parseParameters</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#af4cc965870dd757517b126af4860d34d">  130</a></span>  <span class="keyword">virtual</span> <span class="keyword">const</span> ParametersMap &amp; <a class="code hl_function" href="classrtabmap_1_1Memory.html#af4cc965870dd757517b126af4860d34d">getParameters</a>()<span class="keyword"> const </span>{<span class="keywordflow">return</span> parameters_;}</div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#abbf54d2a34838cc13ce98d41a9991918">  128</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Memory.html#abbf54d2a34838cc13ce98d41a9991918">parseParameters</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#af4cc965870dd757517b126af4860d34d">  130</a></span>  <span class="keyword">virtual</span> <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; <a class="code hl_function" href="classrtabmap_1_1Memory.html#af4cc965870dd757517b126af4860d34d">getParameters</a>()<span class="keyword"> const </span>{<span class="keywordflow">return</span> parameters_;}</div>
 <div class="line"><a id="l00141" name="l00141"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">  141</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">update</a>(<span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp; data,</div>
 <div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>      <a class="code hl_class" href="classrtabmap_1_1Statistics.html">Statistics</a> * stats = 0);</div>
 <div class="line"><a id="l00157" name="l00157"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#aae43fd080c6bc9773fa58f1c36e6684f">  157</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1Memory.html#aae43fd080c6bc9773fa58f1c36e6684f">update</a>(<span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp; data,</div>
@@ -175,7 +192,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>      <a class="code hl_class" href="classrtabmap_1_1Statistics.html">Statistics</a> * stats = 0);</div>
 <div class="line"><a id="l00172" name="l00172"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">  172</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1Memory.html#aeeabc78648bf7dc14ea1356828cdeddd">init</a>(<span class="keyword">const</span> std::string &amp; dbUrl,</div>
 <div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>      <span class="keywordtype">bool</span> dbOverwritten = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>      <span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap(),</div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>      <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>(),</div>
 <div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>      <span class="keywordtype">bool</span> postInitClosingEvents = <span class="keyword">false</span>);</div>
 <div class="line"><a id="l00186" name="l00186"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">  186</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Memory.html#a44023158524dee3471a8dff43ea132db">close</a>(<span class="keywordtype">bool</span> databaseSaved = <span class="keyword">true</span>, <span class="keywordtype">bool</span> postInitClosingEvents = <span class="keyword">false</span>, <span class="keyword">const</span> std::string &amp; ouputDatabasePath = <span class="stringliteral">&quot;&quot;</span>);</div>
 <div class="line"><a id="l00197" name="l00197"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Memory.html#a984ca01a87434b11a66dc1d96e2fff17">  197</a></span>  std::map&lt;int, float&gt; <a class="code hl_function" href="classrtabmap_1_1Memory.html#a984ca01a87434b11a66dc1d96e2fff17">computeLikelihood</a>(<span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Signature.html">Signature</a> * signature,</div>
@@ -385,7 +402,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00820" name="l00820"></a><span class="lineno">  820</span> </div>
 <div class="line"><a id="l00821" name="l00821"></a><span class="lineno">  821</span><span class="keyword">private</span>:</div>
 <div class="line"><a id="l00822" name="l00822"></a><span class="lineno">  822</span>  <span class="comment">// parameters</span></div>
-<div class="line"><a id="l00823" name="l00823"></a><span class="lineno">  823</span>  ParametersMap parameters_;</div>
+<div class="line"><a id="l00823" name="l00823"></a><span class="lineno">  823</span>  <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> parameters_;</div>
 <div class="line"><a id="l00824" name="l00824"></a><span class="lineno">  824</span>  <span class="keywordtype">float</span> _similarityThreshold;</div>
 <div class="line"><a id="l00825" name="l00825"></a><span class="lineno">  825</span>  <span class="keywordtype">bool</span> _binDataKept;</div>
 <div class="line"><a id="l00826" name="l00826"></a><span class="lineno">  826</span>  <span class="keywordtype">bool</span> _rawDescriptorsKept;</div>
@@ -500,7 +517,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1Memory_html_a072ec41027a03072f1a945540b43a1b8"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a072ec41027a03072f1a945540b43a1b8">rtabmap::Memory::emptyTrash</a></div><div class="ttdeci">void emptyTrash()</div><div class="ttdoc">Forces the database driver to flush any queued signature/word saves.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Memory_html_a0827d1d23744b3693f00e518e1b0fda8"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a0827d1d23744b3693f00e518e1b0fda8">rtabmap::Memory::loadOptimizedMesh</a></div><div class="ttdeci">cv::Mat loadOptimizedMesh(std::vector&lt; std::vector&lt; std::vector&lt; RTABMAP_PCL_INDEX &gt; &gt; &gt; *polygons=0, std::vector&lt; std::vector&lt; Eigen::Vector2f &gt; &gt; *texCoords=0, cv::Mat *textures=0) const</div><div class="ttdoc">Loads the optimized mesh previously written by saveOptimizedMesh().</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Memory_html_a10c44ee8a5d84480b41aa4980665d894"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a10c44ee8a5d84480b41aa4980665d894">rtabmap::Memory::getNeighborsIdRadius</a></div><div class="ttdeci">std::map&lt; int, float &gt; getNeighborsIdRadius(int signatureId, float radius, const std::map&lt; int, Transform &gt; &amp;optimizedPoses, int maxGraphDepth) const</div><div class="ttdoc">Returns neighbor ids within a Euclidean radius using optimized poses.</div></div>
-<div class="ttc" id="aclassrtabmap_1_1Memory_html_a12042e10017298c4dcf6e435c5a2290a"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a12042e10017298c4dcf6e435c5a2290a">rtabmap::Memory::kIdStart</a></div><div class="ttdeci">static const int kIdStart</div><div class="ttdoc">First valid signature id assigned by getNextId() (positive integer).</div><div class="ttdef"><b>Definition</b> <a href="Memory_8h_source.html#l00105">Memory.h:105</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1Memory_html_a12042e10017298c4dcf6e435c5a2290a"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a12042e10017298c4dcf6e435c5a2290a">rtabmap::Memory::kIdStart</a></div><div class="ttdeci">static const int kIdStart</div><div class="ttdoc">First valid signature id assigned to a new signature (positive integer).</div><div class="ttdef"><b>Definition</b> <a href="Memory_8h_source.html#l00105">Memory.h:105</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Memory_html_a15ec109dd157745f69dcd4f80efaf561"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a15ec109dd157745f69dcd4f80efaf561">rtabmap::Memory::getSignature</a></div><div class="ttdeci">const Signature * getSignature(int id) const</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Memory_html_a172f0d3046c0b7d6b37cdf11af153bee"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a172f0d3046c0b7d6b37cdf11af153bee">rtabmap::Memory::getNeighborLinks</a></div><div class="ttdeci">std::multimap&lt; int, Link &gt; getNeighborLinks(int signatureId, bool lookInDatabase=false) const</div><div class="ttdoc">Returns neighbor (sequential) links of signatureId; lookInDatabase also checks LTM.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Memory_html_a18a6e852d545751fbc348d2aae6d7fe0"><div class="ttname"><a href="classrtabmap_1_1Memory.html#a18a6e852d545751fbc348d2aae6d7fe0">rtabmap::Memory::isBinDataKept</a></div><div class="ttdeci">bool isBinDataKept() const</div><div class="ttdef"><b>Definition</b> <a href="Memory_8h_source.html#l00432">Memory.h:432</a></div></div>
@@ -611,10 +628,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1VWDictionary_html"><div class="ttname"><a href="classrtabmap_1_1VWDictionary.html">rtabmap::VWDictionary</a></div><div class="ttdoc">Manages a dictionary of visual words for visual place recognition and loop closure detection.</div><div class="ttdef"><b>Definition</b> <a href="VWDictionary_8h_source.html#l00065">VWDictionary.h:66</a></div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 <div class="ttc" id="anamespacertabmap_html_ac175ef40b7a4acb632232d3d96a1199a"><div class="ttname"><a href="namespacertabmap.html#ac175ef40b7a4acb632232d3d96a1199a">rtabmap::EnvSensors</a></div><div class="ttdeci">std::map&lt; EnvSensor::Type, EnvSensor &gt; EnvSensors</div><div class="ttdoc">Map of environmental readings keyed by EnvSensor::Type (at most one per type).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00114">EnvSensor.h:114</a></div></div>
+<div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>Memory.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

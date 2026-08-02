@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('util3d__mapping_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">util3d_mapping.h</div></div>
 </div><!--header-->
@@ -130,8 +147,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="keyword">namespace </span>util3d</div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>{</div>
 <div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span> </div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="comment">// Use interface with \&quot;viewpoint\&quot; parameter to make sure the ray tracing origin is from the sensor and not the base.</span></div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>RTABMAP_DEPRECATED <span class="keywordtype">void</span> RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(</div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">   47</a></span>RTABMAP_DEPRECATED <span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">occupancy2DFromLaserScan</a>(</div>
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>    <span class="keyword">const</span> cv::Mat &amp; scan, <span class="comment">// in /base_link frame</span></div>
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>    cv::Mat &amp; empty,</div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>    cv::Mat &amp; occupied,</div>
@@ -139,8 +155,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>    <span class="keywordtype">bool</span> unknownSpaceFilled = <span class="keyword">false</span>,</div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>    <span class="keywordtype">float</span> scanMaxRange = 0.0f);</div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="comment">// Use interface with scanHit/scanNoHit parameters: scanNoHit set to null matrix has the same functionality than this method.</span></div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>RTABMAP_DEPRECATED <span class="keywordtype">void</span> RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#aa1c9dfd681662ff1c164956a83e30b57">   56</a></span>RTABMAP_DEPRECATED <span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">occupancy2DFromLaserScan</a>(</div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>    <span class="keyword">const</span> cv::Mat &amp; scan, <span class="comment">// in /base_link frame</span></div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>    <span class="keyword">const</span> cv::Point3f &amp; viewpoint, <span class="comment">// /base_link -&gt; /base_scan</span></div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>    cv::Mat &amp; empty,</div>
@@ -149,7 +164,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>    <span class="keywordtype">bool</span> unknownSpaceFilled = <span class="keyword">false</span>,</div>
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    <span class="keywordtype">float</span> scanMaxRange = 0.0f);</div>
 <div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span> </div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(</div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a2d2f6d5adead09c6f87ef3f7cdebc65e">   92</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">occupancy2DFromLaserScan</a>(</div>
 <div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    <span class="keyword">const</span> cv::Mat &amp; scanHit, <span class="comment">// in /base_link frame</span></div>
 <div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    <span class="keyword">const</span> cv::Mat &amp; scanNoHit, <span class="comment">// in /base_link frame</span></div>
 <div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>    <span class="keyword">const</span> cv::Point3f &amp; viewpoint, <span class="comment">// /base_link -&gt; /base_scan</span></div>
@@ -159,7 +174,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>    <span class="keywordtype">bool</span> unknownSpaceFilled = <span class="keyword">false</span>,</div>
 <div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>    <span class="keywordtype">float</span> scanMaxRange = 0.0f); <span class="comment">// would be set if unknownSpaceFilled=true</span></div>
 <div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span> </div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>cv::Mat RTABMAP_CORE_EXPORT create2DMapFromOccupancyLocalMaps(</div>
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a86ea393c958183f10da8f7327e25d894">  138</a></span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a86ea393c958183f10da8f7327e25d894">create2DMapFromOccupancyLocalMaps</a>(</div>
 <div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>    <span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
 <div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, std::pair&lt;cv::Mat, cv::Mat&gt; &gt; &amp; occupancy,</div>
 <div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>    <span class="keywordtype">float</span> cellSize,</div>
@@ -169,8 +184,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>    <span class="keywordtype">bool</span> erode = <span class="keyword">false</span>,</div>
 <div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>    <span class="keywordtype">float</span> footprintRadius = 0.0f);</div>
 <div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span> </div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span><span class="comment">// Use interface with \&quot;viewpoints\&quot; parameter to make sure the ray tracing origin is from the sensor and not the base.</span></div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(<span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ae7dca67101116f7de0114cea5442ec23">  149</a></span>RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae7dca67101116f7de0114cea5442ec23">create2DMap</a>(<span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
 <div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr &gt; &amp; scans, <span class="comment">// in /base_link frame</span></div>
 <div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>    <span class="keywordtype">float</span> cellSize,</div>
 <div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>    <span class="keywordtype">bool</span> unknownSpaceFilled,</div>
@@ -179,8 +193,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>    <span class="keywordtype">float</span> minMapSize = 0.0f,</div>
 <div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>    <span class="keywordtype">float</span> scanMaxRange = 0.0f);</div>
 <div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span> </div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span><span class="comment">// Use interface with cv::Mat scans.</span></div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(<span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#adcc1d4aca3da4fcb11fa44d3a20f46ca">  159</a></span>RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae7dca67101116f7de0114cea5442ec23">create2DMap</a>(<span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
 <div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr &gt; &amp; scans, <span class="comment">// in /base_link frame</span></div>
 <div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>    <span class="keyword">const</span> std::map&lt;int, cv::Point3f &gt; &amp; viewpoints, <span class="comment">// /base_link -&gt; /base_scan</span></div>
 <div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    <span class="keywordtype">float</span> cellSize,</div>
@@ -190,7 +203,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>    <span class="keywordtype">float</span> minMapSize = 0.0f,</div>
 <div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>    <span class="keywordtype">float</span> scanMaxRange = 0.0f);</div>
 <div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span> </div>
-<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>cv::Mat RTABMAP_CORE_EXPORT create2DMap(<span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#afff989b8fc8d612a69d82bdfa7a28fe8">  204</a></span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae7dca67101116f7de0114cea5442ec23">create2DMap</a>(<span class="keyword">const</span> std::map&lt;int, Transform&gt; &amp; poses,</div>
 <div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, std::pair&lt;cv::Mat, cv::Mat&gt; &gt; &amp; scans, <span class="comment">// &lt;id, &lt;hit, no hit&gt; &gt;, in /base_link frame</span></div>
 <div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>    <span class="keyword">const</span> std::map&lt;int, cv::Point3f &gt; &amp; viewpoints, <span class="comment">// /base_link -&gt; /base_scan</span></div>
 <div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span>    <span class="keywordtype">float</span> cellSize,</div>
@@ -200,26 +213,26 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>    <span class="keywordtype">float</span> minMapSize = 0.0f,</div>
 <div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>    <span class="keywordtype">float</span> scanMaxRange = 0.0f);</div>
 <div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span> </div>
-<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT rayTrace(<span class="keyword">const</span> cv::Point2i &amp; start,</div>
+<div class="line"><a id="l00235" name="l00235"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a281695150f5c02e6222d050f488a9d6b">  235</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a281695150f5c02e6222d050f488a9d6b">rayTrace</a>(<span class="keyword">const</span> cv::Point2i &amp; start,</div>
 <div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>    <span class="keyword">const</span> cv::Point2i &amp; end,</div>
 <div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    cv::Mat &amp; grid,</div>
 <div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>    <span class="keywordtype">bool</span> stopOnObstacle);</div>
 <div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span> </div>
-<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>cv::Mat RTABMAP_CORE_EXPORT convertMap2Image8U(<span class="keyword">const</span> cv::Mat &amp; map8S, <span class="keywordtype">bool</span> pgmFormat = <span class="keyword">false</span>);</div>
+<div class="line"><a id="l00263" name="l00263"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ae57dd8dcc488496a2c3872eba97eb4e4">  263</a></span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae57dd8dcc488496a2c3872eba97eb4e4">convertMap2Image8U</a>(<span class="keyword">const</span> cv::Mat &amp; map8S, <span class="keywordtype">bool</span> pgmFormat = <span class="keyword">false</span>);</div>
 <div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span> </div>
-<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span>cv::Mat RTABMAP_CORE_EXPORT convertImage8U2Map(<span class="keyword">const</span> cv::Mat &amp; map8U, <span class="keywordtype">bool</span> pgmFormat = <span class="keyword">false</span>);</div>
+<div class="line"><a id="l00293" name="l00293"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#acb47883439442306b63f5bf234e87049">  293</a></span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#acb47883439442306b63f5bf234e87049">convertImage8U2Map</a>(<span class="keyword">const</span> cv::Mat &amp; map8U, <span class="keywordtype">bool</span> pgmFormat = <span class="keyword">false</span>);</div>
 <div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span> </div>
-<div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>cv::Mat RTABMAP_CORE_EXPORT erodeMap(<span class="keyword">const</span> cv::Mat &amp; map);</div>
+<div class="line"><a id="l00312" name="l00312"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#aa4d323d39ec23ea314c22f0668ab11c4">  312</a></span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aa4d323d39ec23ea314c22f0668ab11c4">erodeMap</a>(<span class="keyword">const</span> cv::Mat &amp; map);</div>
 <div class="line"><a id="l00313" name="l00313"></a><span class="lineno">  313</span> </div>
 <div class="line"><a id="l00314" name="l00314"></a><span class="lineno">  314</span><span class="comment">// templated methods</span></div>
 <div class="line"><a id="l00315" name="l00315"></a><span class="lineno">  315</span> </div>
 <div class="line"><a id="l00327" name="l00327"></a><span class="lineno">  327</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span><span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr projectCloudOnXYPlane(</div>
+<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span><span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">projectCloudOnXYPlane</a>(</div>
 <div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt; &amp; cloud);</div>
 <div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span> </div>
 <div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span> </div>
 <div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span><span class="keywordtype">void</span> segmentObstaclesFromGround(</div>
+<div class="line"><a id="l00363" name="l00363"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a58ee399b0bca3a8af41e74d0eced5f84">  363</a></span><span class="keywordtype">void</span> segmentObstaclesFromGround(</div>
 <div class="line"><a id="l00364" name="l00364"></a><span class="lineno">  364</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00365" name="l00365"></a><span class="lineno">  365</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00366" name="l00366"></a><span class="lineno">  366</span>    pcl::IndicesPtr &amp; ground,</div>
@@ -249,14 +262,14 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00394" name="l00394"></a><span class="lineno">  394</span>    <span class="keywordtype">float</span> groundNormalsUp = 0);</div>
 <div class="line"><a id="l00395" name="l00395"></a><span class="lineno">  395</span> </div>
 <div class="line"><a id="l00412" name="l00412"></a><span class="lineno">  412</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span><span class="keywordtype">void</span> occupancy2DFromGroundObstacles(</div>
+<div class="line"><a id="l00413" name="l00413"></a><span class="lineno">  413</span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">occupancy2DFromGroundObstacles</a>(</div>
 <div class="line"><a id="l00414" name="l00414"></a><span class="lineno">  414</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; groundCloud,</div>
 <div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; obstaclesCloud,</div>
 <div class="line"><a id="l00416" name="l00416"></a><span class="lineno">  416</span>    cv::Mat &amp; ground,</div>
 <div class="line"><a id="l00417" name="l00417"></a><span class="lineno">  417</span>    cv::Mat &amp; obstacles,</div>
 <div class="line"><a id="l00418" name="l00418"></a><span class="lineno">  418</span>    <span class="keywordtype">float</span> cellSize);</div>
 <div class="line"><a id="l00423" name="l00423"></a><span class="lineno">  423</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span><span class="keywordtype">void</span> occupancy2DFromGroundObstacles(</div>
+<div class="line"><a id="l00424" name="l00424"></a><span class="lineno">  424</span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">occupancy2DFromGroundObstacles</a>(</div>
 <div class="line"><a id="l00425" name="l00425"></a><span class="lineno">  425</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00426" name="l00426"></a><span class="lineno">  426</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; groundIndices,</div>
 <div class="line"><a id="l00427" name="l00427"></a><span class="lineno">  427</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; obstaclesIndices,</div>
@@ -265,7 +278,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span>    <span class="keywordtype">float</span> cellSize);</div>
 <div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span> </div>
 <div class="line"><a id="l00458" name="l00458"></a><span class="lineno">  458</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00459" name="l00459"></a><span class="lineno">  459</span><span class="keywordtype">void</span> occupancy2DFromCloud3D(</div>
+<div class="line"><a id="l00459" name="l00459"></a><span class="lineno">  459</span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">occupancy2DFromCloud3D</a>(</div>
 <div class="line"><a id="l00460" name="l00460"></a><span class="lineno">  460</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00461" name="l00461"></a><span class="lineno">  461</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00462" name="l00462"></a><span class="lineno">  462</span>    cv::Mat &amp; ground,</div>
@@ -276,7 +289,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span>    <span class="keywordtype">bool</span> segmentFlatObstacles = <span class="keyword">false</span>,</div>
 <div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span>    <span class="keywordtype">float</span> maxGroundHeight = 0.0f);</div>
 <div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Po<span class="keywordtype">int</span>T&gt;</div>
-<div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span><span class="keywordtype">void</span> occupancy2DFromCloud3D(</div>
+<div class="line"><a id="l00474" name="l00474"></a><span class="lineno">  474</span><span class="keywordtype">void</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">occupancy2DFromCloud3D</a>(</div>
 <div class="line"><a id="l00475" name="l00475"></a><span class="lineno">  475</span>    <span class="keyword">const</span> <span class="keyword">typename</span> pcl::PointCloud&lt;PointT&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00476" name="l00476"></a><span class="lineno">  476</span>    cv::Mat &amp; ground,</div>
 <div class="line"><a id="l00477" name="l00477"></a><span class="lineno">  477</span>    cv::Mat &amp; obstacles,</div>
@@ -292,11 +305,25 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00487" name="l00487"></a><span class="lineno">  487</span><span class="preprocessor">#include &quot;rtabmap/core/impl/util3d_mapping.hpp&quot;</span></div>
 <div class="line"><a id="l00488" name="l00488"></a><span class="lineno">  488</span> </div>
 <div class="line"><a id="l00489" name="l00489"></a><span class="lineno">  489</span><span class="preprocessor">#endif </span><span class="comment">/* UTIL3D_MAPPING_H_ */</span><span class="preprocessor"></span></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a281695150f5c02e6222d050f488a9d6b"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a281695150f5c02e6222d050f488a9d6b">rtabmap::util3d::rayTrace</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT rayTrace(const cv::Point2i &amp;start, const cv::Point2i &amp;end, cv::Mat &amp;grid, bool stopOnObstacle)</div><div class="ttdoc">Performs a 2D ray tracing operation between two points on a grid map.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a3bdae076cc5054f35393b744f478b980"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a3bdae076cc5054f35393b744f478b980">rtabmap::util3d::projectCloudOnXYPlane</a></div><div class="ttdeci">pcl::PointCloud&lt; PointT &gt;::Ptr projectCloudOnXYPlane(const typename pcl::PointCloud&lt; PointT &gt; &amp;cloud)</div><div class="ttdoc">Projects a point cloud onto the XY plane by setting all Z coordinates to zero.</div><div class="ttdef"><b>Definition</b> <a href="util3d__mapping_8hpp_source.html#l00041">util3d_mapping.hpp:41</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a4f1002c1825baf4b7606a94b4ea9b15d"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a4f1002c1825baf4b7606a94b4ea9b15d">rtabmap::util3d::occupancy2DFromLaserScan</a></div><div class="ttdeci">RTABMAP_DEPRECATED void RTABMAP_CORE_EXPORT occupancy2DFromLaserScan(const cv::Mat &amp;scan, cv::Mat &amp;empty, cv::Mat &amp;occupied, float cellSize, bool unknownSpaceFilled=false, float scanMaxRange=0.0f)</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a7d90f3a00301f9f7c79cd6fc6cd663c2"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a7d90f3a00301f9f7c79cd6fc6cd663c2">rtabmap::util3d::occupancy2DFromCloud3D</a></div><div class="ttdeci">void occupancy2DFromCloud3D(const typename pcl::PointCloud&lt; PointT &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, cv::Mat &amp;ground, cv::Mat &amp;obstacles, float cellSize, float groundNormalAngle, int minClusterSize, bool segmentFlatObstacles, float maxGroundHeight)</div><div class="ttdoc">Generates 2D ground and obstacle occupancy data from a 3D point cloud.</div><div class="ttdef"><b>Definition</b> <a href="util3d__mapping_8hpp_source.html#l00309">util3d_mapping.hpp:309</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a86ea393c958183f10da8f7327e25d894"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a86ea393c958183f10da8f7327e25d894">rtabmap::util3d::create2DMapFromOccupancyLocalMaps</a></div><div class="ttdeci">cv::Mat RTABMAP_CORE_EXPORT create2DMapFromOccupancyLocalMaps(const std::map&lt; int, Transform &gt; &amp;poses, const std::map&lt; int, std::pair&lt; cv::Mat, cv::Mat &gt; &gt; &amp;occupancy, float cellSize, float &amp;xMin, float &amp;yMin, float minMapSize=0.0f, bool erode=false, float footprintRadius=0.0f)</div><div class="ttdoc">Creates a 2D occupancy grid map from local occupancy data.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_aa4d323d39ec23ea314c22f0668ab11c4"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#aa4d323d39ec23ea314c22f0668ab11c4">rtabmap::util3d::erodeMap</a></div><div class="ttdeci">cv::Mat RTABMAP_CORE_EXPORT erodeMap(const cv::Mat &amp;map)</div><div class="ttdoc">Performs erosion on an occupancy grid map to reduce small noisy obstacles.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ab156e4308c21e118ea0aa164a5ae9812"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ab156e4308c21e118ea0aa164a5ae9812">rtabmap::util3d::occupancy2DFromGroundObstacles</a></div><div class="ttdeci">void occupancy2DFromGroundObstacles(const typename pcl::PointCloud&lt; PointT &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;groundIndices, const pcl::IndicesPtr &amp;obstaclesIndices, cv::Mat &amp;ground, cv::Mat &amp;obstacles, float cellSize)</div><div class="ttdoc">Projects 3D ground and obstacle point clouds onto the 2D XY plane and voxelizes them into 2D occupanc...</div><div class="ttdef"><b>Definition</b> <a href="util3d__mapping_8hpp_source.html#l00234">util3d_mapping.hpp:234</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_acb47883439442306b63f5bf234e87049"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#acb47883439442306b63f5bf234e87049">rtabmap::util3d::convertImage8U2Map</a></div><div class="ttdeci">cv::Mat RTABMAP_CORE_EXPORT convertImage8U2Map(const cv::Mat &amp;map8U, bool pgmFormat=false)</div><div class="ttdoc">Converts a grayscale occupancy image (CV_8U) to an occupancy grid map (CV_8S).</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ae57dd8dcc488496a2c3872eba97eb4e4"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ae57dd8dcc488496a2c3872eba97eb4e4">rtabmap::util3d::convertMap2Image8U</a></div><div class="ttdeci">cv::Mat RTABMAP_CORE_EXPORT convertMap2Image8U(const cv::Mat &amp;map8S, bool pgmFormat=false)</div><div class="ttdoc">Converts an occupancy grid map (CV_8S) to a grayscale image (CV_8U).</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ae7dca67101116f7de0114cea5442ec23"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ae7dca67101116f7de0114cea5442ec23">rtabmap::util3d::create2DMap</a></div><div class="ttdeci">RTABMAP_DEPRECATED cv::Mat RTABMAP_CORE_EXPORT create2DMap(const std::map&lt; int, Transform &gt; &amp;poses, const std::map&lt; int, pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &gt; &amp;scans, float cellSize, bool unknownSpaceFilled, float &amp;xMin, float &amp;yMin, float minMapSize=0.0f, float scanMaxRange=0.0f)</div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>util3d_mapping.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

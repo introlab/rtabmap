@@ -12,9 +12,9 @@
 <area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="288,213,363,213,363,218,288,218"/>
 <area shape="rect" id="Node000009" href="$classrtabmap_1_1IMUThread.html" title="Background thread that replays IMU measurements from a CSV file." alt="" coords="357,252,513,277"/>
 <area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="289,228,323,238,371,249,370,255,322,243,287,234"/>
-<area shape="rect" id="Node000010" href="$classrtabmap_1_1OdometryThread.html" title=" " alt="" coords="338,301,533,327"/>
+<area shape="rect" id="Node000010" href="$classrtabmap_1_1OdometryThread.html" title="Runs an Odometry front&#45;end in its own thread, driven by events." alt="" coords="338,301,533,327"/>
 <area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="259,236,288,264,324,288,352,299,351,304,321,292,285,268,256,240"/>
-<area shape="rect" id="Node000011" href="$classrtabmap_1_1RtabmapThread.html" title=" " alt="" coords="341,351,530,376"/>
+<area shape="rect" id="Node000011" href="$classrtabmap_1_1RtabmapThread.html" title="Runs a Rtabmap instance in its own thread, driven by events." alt="" coords="341,351,530,376"/>
 <area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="250,239,279,290,299,316,324,337,346,348,343,353,321,342,296,320,274,293,245,242"/>
 <area shape="rect" id="Node000012" href="$classrtabmap_1_1SensorCaptureThread.html" title="Thread&#45;based sensor data capture and event posting for RTAB&#45;Map." alt="" coords="323,400,548,425"/>
 <area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="245,241,255,275,271,314,293,354,324,387,343,398,340,402,321,391,289,357,266,317,250,276,240,242"/>

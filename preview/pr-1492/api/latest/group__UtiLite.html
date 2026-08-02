@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -51,6 +56,22 @@ $(function() {
 </script>
 <div id="main-nav"></div>
 </div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('group__UtiLite.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -79,7 +100,8 @@ $(function() {
 <h1><a class="anchor" id="intro"></a>
 Introduction</h1>
 <p><a href="http://utilite.googlecode.com">UtiLite</a> is a simple library to create small cross-platform applications using <b>threads</b>, <b>events-based communication</b> and a powerful <b>logger</b>. The first three sections show the core classes of the library, then last sections show some useful functions added through time.</p>
-<p>UtiLite provides a utility application called <a class="el" href="uResourceGeneratorPage.html">uResourceGenerator</a> to generate resources to include in an executable. For example: </p><div class="fragment"><div class="line">$ ./uresourcegenerator DatabaseSchema.sql</div>
+<p>UtiLite provides a utility application called <a class="el" href="uResourceGeneratorPage.html">uResourceGenerator</a> to generate resources to include in an executable. For example: </p><div class="fragment"><div class="line">$ <a class="code hl_namespace" href="namespacertabmap.html">rtabmap</a>-res_tool DatabaseSchema.sql</div>
+<div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 </div><!-- fragment --><p> This will generate a HEX file "DatabaseSchema_sql.h" which can be included in source files. Data of the file is global and can be accessed by the generated const char * DATABASESCHEMA_SQL. </p><div class="fragment"><div class="line"><span class="preprocessor">#include &quot;DatabaseSchema_sql.h&quot;</span></div>
 <div class="line">...</div>
 <div class="line">std::string hex = DATABASESCHEMA_SQL;</div>
@@ -89,8 +111,7 @@ Introduction</h1>
 <div class="line">std::vector&lt;char&gt; bytes = <a class="code hl_function" href="UConversion_8h.html#aafb2c6939780df0241eb35ab4fc8b91b">uHex2Bytes</a>(hex);</div>
 <div class="ttc" id="aUConversion_8h_html_a6d66453336bccd040539ac9905a9c409"><div class="ttname"><a href="UConversion_8h.html#a6d66453336bccd040539ac9905a9c409">uHex2Str</a></div><div class="ttdeci">std::string UTILITE_EXPORT uHex2Str(const std::string &amp;hex)</div></div>
 <div class="ttc" id="aUConversion_8h_html_aafb2c6939780df0241eb35ab4fc8b91b"><div class="ttname"><a href="UConversion_8h.html#aafb2c6939780df0241eb35ab4fc8b91b">uHex2Bytes</a></div><div class="ttdeci">std::vector&lt; char &gt; UTILITE_EXPORT uHex2Bytes(const std::string &amp;hex)</div></div>
-</div><!-- fragment --><p>A generated FindUtiLite.cmake is also provided for easy linking with the library.</p>
-<h1><a class="anchor" id="logger"></a>
+</div><!-- fragment --><h1><a class="anchor" id="logger"></a>
 ULogger</h1>
 <p>The <a class="el" href="classULogger.html">ULogger</a> can be used anywhere in the application to log messages (formated like a printf). The logger can be set (<a class="el" href="classULogger.html#a0fe73ce7c193ff399bca16b8d4d4cabb">ULogger::setType()</a>) to print in a file or in the console (with colors depending on the severity). Convenient macros are given, working like a printf(), as <a class="el" href="ULogger_8h.html#a9104cb408bf9019db2a2c4476835db4a">UDEBUG()</a>, <a class="el" href="ULogger_8h.html#a5b63c9a1441181723754c0c6084231a8">UINFO()</a>, <a class="el" href="ULogger_8h.html#ab5a739ad9340455e46eaa570f8223d9a">UWARN()</a>, <a class="el" href="ULogger_8h.html#a1249ddbc4c9cc43be53048c08dda129b">UERROR()</a>, <a class="el" href="ULogger_8h.html#aabc10368a622911d56a4dd5a4b461385">UFATAL()</a>, <a class="el" href="ULogger_8h.html#ab3436168e27946669bbd4c76e4c4007e">UASSERT()</a>. Small example: </p><div class="fragment"><div class="line">...</div>
 <div class="line">UINFO(<span class="stringliteral">&quot;A simple message with number %d&quot;</span>, 42);</div>
@@ -190,44 +211,14 @@ Conversion</h1>
 </ul>
 <h1><a class="anchor" id="processinfo"></a>
 UProcessInfo</h1>
-<p>This class can be used to get the process memory usage: <a class="el" href="classUProcessInfo.html#a8a494e68cdea348a4788b8d54fd7de40" title="Get the memory used by the current process.">UProcessInfo::getMemoryUsage()</a>.</p>
-<h1><a class="anchor" id="qtLib"></a>
-Qt Widgets (libutilite_qt.so : OPTIONAL)</h1>
-<p>If Qt is found on the system, the UtiLite Qt library (libutilite_qt.so, libutilite_qt.dll) with useful widgets is built. Use class UPlot to create a plot like MATLAB, and incrementally add new values like a scope. USpectrogram is used to show audio frequency frames.</p><ul>
-<li>UPlot,</li>
-<li>USpectrogram,</li>
-<li>UImageView. <div class="image">
-<img src="UPlot.gif" alt=""/>
-</div>
- <div class="image">
-<img src="USpectrogram.png" alt=""/>
-</div>
-</li>
-</ul>
-<h1><a class="anchor" id="audioLib"></a>
-Audio stuff (libutilite_audio.so : OPTIONAL)</h1>
-<p>If FMOD is found on the system, the UtiLite audio library is built (libutilite_audio.so, libutilite_audio.dll). It is a wrapper of FMOD methods with a convenient interface to extract audio frames.</p><ul>
-<li>UAudioCapture,</li>
-<li>UAudioCaptureFile,</li>
-<li>UAudioCaptureMic,</li>
-<li>UAudioCaptureFFT,</li>
-<li>UAudioPlayer,</li>
-<li>UAudioPlayerTone,</li>
-<li>UWav,</li>
-<li>UMp3Encoder (only if Lame is also found on the system).</li>
-</ul>
-<h1><a class="anchor" id="cvLib"></a>
-OpenCV stuff (libutilite_cv.so : OPTIONAL)</h1>
-<p>If OpenCV is found on the system, the UtiLite cv library is built (libutilite_cv.so, libutilite_cv.dll). It provides image capture classes used to read from a webcam, a video file or a directory of images. If UtiLite is also built with Qt, a convenient function uCvMat2QImage() can be used to convert a cv::Mat image to a QImage.</p><ul>
-<li>UVideoCapture,</li>
-<li>UImageFolderCapture,</li>
-<li>UColorTable,</li>
-<li>uCvMat2QImage() (only if Qt is also found on the system). </li>
-</ul>
+<p>This class can be used to get the process memory usage: <a class="el" href="classUProcessInfo.html#a8a494e68cdea348a4788b8d54fd7de40" title="Get the memory used by the current process.">UProcessInfo::getMemoryUsage()</a>. </p>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

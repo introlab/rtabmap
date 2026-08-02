@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('util3d__filtering_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">util3d_filtering.h</div></div>
 </div><!--header-->
@@ -129,8 +146,8 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="keyword">namespace </span>util3d</div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>{</div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span> </div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>LaserScan RTABMAP_CORE_EXPORT commonFiltering(</div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>    <span class="keyword">const</span> LaserScan &amp; scan,</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a7edd91750858112fd161f0ed30af7f45">   77</a></span><a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a7edd91750858112fd161f0ed30af7f45">commonFiltering</a>(</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp; scan,</div>
 <div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>    <span class="keywordtype">int</span> downsamplingStep,</div>
 <div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>    <span class="keywordtype">float</span> rangeMin = 0.0f,</div>
 <div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>    <span class="keywordtype">float</span> rangeMax = 0.0f,</div>
@@ -138,8 +155,8 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    <span class="keywordtype">int</span> normalK = 0,</div>
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>    <span class="keywordtype">float</span> normalRadius = 0.0f,</div>
 <div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>    <span class="keywordtype">float</span> groundNormalsUp = 0.0f);</div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>RTABMAP_DEPRECATED LaserScan RTABMAP_CORE_EXPORT commonFiltering(</div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>    <span class="keyword">const</span> LaserScan &amp; scan,</div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ad02c78c4d3ca36fa9a27a845540ebe55">   90</a></span>RTABMAP_DEPRECATED <a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a7edd91750858112fd161f0ed30af7f45">commonFiltering</a>(</div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp; scan,</div>
 <div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>    <span class="keywordtype">int</span> downsamplingStep,</div>
 <div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    <span class="keywordtype">float</span> rangeMin,</div>
 <div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    <span class="keywordtype">float</span> rangeMax,</div>
@@ -148,27 +165,27 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    <span class="keywordtype">float</span> normalRadius,</div>
 <div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    <span class="keywordtype">bool</span> forceGroundNormalsUp);</div>
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>LaserScan RTABMAP_CORE_EXPORT rangeFiltering(</div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>    <span class="keyword">const</span> LaserScan &amp; scan,</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">  116</a></span><a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">rangeFiltering</a>(</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp; scan,</div>
 <div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>    <span class="keywordtype">float</span> rangeMin,</div>
 <div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>    <span class="keywordtype">float</span> rangeMax);</div>
 <div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span> </div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#gaf1867021c847f77f561a96e4823a16bd">  143</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#gaf1867021c847f77f561a96e4823a16bd">  143</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">rangeFiltering</a>(</div>
 <div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>    <span class="keywordtype">float</span> rangeMin,</div>
 <div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>    <span class="keywordtype">float</span> rangeMax);</div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#gaeff3b4153a78703ce5be9c64f8243596">  152</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#gaeff3b4153a78703ce5be9c64f8243596">  152</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">rangeFiltering</a>(</div>
 <div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>    <span class="keywordtype">float</span> rangeMin,</div>
 <div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>    <span class="keywordtype">float</span> rangeMax);</div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#ga2a2226e27b4203d04293f84bf8032e3f">  161</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#ga2a2226e27b4203d04293f84bf8032e3f">  161</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">rangeFiltering</a>(</div>
 <div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>    <span class="keywordtype">float</span> rangeMin,</div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>    <span class="keywordtype">float</span> rangeMax);</div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#ga954c38903497ffa168e9d58afc47078e">  170</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT rangeFiltering(</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno"><a class="line" href="group__PointCloudRangeFiltering.html#ga954c38903497ffa168e9d58afc47078e">  170</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">rangeFiltering</a>(</div>
 <div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGBNormal&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>    <span class="keywordtype">float</span> rangeMin,</div>
@@ -264,24 +281,30 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00415" name="l00415"></a><span class="lineno">  415</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00416" name="l00416"></a><span class="lineno">  416</span>    <span class="keywordtype">float</span> voxelSize);</div>
 <div class="line"><a id="l00417" name="l00417"></a><span class="lineno">  417</span> </div>
-<div class="line"><a id="l00430" name="l00430"></a><span class="lineno">  430</span><span class="keyword">inline</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr uniformSampling(</div>
+<div class="foldopen" id="foldopen00430" data-start="{" data-end="}">
+<div class="line"><a id="l00430" name="l00430"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a858e0a5338f348eb1033d6a85c3db926">  430</a></span><span class="keyword">inline</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a858e0a5338f348eb1033d6a85c3db926">uniformSampling</a>(</div>
 <div class="line"><a id="l00431" name="l00431"></a><span class="lineno">  431</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00432" name="l00432"></a><span class="lineno">  432</span>    <span class="keywordtype">float</span> voxelSize)</div>
 <div class="line"><a id="l00433" name="l00433"></a><span class="lineno">  433</span>{</div>
 <div class="line"><a id="l00434" name="l00434"></a><span class="lineno">  434</span>  <span class="keywordflow">return</span> <a class="code hl_function" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">voxelize</a>(cloud, voxelSize);</div>
 <div class="line"><a id="l00435" name="l00435"></a><span class="lineno">  435</span>}</div>
-<div class="line"><a id="l00448" name="l00448"></a><span class="lineno">  448</span><span class="keyword">inline</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt;::Ptr uniformSampling(</div>
+</div>
+<div class="foldopen" id="foldopen00448" data-start="{" data-end="}">
+<div class="line"><a id="l00448" name="l00448"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a8dfd7d808fa94e809b4a1a1fba6b8226">  448</a></span><span class="keyword">inline</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt;::Ptr <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a858e0a5338f348eb1033d6a85c3db926">uniformSampling</a>(</div>
 <div class="line"><a id="l00449" name="l00449"></a><span class="lineno">  449</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00450" name="l00450"></a><span class="lineno">  450</span>    <span class="keywordtype">float</span> voxelSize)</div>
 <div class="line"><a id="l00451" name="l00451"></a><span class="lineno">  451</span>{</div>
 <div class="line"><a id="l00452" name="l00452"></a><span class="lineno">  452</span>  <span class="keywordflow">return</span> <a class="code hl_function" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">voxelize</a>(cloud, voxelSize);</div>
 <div class="line"><a id="l00453" name="l00453"></a><span class="lineno">  453</span>}</div>
-<div class="line"><a id="l00466" name="l00466"></a><span class="lineno">  466</span><span class="keyword">inline</span> pcl::PointCloud&lt;pcl::PointXYZRGBNormal&gt;::Ptr uniformSampling(</div>
+</div>
+<div class="foldopen" id="foldopen00466" data-start="{" data-end="}">
+<div class="line"><a id="l00466" name="l00466"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#af526f72e838659de76ac45447d3860ae">  466</a></span><span class="keyword">inline</span> pcl::PointCloud&lt;pcl::PointXYZRGBNormal&gt;::Ptr <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a858e0a5338f348eb1033d6a85c3db926">uniformSampling</a>(</div>
 <div class="line"><a id="l00467" name="l00467"></a><span class="lineno">  467</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGBNormal&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l00468" name="l00468"></a><span class="lineno">  468</span>    <span class="keywordtype">float</span> voxelSize)</div>
 <div class="line"><a id="l00469" name="l00469"></a><span class="lineno">  469</span>{</div>
 <div class="line"><a id="l00470" name="l00470"></a><span class="lineno">  470</span>  <span class="keywordflow">return</span> <a class="code hl_function" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">voxelize</a>(cloud, voxelSize);</div>
 <div class="line"><a id="l00471" name="l00471"></a><span class="lineno">  471</span>}</div>
+</div>
 <div class="line"><a id="l00472" name="l00472"></a><span class="lineno">  472</span> </div>
 <div class="line"><a id="l00473" name="l00473"></a><span class="lineno">  473</span> </div>
 <div class="line"><a id="l00492" name="l00492"></a><span class="lineno"><a class="line" href="group__RandomSampling.html#ga8dadcd7fb9beedc839b54079c6e84701">  492</a></span>pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__RandomSampling.html#ga8dadcd7fb9beedc839b54079c6e84701">randomSampling</a>(</div>
@@ -713,7 +736,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l01392" name="l01392"></a><span class="lineno"> 1392</span>    <span class="keywordtype">float</span> maxAngle = M_PI/4.0f,</div>
 <div class="line"><a id="l01393" name="l01393"></a><span class="lineno"> 1393</span>    <span class="keywordtype">int</span> minNeighborsInRadius = 1);</div>
 <div class="line"><a id="l01394" name="l01394"></a><span class="lineno"> 1394</span> </div>
-<div class="line"><a id="l01416" name="l01416"></a><span class="lineno"> 1416</span>pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(</div>
+<div class="line"><a id="l01416" name="l01416"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a2d730d57c10b9ef235388c8e6bd49132"> 1416</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a2d730d57c10b9ef235388c8e6bd49132">subtractAdaptiveFiltering</a>(</div>
 <div class="line"><a id="l01417" name="l01417"></a><span class="lineno"> 1417</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l01418" name="l01418"></a><span class="lineno"> 1418</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l01419" name="l01419"></a><span class="lineno"> 1419</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt;::Ptr &amp; subtractCloud,</div>
@@ -722,7 +745,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l01422" name="l01422"></a><span class="lineno"> 1422</span>    <span class="keywordtype">int</span> minNeighborsInRadius = 1,</div>
 <div class="line"><a id="l01423" name="l01423"></a><span class="lineno"> 1423</span>    <span class="keyword">const</span> Eigen::Vector3f &amp; viewpoint = Eigen::Vector3f(0,0,0));</div>
 <div class="line"><a id="l01424" name="l01424"></a><span class="lineno"> 1424</span> </div>
-<div class="line"><a id="l01452" name="l01452"></a><span class="lineno"> 1452</span>pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(</div>
+<div class="line"><a id="l01452" name="l01452"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#aa82dd73da48128b88a6aaf20c625814d"> 1452</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a2d730d57c10b9ef235388c8e6bd49132">subtractAdaptiveFiltering</a>(</div>
 <div class="line"><a id="l01453" name="l01453"></a><span class="lineno"> 1453</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGBNormal&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l01454" name="l01454"></a><span class="lineno"> 1454</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l01455" name="l01455"></a><span class="lineno"> 1455</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGBNormal&gt;::Ptr &amp; subtractCloud,</div>
@@ -901,13 +924,13 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l01809" name="l01809"></a><span class="lineno"> 1809</span>    <span class="keywordtype">bool</span> negative,</div>
 <div class="line"><a id="l01810" name="l01810"></a><span class="lineno"> 1810</span>    <span class="keywordtype">bool</span> keepOrganized);</div>
 <div class="line"><a id="l01811" name="l01811"></a><span class="lineno"> 1811</span> </div>
-<div class="line"><a id="l01832" name="l01832"></a><span class="lineno"> 1832</span>pcl::IndicesPtr RTABMAP_CORE_EXPORT extractPlane(</div>
+<div class="line"><a id="l01832" name="l01832"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#acc584a6135a4567d4566f72a64d0770a"> 1832</a></span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#acc584a6135a4567d4566f72a64d0770a">extractPlane</a>(</div>
 <div class="line"><a id="l01833" name="l01833"></a><span class="lineno"> 1833</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l01834" name="l01834"></a><span class="lineno"> 1834</span>    <span class="keyword">const</span> pcl::IndicesPtr &amp; indices,</div>
 <div class="line"><a id="l01835" name="l01835"></a><span class="lineno"> 1835</span>    <span class="keywordtype">float</span> distanceThreshold,</div>
 <div class="line"><a id="l01836" name="l01836"></a><span class="lineno"> 1836</span>    <span class="keywordtype">int</span> maxIterations = 100,</div>
 <div class="line"><a id="l01837" name="l01837"></a><span class="lineno"> 1837</span>    pcl::ModelCoefficients * coefficientsOut = 0);</div>
-<div class="line"><a id="l01838" name="l01838"></a><span class="lineno"> 1838</span>pcl::IndicesPtr RTABMAP_CORE_EXPORT extractPlane(</div>
+<div class="line"><a id="l01838" name="l01838"></a><span class="lineno"> 1838</span>pcl::IndicesPtr RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#acc584a6135a4567d4566f72a64d0770a">extractPlane</a>(</div>
 <div class="line"><a id="l01839" name="l01839"></a><span class="lineno"> 1839</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::Ptr &amp; cloud,</div>
 <div class="line"><a id="l01840" name="l01840"></a><span class="lineno"> 1840</span>    <span class="keywordtype">float</span> distanceThreshold,</div>
 <div class="line"><a id="l01841" name="l01841"></a><span class="lineno"> 1841</span>    <span class="keywordtype">int</span> maxIterations = 100,</div>
@@ -935,11 +958,20 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="agroup__RemoveNaNNormalsFromPointCloud_html_ga3813dba7a0841937f37d9ecdaf526748"><div class="ttname"><a href="group__RemoveNaNNormalsFromPointCloud.html#ga3813dba7a0841937f37d9ecdaf526748">rtabmap::util3d::removeNaNNormalsFromPointCloud</a></div><div class="ttdeci">pcl::PointCloud&lt; pcl::PointNormal &gt;::Ptr RTABMAP_CORE_EXPORT removeNaNNormalsFromPointCloud(const pcl::PointCloud&lt; pcl::PointNormal &gt;::Ptr &amp;cloud)</div><div class="ttdoc">Removes points with NaN normal values from a point cloud of type pcl::PointNormal.</div></div>
 <div class="ttc" id="agroup__SubtractFiltering_html_ga69fb3ae457d192fd2c12631b0b5adf60"><div class="ttname"><a href="group__SubtractFiltering.html#ga69fb3ae457d192fd2c12631b0b5adf60">rtabmap::util3d::subtractFiltering</a></div><div class="ttdeci">pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractFiltering(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;subtractCloud, const pcl::IndicesPtr &amp;subtractIndices, float radiusSearch, int minNeighborsInRadius=1)</div><div class="ttdoc">Subtract filtering for point cloud of type pcl::PointXYZ, returning filtered indices.</div></div>
 <div class="ttc" id="agroup__VoxelFiltering_html_gad8d88a06174857cf53b1dc2cf2310d89"><div class="ttname"><a href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89">rtabmap::util3d::voxelize</a></div><div class="ttdeci">pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr RTABMAP_CORE_EXPORT voxelize(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, float voxelSize)</div><div class="ttdoc">Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a2d730d57c10b9ef235388c8e6bd49132"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a2d730d57c10b9ef235388c8e6bd49132">rtabmap::util3d::subtractAdaptiveFiltering</a></div><div class="ttdeci">pcl::IndicesPtr RTABMAP_CORE_EXPORT subtractAdaptiveFiltering(const pcl::PointCloud&lt; pcl::PointXYZRGB &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, const pcl::PointCloud&lt; pcl::PointXYZRGB &gt;::Ptr &amp;subtractCloud, const pcl::IndicesPtr &amp;subtractIndices, float radiusSearchRatio=0.01, int minNeighborsInRadius=1, const Eigen::Vector3f &amp;viewpoint=Eigen::Vector3f(0, 0, 0))</div><div class="ttdoc">Performs adaptive radius-based subtraction filtering on a point cloud.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a7edd91750858112fd161f0ed30af7f45"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a7edd91750858112fd161f0ed30af7f45">rtabmap::util3d::commonFiltering</a></div><div class="ttdeci">LaserScan RTABMAP_CORE_EXPORT commonFiltering(const LaserScan &amp;scan, int downsamplingStep, float rangeMin=0.0f, float rangeMax=0.0f, float voxelSize=0.0f, int normalK=0, float normalRadius=0.0f, float groundNormalsUp=0.0f)</div><div class="ttdoc">Applies a common set of filters to a LaserScan, including downsampling, range limits,...</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a858e0a5338f348eb1033d6a85c3db926"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a858e0a5338f348eb1033d6a85c3db926">rtabmap::util3d::uniformSampling</a></div><div class="ttdeci">pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr uniformSampling(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, float voxelSize)</div><div class="ttdoc">DEPRECATED: Use voxelize() instead.</div><div class="ttdef"><b>Definition</b> <a href="util3d__filtering_8h_source.html#l00430">util3d_filtering.h:430</a></div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_acc584a6135a4567d4566f72a64d0770a"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#acc584a6135a4567d4566f72a64d0770a">rtabmap::util3d::extractPlane</a></div><div class="ttdeci">pcl::IndicesPtr RTABMAP_CORE_EXPORT extractPlane(const pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr &amp;cloud, const pcl::IndicesPtr &amp;indices, float distanceThreshold, int maxIterations=100, pcl::ModelCoefficients *coefficientsOut=0)</div><div class="ttdoc">Extracts the indices of the inliers that belong to a plane using RANSAC.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ae33bcf90896fbedc448097bed3bde0ae"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ae33bcf90896fbedc448097bed3bde0ae">rtabmap::util3d::rangeFiltering</a></div><div class="ttdeci">LaserScan RTABMAP_CORE_EXPORT rangeFiltering(const LaserScan &amp;scan, float rangeMin, float rangeMax)</div><div class="ttdoc">Filters a LaserScan data on a minimum and maximum Euclidean range.</div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>util3d_filtering.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

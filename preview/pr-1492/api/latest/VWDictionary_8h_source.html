@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('VWDictionary_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">VWDictionary.h</div></div>
 </div><!--header-->
@@ -174,11 +191,11 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 <div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span> </div>
 <div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno"><a class="line" href="classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734">  119</a></span>  <a class="code hl_function" href="classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734">VWDictionary</a>(<span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno"><a class="line" href="classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734">  119</a></span>  <a class="code hl_function" href="classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734">VWDictionary</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>  </div>
 <div class="line"><a id="l00126" name="l00126"></a><span class="lineno"><a class="line" href="classrtabmap_1_1VWDictionary.html#af7f669f103368e30e31a028efbcac89d">  126</a></span>  <span class="keyword">virtual</span> <a class="code hl_function" href="classrtabmap_1_1VWDictionary.html#af7f669f103368e30e31a028efbcac89d">~VWDictionary</a>();</div>
 <div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span> </div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno"><a class="line" href="classrtabmap_1_1VWDictionary.html#a89893faef6c96e3b19bfeab86094af81">  132</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1VWDictionary.html#a89893faef6c96e3b19bfeab86094af81">parseParameters</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno"><a class="line" href="classrtabmap_1_1VWDictionary.html#a89893faef6c96e3b19bfeab86094af81">  132</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1VWDictionary.html#a89893faef6c96e3b19bfeab86094af81">parseParameters</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span> </div>
 <div class="line"><a id="l00140" name="l00140"></a><span class="lineno"><a class="line" href="classrtabmap_1_1VWDictionary.html#a844ae27eb6d1f0674c8f7777451812c5">  140</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1VWDictionary.html#a844ae27eb6d1f0674c8f7777451812c5">update</a>();</div>
 <div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span> </div>
@@ -364,10 +381,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1VWDictionary_html_af7f669f103368e30e31a028efbcac89d"><div class="ttname"><a href="classrtabmap_1_1VWDictionary.html#af7f669f103368e30e31a028efbcac89d">rtabmap::VWDictionary::~VWDictionary</a></div><div class="ttdeci">virtual ~VWDictionary()</div><div class="ttdoc">Destructor.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1VisualWord_html"><div class="ttname"><a href="classrtabmap_1_1VisualWord.html">rtabmap::VisualWord</a></div><div class="ttdoc">Represents a visual word (feature descriptor) used in the bag-of-words (BoW) model.</div><div class="ttdef"><b>Definition</b> <a href="VisualWord_8h_source.html#l00049">VisualWord.h:50</a></div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
+<div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>VWDictionary.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

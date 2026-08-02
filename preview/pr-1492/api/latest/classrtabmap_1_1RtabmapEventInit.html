@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1RtabmapEventInit.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RtabmapEventInit.html">RtabmapEventInit</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -93,7 +110,7 @@ Inheritance diagram for rtabmap::RtabmapEventInit:</div>
 <area shape="rect" href="classUEvent.html" title=" " alt="" coords="72,5,141,31"/>
 <area shape="poly" title=" " alt="" coords="109,44,109,79,104,79,104,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::RtabmapEventInit:</div>
 <div class="dyncontent">
@@ -103,7 +120,7 @@ Collaboration diagram for rtabmap::RtabmapEventInit:</div>
 <area shape="rect" href="classUEvent.html" title=" " alt="" coords="72,5,141,31"/>
 <area shape="poly" title=" " alt="" coords="109,44,109,79,104,79,104,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
@@ -146,7 +163,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock">
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00135">135</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00146">146</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 </div><h2 class="groupheader">Member Enumeration Documentation</h2>
 <a id="a1edbb84497fa37da38c508a470e9c3e8" name="a1edbb84497fa37da38c508a470e9c3e8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1edbb84497fa37da38c508a470e9c3e8">&#9670;&#160;</a></span>dummy</h2>
@@ -160,7 +177,7 @@ Additional Inherited Members</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00138">138</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00149">149</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -176,7 +193,7 @@ Additional Inherited Members</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00139">139</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00150">150</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -215,7 +232,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00149">149</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00160">160</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -243,7 +260,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00156">156</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00167">167</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -270,7 +287,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00165">165</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00176">176</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -298,7 +315,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00162">162</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00173">173</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -325,7 +342,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00163">163</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00174">174</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -355,7 +372,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Implements <a class="el" href="classUEvent.html#a2c7d278240ad4b7d88a2c534cc5f47b4">UEvent</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00166">166</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00177">177</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -363,9 +380,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RtabmapEventInit.html">RtabmapEventInit</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

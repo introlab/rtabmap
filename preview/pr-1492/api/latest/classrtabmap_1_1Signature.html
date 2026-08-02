@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1Signature.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Signature.html">Signature</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -140,7 +157,7 @@ virtual&#160;</td><td class="memItemRight" valign="bottom"><b>~Signature</b> ()<
 <tr class="memitem:a3bb2e6a8de8e615e51385c4113630f93" id="r_a3bb2e6a8de8e615e51385c4113630f93"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Signature.html#a3bb2e6a8de8e615e51385c4113630f93">addLink</a> (const <a class="el" href="classrtabmap_1_1Link.html">Link</a> &amp;link)</td></tr>
 <tr class="memdesc:a3bb2e6a8de8e615e51385c4113630f93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a single link to this signature.  <br /></td></tr>
 <tr class="separator:a3bb2e6a8de8e615e51385c4113630f93"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad71fa7c0466dbb5c5062953043c3fcb0" id="r_ad71fa7c0466dbb5c5062953043c3fcb0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Signature.html#ad71fa7c0466dbb5c5062953043c3fcb0">hasLink</a> (int idTo, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=Link::kUndef) const</td></tr>
+<tr class="memitem:ad71fa7c0466dbb5c5062953043c3fcb0" id="r_ad71fa7c0466dbb5c5062953043c3fcb0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Signature.html#ad71fa7c0466dbb5c5062953043c3fcb0">hasLink</a> (int idTo, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=<a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a>) const</td></tr>
 <tr class="memdesc:ad71fa7c0466dbb5c5062953043c3fcb0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks if this signature has a link to a target signature.  <br /></td></tr>
 <tr class="separator:ad71fa7c0466dbb5c5062953043c3fcb0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a10d3bce2c3e4ec2de31aa5fa0c4b5934" id="r_a10d3bce2c3e4ec2de31aa5fa0c4b5934"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Signature.html#a10d3bce2c3e4ec2de31aa5fa0c4b5934">changeLinkIds</a> (int idFrom, int idTo)</td></tr>
@@ -799,7 +816,7 @@ Automatically marks links as modified. </dd></dl>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype"><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a>&#160;</td>
-          <td class="paramname"><em>type</em> = <code>Link::kUndef</code>&#160;</td>
+          <td class="paramname"><em>type</em> = <code><a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a></code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -813,7 +830,7 @@ Automatically marks links as modified. </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">idTo</td><td>Target signature ID (0 to check for any link of the specified type) </td></tr>
-    <tr><td class="paramname">type</td><td><a class="el" href="classrtabmap_1_1Link.html" title="Directed constraint between two nodes in RTAB-Map&#39;s pose graph.">Link</a> type to check for (default: Link::kUndef to check any type) </td></tr>
+    <tr><td class="paramname">type</td><td><a class="el" href="classrtabmap_1_1Link.html" title="Directed constraint between two nodes in RTAB-Map&#39;s pose graph.">Link</a> type to check for (default: <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a> to check any type) </td></tr>
   </table>
   </dd>
 </dl>
@@ -1972,9 +1989,13 @@ All arrays must have the same size (number of words). </dd></dl>
 <li>corelib/include/rtabmap/core/<a class="el" href="Signature_8h_source.html">Signature.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Signature.html">Signature</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -51,6 +56,22 @@ $(function() {
 </script>
 <div id="main-nav"></div>
 </div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('functions_func_g.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -96,21 +117,24 @@ $(function() {
 <li>getCode()&#160;:&#160;<a class="el" href="classUEvent.html#a7356350719dfd5ba2d28368d1fdcd143">UEvent</a></li>
 <li>getCompressedData()&#160;:&#160;<a class="el" href="classrtabmap_1_1CompressionThread.html#a6908afb16364f91c7d0744decf6c970d">rtabmap::CompressionThread</a></li>
 <li>getConnectedGraph()&#160;:&#160;<a class="el" href="classrtabmap_1_1Optimizer.html#a4477c9a5b6651729944726465b5eba7f">rtabmap::Optimizer</a></li>
+<li>getCreateIntermediateNodes()&#160;:&#160;<a class="el" href="classrtabmap_1_1RtabmapThread.html#a3dffee6fb4ae760c140144fd47923643">rtabmap::RtabmapThread</a></li>
 <li>getData()&#160;:&#160;<a class="el" href="classrtabmap_1_1IMUEvent.html#a3ebdf9e3cb56c153bf76d4aad5a6b44e">rtabmap::IMUEvent</a></li>
 <li>getDatabaseMemoryUsed()&#160;:&#160;<a class="el" href="classrtabmap_1_1Memory.html#a83d0b30afc46dd66ab3106c9997657c4">rtabmap::Memory</a></li>
 <li>getDatabaseUrl()&#160;:&#160;<a class="el" href="classrtabmap_1_1Memory.html#ab2c3951385254cbb42fb399b407ded24">rtabmap::Memory</a></li>
 <li>getDatabaseVersion()&#160;:&#160;<a class="el" href="classrtabmap_1_1DBDriver.html#a9adb7be1463016917f24a3db5f1e8264">rtabmap::DBDriver</a>, <a class="el" href="classrtabmap_1_1Memory.html#aebd7dd4ef859d70435a5db8e4f398ea5">rtabmap::Memory</a></li>
+<li>getDataBufferSize()&#160;:&#160;<a class="el" href="classrtabmap_1_1RtabmapThread.html#a9aa2f05308498abcba0f01b2df25cac0">rtabmap::RtabmapThread</a></li>
 <li>getDbSavingTime()&#160;:&#160;<a class="el" href="classrtabmap_1_1Memory.html#a40ba03d0f1291fc9e45ce86d05479cd3">rtabmap::Memory</a></li>
 <li>getDefaultParameters()&#160;:&#160;<a class="el" href="classrtabmap_1_1Parameters.html#a3921b82495e0308f8cfcbdb8ef072e21">rtabmap::Parameters</a></li>
 <li>getDescription()&#160;:&#160;<a class="el" href="classrtabmap_1_1Parameters.html#a7aacfe3e18e28a1fb81d0f3f0ffbb414">rtabmap::Parameters</a></li>
 <li>getDescriptor()&#160;:&#160;<a class="el" href="classrtabmap_1_1VisualWord.html#a2d20ce6234dc211335a926759e111bbb">rtabmap::VisualWord</a></li>
 <li>getDetector()&#160;:&#160;<a class="el" href="classrtabmap_1_1RegistrationVis.html#a0a860fb3509b4c5b135b66ebd5cd6e55">rtabmap::RegistrationVis</a></li>
+<li>getDetectorRate()&#160;:&#160;<a class="el" href="classrtabmap_1_1RtabmapThread.html#ac788245b9aa70ebc9e7148fad3b92ed1">rtabmap::RtabmapThread</a></li>
 <li>getDir()&#160;:&#160;<a class="el" href="classUDirectory.html#a0177e6f7286fc63c48fe2629e6ba5b34">UDirectory</a></li>
 <li>getDistance()&#160;:&#160;<a class="el" href="classrtabmap_1_1Transform.html#ade8f4e91576b320690741efa817bd7ad">rtabmap::Transform</a></li>
 <li>getDistanceSquared()&#160;:&#160;<a class="el" href="classrtabmap_1_1Transform.html#ae311741cc884ca8f5343bc2710b96a0b">rtabmap::Transform</a></li>
 <li>getEstimationType()&#160;:&#160;<a class="el" href="classrtabmap_1_1RegistrationVis.html#a951c79dd9be75b896c551e5213c0ee31">rtabmap::RegistrationVis</a></li>
 <li>getEulerAngles()&#160;:&#160;<a class="el" href="classrtabmap_1_1Transform.html#adf2345af30927b656ceca938ec4d0525">rtabmap::Transform</a></li>
-<li>getExtension()&#160;:&#160;<a class="el" href="classUFile.html#ac630657b2f15288df6ecddec029b42c6">UFile</a></li>
+<li>getExtension()&#160;:&#160;<a class="el" href="classUFile.html#aa937b9f20ef2e51091845c5108ded154">UFile</a></li>
 <li>getFeature2D()&#160;:&#160;<a class="el" href="classrtabmap_1_1Memory.html#ab094dfa40b0fe37cb12552a6ba081d6b">rtabmap::Memory</a></li>
 <li>getFileNames()&#160;:&#160;<a class="el" href="classUDirectory.html#aa16e64be3cc238eec871bddaf6dbc289">UDirectory</a></li>
 <li>getForwardWMPoses()&#160;:&#160;<a class="el" href="classrtabmap_1_1Rtabmap.html#a8400ccecd090cb438d16178930fe0872">rtabmap::Rtabmap</a></li>
@@ -199,7 +223,7 @@ $(function() {
 <li>getPaths()&#160;:&#160;<a class="el" href="classrtabmap_1_1Rtabmap.html#ad314edf995555480a2db1aceb7fd2ee7">rtabmap::Rtabmap</a></li>
 <li>getPathStatus()&#160;:&#160;<a class="el" href="classrtabmap_1_1Rtabmap.html#afe4aa4f9a67ba85b60c7dfda86d0131b">rtabmap::Rtabmap</a></li>
 <li>getPathTransformToGoal()&#160;:&#160;<a class="el" href="classrtabmap_1_1Rtabmap.html#aedf5dce175ee325822ab7b7772c8d4f5">rtabmap::Rtabmap</a></li>
-<li>getPose()&#160;:&#160;<a class="el" href="classrtabmap_1_1CameraRealSense2.html#a31fc38dca7aa6dc61c68150d5409204e">rtabmap::CameraRealSense2</a>, <a class="el" href="classrtabmap_1_1CameraSeerSense.html#a831666d29d4eabc1a00e9eb5c8b47c27">rtabmap::CameraSeerSense</a>, <a class="el" href="classrtabmap_1_1CameraStereoZed.html#a1fceb3208a256d1023739a60f5931def">rtabmap::CameraStereoZed</a>, <a class="el" href="classrtabmap_1_1DBReader.html#abd2b32ae00a05810465f63d63c44d5ed">rtabmap::DBReader</a>, <a class="el" href="classrtabmap_1_1Odometry.html#a8b45aea55b336f758943b4a6b2ec28ee">rtabmap::Odometry</a>, <a class="el" href="classrtabmap_1_1Rtabmap.html#ac430e0adb75dc4aec3b7ba77053aabd0">rtabmap::Rtabmap</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html#a2f940d75366088bfae0164e1803ffe9a">rtabmap::SensorCapture</a>, <a class="el" href="classrtabmap_1_1Signature.html#a5166864f276c921963033e8852c13076">rtabmap::Signature</a></li>
+<li>getPose()&#160;:&#160;<a class="el" href="classrtabmap_1_1CameraRealSense2.html#a31fc38dca7aa6dc61c68150d5409204e">rtabmap::CameraRealSense2</a>, <a class="el" href="classrtabmap_1_1CameraSeerSense.html#a831666d29d4eabc1a00e9eb5c8b47c27">rtabmap::CameraSeerSense</a>, <a class="el" href="classrtabmap_1_1CameraStereoZed.html#a1fceb3208a256d1023739a60f5931def">rtabmap::CameraStereoZed</a>, <a class="el" href="classrtabmap_1_1DBReader.html#abd2b32ae00a05810465f63d63c44d5ed">rtabmap::DBReader</a>, <a class="el" href="classrtabmap_1_1Odometry.html#a8b45aea55b336f758943b4a6b2ec28ee">rtabmap::Odometry</a>, <a class="el" href="classrtabmap_1_1OdometryResetEvent.html#ae756dea7a2e79fd918dd4c158085bc68">rtabmap::OdometryResetEvent</a>, <a class="el" href="classrtabmap_1_1Rtabmap.html#ac430e0adb75dc4aec3b7ba77053aabd0">rtabmap::Rtabmap</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html#a2f940d75366088bfae0164e1803ffe9a">rtabmap::SensorCapture</a>, <a class="el" href="classrtabmap_1_1Signature.html#a5166864f276c921963033e8852c13076">rtabmap::Signature</a></li>
 <li>getPoseCovariance()&#160;:&#160;<a class="el" href="classrtabmap_1_1Signature.html#afc81cb91421dcd36e2f5e3dc84a77b44">rtabmap::Signature</a></li>
 <li>getPosterior()&#160;:&#160;<a class="el" href="classrtabmap_1_1BayesFilter.html#aceaa52e62af32f176185305f5359ee79">rtabmap::BayesFilter</a></li>
 <li>getPredictionLC()&#160;:&#160;<a class="el" href="classrtabmap_1_1BayesFilter.html#ab13c8acecfbb4fcfff4e809e2b0a7538">rtabmap::BayesFilter</a></li>
@@ -274,9 +298,12 @@ $(function() {
 <li>groundTruth()&#160;:&#160;<a class="el" href="classrtabmap_1_1SensorData.html#aef9e0c36efdc8915536c3bc082108689">rtabmap::SensorData</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

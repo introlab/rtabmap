@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1SensorCaptureThread.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html">SensorCaptureThread</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -101,7 +118,7 @@ Inheritance diagram for rtabmap::SensorCaptureThread:</div>
 <area shape="rect" href="classUEventsSender.html" title=" " alt="" coords="141,79,262,104"/>
 <area shape="poly" title=" " alt="" coords="184,116,151,154,147,150,180,113"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::SensorCaptureThread:</div>
 <div class="dyncontent">
@@ -115,26 +132,26 @@ Collaboration diagram for rtabmap::SensorCaptureThread:</div>
 <area shape="rect" href="classUEventsSender.html" title=" " alt="" coords="141,79,262,104"/>
 <area shape="poly" title=" " alt="" coords="184,116,151,154,147,150,180,113"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:acae15b44b2fb05da9421dc88ff0be75c" id="r_acae15b44b2fb05da9421dc88ff0be75c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#acae15b44b2fb05da9421dc88ff0be75c">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:acae15b44b2fb05da9421dc88ff0be75c" id="r_acae15b44b2fb05da9421dc88ff0be75c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#acae15b44b2fb05da9421dc88ff0be75c">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:acae15b44b2fb05da9421dc88ff0be75c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for camera-only capture.  <br /></td></tr>
 <tr class="separator:acae15b44b2fb05da9421dc88ff0be75c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a76ad33a55009b7a7f7ec51acccbe0492" id="r_a76ad33a55009b7a7f7ec51acccbe0492"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a76ad33a55009b7a7f7ec51acccbe0492">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html">SensorCapture</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a0f4e3814d203ded5735ebb7abba1451e">odomSensor</a>, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;extrinsics, double poseTimeOffset=0.0, float poseScaleFactor=1.0f, double poseWaitTime=0.1, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a76ad33a55009b7a7f7ec51acccbe0492" id="r_a76ad33a55009b7a7f7ec51acccbe0492"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a76ad33a55009b7a7f7ec51acccbe0492">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html">SensorCapture</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a0f4e3814d203ded5735ebb7abba1451e">odomSensor</a>, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;extrinsics, double poseTimeOffset=0.0, float poseScaleFactor=1.0f, double poseWaitTime=0.1, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a76ad33a55009b7a7f7ec51acccbe0492"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for camera with odometry sensor.  <br /></td></tr>
 <tr class="separator:a76ad33a55009b7a7f7ec51acccbe0492"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a834d1e5c389e7ef8eb23bf1361916ae2" id="r_a834d1e5c389e7ef8eb23bf1361916ae2"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a834d1e5c389e7ef8eb23bf1361916ae2">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a834d1e5c389e7ef8eb23bf1361916ae2" id="r_a834d1e5c389e7ef8eb23bf1361916ae2"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a834d1e5c389e7ef8eb23bf1361916ae2">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a834d1e5c389e7ef8eb23bf1361916ae2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for lidar-only capture.  <br /></td></tr>
 <tr class="separator:a834d1e5c389e7ef8eb23bf1361916ae2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9cf0e883ace51a2a656395327beb74e5" id="r_a9cf0e883ace51a2a656395327beb74e5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a9cf0e883ace51a2a656395327beb74e5">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, <a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a9cf0e883ace51a2a656395327beb74e5" id="r_a9cf0e883ace51a2a656395327beb74e5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a9cf0e883ace51a2a656395327beb74e5">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, <a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a9cf0e883ace51a2a656395327beb74e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for lidar with camera.  <br /></td></tr>
 <tr class="separator:a9cf0e883ace51a2a656395327beb74e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a590aee9497d8a3b6e14b68e1e17f9c6a" id="r_a590aee9497d8a3b6e14b68e1e17f9c6a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a590aee9497d8a3b6e14b68e1e17f9c6a">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html">SensorCapture</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a0f4e3814d203ded5735ebb7abba1451e">odomSensor</a>, double poseTimeOffset=0.0, float poseScaleFactor=1.0f, double poseWaitTime=0.1, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a590aee9497d8a3b6e14b68e1e17f9c6a" id="r_a590aee9497d8a3b6e14b68e1e17f9c6a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a590aee9497d8a3b6e14b68e1e17f9c6a">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html">SensorCapture</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a0f4e3814d203ded5735ebb7abba1451e">odomSensor</a>, double poseTimeOffset=0.0, float poseScaleFactor=1.0f, double poseWaitTime=0.1, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a590aee9497d8a3b6e14b68e1e17f9c6a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for lidar with odometry sensor.  <br /></td></tr>
 <tr class="separator:a590aee9497d8a3b6e14b68e1e17f9c6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a64df180f19d0a2ea9a8d66ea58fc42" id="r_a2a64df180f19d0a2ea9a8d66ea58fc42"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a2a64df180f19d0a2ea9a8d66ea58fc42">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, <a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html">SensorCapture</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a0f4e3814d203ded5735ebb7abba1451e">odomSensor</a>, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;extrinsics, double poseTimeOffset=0.0, float poseScaleFactor=1.0f, double poseWaitTime=0.1, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a2a64df180f19d0a2ea9a8d66ea58fc42" id="r_a2a64df180f19d0a2ea9a8d66ea58fc42"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a2a64df180f19d0a2ea9a8d66ea58fc42">SensorCaptureThread</a> (<a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0">lidar</a>, <a class="el" href="classrtabmap_1_1Camera.html">Camera</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857">camera</a>, <a class="el" href="classrtabmap_1_1SensorCapture.html">SensorCapture</a> *<a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a0f4e3814d203ded5735ebb7abba1451e">odomSensor</a>, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;extrinsics, double poseTimeOffset=0.0, float poseScaleFactor=1.0f, double poseWaitTime=0.1, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a2a64df180f19d0a2ea9a8d66ea58fc42"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for lidar with camera and odometry sensor.  <br /></td></tr>
 <tr class="separator:a2a64df180f19d0a2ea9a8d66ea58fc42"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af8133c1b2332568c4699282f59c141c9" id="r_af8133c1b2332568c4699282f59c141c9"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#af8133c1b2332568c4699282f59c141c9">~SensorCaptureThread</a> ()</td></tr>
@@ -176,14 +193,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a57beeb2c34d4430e37da05ef8e400a9b" id="r_a57beeb2c34d4430e37da05ef8e400a9b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a57beeb2c34d4430e37da05ef8e400a9b">disableBilateralFiltering</a> ()</td></tr>
 <tr class="memdesc:a57beeb2c34d4430e37da05ef8e400a9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Disables bilateral filtering.  <br /></td></tr>
 <tr class="separator:a57beeb2c34d4430e37da05ef8e400a9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a97ef5e49b994fcd2a3c87d6f7ef244ec" id="r_a97ef5e49b994fcd2a3c87d6f7ef244ec"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a97ef5e49b994fcd2a3c87d6f7ef244ec">enableIMUFiltering</a> (int filteringStrategy=1, const ParametersMap &amp;parameters=ParametersMap(), bool baseFrameConversion=false)</td></tr>
+<tr class="memitem:a97ef5e49b994fcd2a3c87d6f7ef244ec" id="r_a97ef5e49b994fcd2a3c87d6f7ef244ec"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a97ef5e49b994fcd2a3c87d6f7ef244ec">enableIMUFiltering</a> (int filteringStrategy=1, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>(), bool baseFrameConversion=false)</td></tr>
 <tr class="memdesc:a97ef5e49b994fcd2a3c87d6f7ef244ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enables <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> data filtering.  <br /></td></tr>
 <tr class="separator:a97ef5e49b994fcd2a3c87d6f7ef244ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a75c2426adc532854f1d7119256b1cf0d" id="r_a75c2426adc532854f1d7119256b1cf0d"><td class="memItemLeft" align="right" valign="top"><a id="a75c2426adc532854f1d7119256b1cf0d" name="a75c2426adc532854f1d7119256b1cf0d"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>disableIMUFiltering</b> ()</td></tr>
 <tr class="memdesc:a75c2426adc532854f1d7119256b1cf0d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Disables <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> data filtering. <br /></td></tr>
 <tr class="separator:a75c2426adc532854f1d7119256b1cf0d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa0a6c975417a655029470aea2ea5d01a" id="r_aa0a6c975417a655029470aea2ea5d01a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa0a6c975417a655029470aea2ea5d01a">enableFeatureDetection</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:aa0a6c975417a655029470aea2ea5d01a" id="r_aa0a6c975417a655029470aea2ea5d01a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html#aa0a6c975417a655029470aea2ea5d01a">enableFeatureDetection</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:aa0a6c975417a655029470aea2ea5d01a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enables automatic feature detection on captured images.  <br /></td></tr>
 <tr class="separator:aa0a6c975417a655029470aea2ea5d01a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeddec5c0c55aab261b31d0a980a7d327" id="r_aeddec5c0c55aab261b31d0a980a7d327"><td class="memItemLeft" align="right" valign="top"><a id="aeddec5c0c55aab261b31d0a980a7d327" name="aeddec5c0c55aab261b31d0a980a7d327"></a>
@@ -368,8 +385,8 @@ The thread must be started with <a class="el" href="classUThread.html#a051e9adcf
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -437,8 +454,8 @@ The thread must be started with <a class="el" href="classUThread.html#a051e9adcf
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -481,8 +498,8 @@ The thread must be started with <a class="el" href="classUThread.html#a051e9adcf
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -526,8 +543,8 @@ The thread must be started with <a class="el" href="classUThread.html#a051e9adcf
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -589,8 +606,8 @@ The thread must be started with <a class="el" href="classUThread.html#a051e9adcf
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -670,8 +687,8 @@ The lidar's local transform should be set as the extrinsics between odometry sen
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1011,7 +1028,7 @@ For stereo images, histogram equalization is applied to both left and right imag
 </div><div class="memdoc">
 
 <p>Sets the target image capture rate (deprecated) </p>
-<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000011">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a416f1596701d6b9dbd8512cd1c617788" title="Sets the target frame rate for capture.">setFrameRate()</a> instead </dd></dl>
+<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000012">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorCaptureThread.html#a416f1596701d6b9dbd8512cd1c617788" title="Sets the target frame rate for capture.">setFrameRate()</a> instead </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="SensorCaptureThread_8h_source.html#l00312">312</a> of file <a class="el" href="SensorCaptureThread_8h_source.html">SensorCaptureThread.h</a>.</p>
 
@@ -1165,8 +1182,8 @@ For stereo images, histogram equalization is applied to both left and right imag
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>, </td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -1210,8 +1227,8 @@ For stereo images, histogram equalization is applied to both left and right imag
         <tr>
           <td class="memname">void rtabmap::SensorCaptureThread::enableFeatureDetection </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -1298,7 +1315,7 @@ For stereo images, histogram equalization is applied to both left and right imag
 </div><div class="memdoc">
 
 <p>Sets lidar scan processing parameters (deprecated) </p>
-<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000012">Deprecated:</a></b></dt><dd>Use the new version with groundNormalsUp parameter instead </dd></dl>
+<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000013">Deprecated:</a></b></dt><dd>Use the new version with groundNormalsUp parameter instead </dd></dl>
 <p>Use the new version with groundNormalsUp parameter:</p><ul>
 <li>groundNormalsUp=0.8 for forceGroundNormalsUp=True</li>
 <li>groundNormalsUp=0.0 for forceGroundNormalsUp=False </li>
@@ -1609,9 +1626,13 @@ For stereo images, histogram equalization is applied to both left and right imag
 <li>corelib/include/rtabmap/core/<a class="el" href="SensorCaptureThread_8h_source.html">SensorCaptureThread.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1SensorCaptureThread.html">SensorCaptureThread</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

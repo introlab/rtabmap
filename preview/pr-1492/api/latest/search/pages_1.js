@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['list_0',['Deprecated List',['../deprecated.html',1,'']]]
+  ['c_20api_0',['RTAB-Map C++ API',['../index.html',1,'']]],
+  ['command_20line_20tools_1',['Command-line tools',['../tools.html',1,'']]]
 ];

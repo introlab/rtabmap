@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1Stereo.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Stereo.html">Stereo</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -98,17 +115,17 @@ Inheritance diagram for rtabmap::Stereo:</div>
 <area shape="rect" href="classrtabmap_1_1StereoOpticalFlow.html" title="Sparse stereo matching using optical flow." alt="" coords="5,79,209,104"/>
 <area shape="poly" title=" " alt="" coords="110,44,110,79,105,79,105,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a1031c68f4e66690da216718382af0ab3" id="r_a1031c68f4e66690da216718382af0ab3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#a1031c68f4e66690da216718382af0ab3">Stereo</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a1031c68f4e66690da216718382af0ab3" id="r_a1031c68f4e66690da216718382af0ab3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#a1031c68f4e66690da216718382af0ab3">Stereo</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a1031c68f4e66690da216718382af0ab3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor.  <br /></td></tr>
 <tr class="separator:a1031c68f4e66690da216718382af0ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aca70a15916baf916d6d66c93dad6b3d5" id="r_aca70a15916baf916d6d66c93dad6b3d5"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#aca70a15916baf916d6d66c93dad6b3d5">~Stereo</a> ()</td></tr>
 <tr class="memdesc:aca70a15916baf916d6d66c93dad6b3d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Virtual destructor.  <br /></td></tr>
 <tr class="separator:aca70a15916baf916d6d66c93dad6b3d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a405d17f179327670251fca395728584b" id="r_a405d17f179327670251fca395728584b"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#a405d17f179327670251fca395728584b">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:a405d17f179327670251fca395728584b" id="r_a405d17f179327670251fca395728584b"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#a405d17f179327670251fca395728584b">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a405d17f179327670251fca395728584b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse parameters from a parameters map.  <br /></td></tr>
 <tr class="separator:a405d17f179327670251fca395728584b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aefb9a38643b353727430c4bb6a551382" id="r_aefb9a38643b353727430c4bb6a551382"><td class="memItemLeft" align="right" valign="top">virtual std::vector&lt; cv::Point2f &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#aefb9a38643b353727430c4bb6a551382">computeCorrespondences</a> (const cv::Mat &amp;leftImage, const cv::Mat &amp;rightImage, const std::vector&lt; cv::Point2f &gt; &amp;leftCorners, std::vector&lt; unsigned char &gt; &amp;status) const</td></tr>
@@ -138,7 +155,7 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a2ce0c01fac282e0a8ffd862608fa2d96" id="r_a2ce0c01fac282e0a8ffd862608fa2d96"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1Stereo.html">Stereo</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#a2ce0c01fac282e0a8ffd862608fa2d96">create</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a2ce0c01fac282e0a8ffd862608fa2d96" id="r_a2ce0c01fac282e0a8ffd862608fa2d96"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1Stereo.html">Stereo</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Stereo.html#a2ce0c01fac282e0a8ffd862608fa2d96">create</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a2ce0c01fac282e0a8ffd862608fa2d96"><td class="mdescLeft">&#160;</td><td class="mdescRight">Factory method to create a <a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> instance.  <br /></td></tr>
 <tr class="separator:a2ce0c01fac282e0a8ffd862608fa2d96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -162,8 +179,8 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::Stereo::Stereo </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -222,8 +239,8 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">static <a class="el" href="classrtabmap_1_1Stereo.html">Stereo</a> * rtabmap::Stereo::create </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -238,7 +255,7 @@ Static Public Member Functions</h2></td></tr>
 <p>Creates a <a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> instance based on the stereo optical flow parameter in the provided parameters map. If optical flow is enabled, creates a <a class="el" href="classrtabmap_1_1StereoOpticalFlow.html" title="Sparse stereo matching using optical flow.">StereoOpticalFlow</a> instance; otherwise, creates a standard <a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> instance.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">parameters</td><td><a class="el" href="classrtabmap_1_1Parameters.html">Parameters</a> map containing configuration values. The Parameters::kStereoOpticalFlow() parameter determines which implementation to create. </td></tr>
+    <tr><td class="paramname">parameters</td><td><a class="el" href="classrtabmap_1_1Parameters.html">Parameters</a> map containing configuration values. The <a class="el" href="classrtabmap_1_1Parameters.html#ad470670e0402cd380b121ace088af0ce" title="Key of parameter Stereo/OpticalFlow : &quot;Use optical flow to find stereo correspondences,...">Parameters::kStereoOpticalFlow()</a> parameter determines which implementation to create. </td></tr>
   </table>
   </dd>
 </dl>
@@ -258,7 +275,7 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">virtual void rtabmap::Stereo::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -272,13 +289,13 @@ Static Public Member Functions</h2></td></tr>
 
 <p>Parse parameters from a parameters map. </p>
 <p>Updates the algorithm's configuration based on the provided parameters map. Supported parameters:</p><ul>
-<li>Parameters::kStereoWinWidth() - Search window width</li>
-<li>Parameters::kStereoWinHeight() - Search window height</li>
-<li>Parameters::kStereoIterations() - Number of iterations</li>
-<li>Parameters::kStereoMaxLevel() - Maximum pyramid level</li>
-<li>Parameters::kStereoMinDisparity() - Minimum disparity value</li>
-<li>Parameters::kStereoMaxDisparity() - Maximum disparity value</li>
-<li>Parameters::kStereoSSD() - Use SSD instead of SAD</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a8e640d7ef0c460cc5a351281a555906d" title="Key of parameter Stereo/WinWidth : &quot;Window width.&quot; Default value: 15 ( int ).">Parameters::kStereoWinWidth()</a> - Search window width</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a99b81c7a85099acdbe4607529284c49d" title="Key of parameter Stereo/WinHeight : &quot;Window height.&quot; Default value: 3 ( int ).">Parameters::kStereoWinHeight()</a> - Search window height</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a9e9c277fa721913a43a674690c8873aa" title="Key of parameter Stereo/Iterations : &quot;Maximum iterations.&quot; Default value: 30 ( int ).">Parameters::kStereoIterations()</a> - Number of iterations</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a1dc98c5dceadcdad9b51755f2e3dd8a0" title="Key of parameter Stereo/MaxLevel : &quot;Maximum pyramid level.&quot; Default value: 5 ( int ).">Parameters::kStereoMaxLevel()</a> - Maximum pyramid level</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a7bdfbe42d80d37e4ea46f85e88c8fb7d" title="Key of parameter Stereo/MinDisparity : &quot;Minimum disparity.&quot; Default value: 0.5 ( float ).">Parameters::kStereoMinDisparity()</a> - Minimum disparity value</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a83e72c20844ef412aaebfb76c64a88d4" title="Key of parameter Stereo/MaxDisparity : &quot;Maximum disparity.&quot; Default value: 128.0 ( float ).">Parameters::kStereoMaxDisparity()</a> - Maximum disparity value</li>
+<li><a class="el" href="classrtabmap_1_1Parameters.html#a43ba1fe4dc96d2206f2d435faada0faa" title="Key of parameter Stereo/SSD : uFormat(&quot;[%s=false] Use Sum of Squared Differences (SSD) window,...">Parameters::kStereoSSD()</a> - Use SSD instead of SAD</li>
 </ul>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -573,9 +590,13 @@ The algorithm searches for correspondences within the disparity range [<a class=
 <li>corelib/include/rtabmap/core/<a class="el" href="Stereo_8h_source.html">Stereo.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Stereo.html">Stereo</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

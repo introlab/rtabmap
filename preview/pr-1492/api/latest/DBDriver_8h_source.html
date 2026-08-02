@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('DBDriver_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">DBDriver.h</div></div>
 </div><!--header-->
@@ -123,7 +140,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="preprocessor">#include &lt;set&gt;</span></div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="preprocessor">#include &lt;opencv2/core/core.hpp&gt;</span></div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="preprocessor">#include &quot;rtabmap/utilite/UMutex.h&quot;</span></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &quot;rtabmap/utilite/UThreadNode.h&quot;</span></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &quot;<a class="code" href="UThreadNode_8h.html">rtabmap/utilite/UThreadNode.h</a>&quot;</span></div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="preprocessor">#include &quot;rtabmap/core/Parameters.h&quot;</span></div>
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="preprocessor">#include &quot;rtabmap/core/SensorData.h&quot;</span></div>
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="preprocessor">#include &lt;rtabmap/core/Statistics.h&gt;</span></div>
@@ -141,12 +158,12 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html">   71</a></span><span class="keyword">class </span>RTABMAP_CORE_EXPORT <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> : <span class="keyword">public</span> <a class="code hl_class" href="classUThread.html">UThreadNode</a></div>
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>{</div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">   79</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">create</a>(<span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">   79</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">create</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span> </div>
 <div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">~DBDriver</a>();</div>
 <div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span> </div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a3c73e045d9bdf8cad1c58efc9d930427">   85</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a3c73e045d9bdf8cad1c58efc9d930427">parseParameters</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a3c73e045d9bdf8cad1c58efc9d930427">   85</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a3c73e045d9bdf8cad1c58efc9d930427">parseParameters</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00090" name="l00090"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a0ecd6182f404d8e6822b66a54f1d248a">   90</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a0ecd6182f404d8e6822b66a54f1d248a">isInMemory</a>()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _url.empty();}</div>
 <div class="line"><a id="l00092" name="l00092"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a79365611bce06aeda0d078641be89cab">   92</a></span>  <span class="keyword">const</span> std::string &amp; <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a79365611bce06aeda0d078641be89cab">getUrl</a>()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _url;}</div>
 <div class="line"><a id="l00094" name="l00094"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a456bc49e8e60e0c754078a4b09e3f1a1">   94</a></span>  <span class="keyword">const</span> std::string &amp; <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a456bc49e8e60e0c754078a4b09e3f1a1">getTargetVersion</a>()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _targetVersion;}</div>
@@ -179,7 +196,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00156" name="l00156"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a3a02d595356e2dd0ed8b8933a6c4e811">  156</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a3a02d595356e2dd0ed8b8933a6c4e811">updateDepthImage</a>(<span class="keywordtype">int</span> nodeId, <span class="keyword">const</span> cv::Mat &amp; image, <span class="keyword">const</span> std::string &amp; format);</div>
 <div class="line"><a id="l00162" name="l00162"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a7d167e53d447d77dd3fe35665f8a661b">  162</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a7d167e53d447d77dd3fe35665f8a661b">updateLaserScan</a>(<span class="keywordtype">int</span> nodeId, <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp; scan);</div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>  <span class="keywordtype">void</span> addInfoAfterRun(<span class="keywordtype">int</span> stMemSize, <span class="keywordtype">int</span> lastSignAdded, <span class="keywordtype">int</span> processMemUsed, <span class="keywordtype">int</span> databaseMemUsed, <span class="keywordtype">int</span> dictionarySize, <span class="keyword">const</span> ParametersMap &amp; parameters) <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>  <span class="keywordtype">void</span> addInfoAfterRun(<span class="keywordtype">int</span> stMemSize, <span class="keywordtype">int</span> lastSignAdded, <span class="keywordtype">int</span> processMemUsed, <span class="keywordtype">int</span> databaseMemUsed, <span class="keywordtype">int</span> dictionarySize, <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00176" name="l00176"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a4dbccd0dabf72da724488692b1713832">  176</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a4dbccd0dabf72da724488692b1713832">addStatistics</a>(<span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Statistics.html">Statistics</a> &amp; statistics, <span class="keywordtype">bool</span> saveWmState) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00182" name="l00182"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a8323a53d20e4ade6b1c7b268c473a170">  182</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a8323a53d20e4ade6b1c7b268c473a170">savePreviewImage</a>(<span class="keyword">const</span> cv::Mat &amp; image) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00184" name="l00184"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#aa1423596308a8baf123ecbc7fdfc1e82">  184</a></span>  cv::Mat <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#aa1423596308a8baf123ecbc7fdfc1e82">loadPreviewImage</a>() <span class="keyword">const</span>;</div>
@@ -226,7 +243,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>  <span class="keywordtype">int</span> getLastDictionarySize() <span class="keyword">const</span>; <span class="comment">// working memory</span></div>
 <div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>  <span class="keywordtype">int</span> getTotalNodesSize() <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>  <span class="keywordtype">int</span> getTotalDictionarySize() <span class="keyword">const</span>;</div>
-<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>  ParametersMap getLastParameters() <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00254" name="l00254"></a><span class="lineno">  254</span>  <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> getLastParameters() <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>  std::map&lt;std::string, float&gt; getStatistics(<span class="keywordtype">int</span> nodeId, <span class="keywordtype">double</span> &amp; stamp, std::vector&lt;int&gt; * wmState=0) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>  std::map&lt;int, std::pair&lt;std::map&lt;std::string, float&gt;, <span class="keywordtype">double</span>&gt; &gt; getAllStatistics() <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>  std::map&lt;int, std::vector&lt;int&gt; &gt; getAllStatisticsWmStates() <span class="keyword">const</span>;</div>
@@ -262,7 +279,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>  <span class="keywordtype">void</span> getNodeIdByLabel(<span class="keyword">const</span> std::string &amp; label, <span class="keywordtype">int</span> &amp; <span class="keywordtype">id</span>) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>  <span class="keywordtype">void</span> getAllLabels(std::map&lt;int, std::string&gt; &amp; labels) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00314" name="l00314"></a><span class="lineno">  314</span><span class="keyword">protected</span>:</div>
-<div class="line"><a id="l00318" name="l00318"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a5f90eb62bb559d42611dbe7ffe11328e">  318</a></span>  <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a5f90eb62bb559d42611dbe7ffe11328e">DBDriver</a>(<span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00318" name="l00318"></a><span class="lineno"><a class="line" href="classrtabmap_1_1DBDriver.html#a5f90eb62bb559d42611dbe7ffe11328e">  318</a></span>  <a class="code hl_function" href="classrtabmap_1_1DBDriver.html#a5f90eb62bb559d42611dbe7ffe11328e">DBDriver</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00319" name="l00319"></a><span class="lineno">  319</span> </div>
 <div class="line"><a id="l00324" name="l00324"></a><span class="lineno">  324</span>  <span class="keyword">virtual</span> <span class="keywordtype">bool</span> connectDatabaseQuery(<span class="keyword">const</span> std::string &amp; url, <span class="keywordtype">bool</span> overwritten = <span class="keyword">false</span>, <span class="keywordtype">bool</span> readOnly = <span class="keyword">false</span>) = 0;</div>
 <div class="line"><a id="l00325" name="l00325"></a><span class="lineno">  325</span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> disconnectDatabaseQuery(<span class="keywordtype">bool</span> save = <span class="keyword">true</span>, <span class="keyword">const</span> std::string &amp; outputUrl = <span class="stringliteral">&quot;&quot;</span>) = 0;</div>
@@ -284,7 +301,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span>  <span class="keyword">virtual</span> <span class="keywordtype">int</span> getLastDictionarySizeQuery() <span class="keyword">const</span> = 0;</div>
 <div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span>  <span class="keyword">virtual</span> <span class="keywordtype">int</span> getTotalNodesSizeQuery() <span class="keyword">const</span> = 0;</div>
 <div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span>  <span class="keyword">virtual</span> <span class="keywordtype">int</span> getTotalDictionarySizeQuery() <span class="keyword">const</span> = 0;</div>
-<div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span>  <span class="keyword">virtual</span> ParametersMap getLastParametersQuery() <span class="keyword">const</span> = 0;</div>
+<div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span>  <span class="keyword">virtual</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> getLastParametersQuery() <span class="keyword">const</span> = 0;</div>
 <div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span>  <span class="keyword">virtual</span> std::map&lt;std::string, float&gt; getStatisticsQuery(<span class="keywordtype">int</span> nodeId, <span class="keywordtype">double</span> &amp; stamp, std::vector&lt;int&gt; * wmState) <span class="keyword">const</span> = 0;</div>
 <div class="line"><a id="l00346" name="l00346"></a><span class="lineno">  346</span>  <span class="keyword">virtual</span> std::map&lt;int, std::pair&lt;std::map&lt;std::string, float&gt;, <span class="keywordtype">double</span>&gt; &gt; getAllStatisticsQuery() <span class="keyword">const</span> = 0;</div>
 <div class="line"><a id="l00347" name="l00347"></a><span class="lineno">  347</span>  <span class="keyword">virtual</span> std::map&lt;int, std::vector&lt;int&gt; &gt; getAllStatisticsWmStatesQuery() <span class="keyword">const</span> = 0;</div>
@@ -398,6 +415,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00458" name="l00458"></a><span class="lineno">  458</span>}</div>
 <div class="line"><a id="l00459" name="l00459"></a><span class="lineno">  459</span> </div>
 <div class="line"><a id="l00460" name="l00460"></a><span class="lineno">  460</span><span class="preprocessor">#endif </span><span class="comment">/* DBDRIVER_H_ */</span><span class="preprocessor"></span></div>
+<div class="ttc" id="aUThreadNode_8h_html"><div class="ttname"><a href="UThreadNode_8h.html">UThreadNode.h</a></div><div class="ttdoc">Backward-compatible alias header for UThread.</div></div>
 <div class="ttc" id="aclassUMutex_html"><div class="ttname"><a href="classUMutex.html">UMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00054">UMutex.h:55</a></div></div>
 <div class="ttc" id="aclassUSemaphore_html"><div class="ttname"><a href="classUSemaphore.html">USemaphore</a></div><div class="ttdef"><b>Definition</b> <a href="USemaphore_8h_source.html#l00055">USemaphore.h:56</a></div></div>
 <div class="ttc" id="aclassUThread_html"><div class="ttname"><a href="classUThread.html">UThread</a></div><div class="ttdef"><b>Definition</b> <a href="UThread_8h_source.html#l00086">UThread.h:87</a></div></div>
@@ -447,10 +465,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1VisualWord_html"><div class="ttname"><a href="classrtabmap_1_1VisualWord.html">rtabmap::VisualWord</a></div><div class="ttdoc">Represents a visual word (feature descriptor) used in the bag-of-words (BoW) model.</div><div class="ttdef"><b>Definition</b> <a href="VisualWord_8h_source.html#l00049">VisualWord.h:50</a></div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 <div class="ttc" id="anamespacertabmap_html_ac175ef40b7a4acb632232d3d96a1199a"><div class="ttname"><a href="namespacertabmap.html#ac175ef40b7a4acb632232d3d96a1199a">rtabmap::EnvSensors</a></div><div class="ttdeci">std::map&lt; EnvSensor::Type, EnvSensor &gt; EnvSensors</div><div class="ttdoc">Map of environmental readings keyed by EnvSensor::Type (at most one per type).</div><div class="ttdef"><b>Definition</b> <a href="EnvSensor_8h_source.html#l00114">EnvSensor.h:114</a></div></div>
+<div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>DBDriver.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

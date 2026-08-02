@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('namespacertabmap.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,7 +93,6 @@ $(function() {
 </div>
 </div>
 
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#namespaces">Namespaces</a> &#124;
@@ -85,8 +106,14 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>
 Namespaces</h2></td></tr>
+<tr class="memitem:namespacertabmap_1_1graph" id="r_namespacertabmap_1_1graph"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1graph.html">graph</a></td></tr>
+<tr class="memdesc:namespacertabmap_1_1graph"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pose-graph I/O, trajectory metrics, link utilities, and path planning. <br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:namespacertabmap_1_1util2d" id="r_namespacertabmap_1_1util2d"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html">util2d</a></td></tr>
 <tr class="memdesc:namespacertabmap_1_1util2d"><td class="mdescLeft">&#160;</td><td class="mdescRight">This namespace contains 2D image processing utilities. <br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacertabmap_1_1util3d" id="r_namespacertabmap_1_1util3d"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html">util3d</a></td></tr>
+<tr class="memdesc:namespacertabmap_1_1util3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">3D utilities: point cloud conversion and filtering, projection, registration, surface reconstruction, mapping and transforms. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
@@ -272,6 +299,7 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryDVO.html">OdometryDVO</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html">OdometryEvent</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">One processed frame with the pose the odometry integrated for it.  <a href="classrtabmap_1_1OdometryEvent.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryF2F.html">OdometryF2F</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -282,6 +310,7 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryFovis.html">OdometryFovis</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryInfo.html">OdometryInfo</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">What one <a class="el" href="classrtabmap_1_1Odometry.html">Odometry</a> iteration produced, beyond the pose.  <a href="classrtabmap_1_1OdometryInfo.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryLIOSAM.html">OdometryLIOSAM</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -302,8 +331,10 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryORBSLAM3.html">OdometryORBSLAM3</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryResetEvent.html">OdometryResetEvent</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Asks <a class="el" href="classrtabmap_1_1OdometryThread.html">OdometryThread</a> to restart the odometry from a given pose.  <a href="classrtabmap_1_1OdometryResetEvent.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryThread.html">OdometryThread</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs an <a class="el" href="classrtabmap_1_1Odometry.html">Odometry</a> front-end in its own thread, driven by events.  <a href="classrtabmap_1_1OdometryThread.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryVINSFusion.html">OdometryVINSFusion</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -366,6 +397,7 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEvent3DMap.html">RtabmapEvent3DMap</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html">RtabmapEventCmd</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Command sent to <a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a>, with its parameters.  <a href="classrtabmap_1_1RtabmapEventCmd.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventInit.html">RtabmapEventInit</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -376,6 +408,7 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapLabelErrorEvent.html">RtabmapLabelErrorEvent</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs a <a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a> instance in its own thread, driven by events.  <a href="classrtabmap_1_1RtabmapThread.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RvlCodec.html">RvlCodec</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -460,8 +493,10 @@ Typedefs</h2></td></tr>
 <tr class="memdesc:a12bbfd3e37121bf9f68a4047c8b4da86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Map of landmark id → <a class="el" href="classrtabmap_1_1Landmark.html">Landmark</a> (typically positive keys).  <br /></td></tr>
 <tr class="separator:a12bbfd3e37121bf9f68a4047c8b4da86"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad08b6f1796a27dd7316c99c385e2cc55" id="r_ad08b6f1796a27dd7316c99c385e2cc55"><td class="memItemLeft" align="right" valign="top">typedef std::map&lt; std::string, std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a></td></tr>
+<tr class="memdesc:ad08b6f1796a27dd7316c99c385e2cc55"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter keys mapped to their values, as used by every configurable class (see <a class="el" href="classrtabmap_1_1Parameters.html">Parameters</a>).  <br /></td></tr>
 <tr class="separator:ad08b6f1796a27dd7316c99c385e2cc55"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4d38c2e87cb7a46dc4299f7bd4d95a01" id="r_a4d38c2e87cb7a46dc4299f7bd4d95a01"><td class="memItemLeft" align="right" valign="top">typedef std::pair&lt; std::string, std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01">ParametersPair</a></td></tr>
+<tr class="memdesc:a4d38c2e87cb7a46dc4299f7bd4d95a01"><td class="mdescLeft">&#160;</td><td class="mdescRight">A single parameter key/value pair, the entry type of <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>.  <br /></td></tr>
 <tr class="separator:a4d38c2e87cb7a46dc4299f7bd4d95a01"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
@@ -631,12 +666,14 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef std::map&lt;std::string, std::string&gt; rtabmap::ParametersMap</td>
+          <td class="memname">typedef std::map&lt;std::string, std::string&gt; <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Parameters_8h_source.html#l00043">43</a> of file <a class="el" href="Parameters_8h_source.html">Parameters.h</a>.</p>
+<p>Parameter keys mapped to their values, as used by every configurable class (see <a class="el" href="classrtabmap_1_1Parameters.html">Parameters</a>). </p>
+
+<p class="definition">Definition at line <a class="el" href="Parameters_8h_source.html#l00044">44</a> of file <a class="el" href="Parameters_8h_source.html">Parameters.h</a>.</p>
 
 </div>
 </div>
@@ -647,12 +684,14 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef std::pair&lt;std::string, std::string&gt; rtabmap::ParametersPair</td>
+          <td class="memname">typedef std::pair&lt;std::string, std::string&gt; <a class="el" href="namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01">rtabmap::ParametersPair</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Parameters_8h_source.html#l00044">44</a> of file <a class="el" href="Parameters_8h_source.html">Parameters.h</a>.</p>
+<p>A single parameter key/value pair, the entry type of <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>. </p>
+
+<p class="definition">Definition at line <a class="el" href="Parameters_8h_source.html#l00046">46</a> of file <a class="el" href="Parameters_8h_source.html">Parameters.h</a>.</p>
 
 </div>
 </div>
@@ -1356,7 +1395,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Backward compatibility typedef. </p>
-<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000009">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorCaptureInfo.html" title="Metadata structure for sensor data capture and processing.">SensorCaptureInfo</a> instead </dd></dl>
+<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000010">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorCaptureInfo.html" title="Metadata structure for sensor data capture and processing.">SensorCaptureInfo</a> instead </dd></dl>
 <p>CameraInfo is deprecated. Use <a class="el" href="classrtabmap_1_1SensorCaptureInfo.html" title="Metadata structure for sensor data capture and processing.">SensorCaptureInfo</a> instead. </p>
 
 <p class="definition">Definition at line <a class="el" href="SensorCaptureInfo_8h_source.html#l00133">133</a> of file <a class="el" href="SensorCaptureInfo_8h_source.html">SensorCaptureInfo.h</a>.</p>
@@ -1376,7 +1415,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Backward compatibility typedef. </p>
-<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000010">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorCaptureThread.html" title="Thread-based sensor data capture and event posting for RTAB-Map.">SensorCaptureThread</a> instead </dd></dl>
+<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000011">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorCaptureThread.html" title="Thread-based sensor data capture and event posting for RTAB-Map.">SensorCaptureThread</a> instead </dd></dl>
 <p>CameraThread is deprecated. Use <a class="el" href="classrtabmap_1_1SensorCaptureThread.html" title="Thread-based sensor data capture and event posting for RTAB-Map.">SensorCaptureThread</a> instead. </p>
 
 <p class="definition">Definition at line <a class="el" href="SensorCaptureThread_8h_source.html#l00565">565</a> of file <a class="el" href="SensorCaptureThread_8h_source.html">SensorCaptureThread.h</a>.</p>
@@ -1396,7 +1435,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Backward compatibility typedef. </p>
-<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000013">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorEvent.html" title="Event class for sensor data communication in RTAB-Map&#39;s event system.">SensorEvent</a> instead </dd></dl>
+<dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000014">Deprecated:</a></b></dt><dd>Use <a class="el" href="classrtabmap_1_1SensorEvent.html" title="Event class for sensor data communication in RTAB-Map&#39;s event system.">SensorEvent</a> instead </dd></dl>
 <p>CameraEvent is deprecated. Use <a class="el" href="classrtabmap_1_1SensorEvent.html" title="Event class for sensor data communication in RTAB-Map&#39;s event system.">SensorEvent</a> instead. </p>
 
 <p class="definition">Definition at line <a class="el" href="SensorEvent_8h_source.html#l00207">207</a> of file <a class="el" href="SensorEvent_8h_source.html">SensorEvent.h</a>.</p>
@@ -1404,9 +1443,13 @@ Variables</h2></td></tr>
 </div>
 </div>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

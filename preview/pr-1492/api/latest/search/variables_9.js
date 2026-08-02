@@ -16,5 +16,6 @@ var searchData=
   ['inliersids_13',['inliersIDs',['../classrtabmap_1_1RegistrationInfo.html#a3672f48c403ae0d9a309aa7b3a0715b2',1,'rtabmap::RegistrationInfo']]],
   ['inliersmeandistance_14',['inliersMeanDistance',['../classrtabmap_1_1RegistrationInfo.html#a9b5a886b0d4a77966820ed5766ff42fc',1,'rtabmap::RegistrationInfo']]],
   ['inlierspercam_15',['inliersPerCam',['../classrtabmap_1_1RegistrationInfo.html#a1537d6d65162a8c84cabcae7fba37c26',1,'rtabmap::RegistrationInfo']]],
-  ['inliersratio_16',['inliersRatio',['../classrtabmap_1_1RegistrationInfo.html#a2ffbcc42740094d7cb5e38bcd03006c8',1,'rtabmap::RegistrationInfo']]]
+  ['inliersratio_16',['inliersRatio',['../classrtabmap_1_1RegistrationInfo.html#a2ffbcc42740094d7cb5e38bcd03006c8',1,'rtabmap::RegistrationInfo']]],
+  ['interval_17',['interval',['../classrtabmap_1_1OdometryInfo.html#a2c12cf07f29ecbafe6eacfd2e987adb6',1,'rtabmap::OdometryInfo']]]
 ];

@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1OdometryEvent.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1OdometryEvent.html">OdometryEvent</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -83,30 +100,39 @@ $(function() {
   <div class="headertitle"><div class="title">rtabmap::OdometryEvent Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>One processed frame with the pose the odometry integrated for it.  
+ <a href="classrtabmap_1_1OdometryEvent.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>&gt;</code></p>
 <div class="dynheader">
 Inheritance diagram for rtabmap::OdometryEvent:</div>
 <div class="dyncontent">
 <div class="center"><img src="classrtabmap_1_1OdometryEvent__inherit__graph.png" border="0" usemap="#artabmap_1_1OdometryEvent_inherit__map" alt="Inheritance graph"/></div>
 <map name="artabmap_1_1OdometryEvent_inherit__map" id="artabmap_1_1OdometryEvent_inherit__map">
-<area shape="rect" title=" " alt="" coords="5,79,192,104"/>
+<area shape="rect" title="One processed frame with the pose the odometry integrated for it." alt="" coords="5,79,192,104"/>
 <area shape="rect" href="classUEvent.html" title=" " alt="" coords="64,5,133,31"/>
 <area shape="poly" title=" " alt="" coords="101,44,101,79,96,79,96,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::OdometryEvent:</div>
 <div class="dyncontent">
 <div class="center"><img src="classrtabmap_1_1OdometryEvent__coll__graph.png" border="0" usemap="#artabmap_1_1OdometryEvent_coll__map" alt="Collaboration graph"/></div>
 <map name="artabmap_1_1OdometryEvent_coll__map" id="artabmap_1_1OdometryEvent_coll__map">
-<area shape="rect" title=" " alt="" coords="5,79,192,104"/>
+<area shape="rect" title="One processed frame with the pose the odometry integrated for it." alt="" coords="5,79,192,104"/>
 <area shape="rect" href="classUEvent.html" title=" " alt="" coords="64,5,133,31"/>
 <area shape="poly" title=" " alt="" coords="101,44,101,79,96,79,96,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a0667339a1f0135ac2b67180b663a028f" id="r_a0667339a1f0135ac2b67180b663a028f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#a0667339a1f0135ac2b67180b663a028f">OdometryEvent</a> (const <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;data, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;pose, const <a class="el" href="classrtabmap_1_1OdometryInfo.html">OdometryInfo</a> &amp;info=<a class="el" href="classrtabmap_1_1OdometryInfo.html">OdometryInfo</a>())</td></tr>
+<tr class="memitem:aaf1fc834b6016a79b28883d20f336020" id="r_aaf1fc834b6016a79b28883d20f336020"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#aaf1fc834b6016a79b28883d20f336020">OdometryEvent</a> ()</td></tr>
+<tr class="memdesc:aaf1fc834b6016a79b28883d20f336020"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates an empty event, with an identity covariance.  <br /></td></tr>
+<tr class="separator:aaf1fc834b6016a79b28883d20f336020"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0667339a1f0135ac2b67180b663a028f" id="r_a0667339a1f0135ac2b67180b663a028f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#a0667339a1f0135ac2b67180b663a028f">OdometryEvent</a> (const <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;<a class="el" href="classrtabmap_1_1OdometryEvent.html#a19edd3196a5723053ba425186b1f3d33">data</a>, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;<a class="el" href="classrtabmap_1_1OdometryEvent.html#ac7aaf59c0f005b6ac1497c870179fd25">pose</a>, const <a class="el" href="classrtabmap_1_1OdometryInfo.html">OdometryInfo</a> &amp;<a class="el" href="classrtabmap_1_1OdometryEvent.html#a9d20ed607b8cc697c8aa5ca725e477a5">info</a>=<a class="el" href="classrtabmap_1_1OdometryInfo.html">OdometryInfo</a>())</td></tr>
+<tr class="memdesc:a0667339a1f0135ac2b67180b663a028f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor.  <br /></td></tr>
 <tr class="separator:a0667339a1f0135ac2b67180b663a028f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a461365124cbdf488d3a05874be8c4bb2" id="r_a461365124cbdf488d3a05874be8c4bb2"><td class="memItemLeft" align="right" valign="top">virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#a461365124cbdf488d3a05874be8c4bb2">getClassName</a> () const</td></tr>
 <tr class="separator:a461365124cbdf488d3a05874be8c4bb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -119,6 +145,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a13be8ff5e398f9fd00d09aac8deddaba" id="r_a13be8ff5e398f9fd00d09aac8deddaba"><td class="memItemLeft" align="right" valign="top">const cv::Mat &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#a13be8ff5e398f9fd00d09aac8deddaba">covariance</a> () const</td></tr>
 <tr class="separator:a13be8ff5e398f9fd00d09aac8deddaba"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adbac8609d65d32f38d1e724007091398" id="r_adbac8609d65d32f38d1e724007091398"><td class="memItemLeft" align="right" valign="top">std::vector&lt; float &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#adbac8609d65d32f38d1e724007091398">velocity</a> () const</td></tr>
+<tr class="memdesc:adbac8609d65d32f38d1e724007091398"><td class="mdescLeft">&#160;</td><td class="mdescRight">Linear and angular velocity, from the motion and the frame interval.  <br /></td></tr>
 <tr class="separator:adbac8609d65d32f38d1e724007091398"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9d20ed607b8cc697c8aa5ca725e477a5" id="r_a9d20ed607b8cc697c8aa5ca725e477a5"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classrtabmap_1_1OdometryInfo.html">OdometryInfo</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OdometryEvent.html#a9d20ed607b8cc697c8aa5ca725e477a5">info</a> () const</td></tr>
 <tr class="separator:a9d20ed607b8cc697c8aa5ca725e477a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -133,8 +160,16 @@ Additional Inherited Members</h2></td></tr>
 <tr class="separator:a662b610c2e9ebaae5e91ed5ea1dcef34 inherit pro_methods_classUEvent"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock">
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00039">39</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<div class="textblock"><p>One processed frame with the pose the odometry integrated for it. </p>
+<p>Posted by <a class="el" href="classrtabmap_1_1OdometryThread.html">OdometryThread</a> for every frame it processes, and consumed by <a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a>, which passes the data and the pose to <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">Rtabmap::process()</a>. A null <a class="el" href="classrtabmap_1_1OdometryEvent.html#ac7aaf59c0f005b6ac1497c870179fd25">pose()</a> means <b>odometry is lost</b> on this frame; <a class="el" href="classrtabmap_1_1RtabmapThread.html" title="Runs a Rtabmap instance in its own thread, driven by events.">RtabmapThread</a> reads that as a reset and starts a new map.</p>
+<p>The covariance is always 6x6 <code>CV_64FC1</code> with positive finite diagonal terms (identity when the front-end did not provide one, i.e. "unknown but valid"). A value &ge; 9999 on the first diagonal term is the convention for a lost estimate.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1OdometryThread.html" title="Runs an Odometry front-end in its own thread, driven by events.">OdometryThread</a> </dd>
+<dd>
+<a class="el" href="classrtabmap_1_1OdometryInfo.html" title="What one Odometry iteration produced, beyond the pose.">OdometryInfo</a> </dd>
+<dd>
+<a class="el" href="classrtabmap_1_1RtabmapThread.html" title="Runs a Rtabmap instance in its own thread, driven by events.">RtabmapThread</a> </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00056">56</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="aaf1fc834b6016a79b28883d20f336020" name="aaf1fc834b6016a79b28883d20f336020"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aaf1fc834b6016a79b28883d20f336020">&#9670;&#160;</a></span>OdometryEvent() <span class="overload">[1/2]</span></h2>
@@ -159,7 +194,9 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00042">42</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p>Creates an empty event, with an identity covariance. </p>
+
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00060">60</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -203,7 +240,18 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00046">46</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p>Constructor. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">data</td><td>The frame that was processed. </td></tr>
+    <tr><td class="paramname">pose</td><td>Integrated odometry pose, null if odometry is lost. </td></tr>
+    <tr><td class="paramname">info</td><td>Everything else the iteration produced.</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>An empty covariance in <code>info</code> is replaced by identity; otherwise it must be 6x6 <code>CV_64FC1</code> with finite, strictly positive diagonal terms. </p>
+
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00073">73</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -230,7 +278,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00066">66</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00093">93</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -261,7 +309,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Implements <a class="el" href="classUEvent.html#a2c7d278240ad4b7d88a2c534cc5f47b4">UEvent</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00067">67</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00094">94</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -287,8 +335,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>The processed frame, modifiable (e.g. to attach user data). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00069">69</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00097">97</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -314,8 +363,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>The processed frame. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00070">70</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00099">99</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -341,8 +391,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>Integrated odometry pose, null if odometry was lost on this frame. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00071">71</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00101">101</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -368,8 +419,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>6x6 covariance of the motion estimate (<code>CV_64FC1</code>). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00072">72</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00103">103</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -396,7 +448,10 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00073">73</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p>Linear and angular velocity, from the motion and the frame interval. </p>
+<dl class="section return"><dt>Returns</dt><dd>(vx, vy, vz, vroll, vpitch, vyaw) in m/s and rad/s, or an empty vector when the interval is unknown. </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00109">109</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -422,8 +477,9 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>Quality indicators, timings and intermediate data of the iteration. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00089">89</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="OdometryEvent_8h_source.html#l00126">126</a> of file <a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a>.</p>
 
 </div>
 </div>
@@ -431,9 +487,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="OdometryEvent_8h_source.html">OdometryEvent.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1OdometryEvent.html">OdometryEvent</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

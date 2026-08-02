@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('util3d__surface_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">util3d_surface.h</div></div>
 </div><!--header-->
@@ -139,7 +156,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="keyword">namespace </span>util3d</div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>{</div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT createPolygonIndexes(</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a9ebe11bdf534e3bdbcb2802d5dd70e62">   64</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a9ebe11bdf534e3bdbcb2802d5dd70e62">createPolygonIndexes</a>(</div>
 <div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    <span class="keyword">const</span> std::vector&lt;pcl::Vertices&gt; &amp; polygons,</div>
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>    <span class="keywordtype">int</span> cloudSize,</div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    std::vector&lt;std::set&lt;int&gt; &gt; &amp; neighborPolygons,</div>
@@ -226,7 +243,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>    <span class="keywordtype">float</span> maxAngle = 0.0f, <span class="comment">// maximum angle between camera and face (0=disabled)</span></div>
 <div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>    <span class="keywordtype">int</span> minClusterSize = 50, <span class="comment">// minimum size of polygons clusters textured</span></div>
 <div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>    <span class="keyword">const</span> std::vector&lt;float&gt; &amp; roiRatios = std::vector&lt;float&gt;(), <span class="comment">// [left, right, top, bottom] region of interest (in ratios) of the image projected.</span></div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>    <span class="keyword">const</span> ProgressState * state = 0,</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1ProgressState.html">ProgressState</a> * state = 0,</div>
 <div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>    std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt; * vertexToPixels = 0, <span class="comment">// For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don&#39;t correspond to pose ids, they are indexes from 0 to total camera models and texture&#39;s materials.</span></div>
 <div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>    <span class="keywordtype">bool</span> distanceToCamPolicy = <span class="keyword">false</span>);</div>
 <div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT createTextureMesh(</div>
@@ -239,11 +256,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>    <span class="keywordtype">float</span> maxAngle = 0.0f, <span class="comment">// maximum angle between camera and face (0=disabled)</span></div>
 <div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    <span class="keywordtype">int</span> minClusterSize = 50, <span class="comment">// minimum size of polygons clusters textured</span></div>
 <div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>    <span class="keyword">const</span> std::vector&lt;float&gt; &amp; roiRatios = std::vector&lt;float&gt;(), <span class="comment">// [left, right, top, bottom] region of interest (in ratios) of the image projected.</span></div>
-<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>    <span class="keyword">const</span> ProgressState * state = 0,</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1ProgressState.html">ProgressState</a> * state = 0,</div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>    std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt; * vertexToPixels = 0, <span class="comment">// For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don&#39;t correspond to pose ids, they are indexes from 0 to total camera models and texture&#39;s materials.</span></div>
 <div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>    <span class="keywordtype">bool</span> distanceToCamPolicy = <span class="keyword">false</span>);</div>
 <div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span> </div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT cleanTextureMesh(</div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a07466d3f99ac7f763ba476f65c99ebb0">  171</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a07466d3f99ac7f763ba476f65c99ebb0">cleanTextureMesh</a>(</div>
 <div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>    pcl::TextureMesh &amp; textureMesh,</div>
 <div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>    <span class="keywordtype">int</span> minClusterSize);</div>
 <div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span> </div>
@@ -271,18 +288,18 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>    <span class="keyword">const</span> std::vector&lt;std::vector&lt;Eigen::Vector2f&gt; &gt; &amp; texCoords,</div>
 <div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>#endif</div>
 <div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>    cv::Mat &amp; textures,</div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>    <span class="keywordtype">bool</span> mergeTextures = <span class="keyword">false</span>);</div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>    <span class="keywordtype">bool</span> <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238">mergeTextures</a> = <span class="keyword">false</span>);</div>
 <div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span> </div>
 <div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>pcl::PolygonMesh::Ptr RTABMAP_CORE_EXPORT assemblePolygonMesh(</div>
 <div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>    <span class="keyword">const</span> cv::Mat &amp; cloudMat,</div>
 <div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>    <span class="keyword">const</span> std::vector&lt;std::vector&lt;RTABMAP_PCL_INDEX&gt; &gt; &amp; polygons);</div>
 <div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span> </div>
-<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>cv::Mat RTABMAP_CORE_EXPORT mergeTextures(</div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238">  209</a></span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238">mergeTextures</a>(</div>
 <div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>    pcl::TextureMesh &amp; mesh,</div>
 <div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>    <span class="keyword">const</span> std::map&lt;int, cv::Mat&gt; &amp; images, <span class="comment">// raw or compressed, can be empty if memory or dbDriver should be used</span></div>
 <div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>    <span class="keyword">const</span> std::map&lt;int, CameraModel&gt; &amp; calibrations, <span class="comment">// Should match images</span></div>
-<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>    <span class="keyword">const</span> Memory * memory = 0,             <span class="comment">// Should be set if images are not set</span></div>
-<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span>    <span class="keyword">const</span> DBDriver * dbDriver = 0,         <span class="comment">// Should be set if images and memory are not set</span></div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Memory.html">Memory</a> * memory = 0,             <span class="comment">// Should be set if images are not set</span></div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * dbDriver = 0,         <span class="comment">// Should be set if images and memory are not set</span></div>
 <div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span>    <span class="keywordtype">int</span> textureSize = 4096,</div>
 <div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span>    <span class="keywordtype">int</span> textureCount = 1,</div>
 <div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span>    <span class="keyword">const</span> std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt; &amp; vertexToPixels = std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt;(), <span class="comment">// needed for parameters below</span></div>
@@ -294,18 +311,18 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>    <span class="keywordtype">int</span> brightnessContrastRatioLow = 0,  <span class="comment">//0=disabled, values between 0 and 100</span></div>
 <div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>    <span class="keywordtype">int</span> brightnessContrastRatioHigh = 0, <span class="comment">//0=disabled, values between 0 and 100</span></div>
 <div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>    <span class="keywordtype">bool</span> exposureFusion = <span class="keyword">false</span>,         <span class="comment">//Exposure fusion can be used only with OpenCV3</span></div>
-<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>    <span class="keyword">const</span> ProgressState * state = 0,</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1ProgressState.html">ProgressState</a> * state = 0,</div>
 <div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>    <span class="keywordtype">unsigned</span> <span class="keywordtype">char</span> blankValue = 255,      <span class="comment">//Gray value for blank polygons (without texture)</span></div>
 <div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>    <span class="keywordtype">bool</span> clearVertexColorUnderTexture = <span class="keyword">true</span>,</div>
 <div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>    std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, cv::Vec4d&gt; &gt; * gains = 0, <span class="comment">// &lt;Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B&gt;</span></div>
 <div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>    std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, cv::Mat&gt; &gt; * blendingGains = 0, <span class="comment">// &lt;Camera ID, Camera Sub Index (multi-cameras), gains&gt;</span></div>
 <div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>    std::pair&lt;float, float&gt; * contrastValues = 0); <span class="comment">// Alpha/beta contrast values</span></div>
-<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>cv::Mat RTABMAP_CORE_EXPORT mergeTextures(</div>
+<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>cv::Mat RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238">mergeTextures</a>(</div>
 <div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>    pcl::TextureMesh &amp; mesh,</div>
 <div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>    <span class="keyword">const</span> std::map&lt;int, cv::Mat&gt; &amp; images, <span class="comment">// raw or compressed, can be empty if memory or dbDriver should be used</span></div>
 <div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, std::vector&lt;CameraModel&gt; &gt; &amp; calibrations, <span class="comment">// Should match images</span></div>
-<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>    <span class="keyword">const</span> Memory * memory = 0,             <span class="comment">// Should be set if images are not set</span></div>
-<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    <span class="keyword">const</span> DBDriver * dbDriver = 0,         <span class="comment">// Should be set if images and memory are not set</span></div>
+<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Memory.html">Memory</a> * memory = 0,             <span class="comment">// Should be set if images are not set</span></div>
+<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * dbDriver = 0,         <span class="comment">// Should be set if images and memory are not set</span></div>
 <div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>    <span class="keywordtype">int</span> textureSize = 4096,</div>
 <div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span>    <span class="keywordtype">int</span> textureCount = 1,</div>
 <div class="line"><a id="l00240" name="l00240"></a><span class="lineno">  240</span>    <span class="keyword">const</span> std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt; &amp; vertexToPixels = std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt;(), <span class="comment">// needed for parameters below</span></div>
@@ -317,7 +334,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00246" name="l00246"></a><span class="lineno">  246</span>    <span class="keywordtype">int</span> brightnessContrastRatioLow = 0,  <span class="comment">//0=disabled, values between 0 and 100</span></div>
 <div class="line"><a id="l00247" name="l00247"></a><span class="lineno">  247</span>    <span class="keywordtype">int</span> brightnessContrastRatioHigh = 0, <span class="comment">//0=disabled, values between 0 and 100</span></div>
 <div class="line"><a id="l00248" name="l00248"></a><span class="lineno">  248</span>    <span class="keywordtype">bool</span> exposureFusion = <span class="keyword">false</span>,         <span class="comment">//Exposure fusion can be used only with OpenCV3</span></div>
-<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>    <span class="keyword">const</span> ProgressState * state = 0,</div>
+<div class="line"><a id="l00249" name="l00249"></a><span class="lineno">  249</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1ProgressState.html">ProgressState</a> * state = 0,</div>
 <div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span>    <span class="keywordtype">unsigned</span> <span class="keywordtype">char</span> blankValue = 255,      <span class="comment">//Gray value for blank polygons (without texture)</span></div>
 <div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    <span class="keywordtype">bool</span> clearVertexColorUnderTexture = <span class="keyword">true</span>,</div>
 <div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, cv::Vec4d&gt; &gt; * gains = 0, <span class="comment">// &lt;Camera ID, Camera Sub Index (multi-cameras), gains Gray-R-G-B&gt;</span></div>
@@ -335,8 +352,8 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>    <span class="keyword">const</span> std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt; &amp; vertexToPixels, <span class="comment">// required output of util3d::createTextureMesh()</span></div>
 <div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    <span class="keyword">const</span> std::map&lt;int, cv::Mat&gt; &amp; images,        <span class="comment">// raw or compressed, can be empty if memory or dbDriver should be used</span></div>
 <div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, std::vector&lt;CameraModel&gt; &gt; &amp; cameraModels, <span class="comment">// Should match images</span></div>
-<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>    <span class="keyword">const</span> Memory * memory = 0,                    <span class="comment">// Should be set if images are not set</span></div>
-<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>    <span class="keyword">const</span> DBDriver * dbDriver = 0,                <span class="comment">// Should be set if images and memory are not set</span></div>
+<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Memory.html">Memory</a> * memory = 0,                    <span class="comment">// Should be set if images are not set</span></div>
+<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * dbDriver = 0,                <span class="comment">// Should be set if images and memory are not set</span></div>
 <div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>    <span class="keywordtype">int</span> textureSize = 8192,</div>
 <div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span>    <span class="keyword">const</span> std::string &amp; textureFormat = <span class="stringliteral">&quot;jpg&quot;</span>,    <span class="comment">// png, jpg</span></div>
 <div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, cv::Vec4d&gt; &gt; &amp; gains = std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, cv::Vec4d&gt; &gt;(),       <span class="comment">// optional output of util3d::mergeTextures()</span></div>
@@ -344,7 +361,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span>    <span class="keyword">const</span> std::pair&lt;float, float&gt; &amp; contrastValues = std::pair&lt;float, float&gt;(0,0),                             <span class="comment">// optional output of util3d::mergeTextures()</span></div>
 <div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>    <span class="keywordtype">bool</span> gainRGB = <span class="keyword">true</span>);</div>
 <div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span> </div>
-<div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span><span class="keywordtype">bool</span> RTABMAP_CORE_EXPORT multiBandTexturing(</div>
+<div class="line"><a id="l00302" name="l00302"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a695eb29e9b2679634edb6b8c36a11942">  302</a></span><span class="keywordtype">bool</span> RTABMAP_CORE_EXPORT multiBandTexturing(</div>
 <div class="line"><a id="l00303" name="l00303"></a><span class="lineno">  303</span>    <span class="keyword">const</span> std::string &amp; outputOBJPath,</div>
 <div class="line"><a id="l00304" name="l00304"></a><span class="lineno">  304</span>    <span class="keyword">const</span> pcl::PCLPointCloud2 &amp; cloud,</div>
 <div class="line"><a id="l00305" name="l00305"></a><span class="lineno">  305</span>    <span class="keyword">const</span> std::vector&lt;pcl::Vertices&gt; &amp; polygons,</div>
@@ -352,8 +369,8 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00307" name="l00307"></a><span class="lineno">  307</span>    <span class="keyword">const</span> std::vector&lt;std::map&lt;int, pcl::PointXY&gt; &gt; &amp; vertexToPixels,</div>
 <div class="line"><a id="l00308" name="l00308"></a><span class="lineno">  308</span>    <span class="keyword">const</span> std::map&lt;int, cv::Mat&gt; &amp; images,</div>
 <div class="line"><a id="l00309" name="l00309"></a><span class="lineno">  309</span>    <span class="keyword">const</span> std::map&lt;<span class="keywordtype">int</span>, std::vector&lt;CameraModel&gt; &gt; &amp; cameraModels,</div>
-<div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>    <span class="keyword">const</span> Memory * memory = 0,</div>
-<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>    <span class="keyword">const</span> DBDriver * dbDriver = 0,</div>
+<div class="line"><a id="l00310" name="l00310"></a><span class="lineno">  310</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Memory.html">Memory</a> * memory = 0,</div>
+<div class="line"><a id="l00311" name="l00311"></a><span class="lineno">  311</span>    <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * dbDriver = 0,</div>
 <div class="line"><a id="l00312" name="l00312"></a><span class="lineno">  312</span>    <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> textureSize = 8192,</div>
 <div class="line"><a id="l00313" name="l00313"></a><span class="lineno">  313</span>    <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> textureDownscale = 2,</div>
 <div class="line"><a id="l00314" name="l00314"></a><span class="lineno">  314</span>    <span class="keyword">const</span> std::string &amp; nbContrib = <span class="stringliteral">&quot;1 5 10 0&quot;</span>,</div>
@@ -596,7 +613,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span>    <span class="keywordtype">int</span> minClusterSize = 50,           <span class="comment">// Remove small polygon clusters after the mesh has been cleaned (0=disabled)</span></div>
 <div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>    <a class="code hl_class" href="classrtabmap_1_1ProgressState.html">ProgressState</a> * progressState = 0);</div>
 <div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span> </div>
-<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span><span class="keywordtype">bool</span> RTABMAP_CORE_EXPORT intersectRayTriangle(</div>
+<div class="line"><a id="l00629" name="l00629"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ab138227ab6c0511088e846b2276e7afc">  629</a></span><span class="keywordtype">bool</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ab138227ab6c0511088e846b2276e7afc">intersectRayTriangle</a>(</div>
 <div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span>    <span class="keyword">const</span> Eigen::Vector3f &amp; p,</div>
 <div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span>    <span class="keyword">const</span> Eigen::Vector3f &amp; dir,</div>
 <div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span>    <span class="keyword">const</span> Eigen::Vector3f &amp; v0,</div>
@@ -632,16 +649,26 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span><span class="preprocessor">#include &quot;rtabmap/core/impl/util3d_surface.hpp&quot;</span></div>
 <div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span> </div>
 <div class="line"><a id="l00664" name="l00664"></a><span class="lineno">  664</span><span class="preprocessor">#endif </span><span class="comment">/* UTIL3D_SURFACE_H_ */</span><span class="preprocessor"></span></div>
+<div class="ttc" id="aclassrtabmap_1_1DBDriver_html"><div class="ttname"><a href="classrtabmap_1_1DBDriver.html">rtabmap::DBDriver</a></div><div class="ttdoc">Abstract database driver for RTAB-Map maps (signatures, links, words, statistics).</div><div class="ttdef"><b>Definition</b> <a href="DBDriver_8h_source.html#l00071">DBDriver.h:72</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1LaserScan_html"><div class="ttname"><a href="classrtabmap_1_1LaserScan.html">rtabmap::LaserScan</a></div><div class="ttdoc">Represents 2D or 3D laser scan data with support for multiple point data formats.</div><div class="ttdef"><b>Definition</b> <a href="LaserScan_8h_source.html#l00045">LaserScan.h:46</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1Memory_html"><div class="ttname"><a href="classrtabmap_1_1Memory.html">rtabmap::Memory</a></div><div class="ttdoc">Three-tiered memory management (STM, WM, LTM) for RTAB-Map.</div><div class="ttdef"><b>Definition</b> <a href="Memory_8h_source.html#l00101">Memory.h:102</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1ProgressState_html"><div class="ttname"><a href="classrtabmap_1_1ProgressState.html">rtabmap::ProgressState</a></div><div class="ttdef"><b>Definition</b> <a href="ProgressState_8h_source.html#l00035">ProgressState.h:36</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Transform_html"><div class="ttname"><a href="classrtabmap_1_1Transform.html">rtabmap::Transform</a></div><div class="ttdoc">Represents a 3D rigid body transformation (rotation + translation).</div><div class="ttdef"><b>Definition</b> <a href="Transform_8h_source.html#l00052">Transform.h:53</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Transform_html_a8ea4368f2018d751d2733038081d56a2"><div class="ttname"><a href="classrtabmap_1_1Transform.html#a8ea4368f2018d751d2733038081d56a2">rtabmap::Transform::getIdentity</a></div><div class="ttdeci">static Transform getIdentity()</div><div class="ttdoc">Returns identity transform.</div></div>
 <div class="ttc" id="agroup__ComputeNormalsComplexity_html_ga3724a082502fbef6222c11843ca56b58"><div class="ttname"><a href="group__ComputeNormalsComplexity.html#ga3724a082502fbef6222c11843ca56b58">rtabmap::util3d::computeNormalsComplexity</a></div><div class="ttdeci">float RTABMAP_CORE_EXPORT computeNormalsComplexity(const LaserScan &amp;scan, const Transform &amp;t=Transform::getIdentity(), cv::Mat *pcaEigenVectors=0, cv::Mat *pcaEigenValues=0, bool centered=true)</div><div class="ttdoc">Computes the complexity of surface normals in a point cloud of type LaserScan.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a07466d3f99ac7f763ba476f65c99ebb0"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a07466d3f99ac7f763ba476f65c99ebb0">rtabmap::util3d::cleanTextureMesh</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT cleanTextureMesh(pcl::TextureMesh &amp;textureMesh, int minClusterSize)</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a9ebe11bdf534e3bdbcb2802d5dd70e62"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a9ebe11bdf534e3bdbcb2802d5dd70e62">rtabmap::util3d::createPolygonIndexes</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT createPolygonIndexes(const std::vector&lt; pcl::Vertices &gt; &amp;polygons, int cloudSize, std::vector&lt; std::set&lt; int &gt; &gt; &amp;neighborPolygons, std::vector&lt; std::set&lt; int &gt; &gt; &amp;vertexPolygons)</div><div class="ttdoc">Given a set of polygons, create two indexes: polygons to neighbor polygons and vertices to polygons.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ab138227ab6c0511088e846b2276e7afc"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ab138227ab6c0511088e846b2276e7afc">rtabmap::util3d::intersectRayTriangle</a></div><div class="ttdeci">bool RTABMAP_CORE_EXPORT intersectRayTriangle(const Eigen::Vector3f &amp;p, const Eigen::Vector3f &amp;dir, const Eigen::Vector3f &amp;v0, const Eigen::Vector3f &amp;v1, const Eigen::Vector3f &amp;v2, float &amp;distance, Eigen::Vector3f &amp;normal)</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_aeec8dd0024231c36c089340895609238"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238">rtabmap::util3d::mergeTextures</a></div><div class="ttdeci">cv::Mat RTABMAP_CORE_EXPORT mergeTextures(pcl::TextureMesh &amp;mesh, const std::map&lt; int, cv::Mat &gt; &amp;images, const std::map&lt; int, CameraModel &gt; &amp;calibrations, const Memory *memory=0, const DBDriver *dbDriver=0, int textureSize=4096, int textureCount=1, const std::vector&lt; std::map&lt; int, pcl::PointXY &gt; &gt; &amp;vertexToPixels=std::vector&lt; std::map&lt; int, pcl::PointXY &gt; &gt;(), bool gainCompensation=true, float gainBeta=10.0f, bool gainRGB=true, bool blending=true, int blendingDecimation=0, int brightnessContrastRatioLow=0, int brightnessContrastRatioHigh=0, bool exposureFusion=false, const ProgressState *state=0, unsigned char blankValue=255, bool clearVertexColorUnderTexture=true, std::map&lt; int, std::map&lt; int, cv::Vec4d &gt; &gt; *gains=0, std::map&lt; int, std::map&lt; int, cv::Mat &gt; &gt; *blendingGains=0, std::pair&lt; float, float &gt; *contrastValues=0)</div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>util3d_surface.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

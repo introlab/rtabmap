@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1OctoMap.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1OctoMap.html">OctoMap</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -94,7 +111,7 @@ Inheritance diagram for rtabmap::OctoMap:</div>
 <area shape="rect" href="classrtabmap_1_1GlobalMap.html" title="Abstract base for assembling per&#45;node LocalGrid data into a global map." alt="" coords="5,5,160,31"/>
 <area shape="poly" title=" " alt="" coords="85,44,85,79,80,79,80,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::OctoMap:</div>
 <div class="dyncontent">
@@ -104,12 +121,12 @@ Collaboration diagram for rtabmap::OctoMap:</div>
 <area shape="rect" href="classrtabmap_1_1GlobalMap.html" title="Abstract base for assembling per&#45;node LocalGrid data into a global map." alt="" coords="5,5,160,31"/>
 <area shape="poly" title=" " alt="" coords="85,44,85,79,80,79,80,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a1c56201636ca62765078dc7811ceea6c" id="r_a1c56201636ca62765078dc7811ceea6c"><td class="memItemLeft" align="right" valign="top"><a id="a1c56201636ca62765078dc7811ceea6c" name="a1c56201636ca62765078dc7811ceea6c"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>OctoMap</b> (const <a class="el" href="classrtabmap_1_1LocalGridCache.html">LocalGridCache</a> *<a class="el" href="classrtabmap_1_1GlobalMap.html#a632f06ccce72bce66a9fd38d37f23b80">cache</a>, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>OctoMap</b> (const <a class="el" href="classrtabmap_1_1LocalGridCache.html">LocalGridCache</a> *<a class="el" href="classrtabmap_1_1GlobalMap.html#a632f06ccce72bce66a9fd38d37f23b80">cache</a>, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a1c56201636ca62765078dc7811ceea6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aac3446ba54729e6564299604da8f885b" id="r_aac3446ba54729e6564299604da8f885b"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classrtabmap_1_1RtabmapColorOcTree.html">RtabmapColorOcTree</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OctoMap.html#aac3446ba54729e6564299604da8f885b">octree</a> () const</td></tr>
 <tr class="separator:aac3446ba54729e6564299604da8f885b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -187,7 +204,7 @@ Protected Member Functions</h2></td></tr>
 <tr class="memdesc:ac74a308322f3162307bfe73bfd60c2dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Subclass hook: merge <code>newPoses</code> into the global map; call <a class="el" href="classrtabmap_1_1GlobalMap.html#a0b95370df2582da48ff0e1e405cccda2">addAssembledNode()</a>.  <br /></td></tr>
 <tr class="separator:ac74a308322f3162307bfe73bfd60c2dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classrtabmap_1_1GlobalMap"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classrtabmap_1_1GlobalMap')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classrtabmap_1_1GlobalMap.html">rtabmap::GlobalMap</a></td></tr>
-<tr class="memitem:a03581caaa2a313b131726af4e4a6b714 inherit pro_methods_classrtabmap_1_1GlobalMap" id="r_a03581caaa2a313b131726af4e4a6b714"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1GlobalMap.html#a03581caaa2a313b131726af4e4a6b714">GlobalMap</a> (const <a class="el" href="classrtabmap_1_1LocalGridCache.html">LocalGridCache</a> *<a class="el" href="classrtabmap_1_1GlobalMap.html#a632f06ccce72bce66a9fd38d37f23b80">cache</a>, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a03581caaa2a313b131726af4e4a6b714 inherit pro_methods_classrtabmap_1_1GlobalMap" id="r_a03581caaa2a313b131726af4e4a6b714"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1GlobalMap.html#a03581caaa2a313b131726af4e4a6b714">GlobalMap</a> (const <a class="el" href="classrtabmap_1_1LocalGridCache.html">LocalGridCache</a> *<a class="el" href="classrtabmap_1_1GlobalMap.html#a632f06ccce72bce66a9fd38d37f23b80">cache</a>, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a03581caaa2a313b131726af4e4a6b714 inherit pro_methods_classrtabmap_1_1GlobalMap"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs the base map; subclasses call from their constructor.  <br /></td></tr>
 <tr class="separator:a03581caaa2a313b131726af4e4a6b714 inherit pro_methods_classrtabmap_1_1GlobalMap"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a632f06ccce72bce66a9fd38d37f23b80 inherit pro_methods_classrtabmap_1_1GlobalMap" id="r_a632f06ccce72bce66a9fd38d37f23b80"><td class="memItemLeft" align="right" valign="top">const std::map&lt; int, <a class="el" href="classrtabmap_1_1LocalGrid.html">LocalGrid</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1GlobalMap.html#a632f06ccce72bce66a9fd38d37f23b80">cache</a> () const</td></tr>
@@ -373,9 +390,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/global_map/<a class="el" href="global__map_2OctoMap_8h_source.html">OctoMap.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1OctoMap.html">OctoMap</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

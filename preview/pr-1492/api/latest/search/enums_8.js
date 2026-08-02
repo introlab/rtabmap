@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['vhstrategy_0',['VhStrategy',['../classrtabmap_1_1Rtabmap.html#afa134603fb0835b84f269e48e7ab568c',1,'rtabmap::Rtabmap']]]
+  ['uxmatchmethod_0',['UXMatchMethod',['../UMath_8h.html#ae24d0d5b3a1d44ae8c5e50bb86a15cba',1,'UMath.h']]]
 ];

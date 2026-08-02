@@ -9,5 +9,7 @@ var searchData=
   ['memory_6',['Memory',['../classrtabmap_1_1Memory.html#a24d451cdf46a9cc04cce995142a101d4',1,'rtabmap::Memory']]],
   ['memorychanged_7',['memoryChanged',['../classrtabmap_1_1Memory.html#a8720df55fa6f8be933827808d364f20a',1,'rtabmap::Memory']]],
   ['merge_8',['merge',['../classrtabmap_1_1Link.html#a953a029f601d7ca3efbb12ca22da4542',1,'rtabmap::Link']]],
-  ['mindisparity_9',['minDisparity',['../classrtabmap_1_1Stereo.html#aaeec1e0e5470b1b1268b4e04bff81742',1,'rtabmap::Stereo']]]
+  ['mergetextures_9',['mergeTextures',['../namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238',1,'rtabmap::util3d']]],
+  ['mindisparity_10',['minDisparity',['../classrtabmap_1_1Stereo.html#aaeec1e0e5470b1b1268b4e04bff81742',1,'rtabmap::Stereo']]],
+  ['multibandtexturing_11',['multiBandTexturing',['../namespacertabmap_1_1util3d.html#a695eb29e9b2679634edb6b8c36a11942',1,'rtabmap::util3d']]]
 ];

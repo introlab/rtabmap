@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1Rtabmap.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -110,7 +127,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a35cf8fd93f77d1c148ae6d3107725750" id="r_a35cf8fd93f77d1c148ae6d3107725750"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a35cf8fd93f77d1c148ae6d3107725750">process</a> (const cv::Mat &amp;image, int id=0, const std::map&lt; std::string, float &gt; &amp;externalStats=std::map&lt; std::string, float &gt;())</td></tr>
 <tr class="memdesc:a35cf8fd93f77d1c148ae6d3107725750"><td class="mdescLeft">&#160;</td><td class="mdescRight">Appearance-only convenience overload (loop-closure detection without odometry).  <br /></td></tr>
 <tr class="separator:a35cf8fd93f77d1c148ae6d3107725750"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a711c479925db2c9f8201aacffe70281b" id="r_a711c479925db2c9f8201aacffe70281b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a711c479925db2c9f8201aacffe70281b">init</a> (const ParametersMap &amp;parameters, const std::string &amp;databasePath=&quot;&quot;, bool loadDatabaseParameters=false)</td></tr>
+<tr class="memitem:a711c479925db2c9f8201aacffe70281b" id="r_a711c479925db2c9f8201aacffe70281b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a711c479925db2c9f8201aacffe70281b">init</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters, const std::string &amp;databasePath=&quot;&quot;, bool loadDatabaseParameters=false)</td></tr>
 <tr class="memdesc:a711c479925db2c9f8201aacffe70281b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes <a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">Rtabmap</a> with parameters and a database.  <br /></td></tr>
 <tr class="separator:a711c479925db2c9f8201aacffe70281b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a25bfb157aa3be3bd3c8a1d4200329041" id="r_a25bfb157aa3be3bd3c8a1d4200329041"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a25bfb157aa3be3bd3c8a1d4200329041">init</a> (const std::string &amp;configFile=&quot;&quot;, const std::string &amp;databasePath=&quot;&quot;, bool loadDatabaseParameters=false)</td></tr>
@@ -209,10 +226,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>dumpData</b> () const
 <tr class="memdesc:a38db1c80ae583e255dd6174ba6d41ffc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dumps the <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> state (signatures, words, dictionary) to the working directory. <br /></td></tr>
 <tr class="separator:a38db1c80ae583e255dd6174ba6d41ffc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5a461ed88e83d2dbebee819ab6690e7a" id="r_a5a461ed88e83d2dbebee819ab6690e7a"><td class="memItemLeft" align="right" valign="top"><a id="a5a461ed88e83d2dbebee819ab6690e7a" name="a5a461ed88e83d2dbebee819ab6690e7a"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParameters</b> (const ParametersMap &amp;parameters)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>parseParameters</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a5a461ed88e83d2dbebee819ab6690e7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Re-parses parameters and propagates them to owned sub-objects (<a class="el" href="classrtabmap_1_1Memory.html">Memory</a>, <a class="el" href="classrtabmap_1_1BayesFilter.html">BayesFilter</a>, <a class="el" href="classrtabmap_1_1Optimizer.html">Optimizer</a>, ...). <br /></td></tr>
 <tr class="separator:a5a461ed88e83d2dbebee819ab6690e7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ac5900cbc165df1c501606f79c65ec1" id="r_a9ac5900cbc165df1c501606f79c65ec1"><td class="memItemLeft" align="right" valign="top">const ParametersMap &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a9ac5900cbc165df1c501606f79c65ec1">getParameters</a> () const</td></tr>
+<tr class="memitem:a9ac5900cbc165df1c501606f79c65ec1" id="r_a9ac5900cbc165df1c501606f79c65ec1"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a9ac5900cbc165df1c501606f79c65ec1">getParameters</a> () const</td></tr>
 <tr class="separator:a9ac5900cbc165df1c501606f79c65ec1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a25028c3e8d8018c03f47f06150d76eab" id="r_a25028c3e8d8018c03f47f06150d76eab"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a25028c3e8d8018c03f47f06150d76eab">setWorkingDirectory</a> (std::string path)</td></tr>
 <tr class="memdesc:a25028c3e8d8018c03f47f06150d76eab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the working directory used for dumps, logs and temporary files.  <br /></td></tr>
@@ -259,7 +276,7 @@ RTABMAP_DEPRECATED void&#160;</td><td class="memItemRight" valign="bottom"><b>ge
 <tr class="separator:aef03c0d6ee1ef5646ba11be5dbe9faa5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeea47830776fe57c456ae6a673069ddc" id="r_aeea47830776fe57c456ae6a673069ddc"><td class="memItemLeft" align="right" valign="top"><a id="aeea47830776fe57c456ae6a673069ddc" name="aeea47830776fe57c456ae6a673069ddc"></a>
 cv::Mat&#160;</td><td class="memItemRight" valign="bottom"><b>getInformation</b> (const cv::Mat &amp;covariance) const</td></tr>
-<tr class="memdesc:aeea47830776fe57c456ae6a673069ddc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts an odometry covariance into an information matrix, clipping by <a class="el" href="classrtabmap_1_1Memory.html#ae37d02a779acb85797de25da36066829">Memory::getOdomMaxInf()</a> when Parameters::kRGBDLoopCovLimited() is enabled. <br /></td></tr>
+<tr class="memdesc:aeea47830776fe57c456ae6a673069ddc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts an odometry covariance into an information matrix, clipping by <a class="el" href="classrtabmap_1_1Memory.html#ae37d02a779acb85797de25da36066829">Memory::getOdomMaxInf()</a> when <a class="el" href="classrtabmap_1_1Parameters.html#a2f0e34d58229d94e6368223be2dd4fc6">Parameters::kRGBDLoopCovLimited()</a> is enabled. <br /></td></tr>
 <tr class="separator:aeea47830776fe57c456ae6a673069ddc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0d2caf505525f635bda914e73aa59232" id="r_a0d2caf505525f635bda914e73aa59232"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Rtabmap.html#a0d2caf505525f635bda914e73aa59232">addNodesToRepublish</a> (const std::vector&lt; int &gt; &amp;ids)</td></tr>
 <tr class="memdesc:a0d2caf505525f635bda914e73aa59232"><td class="mdescLeft">&#160;</td><td class="mdescRight">Marks node ids whose data should be re-emitted on the next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a>.  <br /></td></tr>
@@ -307,45 +324,45 @@ cv::Mat&#160;</td><td class="memItemRight" valign="bottom"><b>getInformation</b>
 <p><a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">Rtabmap</a> orchestrates the full SLAM iteration. Each new sensor observation passed to <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> goes through the steps described below.</p>
 <dl class="section user"><dt>1. Memory update</dt><dd></dd></dl>
 <p>Done via <a class="el" href="classrtabmap_1_1Memory.html#a3c029b2788f3b599480d5150120a6bee">Memory::update()</a>: a new <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> is added to STM, the oldest STM entry is promoted to WM if STM is full, and rehearsal compares the new signature to the previous STM signature.</p>
-<p>When the robot barely moved since the previous frame (odometry displacement below Parameters::kRGBDLinearUpdate() and Parameters::kRGBDAngularUpdate()), the iteration is flagged as a "small displacement":</p><ul>
+<p>When the robot barely moved since the previous frame (odometry displacement below <a class="el" href="classrtabmap_1_1Parameters.html#a2337801b29bb94ce58ae386c6fbfb1ea">Parameters::kRGBDLinearUpdate()</a> and <a class="el" href="classrtabmap_1_1Parameters.html#a9a7fc32cc99f77446f1918113aa8b5bb">Parameters::kRGBDAngularUpdate()</a>), the iteration is flagged as a "small displacement":</p><ul>
 <li>If a loop closure or localization was already accepted on a recent iteration, appearance-based global loop-closure detection and proximity detection by space are both skipped to avoid wasting work while the robot is stationary at an already-known location (only retrieval runs).</li>
 <li>Otherwise (no recent loop closure / localization), both still run normally so a first-time loop closure can still be detected from a standstill.</li>
 </ul>
 <p>In either case, at the end of the iteration, if no loop closure, proximity detection or landmark observation latched onto the new node, it is deleted from <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> so the map does not grow while the robot is idle.</p>
-<p>Rehearsal still runs first, so visually similar consecutive idle frames may also be merged into the previous STM signature (its weight is incremented and the new signature is discarded) when the similarity exceeds Parameters::kMemRehearsalSimilarity().</p>
+<p>Rehearsal still runs first, so visually similar consecutive idle frames may also be merged into the previous STM signature (its weight is incremented and the new signature is discarded) when the similarity exceeds <a class="el" href="classrtabmap_1_1Parameters.html#a634f4790c9c84772935bf406265bc692">Parameters::kMemRehearsalSimilarity()</a>.</p>
 <dl class="section user"><dt>2. Loop-closure hypothesis</dt><dd></dd></dl>
 <p>Scored via <a class="el" href="classrtabmap_1_1Memory.html#a984ca01a87434b11a66dc1d96e2fff17">Memory::computeLikelihood()</a> and the recursive <a class="el" href="classrtabmap_1_1BayesFilter.html">BayesFilter</a> (prior + observation update).</p>
 <dl class="section user"><dt>3. Hypothesis selection</dt><dd></dd></dl>
-<p>The highest posterior is compared against the loop-closure threshold (Parameters::kRtabmapLoopThr()); if accepted, the loop-closure link is added and the pose graph is re-optimized by <a class="el" href="classrtabmap_1_1Optimizer.html">Optimizer</a>.</p>
+<p>The highest posterior is compared against the loop-closure threshold (<a class="el" href="classrtabmap_1_1Parameters.html#a423d0878fce30f6ad8a0da41b27f6505">Parameters::kRtabmapLoopThr()</a>); if accepted, the loop-closure link is added and the pose graph is re-optimized by <a class="el" href="classrtabmap_1_1Optimizer.html">Optimizer</a>.</p>
 <p>In <b>RGB-D mode</b>, two extra checks must pass before the link is committed:</p><ul>
 <li>a valid geometric transform must be computed between the two candidate nodes by the registration pipeline (visual + optional ICP, see <a class="el" href="classrtabmap_1_1Memory.html#a4ae0287262c04905baab2d6f94448486">Memory::computeTransform()</a>);</li>
-<li>the resulting transform must not be rejected by the graph-optimization consistency check (see Parameters::kRGBDOptimizeMaxError()).</li>
+<li>the resulting transform must not be rejected by the graph-optimization consistency check (see <a class="el" href="classrtabmap_1_1Parameters.html#a48e9bda458af10a4649c88b92ba7a6fd">Parameters::kRGBDOptimizeMaxError()</a>).</li>
 </ul>
 <p>The optimization used by the consistency check depends on the operating mode:</p><ul>
-<li>In <b>mapping mode</b>, optimizeCurrentMap() re-optimizes the local map around the current signature including the new link, then graph::computeMaxGraphErrors() measures the worst per-link residual / its standard deviation. If the ratio exceeds Parameters::kRGBDOptimizeMaxError(), the loop closure(s) added this iteration are removed from <a class="el" href="classrtabmap_1_1Memory.html">Memory</a>.</li>
-<li>In <b>localization mode</b>, optimization is run on a sub-graph composed of the odometry cache (Parameters::kRGBDMaxOdomCacheSize()), the newly added localization link and pose priors fixing the map nodes (weighted by Parameters::kRGBDLocalizationPriorInf()). The same error-ratio check is applied; on failure the localization is rejected for this iteration but the persisted map and its links are left untouched.</li>
+<li>In <b>mapping mode</b>, the local map is re-optimized around the current signature including the new link, then <a class="el" href="namespacertabmap_1_1graph.html#a4691b760dfafe6d93de514c96fa55e0e">graph::computeMaxGraphErrors()</a> measures the worst per-link residual / its standard deviation. If the ratio exceeds <a class="el" href="classrtabmap_1_1Parameters.html#a48e9bda458af10a4649c88b92ba7a6fd">Parameters::kRGBDOptimizeMaxError()</a>, the loop closure(s) added this iteration are removed from <a class="el" href="classrtabmap_1_1Memory.html">Memory</a>.</li>
+<li>In <b>localization mode</b>, optimization is run on a sub-graph composed of the odometry cache (<a class="el" href="classrtabmap_1_1Parameters.html#ab27d52631ccdf0055b55fee66f811cd7">Parameters::kRGBDMaxOdomCacheSize()</a>), the newly added localization link and pose priors fixing the map nodes (with the variance set from <a class="el" href="classrtabmap_1_1Parameters.html#aa8bd1ce286f5afde20a406b573286adb">Parameters::kRGBDLocalizationPriorError()</a>). The same error-ratio check is applied; on failure the localization is rejected for this iteration but the persisted map and its links are left untouched.</li>
 </ul>
-<p>In both modes, if the same link is rejected twice in a row, repairGraph() may also be attempted (within Parameters::kRGBDOptimizeMaxErrorRepairRadius()) to drop the offending link instead of the new candidate.</p>
+<p>In both modes, if the same link is rejected twice in a row, a graph repair may also be attempted (within <a class="el" href="classrtabmap_1_1Parameters.html#aa2135c05c99fdb3b5f257f1162779e31">Parameters::kRGBDOptimizeMaxErrorRepairRadius()</a>) to drop the offending link instead of the new candidate.</p>
 <p>If either RGB-D check fails, the candidate is discarded and no link is added.</p>
 <dl class="section user"><dt>4. Retrieval</dt><dd></dd></dl>
-<p>Once a loop-closure hypothesis is selected, neighbors of the matched node are brought back from LTM into WM via <a class="el" href="classrtabmap_1_1Memory.html#aa244b8581684b85e35d2056cf972e377">Memory::reactivateSignatures()</a>, so the next iteration can compare against them too. Up to Parameters::kRtabmapMaxRetrieved() nodes are pulled per iteration; nodes around the current path or local pose may also be retrieved (capped by Parameters::kRtabmapMaxLocalRetrieved()).</p>
-<p>Retrieval (and the related node immunization) is only active when memory management is enabled, i.e. when Parameters::kRtabmapTimeThr() or Parameters::kRtabmapMemoryThr() is non-zero.</p>
+<p>Once a loop-closure hypothesis is selected, neighbors of the matched node are brought back from LTM into WM via <a class="el" href="classrtabmap_1_1Memory.html#aa244b8581684b85e35d2056cf972e377">Memory::reactivateSignatures()</a>, so the next iteration can compare against them too. Up to <a class="el" href="classrtabmap_1_1Parameters.html#ae42b8a843c6830eff62087a9e0df72b1">Parameters::kRtabmapMaxRetrieved()</a> nodes are pulled per iteration; nodes around the current path or local pose may also be retrieved (capped by <a class="el" href="classrtabmap_1_1Parameters.html#a0ba27238802e7bbd1a7c0327bbc11d99">Parameters::kRGBDMaxLocalRetrieved()</a>).</p>
+<p>Retrieval (and the related node immunization) is only active when memory management is enabled, i.e. when <a class="el" href="classrtabmap_1_1Parameters.html#a8ee7e153cfb26574c7d1c7b427593f8a">Parameters::kRtabmapTimeThr()</a> or <a class="el" href="classrtabmap_1_1Parameters.html#a66882ccd6f0a49f2c23db8718d12a59c">Parameters::kRtabmapMemoryThr()</a> is non-zero.</p>
 <dl class="section user"><dt>5. Proximity detection (RGB-D mode)</dt><dd></dd></dl>
 <p>Visual and scan-based local matches to nearby nodes, used in addition to the appearance-based loop closure.</p>
 <p>Candidate proximity links go through the same two RGB-D gates as loop closures above: a valid geometric transform must be computed by the registration pipeline, and the transform must not be rejected by the graph-optimization consistency check.</p>
 <dl class="section user"><dt>6. Transfer (WM to LTM)</dt><dd></dd></dl>
-<p>At the end of the iteration, if the iteration exceeded the configured time budget (Parameters::kRtabmapTimeThr()) or WM exceeded its size budget (Parameters::kRtabmapMemoryThr()), <a class="el" href="classrtabmap_1_1Memory.html#a51e89ccab2261912b09a5b7178fdd46c">Memory::forget()</a> moves the oldest low-frequency signatures from WM to LTM (immunized nodes &ndash; retrieved neighbors, the last localization node, etc. &ndash; are kept in WM).</p>
+<p>At the end of the iteration, if the iteration exceeded the configured time budget (<a class="el" href="classrtabmap_1_1Parameters.html#a8ee7e153cfb26574c7d1c7b427593f8a">Parameters::kRtabmapTimeThr()</a>) or WM exceeded its size budget (<a class="el" href="classrtabmap_1_1Parameters.html#a66882ccd6f0a49f2c23db8718d12a59c">Parameters::kRtabmapMemoryThr()</a>), <a class="el" href="classrtabmap_1_1Memory.html#a51e89ccab2261912b09a5b7178fdd46c">Memory::forget()</a> moves the oldest low-frequency signatures from WM to LTM (immunized nodes &ndash; retrieved neighbors, the last localization node, etc. &ndash; are kept in WM).</p>
 <p>Transfer is skipped when both thresholds are 0 (memory management disabled).</p>
 <dl class="section user"><dt>7. Map / localization output</dt><dd></dd></dl>
 <p>Optimized poses, current map correction and statistics are made available to callers via the getters below.</p>
 <dl class="section user"><dt>Operating modes</dt><dd></dd></dl>
-<p>Selected by Parameters::kMemIncrementalMemory() (see <a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">Memory::isIncremental()</a>):</p><ul>
+<p>Selected by <a class="el" href="classrtabmap_1_1Parameters.html#acdc74cd2b096ba28d9c1e00040b69d42">Parameters::kMemIncrementalMemory()</a> (see <a class="el" href="classrtabmap_1_1Memory.html#a420ddb38a3ffefafc84d22b0dd3b3814">Memory::isIncremental()</a>):</p><ul>
 <li><b>Mapping</b>: STM and WM grow; loop closures update the optimized graph.</li>
 <li><b>Localization</b>: STM/WM are frozen; the current node is matched against the persisted map and only <a class="el" href="classrtabmap_1_1Rtabmap.html#a2d2efac02d4a6d1d7bbc505d94fd634b">getLastLocalizationPose()</a> is updated.</li>
 </ul>
 <dl class="section user"><dt>Path planning</dt><dd></dd></dl>
 <p><a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">Rtabmap</a> also exposes basic graph-based path planning in RGB-D mode (<a class="el" href="classrtabmap_1_1Rtabmap.html#ab797f7f5bb73a507ba4d4672cd5476df">computePath()</a>, <a class="el" href="classrtabmap_1_1Rtabmap.html#a5fe89ac87283a92258d27f42eb7b13f1">getPath()</a>, <a class="el" href="classrtabmap_1_1Rtabmap.html#afe4aa4f9a67ba85b60c7dfda86d0131b">getPathStatus()</a>), used by the GUI to navigate between mapped locations.</p>
-<p>When memory management is enabled (see step 4 Retrieval and step 6 Transfer), the retrieval step also pulls nodes along the currently planned path back from LTM into WM (capped by Parameters::kRtabmapMaxLocalRetrieved()) so the robot is able to re-localize against upcoming waypoints as it follows the path, even when those nodes had been transferred out of WM earlier.</p>
+<p>When memory management is enabled (see step 4 Retrieval and step 6 Transfer), the retrieval step also pulls nodes along the currently planned path back from LTM into WM (capped by <a class="el" href="classrtabmap_1_1Parameters.html#a0ba27238802e7bbd1a7c0327bbc11d99">Parameters::kRGBDMaxLocalRetrieved()</a>) so the robot is able to re-localize against upcoming waypoints as it follows the path, even when those nodes had been transferred out of WM earlier.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> </dd>
 <dd>
 <a class="el" href="classrtabmap_1_1BayesFilter.html" title="Recursive Bayesian filter for loop-closure hypothesis estimation in RTAB-Map.">BayesFilter</a> </dd>
@@ -439,7 +456,7 @@ cv::Mat&#160;</td><td class="memItemRight" valign="bottom"><b>getInformation</b>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>True if <code>data</code> was added to the map (i.e. an update() succeeded). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>True if <code>data</code> was added to the map (i.e. the memory update succeeded). </dd></dl>
 
 </div>
 </div>
@@ -553,7 +570,7 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
         <tr>
           <td class="memname">void rtabmap::Rtabmap::init </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em>, </td>
         </tr>
         <tr>
@@ -719,7 +736,7 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
   </tr>
 </table>
 </div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>True if RGB-D SLAM mode is enabled (Parameters::kRGBDEnabled()). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>True if RGB-D SLAM mode is enabled (<a class="el" href="classrtabmap_1_1Parameters.html#a660983e23247cd39034f2ea07cfcd54b">Parameters::kRGBDEnabled()</a>). </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Rtabmap_8h_source.html#l00299">299</a> of file <a class="el" href="Rtabmap_8h_source.html">Rtabmap.h</a>.</p>
 
@@ -1287,7 +1304,7 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>Maximum allowed processing time per <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> call, in milliseconds. </dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRtabmapTimeThr() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a8ee7e153cfb26574c7d1c7b427593f8a" title="Key of parameter Rtabmap/TimeThr : &quot;Maximum time allowed for map update (ms) (0 means infinity)....">Parameters::kRtabmapTimeThr()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Rtabmap_8h_source.html#l00369">369</a> of file <a class="el" href="Rtabmap_8h_source.html">Rtabmap.h</a>.</p>
 
@@ -1312,7 +1329,7 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
 <p>Sets the per-iteration time budget (ms). </p>
 <p>Drives how aggressively WM is transferred to LTM to keep iterations under the threshold. 0 disables the time bound.</p>
 <dl class="section note"><dt>Note</dt><dd>This setting and <a class="el" href="classrtabmap_1_1Rtabmap.html#a6915ee0137b949837addcb5d3ac1646c">setMemoryThreshold()</a> are the only two switches that enable RTAB-Map's memory management (WM-to-LTM transfer, retrieval and node immunization). When both are 0, memory management is disabled and all signatures stay in working memory.</dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRtabmapTimeThr() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a8ee7e153cfb26574c7d1c7b427593f8a" title="Key of parameter Rtabmap/TimeThr : &quot;Maximum time allowed for map update (ms) (0 means infinity)....">Parameters::kRtabmapTimeThr()</a> </dd></dl>
 
 </div>
 </div>
@@ -1339,7 +1356,7 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>Maximum allowed WM size (number of signatures). </dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRtabmapMemoryThr() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a66882ccd6f0a49f2c23db8718d12a59c" title="Key of parameter Rtabmap/MemoryThr : uFormat(&quot;Maximum nodes in the Working Memory (0 means infinity)....">Parameters::kRtabmapMemoryThr()</a> </dd></dl>
 
 <p class="definition">Definition at line <a class="el" href="Rtabmap_8h_source.html#l00388">388</a> of file <a class="el" href="Rtabmap_8h_source.html">Rtabmap.h</a>.</p>
 
@@ -1363,7 +1380,7 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
 
 <p>Sets the maximum number of signatures kept in WM (0 = unbounded). </p>
 <dl class="section note"><dt>Note</dt><dd>This setting and <a class="el" href="classrtabmap_1_1Rtabmap.html#a80add8fadd488d0c7781c249abea0d5d">setTimeThreshold()</a> are the only two switches that enable RTAB-Map's memory management (WM-to-LTM transfer, retrieval and node immunization). When both are 0, memory management is disabled and all signatures stay in working memory.</dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRtabmapMemoryThr() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a66882ccd6f0a49f2c23db8718d12a59c" title="Key of parameter Rtabmap/MemoryThr : uFormat(&quot;Maximum nodes in the Working Memory (0 means infinity)....">Parameters::kRtabmapMemoryThr()</a> </dd></dl>
 
 </div>
 </div>
@@ -1385,11 +1402,11 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
 
 <p>Sets the localization prior pose used to seed the next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> call (localization mode only). </p>
 <p>Tells RTAB-Map where the robot is currently located in the map frame, so that the very next call to <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> can align incoming odometry with the persisted map without waiting for a loop closure. Typical use cases: restoring localization after a session restart, applying an external pose estimate (e.g. from a <a class="el" href="classrtabmap_1_1GPS.html" title="WGS84 GPS fix attached to a sensor sample or graph node.">GPS</a> or a known starting point), or recovering from "kidnapped robot" situations.</p>
-<p>This call only stages state; it does <b>not</b> itself produce a non-identity <a class="el" href="classrtabmap_1_1Rtabmap.html#a7b71f70a20f1ef42a65fa9571e254711">getMapCorrection()</a>. The alignment between the odometry frame and the map frame is performed on the next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> call, which consumes <code>initialPose</code> together with the incoming odometry pose. Two branches are taken depending on Parameters::kRGBDOptimizeFromGraphEnd():</p><ul>
+<p>This call only stages state; it does <b>not</b> itself produce a non-identity <a class="el" href="classrtabmap_1_1Rtabmap.html#a7b71f70a20f1ef42a65fa9571e254711">getMapCorrection()</a>. The alignment between the odometry frame and the map frame is performed on the next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> call, which consumes <code>initialPose</code> together with the incoming odometry pose. Two branches are taken depending on <a class="el" href="classrtabmap_1_1Parameters.html#ae0e66e60cda07b9b87b9f5aed3097f18">Parameters::kRGBDOptimizeFromGraphEnd()</a>:</p><ul>
 <li><b>false (default)</b>: <a class="el" href="classrtabmap_1_1Rtabmap.html#a7b71f70a20f1ef42a65fa9571e254711">getMapCorrection()</a> is set so that the live odometry pose is shifted to land on <code>initialPose</code> in the map frame (the optimized map is left untouched).</li>
 <li><b>true</b>: every optimized node pose is rigidly transformed so that the map itself moves to align with <code>initialPose</code> (the map correction stays close to identity).</li>
 </ul>
-<p>The transform applied is restricted by SLAM dimensionality: 3-DoF (x, y, yaw) for 2D SLAM, 4-DoF (x, y, z, yaw) when gravity is available (<a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> orientation or <a class="el" href="classrtabmap_1_1Memory.html#ab29b6d90e79694d7fdfb56574476141f">Memory::isOdomGravityUsed()</a>) and Parameters::kOptimizerGravitySigma() is non-zero, full 6-DoF otherwise.</p>
+<p>The transform applied is restricted by SLAM dimensionality: 3-DoF (x, y, yaw) for 2D SLAM, 4-DoF (x, y, z, yaw) when gravity is available (<a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> orientation or <a class="el" href="classrtabmap_1_1Memory.html#ab29b6d90e79694d7fdfb56574476141f">Memory::isOdomGravityUsed()</a>) and <a class="el" href="classrtabmap_1_1Parameters.html#ae30f9e3d2e17c3543801cdd9fa51ffcc">Parameters::kOptimizerGravitySigma()</a> is non-zero, full 6-DoF otherwise.</p>
 <p>Side effects on the staged state:</p><ul>
 <li><a class="el" href="classrtabmap_1_1Rtabmap.html#a2d2efac02d4a6d1d7bbc505d94fd634b">getLastLocalizationPose()</a> is replaced by <code>initialPose</code>; the localization covariance, the last localization node id and the odometry cache used for loop-closure rejection are all cleared.</li>
 <li><a class="el" href="classrtabmap_1_1Rtabmap.html#a7b71f70a20f1ef42a65fa9571e254711">getMapCorrection()</a> is reset to identity and any backup is cleared.</li>
@@ -1403,9 +1420,9 @@ odomAngularVariance, odomAngularVariance, odomAngularVariance)</code>. </p>
   </dd>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>No-op (with warning) in mapping mode.</dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kMemIncrementalMemory() </dd>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#acdc74cd2b096ba28d9c1e00040b69d42" title="Key of parameter Mem/IncrementalMemory : &quot;SLAM mode, otherwise it is Localization mode....">Parameters::kMemIncrementalMemory()</a> </dd>
 <dd>
-Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
+<a class="el" href="classrtabmap_1_1Parameters.html#ae0e66e60cda07b9b87b9f5aed3097f18" title="Key of parameter RGBD/OptimizeFromGraphEnd : &quot;Optimize graph from the newest node....">Parameters::kRGBDOptimizeFromGraphEnd()</a> </dd></dl>
 
 </div>
 </div>
@@ -1425,7 +1442,7 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
 </div><div class="memdoc">
 
 <p>Starts a new map session (next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> will create a fresh map id). </p>
-<p>In <b>mapping mode</b>, this increments the map id, clears the local optimized graph and resets the Bayes filter. In <b>localization mode</b>, it resets the map correction, the localization node and the odometry cache; if Parameters::kRtabmapRestartAtOrigin() is enabled, the last localization pose is reset to identity.</p>
+<p>In <b>mapping mode</b>, this increments the map id, clears the local optimized graph and resets the Bayes filter. In <b>localization mode</b>, it resets the map correction, the localization node and the odometry cache; if <a class="el" href="classrtabmap_1_1Parameters.html#afd7b349d5f354c290ef2e37e917182ee">Parameters::kRGBDStartAtOrigin()</a> is enabled, the last localization pose is reset to identity.</p>
 <dl class="section return"><dt>Returns</dt><dd>The new map id (mapping mode), or -1 (localization mode). </dd></dl>
 
 </div>
@@ -1584,17 +1601,17 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
 </div><div class="memdoc">
 
 <p>Exports the current pose graph to a text file. </p>
-<p>Forwards to graph::exportPoses() after collecting either the optimized or the raw odometry poses (and the matching constraints when needed).</p>
+<p>Forwards to <a class="el" href="namespacertabmap_1_1graph.html#af5622dec3112ea0b5154056bde132d46">graph::exportPoses()</a> after collecting either the optimized or the raw odometry poses (and the matching constraints when needed).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">path</td><td>Output file path. </td></tr>
     <tr><td class="paramname">optimized</td><td>If true, export optimized poses; otherwise raw odometry poses. </td></tr>
     <tr><td class="paramname">global</td><td>If true, include nodes from LTM as well; otherwise only WM/STM. </td></tr>
-    <tr><td class="paramname">format</td><td>Output format code; see graph::exportPoses() for the full list of supported values (raw, RGBD-SLAM/TUM, KITTI, TORO, g2o, ...).</td></tr>
+    <tr><td class="paramname">format</td><td>Output format code; see <a class="el" href="namespacertabmap_1_1graph.html#af5622dec3112ea0b5154056bde132d46">graph::exportPoses()</a> for the full list of supported values (raw, RGBD-SLAM/TUM, KITTI, TORO, g2o, ...).</td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section see"><dt>See also</dt><dd>graph::exportPoses() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="namespacertabmap_1_1graph.html#af5622dec3112ea0b5154056bde132d46" title="Writes poses (and optional constraints) to disk.">graph::exportPoses()</a> </dd></dl>
 
 </div>
 </div>
@@ -1628,7 +1645,7 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const ParametersMap &amp; rtabmap::Rtabmap::getParameters </td>
+          <td class="memname">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; rtabmap::Rtabmap::getParameters </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -1663,8 +1680,8 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
 </div><div class="memdoc">
 
 <p>Sets the working directory used for dumps, logs and temporary files. </p>
-<p>Can also be configured through Parameters::kRtabmapWorkingDirectory() in the parameter map passed to <a class="el" href="classrtabmap_1_1Rtabmap.html#a711c479925db2c9f8201aacffe70281b">init()</a> or <a class="el" href="classrtabmap_1_1Rtabmap.html#a5a461ed88e83d2dbebee819ab6690e7a">parseParameters()</a>.</p>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRtabmapWorkingDirectory() </dd></dl>
+<p>Can also be configured through <a class="el" href="classrtabmap_1_1Parameters.html#a42233cb8e32e704f7dd79d0208fa9d07">Parameters::kRtabmapWorkingDirectory()</a> in the parameter map passed to <a class="el" href="classrtabmap_1_1Rtabmap.html#a711c479925db2c9f8201aacffe70281b">init()</a> or <a class="el" href="classrtabmap_1_1Rtabmap.html#a5a461ed88e83d2dbebee819ab6690e7a">parseParameters()</a>.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a42233cb8e32e704f7dd79d0208fa9d07" title="Key of parameter Rtabmap/WorkingDirectory : &quot;Working directory.&quot; Default value: &quot;&quot; (string).">Parameters::kRtabmapWorkingDirectory()</a> </dd></dl>
 
 </div>
 </div>
@@ -1944,7 +1961,7 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">pose</td><td>Query pose in the map frame. </td></tr>
-    <tr><td class="paramname">radius</td><td>Search radius in meters (0 falls back to Parameters::kRGBDLocalRadius()). </td></tr>
+    <tr><td class="paramname">radius</td><td>Search radius in meters (0 falls back to <a class="el" href="classrtabmap_1_1Parameters.html#adaa87cec765f9674a12382392a60a4fe">Parameters::kRGBDLocalRadius()</a>). </td></tr>
     <tr><td class="paramname">k</td><td>If non-zero, also cap the result to the <code>k</code> nearest neighbors. </td></tr>
     <tr><td class="paramname">distsSqr</td><td>Optional output: per-id squared distance to <code>pose</code>. </td></tr>
   </table>
@@ -1996,7 +2013,7 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">nodeId</td><td>Query node id. Pass 0 to query around the latest node. A negative id requests neighbors of the corresponding landmark. </td></tr>
-    <tr><td class="paramname">radius</td><td>Search radius in meters (0 falls back to Parameters::kRGBDLocalRadius()). </td></tr>
+    <tr><td class="paramname">radius</td><td>Search radius in meters (0 falls back to <a class="el" href="classrtabmap_1_1Parameters.html#adaa87cec765f9674a12382392a60a4fe">Parameters::kRGBDLocalRadius()</a>). </td></tr>
     <tr><td class="paramname">k</td><td>If non-zero, cap the result to the <code>k</code> nearest neighbors. </td></tr>
     <tr><td class="paramname">distsSqr</td><td>Optional output: per-id squared distance to <code>nodeId</code>. </td></tr>
   </table>
@@ -2070,9 +2087,9 @@ Parameters::kRGBDOptimizeFromGraphEnd() </dd></dl>
 
 <p>Post-processing: searches for additional loop closures over the existing graph. </p>
 <p>Clusters nearby optimized poses and runs registration between candidates that are not yet linked. New links are added to <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> and the graph is re-optimized.</p>
-<dl class="section note"><dt>Note</dt><dd>The registration approach used here is the one configured in <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> via Parameters::kRegStrategy() (0=Vis, 1=Icp, 2=VisIcp), so the quality and sensor requirements of this pass mirror the live loop-closure pipeline.</dd>
+<dl class="section note"><dt>Note</dt><dd>The registration approach used here is the one configured in <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> via <a class="el" href="classrtabmap_1_1Parameters.html#abb01f566041dff1ca1ff47b4a6716b48">Parameters::kRegStrategy()</a> (0=Vis, 1=Icp, 2=VisIcp), so the quality and sensor requirements of this pass mirror the live loop-closure pipeline.</dd>
 <dd>
-Candidate cluster pairs whose ids differ by less than Parameters::kMemSTMSize(), or that are already reachable from each other within that many graph hops, are filtered out. This prevents trivial "loop closures" between temporally or topologically adjacent nodes.</dd></dl>
+Candidate cluster pairs whose ids differ by less than <a class="el" href="classrtabmap_1_1Parameters.html#a46dc1a24b02bb00014262f7f4d818a49">Parameters::kMemSTMSize()</a>, or that are already reachable from each other within that many graph hops, are filtered out. This prevents trivial "loop closures" between temporally or topologically adjacent nodes.</dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">clusterRadiusMax</td><td>Maximum metric distance (m) between two candidate nodes. </td></tr>
@@ -2133,8 +2150,8 @@ Candidate cluster pairs whose ids differ by less than Parameters::kMemSTMSize(),
   <table class="params">
     <tr><td class="paramname">optimizerType</td><td>Backend optimizer (e.g. 1=g2o); availability depends on what RTAB-Map was built with. </td></tr>
     <tr><td class="paramname">rematchFeatures</td><td>If true, re-match visual features between connected nodes before BA (otherwise reuse existing word-id correspondences). </td></tr>
-    <tr><td class="paramname">iterations</td><td>Solver iterations (0 falls back to Parameters::kOptimizerIterations()). </td></tr>
-    <tr><td class="paramname">pixelVariance</td><td>Pixel reprojection variance used by the cost (0 falls back to Parameters::kOptimizerPixelVariance()). </td></tr>
+    <tr><td class="paramname">iterations</td><td>Solver iterations (0 falls back to <a class="el" href="classrtabmap_1_1Parameters.html#a8be61aae74f02931c8c224d98629dfc1">Parameters::kOptimizerIterations()</a>). </td></tr>
+    <tr><td class="paramname">pixelVariance</td><td>Pixel reprojection variance used by the cost (0 falls back to <a class="el" href="classrtabmap_1_1Parameters.html#af8ad0ad86c152e736820805aad2203c7">Parameters::kOptimizerPixelVariance()</a>). </td></tr>
   </table>
   </dd>
 </dl>
@@ -2221,7 +2238,7 @@ Candidate cluster pairs whose ids differ by less than Parameters::kMemSTMSize(),
 
 <p>Re-runs registration on every link of the current graph and updates the ones that converge. </p>
 <p>Useful after parameter changes to refresh stored transforms.</p>
-<dl class="section note"><dt>Note</dt><dd>The registration approach is the one configured in <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> via Parameters::kRegStrategy() (0=Vis, 1=Icp, 2=VisIcp). For each link, the link's existing relative transform (the constraint produced by the current optimized local graph) is passed as the initial guess to <a class="el" href="classrtabmap_1_1Memory.html#a4ae0287262c04905baab2d6f94448486">Memory::computeTransform()</a>, so links already close to convergence are refined locally rather than re-estimated from scratch.</dd></dl>
+<dl class="section note"><dt>Note</dt><dd>The registration approach is the one configured in <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> via <a class="el" href="classrtabmap_1_1Parameters.html#abb01f566041dff1ca1ff47b4a6716b48">Parameters::kRegStrategy()</a> (0=Vis, 1=Icp, 2=VisIcp). For each link, the link's existing relative transform (the constraint produced by the current optimized local graph) is passed as the initial guess to <a class="el" href="classrtabmap_1_1Memory.html#a4ae0287262c04905baab2d6f94448486">Memory::computeTransform()</a>, so links already close to convergence are refined locally rather than re-estimated from scratch.</dd></dl>
 <dl class="section return"><dt>Returns</dt><dd>Number of links refined, or -1 if not in RGB-D mode. </dd></dl>
 
 </div>
@@ -2266,8 +2283,8 @@ Candidate cluster pairs whose ids differ by less than Parameters::kMemSTMSize(),
 
 <p>Marks node ids whose data should be re-emitted on the next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a>. </p>
 <p>The requested signatures are attached to the <a class="el" href="classrtabmap_1_1Statistics.html">Statistics</a> object produced by the next <a class="el" href="classrtabmap_1_1Rtabmap.html#ad7f085b6ae0fd3c7077c500c028fd5c3">process()</a> call (via the same mechanism as the regular "last signature
-data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5d18002c7eb7cee234471686413d201c">getStatistics()</a> pick them up alongside the normal output. Up to Parameters::kRtabmapMaxRepublished() ids are emitted per iteration; any leftover ids stay queued for subsequent iterations until they are republished or fall out of the current graph.</p>
-<p>Pass an empty vector to clear the request set. Requires Parameters::kRtabmapMaxRepublished() &gt; 0 and Parameters::kRtabmapPublishLastSignature() = true. </p>
+data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5d18002c7eb7cee234471686413d201c">getStatistics()</a> pick them up alongside the normal output. Up to <a class="el" href="classrtabmap_1_1Parameters.html#aebca6ea8c99890a56702c65a972483dc">Parameters::kRtabmapMaxRepublished()</a> ids are emitted per iteration; any leftover ids stay queued for subsequent iterations until they are republished or fall out of the current graph.</p>
+<p>Pass an empty vector to clear the request set. Requires <a class="el" href="classrtabmap_1_1Parameters.html#aebca6ea8c99890a56702c65a972483dc">Parameters::kRtabmapMaxRepublished()</a> &gt; 0 and <a class="el" href="classrtabmap_1_1Parameters.html#a1476c605d078b36f19b41617159fcc05">Parameters::kRtabmapPublishLastSignature()</a> = true. </p>
 
 </div>
 </div>
@@ -2297,7 +2314,7 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
   </dd>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>Must be called before <a class="el" href="classrtabmap_1_1Rtabmap.html#a711c479925db2c9f8201aacffe70281b">init()</a>; an error is logged and the call ignored once the memory exists. </dd></dl>
-<dl class="section warning"><dt>Warning</dt><dd>Incompatible with mapping: adding new nodes asserts in Memory::createSignature(). Loop closure detection also cannot match new observations against a descriptor-less dictionary.</dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>Incompatible with mapping: adding new nodes asserts in <code>Memory::createSignature()</code>. Loop closure detection also cannot match new observations against a descriptor-less dictionary.</dd></dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Memory.html#a655f123daec9e4e50e322db9f3bbd6db" title="Enables a dummy visual word dictionary (no descriptors kept, word ids only).">Memory::setDummyDictionary()</a> </dd></dl>
 
 </div>
@@ -2383,7 +2400,7 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
 </div><div class="memdoc">
 
 <p>Plans a path from the current location to node <code>targetNode</code>. </p>
-<p>RGB-D mode only (requires Parameters::kRGBDEnabled() = true).</p>
+<p>RGB-D mode only (requires <a class="el" href="classrtabmap_1_1Parameters.html#a660983e23247cd39034f2ea07cfcd54b">Parameters::kRGBDEnabled()</a> = true).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">targetNode</td><td>Destination node id (positive) or landmark id (negative). </td></tr>
@@ -2392,7 +2409,7 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>True if a path was computed; the result is available via <a class="el" href="classrtabmap_1_1Rtabmap.html#a5fe89ac87283a92258d27f42eb7b13f1">getPath()</a>.</dd></dl>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRGBDEnabled() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#a660983e23247cd39034f2ea07cfcd54b" title="Key of parameter RGBD/Enabled : &quot;Activate metric SLAM. If set to false, classic RTAB-Map loop closure...">Parameters::kRGBDEnabled()</a> </dd></dl>
 
 </div>
 </div>
@@ -2426,7 +2443,7 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">targetPose</td><td>Goal pose in the map frame. </td></tr>
-    <tr><td class="paramname">tolerance</td><td>Goal-acceptance tolerance (meters). A negative value falls back to Parameters::kRGBDLocalRadius(); 0 means infinite tolerance. </td></tr>
+    <tr><td class="paramname">tolerance</td><td>Goal-acceptance tolerance (meters). A negative value falls back to <a class="el" href="classrtabmap_1_1Parameters.html#adaa87cec765f9674a12382392a60a4fe">Parameters::kRGBDLocalRadius()</a>; 0 means infinite tolerance. </td></tr>
   </table>
   </dd>
 </dl>
@@ -2691,9 +2708,9 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
 
 <p>Segments a set of optimized poses into paths connected by neighbor links. </p>
 <p>Designed to be called on the result of a radius search around <code>target</code> (a set of <code>poses</code> already constrained to be metrically close to the goal). Within that radius, the method partitions the <code>poses</code> into one or more "paths" where each path is a connected component reachable from its starting node using <b>only neighbor (sequential) links</b> &ndash; loop-closure links, landmark links and intermediate nodes are not used to traverse between members. Paths are produced one at a time, each starting from the still-unclaimed pose nearest to <code>target</code>; a candidate is added to the current path only if it has at least one neighbor link to a node already in the path.</p>
-<p>Used internally by proximity detection by space (see Parameters::kRGBDProximityBySpace()) in two independent stages, each iterating over the segmented paths:</p><ul>
+<p>Used internally by proximity detection by space (see <a class="el" href="classrtabmap_1_1Parameters.html#a0bf742f8f518f6c63d1bb78a0f009515">Parameters::kRGBDProximityBySpace()</a>) in two independent stages, each iterating over the segmented paths:</p><ul>
 <li><b>One-to-one</b> (visual registration): runs registration between the current node and at most one node per neighbor-connected path, avoiding redundant attempts against nearby members of the same local trajectory.</li>
-<li><b>One-to-many</b> (scan matching, enabled when Parameters::kRGBDProximityPathMaxNeighbors() &gt; 0): on each path, neighboring nodes are assembled around the nearest pose on the path (up to the configured count, walked forward and backward) and their laser scans are merged for an ICP registration against the current scan. The neighbor-link-only structure of each path is what makes this assembly geometrically consistent.</li>
+<li><b>One-to-many</b> (scan matching, enabled when <a class="el" href="classrtabmap_1_1Parameters.html#a1a6c82e3762a844dab0cc9db220adb8c">Parameters::kRGBDProximityPathMaxNeighbors()</a> &gt; 0): on each path, neighboring nodes are assembled around the nearest pose on the path (up to the configured count, walked forward and backward) and their laser scans are merged for an ICP registration against the current scan. The neighbor-link-only structure of each path is what makes this assembly geometrically consistent.</li>
 </ul>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -2725,7 +2742,7 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
 
 <p>Applies the standard RTAB-Map likelihood adjustment. </p>
 <p>Normalizes raw likelihoods using mean and standard deviation across non-null values. Real-place entries with <code>value</code> &lt;= <code>mean</code> + <code>stdDev</code> are clamped to <code>1.0</code>; only entries above that threshold are scaled. The virtual place (the first key in <code>likelihood</code>, representing the "new place" hypothesis) is then set so that its likelihood reflects how peaked the real distribution is.</p>
-<p>The exact formulas are selected by Parameters::kRtabmapVirtualPlaceLikelihoodRatio() (default 0, Angeli PhD formulation):</p>
+<p>The exact formulas are selected by <a class="el" href="classrtabmap_1_1Parameters.html#aef900d9efe01dcbfbe5348b131d9ff46">Parameters::kRtabmapVirtualPlaceLikelihoodRatio()</a> (default 0, Angeli PhD formulation):</p>
 <ul>
 <li><b>Ratio = 0</b> (mean / std-dev formulation):<ul>
 <li>Real place above threshold: <code></code>(value - (stdDev - epsilon)) / mean</li>
@@ -2739,7 +2756,7 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
 </li>
 </ul>
 <p>In both formulations a low virtual-place likelihood favors a real-place loop closure on the next Bayes update; a high one favors the "new place" hypothesis.</p>
-<dl class="section see"><dt>See also</dt><dd>Parameters::kRtabmapVirtualPlaceLikelihoodRatio() </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1Parameters.html#aef900d9efe01dcbfbe5348b131d9ff46" title="Key of parameter Rtabmap/VirtualPlaceLikelihoodRatio : &quot;Likelihood ratio for virtual place (for no lo...">Parameters::kRtabmapVirtualPlaceLikelihoodRatio()</a> </dd></dl>
 
 </div>
 </div>
@@ -2747,9 +2764,13 @@ data"), so consumers reading <a class="el" href="classrtabmap_1_1Rtabmap.html#a5
 <li>corelib/include/rtabmap/core/<a class="el" href="Rtabmap_8h_source.html">Rtabmap.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1Rtabmap.html">Rtabmap</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

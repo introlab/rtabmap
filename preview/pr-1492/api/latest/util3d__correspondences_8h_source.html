@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('util3d__correspondences_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">util3d_correspondences.h</div></div>
 </div><!--header-->
@@ -135,17 +152,17 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="keyword">namespace </span>util3d</div>
 <div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>{</div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span> </div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT extractXYZCorrespondences(<span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; words1,</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">   69</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">extractXYZCorrespondences</a>(<span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; words1,</div>
 <div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>                    <span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; words2,</div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>                    pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud1,</div>
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>                    pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud2);</div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span> </div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT extractXYZCorrespondencesRANSAC(<span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; words1,</div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ab6a2896e40afacde8cb8b0d10a955e02">   95</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#ab6a2896e40afacde8cb8b0d10a955e02">extractXYZCorrespondencesRANSAC</a>(<span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; words1,</div>
 <div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>                    <span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; words2,</div>
 <div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>                    pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud1,</div>
 <div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>                    pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud2);</div>
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT extractXYZCorrespondences(<span class="keyword">const</span> std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; correspondences,</div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a0696277eef10a197af8fd5dcba52fc12">  126</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">extractXYZCorrespondences</a>(<span class="keyword">const</span> std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; correspondences,</div>
 <div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>                     <span class="keyword">const</span> cv::Mat &amp; depthImage1,</div>
 <div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>                     <span class="keyword">const</span> cv::Mat &amp; depthImage2,</div>
 <div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>                     <span class="keywordtype">float</span> cx, <span class="keywordtype">float</span> cy,</div>
@@ -154,32 +171,32 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>                     pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud1,</div>
 <div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>                     pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud2);</div>
 <div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span> </div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT extractXYZCorrespondences(<span class="keyword">const</span> std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; correspondences,</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a340e76117340170fb465ade8b11dd6af">  152</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">extractXYZCorrespondences</a>(<span class="keyword">const</span> std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; correspondences,</div>
 <div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>                 <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud1,</div>
 <div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>                 <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud2,</div>
 <div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>                 pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers1,</div>
 <div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>                 pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers2);</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT extractXYZCorrespondences(<span class="keyword">const</span> std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; correspondences,</div>
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a43b6de83939173dfd275cbd17f5d7500">  169</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">extractXYZCorrespondences</a>(<span class="keyword">const</span> std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; correspondences,</div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>                 <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt; &amp; cloud1,</div>
 <div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>                 <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZRGB&gt; &amp; cloud2,</div>
 <div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>                 pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers1,</div>
 <div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>                 pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers2);</div>
 <div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span> </div>
-<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span><span class="keywordtype">int</span> RTABMAP_CORE_EXPORT countUniquePairs(<span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; wordsA,</div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#af7d4d348836959bbdce0e5db0a4af91c">  186</a></span><span class="keywordtype">int</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#af7d4d348836959bbdce0e5db0a4af91c">countUniquePairs</a>(<span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; wordsA,</div>
 <div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span>           <span class="keyword">const</span> std::multimap&lt;int, pcl::PointXYZ&gt; &amp; wordsB);</div>
 <div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span> </div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT filterMaxDepth(pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers1,</div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a96efcf6ed971e5a5d6b7f9a5e03d1ce3">  207</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a96efcf6ed971e5a5d6b7f9a5e03d1ce3">filterMaxDepth</a>(pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers1,</div>
 <div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>          pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; inliers2,</div>
 <div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>          <span class="keywordtype">float</span> maxDepth,</div>
 <div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>          <span class="keywordtype">char</span> depthAxis,</div>
 <div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>          <span class="keywordtype">bool</span> removeDuplicates);</div>
 <div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span> </div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT findCorrespondences(</div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a188c2a13980f6b7d85e6e0804a38cb50">  229</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a188c2a13980f6b7d85e6e0804a38cb50">findCorrespondences</a>(</div>
 <div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>    <span class="keyword">const</span> std::multimap&lt;int, cv::KeyPoint&gt; &amp; wordsA,</div>
 <div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>    <span class="keyword">const</span> std::multimap&lt;int, cv::KeyPoint&gt; &amp; wordsB,</div>
 <div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>    std::list&lt;std::pair&lt;cv::Point2f, cv::Point2f&gt; &gt; &amp; pairs);</div>
 <div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span> </div>
-<div class="line"><a id="l00250" name="l00250"></a><span class="lineno">  250</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT findCorrespondences(</div>
+<div class="line"><a id="l00250" name="l00250"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#ac466a705ab9ee7d99f23842cd71f3c96">  250</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a188c2a13980f6b7d85e6e0804a38cb50">findCorrespondences</a>(</div>
 <div class="line"><a id="l00251" name="l00251"></a><span class="lineno">  251</span>    <span class="keyword">const</span> std::multimap&lt;int, cv::Point3f&gt; &amp; words1,</div>
 <div class="line"><a id="l00252" name="l00252"></a><span class="lineno">  252</span>    <span class="keyword">const</span> std::multimap&lt;int, cv::Point3f&gt; &amp; words2,</div>
 <div class="line"><a id="l00253" name="l00253"></a><span class="lineno">  253</span>    std::vector&lt;cv::Point3f&gt; &amp; inliers1,</div>
@@ -187,7 +204,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00255" name="l00255"></a><span class="lineno">  255</span>    <span class="keywordtype">float</span> maxDepth,</div>
 <div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    std::vector&lt;int&gt; * uniqueCorrespondences = 0);</div>
 <div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span> </div>
-<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT findCorrespondences(</div>
+<div class="line"><a id="l00273" name="l00273"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a5c07f098f9f5ba889e18d22b927f3cd4">  273</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a188c2a13980f6b7d85e6e0804a38cb50">findCorrespondences</a>(</div>
 <div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>    <span class="keyword">const</span> std::map&lt;int, cv::Point3f&gt; &amp; words1,</div>
 <div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span>    <span class="keyword">const</span> std::map&lt;int, cv::Point3f&gt; &amp; words2,</div>
 <div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span>    std::vector&lt;cv::Point3f&gt; &amp; inliers1,</div>
@@ -199,11 +216,20 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>} <span class="comment">// namespace rtabmap</span></div>
 <div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span> </div>
 <div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span><span class="preprocessor">#endif </span><span class="comment">/* UTIL3D_CORRESPONDENCES_H_ */</span><span class="preprocessor"></span></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a188c2a13980f6b7d85e6e0804a38cb50"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a188c2a13980f6b7d85e6e0804a38cb50">rtabmap::util3d::findCorrespondences</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT findCorrespondences(const std::multimap&lt; int, cv::KeyPoint &gt; &amp;wordsA, const std::multimap&lt; int, cv::KeyPoint &gt; &amp;wordsB, std::list&lt; std::pair&lt; cv::Point2f, cv::Point2f &gt; &gt; &amp;pairs)</div><div class="ttdoc">Finds 2D point correspondences between two sets of keypoints based on matching word IDs.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a58b9802c1fc28b7e8927359173f98de8"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">rtabmap::util3d::extractXYZCorrespondences</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT extractXYZCorrespondences(const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;words1, const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;words2, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud1, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud2)</div><div class="ttdoc">Extracts 3D point correspondences between two sets of labeled 3D points.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_a96efcf6ed971e5a5d6b7f9a5e03d1ce3"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a96efcf6ed971e5a5d6b7f9a5e03d1ce3">rtabmap::util3d::filterMaxDepth</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT filterMaxDepth(pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;inliers1, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;inliers2, float maxDepth, char depthAxis, bool removeDuplicates)</div><div class="ttdoc">Filters pairs of 3D points by maximum depth along a specified axis and optionally removes duplicates.</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_ab6a2896e40afacde8cb8b0d10a955e02"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#ab6a2896e40afacde8cb8b0d10a955e02">rtabmap::util3d::extractXYZCorrespondencesRANSAC</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT extractXYZCorrespondencesRANSAC(const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;words1, const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;words2, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud1, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud2)</div><div class="ttdoc">Extracts reliable 3D point correspondences between two sets of labeled 3D points using RANSAC filteri...</div></div>
+<div class="ttc" id="anamespacertabmap_1_1util3d_html_af7d4d348836959bbdce0e5db0a4af91c"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#af7d4d348836959bbdce0e5db0a4af91c">rtabmap::util3d::countUniquePairs</a></div><div class="ttdeci">int RTABMAP_CORE_EXPORT countUniquePairs(const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;wordsA, const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;wordsB)</div><div class="ttdoc">Counts the number of unique 3D point correspondences between two sets of word-indexed features.</div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>util3d_correspondences.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

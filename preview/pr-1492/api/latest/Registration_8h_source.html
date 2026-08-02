@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('Registration_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">Registration.h</div></div>
 </div><!--header-->
@@ -129,22 +146,22 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span><span class="keyword">public</span>:</div>
 <div class="foldopen" id="foldopen00064" data-start="{" data-end="};">
 <div class="line"><a id="l00064" name="l00064"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">   64</a></span>  <span class="keyword">enum</span> <a class="code hl_enumeration" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> {</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    kTypeUndef = -1,</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>    kTypeVis = 0,</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    kTypeIcp = 1,</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    kTypeVisIcp = 2</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>  };</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a1e25205ebb65fe2315a0b7050e613c6d">   65</a></span>    kTypeUndef = -1, </div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8e6dbf98a9a843c34d16b8c7e546c724">   66</a></span>    kTypeVis = 0,    </div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8638e369c895a337f587e727e1a712ab">   67</a></span>    kTypeIcp = 1,    </div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    kTypeVisIcp = 2  </div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849ad03189dad590b6e2d81adbc7d20bf662">   69</a></span>  };</div>
 </div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a7c8c2d7a65357ef9f5d60ce3f763f4b3">   71</a></span>  <span class="keyword">static</span> <span class="keywordtype">double</span> <a class="code hl_variable" href="classrtabmap_1_1Registration.html#a7c8c2d7a65357ef9f5d60ce3f763f4b3">COVARIANCE_LINEAR_EPSILON</a>;</div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae40b7ab65642aac9f21f44887b23b97d">   73</a></span>  <span class="keyword">static</span> <span class="keywordtype">double</span> <a class="code hl_variable" href="classrtabmap_1_1Registration.html#ae40b7ab65642aac9f21f44887b23b97d">COVARIANCE_ANGULAR_EPSILON</a>;</div>
 <div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span> </div>
 <div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a516e8d64cdb3e7a743a3aa40ab026def">   77</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * <a class="code hl_function" href="classrtabmap_1_1Registration.html#a516e8d64cdb3e7a743a3aa40ab026def">create</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a1e3493a850551c98f9e814fed74400e6">   79</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * <a class="code hl_function" href="classrtabmap_1_1Registration.html#a1e3493a850551c98f9e814fed74400e6">create</a>(<a class="code hl_enumeration" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> &amp; type, <span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a516e8d64cdb3e7a743a3aa40ab026def">   77</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * <a class="code hl_function" href="classrtabmap_1_1Registration.html#a516e8d64cdb3e7a743a3aa40ab026def">create</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a1e3493a850551c98f9e814fed74400e6">   79</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * <a class="code hl_function" href="classrtabmap_1_1Registration.html#a1e3493a850551c98f9e814fed74400e6">create</a>(<a class="code hl_enumeration" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> &amp; type, <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span> </div>
 <div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1Registration.html">~Registration</a>();</div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a0f409a8f0973667ef1687fe102bbf930">   84</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Registration.html#a0f409a8f0973667ef1687fe102bbf930">parseParameters</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a0f409a8f0973667ef1687fe102bbf930">   84</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Registration.html#a0f409a8f0973667ef1687fe102bbf930">parseParameters</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span> </div>
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#ae10ae7b6dbf4d5396db66600ebe18228">   87</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1Registration.html#ae10ae7b6dbf4d5396db66600ebe18228">isImageRequired</a>() <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00089" name="l00089"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#aa0748ad5a576d0919ef0d360137e5ea7">   89</a></span>  <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1Registration.html#aa0748ad5a576d0919ef0d360137e5ea7">isScanRequired</a>() <span class="keyword">const</span>;</div>
@@ -178,7 +195,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>      <a class="code hl_class" href="classrtabmap_1_1RegistrationInfo.html">RegistrationInfo</a> * info = 0) <span class="keyword">const</span>;</div>
 <div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span> </div>
 <div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span><span class="keyword">protected</span>:</div>
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a7d0ff4149da7f5839308ff543932b067">  131</a></span>  <a class="code hl_function" href="classrtabmap_1_1Registration.html#a7d0ff4149da7f5839308ff543932b067">Registration</a>(<span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap(), <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * child = 0);</div>
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a7d0ff4149da7f5839308ff543932b067">  131</a></span>  <a class="code hl_function" href="classrtabmap_1_1Registration.html#a7d0ff4149da7f5839308ff543932b067">Registration</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>(), <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * child = 0);</div>
 <div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span> </div>
 <div class="line"><a id="l00138" name="l00138"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Registration.html#a21635a391a85b64bc33787179a6cd71b">  138</a></span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> <a class="code hl_function" href="classrtabmap_1_1Registration.html#a21635a391a85b64bc33787179a6cd71b">computeTransformationImpl</a>(</div>
 <div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>      <a class="code hl_class" href="classrtabmap_1_1Signature.html">Signature</a> &amp; from,</div>
@@ -206,7 +223,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span><span class="preprocessor">#endif </span><span class="comment">/* RTABMAP_REGISTRATION_H_ */</span><span class="preprocessor"></span></div>
 <div class="ttc" id="aclassrtabmap_1_1RegistrationInfo_html"><div class="ttname"><a href="classrtabmap_1_1RegistrationInfo.html">rtabmap::RegistrationInfo</a></div><div class="ttdoc">Statistics and diagnostics returned by Registration.</div><div class="ttdef"><b>Definition</b> <a href="RegistrationInfo_8h_source.html#l00047">RegistrationInfo.h:48</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html"><div class="ttname"><a href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></div><div class="ttdoc">Abstract base for registering two observations (visual, ICP, or both).</div><div class="ttdef"><b>Definition</b> <a href="Registration_8h_source.html#l00060">Registration.h:61</a></div></div>
-<div class="ttc" id="aclassrtabmap_1_1Registration_html_a0f409a8f0973667ef1687fe102bbf930"><div class="ttname"><a href="classrtabmap_1_1Registration.html#a0f409a8f0973667ef1687fe102bbf930">rtabmap::Registration::parseParameters</a></div><div class="ttdeci">virtual void parseParameters(const ParametersMap &amp;parameters)</div><div class="ttdoc">Parses Reg/RepeatOnce, Reg/Force3DoF and forwards to child_ if set.</div></div>
+<div class="ttc" id="aclassrtabmap_1_1Registration_html_a0f409a8f0973667ef1687fe102bbf930"><div class="ttname"><a href="classrtabmap_1_1Registration.html#a0f409a8f0973667ef1687fe102bbf930">rtabmap::Registration::parseParameters</a></div><div class="ttdeci">virtual void parseParameters(const ParametersMap &amp;parameters)</div><div class="ttdoc">Parses Reg/RepeatOnce, Reg/Force3DoF and forwards to the child registration if set.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_a1e3493a850551c98f9e814fed74400e6"><div class="ttname"><a href="classrtabmap_1_1Registration.html#a1e3493a850551c98f9e814fed74400e6">rtabmap::Registration::create</a></div><div class="ttdeci">static Registration * create(Type &amp;type, const ParametersMap &amp;parameters=ParametersMap())</div><div class="ttdoc">Creates a registration of type (may be adjusted, e.g. to kTypeVis). Caller owns the pointer.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_a21635a391a85b64bc33787179a6cd71b"><div class="ttname"><a href="classrtabmap_1_1Registration.html#a21635a391a85b64bc33787179a6cd71b">rtabmap::Registration::computeTransformationImpl</a></div><div class="ttdeci">virtual Transform computeTransformationImpl(Signature &amp;from, Signature &amp;to, Transform guess, RegistrationInfo &amp;info) const =0</div><div class="ttdoc">Strategy-specific registration.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_a3cd064c74588fd13cce178596e188b5d"><div class="ttname"><a href="classrtabmap_1_1Registration.html#a3cd064c74588fd13cce178596e188b5d">rtabmap::Registration::isUserDataRequired</a></div><div class="ttdeci">bool isUserDataRequired() const</div><div class="ttdoc">True if user data is needed (parent or child).</div></div>
@@ -221,7 +238,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_ab000f795ec498882585a634c2dafec05"><div class="ttname"><a href="classrtabmap_1_1Registration.html#ab000f795ec498882585a634c2dafec05">rtabmap::Registration::canUseGuess</a></div><div class="ttdeci">bool canUseGuess() const</div><div class="ttdoc">True if the strategy can refine an initial guess (parent or child).</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_abb255bdab60a262f9cfc5d868e50cc9c"><div class="ttname"><a href="classrtabmap_1_1Registration.html#abb255bdab60a262f9cfc5d868e50cc9c">rtabmap::Registration::force3DoF</a></div><div class="ttdeci">bool force3DoF() const</div><div class="ttdef"><b>Definition</b> <a href="Registration_8h_source.html#l00104">Registration.h:104</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_abc02df4842af900fbb5da75b8e5318e0"><div class="ttname"><a href="classrtabmap_1_1Registration.html#abc02df4842af900fbb5da75b8e5318e0">rtabmap::Registration::getMinVisualCorrespondences</a></div><div class="ttdeci">int getMinVisualCorrespondences() const</div><div class="ttdoc">Minimum visual inliers required (max of parent and child thresholds).</div></div>
-<div class="ttc" id="aclassrtabmap_1_1Registration_html_ac105402feeb2ec6551235296604145aa"><div class="ttname"><a href="classrtabmap_1_1Registration.html#ac105402feeb2ec6551235296604145aa">rtabmap::Registration::setChildRegistration</a></div><div class="ttdeci">void setChildRegistration(Registration *child)</div><div class="ttdoc">Replaces child_; takes ownership of child.</div></div>
+<div class="ttc" id="aclassrtabmap_1_1Registration_html_ac105402feeb2ec6551235296604145aa"><div class="ttname"><a href="classrtabmap_1_1Registration.html#ac105402feeb2ec6551235296604145aa">rtabmap::Registration::setChildRegistration</a></div><div class="ttdeci">void setChildRegistration(Registration *child)</div><div class="ttdoc">Replaces the current child registration; takes ownership of child.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_ac4baf87f079ce52df845805b84cad6c9"><div class="ttname"><a href="classrtabmap_1_1Registration.html#ac4baf87f079ce52df845805b84cad6c9">rtabmap::Registration::getMinGeometryCorrespondencesRatio</a></div><div class="ttdeci">float getMinGeometryCorrespondencesRatio() const</div><div class="ttdoc">Minimum geometry inlier ratio required (max of parent and child thresholds).</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_ae10ae7b6dbf4d5396db66600ebe18228"><div class="ttname"><a href="classrtabmap_1_1Registration.html#ae10ae7b6dbf4d5396db66600ebe18228">rtabmap::Registration::isImageRequired</a></div><div class="ttdeci">bool isImageRequired() const</div><div class="ttdoc">True if images are needed (parent or child).</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Registration_html_ae40b7ab65642aac9f21f44887b23b97d"><div class="ttname"><a href="classrtabmap_1_1Registration.html#ae40b7ab65642aac9f21f44887b23b97d">rtabmap::Registration::COVARIANCE_ANGULAR_EPSILON</a></div><div class="ttdeci">static double COVARIANCE_ANGULAR_EPSILON</div><div class="ttdoc">Minimum diagonal value for angular covariance (rad²).</div><div class="ttdef"><b>Definition</b> <a href="Registration_8h_source.html#l00073">Registration.h:73</a></div></div>
@@ -230,10 +247,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1Signature_html"><div class="ttname"><a href="classrtabmap_1_1Signature.html">rtabmap::Signature</a></div><div class="ttdoc">Represents a node in RTAB-Map's pose graph.</div><div class="ttdef"><b>Definition</b> <a href="Signature_8h_source.html#l00083">Signature.h:84</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Transform_html"><div class="ttname"><a href="classrtabmap_1_1Transform.html">rtabmap::Transform</a></div><div class="ttdoc">Represents a 3D rigid body transformation (rotation + translation).</div><div class="ttdef"><b>Definition</b> <a href="Transform_8h_source.html#l00052">Transform.h:53</a></div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
+<div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>Registration.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

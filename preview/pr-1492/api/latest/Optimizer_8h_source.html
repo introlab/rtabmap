@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -55,6 +60,23 @@ $(function() {
 $(document).ready(function() { init_codefold(0); });
 /* @license-end */
 </script>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('Optimizer_8h_source.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -76,11 +98,6 @@ $(document).ready(function() { init_codefold(0); });
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="headertitle"><div class="title">Optimizer.h</div></div>
 </div><!--header-->
@@ -161,9 +178,9 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
 <div class="line"><a id="l00106" name="l00106"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#afe0381a3b42926b7634027e522766eb1">  106</a></span>  <span class="keyword">static</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#afe0381a3b42926b7634027e522766eb1">isAvailable</a>(<a class="code hl_enumeration" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16">Optimizer::Type</a> type);</div>
 <div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span> </div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#a78b457bec2cdb7bdd320e2bfcca759df">  114</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a> * <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#a78b457bec2cdb7bdd320e2bfcca759df">create</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#a78b457bec2cdb7bdd320e2bfcca759df">  114</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a> * <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#a78b457bec2cdb7bdd320e2bfcca759df">create</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span> </div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#aeff86117cf69fdae3c25e5bc327a142d">  117</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a> * <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#aeff86117cf69fdae3c25e5bc327a142d">create</a>(<a class="code hl_enumeration" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16">Optimizer::Type</a> type, <span class="keyword">const</span> ParametersMap &amp; parameters = ParametersMap());</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#aeff86117cf69fdae3c25e5bc327a142d">  117</a></span>  <span class="keyword">static</span> <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a> * <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#aeff86117cf69fdae3c25e5bc327a142d">create</a>(<a class="code hl_enumeration" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16">Optimizer::Type</a> type, <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
 <div class="line"><a id="l00127" name="l00127"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#a4477c9a5b6651729944726465b5eba7f">  127</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#a4477c9a5b6651729944726465b5eba7f">getConnectedGraph</a>(</div>
 <div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>      <span class="keywordtype">int</span> fromId,</div>
@@ -202,7 +219,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>  <span class="keywordtype">void</span> setLandmarksIgnored(<span class="keywordtype">bool</span> enabled) {landmarksIgnored_ = enabled;}</div>
 <div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>  <span class="keywordtype">void</span> setGravitySigma(<span class="keywordtype">float</span> value) {gravitySigma_ = value;}</div>
 <div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span> </div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#a0a942bd7902c8d2f9444b8eba6a648a3">  170</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#a0a942bd7902c8d2f9444b8eba6a648a3">parseParameters</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#a0a942bd7902c8d2f9444b8eba6a648a3">  170</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#a0a942bd7902c8d2f9444b8eba6a648a3">parseParameters</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span> </div>
 <div class="line"><a id="l00189" name="l00189"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#a278f42e0d250085ac6fe9ed425627acf">  189</a></span>  std::map&lt;int, Transform&gt; <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#a278f42e0d250085ac6fe9ed425627acf">optimizeIncremental</a>(</div>
 <div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span>      <span class="keywordtype">int</span> rootId,</div>
@@ -246,7 +263,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span>      std::map&lt;int, cv::Point3f&gt; &amp; points3DMap,</div>
 <div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>      std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, FeatureBA&gt; &gt; &amp; wordReferences,</div>
 <div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>      <span class="keywordtype">bool</span> rematchFeatures = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>      <span class="keyword">const</span> ParametersMap &amp; registrationParameters = ParametersMap());</div>
+<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>      <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; registrationParameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span> </div>
 <div class="line"><a id="l00286" name="l00286"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#aab99f045516162944ad68fdabacb53dc">  286</a></span>  std::map&lt;int, Transform&gt; <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#aab99f045516162944ad68fdabacb53dc">optimizeBA</a>(</div>
 <div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span>      <span class="keywordtype">int</span> rootId,</div>
@@ -254,7 +271,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span>      <span class="keyword">const</span> std::multimap&lt;int, Link&gt; &amp; links,</div>
 <div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span>      <span class="keyword">const</span> std::map&lt;int, Signature&gt; &amp; signatures,</div>
 <div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span>      <span class="keywordtype">bool</span> rematchFeatures = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>      <span class="keyword">const</span> ParametersMap &amp; registrationParameters = ParametersMap());</div>
+<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>      <span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; registrationParameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span> </div>
 <div class="line"><a id="l00301" name="l00301"></a><span class="lineno"><a class="line" href="classrtabmap_1_1Optimizer.html#ad6b32a9697837f03941773f6a5bbf91c">  301</a></span>  <a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> <a class="code hl_function" href="classrtabmap_1_1Optimizer.html#ad6b32a9697837f03941773f6a5bbf91c">optimizeBA</a>(</div>
 <div class="line"><a id="l00302" name="l00302"></a><span class="lineno">  302</span>      <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Link.html">Link</a> &amp; link,</div>
@@ -271,7 +288,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span>      std::map&lt;<span class="keywordtype">int</span>, std::map&lt;int, FeatureBA &gt; &gt; &amp; wordReferences,</div>
 <div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span>      <span class="keywordtype">bool</span> rematchFeatures = <span class="keyword">false</span>,</div>
 <div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span>      <span class="keywordtype">bool</span> useLinkTransformAsGuess = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span>      ParametersMap registrationParameters = ParametersMap());</div>
+<div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span>      <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> registrationParameters = <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>());</div>
 <div class="line"><a id="l00332" name="l00332"></a><span class="lineno">  332</span> </div>
 <div class="line"><a id="l00333" name="l00333"></a><span class="lineno">  333</span><span class="keyword">protected</span>:</div>
 <div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span>  <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a>(</div>
@@ -283,7 +300,7 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>      <span class="keywordtype">bool</span> priorsIgnored     = Parameters::defaultOptimizerPriorsIgnored(),</div>
 <div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span>      <span class="keywordtype">bool</span> landmarksIgnored  = Parameters::defaultOptimizerLandmarksIgnored(),</div>
 <div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span>      <span class="keywordtype">float</span> gravitySigma     = Parameters::defaultOptimizerGravitySigma());</div>
-<div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span>  <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a>(<span class="keyword">const</span> ParametersMap &amp; parameters);</div>
+<div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span>  <a class="code hl_class" href="classrtabmap_1_1Optimizer.html">Optimizer</a>(<span class="keyword">const</span> <a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; parameters);</div>
 <div class="line"><a id="l00344" name="l00344"></a><span class="lineno">  344</span> </div>
 <div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span><span class="keyword">private</span>:</div>
 <div class="line"><a id="l00346" name="l00346"></a><span class="lineno">  346</span>  <span class="keywordtype">int</span> iterations_;</div>
@@ -339,10 +356,15 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassrtabmap_1_1Optimizer_html_afe0381a3b42926b7634027e522766eb1"><div class="ttname"><a href="classrtabmap_1_1Optimizer.html#afe0381a3b42926b7634027e522766eb1">rtabmap::Optimizer::isAvailable</a></div><div class="ttdeci">static bool isAvailable(Optimizer::Type type)</div><div class="ttdoc">Returns whether type was compiled in (its third-party dependency was found).</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Transform_html"><div class="ttname"><a href="classrtabmap_1_1Transform.html">rtabmap::Transform</a></div><div class="ttdoc">Represents a 3D rigid body transformation (rotation + translation).</div><div class="ttdef"><b>Definition</b> <a href="Transform_8h_source.html#l00052">Transform.h:53</a></div></div>
 <div class="ttc" id="anamespacertabmap_html"><div class="ttname"><a href="namespacertabmap.html">rtabmap</a></div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00039">BayesFilter.h:39</a></div></div>
+<div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_04d49acea3c42cab2afcd35cb2f2a48f.html">corelib</a></li><li class="navelem"><a class="el" href="dir_e996b11fd4b3a747423759b16a8ba4a6.html">include</a></li><li class="navelem"><a class="el" href="dir_ff01f7bc5399ccf9ff1cc91d1f45726a.html">rtabmap</a></li><li class="navelem"><a class="el" href="dir_884419f21456e80aa47bc1d0c2ab0140.html">core</a></li><li class="navelem"><b>Optimizer.h</b></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

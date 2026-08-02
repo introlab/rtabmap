@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1RtabmapEventCmd.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html">RtabmapEventCmd</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
@@ -84,73 +101,79 @@ $(function() {
   <div class="headertitle"><div class="title">rtabmap::RtabmapEventCmd Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Command sent to <a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a>, with its parameters.  
+ <a href="classrtabmap_1_1RtabmapEventCmd.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>&gt;</code></p>
 <div class="dynheader">
 Inheritance diagram for rtabmap::RtabmapEventCmd:</div>
 <div class="dyncontent">
 <div class="center"><img src="classrtabmap_1_1RtabmapEventCmd__inherit__graph.png" border="0" usemap="#artabmap_1_1RtabmapEventCmd_inherit__map" alt="Inheritance graph"/></div>
 <map name="artabmap_1_1RtabmapEventCmd_inherit__map" id="artabmap_1_1RtabmapEventCmd_inherit__map">
-<area shape="rect" title=" " alt="" coords="5,79,216,104"/>
+<area shape="rect" title="Command sent to RtabmapThread, with its parameters." alt="" coords="5,79,216,104"/>
 <area shape="rect" href="classUEvent.html" title=" " alt="" coords="76,5,145,31"/>
 <area shape="poly" title=" " alt="" coords="113,44,113,79,108,79,108,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::RtabmapEventCmd:</div>
 <div class="dyncontent">
 <div class="center"><img src="classrtabmap_1_1RtabmapEventCmd__coll__graph.png" border="0" usemap="#artabmap_1_1RtabmapEventCmd_coll__map" alt="Collaboration graph"/></div>
 <map name="artabmap_1_1RtabmapEventCmd_coll__map" id="artabmap_1_1RtabmapEventCmd_coll__map">
-<area shape="rect" title=" " alt="" coords="5,79,216,104"/>
+<area shape="rect" title="Command sent to RtabmapThread, with its parameters." alt="" coords="5,79,216,104"/>
 <area shape="rect" href="classUEvent.html" title=" " alt="" coords="76,5,145,31"/>
 <area shape="poly" title=" " alt="" coords="113,44,113,79,108,79,108,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
 <tr class="memitem:aec484490a1accb47098e3bd06275910a" id="r_aec484490a1accb47098e3bd06275910a"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><b>dummy</b> { <b>d</b>
  }</td></tr>
 <tr class="separator:aec484490a1accb47098e3bd06275910a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae54b1ecc5d6df8b032a89f5b24876801" id="r_ae54b1ecc5d6df8b032a89f5b24876801"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><b>Cmd</b> { <br />
-&#160;&#160;<b>kCmdUndef</b>
-, <b>kCmdInit</b>
-, <b>kCmdResetMemory</b>
-, <b>kCmdClose</b>
+<tr class="memitem:ae54b1ecc5d6df8b032a89f5b24876801" id="r_ae54b1ecc5d6df8b032a89f5b24876801"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> { <br />
+&#160;&#160;<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a45df53bd895e7ae01cc2d5b684068fb2">kCmdUndef</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801af03efbff0b297b981f75f077aac49856">kCmdInit</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a02ced1d9f6f5c6210277b19d3b8bcdd9">kCmdResetMemory</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a38f200b1633df5e59891e739f74dfd18">kCmdClose</a>
 , <br />
-&#160;&#160;<b>kCmdUpdateParams</b>
-, <b>kCmdDumpMemory</b>
-, <b>kCmdDumpPrediction</b>
-, <b>kCmdGenerateDOTGraph</b>
+&#160;&#160;<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801afc8f39bbe51260a2743dc2b8dfc2b6f3">kCmdUpdateParams</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801ac502abc00c88395400bf9742c91bdf32">kCmdDumpMemory</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801aa0918b6878ef55d0490414c40f4afea6">kCmdDumpPrediction</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801ab69181c7e5e81a85ec6f3888f995685d">kCmdGenerateDOTGraph</a>
 , <br />
-&#160;&#160;<b>kCmdExportPoses</b>
-, <b>kCmdCleanDataBuffer</b>
-, <b>kCmdPublish3DMap</b>
-, <b>kCmdRepublishData</b>
+&#160;&#160;<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a464be1b7dcf88f079ed9a7a2c1100fdd">kCmdExportPoses</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a708e03e12a54f6525365376bc992e15c">kCmdCleanDataBuffer</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a8bdd31ff2a969a5f73c86a14e5192fcc">kCmdPublish3DMap</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a6c0888430b821a9b6094c66a6f42d9cf">kCmdRepublishData</a>
 , <br />
-&#160;&#160;<b>kCmdTriggerNewMap</b>
-, <b>kCmdPause</b>
-, <b>kCmdResume</b>
-, <b>kCmdGoal</b>
+&#160;&#160;<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801af522eca014994dec79657ed6efff7fee">kCmdTriggerNewMap</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a29a4641069f4cd19a332982291f63e57">kCmdPause</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801abf715ad034353e5eaeb424c638aff0df">kCmdResume</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801aeced93a6e04c8115875c8d0fe588250d">kCmdGoal</a>
 , <br />
-&#160;&#160;<b>kCmdCancelGoal</b>
-, <b>kCmdLabel</b>
-, <b>kCmdRemoveLabel</b>
+&#160;&#160;<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a01628ffc80300d04ed04e92e54ec45ae">kCmdCancelGoal</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a29d3e98121b70d06e0ca342cb3bcda4c">kCmdLabel</a>
+, <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801ad140704bb865de92427860545738bf7f">kCmdRemoveLabel</a>
 <br />
  }</td></tr>
+<tr class="memdesc:ae54b1ecc5d6df8b032a89f5b24876801"><td class="mdescLeft">&#160;</td><td class="mdescRight">What the receiving <a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a> should do.  <a href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">More...</a><br /></td></tr>
 <tr class="separator:ae54b1ecc5d6df8b032a89f5b24876801"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a5e6445168c75125a39dfe0c5907bcef8" id="r_a5e6445168c75125a39dfe0c5907bcef8"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a5e6445168c75125a39dfe0c5907bcef8">RtabmapEventCmd</a> (Cmd cmd, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a5e6445168c75125a39dfe0c5907bcef8" id="r_a5e6445168c75125a39dfe0c5907bcef8"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a5e6445168c75125a39dfe0c5907bcef8">RtabmapEventCmd</a> (<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> cmd, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a5e6445168c75125a39dfe0c5907bcef8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a194fa5787101a13092c99d704a5481d1" id="r_a194fa5787101a13092c99d704a5481d1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a194fa5787101a13092c99d704a5481d1">RtabmapEventCmd</a> (Cmd cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a194fa5787101a13092c99d704a5481d1" id="r_a194fa5787101a13092c99d704a5481d1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a194fa5787101a13092c99d704a5481d1">RtabmapEventCmd</a> (<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a194fa5787101a13092c99d704a5481d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77375db17595d8245b261cfaf5af9141" id="r_a77375db17595d8245b261cfaf5af9141"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a77375db17595d8245b261cfaf5af9141">RtabmapEventCmd</a> (Cmd cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value2, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a77375db17595d8245b261cfaf5af9141" id="r_a77375db17595d8245b261cfaf5af9141"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a77375db17595d8245b261cfaf5af9141">RtabmapEventCmd</a> (<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value2, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a77375db17595d8245b261cfaf5af9141"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c04b69c1f95f5acb3a0b676043a9de7" id="r_a2c04b69c1f95f5acb3a0b676043a9de7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a2c04b69c1f95f5acb3a0b676043a9de7">RtabmapEventCmd</a> (Cmd cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value2, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value3, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a2c04b69c1f95f5acb3a0b676043a9de7" id="r_a2c04b69c1f95f5acb3a0b676043a9de7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a2c04b69c1f95f5acb3a0b676043a9de7">RtabmapEventCmd</a> (<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value2, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value3, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a2c04b69c1f95f5acb3a0b676043a9de7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a13ae285833bdf0d8294573ba19d11d62" id="r_a13ae285833bdf0d8294573ba19d11d62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a13ae285833bdf0d8294573ba19d11d62">RtabmapEventCmd</a> (Cmd cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value2, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value3, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value4, const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a13ae285833bdf0d8294573ba19d11d62" id="r_a13ae285833bdf0d8294573ba19d11d62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a13ae285833bdf0d8294573ba19d11d62">RtabmapEventCmd</a> (<a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> cmd, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value1, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value2, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value3, const <a class="el" href="classUVariant.html">UVariant</a> &amp;value4, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="separator:a13ae285833bdf0d8294573ba19d11d62"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4246a93ba17dc597c963c9e43dfd6ca9" id="r_a4246a93ba17dc597c963c9e43dfd6ca9"><td class="memItemLeft" align="right" valign="top">Cmd&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a4246a93ba17dc597c963c9e43dfd6ca9">getCmd</a> () const</td></tr>
+<tr class="memitem:a4246a93ba17dc597c963c9e43dfd6ca9" id="r_a4246a93ba17dc597c963c9e43dfd6ca9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a4246a93ba17dc597c963c9e43dfd6ca9">getCmd</a> () const</td></tr>
 <tr class="separator:a4246a93ba17dc597c963c9e43dfd6ca9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a506cf4fd08ab1efee518a00d8db85cdf" id="r_a506cf4fd08ab1efee518a00d8db85cdf"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classUVariant.html">UVariant</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a506cf4fd08ab1efee518a00d8db85cdf">value1</a> () const</td></tr>
 <tr class="separator:a506cf4fd08ab1efee518a00d8db85cdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -160,7 +183,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a934261a053233c7bd766965741f8dddd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a50a4d47c950849e679662927779bd567" id="r_a50a4d47c950849e679662927779bd567"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classUVariant.html">UVariant</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a50a4d47c950849e679662927779bd567">value4</a> () const</td></tr>
 <tr class="separator:a50a4d47c950849e679662927779bd567"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f45b4901853bddc464c958534c431ab" id="r_a4f45b4901853bddc464c958534c431ab"><td class="memItemLeft" align="right" valign="top">const ParametersMap &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a4f45b4901853bddc464c958534c431ab">getParameters</a> () const</td></tr>
+<tr class="memitem:a4f45b4901853bddc464c958534c431ab" id="r_a4f45b4901853bddc464c958534c431ab"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a4f45b4901853bddc464c958534c431ab">getParameters</a> () const</td></tr>
 <tr class="separator:a4f45b4901853bddc464c958534c431ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a23c1b76dc2e8d6223cb52cb4fcaf7b5c" id="r_a23c1b76dc2e8d6223cb52cb4fcaf7b5c"><td class="memItemLeft" align="right" valign="top">virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#a23c1b76dc2e8d6223cb52cb4fcaf7b5c">getClassName</a> () const</td></tr>
 <tr class="separator:a23c1b76dc2e8d6223cb52cb4fcaf7b5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -175,8 +198,10 @@ Additional Inherited Members</h2></td></tr>
 <tr class="separator:a662b610c2e9ebaae5e91ed5ea1dcef34 inherit pro_methods_classUEvent"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock">
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00057">57</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<div class="textblock"><p>Command sent to <a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a>, with its parameters. </p>
+<p>Posting one to <a class="el" href="classUEventsManager.html">UEventsManager</a> is how the map is controlled from another thread: initializing or closing it, resetting the memory, requesting the graph, setting a goal, labelling a node... The arguments listed for each <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> are passed as <code>value1</code> / <code>value2</code> to the constructor, and parameter maps through <code>parameters</code>. </p>
+
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00067">67</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 </div><h2 class="groupheader">Member Enumeration Documentation</h2>
 <a id="aec484490a1accb47098e3bd06275910a" name="aec484490a1accb47098e3bd06275910a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aec484490a1accb47098e3bd06275910a">&#9670;&#160;</a></span>dummy</h2>
@@ -190,7 +215,7 @@ Additional Inherited Members</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00060">60</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00070">70</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -201,12 +226,54 @@ Additional Inherited Members</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">enum rtabmap::RtabmapEventCmd::Cmd</td>
+          <td class="memname">enum <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">rtabmap::RtabmapEventCmd::Cmd</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00061">61</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p>What the receiving <a class="el" href="classrtabmap_1_1RtabmapThread.html">RtabmapThread</a> should do. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a45df53bd895e7ae01cc2d5b684068fb2" name="ae54b1ecc5d6df8b032a89f5b24876801a45df53bd895e7ae01cc2d5b684068fb2"></a>kCmdUndef&#160;</td><td class="fielddoc"><p>No command. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801af03efbff0b297b981f75f077aac49856" name="ae54b1ecc5d6df8b032a89f5b24876801af03efbff0b297b981f75f077aac49856"></a>kCmdInit&#160;</td><td class="fielddoc"><p>Initialize the map. Params: [string] database path + ParametersMap. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a02ced1d9f6f5c6210277b19d3b8bcdd9" name="ae54b1ecc5d6df8b032a89f5b24876801a02ced1d9f6f5c6210277b19d3b8bcdd9"></a>kCmdResetMemory&#160;</td><td class="fielddoc"><p>Clear the map and start over from an empty memory. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a38f200b1633df5e59891e739f74dfd18" name="ae54b1ecc5d6df8b032a89f5b24876801a38f200b1633df5e59891e739f74dfd18"></a>kCmdClose&#160;</td><td class="fielddoc"><p>Close the map. Params: [bool] database saved (default true), [string] output database path (empty=use same database to save, only work when Db/Sqlite3InMemory=true). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801afc8f39bbe51260a2743dc2b8dfc2b6f3" name="ae54b1ecc5d6df8b032a89f5b24876801afc8f39bbe51260a2743dc2b8dfc2b6f3"></a>kCmdUpdateParams&#160;</td><td class="fielddoc"><p>Apply new parameters. Params: ParametersMap. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801ac502abc00c88395400bf9742c91bdf32" name="ae54b1ecc5d6df8b032a89f5b24876801ac502abc00c88395400bf9742c91bdf32"></a>kCmdDumpMemory&#160;</td><td class="fielddoc"><p>Dump the memory content to text files in the working directory. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801aa0918b6878ef55d0490414c40f4afea6" name="ae54b1ecc5d6df8b032a89f5b24876801aa0918b6878ef55d0490414c40f4afea6"></a>kCmdDumpPrediction&#160;</td><td class="fielddoc"><p>Dump the Bayes filter prediction matrix to a text file. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801ab69181c7e5e81a85ec6f3888f995685d" name="ae54b1ecc5d6df8b032a89f5b24876801ab69181c7e5e81a85ec6f3888f995685d"></a>kCmdGenerateDOTGraph&#160;</td><td class="fielddoc"><p>Write the graph as a DOT file. Params: [bool] global, [string] path, if global=false: [int] id, [int] margin. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a464be1b7dcf88f079ed9a7a2c1100fdd" name="ae54b1ecc5d6df8b032a89f5b24876801a464be1b7dcf88f079ed9a7a2c1100fdd"></a>kCmdExportPoses&#160;</td><td class="fielddoc"><p>Export the poses to a file. Params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO, 4=g2o). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a708e03e12a54f6525365376bc992e15c" name="ae54b1ecc5d6df8b032a89f5b24876801a708e03e12a54f6525365376bc992e15c"></a>kCmdCleanDataBuffer&#160;</td><td class="fielddoc"><p>Drop the frames waiting in the thread's buffer. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a8bdd31ff2a969a5f73c86a14e5192fcc" name="ae54b1ecc5d6df8b032a89f5b24876801a8bdd31ff2a969a5f73c86a14e5192fcc"></a>kCmdPublish3DMap&#160;</td><td class="fielddoc"><p>Ask for the map, answered with a <a class="el" href="classrtabmap_1_1RtabmapEvent3DMap.html">RtabmapEvent3DMap</a>. Params: [bool] global, [bool] optimized, [bool] graphOnly. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a6c0888430b821a9b6094c66a6f42d9cf" name="ae54b1ecc5d6df8b032a89f5b24876801a6c0888430b821a9b6094c66a6f42d9cf"></a>kCmdRepublishData&#160;</td><td class="fielddoc"><p>Republish the data of some nodes. Params: [vector&lt;int&gt;] ids. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801af522eca014994dec79657ed6efff7fee" name="ae54b1ecc5d6df8b032a89f5b24876801af522eca014994dec79657ed6efff7fee"></a>kCmdTriggerNewMap&#160;</td><td class="fielddoc"><p>Start a new map session (see <a class="el" href="classrtabmap_1_1Rtabmap.html#a4ab6de2be120bbda75577911d52346d4">Rtabmap::triggerNewMap()</a>). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a29a4641069f4cd19a332982291f63e57" name="ae54b1ecc5d6df8b032a89f5b24876801a29a4641069f4cd19a332982291f63e57"></a>kCmdPause&#160;</td><td class="fielddoc"><p>Stop consuming incoming data. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801abf715ad034353e5eaeb424c638aff0df" name="ae54b1ecc5d6df8b032a89f5b24876801abf715ad034353e5eaeb424c638aff0df"></a>kCmdResume&#160;</td><td class="fielddoc"><p>Resume after a <a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801a29a4641069f4cd19a332982291f63e57">kCmdPause</a>. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801aeced93a6e04c8115875c8d0fe588250d" name="ae54b1ecc5d6df8b032a89f5b24876801aeced93a6e04c8115875c8d0fe588250d"></a>kCmdGoal&#160;</td><td class="fielddoc"><p>Plan a path to a node. Params: [string] label or [int] location ID. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a01628ffc80300d04ed04e92e54ec45ae" name="ae54b1ecc5d6df8b032a89f5b24876801a01628ffc80300d04ed04e92e54ec45ae"></a>kCmdCancelGoal&#160;</td><td class="fielddoc"><p>Abandon the current goal. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801a29d3e98121b70d06e0ca342cb3bcda4c" name="ae54b1ecc5d6df8b032a89f5b24876801a29d3e98121b70d06e0ca342cb3bcda4c"></a>kCmdLabel&#160;</td><td class="fielddoc"><p>Label a node. Params: [string] label, [int] location ID. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae54b1ecc5d6df8b032a89f5b24876801ad140704bb865de92427860545738bf7f" name="ae54b1ecc5d6df8b032a89f5b24876801ad140704bb865de92427860545738bf7f"></a>kCmdRemoveLabel&#160;</td><td class="fielddoc"><p>Remove a label. Params: [string] label. </p>
+</td></tr>
+</table>
+
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00072">72</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -223,14 +290,14 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::RtabmapEventCmd::RtabmapEventCmd </td>
           <td>(</td>
-          <td class="paramtype">Cmd&#160;</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a>&#160;</td>
           <td class="paramname"><em>cmd</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -245,7 +312,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00083">83</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00094">94</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -261,7 +328,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::RtabmapEventCmd::RtabmapEventCmd </td>
           <td>(</td>
-          <td class="paramtype">Cmd&#160;</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a>&#160;</td>
           <td class="paramname"><em>cmd</em>, </td>
         </tr>
         <tr>
@@ -273,8 +340,8 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -289,7 +356,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00087">87</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00098">98</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -305,7 +372,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::RtabmapEventCmd::RtabmapEventCmd </td>
           <td>(</td>
-          <td class="paramtype">Cmd&#160;</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a>&#160;</td>
           <td class="paramname"><em>cmd</em>, </td>
         </tr>
         <tr>
@@ -323,8 +390,8 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -339,7 +406,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00092">92</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00103">103</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -355,7 +422,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::RtabmapEventCmd::RtabmapEventCmd </td>
           <td>(</td>
-          <td class="paramtype">Cmd&#160;</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a>&#160;</td>
           <td class="paramname"><em>cmd</em>, </td>
         </tr>
         <tr>
@@ -379,8 +446,8 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -395,7 +462,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00098">98</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00109">109</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -411,7 +478,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">rtabmap::RtabmapEventCmd::RtabmapEventCmd </td>
           <td>(</td>
-          <td class="paramtype">Cmd&#160;</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a>&#160;</td>
           <td class="paramname"><em>cmd</em>, </td>
         </tr>
         <tr>
@@ -441,8 +508,8 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -457,7 +524,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00105">105</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00116">116</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -484,7 +551,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00114">114</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00125">125</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -499,7 +566,7 @@ Additional Inherited Members</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">Cmd rtabmap::RtabmapEventCmd::getCmd </td>
+          <td class="memname"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html#ae54b1ecc5d6df8b032a89f5b24876801">Cmd</a> rtabmap::RtabmapEventCmd::getCmd </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -512,7 +579,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00115">115</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00126">126</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -539,7 +606,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00117">117</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00128">128</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -566,7 +633,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00118">118</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00129">129</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -593,7 +660,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00119">119</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00130">130</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -620,7 +687,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00120">120</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00131">131</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -634,7 +701,7 @@ Additional Inherited Members</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const ParametersMap &amp; rtabmap::RtabmapEventCmd::getParameters </td>
+          <td class="memname">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp; rtabmap::RtabmapEventCmd::getParameters </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -647,7 +714,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00122">122</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00133">133</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -677,7 +744,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Implements <a class="el" href="classUEvent.html#a2c7d278240ad4b7d88a2c534cc5f47b4">UEvent</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00124">124</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RtabmapEvent_8h_source.html#l00135">135</a> of file <a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a>.</p>
 
 </div>
 </div>
@@ -685,9 +752,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="RtabmapEvent_8h_source.html">RtabmapEvent.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1RtabmapEventCmd.html">RtabmapEventCmd</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>

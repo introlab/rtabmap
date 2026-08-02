@@ -10,6 +10,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -27,6 +31,7 @@
   <td id="projectalign">
    <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.10</span>
    </div>
+   <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
  </tr>
  </tbody>
@@ -50,6 +55,23 @@ $(function() {
 /* @license-end */
 </script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
+$(document).ready(function(){initNavTree('classrtabmap_1_1DBDriver.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -71,11 +93,6 @@ $(function() {
 </div>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1DBDriver.html">DBDriver</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
@@ -103,7 +120,7 @@ Inheritance diagram for rtabmap::DBDriver:</div>
 <area shape="rect" href="classUThreadC_3_01void_01_4.html" title=" " alt="" coords="28,5,172,31"/>
 <area shape="poly" title=" " alt="" coords="103,44,103,79,97,79,97,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for rtabmap::DBDriver:</div>
 <div class="dyncontent">
@@ -115,11 +132,11 @@ Collaboration diagram for rtabmap::DBDriver:</div>
 <area shape="rect" href="classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
 <area shape="poly" title=" " alt="" coords="80,44,80,79,75,79,75,44"/>
 </map>
-<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a3c73e045d9bdf8cad1c58efc9d930427" id="r_a3c73e045d9bdf8cad1c58efc9d930427"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a3c73e045d9bdf8cad1c58efc9d930427">parseParameters</a> (const ParametersMap &amp;parameters)</td></tr>
+<tr class="memitem:a3c73e045d9bdf8cad1c58efc9d930427" id="r_a3c73e045d9bdf8cad1c58efc9d930427"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a3c73e045d9bdf8cad1c58efc9d930427">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a3c73e045d9bdf8cad1c58efc9d930427"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse driver parameters from the map (e.g. target schema version).  <br /></td></tr>
 <tr class="separator:a3c73e045d9bdf8cad1c58efc9d930427"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ecd6182f404d8e6822b66a54f1d248a" id="r_a0ecd6182f404d8e6822b66a54f1d248a"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a0ecd6182f404d8e6822b66a54f1d248a">isInMemory</a> () const</td></tr>
@@ -182,7 +199,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>updateCalibration</b>
 <tr><td colspan="2"><div class="groupText"><p><a class="el" href="classrtabmap_1_1Statistics.html" title="Collects and manages runtime statistics for RTAB-Map.">Statistics</a>, preview image, optimized poses, 2D map, mesh and FLANN index. </p>
 </div></td></tr>
 <tr class="memitem:a898f008bec52ee82902f21824e9c7e1d" id="r_a898f008bec52ee82902f21824e9c7e1d"><td class="memItemLeft" align="right" valign="top"><a id="a898f008bec52ee82902f21824e9c7e1d" name="a898f008bec52ee82902f21824e9c7e1d"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>addInfoAfterRun</b> (int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap &amp;parameters) const</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>addInfoAfterRun</b> (int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters) const</td></tr>
 <tr class="separator:a898f008bec52ee82902f21824e9c7e1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4dbccd0dabf72da724488692b1713832" id="r_a4dbccd0dabf72da724488692b1713832"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a4dbccd0dabf72da724488692b1713832">addStatistics</a> (const <a class="el" href="classrtabmap_1_1Statistics.html">Statistics</a> &amp;statistics, bool saveWmState) const</td></tr>
 <tr class="memdesc:a4dbccd0dabf72da724488692b1713832"><td class="mdescLeft">&#160;</td><td class="mdescRight">Append a <a class="el" href="classrtabmap_1_1Statistics.html">Statistics</a> record for a processed node.  <br /></td></tr>
@@ -283,7 +300,7 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>getTotalNodesSize</b> 
 int&#160;</td><td class="memItemRight" valign="bottom"><b>getTotalDictionarySize</b> () const</td></tr>
 <tr class="separator:afce15460894b4ce2d232fe66fa579cf3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e3b98f37e0d62bd25a80f7807966acd" id="r_a6e3b98f37e0d62bd25a80f7807966acd"><td class="memItemLeft" align="right" valign="top"><a id="a6e3b98f37e0d62bd25a80f7807966acd" name="a6e3b98f37e0d62bd25a80f7807966acd"></a>
-ParametersMap&#160;</td><td class="memItemRight" valign="bottom"><b>getLastParameters</b> () const</td></tr>
+<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>&#160;</td><td class="memItemRight" valign="bottom"><b>getLastParameters</b> () const</td></tr>
 <tr class="separator:a6e3b98f37e0d62bd25a80f7807966acd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a81ce18eb2852589e68c19f2a6d479a6b" id="r_a81ce18eb2852589e68c19f2a6d479a6b"><td class="memItemLeft" align="right" valign="top"><a id="a81ce18eb2852589e68c19f2a6d479a6b" name="a81ce18eb2852589e68c19f2a6d479a6b"></a>
 std::map&lt; std::string, float &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>getStatistics</b> (int nodeId, double &amp;stamp, std::vector&lt; int &gt; *wmState=0) const</td></tr>
@@ -335,7 +352,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>getNodeInfo</b> (int 
 void&#160;</td><td class="memItemRight" valign="bottom"><b>getLocalFeatures</b> (int signatureId, std::multimap&lt; int, int &gt; &amp;words, std::vector&lt; cv::KeyPoint &gt; &amp;keypoints, std::vector&lt; cv::Point3f &gt; &amp;points, cv::Mat &amp;descriptors) const</td></tr>
 <tr class="separator:a28d67e0d43ead127bb93a7eff5e377b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aab00d50127b8b5bb92f8605e35aaca4d" id="r_aab00d50127b8b5bb92f8605e35aaca4d"><td class="memItemLeft" align="right" valign="top"><a id="aab00d50127b8b5bb92f8605e35aaca4d" name="aab00d50127b8b5bb92f8605e35aaca4d"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLinks</b> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=Link::kUndef) const</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLinks</b> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=<a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a>) const</td></tr>
 <tr class="memdesc:aab00d50127b8b5bb92f8605e35aaca4d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load outgoing links from <code>signatureId</code>, optionally filtered by <code>type</code>. <br /></td></tr>
 <tr class="separator:aab00d50127b8b5bb92f8605e35aaca4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab3d5cf217da174f6c7d038ff64408a21" id="r_ab3d5cf217da174f6c7d038ff64408a21"><td class="memItemLeft" align="right" valign="top"><a id="ab3d5cf217da174f6c7d038ff64408a21" name="ab3d5cf217da174f6c7d038ff64408a21"></a>
@@ -413,7 +430,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>getAllLabels</b> (std
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a1f75e440b35243ccad645052bc4a12f9" id="r_a1f75e440b35243ccad645052bc4a12f9"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1DBDriver.html">DBDriver</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">create</a> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+<tr class="memitem:a1f75e440b35243ccad645052bc4a12f9" id="r_a1f75e440b35243ccad645052bc4a12f9"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="classrtabmap_1_1DBDriver.html">DBDriver</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">create</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a1f75e440b35243ccad645052bc4a12f9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Factory: returns a SQLite database driver (<a class="el" href="classrtabmap_1_1DBDriverSqlite3.html">DBDriverSqlite3</a>).  <br /></td></tr>
 <tr class="separator:a1f75e440b35243ccad645052bc4a12f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_methods_classUThread"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classUThread')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classUThread.html">UThread</a></td></tr>
@@ -440,7 +457,7 @@ Static Public Member Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:a5f90eb62bb559d42611dbe7ffe11328e" id="r_a5f90eb62bb559d42611dbe7ffe11328e"><td class="memItemLeft" align="right" valign="top"><a id="a5f90eb62bb559d42611dbe7ffe11328e" name="a5f90eb62bb559d42611dbe7ffe11328e"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>DBDriver</b> (const ParametersMap &amp;parameters=ParametersMap())</td></tr>
+&#160;</td><td class="memItemRight" valign="bottom"><b>DBDriver</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a5f90eb62bb559d42611dbe7ffe11328e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Protected constructor for subclasses. <br /></td></tr>
 <tr class="separator:a5f90eb62bb559d42611dbe7ffe11328e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr><td colspan="2"><div class="groupHeader">Backend implementation (subclass responsibility)</div></td></tr>
@@ -507,7 +524,7 @@ virtual int&#160;</td><td class="memItemRight" valign="bottom"><b>getTotalNodesS
 virtual int&#160;</td><td class="memItemRight" valign="bottom"><b>getTotalDictionarySizeQuery</b> () const =0</td></tr>
 <tr class="separator:a8a95a9b7db5e7446ef71c044b23a2f8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa09fe90a3559e90035ab1cfba8467b4c" id="r_aa09fe90a3559e90035ab1cfba8467b4c"><td class="memItemLeft" align="right" valign="top"><a id="aa09fe90a3559e90035ab1cfba8467b4c" name="aa09fe90a3559e90035ab1cfba8467b4c"></a>
-virtual ParametersMap&#160;</td><td class="memItemRight" valign="bottom"><b>getLastParametersQuery</b> () const =0</td></tr>
+virtual <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>&#160;</td><td class="memItemRight" valign="bottom"><b>getLastParametersQuery</b> () const =0</td></tr>
 <tr class="separator:aa09fe90a3559e90035ab1cfba8467b4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae9263b9879e4d1a9f02a4ce38b98d24b" id="r_ae9263b9879e4d1a9f02a4ce38b98d24b"><td class="memItemLeft" align="right" valign="top"><a id="ae9263b9879e4d1a9f02a4ce38b98d24b" name="ae9263b9879e4d1a9f02a4ce38b98d24b"></a>
 virtual std::map&lt; std::string, float &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>getStatisticsQuery</b> (int nodeId, double &amp;stamp, std::vector&lt; int &gt; *wmState) const =0</td></tr>
@@ -597,7 +614,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadSignature
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWordsQuery</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws) const =0</td></tr>
 <tr class="separator:ada1a2add5977feb1a197b64946d982fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a905e2ec8c1029c6704145cbbe1a61e81" id="r_a905e2ec8c1029c6704145cbbe1a61e81"><td class="memItemLeft" align="right" valign="top"><a id="a905e2ec8c1029c6704145cbbe1a61e81" name="a905e2ec8c1029c6704145cbbe1a61e81"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLinksQuery</b> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=Link::kUndef) const =0</td></tr>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLinksQuery</b> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=<a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a>) const =0</td></tr>
 <tr class="separator:a905e2ec8c1029c6704145cbbe1a61e81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a72ce5fa6eeda2d88563880d5eb74995e" id="r_a72ce5fa6eeda2d88563880d5eb74995e"><td class="memItemLeft" align="right" valign="top"><a id="a72ce5fa6eeda2d88563880d5eb74995e" name="a72ce5fa6eeda2d88563880d5eb74995e"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadNodeDataQuery</b> (std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const =0</td></tr>
@@ -681,7 +698,7 @@ Additional Inherited Members</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstract database driver for RTAB-Map maps (signatures, links, words, statistics). </p>
 <p><a class="el" href="classrtabmap_1_1DBDriver.html" title="Abstract database driver for RTAB-Map maps (signatures, links, words, statistics).">DBDriver</a> is the persistence layer used by <a class="el" href="classrtabmap_1_1Memory.html">Memory</a>, <a class="el" href="classrtabmap_1_1DBReader.html">DBReader</a> and tools that read or write <code></code>.db files. The default implementation is <a class="el" href="classrtabmap_1_1DBDriverSqlite3.html">DBDriverSqlite3</a>, created by <a class="el" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9">create()</a>.</p>
-<p>The driver extends UThreadNode: pending <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> and <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> objects are queued with <a class="el" href="classrtabmap_1_1DBDriver.html#ad1510e157f3ab8df3284528369a6d88f">asyncSave()</a> and flushed to the database by <a class="el" href="classrtabmap_1_1DBDriver.html#ab4a0036162994c2ef76d4236e2a7ea0a">emptyTrashes()</a> (also called from the background thread on <a class="el" href="classrtabmap_1_1DBDriver.html#abb644a203d148d0b29db41aea04c949f">closeConnection()</a>).</p>
+<p>The driver extends <a class="el" href="UThreadNode_8h.html#a82fc8ffe23f95d50f934eb27afd351d6">UThreadNode</a>. Pending <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> and <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> objects are queued with <a class="el" href="classrtabmap_1_1DBDriver.html#ad1510e157f3ab8df3284528369a6d88f">asyncSave()</a> and flushed to the database by <a class="el" href="classrtabmap_1_1DBDriver.html#ab4a0036162994c2ef76d4236e2a7ea0a">emptyTrashes()</a> (also called from the background thread on <a class="el" href="classrtabmap_1_1DBDriver.html#abb644a203d148d0b29db41aea04c949f">closeConnection()</a>).</p>
 <p>Public methods are thread-safe where noted (mutex-protected wrappers). Subclasses implement SQL-specific logic in protected <code>*Query</code>() virtual methods.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html" title="SQLite3 implementation of DBDriver for RTAB-Map map databases.">DBDriverSqlite3</a> </dd>
 <dd>
@@ -701,8 +718,8 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">static <a class="el" href="classrtabmap_1_1DBDriver.html">DBDriver</a> * rtabmap::DBDriver::create </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
-          <td class="paramname"><em>parameters</em> = <code>ParametersMap()</code></td><td>)</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
+          <td class="paramname"><em>parameters</em> = <code><a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>()</code></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -716,7 +733,7 @@ Additional Inherited Members</h2></td></tr>
 <p>Factory: returns a SQLite database driver (<a class="el" href="classrtabmap_1_1DBDriverSqlite3.html">DBDriverSqlite3</a>). </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">parameters</td><td>Optional driver parameters (e.g. Parameters::kDbTargetVersion()). </td></tr>
+    <tr><td class="paramname">parameters</td><td>Optional driver parameters (e.g. <a class="el" href="classrtabmap_1_1Parameters.html#a4356a08f2a4153665ff049e73000c303">Parameters::kDbTargetVersion()</a>). </td></tr>
   </table>
   </dd>
 </dl>
@@ -736,7 +753,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">virtual void rtabmap::DBDriver::parseParameters </td>
           <td>(</td>
-          <td class="paramtype">const ParametersMap &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;&#160;</td>
           <td class="paramname"><em>parameters</em></td><td>)</td>
           <td></td>
         </tr>
@@ -778,7 +795,7 @@ Additional Inherited Members</h2></td></tr>
 </div><div class="memdoc">
 
 <p>True when no database file URL was set at open time. </p>
-<dl class="section note"><dt>Note</dt><dd><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html">DBDriverSqlite3</a> overrides this when Parameters::kDbSqlite3InMemory() is enabled. </dd></dl>
+<dl class="section note"><dt>Note</dt><dd><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html">DBDriverSqlite3</a> overrides this when <a class="el" href="classrtabmap_1_1Parameters.html#af89c7aa5e4d7dea98fe2cd05e231346d">Parameters::kDbSqlite3InMemory()</a> is enabled. </dd></dl>
 
 <p>Reimplemented in <a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#af9cf8fda0fcc032efb44981d908b4e55">rtabmap::DBDriverSqlite3</a>.</p>
 
@@ -1058,7 +1075,7 @@ Additional Inherited Members</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">image</td><td>Raw depth image, or pre-compressed blob (<code>CV_8UC1</code>, single row). </td></tr>
-    <tr><td class="paramname">format</td><td>Compression format when <code>image</code> is raw (e.g. <code>".png"</code>); ignored if already compressed. Uncompressed images are compressed with Compression::compressImage2() before writing. </td></tr>
+    <tr><td class="paramname">format</td><td>Compression format when <code>image</code> is raw (e.g. <code>".png"</code>); ignored if already compressed. Uncompressed images are compressed with <a class="el" href="namespacertabmap.html#abd9d5523210562abd9b5dc8fa9dbeb99">compressImage2()</a> before writing. </td></tr>
   </table>
   </dd>
 </dl>
@@ -1094,7 +1111,7 @@ Additional Inherited Members</h2></td></tr>
 <p>Update the laser scan stored for a node. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">scan</td><td>Uncompressed scan, or already compressed (LaserScan::isCompressed()). Uncompressed data is compressed with Compression::compressData2() before writing. </td></tr>
+    <tr><td class="paramname">scan</td><td>Uncompressed scan, or already compressed (<a class="el" href="classrtabmap_1_1LaserScan.html#a25e8e9681240f4a21960977f5c12bcd9">LaserScan::isCompressed()</a>). Uncompressed data is compressed with <a class="el" href="namespacertabmap.html#aca82ee9efc46461c648c7ab8999e1d5b">compressData2()</a> before writing. </td></tr>
   </table>
   </dd>
 </dl>
@@ -1239,7 +1256,7 @@ Additional Inherited Members</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section note"><dt>Note</dt><dd>Requires database schema &ge; 0.23.0. Used when Parameters::kKpFlannIndexSaved() is enabled. </dd></dl>
+<dl class="section note"><dt>Note</dt><dd>Requires database schema &ge; 0.23.0. Used when <a class="el" href="classrtabmap_1_1Parameters.html#a866886411343233d86d96d574ea1c524">Parameters::kKpFlannIndexSaved()</a> is enabled. </dd></dl>
 
 </div>
 </div>
@@ -1296,7 +1313,7 @@ Additional Inherited Members</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Run a SQL statement that does not return result rows. </p>
-<p>Executes <code>sql</code> on the open database (e.g. <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE</code>, <code>PRAGMA</code>). Thread-safe wrapper around executeNoResultQuery().</p>
+<p>Executes <code>sql</code> on the open database (e.g. <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>CREATE</code>, <code>PRAGMA</code>). Thread-safe wrapper around the backend's SQL execution.</p>
 <p>For reads, use the dedicated <a class="el" href="classrtabmap_1_1DBDriver.html#a0a713d7a6dabdcfbb8d733dba2a20120">loadSignature()</a>, <a class="el" href="classrtabmap_1_1DBDriver.html#aab00d50127b8b5bb92f8605e35aaca4d">loadLinks()</a> and related query methods instead of raw SQL.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -1313,9 +1330,13 @@ Additional Inherited Members</h2></td></tr>
 <li>corelib/include/rtabmap/core/<a class="el" href="DBDriver_8h_source.html">DBDriver.h</a></li>
 </ul>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacertabmap.html">rtabmap</a></li><li class="navelem"><a class="el" href="classrtabmap_1_1DBDriver.html">DBDriver</a></li>
+    <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
+  </ul>
+</div>
 </body>
 </html>
