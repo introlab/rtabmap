@@ -12,7 +12,13 @@
   "license": null,
   "dependencies": [
     "boost-crc",
-    "ceres",
+    {
+      "name": "ceres",
+      "features": [
+        "eigensparse",
+        "suitesparse"
+      ]
+    },
     "g2o",
     {
       "name": "opencv",

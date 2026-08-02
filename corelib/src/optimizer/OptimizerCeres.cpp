@@ -310,7 +310,24 @@ std::map<int, Transform> OptimizerCeres::optimize(
 		// definite matrix over pose blocks, which Cholesky factors
 		// directly and robustly.
 		options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-		options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
+#if CERES_VERSION_MAJOR >= 2
+		// If the build has no usable sparse backend at all, fall back to a
+		// dense factorization, which is always available. Slower on big graphs,
+		// but a pose graph that optimizes beats one that silently does not.
+		if(!ceres::IsSparseLinearAlgebraLibraryTypeAvailable(
+				options.sparse_linear_algebra_library_type))
+		{
+			static bool warned = false;
+			if(!warned)
+			{
+				warned = true;
+				UWARN("Ceres was built without a usable sparse linear algebra "
+					  "library, falling back to DENSE_NORMAL_CHOLESKY for graph "
+					  "optimization (slower on large graphs).");
+			}
+			options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+		}
+#endif
 		options.max_num_iterations = iterations();
 		options.function_tolerance = this->epsilon();
 		ceres::Solver::Summary summary;
@@ -771,7 +788,6 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// for standard bundle adjustment problems.
 	ceres::Solver::Options options;
 	options.linear_solver_type = ceres::ITERATIVE_SCHUR;
-	options.sparse_linear_algebra_library_type = ceres::SUITE_SPARSE;
 	options.max_num_iterations = iterations();
 	//options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 	options.function_tolerance  = this->epsilon();
