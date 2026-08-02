@@ -2377,16 +2377,29 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// is unaffected either way (0.89-0.98), as is the float bucket
 		// (SURF/SIFT/KAZE: 0.93-0.98 recall).
 		//
-		// The floor is set below the lowest observed value with room to spare:
-		// only one macos job was sampled, and the intel and apple-silicon
-		// runners can disagree by a match or two on this dataset. What keeps
-		// the check meaningful for these detectors is the precision floor
-		// (0.85, actual 0.91-0.95) plus a recall bound low enough to be
-		// platform-independent but far above the near-zero recall a genuinely
-		// broken descriptor would give. Recall is low here mostly because FAST
-		// finds too few corners on the darker frames -- 16 of 84 signatures are
-		// rejected as bad for FAST+BRIEF, versus 2 for SIFT -- so those frames
-		// cannot match anything regardless of the descriptor.
+		// The floor has to absorb genuine run-to-run nondeterminism, not just
+		// platform spread. The BoW word index is built by the vendored rtflann,
+		// which seeds its LSH tables and randomized kd-trees from
+		// std::random_device (see rtflann/util/lsh_table.h and
+		// algorithms/kdtree_index.h) -- unseedable, so every process gets a
+		// different index and a different set of accepted closures. Measured on
+		// linux that moves recall by 1-2 matches (e.g. ORB 0.909/0.886,
+		// GFTT+ORB 0.932/0.886 across runs of the same binary); on macos
+		// FAST+FREAK has come in at both 30/44 (0.682) and 26/44 (0.591). Note
+		// rtflann::seed_random() only calls srand() and does NOT reach those
+		// three call sites, so there is currently no way to pin a run.
+		//
+		// 0.5 therefore sits ~4 matches below the lowest value seen rather than
+		// hugging it. That is deliberately a smoke test for this group: it
+		// catches a descriptor, dictionary or matcher that has genuinely broken
+		// (recall collapsing toward 0) and will not catch a 20% quality
+		// regression. The tighter guarantee comes from the precision floor
+		// (0.85, actual 0.91-0.95), which has been stable across every run.
+		//
+		// Recall is low here in the first place mostly because FAST finds too
+		// few corners on the darker frames -- 16 of 84 signatures are rejected
+		// as bad for FAST+BRIEF, versus 2 for SIFT -- so those frames cannot
+		// match anything regardless of the descriptor.
 		const bool daisyDescriptor =
 				detectorType == Feature2D::kFeatureGfttDaisy ||
 				detectorType == Feature2D::kFeatureSurfDaisy;
@@ -2399,7 +2412,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		const bool looseFloors = binaryDescriptors || daisyDescriptor;
 		const bool xfeatures2dDescriptor = freakOrBriefDescriptor || daisyDescriptor;
 		const float kMinPrecision = looseFloors ? 0.85f : 0.9f;
-		const float kMinRecall    = xfeatures2dDescriptor ? 0.6f :
+		const float kMinRecall    = xfeatures2dDescriptor ? 0.5f :
 				(looseFloors ? 0.8f : 0.9f);
 		EXPECT_GE(acceptedPrec, kMinPrecision)
 				<< detectorLabel << " accepted precision=" << acceptedPrec
