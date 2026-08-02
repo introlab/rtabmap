@@ -38,6 +38,7 @@ jobs:
 
     - name: Restore test data
       id: cache-testdata
+      if: matrix.build_name != 'windows-2022-cuda'
       uses: actions/cache@v4
       with:
         # SQLite DBs are binary-portable -> share the cache across
@@ -47,7 +48,7 @@ jobs:
         key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
 
     - name: Fetch test data
-      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      if: matrix.build_name != 'windows-2022-cuda' && steps.cache-testdata.outputs.cache-hit != 'true'
       shell: bash
       run: bash scripts/fetch_test_data.sh
 
@@ -91,6 +92,24 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ALL_BUILD
 
     - name: Test
+      # Not run on the CUDA build, which is a build+package job only.
+      #
+      # The runner has no NVIDIA GPU or driver (see the driver-DLL note in
+      # app/src/CMakeLists.txt), so no cv::cuda / CUDASIFT path can actually
+      # execute there -- everything falls back to CPU and the run just repeats
+      # the coverage the non-CUDA job already gives, on the same sources. It
+      # used to cost more than it returned: the two cv::cuda-touching tests
+      # (test_util3d_features, test_localgrid) had to be excluded because lazy
+      # CUDA-init stalled them past the 300 s timeout, and once WITH_ZED=ON was
+      # added to this job every remaining corelib test died in the loader with
+      # 0xc0000135 (STATUS_DLL_NOT_FOUND) before reaching main(): rtabmap_core
+      # links sl_zed64.dll, which imports the driver-only nvcuvid.dll /
+      # nvEncodeAPI64.dll that a driver-less runner does not have.
+      #
+      # So this job compiles, links and packages the CUDA artifact; the
+      # non-CUDA job is what verifies behaviour. Same reason the Info step
+      # below is skipped here.
+      if: matrix.build_name != 'windows-2022-cuda'
       working-directory: ${{github.workspace}}/build
       # PYTHONHOME points the embedded interpreter at vcpkg's bundled
       # Python install (where Lib/, DLLs/ live). Without it Python emits
@@ -105,19 +124,8 @@ jobs:
         PYTHONHOME: ${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3
         PYTHONNOUSERSITE: 1
       run: |
-        # The Windows CUDA runner ships a CUDA driver older than the runtime
-        # OpenCV/cv::cuda was built against. Lazy CUDA-init on first cv::cuda
-        # symbol call stalls some unit tests (test_util3d_features,
-        # test_localgrid) for >300s; which test hangs first is timing-dependent.
-        # Hiding the GPU (CUDA_VISIBLE_DEVICES=-1) was not enough to prevent the
-        # stall, so on the CUDA runner we skip these two cv::cuda-touching tests
-        # outright via ctest's exclude regex.
-        $excludeArg = @()
-        if ('${{ matrix.build_name }}' -eq 'windows-2022-cuda') {
-          $excludeArg = "-E", "^test_util3d_features$|^test_localgrid$"
-        }
-        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 $excludeArg
-        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed $excludeArg
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300 --rerun-failed
 
     - name: Info
       # Skipped for CUDA: the binary links ZED (sl_zed64.dll -> nvcuvid/nvEncodeAPI64),
