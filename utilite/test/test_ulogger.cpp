@@ -724,8 +724,14 @@ TEST(ULoggerTest, ThreadSafety)
     std::getline(file, line);
     while(!line.empty())
     {
+        // The logger writes "\r\n" endings, on platforms where the stream doesn't
+        // translate them (non-Windows) the '\r' is left in the line by getline().
+        if(line[line.size()-1] == '\r')
+        {
+            line.erase(line.size()-1);
+        }
         // Expect all messages on single line, no interleaved, format: "Thread X message X"
-        EXPECT_EQ(line.length(), 19);
+        EXPECT_EQ(line.length(), 18);
         ++count;
         std::getline(file, line);
     }
