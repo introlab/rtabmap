@@ -222,7 +222,7 @@ void RTABMAP_CORE_EXPORT filterMaxDepth(pcl::PointCloud<pcl::PointXYZ> & inliers
  *
  * @note Only unique word ID matches (count == 1 in both sets) are considered valid correspondences.
  *
- * @example
+ * @par Example
  * If `wordsA = [1 2 3 4 6 6]` and `wordsB = [1 1 2 4 5 6 6]`, the output `pairs` will contain correspondences
  * for IDs `2` and `4`, because only those have exactly one match in both sets.
  */
