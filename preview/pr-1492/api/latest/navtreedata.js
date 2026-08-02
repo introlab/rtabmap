@@ -141,7 +141,7 @@ var NAVTREEINDEX =
 "classrtabmap_1_1StereoCameraModel.html#a179ffcbc49ff3a281ef33cb4381e061c",
 "classrtabmap_1_1VWDictionary.html#a6a0610e87964c3881dc70cae6cd9123c",
 "group__LaserScanFromPointCloud.html#gaa98ccb732868f5ab4e91cd6f82602852",
-"namespacertabmap_1_1graph.html#a96a6c2e8348e3d9cfd8b1770d17da9b2"
+"namespacertabmap_1_1graph.html#a5c0eb890db7dba1c353d57595ccbdc6e"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

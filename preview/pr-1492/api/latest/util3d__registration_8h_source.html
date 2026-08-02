@@ -167,87 +167,86 @@ $(document).ready(function(){initNavTree('util3d__registration_8h_source.html','
 <div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>    std::vector&lt;int&gt; * inliers = 0,</div>
 <div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>    cv::Mat * variance = 0);</div>
 <div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span> </div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">  141</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloudA,</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloudB,</div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>    <span class="keywordtype">double</span> maxCorrespondenceAngle, <span class="comment">// &lt;=0 means that we don&#39;t care about normal angle difference</span></div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>    <span class="keywordtype">double</span> &amp; variance,</div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>    <span class="keywordtype">bool</span> reciprocal);</div>
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#gaae6ddd0517614e9332669c37c6816777">  153</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
-<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloudA,</div>
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloudB,</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>    <span class="keywordtype">double</span> maxCorrespondenceAngle, <span class="comment">// &lt;=0 means that we don&#39;t care about normal angle difference</span></div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>    <span class="keywordtype">double</span> &amp; variance,</div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>    <span class="keywordtype">bool</span> reciprocal);</div>
-<div class="line"><a id="l00165" name="l00165"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#ga92518a7b79e9265380f3a047e46ec247">  165</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloudA,</div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloudB,</div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">  139</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloudA,</div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloudB,</div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>    <span class="keywordtype">double</span> maxCorrespondenceAngle, <span class="comment">// &lt;=0 means that we don&#39;t care about normal angle difference</span></div>
+<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    <span class="keywordtype">double</span> &amp; variance,</div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>    <span class="keywordtype">bool</span> reciprocal);</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#gaae6ddd0517614e9332669c37c6816777">  148</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloudA,</div>
+<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloudB,</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>    <span class="keywordtype">double</span> maxCorrespondenceAngle, <span class="comment">// &lt;=0 means that we don&#39;t care about normal angle difference</span></div>
+<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>    <span class="keywordtype">double</span> &amp; variance,</div>
+<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>    <span class="keywordtype">bool</span> reciprocal);</div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#ga92518a7b79e9265380f3a047e46ec247">  157</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloudA,</div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloudB,</div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>    <span class="keywordtype">double</span> &amp; variance,</div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>    <span class="keywordtype">bool</span> reciprocal);</div>
+<div class="line"><a id="l00165" name="l00165"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#ga7d90c0848a13e35f37588addf3637fe2">  165</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloudA,</div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloudB,</div>
 <div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
 <div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>    <span class="keywordtype">double</span> &amp; variance,</div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
 <div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>    <span class="keywordtype">bool</span> reciprocal);</div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno"><a class="line" href="group__ComputeVarianceAndCorrespondences.html#ga7d90c0848a13e35f37588addf3637fe2">  176</a></span><span class="keywordtype">void</span> RTABMAP_CORE_EXPORT <a class="code hl_function" href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">computeVarianceAndCorrespondences</a>(</div>
-<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloudA,</div>
-<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloudB,</div>
-<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>    <span class="keywordtype">double</span> &amp; variance,</div>
-<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span>    <span class="keywordtype">int</span> &amp; correspondencesOut,</div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span>    <span class="keywordtype">bool</span> reciprocal);</div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span> </div>
-<div class="line"><a id="l00209" name="l00209"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#af9f16d681288b1f91ce6e5a8ee9f6967">  209</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#af9f16d681288b1f91ce6e5a8ee9f6967">icp</a>(</div>
-<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloud_source,</div>
-<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloud_target,</div>
-<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span>    <span class="keywordtype">int</span> maximumIterations,</div>
-<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
-<div class="line"><a id="l00215" name="l00215"></a><span class="lineno">  215</span>    pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud_source_registered,</div>
-<div class="line"><a id="l00216" name="l00216"></a><span class="lineno">  216</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
-<div class="line"><a id="l00217" name="l00217"></a><span class="lineno">  217</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00218" name="l00218"></a><span class="lineno">  218</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
-<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l00228" name="l00228"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a1a153cf0e597dd206c6a850957f6c1ef">  228</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#af9f16d681288b1f91ce6e5a8ee9f6967">icp</a>(</div>
-<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloud_source,</div>
-<div class="line"><a id="l00230" name="l00230"></a><span class="lineno">  230</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloud_target,</div>
-<div class="line"><a id="l00231" name="l00231"></a><span class="lineno">  231</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00232" name="l00232"></a><span class="lineno">  232</span>    <span class="keywordtype">int</span> maximumIterations,</div>
-<div class="line"><a id="l00233" name="l00233"></a><span class="lineno">  233</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
-<div class="line"><a id="l00234" name="l00234"></a><span class="lineno">  234</span>    pcl::PointCloud&lt;pcl::PointXYZI&gt; &amp; cloud_source_registered,</div>
-<div class="line"><a id="l00235" name="l00235"></a><span class="lineno">  235</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
-<div class="line"><a id="l00236" name="l00236"></a><span class="lineno">  236</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00237" name="l00237"></a><span class="lineno">  237</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
-<div class="line"><a id="l00238" name="l00238"></a><span class="lineno">  238</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l00239" name="l00239"></a><span class="lineno">  239</span> </div>
-<div class="line"><a id="l00265" name="l00265"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a6ac0f56608f1760d60eda7861b8dc303">  265</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a6ac0f56608f1760d60eda7861b8dc303">icpPointToPlane</a>(</div>
-<div class="line"><a id="l00266" name="l00266"></a><span class="lineno">  266</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloud_source,</div>
-<div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloud_target,</div>
-<div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>    <span class="keywordtype">int</span> maximumIterations,</div>
-<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
-<div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>    pcl::PointCloud&lt;pcl::PointNormal&gt; &amp; cloud_source_registered,</div>
-<div class="line"><a id="l00272" name="l00272"></a><span class="lineno">  272</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
-<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
-<div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l00284" name="l00284"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a12d008fea5babe6a208fca7b1fb719d3">  284</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a6ac0f56608f1760d60eda7861b8dc303">icpPointToPlane</a>(</div>
-<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloud_source,</div>
-<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloud_target,</div>
-<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
-<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span>    <span class="keywordtype">int</span> maximumIterations,</div>
-<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
-<div class="line"><a id="l00290" name="l00290"></a><span class="lineno">  290</span>    pcl::PointCloud&lt;pcl::PointXYZINormal&gt; &amp; cloud_source_registered,</div>
-<div class="line"><a id="l00291" name="l00291"></a><span class="lineno">  291</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
-<div class="line"><a id="l00292" name="l00292"></a><span class="lineno">  292</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00293" name="l00293"></a><span class="lineno">  293</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
-<div class="line"><a id="l00294" name="l00294"></a><span class="lineno">  294</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l00295" name="l00295"></a><span class="lineno">  295</span> </div>
-<div class="line"><a id="l00296" name="l00296"></a><span class="lineno">  296</span>} <span class="comment">// namespace util3d</span></div>
-<div class="line"><a id="l00297" name="l00297"></a><span class="lineno">  297</span>} <span class="comment">// namespace rtabmap</span></div>
-<div class="line"><a id="l00298" name="l00298"></a><span class="lineno">  298</span> </div>
-<div class="line"><a id="l00299" name="l00299"></a><span class="lineno">  299</span><span class="preprocessor">#endif </span><span class="comment">/* UTIL3D_REGISTRATION_H_ */</span><span class="preprocessor"></span></div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#af9f16d681288b1f91ce6e5a8ee9f6967">  199</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#af9f16d681288b1f91ce6e5a8ee9f6967">icp</a>(</div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloud_source,</div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZ&gt;::ConstPtr &amp; cloud_target,</div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>    <span class="keywordtype">int</span> maximumIterations,</div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>    pcl::PointCloud&lt;pcl::PointXYZ&gt; &amp; cloud_source_registered,</div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00218" name="l00218"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a1a153cf0e597dd206c6a850957f6c1ef">  218</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#af9f16d681288b1f91ce6e5a8ee9f6967">icp</a>(</div>
+<div class="line"><a id="l00219" name="l00219"></a><span class="lineno">  219</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloud_source,</div>
+<div class="line"><a id="l00220" name="l00220"></a><span class="lineno">  220</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZI&gt;::ConstPtr &amp; cloud_target,</div>
+<div class="line"><a id="l00221" name="l00221"></a><span class="lineno">  221</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00222" name="l00222"></a><span class="lineno">  222</span>    <span class="keywordtype">int</span> maximumIterations,</div>
+<div class="line"><a id="l00223" name="l00223"></a><span class="lineno">  223</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
+<div class="line"><a id="l00224" name="l00224"></a><span class="lineno">  224</span>    pcl::PointCloud&lt;pcl::PointXYZI&gt; &amp; cloud_source_registered,</div>
+<div class="line"><a id="l00225" name="l00225"></a><span class="lineno">  225</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
+<div class="line"><a id="l00226" name="l00226"></a><span class="lineno">  226</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00227" name="l00227"></a><span class="lineno">  227</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
+<div class="line"><a id="l00228" name="l00228"></a><span class="lineno">  228</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00229" name="l00229"></a><span class="lineno">  229</span> </div>
+<div class="line"><a id="l00255" name="l00255"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a6ac0f56608f1760d60eda7861b8dc303">  255</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a6ac0f56608f1760d60eda7861b8dc303">icpPointToPlane</a>(</div>
+<div class="line"><a id="l00256" name="l00256"></a><span class="lineno">  256</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloud_source,</div>
+<div class="line"><a id="l00257" name="l00257"></a><span class="lineno">  257</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointNormal&gt;::ConstPtr &amp; cloud_target,</div>
+<div class="line"><a id="l00258" name="l00258"></a><span class="lineno">  258</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00259" name="l00259"></a><span class="lineno">  259</span>    <span class="keywordtype">int</span> maximumIterations,</div>
+<div class="line"><a id="l00260" name="l00260"></a><span class="lineno">  260</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
+<div class="line"><a id="l00261" name="l00261"></a><span class="lineno">  261</span>    pcl::PointCloud&lt;pcl::PointNormal&gt; &amp; cloud_source_registered,</div>
+<div class="line"><a id="l00262" name="l00262"></a><span class="lineno">  262</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
+<div class="line"><a id="l00263" name="l00263"></a><span class="lineno">  263</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00264" name="l00264"></a><span class="lineno">  264</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
+<div class="line"><a id="l00265" name="l00265"></a><span class="lineno">  265</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00274" name="l00274"></a><span class="lineno"><a class="line" href="namespacertabmap_1_1util3d.html#a12d008fea5babe6a208fca7b1fb719d3">  274</a></span><a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT <a class="code hl_function" href="namespacertabmap_1_1util3d.html#a6ac0f56608f1760d60eda7861b8dc303">icpPointToPlane</a>(</div>
+<div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloud_source,</div>
+<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span>    <span class="keyword">const</span> pcl::PointCloud&lt;pcl::PointXYZINormal&gt;::ConstPtr &amp; cloud_target,</div>
+<div class="line"><a id="l00277" name="l00277"></a><span class="lineno">  277</span>    <span class="keywordtype">double</span> maxCorrespondenceDistance,</div>
+<div class="line"><a id="l00278" name="l00278"></a><span class="lineno">  278</span>    <span class="keywordtype">int</span> maximumIterations,</div>
+<div class="line"><a id="l00279" name="l00279"></a><span class="lineno">  279</span>    <span class="keywordtype">bool</span> &amp; hasConverged,</div>
+<div class="line"><a id="l00280" name="l00280"></a><span class="lineno">  280</span>    pcl::PointCloud&lt;pcl::PointXYZINormal&gt; &amp; cloud_source_registered,</div>
+<div class="line"><a id="l00281" name="l00281"></a><span class="lineno">  281</span>    <span class="keywordtype">float</span> epsilon = 0.0f,</div>
+<div class="line"><a id="l00282" name="l00282"></a><span class="lineno">  282</span>    <span class="keywordtype">bool</span> icp2D = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00283" name="l00283"></a><span class="lineno">  283</span>    <span class="keywordtype">float</span> ransacOutlierRatio = 0.0f,</div>
+<div class="line"><a id="l00284" name="l00284"></a><span class="lineno">  284</span>    <span class="keywordtype">int</span> * iterationsDone = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00285" name="l00285"></a><span class="lineno">  285</span> </div>
+<div class="line"><a id="l00286" name="l00286"></a><span class="lineno">  286</span>} <span class="comment">// namespace util3d</span></div>
+<div class="line"><a id="l00287" name="l00287"></a><span class="lineno">  287</span>} <span class="comment">// namespace rtabmap</span></div>
+<div class="line"><a id="l00288" name="l00288"></a><span class="lineno">  288</span> </div>
+<div class="line"><a id="l00289" name="l00289"></a><span class="lineno">  289</span><span class="preprocessor">#endif </span><span class="comment">/* UTIL3D_REGISTRATION_H_ */</span><span class="preprocessor"></span></div>
 <div class="ttc" id="aclassrtabmap_1_1Transform_html"><div class="ttname"><a href="classrtabmap_1_1Transform.html">rtabmap::Transform</a></div><div class="ttdoc">Represents a 3D rigid body transformation (rotation + translation).</div><div class="ttdef"><b>Definition</b> <a href="Transform_8h_source.html#l00052">Transform.h:53</a></div></div>
 <div class="ttc" id="agroup__ComputeVarianceAndCorrespondences_html_gaf474f9fb6eaaf532e9b18af63b9e1665"><div class="ttname"><a href="group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665">rtabmap::util3d::computeVarianceAndCorrespondences</a></div><div class="ttdeci">void RTABMAP_CORE_EXPORT computeVarianceAndCorrespondences(const pcl::PointCloud&lt; pcl::PointNormal &gt;::ConstPtr &amp;cloudA, const pcl::PointCloud&lt; pcl::PointNormal &gt;::ConstPtr &amp;cloudB, double maxCorrespondenceDistance, double maxCorrespondenceAngle, double &amp;variance, int &amp;correspondencesOut, bool reciprocal)</div><div class="ttdoc">Compute with variance and correspondences of pcl::PointNormal point cloud type.</div></div>
 <div class="ttc" id="anamespacertabmap_1_1util3d_html_a56797352c7d47f815c694bc4ccb1faea"><div class="ttname"><a href="namespacertabmap_1_1util3d.html#a56797352c7d47f815c694bc4ccb1faea">rtabmap::util3d::transformFromXYZCorrespondencesSVD</a></div><div class="ttdeci">Transform RTABMAP_CORE_EXPORT transformFromXYZCorrespondencesSVD(const pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud1, const pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud2)</div><div class="ttdoc">Estimates the rigid 3D transformation between two point clouds using SVD.</div></div>

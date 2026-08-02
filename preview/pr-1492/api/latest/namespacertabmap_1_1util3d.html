@@ -307,39 +307,51 @@ pcl::PCLPointCloud2::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" 
 <tr class="separator:ga394ec840a58a1203fac9725d49a0013c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gac4aef207f79791db5064dc596e25513b" id="r_gac4aef207f79791db5064dc596e25513b"><td class="memItemLeft" align="right" valign="top">
 pcl::PointCloud&lt; pcl::PointXYZ &gt;::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointCloud</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;transform=<a class="el" href="classrtabmap_1_1Transform.html">Transform</a>())</td></tr>
+<tr class="memdesc:gac4aef207f79791db5064dc596e25513b"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> &rarr; <code>PointXYZ</code> (x, y, z); any other field of the scan is dropped. <br /></td></tr>
 <tr class="separator:gac4aef207f79791db5064dc596e25513b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gafe2b6826178bf0af878be67bddf3c9bd" id="r_gafe2b6826178bf0af878be67bddf3c9bd"><td class="memItemLeft" align="right" valign="top">
 pcl::PointCloud&lt; pcl::PointNormal &gt;::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointCloudNormal</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;transform=<a class="el" href="classrtabmap_1_1Transform.html">Transform</a>())</td></tr>
+<tr class="memdesc:gafe2b6826178bf0af878be67bddf3c9bd"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> &rarr; <code>PointNormal</code> (x, y, z, nx, ny, nz); normals are zeroed if the scan has none. <br /></td></tr>
 <tr class="separator:gafe2b6826178bf0af878be67bddf3c9bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaee3e6a7ef23f6e5f9a19a0b033d7522c" id="r_gaee3e6a7ef23f6e5f9a19a0b033d7522c"><td class="memItemLeft" align="right" valign="top">
 pcl::PointCloud&lt; pcl::PointXYZRGB &gt;::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointCloudRGB</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;transform=<a class="el" href="classrtabmap_1_1Transform.html">Transform</a>(), unsigned char r=100, unsigned char g=100, unsigned char b=100)</td></tr>
+<tr class="memdesc:gaee3e6a7ef23f6e5f9a19a0b033d7522c"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> &rarr; <code>PointXYZRGB</code> (x, y, z, rgb); <code>r</code>, <code>g</code> and <code>b</code> are used if the scan has no color. <br /></td></tr>
 <tr class="separator:gaee3e6a7ef23f6e5f9a19a0b033d7522c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga734628cdc1b15384476dc94d1c3dbb4d" id="r_ga734628cdc1b15384476dc94d1c3dbb4d"><td class="memItemLeft" align="right" valign="top">
 pcl::PointCloud&lt; pcl::PointXYZI &gt;::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointCloudI</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;transform=<a class="el" href="classrtabmap_1_1Transform.html">Transform</a>(), float intensity=0.0f)</td></tr>
+<tr class="memdesc:ga734628cdc1b15384476dc94d1c3dbb4d"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> &rarr; <code>PointXYZI</code> (x, y, z, intensity); <code>intensity</code> is used if the scan has none. <br /></td></tr>
 <tr class="separator:ga734628cdc1b15384476dc94d1c3dbb4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga741bd010511d5284831012194eab99b9" id="r_ga741bd010511d5284831012194eab99b9"><td class="memItemLeft" align="right" valign="top">
 pcl::PointCloud&lt; pcl::PointXYZRGBNormal &gt;::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointCloudRGBNormal</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;transform=<a class="el" href="classrtabmap_1_1Transform.html">Transform</a>(), unsigned char r=100, unsigned char g=100, unsigned char b=100)</td></tr>
+<tr class="memdesc:ga741bd010511d5284831012194eab99b9"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> &rarr; <code>PointXYZRGBNormal</code> (x, y, z, rgb, nx, ny, nz); missing color and normals are filled as above. <br /></td></tr>
 <tr class="separator:ga741bd010511d5284831012194eab99b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga8ee678c27ae59e2bb3fac8aeb55f9d92" id="r_ga8ee678c27ae59e2bb3fac8aeb55f9d92"><td class="memItemLeft" align="right" valign="top">
 pcl::PointCloud&lt; pcl::PointXYZINormal &gt;::Ptr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointCloudINormal</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;transform=<a class="el" href="classrtabmap_1_1Transform.html">Transform</a>(), float intensity=0.0f)</td></tr>
+<tr class="memdesc:ga8ee678c27ae59e2bb3fac8aeb55f9d92"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> &rarr; <code>PointXYZINormal</code> (x, y, z, intensity, nx, ny, nz); missing intensity and normals are filled as above. <br /></td></tr>
 <tr class="separator:ga8ee678c27ae59e2bb3fac8aeb55f9d92"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaeda3b4a673cb96e6421688e6c575e4e5" id="r_gaeda3b4a673cb96e6421688e6c575e4e5"><td class="memItemLeft" align="right" valign="top">
 pcl::PointXYZ RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPoint</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, int index)</td></tr>
+<tr class="memdesc:gaeda3b4a673cb96e6421688e6c575e4e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">The point at <code>index</code> of the scan, as <code>PointXYZ</code>. <br /></td></tr>
 <tr class="separator:gaeda3b4a673cb96e6421688e6c575e4e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga4412f275d60b69f0f62db56321c5991c" id="r_ga4412f275d60b69f0f62db56321c5991c"><td class="memItemLeft" align="right" valign="top">
 pcl::PointNormal RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointNormal</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, int index)</td></tr>
+<tr class="memdesc:ga4412f275d60b69f0f62db56321c5991c"><td class="mdescLeft">&#160;</td><td class="mdescRight">The point at <code>index</code> of the scan, as <code>PointNormal</code>. <br /></td></tr>
 <tr class="separator:ga4412f275d60b69f0f62db56321c5991c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gad0183648eae48143b33bfe969f8cbe43" id="r_gad0183648eae48143b33bfe969f8cbe43"><td class="memItemLeft" align="right" valign="top">
 pcl::PointXYZRGB RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointRGB</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, int index, unsigned char r=100, unsigned char g=100, unsigned char b=100)</td></tr>
+<tr class="memdesc:gad0183648eae48143b33bfe969f8cbe43"><td class="mdescLeft">&#160;</td><td class="mdescRight">The point at <code>index</code> of the scan, as <code>PointXYZRGB</code>. <br /></td></tr>
 <tr class="separator:gad0183648eae48143b33bfe969f8cbe43"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga03b1c3a49aba08fcbc01b5991f25d0cc" id="r_ga03b1c3a49aba08fcbc01b5991f25d0cc"><td class="memItemLeft" align="right" valign="top">
 pcl::PointXYZI RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointI</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, int index, float intensity)</td></tr>
+<tr class="memdesc:ga03b1c3a49aba08fcbc01b5991f25d0cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">The point at <code>index</code> of the scan, as <code>PointXYZI</code>. <br /></td></tr>
 <tr class="separator:ga03b1c3a49aba08fcbc01b5991f25d0cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga675b84c6a6edde91883e38f49c087f31" id="r_ga675b84c6a6edde91883e38f49c087f31"><td class="memItemLeft" align="right" valign="top">
 pcl::PointXYZRGBNormal RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointRGBNormal</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, int index, unsigned char r, unsigned char g, unsigned char b)</td></tr>
+<tr class="memdesc:ga675b84c6a6edde91883e38f49c087f31"><td class="mdescLeft">&#160;</td><td class="mdescRight">The point at <code>index</code> of the scan, as <code>PointXYZRGBNormal</code>. <br /></td></tr>
 <tr class="separator:ga675b84c6a6edde91883e38f49c087f31"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gab69062f7ffd0f2192983c6d7afa4a171" id="r_gab69062f7ffd0f2192983c6d7afa4a171"><td class="memItemLeft" align="right" valign="top">
 pcl::PointXYZINormal RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>laserScanToPointINormal</b> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;laserScan, int index, float intensity)</td></tr>
+<tr class="memdesc:gab69062f7ffd0f2192983c6d7afa4a171"><td class="mdescLeft">&#160;</td><td class="mdescRight">The point at <code>index</code> of the scan, as <code>PointXYZINormal</code>. <br /></td></tr>
 <tr class="separator:gab69062f7ffd0f2192983c6d7afa4a171"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad857475644e8de6d7d84b920637b2018" id="r_ad857475644e8de6d7d84b920637b2018"><td class="memItemLeft" align="right" valign="top">void RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#ad857475644e8de6d7d84b920637b2018">getMinMax3D</a> (const cv::Mat &amp;laserScan, cv::Point3f &amp;min, cv::Point3f &amp;max)</td></tr>
 <tr class="memdesc:ad857475644e8de6d7d84b920637b2018"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the minimum and maximum 3D points from a laser scan matrix.  <br /></td></tr>
@@ -5791,7 +5803,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="section return"><dt>Returns</dt><dd>A downsampled point cloud using voxel grid filtering.</dd></dl>
 <dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000022">Deprecated:</a></b></dt><dd>This function is deprecated. Use <a class="el" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89" title="Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.">voxelize()</a> for equivalent behavior. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00430">430</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00357">357</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
 
 </div>
 </div>
@@ -5841,7 +5853,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="section return"><dt>Returns</dt><dd>A downsampled point cloud using voxel grid filtering.</dd></dl>
 <dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000023">Deprecated:</a></b></dt><dd>This function is deprecated. Use <a class="el" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89" title="Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.">voxelize()</a> for equivalent behavior. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00448">448</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00375">375</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
 
 </div>
 </div>
@@ -5891,7 +5903,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="section return"><dt>Returns</dt><dd>A downsampled point cloud using voxel grid filtering.</dd></dl>
 <dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000024">Deprecated:</a></b></dt><dd>This function is deprecated. Use <a class="el" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89" title="Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.">voxelize()</a> for equivalent behavior. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00466">466</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00393">393</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
 
 </div>
 </div>
