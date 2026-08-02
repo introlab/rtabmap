@@ -112,8 +112,8 @@ class Optimizer;
  *     the loop closure(s) added this iteration are removed from @ref Memory.
  *   - In **localization mode**, optimization is run on a sub-graph composed of the
  *     odometry cache (@ref Parameters::kRGBDMaxOdomCacheSize()), the newly added
- *     localization link and pose priors fixing the map nodes (weighted by
- *     @ref Parameters::kRGBDLocalizationPriorInf()). The same error-ratio check is
+ *     localization link and pose priors fixing the map nodes (with the variance set
+ *     from @ref Parameters::kRGBDLocalizationPriorError()). The same error-ratio check is
  *     applied; on failure the localization is rejected for this iteration but the
  *     persisted map and its links are left untouched.
  *
@@ -130,7 +130,7 @@ class Optimizer;
  * brought back from LTM into WM via @ref Memory::reactivateSignatures(), so the next
  * iteration can compare against them too. Up to @ref Parameters::kRtabmapMaxRetrieved()
  * nodes are pulled per iteration; nodes around the current path or local pose may
- * also be retrieved (capped by @ref Parameters::kRtabmapMaxLocalRetrieved()).
+ * also be retrieved (capped by @ref Parameters::kRGBDMaxLocalRetrieved()).
  *
  * Retrieval (and the related node immunization) is only active when memory management
  * is enabled, i.e. when @ref Parameters::kRtabmapTimeThr() or
@@ -180,7 +180,7 @@ class Optimizer;
  *
  * When memory management is enabled (see step 4 Retrieval and step 6 Transfer), the
  * retrieval step also pulls nodes along the currently planned path back from LTM into
- * WM (capped by @ref Parameters::kRtabmapMaxLocalRetrieved()) so the robot is able to
+ * WM (capped by @ref Parameters::kRGBDMaxLocalRetrieved()) so the robot is able to
  * re-localize against upcoming waypoints as it follows the path, even when those
  * nodes had been transferred out of WM earlier.
  *
@@ -452,7 +452,7 @@ public:
 	 * In **mapping mode**, this increments the map id, clears the local optimized graph
 	 * and resets the Bayes filter.
 	 * In **localization mode**, it resets the map correction, the localization node and
-	 * the odometry cache; if @ref Parameters::kRtabmapRestartAtOrigin() is enabled, the
+	 * the odometry cache; if @ref Parameters::kRGBDStartAtOrigin() is enabled, the
 	 * last localization pose is reset to identity.
 	 *
 	 * @return The new map id (mapping mode), or -1 (localization mode).

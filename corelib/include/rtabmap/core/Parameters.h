@@ -63,8 +63,11 @@ typedef std::pair<std::string, std::string> ParametersPair;
  */
 #define RTABMAP_PARAM(PREFIX, NAME, TYPE, DEFAULT_VALUE, DESCRIPTION) \
     public: \
+        /** @brief Key of parameter PREFIX##/##NAME: DESCRIPTION Default value: DEFAULT_VALUE (TYPE). */ \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+        /** @brief Default value of parameter PREFIX##/##NAME: DEFAULT_VALUE. */ \
         static TYPE default##PREFIX##NAME() {return (TYPE)DEFAULT_VALUE;} \
+        /** @brief Type of parameter PREFIX##/##NAME, as a string: TYPE. */ \
         static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
     private: \
         class Dummy##PREFIX##NAME { \
@@ -97,8 +100,11 @@ typedef std::pair<std::string, std::string> ParametersPair;
  */
 #define RTABMAP_PARAM_STR(PREFIX, NAME, DEFAULT_VALUE, DESCRIPTION) \
     public: \
+        /** @brief Key of parameter PREFIX##/##NAME: DESCRIPTION Default value: DEFAULT_VALUE (string). */ \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+        /** @brief Default value of parameter PREFIX##/##NAME: DEFAULT_VALUE. */ \
         static std::string default##PREFIX##NAME() {return DEFAULT_VALUE;} \
+        /** @brief Type of parameter PREFIX##/##NAME, as a string: string. */ \
         static std::string type##PREFIX##NAME() {return std::string("string");} \
     private: \
         class Dummy##PREFIX##NAME { \
@@ -130,8 +136,11 @@ typedef std::pair<std::string, std::string> ParametersPair;
  */
 #define RTABMAP_PARAM_COND(PREFIX, NAME, TYPE, COND, DEFAULT_VALUE1, DEFAULT_VALUE2, DESCRIPTION) \
     public: \
+        /** @brief Key of parameter PREFIX##/##NAME: DESCRIPTION Default value: DEFAULT_VALUE1 if COND, DEFAULT_VALUE2 otherwise (TYPE). */ \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+        /** @brief Default value of parameter PREFIX##/##NAME: DEFAULT_VALUE1 if COND, DEFAULT_VALUE2 otherwise. */ \
         static TYPE default##PREFIX##NAME() {return COND?DEFAULT_VALUE1:DEFAULT_VALUE2;} \
+        /** @brief Type of parameter PREFIX##/##NAME, as a string: TYPE. */ \
         static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
     private: \
         class Dummy##PREFIX##NAME { \

@@ -1,16 +1,33 @@
 #!/usr/bin/env bash
 # Generate the C++ API documentation, laid out like the published site:
 #   build-docs/api/versions.js   <- shared version list (drives the dropdown)
+#   build-docs/api/index.html    <- redirect to the current version
 #   build-docs/api/latest/       <- this build
 # Serve build-docs/ over HTTP to preview it (the last line prints the command).
+#
+#   ./docs-report.sh                 API docs only
+#   ./docs-report.sh --site          also build the landing page and serve the
+#                                    whole site, the way CI assembles it
+#
 # Run from anywhere; defaults: build dir = build-docs, output = build-docs/api/latest
-# Override: DOCS_BUILD_DIR=/path/to/build DOCS_HTML_DIR=/path/to/out ./docs-report.sh
+# Override: DOCS_BUILD_DIR=/path/to/build DOCS_HTML_DIR=/path/to/out DOCS_PORT=4000
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${DOCS_BUILD_DIR:-$ROOT/build-docs}"
 HTML_DIR="${DOCS_HTML_DIR:-$BUILD_DIR/api/latest}"
 API_DIR="$(dirname "$HTML_DIR")"
+SITE_DIR="${DOCS_SITE_DIR:-$BUILD_DIR/site}"
+PORT="${DOCS_PORT:-4000}"
+
+BUILD_SITE=false
+for arg in "$@"; do
+	case "$arg" in
+		--site)      BUILD_SITE=true ;;
+		-h|--help)   sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+		*)           echo "Error: unknown argument: $arg (try --help)" >&2; exit 1 ;;
+	esac
+done
 
 need_cmd() {
 	command -v "$1" >/dev/null 2>&1 || {
@@ -56,6 +73,11 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
 elif ! grep -q '^BUILD_TESTING:BOOL=OFF' "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
 	echo "Reconfiguring $BUILD_DIR for documentation..."
 	configure_docs_build
+elif [[ "$ROOT/Doxyfile.in" -nt "$BUILD_DIR/Doxyfile" ]]; then
+	# CMake generates Doxyfile from Doxyfile.in; nothing else here runs the
+	# build system, so refresh it when the template is newer.
+	echo "Doxyfile.in changed, reconfiguring $BUILD_DIR..."
+	configure_docs_build
 fi
 
 export_header="$BUILD_DIR/corelib/src/include/rtabmap/core/rtabmap_core_export.h"
@@ -72,7 +94,8 @@ mkdir -p "$HTML_DIR"
 echo "Running Doxygen -> $HTML_DIR ..."
 {
 	cat "$BUILD_DIR/Doxyfile"
-	printf 'INPUT = corelib/include utilite/include %s/corelib/src/include\n' "$BUILD_DIR"
+	printf 'INPUT = %s/doxygen/mainpage.md corelib/include utilite/include %s/corelib/src/include\n' "$ROOT" "$BUILD_DIR"
+	printf 'USE_MDFILE_AS_MAINPAGE = %s/doxygen/mainpage.md\n' "$ROOT"
 	printf 'OUTPUT_DIRECTORY = %s\n' "$HTML_DIR"
 	printf 'HTML_OUTPUT = .\n'
 } | (cd "$ROOT" && doxygen -)
@@ -80,6 +103,18 @@ echo "Running Doxygen -> $HTML_DIR ..."
 # The version list lives at the API root, one level above this build, so every
 # published version shares it (see doxygen/versions.js).
 cp "$ROOT/doxygen/versions.js" "$API_DIR/versions.js"
+
+# /api/ has no content of its own: send it to this build so a bare .../api/
+# link lands somewhere useful instead of a 404 (relative target, so it works
+# at the site root and under a preview prefix alike).
+printf '%s\n' \
+	'<!doctype html>' \
+	'<meta charset="utf-8">' \
+	'<title>RTAB-Map API documentation</title>' \
+	"<meta http-equiv=\"refresh\" content=\"0; url=$(basename "$HTML_DIR")/\">" \
+	"<link rel=\"canonical\" href=\"$(basename "$HTML_DIR")/\">" \
+	"<p>Redirecting to the <a href=\"$(basename "$HTML_DIR")/\">latest API documentation</a>.</p>" \
+	> "$API_DIR/index.html"
 
 if [[ ! -f "$HTML_DIR/index.html" ]]; then
 	echo "Error: expected $HTML_DIR/index.html after Doxygen run" >&2
@@ -89,7 +124,56 @@ fi
 serve_dir="$(dirname "$API_DIR")"
 echo ""
 echo "Done: $HTML_DIR/index.html"
+
+if ! $BUILD_SITE; then
+	echo ""
+	echo "Preview (the version dropdown needs HTTP, not file://):"
+	echo "  python3 -m http.server 8899 --directory $serve_dir"
+	echo "  http://127.0.0.1:8899/api/$(basename "$HTML_DIR")/"
+	exit 0
+fi
+
+# --- Full site: landing page + API docs, assembled the way CI does -----------
+
+if ! command -v jekyll >/dev/null 2>&1; then
+	cat >&2 <<EOF
+Error: jekyll not found. Install the same gem set GitHub Pages uses:
+  sudo apt install ruby-dev build-essential   # native gems need the headers
+  gem install --user-install github-pages
+  export PATH="\$PATH:\$(ruby -e 'print Gem.user_dir')/bin"
+EOF
+	exit 1
+fi
+
+# github-pages enables these implicitly; calling jekyll directly does not, and
+# without them index.md is copied verbatim instead of rendered with the theme.
+# baseurl is emptied for the local preview: the site is served from the root
+# here, while .github/workflows/docs.yml pins the real path per deployment.
+jekyll_config="$BUILD_DIR/_config_local.yml"
+{
+	echo 'baseurl: ""'
+	echo "plugins:"
+	echo "  - jekyll-mentions"
+	echo "  - jekyll-optional-front-matter"
+	echo "  - jekyll-default-layout"
+} > "$jekyll_config"
+
 echo ""
-echo "Preview (the version dropdown needs HTTP, not file://):"
-echo "  python3 -m http.server 8899 --directory $serve_dir"
-echo "  http://127.0.0.1:8899/api/$(basename "$HTML_DIR")/"
+echo "Building the landing page -> $SITE_DIR ..."
+rm -rf "$SITE_DIR"
+jekyll build -s "$ROOT/website" -d "$SITE_DIR" \
+	--config "$ROOT/website/_config.yml,$jekyll_config"
+cp -r "$API_DIR" "$SITE_DIR/api"
+
+echo ""
+echo "Serving the assembled site (Ctrl-C to stop):"
+echo "  http://127.0.0.1:$PORT/"
+echo "  http://127.0.0.1:$PORT/api/"
+echo ""
+# --skip-initial-build: a rebuild would wipe the destination, taking the api/
+# tree copied above with it.
+# --open-url: launch the browser on the served address (harmless when there is
+# no browser to launch, e.g. over SSH -- jekyll just logs it).
+exec jekyll serve -s "$ROOT/website" -d "$SITE_DIR" \
+	--config "$ROOT/website/_config.yml,$jekyll_config" \
+	--skip-initial-build --open-url --port "$PORT"

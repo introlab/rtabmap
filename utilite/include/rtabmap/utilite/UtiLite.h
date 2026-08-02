@@ -163,41 +163,6 @@
   * \section processinfo UProcessInfo
   * This class can be used to get the process memory usage: UProcessInfo::getMemoryUsage().
   *
-  * \section qtLib Qt Widgets (libutilite_qt.so : OPTIONAL)
-  * If Qt is found on the system, the UtiLite Qt library (libutilite_qt.so, libutilite_qt.dll) with
-  * useful widgets is built. Use class UPlot to create a plot like MATLAB, and incrementally add
-  * new values like a scope. USpectrogram is used to
-  * show audio frequency frames.
-  * - UPlot,
-  * - USpectrogram,
-  * - UImageView.
-  * @image html UPlot.gif
-  * @image html USpectrogram.png
-  *
-  * \section audioLib Audio stuff (libutilite_audio.so : OPTIONAL)
-  * If FMOD is found on the system, the UtiLite audio
-  * library is built (libutilite_audio.so, libutilite_audio.dll). It is a wrapper
-  * of FMOD methods with a convenient interface to extract audio frames.
-  * - UAudioCapture,
-  * - UAudioCaptureFile,
-  * - UAudioCaptureMic,
-  * - UAudioCaptureFFT,
-  * - UAudioPlayer,
-  * - UAudioPlayerTone,
-  * - UWav,
-  * - UMp3Encoder (only if Lame is also found on the system).
-  *
-  * \section cvLib OpenCV stuff (libutilite_cv.so : OPTIONAL)
-  * If OpenCV is found on the system, the UtiLite cv
-  * library is built (libutilite_cv.so, libutilite_cv.dll). It provides
-  * image capture classes used to read from a webcam, a video file
-  * or a directory of images. If UtiLite is also built with Qt, a
-  * convenient function uCvMat2QImage() can be used to convert a cv::Mat
-  * image to a QImage.
-  * - UVideoCapture,
-  * - UImageFolderCapture,
-  * - UColorTable,
-  * - uCvMat2QImage() (only if Qt is also found on the system).
   */
 
 /*! \page uResourceGeneratorPage uResourceGenerator

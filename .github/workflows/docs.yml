@@ -115,7 +115,21 @@ jobs:
           # comment in doxygen/versions.js.
           cp doxygen/versions.js _site/api/versions.js
 
+          # /api/ has no content of its own: send it to the current docs so a
+          # bare .../api/ link lands somewhere useful instead of a 404. The
+          # target is relative, so it works at the site root and under a
+          # preview prefix alike.
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<meta charset="utf-8">' \
+            '<title>RTAB-Map API documentation</title>' \
+            '<meta http-equiv="refresh" content="0; url=latest/">' \
+            '<link rel="canonical" href="latest/">' \
+            '<p>Redirecting to the <a href="latest/">latest API documentation</a>.</p>' \
+            > _site/api/index.html
+
           test -f _site/index.html
+          test -f _site/api/index.html
           test -f _site/api/latest/index.html
 
       - name: Upload site artifact
