@@ -1327,6 +1327,28 @@ IF(RTABMAP_DOXYGEN_EXECUTABLE)
    ENDIF()
 ENDIF()
 
+# "Parameter reference" page: the parameters are declared through the
+# RTABMAP_PARAM* macros, so Doxygen alone can only show 1900 bare accessors.
+# The generator reads the declarations and emits one table per group, with the
+# key, type, default and description together. Optional: without Python the
+# page is simply left out of INPUT.
+FIND_PACKAGE(Python3 COMPONENTS Interpreter QUIET)
+SET(RTABMAP_DOXYGEN_PARAMETERS_PAGE "")
+IF(Python3_Interpreter_FOUND)
+   EXECUTE_PROCESS(
+      COMMAND ${Python3_EXECUTABLE}
+              ${CMAKE_CURRENT_SOURCE_DIR}/doxygen/generate_parameters_page.py
+              --input ${CMAKE_CURRENT_SOURCE_DIR}/corelib/include/${PROJECT_PREFIX}/core/Parameters.h
+              --output ${CMAKE_CURRENT_BINARY_DIR}/doxygen/parameters.md
+      RESULT_VARIABLE RTABMAP_DOXYGEN_PARAMETERS_RESULT
+      OUTPUT_QUIET ERROR_QUIET)
+   IF(RTABMAP_DOXYGEN_PARAMETERS_RESULT EQUAL 0)
+      SET(RTABMAP_DOXYGEN_PARAMETERS_PAGE ${CMAKE_CURRENT_BINARY_DIR}/doxygen/parameters.md)
+   ELSE()
+      MESSAGE(WARNING "Could not generate the Doxygen parameter reference page.")
+   ENDIF()
+ENDIF()
+
 # Doxyfile with PROJECT_NUMBER filled from RTABMAP_VERSION, so the generated
 # documentation can never drift from the actual version. Its INPUT/OUTPUT paths
 # are relative to the source tree, so run it from there:

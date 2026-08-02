@@ -29,7 +29,7 @@
   *
   * UtiLite provides a utility application called \ref uResourceGeneratorPage "uResourceGenerator" to generate resources to include in an executable. For example:
   * @code
-  * $ ./uresourcegenerator DatabaseSchema.sql
+  * $ rtabmap-res_tool DatabaseSchema.sql
   * @endcode
   * This will generate a HEX file "DatabaseSchema_sql.h" which can be included in source files.
   * Data of the file is global and can be accessed by the generated const char * DATABASESCHEMA_SQL.
@@ -167,7 +167,7 @@
 /*! \page uResourceGeneratorPage uResourceGenerator
  * UtiLite provides a utility application called \ref uResourceGeneratorPage "uResourceGenerator" to generate resources to include in an executable. For example:
  * @code
- * $ ./uresourcegenerator DatabaseSchema.sql
+ * $ rtabmap-res_tool DatabaseSchema.sql
  * @endcode
  * This will generate a HEX file "DatabaseSchema_sql.h" which can be included in source files.
  * Data of the file is global and can be accessed by the generated const char * DATABASESCHEMA_SQL.
@@ -185,7 +185,7 @@
  * @code
  * ADD_CUSTOM_COMMAND(
  *    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/DatabaseSchema_sql.h
- *    COMMAND ${URESOURCEGENERATOR_EXEC} -n my_namespace -p ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/DatabaseSchema.sql
+ *    COMMAND ${RTABMAP_RES_TOOL} -n my_namespace -p ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/DatabaseSchema.sql
  *    COMMENT "[Creating database resource]"
  *    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/DatabaseSchema.sql
  * )
@@ -195,7 +195,9 @@
  * ADD_LIBRARY(mylib ${SRC_FILES} ${RESOURCES})
  * ADD_EXECUTABLE(myexecutable ${SRC_FILES} ${RESOURCES})
  * @endcode
- * The variable URESOURCEGENERATOR_EXEC is set when FIND_PACKAGE(UtiLite) is done, you would need to add `FindUtiLite.cmake`.
+ * The tool is installed as `rtabmap-res_tool`. It is not exported by FIND_PACKAGE(RTABMap),
+ * so locate it with FIND_PROGRAM(RTABMAP_RES_TOOL rtabmap-res_tool). Inside RTAB-Map's own
+ * build, the `res_tool` CMake target can be used directly as the COMMAND instead.
  */
 
 #include "rtabmap/utilite/UStl.h"

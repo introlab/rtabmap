@@ -54,30 +54,41 @@ private:
 	Statistics _stats;
 };
 
+/**
+ * @class RtabmapEventCmd
+ * @brief Command sent to @ref RtabmapThread, with its parameters.
+ *
+ * Posting one to @ref UEventsManager is how the map is controlled from another
+ * thread: initializing or closing it, resetting the memory, requesting the graph,
+ * setting a goal, labelling a node... The arguments listed for each @ref Cmd are
+ * passed as @p value1 / @p value2 to the constructor, and parameter maps through
+ * @p parameters.
+ */
 class RtabmapEventCmd : public UEvent
 {
 public:
 	enum dummy {d}; // Hack, to fix Eclipse complaining about not defined Cmd enum ?!
+	/** @brief What the receiving @ref RtabmapThread should do. */
 	enum Cmd {
-			kCmdUndef,
-			kCmdInit,             // params: [string] database path + ParametersMap
-			kCmdResetMemory,
-			kCmdClose,            // params: [bool] database saved (default true), [string] output database path (empty=use same database to save, only work when Db/Sqlite3InMemory=true)
-			kCmdUpdateParams,     // params: ParametersMap
-			kCmdDumpMemory,
-			kCmdDumpPrediction,
-			kCmdGenerateDOTGraph, // params: [bool] global, [string] path, if global=false: [int] id, [int] margin
-			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO, 4=g2o)
-			kCmdCleanDataBuffer,
-			kCmdPublish3DMap,     // params: [bool] global, [bool] optimized, [bool] graphOnly
-			kCmdRepublishData,    // params: [vector<int>] ids
-			kCmdTriggerNewMap,
-			kCmdPause,
-			kCmdResume,
-			kCmdGoal,             // params: [string] label or [int] location ID
-			kCmdCancelGoal,
-			kCmdLabel,            // params: [string] label, [int] location ID
-			kCmdRemoveLabel       // params: [string] label
+			kCmdUndef,            /**< No command. */
+			kCmdInit,             /**< Initialize the map. Params: [string] database path + ParametersMap. */
+			kCmdResetMemory,      /**< Clear the map and start over from an empty memory. */
+			kCmdClose,            /**< Close the map. Params: [bool] database saved (default true), [string] output database path (empty=use same database to save, only work when Db/Sqlite3InMemory=true). */
+			kCmdUpdateParams,     /**< Apply new parameters. Params: ParametersMap. */
+			kCmdDumpMemory,       /**< Dump the memory content to text files in the working directory. */
+			kCmdDumpPrediction,   /**< Dump the Bayes filter prediction matrix to a text file. */
+			kCmdGenerateDOTGraph, /**< Write the graph as a DOT file. Params: [bool] global, [string] path, if global=false: [int] id, [int] margin. */
+			kCmdExportPoses,      /**< Export the poses to a file. Params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO, 4=g2o). */
+			kCmdCleanDataBuffer,  /**< Drop the frames waiting in the thread's buffer. */
+			kCmdPublish3DMap,     /**< Ask for the map, answered with a @ref RtabmapEvent3DMap. Params: [bool] global, [bool] optimized, [bool] graphOnly. */
+			kCmdRepublishData,    /**< Republish the data of some nodes. Params: [vector&lt;int&gt;] ids. */
+			kCmdTriggerNewMap,    /**< Start a new map session (see @ref Rtabmap::triggerNewMap()). */
+			kCmdPause,            /**< Stop consuming incoming data. */
+			kCmdResume,           /**< Resume after a @ref kCmdPause. */
+			kCmdGoal,             /**< Plan a path to a node. Params: [string] label or [int] location ID. */
+			kCmdCancelGoal,       /**< Abandon the current goal. */
+			kCmdLabel,            /**< Label a node. Params: [string] label, [int] location ID. */
+			kCmdRemoveLabel       /**< Remove a label. Params: [string] label. */
 	};
 public:
 	RtabmapEventCmd(Cmd cmd, const ParametersMap & parameters = ParametersMap()) :

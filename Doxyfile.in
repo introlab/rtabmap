@@ -683,7 +683,9 @@ STRICT_PROTO_MATCHING  = NO
 # list. This list is created by putting \todo commands in the documentation.
 # The default value is: YES.
 
-GENERATE_TODOLIST      = YES
+# Off: \todo notes are for whoever works on the code, not for the published API
+# reference (they are still visible in the sources).
+GENERATE_TODOLIST      = NO
 
 # The GENERATE_TESTLIST tag can be used to enable (YES) or disable (NO) the test
 # list. This list is created by putting \test commands in the documentation.
@@ -854,7 +856,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = doxygen/mainpage.md corelib/include utilite/include build-docs/corelib/src/include
+INPUT                  = doxygen/mainpage.md doxygen/tools.md @RTABMAP_DOXYGEN_PARAMETERS_PAGE@ corelib/include utilite/include build-docs/corelib/src/include
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

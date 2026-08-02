@@ -39,6 +39,7 @@ need_cmd() {
 need_cmd cmake
 need_cmd doxygen
 need_cmd gcc
+need_cmd python3
 
 configure_docs_build() {
 	cmake -B "$BUILD_DIR" \
@@ -90,11 +91,26 @@ fi
 # assignment wins, and `doxygen -` is the only supported way to combine files
 # (passing a second config file on the command line is silently ignored).
 # INPUT is relative, so Doxygen must run from the source root.
+# Doxygen never removes files from a previous run, so a page that is no longer
+# generated (a deleted class, a list turned off) would linger in the preview
+# while CI, building from scratch, would not have it. Only wipe a directory
+# that is a previous Doxygen output, in case DOCS_HTML_DIR points elsewhere.
+if [[ -f "$HTML_DIR/index.html" && -f "$HTML_DIR/doxygen.css" ]]; then
+	rm -rf "$HTML_DIR"
+fi
 mkdir -p "$HTML_DIR"
+
+# Parameter reference page: regenerated on every run so it cannot lag behind
+# Parameters.h (CMake only generates it at configure time).
+params_page="$BUILD_DIR/doxygen/parameters.md"
+python3 "$ROOT/doxygen/generate_parameters_page.py" \
+	--input "$ROOT/corelib/include/rtabmap/core/Parameters.h" \
+	--output "$params_page"
+
 echo "Running Doxygen -> $HTML_DIR ..."
 {
 	cat "$BUILD_DIR/Doxyfile"
-	printf 'INPUT = %s/doxygen/mainpage.md corelib/include utilite/include %s/corelib/src/include\n' "$ROOT" "$BUILD_DIR"
+	printf 'INPUT = %s/doxygen/mainpage.md %s/doxygen/tools.md %s corelib/include utilite/include %s/corelib/src/include\n' "$ROOT" "$ROOT" "$params_page" "$BUILD_DIR"
 	printf 'USE_MDFILE_AS_MAINPAGE = %s/doxygen/mainpage.md\n' "$ROOT"
 	printf 'OUTPUT_DIRECTORY = %s\n' "$HTML_DIR"
 	printf 'HTML_OUTPUT = .\n'

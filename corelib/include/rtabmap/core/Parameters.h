@@ -176,7 +176,8 @@ typedef std::pair<std::string, std::string> ParametersPair;
  *         std::string strValue = Util::value(Parameters::getDefaultParameters(), theKey); // strValue = "640"
  * @endcode
  * @see getDefaultParameters()
- * TODO Add a detailed example with simple classes
+ * @see The @ref parameters "Parameter reference" page, which lists every parameter
+ *      with its type, default value and description.
  */
 class RTABMAP_CORE_EXPORT Parameters
 {
