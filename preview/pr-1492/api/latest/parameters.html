@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -97,61 +101,6 @@ $(document).ready(function(){initNavTree('parameters.html',''); initResizable();
   <div class="headertitle"><div class="title">Parameter reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="toc"><h3>Table of Contents</h3>
-<ul><li class="level1"><a href="#parameters_Rtabmap">Rtabmap</a></li>
-<li class="level1"><a href="#parameters_Mem">Mem</a></li>
-<li class="level1"><a href="#parameters_Kp">Kp</a></li>
-<li class="level1"><a href="#parameters_DbSqlite3">DbSqlite3</a></li>
-<li class="level1"><a href="#parameters_Db">Db</a></li>
-<li class="level1"><a href="#parameters_SURF">SURF</a></li>
-<li class="level1"><a href="#parameters_SIFT">SIFT</a></li>
-<li class="level1"><a href="#parameters_BRIEF">BRIEF</a></li>
-<li class="level1"><a href="#parameters_FAST">FAST</a></li>
-<li class="level1"><a href="#parameters_GFTT">GFTT</a></li>
-<li class="level1"><a href="#parameters_ORB">ORB</a></li>
-<li class="level1"><a href="#parameters_FREAK">FREAK</a></li>
-<li class="level1"><a href="#parameters_BRISK">BRISK</a></li>
-<li class="level1"><a href="#parameters_KAZE">KAZE</a></li>
-<li class="level1"><a href="#parameters_SuperPoint">SuperPoint</a></li>
-<li class="level1"><a href="#parameters_SuperPointRpautrat">SuperPointRpautrat</a></li>
-<li class="level1"><a href="#parameters_PyDetector">PyDetector</a></li>
-<li class="level1"><a href="#parameters_Bayes">Bayes</a></li>
-<li class="level1"><a href="#parameters_VhEp">VhEp</a></li>
-<li class="level1"><a href="#parameters_RGBD">RGBD</a></li>
-<li class="level1"><a href="#parameters_Optimizer">Optimizer</a></li>
-<li class="level1"><a href="#parameters_g2o">g2o</a></li>
-<li class="level1"><a href="#parameters_GTSAM">GTSAM</a></li>
-<li class="level1"><a href="#parameters_Odom">Odom</a></li>
-<li class="level1"><a href="#parameters_OdomF2M">OdomF2M</a></li>
-<li class="level1"><a href="#parameters_OdomMono">OdomMono</a></li>
-<li class="level1"><a href="#parameters_OdomFovis">OdomFovis</a></li>
-<li class="level1"><a href="#parameters_OdomViso2">OdomViso2</a></li>
-<li class="level1"><a href="#parameters_OdomORBSLAM">OdomORBSLAM</a></li>
-<li class="level1"><a href="#parameters_OdomOKVIS">OdomOKVIS</a></li>
-<li class="level1"><a href="#parameters_OdomLOAM">OdomLOAM</a></li>
-<li class="level1"><a href="#parameters_OdomMSCKF">OdomMSCKF</a></li>
-<li class="level1"><a href="#parameters_OdomVINSFusion">OdomVINSFusion</a></li>
-<li class="level1"><a href="#parameters_OdomOpenVINS">OdomOpenVINS</a></li>
-<li class="level1"><a href="#parameters_OdomOpen3D">OdomOpen3D</a></li>
-<li class="level1"><a href="#parameters_OdomCuVSLAM">OdomCuVSLAM</a></li>
-<li class="level1"><a href="#parameters_OdomLIOSAM">OdomLIOSAM</a></li>
-<li class="level1"><a href="#parameters_Reg">Reg</a></li>
-<li class="level1"><a href="#parameters_Vis">Vis</a></li>
-<li class="level1"><a href="#parameters_PyMatcher">PyMatcher</a></li>
-<li class="level1"><a href="#parameters_GMS">GMS</a></li>
-<li class="level1"><a href="#parameters_PyDescriptor">PyDescriptor</a></li>
-<li class="level1"><a href="#parameters_Icp">Icp</a></li>
-<li class="level1"><a href="#parameters_Stereo">Stereo</a></li>
-<li class="level1"><a href="#parameters_StereoBM">StereoBM</a></li>
-<li class="level1"><a href="#parameters_StereoSGBM">StereoSGBM</a></li>
-<li class="level1"><a href="#parameters_Grid">Grid</a></li>
-<li class="level1"><a href="#parameters_GridGlobal">GridGlobal</a></li>
-<li class="level1"><a href="#parameters_Marker">Marker</a></li>
-<li class="level1"><a href="#parameters_MarkerAprilTag">MarkerAprilTag</a></li>
-<li class="level1"><a href="#parameters_MarkerOpenCV">MarkerOpenCV</a></li>
-<li class="level1"><a href="#parameters_ImuFilter">ImuFilter</a></li>
-</ul>
-</div>
 <div class="textblock"><p>Every setting in RTAB-Map is a <code>Group/Name</code> string key with a string value, collected in a <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55" title="Parameter keys mapped to their values, as used by every configurable class (see Parameters).">rtabmap::ParametersMap</a>. The 615 parameters below are declared in <code><a class="el" href="Parameters_8h_source.html">Parameters.h</a></code>; the same keys are used by <a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">rtabmap::Rtabmap</a> and <a class="el" href="classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual-inertial odometry backends.">rtabmap::Odometry</a>, by the applications, by the <code>--Param Group/Name value</code> command-line arguments of the tools and by the ROS wrappers, so a setting found here applies everywhere.</p>
 <div class="fragment"><div class="line"><a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a> parameters;</div>
 <div class="line">parameters.insert(<a class="code hl_typedef" href="namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01">rtabmap::ParametersPair</a>(<a class="code hl_function" href="classrtabmap_1_1Parameters.html#a46dc1a24b02bb00014262f7f4d818a49">rtabmap::Parameters::kMemSTMSize</a>(), <span class="stringliteral">&quot;20&quot;</span>));</div>
@@ -161,7 +110,9 @@ $(document).ready(function(){initNavTree('parameters.html',''); initResizable();
 <div class="ttc" id="anamespacertabmap_html_a4d38c2e87cb7a46dc4299f7bd4d95a01"><div class="ttname"><a href="namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01">rtabmap::ParametersPair</a></div><div class="ttdeci">std::pair&lt; std::string, std::string &gt; ParametersPair</div><div class="ttdoc">A single parameter key/value pair, the entry type of ParametersMap.</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00046">Parameters.h:46</a></div></div>
 <div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --><p>Each key links to its accessor on <a class="el" href="classrtabmap_1_1Parameters.html">rtabmap::Parameters</a>, which is also how the key is spelled in code (<code>Parameters::kMemSTMSize()</code> for <code>Mem/STMSize</code>). Defaults given with a condition depend on how RTAB-Map was built; call <a class="el" href="classrtabmap_1_1Parameters.html#a3921b82495e0308f8cfcbdb8ef072e21">rtabmap::Parameters::getDefaultParameters()</a> to read the values of the build in use.</p>
-<h1><a class="anchor" id="parameters_Rtabmap"></a>
+<p><b>Groups:</b> <a class="el" href="parameters.html#parameters_Rtabmap">Rtabmap</a>, <a class="el" href="parameters.html#parameters_Mem">Mem</a>, <a class="el" href="parameters.html#parameters_Kp">Kp</a>, <a class="el" href="parameters.html#parameters_DbSqlite3">DbSqlite3</a>, <a class="el" href="parameters.html#parameters_Db">Db</a>, <a class="el" href="parameters.html#parameters_SURF">SURF</a>, <a class="el" href="parameters.html#parameters_SIFT">SIFT</a>, <a class="el" href="parameters.html#parameters_BRIEF">BRIEF</a>, <a class="el" href="parameters.html#parameters_FAST">FAST</a>, <a class="el" href="parameters.html#parameters_GFTT">GFTT</a>, <a class="el" href="parameters.html#parameters_ORB">ORB</a>, <a class="el" href="parameters.html#parameters_FREAK">FREAK</a>, <a class="el" href="parameters.html#parameters_BRISK">BRISK</a>, <a class="el" href="parameters.html#parameters_KAZE">KAZE</a>, <a class="el" href="parameters.html#parameters_SuperPoint">SuperPoint</a>, <a class="el" href="parameters.html#parameters_SuperPointRpautrat">SuperPointRpautrat</a>, <a class="el" href="parameters.html#parameters_PyDetector">PyDetector</a>, <a class="el" href="parameters.html#parameters_Bayes">Bayes</a>, <a class="el" href="parameters.html#parameters_VhEp">VhEp</a>, <a class="el" href="parameters.html#parameters_RGBD">RGBD</a>, <a class="el" href="parameters.html#parameters_Optimizer">Optimizer</a>, <a class="el" href="parameters.html#parameters_g2o">g2o</a>, <a class="el" href="parameters.html#parameters_GTSAM">GTSAM</a>, <a class="el" href="parameters.html#parameters_Odom">Odom</a>, <a class="el" href="parameters.html#parameters_OdomF2M">OdomF2M</a>, <a class="el" href="parameters.html#parameters_OdomMono">OdomMono</a>, <a class="el" href="parameters.html#parameters_OdomFovis">OdomFovis</a>, <a class="el" href="parameters.html#parameters_OdomViso2">OdomViso2</a>, <a class="el" href="parameters.html#parameters_OdomORBSLAM">OdomORBSLAM</a>, <a class="el" href="parameters.html#parameters_OdomOKVIS">OdomOKVIS</a>, <a class="el" href="parameters.html#parameters_OdomLOAM">OdomLOAM</a>, <a class="el" href="parameters.html#parameters_OdomMSCKF">OdomMSCKF</a>, <a class="el" href="parameters.html#parameters_OdomVINSFusion">OdomVINSFusion</a>, <a class="el" href="parameters.html#parameters_OdomOpenVINS">OdomOpenVINS</a>, <a class="el" href="parameters.html#parameters_OdomOpen3D">OdomOpen3D</a>, <a class="el" href="parameters.html#parameters_OdomCuVSLAM">OdomCuVSLAM</a>, <a class="el" href="parameters.html#parameters_OdomLIOSAM">OdomLIOSAM</a>, <a class="el" href="parameters.html#parameters_Reg">Reg</a>, <a class="el" href="parameters.html#parameters_Vis">Vis</a>, <a class="el" href="parameters.html#parameters_PyMatcher">PyMatcher</a>, <a class="el" href="parameters.html#parameters_GMS">GMS</a>, <a class="el" href="parameters.html#parameters_PyDescriptor">PyDescriptor</a>, <a class="el" href="parameters.html#parameters_Icp">Icp</a>, <a class="el" href="parameters.html#parameters_Stereo">Stereo</a>, <a class="el" href="parameters.html#parameters_StereoBM">StereoBM</a>, <a class="el" href="parameters.html#parameters_StereoSGBM">StereoSGBM</a>, <a class="el" href="parameters.html#parameters_Grid">Grid</a>, <a class="el" href="parameters.html#parameters_GridGlobal">GridGlobal</a>, <a class="el" href="parameters.html#parameters_Marker">Marker</a>, <a class="el" href="parameters.html#parameters_MarkerAprilTag">MarkerAprilTag</a>, <a class="el" href="parameters.html#parameters_MarkerOpenCV">MarkerOpenCV</a>, <a class="el" href="parameters.html#parameters_ImuFilter">ImuFilter</a></p>
+<p><a class="anchor" id="parameters_Rtabmap"></a></p>
+<h1><a class="anchor" id="autotoc_md9"></a>
 Rtabmap</h1>
 <p>Top-level loop closure detection and map management.</p>
 <table class="markdownTable">
@@ -220,7 +171,8 @@ Rtabmap</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_RtabmapVirtualPlaceLikelihoodRatio"></a><a class="el" href="classrtabmap_1_1Parameters.html#aef900d9efe01dcbfbe5348b131d9ff46">Rtabmap/VirtualPlaceLikelihoodRatio</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">Likelihood ratio for virtual place (for no loop closure hypothesis): 0=Mean / StdDev, 1=StdDev / (Max-Mean)   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Mem"></a>
+<p><a class="anchor" id="parameters_Mem"></a></p>
+<h1><a class="anchor" id="autotoc_md10"></a>
 Mem</h1>
 <p>Memory management: what is kept in STM/WM, what is transferred to LTM.</p>
 <table class="markdownTable">
@@ -303,7 +255,8 @@ Mem</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_MemRotateImagesUpsideUp"></a><a class="el" href="classrtabmap_1_1Parameters.html#a65474937d0e1e01e02d29dc773363353">Mem/RotateImagesUpsideUp</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">Rotate images so that upside is up if they are not already. This can be useful in case the robots don't have all same camera orientation but are using the same map, so that not rotation-invariant visual features can still be used across the fleet.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Kp"></a>
+<p><a class="anchor" id="parameters_Kp"></a></p>
+<h1><a class="anchor" id="autotoc_md11"></a>
 Kp</h1>
 <p>Bag-of-words dictionary used for global loop closure detection.</p>
 <table class="markdownTable">
@@ -359,7 +312,8 @@ Kp</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_KpGridCols"></a><a class="el" href="classrtabmap_1_1Parameters.html#a1a302199e3aa8f82688160732a637f4b">Kp/GridCols</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>1</code>   </td><td class="markdownTableBodyNone">Number of columns of the grid used to extract uniformly "@ref param_KpMaxFeatures "Kp/MaxFeatures" / grid cells" features from each cell.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_DbSqlite3"></a>
+<p><a class="anchor" id="parameters_DbSqlite3"></a></p>
+<h1><a class="anchor" id="autotoc_md12"></a>
 DbSqlite3</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -375,7 +329,8 @@ DbSqlite3</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_DbSqlite3TempStore"></a><a class="el" href="classrtabmap_1_1Parameters.html#a2ee0c59c976d0fdffc18c690ab7aef73">DbSqlite3/TempStore</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>2</code>   </td><td class="markdownTableBodyNone">PRAGMA temp_store: where SQLite stores temporary tables and indices. See sqlite.org/pragma.html::pragma_temp_store for more details. 0=DEFAULT: SQLite compile-time default (often on-disk temp files). 1=FILE: temporary files in the system temp directory. 2=MEMORY: temporary data in RAM when possible.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Db"></a>
+<p><a class="anchor" id="parameters_Db"></a></p>
+<h1><a class="anchor" id="autotoc_md13"></a>
 Db</h1>
 <p>Database (long-term memory) storage.</p>
 <table class="markdownTable">
@@ -384,7 +339,8 @@ Db</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_DbTargetVersion"></a><a class="el" href="classrtabmap_1_1Parameters.html#a4356a08f2a4153665ff049e73000c303">Db/TargetVersion</a>   </td><td class="markdownTableBodyNone">string   </td><td class="markdownTableBodyNone"><code>""</code>   </td><td class="markdownTableBodyNone">Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., 0.19 vs 0.20 or 1.0 vs 2.0). Patch version is ignored (e.g., 0.20.1 and 0.20.3 will generate a 0.20 database).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_SURF"></a>
+<p><a class="anchor" id="parameters_SURF"></a></p>
+<h1><a class="anchor" id="autotoc_md14"></a>
 SURF</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -404,7 +360,8 @@ SURF</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_SURFGpuKeypointsRatio"></a><a class="el" href="classrtabmap_1_1Parameters.html#ac854e7a9427ce1400a3188e939ec0b6e">SURF/GpuKeypointsRatio</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>0.01</code>   </td><td class="markdownTableBodyNone">Used with SURF GPU.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_SIFT"></a>
+<p><a class="anchor" id="parameters_SIFT"></a></p>
+<h1><a class="anchor" id="autotoc_md15"></a>
 SIFT</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -430,7 +387,8 @@ SIFT</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_SIFTUpscale"></a><a class="el" href="classrtabmap_1_1Parameters.html#a7dd0d575bac18d9db0c3fdb61860f034">SIFT/Upscale</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">CudaSift: Whether to enable upscaling.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_BRIEF"></a>
+<p><a class="anchor" id="parameters_BRIEF"></a></p>
+<h1><a class="anchor" id="autotoc_md16"></a>
 BRIEF</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -438,7 +396,8 @@ BRIEF</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_BRIEFBytes"></a><a class="el" href="classrtabmap_1_1Parameters.html#a62ce1ff73ad01bb94bc5c1b19467e140">BRIEF/Bytes</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>32</code>   </td><td class="markdownTableBodyNone">Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_FAST"></a>
+<p><a class="anchor" id="parameters_FAST"></a></p>
+<h1><a class="anchor" id="autotoc_md17"></a>
 FAST</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -462,7 +421,8 @@ FAST</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_FASTCV"></a><a class="el" href="classrtabmap_1_1Parameters.html#a9868a2aa2ff8894d00088ca7aded75e0">FAST/CV</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">Enable FastCV implementation if non-zero (and RTAB-Map is built with FastCV support). Values should be 9 and 10.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_GFTT"></a>
+<p><a class="anchor" id="parameters_GFTT"></a></p>
+<h1><a class="anchor" id="autotoc_md18"></a>
 GFTT</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -480,7 +440,8 @@ GFTT</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_GFTTGpu"></a><a class="el" href="classrtabmap_1_1Parameters.html#ab29e59a1629d8d113cdf61f27a4b009f">GFTT/Gpu</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">GPU-GFTT: Use GPU version of GFTT. This option is enabled only if OpenCV&gt;=3 is built with CUDA and GPUs are detected.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_ORB"></a>
+<p><a class="anchor" id="parameters_ORB"></a></p>
+<h1><a class="anchor" id="autotoc_md19"></a>
 ORB</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -502,7 +463,8 @@ ORB</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_ORBGpu"></a><a class="el" href="classrtabmap_1_1Parameters.html#a75ad893a9fb12411d07292be6f3cf151">ORB/Gpu</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">GPU-ORB: Use GPU version of ORB. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_FREAK"></a>
+<p><a class="anchor" id="parameters_FREAK"></a></p>
+<h1><a class="anchor" id="autotoc_md20"></a>
 FREAK</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -516,7 +478,8 @@ FREAK</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_FREAKNOctaves"></a><a class="el" href="classrtabmap_1_1Parameters.html#af48faacb97db49ed8bfdfe5138996c6b">FREAK/NOctaves</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>4</code>   </td><td class="markdownTableBodyNone">Number of octaves covered by the detected keypoints.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_BRISK"></a>
+<p><a class="anchor" id="parameters_BRISK"></a></p>
+<h1><a class="anchor" id="autotoc_md21"></a>
 BRISK</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -528,7 +491,8 @@ BRISK</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_BRISKPatternScale"></a><a class="el" href="classrtabmap_1_1Parameters.html#a44b86ee14e1ed84d429fe58f889854c7">BRISK/PatternScale</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>1</code>   </td><td class="markdownTableBodyNone">Apply this scale to the pattern used for sampling the neighbourhood of a keypoint.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_KAZE"></a>
+<p><a class="anchor" id="parameters_KAZE"></a></p>
+<h1><a class="anchor" id="autotoc_md22"></a>
 KAZE</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -546,7 +510,8 @@ KAZE</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_KAZEDiffusivity"></a><a class="el" href="classrtabmap_1_1Parameters.html#a4038e9285978f2a7ad4eaae4e752de3b">KAZE/Diffusivity</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>1</code>   </td><td class="markdownTableBodyNone">Diffusivity type: 0=DIFF_PM_G1, 1=DIFF_PM_G2, 2=DIFF_WEICKERT or 3=DIFF_CHARBONNIER.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_SuperPoint"></a>
+<p><a class="anchor" id="parameters_SuperPoint"></a></p>
+<h1><a class="anchor" id="autotoc_md23"></a>
 SuperPoint</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -562,7 +527,8 @@ SuperPoint</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_SuperPointCuda"></a><a class="el" href="classrtabmap_1_1Parameters.html#a2b81d483c201d3aa7191b6e4fb5ad7a5">SuperPoint/Cuda</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>true</code>   </td><td class="markdownTableBodyNone">Use Cuda device for Torch, otherwise CPU device is used by default.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_SuperPointRpautrat"></a>
+<p><a class="anchor" id="parameters_SuperPointRpautrat"></a></p>
+<h1><a class="anchor" id="autotoc_md24"></a>
 SuperPointRpautrat</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -580,7 +546,8 @@ SuperPointRpautrat</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_SuperPointRpautratCuda"></a><a class="el" href="classrtabmap_1_1Parameters.html#a3f06822bbaedae5abe23a74309a19387">SuperPointRpautrat/Cuda</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>true</code>   </td><td class="markdownTableBodyNone">Use Cuda device for Torch, otherwise CPU device is used by default.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_PyDetector"></a>
+<p><a class="anchor" id="parameters_PyDetector"></a></p>
+<h1><a class="anchor" id="autotoc_md25"></a>
 PyDetector</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -590,7 +557,8 @@ PyDetector</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_PyDetectorCuda"></a><a class="el" href="classrtabmap_1_1Parameters.html#afdbdfe89192b8c4b332d457fdd83620a">PyDetector/Cuda</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>true</code>   </td><td class="markdownTableBodyNone">Use cuda.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Bayes"></a>
+<p><a class="anchor" id="parameters_Bayes"></a></p>
+<h1><a class="anchor" id="autotoc_md26"></a>
 Bayes</h1>
 <p>Bayes filter used for loop closure hypotheses.</p>
 <table class="markdownTable">
@@ -603,7 +571,8 @@ Bayes</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_BayesFullPredictionUpdate"></a><a class="el" href="classrtabmap_1_1Parameters.html#a08f0a214eb15975386b5d06be56e38b4">Bayes/FullPredictionUpdate</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_VhEp"></a>
+<p><a class="anchor" id="parameters_VhEp"></a></p>
+<h1><a class="anchor" id="autotoc_md27"></a>
 VhEp</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -617,7 +586,8 @@ VhEp</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_VhEpRansacParam2"></a><a class="el" href="classrtabmap_1_1Parameters.html#aa8c6e571280a46e6d19996e1e7b23791">VhEp/RansacParam2</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>0.99</code>   </td><td class="markdownTableBodyNone">Fundamental matrix (see cvFindFundamentalMat()): Performance of RANSAC.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_RGBD"></a>
+<p><a class="anchor" id="parameters_RGBD"></a></p>
+<h1><a class="anchor" id="autotoc_md28"></a>
 RGBD</h1>
 <p>Metric SLAM: graph, proximity detection and localization.</p>
 <table class="markdownTable">
@@ -714,7 +684,8 @@ RGBD</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_RGBDProximityMergedScanCovFactor"></a><a class="el" href="classrtabmap_1_1Parameters.html#a177ab21121656a2d6bc07a24e3a9b0ad">RGBD/ProximityMergedScanCovFactor</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>100.0</code>   </td><td class="markdownTableBodyNone">Covariance factor for one-to-many proximity detection (when <a class="el" href="parameters.html#param_RGBDProximityPathMaxNeighbors">RGBD/ProximityPathMaxNeighbors</a>&gt;0 and scans are used).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Optimizer"></a>
+<p><a class="anchor" id="parameters_Optimizer"></a></p>
+<h1><a class="anchor" id="autotoc_md29"></a>
 Optimizer</h1>
 <p>Graph optimization back-end.</p>
 <table class="markdownTable">
@@ -753,7 +724,8 @@ Optimizer</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OptimizerRobustKernelDelta"></a><a class="el" href="classrtabmap_1_1Parameters.html#a5900adc0a8a2d5bf42963e4e5bee7855">Optimizer/RobustKernelDelta</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>8</code>   </td><td class="markdownTableBodyNone">Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Applies to all BA-capable backends (g2o, GTSAM, Ceres). Observations with chi2 over this threshold will be ignored in the second optimization pass.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_g2o"></a>
+<p><a class="anchor" id="parameters_g2o"></a></p>
+<h1><a class="anchor" id="autotoc_md30"></a>
 g2o</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -764,7 +736,8 @@ g2o</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_g2oOptimizer"></a><a class="el" href="classrtabmap_1_1Parameters.html#aef86c8d789e3c0883af2bdcc0bccc95a">g2o/Optimizer</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">0=Levenberg 1=GaussNewton   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_GTSAM"></a>
+<p><a class="anchor" id="parameters_GTSAM"></a></p>
+<h1><a class="anchor" id="autotoc_md31"></a>
 GTSAM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -778,7 +751,8 @@ GTSAM</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_GTSAMIncRelinearizeSkip"></a><a class="el" href="classrtabmap_1_1Parameters.html#a134ec2e200cdcd6939f5a76c597cddcc">GTSAM/IncRelinearizeSkip</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>1</code>   </td><td class="markdownTableBodyNone">Only relinearize any variables every X calls to ISAM2::update(). See GTSAM::ISAM2 doc for more info.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Odom"></a>
+<p><a class="anchor" id="parameters_Odom"></a></p>
+<h1><a class="anchor" id="autotoc_md32"></a>
 Odom</h1>
 <p>Odometry front-end shared settings.</p>
 <table class="markdownTable">
@@ -827,7 +801,8 @@ Odom</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomDeskewing"></a><a class="el" href="classrtabmap_1_1Parameters.html#a5a45711027dd93b66a34e72c20aa2208">Odom/Deskewing</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>true</code>   </td><td class="markdownTableBodyNone">Lidar deskewing. If input lidar has time channel, it will be deskewed with a constant motion model (with IMU orientation and/or guess if provided).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomF2M"></a>
+<p><a class="anchor" id="parameters_OdomF2M"></a></p>
+<h1><a class="anchor" id="autotoc_md33"></a>
 OdomF2M</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -862,7 +837,8 @@ OdomF2M</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomF2MBundleUpdateFeatureMapOnAllFrames"></a><a class="el" href="classrtabmap_1_1Parameters.html#aafbd529e88aa7d92dc489dda0ac65b9f">OdomF2M/BundleUpdateFeatureMapOnAllFrames</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">Update 3D local feature map on every frame with bundle adjustment. Recommended if <a class="el" href="parameters.html#param_VisDepthAsMask">Vis/DepthAsMask</a>=false and <a class="el" href="parameters.html#param_MemUseOdomFeatures">Mem/UseOdomFeatures</a>=true so that features without depth are better triangulated on every frame (not only on keyframes). If disabled, the feature map is updated only when a new keyframe is added (legacy approach).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomMono"></a>
+<p><a class="anchor" id="parameters_OdomMono"></a></p>
+<h1><a class="anchor" id="autotoc_md34"></a>
 OdomMono</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -876,7 +852,8 @@ OdomMono</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomMonoMaxVariance"></a><a class="el" href="classrtabmap_1_1Parameters.html#a05fb10e20f11bdb85a45b4f5c6fd6499">OdomMono/MaxVariance</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>0.01</code>   </td><td class="markdownTableBodyNone">Maximum variance to add new points to local map.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomFovis"></a>
+<p><a class="anchor" id="parameters_OdomFovis"></a></p>
+<h1><a class="anchor" id="autotoc_md35"></a>
 OdomFovis</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -930,7 +907,8 @@ OdomFovis</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomFovisStereoMaxDisparity"></a><a class="el" href="classrtabmap_1_1Parameters.html#a556f56fbb700a484357a85d4617611d5">OdomFovis/StereoMaxDisparity</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>128</code>   </td><td class="markdownTableBodyNone"></td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomViso2"></a>
+<p><a class="anchor" id="parameters_OdomViso2"></a></p>
+<h1><a class="anchor" id="autotoc_md36"></a>
 OdomViso2</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -968,7 +946,8 @@ OdomViso2</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomViso2BucketHeight"></a><a class="el" href="classrtabmap_1_1Parameters.html#a5f25f50240e1e3827151e95f4622ec40">OdomViso2/BucketHeight</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>50</code>   </td><td class="markdownTableBodyNone">Height of bucket.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomORBSLAM"></a>
+<p><a class="anchor" id="parameters_OdomORBSLAM"></a></p>
+<h1><a class="anchor" id="autotoc_md37"></a>
 OdomORBSLAM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -998,7 +977,8 @@ OdomORBSLAM</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomORBSLAMSamplingRate"></a><a class="el" href="classrtabmap_1_1Parameters.html#afb0188eab89d395209fe258e81b591c1">OdomORBSLAM/SamplingRate</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">IMU sampling rate (0 to estimate from input data).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomOKVIS"></a>
+<p><a class="anchor" id="parameters_OdomOKVIS"></a></p>
+<h1><a class="anchor" id="autotoc_md38"></a>
 OdomOKVIS</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1006,7 +986,8 @@ OdomOKVIS</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomOKVISConfigPath"></a><a class="el" href="classrtabmap_1_1Parameters.html#acd5cb2b77739ac361d5697054849f34d">OdomOKVIS/ConfigPath</a>   </td><td class="markdownTableBodyNone">string   </td><td class="markdownTableBodyNone"><code>""</code>   </td><td class="markdownTableBodyNone">Path of OKVIS config file.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomLOAM"></a>
+<p><a class="anchor" id="parameters_OdomLOAM"></a></p>
+<h1><a class="anchor" id="autotoc_md39"></a>
 OdomLOAM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1024,7 +1005,8 @@ OdomLOAM</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomLOAMLocalMapping"></a><a class="el" href="classrtabmap_1_1Parameters.html#a1cd4a929870ee08a96751824fa4b6488">OdomLOAM/LocalMapping</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>true</code>   </td><td class="markdownTableBodyNone">Local mapping. It adds more time to compute odometry, but accuracy is significantly improved.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomMSCKF"></a>
+<p><a class="anchor" id="parameters_OdomMSCKF"></a></p>
+<h1><a class="anchor" id="autotoc_md40"></a>
 OdomMSCKF</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1084,7 +1066,8 @@ OdomMSCKF</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomMSCKFMaxCamStateSize"></a><a class="el" href="classrtabmap_1_1Parameters.html#aaab6359b5620a95b1c967dff2ab72de4">OdomMSCKF/MaxCamStateSize</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>20</code>   </td><td class="markdownTableBodyNone"></td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomVINSFusion"></a>
+<p><a class="anchor" id="parameters_OdomVINSFusion"></a></p>
+<h1><a class="anchor" id="autotoc_md41"></a>
 OdomVINSFusion</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1092,7 +1075,8 @@ OdomVINSFusion</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomVINSFusionConfigPath"></a><a class="el" href="classrtabmap_1_1Parameters.html#acf6e02f152acab60ee7e978c41de0bd9">OdomVINSFusion/ConfigPath</a>   </td><td class="markdownTableBodyNone">string   </td><td class="markdownTableBodyNone"><code>""</code>   </td><td class="markdownTableBodyNone">Path of VINS-Fusion config file.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomOpenVINS"></a>
+<p><a class="anchor" id="parameters_OdomOpenVINS"></a></p>
+<h1><a class="anchor" id="autotoc_md42"></a>
 OdomOpenVINS</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1212,7 +1196,8 @@ OdomOpenVINS</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomOpenVINSUpSLAMChi2Multiplier"></a><a class="el" href="classrtabmap_1_1Parameters.html#a85e55e34a7da45dcde5cbde1b352625e">OdomOpenVINS/UpSLAMChi2Multiplier</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>1.0</code>   </td><td class="markdownTableBodyNone">Chi2 multiplier for SLAM features.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomOpen3D"></a>
+<p><a class="anchor" id="parameters_OdomOpen3D"></a></p>
+<h1><a class="anchor" id="autotoc_md43"></a>
 OdomOpen3D</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1222,7 +1207,8 @@ OdomOpen3D</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomOpen3DMethod"></a><a class="el" href="classrtabmap_1_1Parameters.html#ab4468a9f811ecb9d61dc9d9830f6713b">OdomOpen3D/Method</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">Registration method: 0=PointToPlane, 1=Intensity, 2=Hybrid.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomCuVSLAM"></a>
+<p><a class="anchor" id="parameters_OdomCuVSLAM"></a></p>
+<h1><a class="anchor" id="autotoc_md44"></a>
 OdomCuVSLAM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1230,7 +1216,8 @@ OdomCuVSLAM</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomCuVSLAMMulticamMode"></a><a class="el" href="classrtabmap_1_1Parameters.html#a27425f8e3e56f5a804d0dd5be78b9788">OdomCuVSLAM/MulticamMode</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">cuVSLAM multicam_mode setting: 0=moderate, 1=performance, 2=precision.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_OdomLIOSAM"></a>
+<p><a class="anchor" id="parameters_OdomLIOSAM"></a></p>
+<h1><a class="anchor" id="autotoc_md45"></a>
 OdomLIOSAM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1262,7 +1249,8 @@ OdomLIOSAM</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OdomLIOSAMAngVar"></a><a class="el" href="classrtabmap_1_1Parameters.html#ae28d1bf81e35c7efb5c4ef046f0ed992">OdomLIOSAM/AngVar</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>0.01</code>   </td><td class="markdownTableBodyNone">Angular output variance.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Reg"></a>
+<p><a class="anchor" id="parameters_Reg"></a></p>
+<h1><a class="anchor" id="autotoc_md46"></a>
 Reg</h1>
 <p>Registration strategy shared by loop closures and proximity detection.</p>
 <table class="markdownTable">
@@ -1275,7 +1263,8 @@ Reg</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_RegForce3DoF"></a><a class="el" href="classrtabmap_1_1Parameters.html#adeb11e4b89634351a54bab99b3aeb68c">Reg/Force3DoF</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">Force 3 degrees-of-freedom transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Vis"></a>
+<p><a class="anchor" id="parameters_Vis"></a></p>
+<h1><a class="anchor" id="autotoc_md47"></a>
 Vis</h1>
 <p>Visual registration (feature extraction, matching and PnP).</p>
 <table class="markdownTable">
@@ -1369,7 +1358,8 @@ Vis</h1>
 <td class="markdownTableBodyNone"><a class="anchor" id="param_VisBundleAdjustment"></a><a class="el" href="classrtabmap_1_1Parameters.html#a0c02ea87b8364cb887d712388c88a8a0">Vis/BundleAdjustment</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>1</code> with <code>defined(RTABMAP_G2O) \|\| defined(RTABMAP_ORB_SLAM)</code><br  />
 <code>0</code> otherwise   </td><td class="markdownTableBodyNone">Optimization with bundle adjustment. Value matches the <a class="el" href="parameters.html#param_OptimizerStrategy">Optimizer/Strategy</a> parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_PyMatcher"></a>
+<p><a class="anchor" id="parameters_PyMatcher"></a></p>
+<h1><a class="anchor" id="autotoc_md48"></a>
 PyMatcher</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1385,7 +1375,8 @@ PyMatcher</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_PyMatcherModel"></a><a class="el" href="classrtabmap_1_1Parameters.html#a577a5fd2e1bd55f481fb3996237e7c86">PyMatcher/Model</a>   </td><td class="markdownTableBodyNone">string   </td><td class="markdownTableBodyNone"><code>indoor</code>   </td><td class="markdownTableBodyNone">For SuperGlue, set only "indoor" or "outdoor". For OANet, set path to one of the pth file (e.g., "OANet/model/gl3d/sift-4000/model_best.pth").   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_GMS"></a>
+<p><a class="anchor" id="parameters_GMS"></a></p>
+<h1><a class="anchor" id="autotoc_md49"></a>
 GMS</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1397,7 +1388,8 @@ GMS</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_GMSThresholdFactor"></a><a class="el" href="classrtabmap_1_1Parameters.html#a4ac2b3550fbbd94f088b7b40a4fb7fe1">GMS/ThresholdFactor</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>6.0</code>   </td><td class="markdownTableBodyNone">The higher, the less matches.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_PyDescriptor"></a>
+<p><a class="anchor" id="parameters_PyDescriptor"></a></p>
+<h1><a class="anchor" id="autotoc_md50"></a>
 PyDescriptor</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1407,7 +1399,8 @@ PyDescriptor</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_PyDescriptorDim"></a><a class="el" href="classrtabmap_1_1Parameters.html#aea51e2c74f29d39e1688a592962cf9ad">PyDescriptor/Dim</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>4096</code>   </td><td class="markdownTableBodyNone">Descriptor dimension.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Icp"></a>
+<p><a class="anchor" id="parameters_Icp"></a></p>
+<h1><a class="anchor" id="autotoc_md51"></a>
 Icp</h1>
 <p>Geometric registration by iterative closest point.</p>
 <table class="markdownTable">
@@ -1477,7 +1470,8 @@ Icp</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_IcpCCMaxFinalRMS"></a><a class="el" href="classrtabmap_1_1Parameters.html#a296483386b095ff93c27c7ddd5204d08">Icp/CCMaxFinalRMS</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>0.2</code>   </td><td class="markdownTableBodyNone">Maximum final RMS error.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Stereo"></a>
+<p><a class="anchor" id="parameters_Stereo"></a></p>
+<h1><a class="anchor" id="autotoc_md52"></a>
 Stereo</h1>
 <p>Stereo correspondence.</p>
 <table class="markdownTable">
@@ -1512,7 +1506,8 @@ Stereo</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_StereoDenseStrategy"></a><a class="el" href="classrtabmap_1_1Parameters.html#a3d90e8ab6857becd7e2c3bf9e35ab261">Stereo/DenseStrategy</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">0=cv::StereoBM, 1=cv::StereoSGBM   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_StereoBM"></a>
+<p><a class="anchor" id="parameters_StereoBM"></a></p>
+<h1><a class="anchor" id="autotoc_md53"></a>
 StereoBM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1538,7 +1533,8 @@ StereoBM</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_StereoBMDisp12MaxDiff"></a><a class="el" href="classrtabmap_1_1Parameters.html#adfa753955fde235a1368dd679b75ee56">StereoBM/Disp12MaxDiff</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>-1</code>   </td><td class="markdownTableBodyNone">See cv::StereoBM   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_StereoSGBM"></a>
+<p><a class="anchor" id="parameters_StereoSGBM"></a></p>
+<h1><a class="anchor" id="autotoc_md54"></a>
 StereoSGBM</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1567,7 +1563,8 @@ StereoSGBM</h1>
 <td class="markdownTableBodyNone"><a class="anchor" id="param_StereoSGBMMode"></a><a class="el" href="classrtabmap_1_1Parameters.html#a838ec79552e7506f983ff71cbd6fb56d">StereoSGBM/Mode</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code> with <code>CV_MAJOR_VERSION &amp;lt; 3</code><br  />
 <code>2</code> otherwise   </td><td class="markdownTableBodyNone">See cv::StereoSGBM   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Grid"></a>
+<p><a class="anchor" id="parameters_Grid"></a></p>
+<h1><a class="anchor" id="autotoc_md55"></a>
 Grid</h1>
 <p>Local occupancy grid generation from each node.</p>
 <table class="markdownTable">
@@ -1629,7 +1626,8 @@ Grid</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_GridRayTracing"></a><a class="el" href="classrtabmap_1_1Parameters.html#aaf5a23830e3aee217920e18aeada9f00">Grid/RayTracing</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">Ray tracing is done for each occupied cell, filling unknown space between the sensor and occupied cells. If <a class="el" href="parameters.html#param_Grid3D">Grid/3D</a>=true, RTAB-Map should be built with OctoMap support, otherwise 3D ray tracing is ignored.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_GridGlobal"></a>
+<p><a class="anchor" id="parameters_GridGlobal"></a></p>
+<h1><a class="anchor" id="autotoc_md56"></a>
 GridGlobal</h1>
 <p>Assembly of the local grids into the global map.</p>
 <table class="markdownTable">
@@ -1660,7 +1658,8 @@ GridGlobal</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_GridGlobalFloodFillDepth"></a><a class="el" href="classrtabmap_1_1Parameters.html#aa9112f877f9d69592f68df92e72c2105">GridGlobal/FloodFillDepth</a>   </td><td class="markdownTableBodyNone">unsigned int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">Flood fill filter (0=disabled), used to remove empty cells outside the map. The flood fill is done at the specified depth (between 1 and 16) of the OctoMap.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_Marker"></a>
+<p><a class="anchor" id="parameters_Marker"></a></p>
+<h1><a class="anchor" id="autotoc_md57"></a>
 Marker</h1>
 <p>Fiducial marker (ArUco/AprilTag) detection and landmarks.</p>
 <table class="markdownTable">
@@ -1693,7 +1692,8 @@ Marker</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_MarkerPriorsVarianceAngular"></a><a class="el" href="classrtabmap_1_1Parameters.html#ad7eae2c7445b3cec440feac79c3aa635">Marker/PriorsVarianceAngular</a>   </td><td class="markdownTableBodyNone">float   </td><td class="markdownTableBodyNone"><code>0.001</code>   </td><td class="markdownTableBodyNone">Angular variance to set on marker priors.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_MarkerAprilTag"></a>
+<p><a class="anchor" id="parameters_MarkerAprilTag"></a></p>
+<h1><a class="anchor" id="autotoc_md58"></a>
 MarkerAprilTag</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1711,7 +1711,8 @@ MarkerAprilTag</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_MarkerAprilTagDebug"></a><a class="el" href="classrtabmap_1_1Parameters.html#afa504a77adb75f55aadb411b20b8d045">MarkerAprilTag/Debug</a>   </td><td class="markdownTableBodyNone">bool   </td><td class="markdownTableBodyNone"><code>false</code>   </td><td class="markdownTableBodyNone">When true, write a variety of debugging images to the working directory where the app started (not <a class="el" href="parameters.html#param_RtabmapWorkingDirectory">Rtabmap/WorkingDirectory</a>) at various stages through the detection process. (Somewhat slow).   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_MarkerOpenCV"></a>
+<p><a class="anchor" id="parameters_MarkerOpenCV"></a></p>
+<h1><a class="anchor" id="autotoc_md59"></a>
 MarkerOpenCV</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -1719,7 +1720,8 @@ MarkerOpenCV</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_MarkerOpenCVCornerRefinementMethod"></a><a class="el" href="classrtabmap_1_1Parameters.html#a9858aa16eb660ea69e0523d30407fe84">MarkerOpenCV/CornerRefinementMethod</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>0</code>   </td><td class="markdownTableBodyNone">Corner refinement method for OpenCV strategy (0: None, 1: Subpixel, 2:contour, 3: AprilTag2). For OpenCV &lt;3.3.0, this is "doCornerRefinement" parameter: set 0 for false and 1 for true.   </td></tr>
 </table>
-<h1><a class="anchor" id="parameters_ImuFilter"></a>
+<p><a class="anchor" id="parameters_ImuFilter"></a></p>
+<h1><a class="anchor" id="autotoc_md60"></a>
 ImuFilter</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">

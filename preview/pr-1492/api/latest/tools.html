@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -99,7 +103,7 @@ $(document).ready(function(){initNavTree('tools.html',''); initResizable(); });
 <div class="contents">
 <div class="textblock"><p>Building RTAB-Map installs a set of executables next to the libraries. They are built on the same API these pages document, so each one is also a worked example of it &ndash; and the quickest way to inspect, replay or convert a map without writing code.</p>
 <p>All of them take the <code>--Param Group/Name value</code> arguments described in the <a class="el" href="parameters.html">Parameter reference</a>, and print their options with <code>--help</code>.</p>
-<h1><a class="anchor" id="autotoc_md8"></a>
+<h1><a class="anchor" id="autotoc_md5"></a>
 Working with a map</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -123,7 +127,7 @@ Working with a map</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="tool_cleanuplocalgrids"></a><code>rtabmap-cleanupLocalGrids</code>   </td><td class="markdownTableBodyNone">Clears from the local occupancy grids the space that the assembled global grid shows as empty, so that removed obstacles do not reappear when the map is regenerated.   </td></tr>
 </table>
-<h1><a class="anchor" id="autotoc_md9"></a>
+<h1><a class="anchor" id="autotoc_md6"></a>
 Recording and datasets</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -143,7 +147,7 @@ Recording and datasets</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="tool_imagesjoiner"></a><code>rtabmap-imagesJoiner</code>   </td><td class="markdownTableBodyNone">Joins images of two directories side by side, to build a stereo sequence out of two monocular ones.   </td></tr>
 </table>
-<h1><a class="anchor" id="autotoc_md10"></a>
+<h1><a class="anchor" id="autotoc_md7"></a>
 Sensors and calibration</h1>
 <p>These need the GUI library (Qt), so they are only built when it is available.</p>
 <table class="markdownTable">
@@ -162,7 +166,7 @@ Sensors and calibration</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="anchor" id="tool_databaseviewer"></a><code>rtabmap-databaseViewer</code>   </td><td class="markdownTableBodyNone">Inspects a database: browse the nodes and their data, the graph and its links, add or remove constraints, re-optimize, regenerate the grids and export.   </td></tr>
 </table>
-<h1><a class="anchor" id="autotoc_md11"></a>
+<h1><a class="anchor" id="autotoc_md8"></a>
 Algorithm evaluation</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">

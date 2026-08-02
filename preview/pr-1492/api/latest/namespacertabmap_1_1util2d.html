@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -617,7 +621,7 @@ cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><
 
 <p>Converts a disparity map to a depth map using stereo camera parameters. </p>
 <p>This function takes a disparity map and computes a corresponding depth map using the formula: </p><p class="formulaDsp">
-<picture><source srcset="form_5_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\[ \text{depth} = \frac{\text{baseline} \times \text{focal length}}{\text{disparity}} \]" src="form_5.png"/></picture>
+<img class="formulaDsp" alt="\[ \text{depth} = \frac{\text{baseline} \times \text{focal length}}{\text{disparity}} \]" src="form_5.png"/>
 </p>
 <ul>
 <li>Disparity values of 0 or less are ignored (depth is left as 0).</li>

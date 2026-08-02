@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -181,8 +185,7 @@ Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <p>Converts various PCL point cloud types into a unified <a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> format. </p>
 <p>These functions extract laser scan data from 3D point clouds, optionally applying a transform and filtering invalid points. Depending on the input type, output data may include position (x, y, z), intensity, color, and/or surface normals.</p>
-<h3><a class="anchor" id="autotoc_md12"></a>
-Supported input types and corresponding output data:</h3>
+<h3>Supported input types and corresponding output data:</h3>
 <ul>
 <li><code>pcl::PointXYZ</code> → (x, y, z) → <a class="el" href="classrtabmap_1_1LaserScan.html#a38f5602d1411c204d54be9b3c7320007a0c376810ac499a8a93a02bd0d4a19267">LaserScan::kXYZ</a></li>
 <li><code>pcl::PointXYZRGB</code> → (x, y, z, rgb) → <a class="el" href="classrtabmap_1_1LaserScan.html#a38f5602d1411c204d54be9b3c7320007a500cf2179e454d8d5a74895b301c0829">LaserScan::kXYZRGB</a></li>

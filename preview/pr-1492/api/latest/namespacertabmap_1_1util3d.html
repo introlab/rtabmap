@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -3581,7 +3585,7 @@ Assumes the cameras are pointing parallel to ground (e.g., forward and backward 
 <p>Projects a 2D point from the left image and its disparity into 3D space. </p>
 <p>This function converts a 2D point from the left image and its corresponding disparity value into a 3D point in space using the provided stereo camera model.</p>
 <p>The conversion follows the formula: </p><p class="formulaDsp">
-<picture><source srcset="form_6_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\[ Z = \frac{baseline \times f}{disparity + (cx1 - cx0)} \]" src="form_6.png"/></picture>
+<img class="formulaDsp" alt="\[ Z = \frac{baseline \times f}{disparity + (cx1 - cx0)} \]" src="form_6.png"/>
 </p>
 <p> Where:</p><ul>
 <li><code>baseline</code> is the distance between the left and right camera centers</li>
@@ -8651,8 +8655,7 @@ pcl::registration::TransformationEstimationPointToPlaneLLS </dd></dl>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>A new <code><a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a></code> object with transformed points (and optionally normals), and the same metadata such as range limits, angle information, format, and local transform as the input scan.</dd></dl>
-<h3><a class="anchor" id="autotoc_md14"></a>
-Behavior:</h3>
+<h3>Behavior:</h3>
 <ul>
 <li>If the transform is null or identity, the scan is returned unchanged.</li>
 <li>If the scan has normals (e.g., format is <code>kXYZNormal</code>, <code>kXYZINormal</code>, etc.), both positions and normals are transformed.</li>
@@ -8660,8 +8663,7 @@ Behavior:</h3>
 <li>Angle-based scans (2D with valid angle increment) retain angular properties in the returned object.</li>
 <li>The <code>localTransform</code> of the original scan is preserved in the returned scan.</li>
 </ul>
-<h3><a class="anchor" id="autotoc_md15"></a>
-Supported Formats:</h3>
+<h3>Supported Formats:</h3>
 <p>This function works with all valid formats defined by <code><a class="el" href="classrtabmap_1_1LaserScan.html#a38f5602d1411c204d54be9b3c7320007" title="Enumeration of possible formats for laser scan data.">LaserScan::Format</a></code>, including:</p><ul>
 <li>2D: <code>kXY</code>, <code>kXYI</code>, <code>kXYNormal</code>, <code>kXYINormal</code></li>
 <li>3D: <code>kXYZ</code>, <code>kXYZI</code>, <code>kXYZNormal</code>, <code>kXYZINormal</code>, <code>kXYZRGB</code>, <code>kXYZRGBNormal</code>, <code>kXYZIT</code></li>

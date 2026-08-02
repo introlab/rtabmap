@@ -123,8 +123,8 @@ function toggleInherit(id)
 
 var opened=true;
 // in case HTML_COLORSTYLE is LIGHT or DARK the vars will be replaced, so we write them out explicitly and use double quotes
-var plusImg  = [ "var(--fold-plus-image)",  "var(--fold-plus-image-relpath)" ];
-var minusImg = [ "var(--fold-minus-image)", "var(--fold-minus-image-relpath)" ];
+var plusImg  = [ "url('plus.svg')",  "url('../../plus.svg')" ];
+var minusImg = [ "url('minus.svg')", "url('../../minus.svg')" ];
 
 // toggle all folding blocks
 function codefold_toggle_all(relPath) {
@@ -151,7 +151,7 @@ function init_codefold(relPath) {
      'margin-right':'2px',
      'display':'inline-block',
      'width':'54px',
-     'background':'linear-gradient(var(--fold-line-color),var(--fold-line-color)) no-repeat 46px/2px 100%'
+     'background':'linear-gradient(#808080,#808080) no-repeat 46px/2px 100%'
     });
   // add global toggle to first line
   $('span[class=lineno]:first').append('<span class="fold" id="fold_all" '+

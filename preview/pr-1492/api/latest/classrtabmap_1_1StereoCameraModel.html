@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -1221,9 +1225,9 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p>Computes the depth (Z coordinate) from a given disparity value. </p>
 <p>Uses the stereo camera model parameters to convert disparity to depth using the formula:  </p><p class="formulaDsp">
-<picture><source srcset="form_2_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\[
+<img class="formulaDsp" alt="\[
     \text{depth} = \frac{\text{baseline} \times f_x}{\text{disparity} + (c_{x_{right}} - c_{x_{left}})}
-\]" src="form_2.png"/></picture>
+\]" src="form_2.png"/>
 </p>
 <p> where ( f_x ) is the focal length of the left camera and ( c_x ) are principal points.</p>
 <dl class="params"><dt>Parameters</dt><dd>
@@ -1255,9 +1259,9 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p>Computes the disparity value from a given depth. </p>
 <p>Converts depth back to disparity using the inverse formula:  </p><p class="formulaDsp">
-<picture><source srcset="form_3_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\[
+<img class="formulaDsp" alt="\[
     \text{disparity} = \frac{\text{baseline} \times f_x}{\text{depth}} - (c_{x_{right}} - c_{x_{left}})
-\]" src="form_3.png"/></picture>
+\]" src="form_3.png"/>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -1288,9 +1292,9 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p>Computes the disparity value from a depth given in unsigned short format (millimeters). </p>
 <p>Converts depth expressed as an unsigned short (in millimeters) to disparity. The depth is first converted to meters before computing disparity using the formula:  </p><p class="formulaDsp">
-<picture><source srcset="form_4_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\[
+<img class="formulaDsp" alt="\[
     \text{disparity} = \frac{\text{baseline} \times f_x}{\text{depth (meters)}} - (c_{x_{right}} - c_{x_{left}})
-\]" src="form_4.png"/></picture>
+\]" src="form_4.png"/>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">

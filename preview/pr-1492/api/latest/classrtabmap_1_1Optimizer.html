@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -178,7 +182,7 @@ std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform<
 <tr class="memitem:a93fb09dac068e64de000f692bcb8216f" id="r_a93fb09dac068e64de000f692bcb8216f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a93fb09dac068e64de000f692bcb8216f">computeBACorrespondences</a> (const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &gt; &amp;signatures, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, bool rematchFeatures=false, bool useLinkTransformAsGuess=false, <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> registrationParameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a93fb09dac068e64de000f692bcb8216f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build BA correspondences (3D points + per-frame observations) from signatures.  <br /></td></tr>
 <tr class="separator:a93fb09dac068e64de000f692bcb8216f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr><td colspan="2"><div class="groupHeader">Getters for tunables shared across back-ends.</div></td></tr>
+<tr><td colspan="2"><div class="groupHeader">Getters for the settings shared across back-ends.</div></td></tr>
 <tr class="memitem:a178bb719b0e22863e29add12c85e14a5" id="r_a178bb719b0e22863e29add12c85e14a5"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a178bb719b0e22863e29add12c85e14a5">iterations</a> () const</td></tr>
 <tr class="memdesc:a178bb719b0e22863e29add12c85e14a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Max solver iterations.  <br /></td></tr>
 <tr class="separator:a178bb719b0e22863e29add12c85e14a5"><td class="memSeparator" colspan="2">&#160;</td></tr>

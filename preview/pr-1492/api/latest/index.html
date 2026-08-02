@@ -18,9 +18,13 @@
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+<link href="custom.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">window.RTABMAP_DOC_ROOT="";</script>
 <script type="text/javascript" src="../versions.js"></script>
 <script type="text/javascript" src="version-switcher.js"></script>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript">DoxygenAwesomeDarkModeToggle.init();</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -285,10 +289,10 @@ Memory management</h1>
 <div class="ttc" id="anamespacertabmap_html_a4d38c2e87cb7a46dc4299f7bd4d95a01"><div class="ttname"><a href="namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01">rtabmap::ParametersPair</a></div><div class="ttdeci">std::pair&lt; std::string, std::string &gt; ParametersPair</div><div class="ttdoc">A single parameter key/value pair, the entry type of ParametersMap.</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00046">Parameters.h:46</a></div></div>
 <div class="ttc" id="anamespacertabmap_html_ad08b6f1796a27dd7316c99c385e2cc55"><div class="ttname"><a href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a></div><div class="ttdeci">std::map&lt; std::string, std::string &gt; ParametersMap</div><div class="ttdoc">Parameter keys mapped to their values, as used by every configurable class (see Parameters).</div><div class="ttdef"><b>Definition</b> <a href="Parameters_8h_source.html#l00044">Parameters.h:44</a></div></div>
 </div><!-- fragment --><p>When an iteration goes over budget, the nodes of lowest weight are moved to the long-term memory at the end of it &ndash; age only breaks ties between equal weights, so it is not simply the oldest that go. Weight is how often a place has been seen: while a node is still in the short-term memory, a new node similar enough to it (<a class="el" href="classrtabmap_1_1Parameters.html#a634f4790c9c84772935bf406265bc692">Mem/RehearsalSimilarity</a>) is merged into it and raises its weight &ndash; the rehearsal mechanism. Places the robot dwells on or revisits therefore stay in the working memory, while views seen once leave first. They are not lost: when a loop closure is found, their neighbours are brought back into the working memory for the next iterations, up to <a class="el" href="classrtabmap_1_1Parameters.html#ae42b8a843c6830eff62087a9e0df72b1">Rtabmap/MaxRetrieved</a> nodes (plus <a class="el" href="classrtabmap_1_1Parameters.html#a0ba27238802e7bbd1a7c0327bbc11d99">RGBD/MaxLocalRetrieved</a> around the current pose and along a planned path). This is what makes long-term mapping practical: the robot keeps a bounded, relevant working set and pulls the rest back as it recognizes where it is. Retrieval and node immunization only run when memory management is on.</p>
-<p>Which nodes go first is tunable: <a class="el" href="classrtabmap_1_1Parameters.html#a4459441e2574e19b15fedb9cb0bc3fd9">Mem/RecentWmRatio</a> protects the most recent part of the working memory, <a class="el" href="classrtabmap_1_1Parameters.html#a7197e89c24af786042c4f3854c14627f">RGBD/LocalImmunizationRatio</a> protects the nodes around the current pose, and <a class="el" href="classrtabmap_1_1Parameters.html#aea65d81db6cbca6869d7ee1b8e1003a7">Mem/TransferSortingByWeightId</a> selects the ordering. The step-by-step behaviour is documented on <a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">rtabmap::Rtabmap</a> (steps 4 and 6), and the <code>Memory/Working_memory_size</code> and <code>Memory/Signatures_retrieved</code> entries of <a class="el" href="classrtabmap_1_1Statistics.html" title="Collects and manages runtime statistics for RTAB-Map.">rtabmap::Statistics</a> report what happens at runtime.</p>
+<p>Which nodes go first is controlled by three parameters: <a class="el" href="classrtabmap_1_1Parameters.html#a4459441e2574e19b15fedb9cb0bc3fd9">Mem/RecentWmRatio</a> protects the most recent part of the working memory, <a class="el" href="classrtabmap_1_1Parameters.html#a7197e89c24af786042c4f3854c14627f">RGBD/LocalImmunizationRatio</a> protects the nodes around the current pose, and <a class="el" href="classrtabmap_1_1Parameters.html#aea65d81db6cbca6869d7ee1b8e1003a7">Mem/TransferSortingByWeightId</a> selects the ordering. The step-by-step behaviour is documented on <a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">rtabmap::Rtabmap</a> (steps 4 and 6), and the <code>Memory/Working_memory_size</code> and <code>Memory/Signatures_retrieved</code> entries of <a class="el" href="classrtabmap_1_1Statistics.html" title="Collects and manages runtime statistics for RTAB-Map.">rtabmap::Statistics</a> report what happens at runtime.</p>
 <h1><a class="anchor" id="autotoc_md3"></a>
 Configuration</h1>
-<p>Every tunable is a string key/value pair in a <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55" title="Parameter keys mapped to their values, as used by every configurable class (see Parameters).">rtabmap::ParametersMap</a>, declared with its default and description in <code><a class="el" href="Parameters_8h_source.html">Parameters.h</a></code> (for example <code>Parameters::kMemSTMSize()</code>, <code>Parameters::kRGBDLinearUpdate()</code>). The same keys are used by the applications, the ROS wrappers and the <code>--Param value</code> command-line arguments of the tools, so a setting found here applies everywhere.</p>
+<p>Every parameter is a string key/value pair in a <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55" title="Parameter keys mapped to their values, as used by every configurable class (see Parameters).">rtabmap::ParametersMap</a>, declared with its default and description in <code><a class="el" href="Parameters_8h_source.html">Parameters.h</a></code> (for example <code>Parameters::kMemSTMSize()</code>, <code>Parameters::kRGBDLinearUpdate()</code>). The same keys are used by the applications, the ROS wrappers and the <code>--Param value</code> command-line arguments of the tools, so a setting found here applies everywhere.</p>
 <p>The <a class="el" href="parameters.html">Parameter reference</a> lists all of them, grouped, with their type, default value and description.</p>
 <div class="fragment"><div class="line"><a class="code hl_typedef" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">rtabmap::ParametersMap</a> parameters;</div>
 <div class="line">parameters.insert(<a class="code hl_typedef" href="namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01">rtabmap::ParametersPair</a>(<a class="code hl_function" href="classrtabmap_1_1Parameters.html#a46dc1a24b02bb00014262f7f4d818a49">rtabmap::Parameters::kMemSTMSize</a>(), <span class="stringliteral">&quot;20&quot;</span>));</div>
@@ -297,8 +301,7 @@ Configuration</h1>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md4"></a>
 The main classes</h1>
 <p>Doxygen lists the classes alphabetically; this is the same set arranged by the role they play, as a starting point into the API.</p>
-<h2><a class="anchor" id="autotoc_md5"></a>
-The map structure</h2>
+<h2>The map structure</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Class   </th><th class="markdownTableHeadNone">Role    </th></tr>
@@ -315,8 +318,7 @@ The map structure</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><a class="el" href="classrtabmap_1_1Statistics.html" title="Collects and manages runtime statistics for RTAB-Map.">rtabmap::Statistics</a>   </td><td class="markdownTableBodyNone">Everything the pipeline reports about an iteration   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md6"></a>
-Inputs</h2>
+<h2>Inputs</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Class   </th><th class="markdownTableHeadNone">Role    </th></tr>
@@ -331,8 +333,7 @@ Inputs</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="el" href="classrtabmap_1_1SensorCapture.html" title="Abstract base class for sensor data capture (cameras, lidars, etc.)">rtabmap::SensorCapture</a>, <a class="el" href="classrtabmap_1_1SensorCaptureThread.html" title="Thread-based sensor data capture and event posting for RTAB-Map.">rtabmap::SensorCaptureThread</a>   </td><td class="markdownTableBodyNone">Drivers and the thread that pumps them   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md7"></a>
-Building blocks</h2>
+<h2>Building blocks</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Class   </th><th class="markdownTableHeadNone">Role    </th></tr>
