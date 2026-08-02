@@ -6,3 +6,7 @@ theme: jekyll-theme-slate
 
 plugins:
   - jekyll-mentions
+
+github:
+  zip_url: https://github.com/introlab/rtabmap/releases/latest
+  tar_url: https://github.com/introlab/rtabmap/releases/latest
