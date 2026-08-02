@@ -256,7 +256,7 @@ mapping practical: the robot keeps a bounded, relevant working set and pulls the
 rest back as it recognizes where it is. Retrieval and node immunization only run
 when memory management is on.
 
-Which nodes go first is tunable:
+Which nodes go first is controlled by three parameters:
 @ref rtabmap::Parameters::kMemRecentWmRatio() "Mem/RecentWmRatio" protects the
 most recent part of the working memory,
 @ref rtabmap::Parameters::kRGBDLocalImmunizationRatio() "RGBD/LocalImmunizationRatio"
@@ -270,7 +270,7 @@ happens at runtime.
 Configuration
 -------------
 
-Every tunable is a string key/value pair in a rtabmap::ParametersMap, declared
+Every parameter is a string key/value pair in a rtabmap::ParametersMap, declared
 with its default and description in `Parameters.h`
 (for example `Parameters::kMemSTMSize()`, `Parameters::kRGBDLinearUpdate()`).
 The same keys are used by the applications, the ROS wrappers and the

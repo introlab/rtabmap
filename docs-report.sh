@@ -45,6 +45,7 @@ configure_docs_build() {
 	cmake -B "$BUILD_DIR" \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DBUILD_TESTING=OFF \
+		-DBUILD_DOCUMENTATION=ON \
 		-DBUILD_APP=OFF \
 		-DBUILD_TOOLS=OFF \
 		-DBUILD_EXAMPLES=OFF \
@@ -71,7 +72,8 @@ configure_docs_build() {
 if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
 	echo "Configuring $BUILD_DIR (export headers for Doxygen)..."
 	configure_docs_build
-elif ! grep -q '^BUILD_TESTING:BOOL=OFF' "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
+elif ! grep -q '^BUILD_TESTING:BOOL=OFF' "$BUILD_DIR/CMakeCache.txt" 2>/dev/null ||
+     ! grep -q '^BUILD_DOCUMENTATION:BOOL=ON' "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
 	echo "Reconfiguring $BUILD_DIR for documentation..."
 	configure_docs_build
 elif [[ "$ROOT/Doxyfile.in" -nt "$BUILD_DIR/Doxyfile" ]]; then
@@ -115,6 +117,30 @@ echo "Running Doxygen -> $HTML_DIR ..."
 	printf 'OUTPUT_DIRECTORY = %s\n' "$HTML_DIR"
 	printf 'HTML_OUTPUT = .\n'
 } | (cd "$ROOT" && doxygen -)
+
+# Doxygen's navigation tree descends into the contents of each topic and each
+# namespace: the members of a topic (for our @defgroup topics, the same
+# overloaded name four or five times) and, under the namespace, the 147 classes
+# already listed under "Classes". Cutting the link to those children files keeps
+# the tree two levels deep; the topic, namespace and class pages are untouched.
+python3 - "$HTML_DIR" <<'PRUNE'
+import os, re, sys
+
+html_dir = sys.argv[1]
+# file listing the nodes -> pattern of the reference to a node's children file
+for name, pattern in (("topics.js", r'group__[A-Za-z0-9_]+'),
+                      ("namespaces_dup.js", r'namespace[A-Za-z0-9_]+')):
+    path = os.path.join(html_dir, name)
+    if not os.path.exists(path):
+        continue
+    with open(path) as f:
+        data = f.read()
+    pruned, count = re.subn(r', "%s" \]' % pattern, ', null ]', data)
+    if count:
+        with open(path, 'w') as f:
+            f.write(pruned)
+    print("%s: %d node(s) collapsed to a single level" % (name, count))
+PRUNE
 
 # The version list lives at the API root, one level above this build, so every
 # published version shares it (see doxygen/versions.js).

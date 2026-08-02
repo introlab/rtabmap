@@ -137,7 +137,7 @@ public:
 	/** @brief Returns the concrete back-end identifier (one of @ref Type). */
 	virtual Type type() const = 0;
 
-	/// @name Getters for tunables shared across back-ends.
+	/// @name Getters for the settings shared across back-ends.
 	/// @{
 	int iterations() const {return iterations_;}             ///< Max solver iterations.
 	bool isSlam2d() const {return slam2d_;}                  ///< True if optimizing in SE(2) instead of SE(3).

@@ -167,6 +167,9 @@ ENDIF(APPLE OR WIN32)
 OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
+# Off by default: it downloads the Doxygen theme at configure time, which an
+# ordinary build has no reason to need. Set by docs-report.sh.
+OPTION(BUILD_DOCUMENTATION "Prepare the API documentation build (downloads the Doxygen theme)" OFF)
 
 # The unit tests are host executables run by ctest, which can't be done from a
 # cross-compiled Android/iOS build.
@@ -1299,61 +1302,14 @@ ENDIF()
 
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
-# Doxygen HTML header carrying the version-switcher scripts. The template is
-# regenerated with `doxygen -w` so it always matches the locally installed
-# Doxygen (a committed header goes stale and warns on every run); we only insert
-# two <script> tags before </head>. $relpath^ is Doxygen's path from the current
-# page back to this build's root, which is how the switcher locates versions.js
-# one level above (the API root) without knowing the site prefix.
-FIND_PROGRAM(RTABMAP_DOXYGEN_EXECUTABLE doxygen)
-SET(RTABMAP_DOXYGEN_HEADER "")
-IF(RTABMAP_DOXYGEN_EXECUTABLE)
-   SET(RTABMAP_DOXYGEN_HEADER ${CMAKE_CURRENT_BINARY_DIR}/doxygen-header.html)
-   EXECUTE_PROCESS(
-      COMMAND ${RTABMAP_DOXYGEN_EXECUTABLE} -w html
-              ${RTABMAP_DOXYGEN_HEADER}
-              ${CMAKE_CURRENT_BINARY_DIR}/doxygen-footer.html
-              ${CMAKE_CURRENT_BINARY_DIR}/doxygen-stylesheet.css
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-      OUTPUT_QUIET ERROR_QUIET)
-   IF(EXISTS ${RTABMAP_DOXYGEN_HEADER})
-      FILE(READ ${RTABMAP_DOXYGEN_HEADER} RTABMAP_DOXYGEN_HEADER_CONTENT)
-      STRING(REPLACE "</head>"
-         "<script type=\"text/javascript\">window.RTABMAP_DOC_ROOT=\"$relpath^\";</script>\n<script type=\"text/javascript\" src=\"$relpath^../versions.js\"></script>\n<script type=\"text/javascript\" src=\"$relpath^version-switcher.js\"></script>\n</head>"
-         RTABMAP_DOXYGEN_HEADER_CONTENT "${RTABMAP_DOXYGEN_HEADER_CONTENT}")
-      FILE(WRITE ${RTABMAP_DOXYGEN_HEADER} "${RTABMAP_DOXYGEN_HEADER_CONTENT}")
-   ELSE()
-      SET(RTABMAP_DOXYGEN_HEADER "")
-   ENDIF()
-ENDIF()
-
-# "Parameter reference" page: the parameters are declared through the
-# RTABMAP_PARAM* macros, so Doxygen alone can only show 1900 bare accessors.
-# The generator reads the declarations and emits one table per group, with the
-# key, type, default and description together. Optional: without Python the
-# page is simply left out of INPUT.
-FIND_PACKAGE(Python3 COMPONENTS Interpreter QUIET)
-SET(RTABMAP_DOXYGEN_PARAMETERS_PAGE "")
-IF(Python3_Interpreter_FOUND)
-   EXECUTE_PROCESS(
-      COMMAND ${Python3_EXECUTABLE}
-              ${CMAKE_CURRENT_SOURCE_DIR}/doxygen/generate_parameters_page.py
-              --input ${CMAKE_CURRENT_SOURCE_DIR}/corelib/include/${PROJECT_PREFIX}/core/Parameters.h
-              --output ${CMAKE_CURRENT_BINARY_DIR}/doxygen/parameters.md
-      RESULT_VARIABLE RTABMAP_DOXYGEN_PARAMETERS_RESULT
-      OUTPUT_QUIET ERROR_QUIET)
-   IF(RTABMAP_DOXYGEN_PARAMETERS_RESULT EQUAL 0)
-      SET(RTABMAP_DOXYGEN_PARAMETERS_PAGE ${CMAKE_CURRENT_BINARY_DIR}/doxygen/parameters.md)
-   ELSE()
-      MESSAGE(WARNING "Could not generate the Doxygen parameter reference page.")
-   ENDIF()
-ENDIF()
-
-# Doxyfile with PROJECT_NUMBER filled from RTABMAP_VERSION, so the generated
-# documentation can never drift from the actual version. Its INPUT/OUTPUT paths
-# are relative to the source tree, so run it from there:
-#   doxygen <build dir>/Doxyfile
-CONFIGURE_FILE(Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+# API documentation (Doxygen). Off by default: preparing it downloads the theme,
+# spawns Doxygen to regenerate the HTML header and runs the parameter-page
+# generator, none of which an ordinary build needs. docs-report.sh turns it on;
+# see also .github/workflows/docs.yml.
+IF(BUILD_DOCUMENTATION)
+   INCLUDE(RTABMapDocumentation)
+   RTABMAP_SETUP_DOCUMENTATION()
+ENDIF(BUILD_DOCUMENTATION)
 
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )

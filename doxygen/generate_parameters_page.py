@@ -289,13 +289,17 @@ def render(params, source_name):
     out.append('Defaults given with a condition depend on how RTAB-Map was built; call')
     out.append('rtabmap::Parameters::getDefaultParameters() to read the values of the build in use.')
     out.append('')
-    out.append('[TOC]')
+    out.append('**Groups:** ' + ', '.join(
+        '@ref parameters_%s "%s"' % (p, p) for p in order))
     out.append('')
 
     for prefix in order:
-        heading = '%s {#parameters_%s}' % (prefix, prefix)
-        out.append(heading)
-        out.append('-' * len(heading))
+        # @anchor rather than a "{#id}" heading: the latter would turn the
+        # heading into a section, which lands in the navigation tree whatever
+        # TOC_INCLUDE_HEADINGS says.
+        out.append('@anchor parameters_%s' % prefix)
+        out.append(prefix)
+        out.append('-' * len(prefix))
         out.append('')
         if prefix in GROUP_BLURBS:
             out.append(GROUP_BLURBS[prefix])
