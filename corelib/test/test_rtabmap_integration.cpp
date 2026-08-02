@@ -2360,23 +2360,47 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// recall floors. DAISY descriptors are float but behave closer to
 		// the binary group on this dataset, so they share those floors.
 		//
-		// OpenCV 5 changed the binary descriptors enough to shift recall
-		// noticeably: across the loose bucket it spans 0.73 (FAST+FREAK) to
-		// 0.98 (ORB-OCTREE), versus 0.89-0.98 on OpenCV 4. The looser floor is
-		// therefore applied only where it is needed, so OpenCV 4 builds keep
-		// guarding the tighter bound. Precision is unaffected (0.89-0.98 on
-		// both), as is the float bucket (SURF/SIFT/KAZE: 0.93-0.98 recall).
+		// The FREAK/BRIEF/DAISY descriptors live in opencv_contrib's
+		// xfeatures2d, which Debian/Ubuntu's libopencv-contrib-dev does not
+		// ship, so the linux CI jobs skip them entirely. Homebrew's opencv@4
+		// does bundle xfeatures2d, so macos is the first OpenCV 4 platform to
+		// run them, and they land well below the rest of the binary bucket:
+		// FAST+FREAK 0.68, FAST+BRIEF 0.77, GFTT+Freak 0.80. They get their own
+		// floor rather than relaxing the whole binary bucket, so ORB/BRISK keep
+		// guarding their real 0.91-0.98 level.
+		//
+		// That carve-out is also what lets a single floor cover both OpenCV
+		// majors. OpenCV 5 shifts binary-descriptor recall noticeably, spanning
+		// 0.73 to 0.98 (ORB-OCTREE) versus 0.89-0.98 on OpenCV 4, but the 0.73
+		// low end was FAST+FREAK -- an xfeatures2d detector, now on its own
+		// floor -- so what remains of the bucket clears 0.8 on both. Precision
+		// is unaffected either way (0.89-0.98), as is the float bucket
+		// (SURF/SIFT/KAZE: 0.93-0.98 recall).
+		//
+		// The floor is set below the lowest observed value with room to spare:
+		// only one macos job was sampled, and the intel and apple-silicon
+		// runners can disagree by a match or two on this dataset. What keeps
+		// the check meaningful for these detectors is the precision floor
+		// (0.85, actual 0.91-0.95) plus a recall bound low enough to be
+		// platform-independent but far above the near-zero recall a genuinely
+		// broken descriptor would give. Recall is low here mostly because FAST
+		// finds too few corners on the darker frames -- 16 of 84 signatures are
+		// rejected as bad for FAST+BRIEF, versus 2 for SIFT -- so those frames
+		// cannot match anything regardless of the descriptor.
 		const bool daisyDescriptor =
 				detectorType == Feature2D::kFeatureGfttDaisy ||
 				detectorType == Feature2D::kFeatureSurfDaisy;
+		const bool freakOrBriefDescriptor =
+				detectorType == Feature2D::kFeatureFastFreak ||
+				detectorType == Feature2D::kFeatureFastBrief ||
+				detectorType == Feature2D::kFeatureGfttFreak ||
+				detectorType == Feature2D::kFeatureGfttBrief ||
+				detectorType == Feature2D::kFeatureSurfFreak;
 		const bool looseFloors = binaryDescriptors || daisyDescriptor;
-#if CV_MAJOR_VERSION >= 5
-		const float kLooseMinRecall = 0.7f;
-#else
-		const float kLooseMinRecall = 0.8f;
-#endif
+		const bool xfeatures2dDescriptor = freakOrBriefDescriptor || daisyDescriptor;
 		const float kMinPrecision = looseFloors ? 0.85f : 0.9f;
-		const float kMinRecall    = looseFloors ? kLooseMinRecall : 0.9f;
+		const float kMinRecall    = xfeatures2dDescriptor ? 0.6f :
+				(looseFloors ? 0.8f : 0.9f);
 		EXPECT_GE(acceptedPrec, kMinPrecision)
 				<< detectorLabel << " accepted precision=" << acceptedPrec
 				<< " is below " << kMinPrecision
