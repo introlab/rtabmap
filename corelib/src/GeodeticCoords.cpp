@@ -192,6 +192,11 @@ cv::Point3d GeodeticCoords::ENU_WGS84ToGeocentric_WGS84(const cv::Point3d& enu, 
 	// normal by up to ~0.19 deg, so the two directions were not inverses of each
 	// other and every ENU->geodetic conversion picked up a systematic error
 	// proportional to the horizontal offset (~0.11 m of altitude at 40 m out).
+	//
+	// The same defect was inherited from MRPT, which this file was adapted from,
+	// and was fixed upstream by the identical change in
+	// https://github.com/MRPT/mrpt/commit/8be4931ca7abccf5eb58da253b02660cdbdf6427
+	// ("mrpt_topography: increase code coverage and fix bugs", 2026-07-10).
 	const double clat = cos(DEG2RAD(origin.latitude())), slat = sin(DEG2RAD(origin.latitude()));
 	const double clon = cos(DEG2RAD(origin.longitude())), slon = sin(DEG2RAD(origin.longitude()));
 
