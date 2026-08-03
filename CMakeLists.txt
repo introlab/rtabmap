@@ -191,7 +191,8 @@ if(BUILD_TESTING)
      add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
    endif()
    include(GoogleTest)
-   set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data")
+   set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data"
+       CACHE PATH "Root directory holding the test fixtures (data/tests/*.db)")
 endif()
 
 OPTION(ENABLE_COVERAGE "Build with gcov/lcov coverage (GCC/Clang, Debug only; see coverage-report.sh)" OFF)

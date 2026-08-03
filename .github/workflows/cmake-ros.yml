@@ -42,6 +42,22 @@ jobs:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
     steps:
     - uses: actions/checkout@v4
+
+    - name: Restore test data
+      id: cache-testdata
+      uses: actions/cache@v4
+      with:
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # The ROS images are slim; fetch_test_data.sh needs curl.
+        command -v curl >/dev/null || (apt-get update && apt-get install -y --no-install-recommends curl)
+        bash scripts/fetch_test_data.sh
+
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
@@ -52,3 +68,4 @@ jobs:
         target-ros2-distro: ${{ matrix.ros_distribution }}
         rosdep-skip-keys: "${{ matrix.skip_keys }}"
         coverage-result: false
+        extra-cmake-args: -DTEST_DATA_ROOT=${{ github.workspace }}/data
