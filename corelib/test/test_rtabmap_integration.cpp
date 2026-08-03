@@ -2371,9 +2371,8 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// majors. OpenCV 5 shifts binary-descriptor recall noticeably, spanning
 		// 0.73 to 0.98 (ORB-OCTREE) versus 0.89-0.98 on OpenCV 4, but the 0.73
 		// low end was FAST+FREAK -- an xfeatures2d detector, now on its own
-		// floor -- so what remains of the bucket clears 0.8 on both. Precision
-		// is unaffected either way (0.89-0.98), as is the float bucket
-		// (SURF/SIFT/KAZE: 0.93-0.98 recall).
+		// floor. Precision is unaffected either way (0.89-0.98), as is the
+		// float bucket (SURF/SIFT/KAZE: 0.93-0.98 recall).
 		//
 		// The floor has to absorb genuine run-to-run nondeterminism, not just
 		// platform spread. The BoW word index is built by the vendored rtflann,
@@ -2383,9 +2382,19 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		// different index and a different set of accepted closures. Measured on
 		// linux that moves recall by 1-2 matches (e.g. ORB 0.909/0.886,
 		// GFTT+ORB 0.932/0.886 across runs of the same binary); on macos
-		// FAST+FREAK has come in at both 30/44 (0.682) and 26/44 (0.591). Note
-		// rtflann::seed_random() only calls srand() and does NOT reach those
-		// three call sites, so there is currently no way to pin a run.
+		// FAST+FREAK has come in at both 30/44 (0.682) and 26/44 (0.591), and
+		// GFTT+ORB at 35/44 (0.795). Note rtflann::seed_random() only calls
+		// srand() and does NOT reach those three call sites, so there is
+		// currently no way to pin a run.
+		//
+		// Both floors therefore have to sit a few matches below the lowest
+		// value ever seen rather than hugging it -- one match on this 44-closure
+		// set is 0.023 of recall, so a floor within ~0.05 of an observed value
+		// fails on nondeterminism alone. That is what happened to the binary
+		// bucket at 0.8: GFTT+ORB is a 0.89-0.93 detector here, but a single
+		// run landing one match low (0.795) tripped it. 0.7 gives that bucket
+		// ~4 matches of slack, matching the margin the xfeatures2d floor
+		// already carries below its 0.682 low.
 		//
 		// 0.5 therefore sits ~4 matches below the lowest value seen rather than
 		// hugging it. That is deliberately a smoke test for this group: it
@@ -2413,7 +2422,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		const float kMinPrecision = tfIdfUsed ? 0.70f :
 				(looseFloors ? 0.85f : 0.9f);
 		const float kMinRecall    = xfeatures2dDescriptor ? 0.5f :
-				(looseFloors ? 0.8f : 0.9f);
+				(looseFloors ? 0.7f : 0.9f);
 		EXPECT_GE(acceptedPrec, kMinPrecision)
 				<< detectorLabel << " accepted precision=" << acceptedPrec
 				<< " is below " << kMinPrecision
