@@ -310,11 +310,13 @@ std::map<int, Transform> OptimizerCeres::optimize(
 		// definite matrix over pose blocks, which Cholesky factors
 		// directly and robustly.
 		options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-#if CERES_VERSION_MAJOR >= 2
 		// If the build has no usable sparse backend at all, fall back to a
 		// dense factorization, which is always available. Slower on big graphs,
 		// but a pose graph that optimizes beats one that silently does not.
-		if(!ceres::IsSparseLinearAlgebraLibraryTypeAvailable(
+#if CERES_VERSION_MAJOR > 1 || \
+    (CERES_VERSION_MAJOR == 1 && CERES_VERSION_MINOR >= 14)
+		if(options.sparse_linear_algebra_library_type == ceres::NO_SPARSE ||
+		   !ceres::IsSparseLinearAlgebraLibraryTypeAvailable(
 				options.sparse_linear_algebra_library_type))
 		{
 			static bool warned = false;

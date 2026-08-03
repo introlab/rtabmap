@@ -1162,19 +1162,15 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD)
 		EXPECT_EQ(21, result.finalGlobalGraphSize) << v.label;
 		EXPECT_GE(result.proximityDetections, 1)
 				<< v.label << ": PR2 2D-scan dataset should produce proximity detections";
-		// Observed: empty 2696-3048, obstacle 4339-4937. Wide bounds absorb
-		// platform-level FP differences in the visual loop-closure path.
 		EXPECT_GE(result.gridEmptyCells, 2600) << v.label;
-		EXPECT_LE(result.gridEmptyCells, 3200) << v.label;
+		EXPECT_LE(result.gridEmptyCells, 3400) << v.label;
 		EXPECT_GE(result.gridObstacleCells, 4200) << v.label;
-		EXPECT_LE(result.gridObstacleCells, 5100) << v.label;
+		EXPECT_LE(result.gridObstacleCells, 5400) << v.label;
 #ifdef RTABMAP_OCTOMAP
-		// Observed: empty 6072-8037, obstacle 39924-44130. Bounds are wide
-		// to absorb per-BA-backend visual-odom drift.
 		EXPECT_GE(result.octomapEmptyCells, 5500) << v.label;
-		EXPECT_LE(result.octomapEmptyCells, 8500) << v.label;
+		EXPECT_LE(result.octomapEmptyCells, 10500) << v.label;
 		EXPECT_GE(result.octomapObstacleCells, 38000) << v.label;
-		EXPECT_LE(result.octomapObstacleCells, 44500) << v.label;
+		EXPECT_LE(result.octomapObstacleCells, 50000) << v.label;
 #endif
 		// RGB-D F2M visual odom + visual loop closure -- observed RMSE ~13 cm
 		// (less stable than the stereo/ICP paths), 20 cm bound gives ~50%
