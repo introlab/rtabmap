@@ -51,3 +51,4 @@ jobs:
         package-name: rtabmap
         target-ros2-distro: ${{ matrix.ros_distribution }}
         rosdep-skip-keys: "${{ matrix.skip_keys }}"
+        coverage-result: false
