@@ -706,12 +706,21 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
-			if(!this->isReadOnly()) {
+			if(this->isReadOnly())
+			{
+				if(_memoryChanged || _linksChanged || databaseNameChanged)
+				{
+					UWARN("Memory has been modified (nodes=%s links=%s name=%s) but the database is read-only, changes are not saved to database.",
+						_memoryChanged?"true":"false", _linksChanged?"true":"false", databaseNameChanged?"true":"false");
+				}
+			}
+			else if(databaseSaved)
+			{
 				saveFlannIndex(postInitClosingEvents);
 			}
 			else if(_memoryChanged || _linksChanged || databaseNameChanged)
 			{
-				UWARN("Memory has been modified (nodes=%s links=%s name=%s) but the database is read-only, changes are not saved to database.",
+				UWARN("Memory has been modified (nodes=%s links=%s name=%s) but databaseSaved=false, changes are not saved to database.",
 					_memoryChanged?"true":"false", _linksChanged?"true":"false", databaseNameChanged?"true":"false");
 			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
@@ -728,8 +737,10 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 	{
 		UINFO("Saving memory...");
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
-		if(!_memoryChanged && _dbDriver)
+		if(_dbDriver)
 		{
+			// Must be done before clear(), which clears the dictionary.
+			// saveFlannIndex() saves only if the dictionary has been modified.
 			saveFlannIndex(postInitClosingEvents);
 		}
 		this->clear();
