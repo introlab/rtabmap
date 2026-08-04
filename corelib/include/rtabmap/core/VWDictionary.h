@@ -112,6 +112,11 @@ public:
 	void setIncrementalDictionary();
 	void setFixedDictionary(const std::string & dictionaryPath);
 	bool isModified() const;
+	// Re-index all the words from scratch. The index then contains the words in
+	// the same order than the one built by update() on a dictionary freshly
+	// loaded from a database, which is required to serialize it (the serialized
+	// index is matched against the words in that order when deserialized).
+	void rebuildIndex();
 
 	std::vector<unsigned char> serializeIndex() const;
 	void deserializeIndex(const std::vector<unsigned char> & data);

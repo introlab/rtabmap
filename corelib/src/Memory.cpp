@@ -606,7 +606,12 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
 				_memoryChanged = true; // This will force rtabmap to save back the dictionary even if we don't process any new data
-				_vwd->update();
+				// Re-index from scratch instead of adding the words above to the
+				// index already built: the index would then contain them in a
+				// different order than the words loaded from the database, which
+				// makes the index saved on close (see saveFlannIndex()) rejected
+				// when it is deserialized on next load.
+				_vwd->rebuildIndex();
 			}
 		}
 

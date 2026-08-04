@@ -118,10 +118,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	if(!treeUpdated && byteToFloat!=_byteToFloat && _strategy == kNNFlannKdTree)
 	{
 		UINFO("KDTree: Binary to Float conversion approach has changed, re-initialize kd-tree.");
-		_dataTree = cv::Mat();
-		_notIndexedWords = uKeysSet(_visualWords);
-		_removedIndexedWords.clear();
-		this->update();
+		this->rebuildIndex();
 	}
 
 	if(incrementalDictionary)
@@ -294,6 +291,15 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 bool VWDictionary::isModified() const
 {
 	return _modified;
+}
+
+void VWDictionary::rebuildIndex()
+{
+	UDEBUG("Re-indexing all %ld words...", _visualWords.size());
+	_dataTree = cv::Mat();
+	_notIndexedWords = uKeysSet(_visualWords);
+	_removedIndexedWords.clear();
+	this->update();
 }
 
 bool VWDictionary::setNNStrategy(NNStrategy strategy)
