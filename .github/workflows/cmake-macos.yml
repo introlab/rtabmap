@@ -123,7 +123,6 @@ jobs:
         PYTHONNOUSERSITE: 1
       run: |
         ctest -C ${{env.BUILD_TYPE}} --output-on-failure
-        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --rerun-failed
 
     # A ctest SEGFAULT is reported as just "SEGFAULT" with no backtrace, which
     # makes a crash inside a long integration test invisible -- the log simply
