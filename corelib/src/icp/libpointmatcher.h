@@ -104,7 +104,9 @@ DP pclToDP(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & pclCloud, bool is2
 	}
 	featLabels.push_back(Label("pad", 1));
 
-	descLabels.push_back(Label("normals", 3));
+	// The "normals" descriptor must have the same dimension as the features
+	// (see kNormalsDim comment in laserScanToDP()): 2 for a 2D cloud.
+	descLabels.push_back(Label("normals", is2D?2:3));
 	descLabels.push_back(Label("intensity", 1));
 
 	// create cloud
@@ -115,7 +117,7 @@ DP pclToDP(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & pclCloud, bool is2
 	View view(cloud.getFeatureViewByName("x"));
 	View viewNormalX(cloud.getDescriptorRowViewByName("normals",0));
 	View viewNormalY(cloud.getDescriptorRowViewByName("normals",1));
-	View viewNormalZ(cloud.getDescriptorRowViewByName("normals",2));
+	View viewNormalZ(!is2D?cloud.getDescriptorRowViewByName("normals",2):view);
 	View viewIntensity(cloud.getDescriptorRowViewByName("intensity",0));
 	for(unsigned int i=0; i<pclCloud->size(); ++i)
 	{
@@ -127,7 +129,10 @@ DP pclToDP(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & pclCloud, bool is2
 		}
 		viewNormalX(0, i) = pclCloud->at(i).normal_x;
 		viewNormalY(0, i) = pclCloud->at(i).normal_y;
-		viewNormalZ(0, i) = pclCloud->at(i).normal_z;
+		if(!is2D)
+		{
+			viewNormalZ(0, i) = pclCloud->at(i).normal_z;
+		}
 		viewIntensity(0, i) = pclCloud->at(i).intensity;
 	}
 
@@ -157,9 +162,18 @@ DP laserScanToDP(const rtabmap::LaserScan & scan, bool ignoreLocalTransform = fa
 	}
 	featLabels.push_back(Label("pad", 1));
 
+	// libpointmatcher rotates the "normals" descriptor with the rotation block
+	// of the transform, whose size follows the feature dimension (2x2 for a 2D
+	// cloud, whose features are x/y/pad). Declaring 3 normal components on a 2D
+	// cloud is a dimension mismatch in that product; Eigen only catches it with
+	// assertions enabled, so a Release build reads/writes past the descriptor
+	// matrix instead -- an intermittent segfault inside
+	// RigidTransformation::inPlaceCompute(). For a 2D scan nz is always 0
+	// (see computeNormals2D()), so dropping it loses nothing.
+	const unsigned int kNormalsDim = scan.is2d()?2:3;
 	if(scan.hasNormals())
 	{
-		descLabels.push_back(Label("normals", 3));
+		descLabels.push_back(Label("normals", kNormalsDim));
 	}
 	if(scan.hasIntensity())
 	{
@@ -180,7 +194,7 @@ DP laserScanToDP(const rtabmap::LaserScan & scan, bool ignoreLocalTransform = fa
 	View view(cloud.getFeatureViewByName("x"));
 	View viewNormalX(nx!=-1?cloud.getDescriptorRowViewByName("normals",0):view);
 	View viewNormalY(nx!=-1?cloud.getDescriptorRowViewByName("normals",1):view);
-	View viewNormalZ(nx!=-1?cloud.getDescriptorRowViewByName("normals",2):view);
+	View viewNormalZ(nx!=-1 && kNormalsDim==3?cloud.getDescriptorRowViewByName("normals",2):view);
 	View viewIntensity(offsetI!=-1?cloud.getDescriptorRowViewByName("intensity",0):view);
 	int oi = 0;
 	for(int i=0; i<scan.size(); ++i)
@@ -225,7 +239,10 @@ DP laserScanToDP(const rtabmap::LaserScan & scan, bool ignoreLocalTransform = fa
 					}
 					viewNormalX(0, oi) = pt.normal_x;
 					viewNormalY(0, oi) = pt.normal_y;
-					viewNormalZ(0, oi) = pt.normal_z;
+					if(kNormalsDim == 3)
+					{
+						viewNormalZ(0, oi) = pt.normal_z;
+					}
 
 					if(offsetI!=-1)
 					{
@@ -251,7 +268,10 @@ DP laserScanToDP(const rtabmap::LaserScan & scan, bool ignoreLocalTransform = fa
 				{
 					viewNormalX(0, oi) = ptr[nx];
 					viewNormalY(0, oi) = ptr[ny];
-					viewNormalZ(0, oi) = ptr[nz];
+					if(kNormalsDim == 3)
+					{
+						viewNormalZ(0, oi) = ptr[nz];
+					}
 				}
 				if(offsetI!=-1)
 				{
@@ -321,9 +341,11 @@ void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointXYZINormal> & pclClou
 	// fill cloud
 	ConstView view(cloud.getFeatureViewByName("x"));
 	bool is3D = cloud.featureExists("z");
+	// A 2D cloud carries 2 normal components only (see laserScanToDP()).
+	bool hasNormalZ = cloud.getDescriptorDimension("normals") == 3;
 	ConstView viewNormalX(cloud.getDescriptorRowViewByName("normals",0));
 	ConstView viewNormalY(cloud.getDescriptorRowViewByName("normals",1));
-	ConstView viewNormalZ(cloud.getDescriptorRowViewByName("normals",2));
+	ConstView viewNormalZ(hasNormalZ?cloud.getDescriptorRowViewByName("normals",2):view);
 	ConstView viewIntensity(hasIntensity?cloud.getDescriptorRowViewByName("intensity",0):view);
 	for(unsigned int i=0; i<pclCloud.size(); ++i)
 	{
@@ -332,7 +354,7 @@ void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointXYZINormal> & pclClou
 		pclCloud.at(i).z = is3D?view(2, i):0;
 		pclCloud.at(i).normal_x = viewNormalX(0, i);
 		pclCloud.at(i).normal_y = viewNormalY(0, i);
-		pclCloud.at(i).normal_z = viewNormalZ(0, i);
+		pclCloud.at(i).normal_z = hasNormalZ?viewNormalZ(0, i):0;
 		if(hasIntensity)
 			pclCloud.at(i).intensity = viewIntensity(0, i);
 	}
@@ -356,10 +378,12 @@ rtabmap::LaserScan laserScanFromDP(const DP & cloud, const rtabmap::Transform & 
 	bool is3D = cloud.featureExists("z");
 	bool hasNormals = cloud.descriptorExists("normals");
 	bool hasIntensity = cloud.descriptorExists("intensity");
+	// A 2D cloud carries 2 normal components only (see laserScanToDP()).
+	bool hasNormalZ = hasNormals && cloud.getDescriptorDimension("normals") == 3;
 	ConstView view(cloud.getFeatureViewByName("x"));
 	ConstView viewNormalX(hasNormals?cloud.getDescriptorRowViewByName("normals",0):view);
 	ConstView viewNormalY(hasNormals?cloud.getDescriptorRowViewByName("normals",1):view);
-	ConstView viewNormalZ(hasNormals?cloud.getDescriptorRowViewByName("normals",2):view);
+	ConstView viewNormalZ(hasNormalZ?cloud.getDescriptorRowViewByName("normals",2):view);
 	ConstView viewIntensity(hasIntensity?cloud.getDescriptorRowViewByName("intensity",0):view);
 	int channels = 2+(is3D?1:0) + (hasNormals?3:0) + (hasIntensity?1:0);
 	cv::Mat data(1, cloud.features.cols(), CV_32FC(channels));
@@ -375,7 +399,7 @@ rtabmap::LaserScan laserScanFromDP(const DP & cloud, const rtabmap::Transform & 
 		if(hasNormals) {
 			pt.normal_x = viewNormalX(0, i);
 			pt.normal_y = viewNormalY(0, i);
-			pt.normal_z = viewNormalZ(0, i);
+			pt.normal_z = hasNormalZ?viewNormalZ(0, i):0;
 		}
 		if(transformValid)
 			pt = rtabmap::util3d::transformPoint(pt, localTransformInv);
