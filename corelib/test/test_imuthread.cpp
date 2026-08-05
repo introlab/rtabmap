@@ -105,6 +105,19 @@ public:
 		}
 		return count;
 	}
+	// An empty IMUEvent is what IMUThread posts when the CSV is exhausted.
+	bool endReceived() const
+	{
+		UScopeMutex lock(mutex_);
+		for(size_t i = 0; i < samples_.size(); ++i)
+		{
+			if(!samples_[i].valid)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 
 protected:
 	virtual bool handleEvent(UEvent * event)
@@ -130,6 +143,7 @@ private:
 static std::vector<IMUEventCollector::Sample> runThread(
 		IMUThread & thread,
 		size_t minValidSamples = 0,
+		bool waitForEndEvent = false,
 		double maxWaitSec = 2.0)
 {
 	IMUEventCollector collector;
@@ -137,7 +151,10 @@ static std::vector<IMUEventCollector::Sample> runThread(
 	thread.start();
 
 	UTimer timer;
-	while(timer.ticks() < maxWaitSec)
+	// elapsed(), not ticks(): ticks() restarts the timer, so the condition
+	// would compare one loop iteration (~5 ms) against maxWaitSec and never
+	// time out if the expected events never arrive.
+	while(timer.elapsed() < maxWaitSec)
 	{
 		// Wait for the events themselves, not for the IMU thread to die.
 		// On a fast machine the IMU thread can post all its events and
@@ -145,7 +162,8 @@ static std::vector<IMUEventCollector::Sample> runThread(
 		// chance to deliver them to the collector. Breaking on isKilled()
 		// here would race with that delivery and removeHandler() below
 		// would then drop the still-queued events on the floor.
-		if(minValidSamples > 0 && collector.validCount() >= minValidSamples)
+		if(minValidSamples > 0 && collector.validCount() >= minValidSamples &&
+			(!waitForEndEvent || collector.endReceived()))
 		{
 			break;
 		}
@@ -203,8 +221,11 @@ TEST(IMUThreadTest, PublishesSamplesFromCsv)
 	IMUThread thread(0, Transform::getIdentity());
 	ASSERT_TRUE(thread.init(path));
 
-	const std::vector<IMUEventCollector::Sample> samples = runThread(thread, 2);
-	ASSERT_GE(samples.size(), 2u);
+	// The end-of-file event is part of what this test asserts, so wait for it
+	// too: stopping at the 2 valid samples can return before the IMU thread
+	// has posted it, or before the dispatcher has delivered it.
+	const std::vector<IMUEventCollector::Sample> samples = runThread(thread, 2, true);
+	ASSERT_GE(samples.size(), 3u);
 
 	EXPECT_TRUE(samples[0].valid);
 	EXPECT_NEAR(samples[0].stamp, 1.0, 1e-6);
