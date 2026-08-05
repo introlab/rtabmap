@@ -306,7 +306,7 @@ void Rtabmap::flushStatisticLogs()
 {
 	if(_foutFloat && _bufferedLogsF.size())
 	{
-		UDEBUG("_bufferedLogsF.size=%d", _bufferedLogsF.size());
+		UDEBUG("_bufferedLogsF.size=%d", (int)_bufferedLogsF.size());
 		for(std::list<std::string>::iterator iter = _bufferedLogsF.begin(); iter!=_bufferedLogsF.end(); ++iter)
 		{
 			fprintf(_foutFloat, "%s", iter->c_str());
@@ -315,7 +315,7 @@ void Rtabmap::flushStatisticLogs()
 	}
 	if(_foutInt && _bufferedLogsI.size())
 	{
-		UDEBUG("_bufferedLogsI.size=%d", _bufferedLogsI.size());
+		UDEBUG("_bufferedLogsI.size=%d", (int)_bufferedLogsI.size());
 		for(std::list<std::string>::iterator iter = _bufferedLogsI.begin(); iter!=_bufferedLogsI.end(); ++iter)
 		{
 			fprintf(_foutInt, "%s", iter->c_str());
@@ -403,7 +403,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 			_lastLocalizationPose = lastPose;
 
 			UINFO("Loaded optimizedPoses=%d firstPose %d=%s lastLocalizationPose=%s",
-					_optimizedPoses.size(),
+					(int)_optimizedPoses.size(),
 					_optimizedPoses.lower_bound(1)->first,
 					_optimizedPoses.lower_bound(1)->second.prettyPrint().c_str(),
 					_lastLocalizationPose.prettyPrint().c_str());
@@ -1320,7 +1320,7 @@ bool Rtabmap::process(
 						odomPose.r21(), odomPose.r22(), odomPose.r23(), odomPose.o24(),
 						odomPose.r31(), odomPose.r32(), odomPose.r33(), odomPose.o34());
 				odomPose.normalizeRotation();
-				UASSERT_MSG(odomPose.isInvertible(), uFormat("Odometry pose is not invertible!\n"
+				UASSERT_MSG(odomPose.isInvertible(), uFormat("Odometry pose is not invertible! %s\n"
 						"[%f %f %f %f;\n"
 						" %f %f %f %f;\n"
 						" %f %f %f %f;\n"
@@ -2402,7 +2402,7 @@ bool Rtabmap::process(
 					"nbDirectNeighborsInDb=%d, "
 					"time=%fs (%fs %fs)",
 					neighborhoodSize,
-					reactivatedIds.size(),
+					(int)reactivatedIds.size(),
 					(int)nbLoadedFromDb,
 					nbDirectNeighborsInDb,
 					timeGetN.ticks(),
@@ -4581,7 +4581,7 @@ bool Rtabmap::process(
 			if(_maxMemoryAllowed != 0 && workingMemSize > _maxMemoryAllowed)
 			{
 				ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
-					workingMemSize, _maxMemoryAllowed);
+					(int)workingMemSize, _maxMemoryAllowed);
 			}
 			immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
 			std::list<int> transferred = _memory->forget(immunizedLocations);
@@ -5710,7 +5710,7 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 
 void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 {
-	ULOGGER_DEBUG("likelihood.size()=%d", likelihood.size());
+	ULOGGER_DEBUG("likelihood.size()=%d", (int)likelihood.size());
 	UTimer timer;
 	timer.start();
 	if(likelihood.size()==0)
@@ -5729,7 +5729,7 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 			values.push_back(iter->second);
 		}
 	}
-	UDEBUG("values.size=%d", values.size());
+	UDEBUG("values.size=%d", (int)values.size());
 
 	float mean = uMean(values);
 	float stdDev = std::sqrt(uVariance(values, mean));
@@ -6350,11 +6350,11 @@ int Rtabmap::detectMoreLoopClosures(
 									links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
 									loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
 									std::string msg = uFormat("Iteration %d/%d: Added loop closure %d->%d! (%d/%d)", n+1, iterations, from, to, i+1, (int)clusters.size());
-									UINFO(msg.c_str());
+									UINFO("%s", msg.c_str());
 
 									if(processState)
 									{
-										UINFO(msg.c_str());
+										UINFO("%s", msg.c_str());
 										if(!processState->callback(msg))
 										{
 											return -1;
@@ -6371,7 +6371,7 @@ int Rtabmap::detectMoreLoopClosures(
 		if(processState)
 		{
 			std::string msg = uFormat("Iteration %d/%d: Detected %d total loop closures!", n+1, iterations, (int)addedLinks.size()/2);
-			UINFO(msg.c_str());
+			UINFO("%s", msg.c_str());
 			if(!processState->callback(msg))
 			{
 				return -1;

@@ -302,7 +302,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		cv::Mat descriptorsTmp;
 		if(ssc)
 		{
-			ULOGGER_DEBUG("too many words (%d), removing words with SSC", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with SSC", (int)keypoints.size());
 
 			// Sorting keypoints by deacreasing order of strength
 			std::vector<float> responseVector;
@@ -354,7 +354,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 		}
 		else
 		{
-			ULOGGER_DEBUG("too many words (%d), removing words with the hessian threshold", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with the hessian threshold", (int)keypoints.size());
 			// Remove words under the new hessian threshold
 
 			// Sort words by hessian
@@ -418,7 +418,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 		inliers.resize(keypoints.size(), false);
 		if(ssc)
 		{
-			ULOGGER_DEBUG("too many words (%d), removing words with SSC", keypoints.size());
+			ULOGGER_DEBUG("too many words (%d), removing words with SSC", (int)keypoints.size());
 
 			// Sorting keypoints by deacreasing order of strength
 			std::vector<float> responseVector;
@@ -445,7 +445,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 		}
 		else
 		{
-			ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+			ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", (int)keypoints.size());
 			// Remove words under the new hessian threshold
 
 			// Sort words by hessian
@@ -465,7 +465,7 @@ void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std:
 				minimumHessian = iter->first;
 			}
 		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, keypoints.size()-removed, minimumHessian);
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)(keypoints.size()-removed), minimumHessian);
 		ULOGGER_DEBUG("filter keypoints time = %f s", timer.ticks());
 	}
 	else
@@ -918,7 +918,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		}
 	}
 	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (grid=%dx%d, mask empty=%d)",
-			timer.ticks(), keypoints.size(), gridCols_, gridRows_,  mask.empty()?1:0);
+			timer.ticks(), (int)keypoints.size(), gridCols_, gridRows_,  mask.empty()?1:0);
 
 	if(keypoints.size() && _subPixWinSize > 0 && _subPixIterations > 0)
 	{

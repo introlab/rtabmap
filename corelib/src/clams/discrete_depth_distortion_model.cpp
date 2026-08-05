@@ -150,10 +150,10 @@ namespace clams
       UDEBUG("Frustum: max_dist=%f", max_dist_);
       UDEBUG("Frustum: num_bins=%d", num_bins_);
       UDEBUG("Frustum: bin_depth=%f", bin_depth_);
-      UDEBUG("Frustum: counts=%d", counts_.rows());
-      UDEBUG("Frustum: total_numerators=%d", total_numerators_.rows());
-      UDEBUG("Frustum: total_denominators=%d", total_denominators_.rows());
-      UDEBUG("Frustum: multipliers=%d", multipliers_.rows());
+      UDEBUG("Frustum: counts=%d", (int)counts_.rows());
+      UDEBUG("Frustum: total_numerators=%d", (int)total_numerators_.rows());
+      UDEBUG("Frustum: total_denominators=%d", (int)total_denominators_.rows());
+      UDEBUG("Frustum: multipliers=%d", (int)multipliers_.rows());
     }
 
   std::set<size_t> DiscreteDepthDistortionModel::getDivisors(const size_t &num)
@@ -443,13 +443,13 @@ namespace clams
       UINFO("Distortion Model: bin_depth=%f", bin_depth_);
       UINFO("Distortion Model: num_bins_x=%d", num_bins_x_);
       UINFO("Distortion Model: num_bins_y=%d", num_bins_y_);
-      UINFO("Distortion Model: training_samples=%d", training_samples_);
+      UINFO("Distortion Model: training_samples=%d", (int)training_samples_);
       deleteFrustums();
       frustums_.resize(num_bins_y_);
       for(size_t y = 0; y < frustums_.size(); ++y) {
         frustums_[y].resize(num_bins_x_, NULL);
         for(size_t x = 0; x < frustums_[y].size(); ++x) {
-        	UDEBUG("Distortion Model: Frustum[%d][%d]", y, x);
+        	UDEBUG("Distortion Model: Frustum[%d][%d]", (int)y, (int)x);
           frustums_[y][x] = new DiscreteFrustum;
           frustums_[y][x]->deserialize(in, ascii);
         }

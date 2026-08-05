@@ -386,7 +386,7 @@ bool CameraModel::load(const std::string & filePath, bool initRectificationMaps)
 		}
 		catch(const cv::Exception & e)
 		{
-			UERROR("Error reading calibration file \"%s\": %s (Make sure the first line of the yaml file is \"%YAML:1.0\")", filePath.c_str(), e.what());
+			UERROR("Error reading calibration file \"%s\": %s (Make sure the first line of the yaml file is \"%%YAML:1.0\")", filePath.c_str(), e.what());
 		}
 	}
 	else

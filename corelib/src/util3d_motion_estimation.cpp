@@ -419,7 +419,7 @@ Transform estimateMotion3DTo2D(
 			int cameraIndex = int(kpt.x / subImageWidth);
 			UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)cameraModels.size(),
 					uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
-							cameraIndex, (int)cameraModels.size(), kpt.x, subImageWidth, cameraModels[cameraIndex].imageWidth()).c_str());
+							cameraIndex, (int)cameraModels.size(), kpt.x, (double)subImageWidth, cameraModels[cameraIndex].imageWidth()).c_str());
 
 			const cv::Point3f & pt = iter->second;
 			objectPoints[oi] = pt;
@@ -438,7 +438,7 @@ Transform estimateMotion3DTo2D(
 
 	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d guess=%s reprojError=%f iterations=%d samplingPolicy=%ld",
 			(int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size(),
-			guess.prettyPrint().c_str(), reprojError, iterations, samplingPolicy);
+			guess.prettyPrint().c_str(), reprojError, iterations, (long)samplingPolicy);
 
 	if((int)matches.size() >= minInliers)
 	{
@@ -454,7 +454,7 @@ Transform estimateMotion3DTo2D(
 
 			for (size_t i=0; i<cameraModels.size(); ++i)
 			{
-				UDEBUG("Matches in Camera %d: %d", i, cc[i]);
+				UDEBUG("Matches in Camera %d: %d", (int)i, cc[i]);
 				// opengv multi ransac needs at least 2 matches/camera
 				if (cc[i] < 2)
 				{

@@ -587,7 +587,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float minMapSize,
 		float scanMaxRange)
 {
-	UDEBUG("poses=%d, scans = %d scanMaxRange=%f", poses.size(), scans.size(), scanMaxRange);
+	UDEBUG("poses=%d, scans = %d scanMaxRange=%f", (int)poses.size(), (int)scans.size(), scanMaxRange);
 
 	// local scans contain end points of each ray in map frame (pose+localTransform)
 	std::map<int, std::pair<cv::Mat, cv::Mat> > localScans;

@@ -402,7 +402,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 		_force4DoF = false;
 	}
 
-	UASSERT_MSG(_voxelSize >= 0, uFormat("value=%d", _voxelSize).c_str());
+	UASSERT_MSG(_voxelSize >= 0, uFormat("value=%d", (int)_voxelSize).c_str());
 	UASSERT_MSG(_downsamplingStep >= 0, uFormat("value=%d", _downsamplingStep).c_str());
 	UASSERT_MSG(_maxCorrespondenceDistance > 0.0f, uFormat("value=%f", _maxCorrespondenceDistance).c_str());
 	UASSERT_MSG(_maxIterations > 0, uFormat("value=%d", _maxIterations).c_str());
@@ -571,8 +571,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 				std::string fromPrefix = "rtabmap_icp_scan";
 				if(ULogger::level() == ULogger::kDebug)
 				{
-					fromPrefix+=uReplaceChar(uFormat("_%.3f_from_%d", fromSignature.id(), now), '.', '_');
-					toPrefix+=uReplaceChar(uFormat("_%.3f_to_%d", toSignature.id(), now), '.', '_');
+					fromPrefix+=uReplaceChar(uFormat("_%.3f_from_%d", now, fromSignature.id()), '.', '_');
+					toPrefix+=uReplaceChar(uFormat("_%.3f_to_%d", now, toSignature.id()), '.', '_');
 				}
 				else
 				{
@@ -684,7 +684,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						msg = uFormat("Rejecting transform because too low complexity %f (%s=0)",
 								info.icpStructuralComplexity,
 								Parameters::kIcpPointToPlaneLowComplexityStrategy().c_str());
-						UWARN(msg.c_str());
+						UWARN("%s", msg.c_str());
 						info.rejectedMsg = msg;
 						return Transform();
 					}
@@ -978,7 +978,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 							info.icpRotation,
 							_maxTranslation,
 							_maxRotation);
-					UINFO(msg.c_str());
+					UINFO("%s", msg.c_str());
 				}
 				else
 				{
@@ -1038,7 +1038,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f maxLaserScans=%d)",
 								correspondences, correspondencesRatio, _correspondenceRatio, maxLaserScans);
-						UINFO(msg.c_str());
+						UINFO("%s", msg.c_str());
 					}
 					else
 					{
@@ -1073,19 +1073,19 @@ Transform RegistrationIcp::computeTransformationImpl(
 					msg = uFormat("Cannot compute transform (converged=%s var=%f)",
 							hasConverged?"true":"false", variance);
 				}
-				UINFO(msg.c_str());
+				UINFO("%s", msg.c_str());
 			}
 		}
 		else
 		{
 			msg = "Laser scans empty ?!?";
-			UWARN(msg.c_str());
+			UWARN("%s", msg.c_str());
 		}
 	}
 	else if(!dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
 	{
 		msg = "RegistrationIcp cannot do registration with a null guess.";
-		UERROR(msg.c_str());
+		UERROR("%s", msg.c_str());
 	}
 
 

@@ -582,7 +582,7 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
     }
 #else
     UINFO("Init ZED: Mode=%d Unit=%d CoordinateSystem=%d Verbose=false device=-1 minDist=-1 self-calibration=%s vflip=false",
-          quality_, sl::UNIT::METER, sl::COORDINATE_SYSTEM::IMAGE , selfCalibration_?"true":"false");
+          quality_, (int)sl::UNIT::METER, (int)sl::COORDINATE_SYSTEM::IMAGE, selfCalibration_?"true":"false");
 #endif
 
 
@@ -943,7 +943,7 @@ SensorData CameraStereoZed::captureImage(SensorCaptureInfo * info)
 #if ZED_SDK_MAJOR_VERSION >=3
 						if(pose.timestamp != timestamp)
 						{
-							UWARN("Pose retrieve doesn't have same stamp (%ld) than grabbed image (%ld)", pose.timestamp, timestamp);
+							UWARN("Pose retrieve doesn't have same stamp (%ld) than grabbed image (%ld)", (long)pose.timestamp, (long)timestamp);
 						}
 #endif
 

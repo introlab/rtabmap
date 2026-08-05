@@ -3254,7 +3254,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		return pointToPixel;
 
 	std::string msg = uFormat("Computing visible points per cam (%d points, %d cams)", (int)cloud.size(), (int)cameraPoses.size());
-	UINFO(msg.c_str());
+	UINFO("%s", msg.c_str());
 	if(state && !state->callback(msg))
 	{
 		//cancelled!
@@ -3383,11 +3383,11 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 				if(count == 0)
 				{
 					registered.clear();
-					UINFO("No points projected in camera %d/%d", pter->first, camIndex);
+					UINFO("No points projected in camera %d/%d", pter->first, (int)camIndex);
 				}
 				else
 				{
-					UDEBUG("%d points projected in camera %d/%d", count, pter->first, camIndex);
+					UDEBUG("%d points projected in camera %d/%d", count, pter->first, (int)camIndex);
 				}
 				for(int u=0; u<imageSize.width; ++u)
 				{
@@ -3445,7 +3445,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		}
 
 		msg = uFormat("Processed camera %d/%d", (int)cameraProcessed+1, (int)cameraPoses.size());
-		UINFO(msg.c_str());
+		UINFO("%s", msg.c_str());
 		if(state && !state->callback(msg))
 		{
 			//cancelled!
@@ -3456,7 +3456,7 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 	}
 
 	msg = uFormat("Select best camera for %d points...", (int)cloud.size());
-	UINFO(msg.c_str());
+	UINFO("%s", msg.c_str());
 	if(state && !state->callback(msg))
 	{
 		//cancelled!
@@ -3489,8 +3489,8 @@ std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamera
 		}
 	}
 
-	msg = uFormat("Process %d points...done! (%d [%d%%] projected in cameras)", (int)cloud.size(), colorized, colorized*100/cloud.size());
-	UINFO(msg.c_str());
+	msg = uFormat("Process %d points...done! (%d [%d%%] projected in cameras)", (int)cloud.size(), colorized, (int)(colorized*100/cloud.size()));
+	UINFO("%s", msg.c_str());
 	if(state)
 	{
 		state->callback(msg);

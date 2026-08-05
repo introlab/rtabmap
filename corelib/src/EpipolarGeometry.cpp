@@ -94,12 +94,12 @@ bool EpipolarGeometry::check(const Signature * ssA, const Signature * ssB)
 	int inliers = uSum(status);
 	if(inliers < _matchCountMinAccepted)
 	{
-		ULOGGER_DEBUG("Epipolar constraint failed A : not enough inliers (%d/%d), min is %d", inliers, pairs.size(), _matchCountMinAccepted);
+		ULOGGER_DEBUG("Epipolar constraint failed A : not enough inliers (%d/%d), min is %d", inliers, (int)pairs.size(), _matchCountMinAccepted);
 		return false;
 	}
 	else
 	{
-		UDEBUG("inliers = %d/%d", inliers, pairs.size());
+		UDEBUG("inliers = %d/%d", inliers, (int)pairs.size());
 		return true;
 	}
 }

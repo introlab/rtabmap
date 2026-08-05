@@ -76,14 +76,15 @@ void LoopClosureViewer::updateView(const Transform & transform, const Parameters
 		float minDepth = 0;
 
 		if(!ui_->checkBox_rawCloud->isChecked())
-		{			decimation = decimation_;
+		{
+			decimation = decimation_;
 			maxDepth = maxDepth_;
 			minDepth = minDepth_;
 		}
 
 		UDEBUG("decimation = %d", decimation);
 		UDEBUG("maxDepth = %f", maxDepth);
-		UDEBUG("minDepth = %d", minDepth);
+		UDEBUG("minDepth = %d", (int)minDepth);
 
 		Transform t;
 		if(!transform.isNull())

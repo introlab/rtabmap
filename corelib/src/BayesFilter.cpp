@@ -313,7 +313,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	int cols = prediction.cols;
 
 	// Each prior is a column vector
-	UDEBUG("_predictionLC.size()=%d",_predictionLC.size());
+	UDEBUG("_predictionLC.size()=%d",(int)_predictionLC.size());
 	std::set<int> idsDone;
 
 	for(unsigned int i=0; i<ids.size(); ++i)
@@ -623,7 +623,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			UDEBUG("From added id %d, %d neighbors to update.", newIds[i], count);
 		}
 	}
-	UDEBUG("time getting %d ids to update = %fs", idsToUpdate.size(), timer.restart());
+	UDEBUG("time getting %d ids to update = %fs", (int)idsToUpdate.size(), timer.restart());
 
 	UTimer t1;
 	double e0=0,e1=0, e2=0, e3=0, e4=0;
@@ -651,7 +651,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			e4+=t1.ticks();
 		}
 	}
-	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
+	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", (int)idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
 
 	int copied = 0;
 	if(!oldAllCopied)

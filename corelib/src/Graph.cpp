@@ -1483,7 +1483,7 @@ std::map<int, Transform> radiusPosesFiltering(
 
 		//pcl::IndicesPtr indicesOut(new std::vector<int>);
 		//indicesOut->insert(indicesOut->end(), indicesKept.begin(), indicesKept.end());
-		UINFO("Cloud filtered In = %d, Out = %d (radius=%f angle=%f keepLatest=%d)", cloud->size(), indicesKept.size(), radius, angle, keepLatest?1:0);
+		UINFO("Cloud filtered In = %d, Out = %d (radius=%f angle=%f keepLatest=%d)", (int)cloud->size(), (int)indicesKept.size(), radius, angle, keepLatest?1:0);
 		//pcl::io::savePCDFile("duplicateIn.pcd", *cloud);
 		//pcl::io::savePCDFile("duplicateOut.pcd", *cloud, *indicesOut);
 

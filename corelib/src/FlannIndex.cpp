@@ -492,7 +492,7 @@ bool FlannIndex::loadIndex(
 	}
 	if(savedIndexSize != int(indexDataSize - headerSizeBytes)) {
 		if(error) {
-			*error = uFormat("Serialized flann index size (%ld) doesn't match the expected one (%ld).", savedIndexSize, indexDataSize - headerSizeBytes);
+			*error = uFormat("Serialized flann index size (%ld) doesn't match the expected one (%ld).", (long)savedIndexSize, indexDataSize - headerSizeBytes);
 		}
 		return false;
 	}

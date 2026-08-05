@@ -138,7 +138,7 @@ void VWDictionary::setIncrementalDictionary()
 		_incrementalDictionary = true;
 		if(_visualWords.size())
 		{
-			UWARN("Incremental dictionary set: already loaded visual words (%d) from the fixed dictionary will be included in the incremental one.", _visualWords.size());
+			UWARN("Incremental dictionary set: already loaded visual words (%d) from the fixed dictionary will be included in the incremental one.", (int)_visualWords.size());
 		}
 	}
 	_dictionaryPath = "";
@@ -259,7 +259,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 			if(_visualWords.size() == 0)
 			{
 				_incrementalDictionary = _visualWords.size()==0;
-				UWARN("No words loaded, cannot set a fixed dictionary.", (int)_visualWords.size());
+				UWARN("No words loaded, cannot set a fixed dictionary.");
 			}
 			else
 			{
@@ -276,7 +276,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 		}
 		else
 		{
-			UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", _visualWords.size());
+			UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", (int)_visualWords.size());
 		}
 	}
 	else if(_incrementalDictionary && _visualWords.size())
@@ -519,7 +519,7 @@ void VWDictionary::update()
 			{
 				UTimer timer;
 				timer.start();
-				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size(), _byteToFloat?"true":"false");
+				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words (byteToFloat=%s)...", (int)_notIndexedWords.size(), _byteToFloat?"true":"false");
 				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 				{
 					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
@@ -678,7 +678,7 @@ void VWDictionary::update()
 					_mapIdIndex.insert(_mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
 				}
 
-				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), dim);
+				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",(int)_mapIndexId.size(), (int)_visualWords.size(), dim);
 				ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
 				if(_strategy < kNNBruteForce)
@@ -695,7 +695,7 @@ void VWDictionary::update()
 			}
 		}
 		UDEBUG("Dictionary updated! (size=%d added=%d removed=%d)",
-				_dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
+				_dataTree.rows, (int)_notIndexedWords.size(), (int)_removedIndexedWords.size());
 	}
 	else
 	{
@@ -817,7 +817,7 @@ bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 		mapIdIndex.insert(mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
 	}
 
-	ULOGGER_DEBUG("mapIndexId.size() = %d, words.size()=%d, dim=%d", mapIndexId.size(), _visualWords.size(), dim);
+	ULOGGER_DEBUG("mapIndexId.size() = %d, words.size()=%d, dim=%d", (int)mapIndexId.size(), (int)_visualWords.size(), dim);
 	ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
 	std::string errorMsg;
@@ -1222,7 +1222,7 @@ std::list<int> VWDictionary::addNewWords(
 	}
 	ULOGGER_DEBUG("naive search and add ref/words time = %f s", timerLocal.ticks());
 
-	ULOGGER_DEBUG("%d new words added...", _notIndexedWords.size());
+	ULOGGER_DEBUG("%d new words added...", (int)_notIndexedWords.size());
 	ULOGGER_DEBUG("%d duplicated words added (from current image = %d)...",
 			dupWordsCountFromDict+dupWordsCountFromLast, dupWordsCountFromLast);
 	UDEBUG("total time %fs", timer.ticks());
@@ -1653,7 +1653,7 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
 		}
 	}
 
-	UDEBUG("Export %d words...", _visualWords.size());
+	UDEBUG("Export %d words...", (int)_visualWords.size());
     for(std::map<int, VisualWord *>::const_iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
     {
     	// References

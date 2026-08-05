@@ -1190,7 +1190,7 @@ cv::Rect computeRoi(const cv::Size & imageSize, const std::vector<float> & roiRa
 	}
 	else
 	{
-		UERROR("Image is null or _roiRatios(=%d) != 4", roiRatios.size());
+		UERROR("Image is null or _roiRatios(=%d) != 4", (int)roiRatios.size());
 		return cv::Rect();
 	}
 }

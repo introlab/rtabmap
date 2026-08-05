@@ -200,13 +200,13 @@ int main(int argc, char** argv)
    std::vector<cv::KeyPoint> kpts2 = detector.generateKeypoints(image2);
    cv::Mat descriptors1 = detector.generateDescriptors(image1, kpts1);
    cv::Mat descriptors2 = detector.generateDescriptors(image2, kpts2);
-   UINFO("detect/extract features = %d ms", timer.elapsed());
+   UINFO("detect/extract features = %d ms", (int)timer.elapsed());
 
    timer.start();
    std::list<int> wordIds1 = dictionary.addNewWords(descriptors1, 1);
    dictionary.update();
    std::list<int> wordIds2 = dictionary.addNewWords(descriptors2, 2);
-   UINFO("quantization to words = %d ms", timer.elapsed());
+   UINFO("quantization to words = %d ms", (int)timer.elapsed());
 
    std::multimap<int, cv::KeyPoint> words1 = aggregate(wordIds1, kpts1);
    std::multimap<int, cv::KeyPoint> words2 = aggregate(wordIds2, kpts2);
@@ -215,14 +215,14 @@ int main(int argc, char** argv)
    timer.start();
    std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
    EpipolarGeometry::findPairsUnique(words1, words2, pairs);
-   UINFO("find pairs = %d ms", timer.elapsed());
+   UINFO("find pairs = %d ms", (int)timer.elapsed());
 
    // Find fundamental matrix
    timer.start();
    std::vector<uchar> status;
    cv::Mat fundamentalMatrix = EpipolarGeometry::findFFromWords(pairs, status);
-   UINFO("inliers = %d/%d", uSum(status), pairs.size());
-   UINFO("find F = %d ms", timer.elapsed());
+   UINFO("inliers = %d/%d", uSum(status), (int)pairs.size());
+   UINFO("find F = %d ms", (int)timer.elapsed());
    if(!fundamentalMatrix.empty())
    {
 	   int i = 0;
@@ -309,7 +309,7 @@ int main(int argc, char** argv)
 		p0.at<double>(0,0) = 1;
 		p0.at<double>(1,1) = 1;
 		p0.at<double>(2,2) = 1;
-		UINFO("find P from F = %d ms", timer.elapsed());
+		UINFO("find P from F = %d ms", (int)timer.elapsed());
 
 		std::cout<<"P=" << p << std::endl;
 
@@ -317,7 +317,7 @@ int main(int argc, char** argv)
 		cv::Mat x4d;
 		timer.start();
 		cv::triangulatePoints(p0, p, x1, x2, x4d);
-		UINFO("find X (triangulate) = %d ms", timer.elapsed());
+		UINFO("find X (triangulate) = %d ms", (int)timer.elapsed());
 
 		//Show 4D points
 		for(int i=0; i<x4d.cols; ++i)

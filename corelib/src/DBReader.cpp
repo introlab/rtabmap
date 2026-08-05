@@ -148,9 +148,8 @@ void DBReader::checkArguments()
 			_cameraIndices.size() != _cameraLocalTransformOverrides.size())
 		{
 			UERROR("Camera local transform overrides (%d) are not the same size than the camera indices (%d). The overrides are ignored.",
-				_cameraLocalTransformOverrides.size(),
-				_cameraIndices.size()
-			);
+				(int)_cameraLocalTransformOverrides.size(),
+				(int)_cameraIndices.size());
 			_cameraLocalTransformOverrides.clear();
 		}
 		for(size_t i=0; i<_cameraLocalTransformOverrides.size(); ++i)
@@ -625,9 +624,8 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				_cameraIndices.size() != _cameraLocalTransformOverrides.size())
 			{
 				UERROR("Camera local transform overrides (%d) are not the same size than the camera indices (%d). The overrides are ignored.",
-					_cameraLocalTransformOverrides.size(),
-					_cameraIndices.size()
-				);
+					(int)_cameraLocalTransformOverrides.size(),
+					(int)_cameraIndices.size());
 				_cameraLocalTransformOverrides.clear();
 			}
 
@@ -643,7 +641,7 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 				for(size_t i=0; i<_cameraIndices.size(); ++i)
 				{
 					UASSERT_MSG(_cameraIndices[i] < dbModels.size(), uFormat("DBReader: camera index %ld is not valid (should be between 0 and %ld)",
-						_cameraIndices[i], dbModels.size()-1).c_str());
+						(long)_cameraIndices[i], dbModels.size()-1).c_str());
 
 					int addedCameras = std::max(combinedModels.size(), combinedStereoModels.size());
 

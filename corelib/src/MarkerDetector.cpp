@@ -733,7 +733,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			{
 				if(tvecs[i].val[2] <=0)
 				{
-					UWARN("Skipping %d because its estimated pose is behind the camera %d", cvIdsPerCam[cam][i], cam);
+					UWARN("Skipping %d because its estimated pose is behind the camera %d", cvIdsPerCam[cam][i], (int)cam);
 					continue;
 				}
 				cv::Mat R;

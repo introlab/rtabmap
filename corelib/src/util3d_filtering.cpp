@@ -182,7 +182,7 @@ LaserScan commonFiltering(
 						cloud = voxelize(cloud, voxelSize);
 						float ratio = float(cloud->size()) / scan.size();
 						scanMaxPts = int(float(scanMaxPts) * ratio);
-						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), cloud->size(), scan.maxPoints(), scanMaxPts);
+						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), (int)cloud->size(), scan.maxPoints(), scanMaxPts);
 					}
 					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
 					{
@@ -215,7 +215,7 @@ LaserScan commonFiltering(
 						cloud = voxelize(cloud, voxelSize);
 						float ratio = float(cloud->size()) / scan.size();
 						scanMaxPts = int(float(scanMaxPts) * ratio);
-						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), cloud->size(), scan.maxPoints(), scanMaxPts);
+						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), (int)cloud->size(), scan.maxPoints(), scanMaxPts);
 					}
 					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
 					{
@@ -275,7 +275,7 @@ LaserScan commonFiltering(
 						cloud = voxelize(cloud, voxelSize);
 						float ratio = float(cloud->size()) / scan.size();
 						scanMaxPts = int(float(scanMaxPts) * ratio);
-						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), cloud->size(), scan.maxPoints(), scanMaxPts);
+						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), (int)cloud->size(), scan.maxPoints(), scanMaxPts);
 					}
 					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
 					{

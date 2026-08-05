@@ -69,7 +69,7 @@ void UThread::kill()
 			}
 			else
 			{
-				UERROR("thread (%d) is supposed to be running...", threadId_);
+				UERROR("thread (%d) is supposed to be running...", (int)threadId_);
 			}
     	}
     	else

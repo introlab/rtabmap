@@ -2141,9 +2141,9 @@ bool ExportCloudsDialog::getExportedClouds(
 						_ui->spinBox_dilationSteps->value());
 
 				// make sure there are no nans
-				UDEBUG("NaNs filtering... size before = %d", cloudWithNormals->size());
+				UDEBUG("NaNs filtering... size before = %d", (int)cloudWithNormals->size());
 				cloudWithNormals = util3d::removeNaNNormalsFromPointCloud(cloudWithNormals);
-				UDEBUG("NaNs filtering... size after = %d", cloudWithNormals->size());
+				UDEBUG("NaNs filtering... size after = %d", (int)cloudWithNormals->size());
 
 				if(_ui->checkBox_assemble->isChecked())
 				{
@@ -2542,7 +2542,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									{
 										std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.", before, _ui->spinBox_mesh_minClusterSize->value());
 										_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
-										UWARN(msg.c_str());
+										UWARN("%s", msg.c_str());
 									}
 
 									_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-(int)polygons.size()));
@@ -2796,7 +2796,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			std::string msg = uFormat("Some clouds are 2D laser scans. Meshing can be done only from RGB-D clouds or 3D laser scans.");
 			_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
-			UWARN(msg.c_str());
+			UWARN("%s", msg.c_str());
 		}
 		else if(_ui->checkBox_cameraProjection->isEnabled() &&
 				_ui->checkBox_cameraProjection->isChecked() &&
@@ -2879,7 +2879,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								"have 4 values [left right top bottom] between 0 and 1 "
 								"separated by space (%1), ignoring it for projecting cameras...")
 										.arg(_ui->lineEdit_camProjRoiRatios->text());
-						UWARN(msg.toStdString().c_str());
+						UWARN("%s", msg.toStdString().c_str());
 						_progressDialog->appendText(msg, Qt::darkYellow);
 						_progressDialog->setAutoClose(false);
 					}
@@ -3007,7 +3007,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							}
 						}
 						QString msg = tr("Processed %1/%2 images").arg(imagesDone++).arg(cameraPoses.size());
-						UINFO(msg.toStdString().c_str());
+						UINFO("%s", msg.toStdString().c_str());
 						_progressDialog->appendText(msg);
 						QApplication::processEvents();
 					}
@@ -3448,7 +3448,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					std::string msg = uFormat("More than 50%% of the cameras (%d/%d) have been filtered for "
 							"too fast motion and/or blur level. You may adjust the corresponding thresholds.",
 							ignoredCameras, (int)validCameras.size());
-					UWARN(msg.c_str());
+					UWARN("%s", msg.c_str());
 					_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
 					_progressDialog->setAutoClose(false);
 					QApplication::processEvents();
@@ -3572,7 +3572,7 @@ bool ExportCloudsDialog::getExportedClouds(
 										"values [left right top bottom] between 0 and 1 "
 										"separated by space (%1), ignoring it for texturing...")
 												.arg(_ui->lineEdit_meshingTextureRoiRatios->text());
-								UWARN(msg.toStdString().c_str());
+								UWARN("%s", msg.toStdString().c_str());
 								_progressDialog->appendText(msg, Qt::darkYellow);
 								_progressDialog->setAutoClose(false);
 							}
