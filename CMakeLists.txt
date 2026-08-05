@@ -211,12 +211,13 @@ ENDIF()
 # Check UDEBUG/UINFO/UWARN/UERROR/uFormat format strings against their
 # arguments.
 # -Wno-format-zero-length: UDEBUG("") is used deliberately as a trace point
+# -Wformat-security: non-literal format strings, e.g. UERROR(uFormat(...).c_str())
 OPTION(ENABLE_FORMAT_ERRORS "Treat log/uFormat format-string mismatches as errors (GCC/Clang)" OFF)
 IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-   ADD_COMPILE_OPTIONS(-Wformat -Wno-format-zero-length)
+   ADD_COMPILE_OPTIONS(-Wformat -Wformat-security -Wno-format-zero-length)
    IF(ENABLE_FORMAT_ERRORS)
       MESSAGE(STATUS "Format-string mismatches are errors")
-      ADD_COMPILE_OPTIONS(-Werror=format)
+      ADD_COMPILE_OPTIONS(-Werror=format -Werror=format-security)
    ENDIF()
 ELSEIF(ENABLE_FORMAT_ERRORS)
    MESSAGE(WARNING "ENABLE_FORMAT_ERRORS has no effect on ${CMAKE_CXX_COMPILER_ID} (needs GCC/Clang)")

@@ -137,7 +137,7 @@ rtabmap::Transform icpCC(
 	if(result != CCCoreLib::ICPRegistrationTools::ICP_APPLY_TRANSFO)
 	{
 		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as result %d !=1", result);
-		UDEBUG(msg.c_str());
+		UDEBUG("%s", msg.c_str());
 		if(errorMsg)
 		{
 			*errorMsg = msg;
@@ -149,7 +149,7 @@ rtabmap::Transform icpCC(
 	else if(!transform.R.isValid())
 	{
 		std::string msg = uFormat("CCCoreLib has failed: Rotation matrix is invalid");
-		UDEBUG(msg.c_str());
+		UDEBUG("%s", msg.c_str());
 		if(errorMsg)
 		{
 			*errorMsg = msg;
@@ -179,7 +179,7 @@ rtabmap::Transform icpCC(
 	if(finalError > maxFinalRMS)
 	{
 		std::string msg = uFormat("CCCoreLib has failed: Rejecting transform as RMS %f > %f (%s) ", finalError, maxFinalRMS, rtabmap::Parameters::kIcpCCMaxFinalRMS().c_str());
-		UDEBUG(msg.c_str());
+		UDEBUG("%s", msg.c_str());
 		if(errorMsg)
 		{
 			*errorMsg = msg;
