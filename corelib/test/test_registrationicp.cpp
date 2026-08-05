@@ -10,6 +10,15 @@
 // Recovery / filter / constraint tests are parameterized across every ICP
 // backend built into the binary (PCL always; libpointmatcher and CCCoreLib
 // when their build flags are set). Plumbing tests stay non-parameterized.
+//
+// The LaserScan <-> libpointmatcher DataPoints round-trip tests at the bottom
+// of this file need Eigen's bounds checks, which NDEBUG compiles out in a
+// Release build; overriding eigen_assert to throw keeps them live here. This
+// has to come before any header that pulls in Eigen.
+#include <stdexcept>
+#include <string>
+#define eigen_assert(x) \
+	do { if(!(x)) throw std::runtime_error(std::string("eigen_assert failed: ") + #x); } while(0)
 
 #include <gtest/gtest.h>
 
@@ -27,6 +36,16 @@
 
 #include <cmath>
 #include <vector>
+
+#ifdef RTABMAP_POINTMATCHER
+// Private header, included directly so the LaserScan <-> DataPoints
+// conversions can be tested without going through a full ICP run. It expects
+// pcl point types and util3d to be in scope.
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <rtabmap/core/util3d.h>
+#include "icp/libpointmatcher.h"
+#endif
 
 using namespace rtabmap;
 
@@ -1206,3 +1225,228 @@ INSTANTIATE_TEST_SUITE_P(
 		{
 			return std::string(RegistrationIcp::strategyName(info.param));
 		});
+
+#ifdef RTABMAP_POINTMATCHER
+// ---------------------------------------------------------------------------
+// LaserScan <-> libpointmatcher DataPoints round trips
+// (corelib/src/icp/libpointmatcher.h)
+//
+// These guard three bugs that a plain Release build cannot see, and that
+// surfaced only as an intermittent macOS CI segfault inside
+// RigidTransformation::inPlaceCompute():
+//
+//  1. A 2D cloud declared a 3-component "normals" descriptor, while
+//     libpointmatcher rotates that descriptor with the transform's rotation
+//     block -- 2x2 for a 2D cloud, whose features are x/y/pad. The mismatched
+//     product reads past the descriptor matrix.
+//  2. The fill/read loops indexed getFeatureViewByName("x"), a *1-row* block,
+//     with rows 1 and 2. Those land on the y/z rows only because the block
+//     shares the parent matrix' outer stride.
+//  3. laserScanFromDP() inferred the LaserScan format from the channel count,
+//     which cannot tell a 2D scan with normals from a 3D one (kXYINormal and
+//     kXYZNormal are both 6 channels).
+//
+// (1) and (2) are out-of-range Eigen accesses, reported here because
+// eigen_assert is overridden at the top of this file to throw.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+const std::vector<LaserScan::Format> & dpFormats()
+{
+	static const std::vector<LaserScan::Format> formats = {
+		LaserScan::kXY,
+		LaserScan::kXYI,
+		LaserScan::kXYNormal,
+		LaserScan::kXYINormal,
+		LaserScan::kXYZ,
+		LaserScan::kXYZI,
+		LaserScan::kXYZNormal,
+		LaserScan::kXYZINormal,
+	};
+	return formats;
+}
+
+const float kDpIntensity = 7.0f;
+const float kDpZ = 0.5f;
+
+// Points along y=1 with normals pointing at -y. Fields go in LaserScan's
+// channel order: x, y, [z], [i], [nx, ny, nz]. nz is 0 on a 2D scan, which is
+// what computeNormals2D() produces (2D normals stay in the plane).
+LaserScan makeDpScan(
+		LaserScan::Format format,
+		int numPoints = 4,
+		const Transform & localTransform = Transform::getIdentity())
+{
+	const bool is2d = LaserScan::isScan2d(format);
+	const bool hasI = LaserScan::isScanHasIntensity(format);
+	const bool hasN = LaserScan::isScanHasNormals(format);
+	cv::Mat data(1, numPoints, CV_32FC(LaserScan::channels(format)));
+	for(int i=0; i<numPoints; ++i)
+	{
+		float * p = data.ptr<float>(0, i);
+		int k = 0;
+		p[k++] = 0.1f*float(i);
+		p[k++] = 1.0f;
+		if(!is2d) p[k++] = kDpZ;
+		if(hasI)  p[k++] = kDpIntensity;
+		if(hasN)
+		{
+			p[k++] = 0.0f;
+			p[k++] = -1.0f;
+			p[k++] = 0.0f;
+		}
+	}
+	return LaserScan(data, 0, 0.0f, format, localTransform);
+}
+
+// +90 deg about z plus a (2,3) translation, sized for the cloud: 3x3 for a 2D
+// cloud, 4x4 for a 3D one (what eigenMatrixToDim() hands libpointmatcher).
+PM::TransformationParameters rotateZ90AndTranslate(int dimp1)
+{
+	PM::TransformationParameters T =
+			PM::TransformationParameters::Identity(dimp1, dimp1);
+	T(0,0) =  0.0f; T(0,1) = -1.0f;
+	T(1,0) =  1.0f; T(1,1) =  0.0f;
+	T(0,dimp1-1) = 2.0f;
+	T(1,dimp1-1) = 3.0f;
+	return T;
+}
+
+class DataPointsFormatTest : public ::testing::TestWithParam<LaserScan::Format>
+{
+protected:
+	LaserScan::Format format() const { return GetParam(); }
+};
+
+}  // namespace
+
+// A cloud of D-dimensional points has D+1 feature rows (the homogeneous "pad"
+// row) and libpointmatcher rotates with a DxD block, so "normals" must be D
+// rows -- not 3 rows regardless of dimension.
+TEST_P(DataPointsFormatTest, NormalsDescriptorMatchesFeatureDimension)
+{
+	const LaserScan scan = makeDpScan(format());
+	const DP cloud = laserScanToDP(scan);
+
+	EXPECT_EQ(LaserScan::isScan2d(format())?3:4, (int)cloud.features.rows());
+	ASSERT_TRUE(cloud.featureExists("pad"));
+	EXPECT_EQ(1.0f, cloud.features(cloud.features.rows()-1, 0));
+
+	ASSERT_EQ(scan.hasNormals(), cloud.descriptorExists("normals"));
+	if(scan.hasNormals())
+	{
+		EXPECT_EQ((int)cloud.features.rows()-1,
+				(int)cloud.getDescriptorDimension("normals"));
+	}
+	EXPECT_EQ(scan.hasIntensity(), cloud.descriptorExists("intensity"));
+}
+
+// Convert, let libpointmatcher rotate the cloud the way every ICP iteration
+// does, convert back.
+TEST_P(DataPointsFormatTest, RoundTripThroughRigidTransformation)
+{
+	const LaserScan scan = makeDpScan(format());
+	const DP cloud = laserScanToDP(scan);
+
+	std::shared_ptr<PM::Transformation> rigid(
+			PM::get().TransformationRegistrar.create("RigidTransformation"));
+	const DP out = rigid->compute(cloud, rotateZ90AndTranslate((int)cloud.features.rows()));
+
+	const LaserScan back = laserScanFromDP(out);
+	EXPECT_EQ(format(), back.format())
+			<< "expected " << LaserScan::formatName(format())
+			<< ", got " << back.formatName();
+	ASSERT_EQ(scan.size(), back.size());
+	EXPECT_EQ(LaserScan::isScan2d(format()), back.is2d());
+
+	// Point 0 is (0,1[,0.5]): +90 deg -> (-1,0), translated -> (1,3). Its
+	// normal (0,-1[,0]) only rotates -> (1,0[,0]).
+	const float * p = back.data().ptr<float>(0, 0);
+	EXPECT_NEAR(1.0f, p[0], 1e-5f);
+	EXPECT_NEAR(3.0f, p[1], 1e-5f);
+	if(!back.is2d())
+	{
+		EXPECT_NEAR(kDpZ, p[2], 1e-5f);
+	}
+	if(back.hasNormals())
+	{
+		const int no = back.getNormalsOffset();
+		ASSERT_GE(no, 0);
+		EXPECT_NEAR(1.0f, p[no], 1e-5f);
+		EXPECT_NEAR(0.0f, p[no+1], 1e-5f);
+		EXPECT_NEAR(0.0f, p[no+2], 1e-5f);
+	}
+	if(back.hasIntensity())
+	{
+		EXPECT_NEAR(kDpIntensity, p[back.getIntensityOffset()], 1e-5f);
+	}
+}
+
+// laserScanToDP() bakes the scan's local transform into the points and the
+// normals unless told to ignore it. On a 2D cloud the unused nz view aliases
+// the feature view, so a stray write would land on x -- hence checking the
+// coordinates too, not just the normals.
+TEST_P(DataPointsFormatTest, LocalTransformAppliedToPointsAndNormals)
+{
+	const Transform local(1.0f, 2.0f, 0.0f, 0.0f, 0.0f, static_cast<float>(M_PI_2));
+	const LaserScan scan = makeDpScan(format(), /*numPoints=*/4, local);
+
+	const DP baked = laserScanToDP(scan);
+	const DP raw = laserScanToDP(scan, /*ignoreLocalTransform=*/true);
+	ASSERT_EQ(scan.size(), (int)baked.features.cols());
+	ASSERT_EQ(scan.size(), (int)raw.features.cols());
+
+	// Point 0 is (0,1[,0.5]) in scan frame -> yaw 90 deg -> (-1,0) -> +(1,2).
+	EXPECT_NEAR(0.0f, baked.features(0,0), 1e-5f);
+	EXPECT_NEAR(2.0f, baked.features(1,0), 1e-5f);
+	EXPECT_NEAR(0.0f, raw.features(0,0), 1e-5f);
+	EXPECT_NEAR(1.0f, raw.features(1,0), 1e-5f);
+	if(!LaserScan::isScan2d(format()))
+	{
+		EXPECT_NEAR(kDpZ, baked.features(2,0), 1e-5f);
+		EXPECT_NEAR(kDpZ, raw.features(2,0), 1e-5f);
+	}
+	if(scan.hasNormals())
+	{
+		// Normal (0,-1) rotates with the local transform -> (1,0).
+		const DP::ConstView normals(baked.getDescriptorViewByName("normals"));
+		EXPECT_NEAR(1.0f, normals(0,0), 1e-5f);
+		EXPECT_NEAR(0.0f, normals(1,0), 1e-5f);
+	}
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		ScanFormats,
+		DataPointsFormatTest,
+		::testing::ValuesIn(dpFormats()),
+		[](const ::testing::TestParamInfo<LaserScan::Format> & info)
+		{
+			return LaserScan::formatName(info.param);
+		});
+
+TEST(DataPointsTest, EmptyScanGivesEmptyDataPoints)
+{
+	const DP cloud = laserScanToDP(LaserScan());
+	EXPECT_EQ(0, (int)cloud.features.cols());
+	EXPECT_TRUE(laserScanFromDP(cloud).isEmpty());
+}
+
+// Non-finite points are skipped and the cloud is resized down to what was
+// written, descriptors included.
+TEST(DataPointsTest, NonFinitePointsAreDropped)
+{
+	const LaserScan valid = makeDpScan(LaserScan::kXYINormal, /*numPoints=*/4);
+	cv::Mat data = valid.data().clone();
+	// One point with a NaN coordinate, one with a NaN normal.
+	data.ptr<float>(0, 1)[0] = std::numeric_limits<float>::quiet_NaN();
+	data.ptr<float>(0, 2)[valid.getNormalsOffset()] =
+			std::numeric_limits<float>::quiet_NaN();
+	const LaserScan scan(data, 0, 0.0f, LaserScan::kXYINormal);
+
+	const DP cloud = laserScanToDP(scan);
+	EXPECT_EQ(2, (int)cloud.features.cols());
+	EXPECT_EQ(2, (int)cloud.getDescriptorDimension("normals"));
+	EXPECT_EQ(cloud.features.cols(), cloud.descriptors.cols());
+}
+#endif  // RTABMAP_POINTMATCHER

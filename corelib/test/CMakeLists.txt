@@ -69,6 +69,13 @@ set(corelib_test_sources
 add_executable(test_corelib ${corelib_test_sources})
 target_link_libraries(test_corelib gtest_main rtabmap_core)
 
+# test_registrationicp.cpp includes corelib/src/icp/libpointmatcher.h directly
+# to test the LaserScan <-> DataPoints conversions, so it needs the library
+# itself (rtabmap_core links it PRIVATE and only re-exports its include dirs).
+IF(libpointmatcher_FOUND)
+	target_link_libraries(test_corelib ${libpointmatcher_LIBRARIES})
+ENDIF(libpointmatcher_FOUND)
+
 # Split the run across processes so `ctest -j` still overlaps work, paying the
 # library load N times instead of once per source file. gtest partitions by
 # test index via these two env vars; the shards are disjoint and together
