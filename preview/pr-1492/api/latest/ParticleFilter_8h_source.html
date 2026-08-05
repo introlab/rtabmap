@@ -177,7 +177,7 @@ $(document).ready(function(){initNavTree('ParticleFilter_8h_source.html',''); in
 <div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>  std::vector&lt;double&gt; np; <span class="comment">//new particles</span></div>
 <div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>  <span class="keywordflow">if</span>(p.size() != w.size() || p.size() == 0)</div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>  {</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    <a class="code hl_define" href="ULogger_8h.html#a1249ddbc4c9cc43be53048c08dda129b">UERROR</a>(<span class="stringliteral">&quot;particles (%d) and weights (%d) are not the same size&quot;</span>, p.size(), w.size());</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    <a class="code hl_define" href="ULogger_8h.html#a1249ddbc4c9cc43be53048c08dda129b">UERROR</a>(<span class="stringliteral">&quot;particles (%d) and weights (%d) are not the same size&quot;</span>, (<span class="keywordtype">int</span>)p.size(), (<span class="keywordtype">int</span>)w.size());</div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>    <span class="keywordflow">return</span> np;</div>
 <div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>  }</div>
 <div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span> </div>
