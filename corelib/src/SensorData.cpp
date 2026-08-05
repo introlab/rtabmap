@@ -587,7 +587,7 @@ void SensorData::setOccupancyGrid(
 	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())) ||
 	   (!empty.empty() && (!_emptyCellsCompressed.empty() || !_emptyCellsRaw.empty())))
 	{
-		UWARN("Occupancy grid cannot be overwritten! id=%d, Set occupancy grid of %d to null "
+		UWARN("Occupancy grid cannot be overwritten! Set occupancy grid of %d to null "
 			  "before setting a new one.", this->id());
 		return;
 	}

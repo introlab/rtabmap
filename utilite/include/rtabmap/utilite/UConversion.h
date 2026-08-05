@@ -324,7 +324,12 @@ std::string UTILITE_EXPORT uFormatv (const char *fmt, va_list ap);
 /**
  * Format a string like printf, and return it as a std::string
  */
-std::string UTILITE_EXPORT uFormat (const char *fmt, ...);
+std::string UTILITE_EXPORT uFormat (const char *fmt, ...)
+#if defined(__GNUC__) || defined(__clang__)
+		// Compiler-checked format string (see the note on ULogger::write).
+		__attribute__((format(printf, 1, 2)))
+#endif
+		;
 
 #ifdef _WIN32
 /**

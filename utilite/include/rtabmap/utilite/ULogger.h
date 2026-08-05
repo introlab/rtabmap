@@ -392,7 +392,19 @@ public:
     		int line,
     		const char *function,
     		const char* msg,
-    		...);
+    		...)
+#if defined(__GNUC__) || defined(__clang__)
+    		// Let the compiler type-check every UDEBUG/UINFO/UWARN/UERROR
+    		// format string against its arguments. Without this, a mismatch is
+    		// invisible until the line actually executes -- and since
+    		// ULogger::write() returns early when the message is below the
+    		// current log level, a bad format can sit latent for years and then
+    		// segfault only for users running at a lower level. `msg` is the
+    		// 5th parameter (no implicit `this`: the function is static) and
+    		// the varargs start at 6.
+    		__attribute__((format(printf, 5, 6)))
+#endif
+    		;
 
     /**
      * Get the time in the format "2008-7-13 12:23:44".

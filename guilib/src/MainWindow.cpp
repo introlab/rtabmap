@@ -4394,7 +4394,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 
 	if(_createdFeatures.find(nodeId) != _createdFeatures.end())
 	{
-		UDEBUG("Features cloud %d already created.");
+		UDEBUG("Features cloud %d already created.", nodeId);
 		return;
 	}
 
@@ -4419,7 +4419,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		int oi=0;
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
 		float maxDepth = _preferencesDialog->getCloudMaxDepth(0);
-		UDEBUG("rgb.channels()=%d");
+		UDEBUG("rgb.channels()=%d", rgb.channels());
 		if(!iter->getWords3().empty() && iter->getWords3().size() == iter->getWordsKpts().size())
 		{
 			Transform invLocalTransform = Transform::getIdentity();
@@ -6875,7 +6875,8 @@ void MainWindow::postProcessing(
 											{
 												UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
 														"images. Update the cache.",
-													Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+													Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
+													signatureFrom.id(), signatureTo.id());
 											}
 											else
 											{

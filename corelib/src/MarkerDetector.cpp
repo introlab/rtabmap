@@ -821,6 +821,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 					UWARN("Marker's length of %d is defined both in extra lengths "
 						"(%f m) and the parameter %s (%f m), we will use the length "
 						"from extra lengths.",
+						ids[i],
 						findIter->second,
 						Parameters::kMarkerLengths().c_str(),
 						paramIter->second);

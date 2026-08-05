@@ -330,7 +330,7 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 
 	if(strategy>=kNNUndef)
 	{
-		UERROR("Nearest neighobr strategy \"%d\" chosen but this strategy cannot be used with a dictionary! Doing \"kNNBruteForce\" instead.");
+		UERROR("Nearest neighbor strategy \"%d\" chosen but this strategy cannot be used with a dictionary! Doing \"kNNBruteForce\" instead.", (int)strategy);
 		strategy = kNNBruteForce;
 	}
 

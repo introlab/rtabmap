@@ -188,7 +188,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	{
 		((float*)posterior.data)[j++] = (*i).second;
 	}
-	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior=%d, _posterior size=%d", posterior.rows, _posterior.size());
+	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior rows=%d, _posterior size=%d", timer.ticks(), posterior.rows, (int)_posterior.size());
 	//std::cout << "LastPosterior=" << posterior << std::endl;
 
 	// Multiply prediction matrix with the last posterior

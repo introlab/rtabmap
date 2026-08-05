@@ -364,7 +364,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
 					{
 						if(rootId!=0) {
-							UDEBUG("Removed rootId=%d because there are priors.");
+							UDEBUG("Removed rootId=%d because there are priors.", rootId);
 						}
 						rootId = 0;
 						break;
@@ -1190,7 +1190,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimization error detected (%f), aborting optimization!",
+							optimizer.activeRobustChi2());
 					return optimizedPoses;
 				}
 
@@ -1239,7 +1240,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimization error detected (%f), aborting optimization!",
+					optimizer.activeRobustChi2());
 			return optimizedPoses;
 		}
 
@@ -1971,7 +1973,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(i>0 && (optimizer.activeRobustChi2() > 1000000000000.0 || !uIsFinite(optimizer.activeRobustChi2())))
 			{
-				UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
+				UWARN("g2o: Large optimization error detected (%f), aborting optimization!",
+						optimizer.activeRobustChi2());
 				return optimizedPoses;
 			}
 
@@ -2032,7 +2035,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
+			UWARN("g2o: Large optimization error detected (%f), aborting optimization!",
+					optimizer.activeRobustChi2());
 			return optimizedPoses;
 		}
 
