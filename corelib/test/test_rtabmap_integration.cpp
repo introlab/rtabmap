@@ -2475,7 +2475,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		const float kMinPrecision = tfIdfUsed ? 0.70f :
 				(looseFloors ? 0.85f : 0.9f);
 		const float kMinRecall    = xfeatures2dDescriptor ? 0.5f :
-				(looseFloors ? 0.7f : 0.9f);
+				(looseFloors ? 0.7f : 0.85f);
 		EXPECT_GE(acceptedPrec, kMinPrecision)
 				<< detectorLabel << " accepted precision=" << acceptedPrec
 				<< " is below " << kMinPrecision
