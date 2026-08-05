@@ -1313,6 +1313,29 @@ PM::TransformationParameters rotateZ90AndTranslate(int dimp1)
 	return T;
 }
 
+// The two products TransformationsImpl<T>::RigidTransformation::inPlaceCompute()
+// performs on every ICP iteration: homogeneous features by the full transform,
+// the "normals" descriptor by its rotation block only.
+//
+// Spelled out here rather than obtained from
+// PM::get().TransformationRegistrar.create("RigidTransformation") for two
+// reasons: libpointmatcher's Windows DLL does not export Registrar::create, and
+// its own code is compiled with NDEBUG, so the mismatched product would go
+// unchecked. Compiled in this file, the same expressions get this file's
+// throwing eigen_assert.
+DP applyRigidTransformation(const DP & cloud, const PM::TransformationParameters & T)
+{
+	DP out(cloud);
+	out.features = T * out.features;
+	if(out.descriptorExists("normals"))
+	{
+		const int dim = (int)T.rows()-1;
+		DP::View normals(out.getDescriptorViewByName("normals"));
+		normals = T.topLeftCorner(dim, dim) * normals;
+	}
+	return out;
+}
+
 class DataPointsFormatTest : public ::testing::TestWithParam<LaserScan::Format>
 {
 protected:
@@ -1342,16 +1365,14 @@ TEST_P(DataPointsFormatTest, NormalsDescriptorMatchesFeatureDimension)
 	EXPECT_EQ(scan.hasIntensity(), cloud.descriptorExists("intensity"));
 }
 
-// Convert, let libpointmatcher rotate the cloud the way every ICP iteration
-// does, convert back.
+// Convert, rotate the cloud the way every ICP iteration does, convert back.
 TEST_P(DataPointsFormatTest, RoundTripThroughRigidTransformation)
 {
 	const LaserScan scan = makeDpScan(format());
 	const DP cloud = laserScanToDP(scan);
 
-	std::shared_ptr<PM::Transformation> rigid(
-			PM::get().TransformationRegistrar.create("RigidTransformation"));
-	const DP out = rigid->compute(cloud, rotateZ90AndTranslate((int)cloud.features.rows()));
+	const DP out = applyRigidTransformation(
+			cloud, rotateZ90AndTranslate((int)cloud.features.rows()));
 
 	const LaserScan back = laserScanFromDP(out);
 	EXPECT_EQ(format(), back.format())
