@@ -1398,8 +1398,6 @@ TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation270Degrees) {
 }
 
 TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryPitchTooHighShouldSkip) {
-    ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kDebug);
     // Simulate roll = 90°, but pitch = 90° too (invalid)
     Transform rot = Transform(0,0,0, M_PI/2, M_PI/2, 0);
     CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));

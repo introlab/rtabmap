@@ -1708,9 +1708,6 @@ TEST(Util3dTest, ProjectCloudToCameras) {
     bool distanceToCamPolicy = true;
     ProgressState* state = nullptr;  // Not using progress state in this test
 
-    ULogger::setLevel(ULogger::kDebug);
-    ULogger::setType(ULogger::kTypeConsole);
-
     // Call the function to test
     auto result = util3d::projectCloudToCameras(cloud, cameraPoses, cameraModels, maxDistance, maxAngle, maxDepthError, roiRatios, projMask, distanceToCamPolicy, state);
 
