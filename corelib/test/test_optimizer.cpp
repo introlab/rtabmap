@@ -626,13 +626,15 @@ CircleGraph buildCircleGraph(bool noisy = false, int numLandmarks = 1, bool forc
 			const Transform & t = g.truePoses.at(id);
 			float r, p, y;
 			t.getEulerAngles(r, p, y);
+			const float dx = static_cast<float>(linDist(rng));
+			const float dy = static_cast<float>(linDist(rng));
+			const float dz = static_cast<float>(linDist(rng));
+			const float dr = static_cast<float>(angDist(rng));
+			const float dp = static_cast<float>(angDist(rng));
+			const float dyaw = static_cast<float>(angDist(rng));
 			g.poses[id] = Transform(
-					t.x() + static_cast<float>(linDist(rng)),
-					t.y() + static_cast<float>(linDist(rng)),
-					t.z() + static_cast<float>(linDist(rng)),
-					r + static_cast<float>(angDist(rng)),
-					p + static_cast<float>(angDist(rng)),
-					y + static_cast<float>(angDist(rng)));
+					t.x() + dx, t.y() + dy, t.z() + dz,
+					r + dr,    p + dp,     y + dyaw);
 		};
 		for(int i = 2; i <= kCircleN - 1; ++i)
 		{
@@ -1212,13 +1214,14 @@ TEST_P(LandmarkCovarianceTest, LandmarkCovarianceAffectsConvergence)
 			Transform t = Transform(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, neighYawBias) * link.transform();
 			float r, p, y;
 			t.getEulerAngles(r, p, y);
+			const float nx = t.x() + static_cast<float>(neighLinDist(neighRng));
+			const float ny = t.y() + static_cast<float>(neighLinDist(neighRng));
+			const float nz = t.z() + static_cast<float>(neighLinDist(neighRng));
+			const float nr = r + static_cast<float>(neighAngDist(neighRng));
+			const float np_ = p + static_cast<float>(neighAngDist(neighRng));
+			const float nyaw = y + static_cast<float>(neighAngDist(neighRng));
 			t = Transform(
-					t.x() + static_cast<float>(neighLinDist(neighRng)),
-					t.y() + static_cast<float>(neighLinDist(neighRng)),
-					t.z() + static_cast<float>(neighLinDist(neighRng)),
-					r + static_cast<float>(neighAngDist(neighRng)),
-					p + static_cast<float>(neighAngDist(neighRng)),
-					y + static_cast<float>(neighAngDist(neighRng)));
+					nx, ny, nz, nr, np_, nyaw);
 			patchedLinks.insert({kv.first, Link(link.from(), link.to(), link.type(), t, link.infMatrix())});
 			continue;
 		}
@@ -1251,11 +1254,10 @@ TEST_P(LandmarkCovarianceTest, LandmarkCovarianceAffectsConvergence)
 				{
 					// Isotropic Gaussian on x/y/z (corrupts both bearing
 					// and range).
-					t = Transform(
-							t.x() + static_cast<float>(linkLinDist(linkRng)),
-							t.y() + static_cast<float>(linkLinDist(linkRng)),
-							t.z() + static_cast<float>(linkLinDist(linkRng)),
-							r, p, y);
+					const float lx = t.x() + static_cast<float>(linkLinDist(linkRng));
+					const float ly = t.y() + static_cast<float>(linkLinDist(linkRng));
+					const float lz = t.z() + static_cast<float>(linkLinDist(linkRng));
+					t = Transform(lx, ly, lz, r, p, y);
 				}
 			}
 			patchedLinks.insert({kv.first, Link(link.from(), link.to(), link.type(), t, lmInfo)});
@@ -1616,7 +1618,14 @@ BundleGraph buildBundleGraph(bool noisy = false, bool roundPixels = false, int n
 		std::uniform_real_distribution<float> distZ (-kBaPointZ,  kBaPointZ);
 		for(int p = 1; p <= numPoints; ++p)
 		{
-			g.truePoints3D[p] = cv::Point3f(distXY(rng), distXY(rng), distZ(rng));
+			// Draws are pulled into locals first: argument evaluation order
+			// is unspecified in C++, so passing three dist(rng) calls
+			// directly makes the generated scene compiler-dependent (GCC
+			// evaluates right-to-left, Clang left-to-right).
+			const float px = distXY(rng);
+			const float py = distXY(rng);
+			const float pz = distZ(rng);
+			g.truePoints3D[p] = cv::Point3f(px, py, pz);
 		}
 	}
 
@@ -1679,13 +1688,15 @@ BundleGraph buildBundleGraph(bool noisy = false, bool roundPixels = false, int n
 			const Transform & t = g.truePoses[i];
 			float r, p, y;
 			t.getEulerAngles(r, p, y);
+			const float dx = static_cast<float>(linNoise(rng));
+			const float dy = static_cast<float>(linNoise(rng));
+			const float dz = static_cast<float>(linNoise(rng));
+			const float dr = static_cast<float>(angNoise(rng));
+			const float dp = static_cast<float>(angNoise(rng));
+			const float dyaw = static_cast<float>(angNoise(rng));
 			g.initialPoses[i] = Transform(
-					t.x() + static_cast<float>(linNoise(rng)),
-					t.y() + static_cast<float>(linNoise(rng)),
-					t.z() + static_cast<float>(linNoise(rng)),
-					r + static_cast<float>(angNoise(rng)),
-					p + static_cast<float>(angNoise(rng)),
-					y + static_cast<float>(angNoise(rng)));
+					t.x() + dx, t.y() + dy, t.z() + dz,
+					r + dr,    p + dp,     y + dyaw);
 		}
 		for(auto & kv : g.initialPoints3D)
 		{
@@ -1700,13 +1711,15 @@ BundleGraph buildBundleGraph(bool noisy = false, bool roundPixels = false, int n
 			Transform t = link.transform();
 			float r, p, y;
 			t.getEulerAngles(r, p, y);
+			const float dx = static_cast<float>(linkLinNoise(rng));
+			const float dy = static_cast<float>(linkLinNoise(rng));
+			const float dz = static_cast<float>(linkLinNoise(rng));
+			const float dr = static_cast<float>(angNoise(rng));
+			const float dp = static_cast<float>(angNoise(rng));
+			const float dyaw = static_cast<float>(angNoise(rng));
 			t = Transform(
-					t.x() + static_cast<float>(linkLinNoise(rng)),
-					t.y() + static_cast<float>(linkLinNoise(rng)),
-					t.z() + static_cast<float>(linkLinNoise(rng)),
-					r + static_cast<float>(angNoise(rng)),
-					p + static_cast<float>(angNoise(rng)),
-					y + static_cast<float>(angNoise(rng)));
+					t.x() + dx, t.y() + dy, t.z() + dz,
+					r + dr,    p + dp,     y + dyaw);
 			noisyLinks.insert({kv.first, Link(link.from(), link.to(), link.type(), t, link.infMatrix())});
 		}
 		g.links = noisyLinks;
@@ -2578,7 +2591,10 @@ MultiCamBundleGraph buildMultiCamBundleGraph(MultiCamFov fov = MultiCamFov::kWid
 	std::uniform_real_distribution<float> distZ (-kMultiCamPointBoxZ,  kMultiCamPointBoxZ);
 	for(int p = 1; p <= kMultiCamNumPoints; ++p)
 	{
-		g.truePoints3D[p] = cv::Point3f(distXY(rng), distXY(rng), distZ(rng));
+		const float px = distXY(rng);
+		const float py = distXY(rng);
+		const float pz = distZ(rng);
+		g.truePoints3D[p] = cv::Point3f(px, py, pz);
 	}
 
 	// 4) Project. Visibility filter: body-to-point distance < 10 m
@@ -2659,16 +2675,20 @@ MultiCamBundleGraph buildMultiCamBundleGraph(MultiCamFov fov = MultiCamFov::kWid
 		}
 		float x, y, z, roll, pitch, yaw;
 		kv.second.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-		g.initialPoses[kv.first] = Transform(
-				x + linNoise(nRng), y + linNoise(nRng), z + linNoise(nRng),
-				roll + angNoise(nRng), pitch + angNoise(nRng), yaw + angNoise(nRng));
+		const float nx = x + linNoise(nRng);
+		const float ny = y + linNoise(nRng);
+		const float nz = z + linNoise(nRng);
+		const float nroll = roll + angNoise(nRng);
+		const float npitch = pitch + angNoise(nRng);
+		const float nyaw = yaw + angNoise(nRng);
+		g.initialPoses[kv.first] = Transform(nx, ny, nz, nroll, npitch, nyaw);
 	}
 	for(const auto & kv : g.truePoints3D)
 	{
-		g.initialPoints3D[kv.first] = cv::Point3f(
-				kv.second.x + linNoise(nRng),
-				kv.second.y + linNoise(nRng),
-				kv.second.z + linNoise(nRng));
+		const float ptx = kv.second.x + linNoise(nRng);
+		const float pty = kv.second.y + linNoise(nRng);
+		const float ptz = kv.second.z + linNoise(nRng);
+		g.initialPoints3D[kv.first] = cv::Point3f(ptx, pty, ptz);
 	}
 
 	return g;
