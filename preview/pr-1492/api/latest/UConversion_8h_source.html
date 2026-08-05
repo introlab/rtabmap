@@ -177,15 +177,20 @@ $(document).ready(function(){initNavTree('UConversion_8h_source.html',''); initR
 <div class="line"><a id="l00318" name="l00318"></a><span class="lineno">  318</span> </div>
 <div class="line"><a id="l00322" name="l00322"></a><span class="lineno"><a class="line" href="UConversion_8h.html#a9b62bc055b0d262a21af6b9e00b6db5f">  322</a></span>std::string UTILITE_EXPORT <a class="code hl_function" href="UConversion_8h.html#a9b62bc055b0d262a21af6b9e00b6db5f">uFormatv</a> (<span class="keyword">const</span> <span class="keywordtype">char</span> *fmt, va_list ap);</div>
 <div class="line"><a id="l00323" name="l00323"></a><span class="lineno">  323</span> </div>
-<div class="line"><a id="l00327" name="l00327"></a><span class="lineno"><a class="line" href="UConversion_8h.html#a59ad5e2b3368d3dd19d73a24159388ce">  327</a></span>std::string UTILITE_EXPORT <a class="code hl_function" href="UConversion_8h.html#a59ad5e2b3368d3dd19d73a24159388ce">uFormat</a> (<span class="keyword">const</span> <span class="keywordtype">char</span> *fmt, ...);</div>
-<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span> </div>
-<div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span><span class="preprocessor">#ifdef _WIN32</span></div>
-<div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span>UTILITE_EXPORT <span class="keywordtype">wchar_t</span> * createWCharFromChar(<span class="keyword">const</span> <span class="keywordtype">char</span> * text);</div>
-<div class="line"><a id="l00335" name="l00335"></a><span class="lineno">  335</span> </div>
-<div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span>UTILITE_EXPORT <span class="keywordtype">char</span> * createCharFromWChar(<span class="keyword">const</span> <span class="keywordtype">wchar_t</span> * wText);</div>
-<div class="line"><a id="l00341" name="l00341"></a><span class="lineno">  341</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00342" name="l00342"></a><span class="lineno">  342</span> </div>
-<div class="line"><a id="l00343" name="l00343"></a><span class="lineno">  343</span><span class="preprocessor">#endif </span><span class="comment">/* UCONVERSION_H */</span><span class="preprocessor"></span></div>
+<div class="line"><a id="l00327" name="l00327"></a><span class="lineno"><a class="line" href="UConversion_8h.html#a59ad5e2b3368d3dd19d73a24159388ce">  327</a></span>std::string UTILITE_EXPORT <a class="code hl_function" href="UConversion_8h.html#a59ad5e2b3368d3dd19d73a24159388ce">uFormat</a> (<span class="keyword">const</span> <span class="keywordtype">char</span> *fmt, ...)</div>
+<div class="line"><a id="l00328" name="l00328"></a><span class="lineno">  328</span><span class="preprocessor">#if defined(__GNUC__) || defined(__clang__)</span></div>
+<div class="line"><a id="l00329" name="l00329"></a><span class="lineno">  329</span>    <span class="comment">// Compiler-checked format string (see the note on ULogger::write).</span></div>
+<div class="line"><a id="l00330" name="l00330"></a><span class="lineno">  330</span>    __attribute__((format(printf, 1, 2)))</div>
+<div class="line"><a id="l00331" name="l00331"></a><span class="lineno">  331</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00332" name="l00332"></a><span class="lineno">  332</span>    ;</div>
+<div class="line"><a id="l00333" name="l00333"></a><span class="lineno">  333</span> </div>
+<div class="line"><a id="l00334" name="l00334"></a><span class="lineno">  334</span><span class="preprocessor">#ifdef _WIN32</span></div>
+<div class="line"><a id="l00339" name="l00339"></a><span class="lineno">  339</span>UTILITE_EXPORT <span class="keywordtype">wchar_t</span> * createWCharFromChar(<span class="keyword">const</span> <span class="keywordtype">char</span> * text);</div>
+<div class="line"><a id="l00340" name="l00340"></a><span class="lineno">  340</span> </div>
+<div class="line"><a id="l00345" name="l00345"></a><span class="lineno">  345</span>UTILITE_EXPORT <span class="keywordtype">char</span> * createCharFromWChar(<span class="keyword">const</span> <span class="keywordtype">wchar_t</span> * wText);</div>
+<div class="line"><a id="l00346" name="l00346"></a><span class="lineno">  346</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00347" name="l00347"></a><span class="lineno">  347</span> </div>
+<div class="line"><a id="l00348" name="l00348"></a><span class="lineno">  348</span><span class="preprocessor">#endif </span><span class="comment">/* UCONVERSION_H */</span><span class="preprocessor"></span></div>
 <div class="ttc" id="aUConversion_8h_html_a00c1115896f3da7c7c025ccbe651c0a3"><div class="ttname"><a href="UConversion_8h.html#a00c1115896f3da7c7c025ccbe651c0a3">uBytes2Str</a></div><div class="ttdeci">std::string UTILITE_EXPORT uBytes2Str(const std::vector&lt; unsigned char &gt; &amp;bytes)</div></div>
 <div class="ttc" id="aUConversion_8h_html_a03dfb0596b84e5673061561a1388b4ee"><div class="ttname"><a href="UConversion_8h.html#a03dfb0596b84e5673061561a1388b4ee">uHex2Ascii</a></div><div class="ttdeci">unsigned char UTILITE_EXPORT uHex2Ascii(const unsigned char &amp;c, bool rightPart)</div></div>
 <div class="ttc" id="aUConversion_8h_html_a3cd287c149717691ee36fcd593940f68"><div class="ttname"><a href="UConversion_8h.html#a3cd287c149717691ee36fcd593940f68">uStr2Int</a></div><div class="ttdeci">int UTILITE_EXPORT uStr2Int(const std::string &amp;str)</div></div>
