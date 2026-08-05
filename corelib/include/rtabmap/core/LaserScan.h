@@ -171,8 +171,6 @@ public:
 	/// @{
 	bool empty() const {return data_.empty();}
 	bool isEmpty() const {return data_.empty();}
-	// cv::Mat::total() is size_t; a scan is a single row of points, so the cast
-	// is safe and silences MSVC C4267 in every TU that includes this header.
 	int size() const {return static_cast<int>(data_.total());}
 	int dataType() const {return data_.type();}
 	bool is2d() const {return isScan2d(format_);}

@@ -1529,7 +1529,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 			}
 			if(k < keypoints.size())
 			{
-				UDEBUG("keypoints extracted = %d, valid=%d", keypoints.size(), k);
+				UDEBUG("keypoints extracted = %d, valid=%d", (int)keypoints.size(), (int)k);
 				keypoints.resize(k);
 				cudaSiftDescriptors_.resize(k);
 			}

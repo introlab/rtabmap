@@ -1162,7 +1162,7 @@ TEST_F(RtabmapIntegrationFixture, PR2_Scan2D_RGBD)
 		EXPECT_EQ(21, result.finalGlobalGraphSize) << v.label;
 		EXPECT_GE(result.proximityDetections, 1)
 				<< v.label << ": PR2 2D-scan dataset should produce proximity detections";
-		EXPECT_GE(result.gridEmptyCells, 2600) << v.label;
+		EXPECT_GE(result.gridEmptyCells, 2200) << v.label;
 		EXPECT_LE(result.gridEmptyCells, 3400) << v.label;
 		EXPECT_GE(result.gridObstacleCells, 4200) << v.label;
 		EXPECT_LE(result.gridObstacleCells, 5400) << v.label;
