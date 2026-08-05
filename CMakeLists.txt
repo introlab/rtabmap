@@ -208,6 +208,20 @@ IF(ENABLE_COVERAGE)
    ADD_LINK_OPTIONS(--coverage)
 ENDIF()
 
+# Check UDEBUG/UINFO/UWARN/UERROR/uFormat format strings against their
+# arguments.
+# -Wno-format-zero-length: UDEBUG("") is used deliberately as a trace point
+OPTION(ENABLE_FORMAT_ERRORS "Treat log/uFormat format-string mismatches as errors (GCC/Clang)" OFF)
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+   ADD_COMPILE_OPTIONS(-Wformat -Wno-format-zero-length)
+   IF(ENABLE_FORMAT_ERRORS)
+      MESSAGE(STATUS "Format-string mismatches are errors")
+      ADD_COMPILE_OPTIONS(-Werror=format)
+   ENDIF()
+ELSEIF(ENABLE_FORMAT_ERRORS)
+   MESSAGE(WARNING "ENABLE_FORMAT_ERRORS has no effect on ${CMAKE_CXX_COMPILER_ID} (needs GCC/Clang)")
+ENDIF()
+
 ####### DEPENDENCIES #######
 IF(MOBILE_BUILD)
 option(WITH_QT            "Include Qt support"                   OFF)
@@ -1546,6 +1560,7 @@ MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
 MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
 MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
+MESSAGE(STATUS "  ENABLE_FORMAT_ERRORS = ${ENABLE_FORMAT_ERRORS}")
 IF(NOT WIN32)
     # see comment above for the BUILD_SHARED_LIBS option on Windows
     MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")
