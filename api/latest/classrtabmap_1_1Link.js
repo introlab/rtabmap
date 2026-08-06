@@ -1,0 +1,36 @@
+var classrtabmap_1_1Link =
+[
+    [ "Type", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e", [
+      [ "kNeighbor", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8f60efd83d5fad3493573bef3d4a8adf", null ],
+      [ "kGlobalClosure", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eae963042a31afec63e8c0683696ac6791", null ],
+      [ "kLocalSpaceClosure", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea9195217dc75001841fce507de43fb0db", null ],
+      [ "kLocalTimeClosure", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eae0b352e9cbb32d357ce59f09159c09fb", null ],
+      [ "kUserClosure", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea878009c73fbfa2736f438b748afbc1f6", null ],
+      [ "kVirtualClosure", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eaf74a4b0552da7509b16f8c4b8baf85c7", null ],
+      [ "kNeighborMerged", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8fbb6dbe2d16e19ad8fecb6bac65e9db", null ],
+      [ "kPosePrior", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea56caa6c8eeab867bb16f763f3ddbd9b1", null ],
+      [ "kLandmark", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea22912bbbcacce5ee39e61da7ec4640b9", null ],
+      [ "kGravity", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea37d186f2447908a27d531be74a2f6983", null ],
+      [ "kEnd", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eaa071317c0618d61e3b2cde25e1095c00", null ],
+      [ "kSelfRefLink", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ead52adb0176a83a02833e89111f66497e", null ],
+      [ "kAllWithLandmarks", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eacc2cbab0ea322149df37addb91cb75ac", null ],
+      [ "kAllWithoutLandmarks", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91eae8ffae7407e28cf7a125f76bea2864a5", null ],
+      [ "kUndef", "classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4", null ]
+    ] ],
+    [ "Link", "classrtabmap_1_1Link.html#a2dce9c7a3ef04085d51f702002107c7b", null ],
+    [ "Link", "classrtabmap_1_1Link.html#a8f624aa84862d7abafae5cfc7175f885", null ],
+    [ "isValid", "classrtabmap_1_1Link.html#a53974a2cea4315106cf12065ace8bb96", null ],
+    [ "from", "classrtabmap_1_1Link.html#a185194e8e766ca979e4de7e179f0e534", null ],
+    [ "to", "classrtabmap_1_1Link.html#a8d534b311c37d789276dd58bd7dc89e4", null ],
+    [ "transform", "classrtabmap_1_1Link.html#a49186880bde84ca3dd43c2d95449fbfb", null ],
+    [ "type", "classrtabmap_1_1Link.html#a17ea666cb54c4f7cce1c80bc2e1950c3", null ],
+    [ "rotVariance", "classrtabmap_1_1Link.html#a00cecebc9adf3ee5afb66d6ad63871e4", null ],
+    [ "transVariance", "classrtabmap_1_1Link.html#a3c4344c01b4f32a8b4a957b979fea84e", null ],
+    [ "setInfMatrix", "classrtabmap_1_1Link.html#a3a82104ae4195beff134811a3a19d939", null ],
+    [ "userDataRaw", "classrtabmap_1_1Link.html#a1fce4ae495f2a4f5e0f7ac10551983ac", null ],
+    [ "userDataCompressed", "classrtabmap_1_1Link.html#abdec9d745b1b4679a87b944cd5b48213", null ],
+    [ "uncompressUserData", "classrtabmap_1_1Link.html#adb075101cafb535fc4a9b74f7afae521", null ],
+    [ "uncompressUserDataConst", "classrtabmap_1_1Link.html#ac425a90800494da64512011315c47e62", null ],
+    [ "merge", "classrtabmap_1_1Link.html#a953a029f601d7ca3efbb12ca22da4542", null ],
+    [ "inverse", "classrtabmap_1_1Link.html#a0d5dcb7392f6ac89ca8b4de202ca07d3", null ]
+];

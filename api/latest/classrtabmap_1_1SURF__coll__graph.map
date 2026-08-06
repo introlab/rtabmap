@@ -1,0 +1,5 @@
+<map id="rtabmap::SURF" name="rtabmap::SURF">
+<area shape="rect" id="Node000001" title="SURF detector and descriptor (non&#45;free / xfeatures2d depending on OpenCV build)." alt="" coords="21,79,141,104"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="5,5,157,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,44,84,79,79,79,79,44"/>
+</map>
