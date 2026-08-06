@@ -22,11 +22,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [macos-sequoia-intel, macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon, macos-tahoe-intel-cv5, macos-tahoe-apple-silicon-cv5]
+        build_name: [macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon, macos-tahoe-intel-cv5, macos-tahoe-apple-silicon-cv5]
         include:
-        - build_name: macos-sequoia-intel
-          os: macos-15-intel
-          cv: opencv@4
+        # macos-sequoia-intel temporarily disabled. Had some g2o optimizer issues.
+        #- build_name: macos-sequoia-intel
+        #  os: macos-15-intel
+        #  cv: opencv@4
         - build_name: macos-sequoia-apple-silicon
           os: macos-15
           cv: opencv@4
