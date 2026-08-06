@@ -5,8 +5,9 @@ on:
     branches: 
       - master
   pull_request:
-    branches: 
+    branches:
       - '**'
+  workflow_dispatch:
 
 env:
   BUILD_TYPE: Release
@@ -19,6 +20,9 @@ jobs:
   build:
     name: ${{ matrix.ros_distribution }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.ros_distribution }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -39,6 +43,45 @@ jobs:
       image: osrf/ros:${{ matrix.ros_distribution }}-desktop-full
     steps:
     - uses: actions/checkout@v4
+
+    - name: Restore test data
+      id: cache-testdata
+      uses: actions/cache@v4
+      with:
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # The ROS images are slim; fetch_test_data.sh needs curl.
+        command -v curl >/dev/null || (apt-get update && apt-get install -y --no-install-recommends curl)
+        bash scripts/fetch_test_data.sh
+
+    # `${{ github.workspace }}` is expanded by the runner on the *host*
+    # (/home/runner/work/...), but this job runs in a container where the runner
+    # bind-mounts that directory somewhere else (/__w/...). Baking the host path
+    # into RTABMAP_TEST_DATA_ROOT points every data-driven test at a directory
+    # that does not exist in the container: the integration tests silently skip
+    # and the ones that imread() committed fixtures abort outright.
+    #
+    # Resolve the path inside the container instead. A `run` step's cwd is the
+    # checkout root -- the same assumption the relative `scripts/...` and
+    # `data/tests/*.db` paths in the steps above already rely on -- so derive it
+    # from $PWD rather than trusting a path computed outside the container. The
+    # existence checks then turn that into a verified precondition: a wrong
+    # mount point or a failed fetch fails here, with the path printed, instead
+    # of degrading into skipped tests.
+    - name: Resolve test data root in the container
+      id: testdata
+      shell: bash
+      run: |
+        root="$PWD/data"
+        test -f "$root/samples/17.jpg" || { echo "::error::test data root $root is missing committed fixtures"; exit 1; }
+        ls "$root"/tests/*.db >/dev/null || { echo "::error::no test databases in $root/tests"; exit 1; }
+        echo "root=$root" >> "$GITHUB_OUTPUT"
+
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
@@ -48,4 +91,5 @@ jobs:
         package-name: rtabmap
         target-ros2-distro: ${{ matrix.ros_distribution }}
         rosdep-skip-keys: "${{ matrix.skip_keys }}"
-      
+        coverage-result: false
+        extra-cmake-args: -DTEST_DATA_ROOT=${{ steps.testdata.outputs.root }}

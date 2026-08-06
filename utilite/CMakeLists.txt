@@ -8,3 +8,7 @@ ENDIF(UNIX AND NOT ANDROID)
 ADD_SUBDIRECTORY( src )
 
 ADD_SUBDIRECTORY( resource_generator )
+
+if(BUILD_TESTING)
+	ADD_SUBDIRECTORY( test )
+endif()

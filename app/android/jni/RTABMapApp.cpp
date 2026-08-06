@@ -3226,7 +3226,7 @@ int RTABMapApp::setMappingParameter(const std::string & key, const std::string &
 	}
 	else
 	{
-		UERROR(uFormat("Key \"%s\" doesn't exist!", compatibleKey.c_str()).c_str());
+		UERROR("Key \"%s\" doesn't exist!", compatibleKey.c_str());
 		return -1;
 	}
 }

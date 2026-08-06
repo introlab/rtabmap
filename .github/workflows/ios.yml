@@ -16,6 +16,7 @@ on:
     branches:
       - '**'
     paths: *ios_paths
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

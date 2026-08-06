@@ -506,7 +506,7 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				octomap::OcTreeKey tmpKey;
 				if (!octree_->coordToKeyChecked(sensorOrigin, tmpKey))
 				{
-					UERROR("Could not generate Key for origin ", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
+					UERROR("Could not generate Key for origin (%f,%f,%f)", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
 				}
 
 				bool computeRays = rayTracing_ && emptyCells.empty();

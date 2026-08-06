@@ -84,7 +84,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, VertexCam> {
       _inverseMeasurement = m.inverse();
     }
 
-    virtual bool setMeasurementData(const double* d) override {
+    virtual bool setMeasurementData(const double* d) {
       Eigen::Map<const Eigen::Matrix<double, 7, 1, Eigen::ColMajor> > v(d);
       // SE3Quat expects [x, y, z, qx, qy, qz, qw]
       _measurement.fromVector(v);
@@ -92,7 +92,7 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, VertexCam> {
       return true;
     }
     
-    virtual bool getMeasurementData(double* d) const override {
+    virtual bool getMeasurementData(double* d) const {
       Eigen::Map<Eigen::Matrix<double, 7, 1, Eigen::ColMajor> > v(d);
       // Returns [x, y, z, qx, qy, qz, qw]
       v = _measurement.toVector();
@@ -124,8 +124,8 @@ class EdgeSBACamPrior : public g2o::BaseUnaryEdge<6, g2o::SE3Quat, VertexCam> {
       v->setEstimate(newEstimate);
     }
 
-    virtual bool read(std::istream& is) override { return true; } 
-    virtual bool write(std::ostream& os) const override { return true; }
+    virtual bool read(std::istream& is) { return true; } 
+    virtual bool write(std::ostream& os) const { return true; }
   protected:
     g2o::SE3Quat _inverseMeasurement;
     g2o::SE3Quat _cameraInvLocalTransform;

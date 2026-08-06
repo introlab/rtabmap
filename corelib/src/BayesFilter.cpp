@@ -188,7 +188,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	{
 		((float*)posterior.data)[j++] = (*i).second;
 	}
-	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior=%d, _posterior size=%d", posterior.rows, _posterior.size());
+	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior rows=%d, _posterior size=%d", timer.ticks(), posterior.rows, (int)_posterior.size());
 	//std::cout << "LastPosterior=" << posterior << std::endl;
 
 	// Multiply prediction matrix with the last posterior
@@ -269,7 +269,6 @@ float addNeighborProb(cv::Mat & prediction,
 	return sum;
 }
 
-
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
 	std::vector<int> oldIds = uKeys(_posterior);
@@ -314,7 +313,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	int cols = prediction.cols;
 
 	// Each prior is a column vector
-	UDEBUG("_predictionLC.size()=%d",_predictionLC.size());
+	UDEBUG("_predictionLC.size()=%d",(int)_predictionLC.size());
 	std::set<int> idsDone;
 
 	for(unsigned int i=0; i<ids.size(); ++i)
@@ -421,7 +420,10 @@ unsigned long BayesFilter::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(BayesFilter);
 	memoryUsage += _posterior.size() * (sizeof(float)+sizeof(int)+sizeof(std::map<int, float>::iterator)) + sizeof(std::map<int, float>);
-	memoryUsage += _prediction.total() * _prediction.elemSize();
+	if(!_prediction.empty())
+	{
+		memoryUsage += _prediction.total() * _prediction.elemSize();
+	}
 	memoryUsage += _predictionLC.size() * sizeof(double);
 	memoryUsage += _neighborsIndex.size() * (sizeof(int)+sizeof(std::map<int, int>)+sizeof(std::map<int, std::map<int, int> >::iterator)) + sizeof(std::map<int, std::map<int, int> >);
 	for(std::map<int, std::map<int, int> >::const_iterator iter=_neighborsIndex.begin(); iter!=_neighborsIndex.end(); ++iter)
@@ -621,7 +623,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			UDEBUG("From added id %d, %d neighbors to update.", newIds[i], count);
 		}
 	}
-	UDEBUG("time getting %d ids to update = %fs", idsToUpdate.size(), timer.restart());
+	UDEBUG("time getting %d ids to update = %fs", (int)idsToUpdate.size(), timer.restart());
 
 	UTimer t1;
 	double e0=0,e1=0, e2=0, e3=0, e4=0;
@@ -649,7 +651,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			e4+=t1.ticks();
 		}
 	}
-	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
+	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", (int)idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
 
 	int copied = 0;
 	if(!oldAllCopied)

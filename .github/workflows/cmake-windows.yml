@@ -5,8 +5,9 @@ on:
     branches: 
       - master
   pull_request:
-    branches: 
+    branches:
       - '**'
+  workflow_dispatch:
 
 env:
   BUILD_TYPE: Release
@@ -35,6 +36,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Restore test data
+      id: cache-testdata
+      if: matrix.build_name != 'windows-2022-cuda'
+      uses: actions/cache@v4
+      with:
+        # SQLite DBs are binary-portable -> share the cache across
+        # linux / macos / windows. Key omits runner.os on purpose so all
+        # three OSes hit the same entry.
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: matrix.build_name != 'windows-2022-cuda' && steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/fetch_test_data.sh
 
     - name: Install Windows Dependencies
       if: matrix.build_name == 'windows-2022'
@@ -65,6 +82,7 @@ jobs:
           -DWITH_REALSENSE2=ON `
           -DWITH_CCCORELIB=ON `
           ${{ matrix.extra_cmake_def }} `
+          -DBUILD_TESTING=ON `
           -DVCPKG_MANIFEST_INSTALL=OFF `
           -DVCPKG_TARGET_TRIPLET=x64-windows-release `
           -DVCPKG_INSTALLED_DIR="${{env.VCPKG_EXPORT_PATH}}/installed" `
@@ -72,7 +90,42 @@ jobs:
           -DTorch_DIR=${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3/Lib/site-packages/torch/share/cmake/Torch
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ALL_BUILD
+
+    - name: Test
+      # Not run on the CUDA build, which is a build+package job only.
+      #
+      # The runner has no NVIDIA GPU or driver (see the driver-DLL note in
+      # app/src/CMakeLists.txt), so no cv::cuda / CUDASIFT path can actually
+      # execute there -- everything falls back to CPU and the run just repeats
+      # the coverage the non-CUDA job already gives, on the same sources. It
+      # used to cost more than it returned: the two cv::cuda-touching tests
+      # (test_util3d_features, test_localgrid) had to be excluded because lazy
+      # CUDA-init stalled them past the 300 s timeout, and once WITH_ZED=ON was
+      # added to this job every remaining corelib test died in the loader with
+      # 0xc0000135 (STATUS_DLL_NOT_FOUND) before reaching main(): rtabmap_core
+      # links sl_zed64.dll, which imports the driver-only nvcuvid.dll /
+      # nvEncodeAPI64.dll that a driver-less runner does not have.
+      #
+      # So this job compiles, links and packages the CUDA artifact; the
+      # non-CUDA job is what verifies behaviour. Same reason the Info step
+      # below is skipped here.
+      if: matrix.build_name != 'windows-2022-cuda'
+      working-directory: ${{github.workspace}}/build
+      # PYTHONHOME points the embedded interpreter at vcpkg's bundled
+      # Python install (where Lib/, DLLs/ live). Without it Python emits
+      # "Could not find platform independent libraries <prefix>" at init
+      # and runs without a stdlib, breaking every numpy import.
+      # PYTHONNOUSERSITE=1: prevent the embedded Python interpreter from
+      # loading numpy / other site-packages from %APPDATA%\Python that
+      # were compiled against a different ABI than the build-time Python
+      # (numpy 1.x/2.x mismatch crashes in test_pydetector /
+      # test_pydescriptor / test_pymatcher).
+      env:
+        PYTHONHOME: ${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3
+        PYTHONNOUSERSITE: 1
+      run: |
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure --timeout 300
 
     - name: Info
       # Skipped for CUDA: the binary links ZED (sl_zed64.dll -> nvcuvid/nvEncodeAPI64),
@@ -116,10 +169,3 @@ jobs:
         compression-level: 0
         if-no-files-found: warn
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
-
-#    - name: Test
-#      working-directory: ${{github.workspace}}/build
-#      # Execute tests defined by the CMake configuration.  
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest -C ${{env.BUILD_TYPE}}
-      

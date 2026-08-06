@@ -405,13 +405,13 @@ int main(int argc, char * argv[])
 
 		UINFO("good accepted=%d (%d%%) bad accepted=%d (%d%%) good rejected=%d (%d%%) bad rejected=%d (%d%%)",
 				inliers,
-				(inliers*100)/leftCorners.size(),
+				(int)((inliers*100)/leftCorners.size()),
 				badInliers,
-				(badInliers*100)/leftCorners.size(),
+				(int)((badInliers*100)/leftCorners.size()),
 				goodRejected,
-				(goodRejected*100)/leftCorners.size(),
+				(int)((goodRejected*100)/leftCorners.size()),
 				badRejected,
-				(badRejected*100)/leftCorners.size());
+				(int)((badRejected*100)/leftCorners.size()));
 		UINFO("avg inliers =%f (subInliers=%f)", sumInliers/float(inliers), sumSubInliers/float(subInliers));
 
 

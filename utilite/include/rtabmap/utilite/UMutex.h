@@ -83,6 +83,7 @@ public:
 
 	/**
 	 * Lock the mutex.
+	 * @return 0 on success, an error code otherwise.
 	 */
 	int lock() const
 	{
@@ -93,6 +94,11 @@ public:
 #endif
 	}
 
+	/**
+	 * Try locking the mutex.
+	 * @return 0 if the mutex has been locked by this call, EBUSY (or another
+	 *         error code) otherwise.
+	 */
 #ifdef _WIN32
 	#if(_WIN32_WINNT >= 0x0400)
 	int lockTry() const
@@ -109,6 +115,7 @@ public:
 
 	/**
 	 * Unlock the mutex.
+	 * @return 0 on success, an error code otherwise.
 	 */
 	int unlock() const
 	{

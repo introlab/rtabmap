@@ -182,36 +182,30 @@ void GeodeticCoords::fromENU_WGS84(const cv::Point3d& enu, const GeodeticCoords&
 
 cv::Point3d GeodeticCoords::ENU_WGS84ToGeocentric_WGS84(const cv::Point3d& enu, const GeodeticCoords& origin)
 {
-	// Generate reference 3D point:
-	cv::Point3f originGeocentric;
-	originGeocentric = origin.toGeocentric_WGS84();
+	// Exact inverse of Geocentric_WGS84ToENU_WGS84(): that function rotates
+	// ECEF-relative coordinates into ENU with a matrix built from the origin's
+	// *geodetic* latitude/longitude, so the inverse is its transpose (the matrix
+	// is orthonormal), built from the same angles.
+	//
+	// This previously derived the local frame from normalize(P_ref), i.e. the
+	// *geocentric* vertical. On an ellipsoid that differs from the geodetic
+	// normal by up to ~0.19 deg, so the two directions were not inverses of each
+	// other and every ENU->geodetic conversion picked up a systematic error
+	// proportional to the horizontal offset (~0.11 m of altitude at 40 m out).
+	//
+	// The same defect was inherited from MRPT, which this file was adapted from,
+	// and was fixed upstream by the identical change in
+	// https://github.com/MRPT/mrpt/commit/8be4931ca7abccf5eb58da253b02660cdbdf6427
+	// ("mrpt_topography: increase code coverage and fix bugs", 2026-07-10).
+	const double clat = cos(DEG2RAD(origin.latitude())), slat = sin(DEG2RAD(origin.latitude()));
+	const double clon = cos(DEG2RAD(origin.longitude())), slon = sin(DEG2RAD(origin.longitude()));
 
-	cv::Vec3d P_ref(originGeocentric.x, originGeocentric.y, originGeocentric.z);
-
-	// Z axis -> In direction out-ward the center of the Earth:
-	cv::Vec3d REF_X, REF_Y, REF_Z;
-	REF_Z = cv::normalize(P_ref);
-
-	// 1st column: Starting at the reference point, move in the tangent
-	// direction
-	//   east-ward: I compute this as the derivative of P_ref wrt "longitude":
-	//      A_east[0] =-(N+in_height_meters)*cos(lat)*sin(lon);  --> -Z[1]
-	//      A_east[1] = (N+in_height_meters)*cos(lat)*cos(lon);  -->  Z[0]
-	//      A_east[2] = 0;                                       -->  0
-	// ---------------------------------------------------------------------------
-	cv::Vec3d AUX_X(-REF_Z[1], REF_Z[0], 0);
-	REF_X = cv::normalize(AUX_X);
-
-	// 2nd column: The cross product:
-	REF_Y = REF_Z.cross(REF_X);
+	const cv::Point3d originGeocentric = origin.toGeocentric_WGS84();
 
 	cv::Point3d out_coords;
-	out_coords.x =
-		REF_X[0] * enu.x + REF_Y[0] * enu.y + REF_Z[0] * enu.z + originGeocentric.x;
-	out_coords.y =
-		REF_X[1] * enu.x + REF_Y[1] * enu.y + REF_Z[1] * enu.z + originGeocentric.y;
-	out_coords.z =
-		REF_X[2] * enu.x + REF_Y[2] * enu.y + REF_Z[2] * enu.z + originGeocentric.z;
+	out_coords.x = -slon*enu.x - clon*slat*enu.y + clon*clat*enu.z + originGeocentric.x;
+	out_coords.y =  clon*enu.x - slon*slat*enu.y + slon*clat*enu.z + originGeocentric.y;
+	out_coords.z =                    clat*enu.y +      slat*enu.z + originGeocentric.z;
 
 	return out_coords;
 }

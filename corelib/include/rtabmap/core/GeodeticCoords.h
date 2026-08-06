@@ -49,27 +49,61 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+/**
+ * @class GeodeticCoords
+ * @brief WGS84 geodetic latitude, longitude and altitude with coordinate conversions.
+ *
+ * Conversions follow the WGS84 reference ellipsoid (MRPT-derived implementation).
+ * ENU frames use east = X, north = Y, up = Z relative to a local origin.
+ *
+ * @see GPS::toGeodeticCoords()
+ */
 class RTABMAP_CORE_EXPORT GeodeticCoords
 {
 public:
+	/** @brief Default-constructs coordinates at (0°, 0°, 0 m). */
 	GeodeticCoords();
+	/**
+	 * @brief Constructs geodetic coordinates.
+	 * @param latitude Latitude in decimal degrees (DD, north positive).
+	 * @param longitude Longitude in decimal degrees (DD, east positive).
+	 * @param altitude Altitude in meters above the WGS84 ellipsoid.
+	 */
 	GeodeticCoords(double latitude, double longitude, double altitude);
 
+	/** @return Latitude in decimal degrees. */
 	const double & latitude() const {return latitude_;}
+	/** @return Longitude in decimal degrees. */
 	const double & longitude() const {return longitude_;}
+	/** @return Altitude in meters. */
 	const double & altitude() const {return altitude_;}
 
+	/** @brief Sets latitude in decimal degrees. */
 	void setLatitude(const double & value) {latitude_ = value;}
+	/** @brief Sets longitude in decimal degrees. */
 	void setLongitude(const double & value) {longitude_ = value;}
+	/** @brief Sets altitude in meters. */
 	void setAltitude(const double & value) {altitude_ = value;}
 
+	/** @return ECEF geocentric coordinates (meters) in the WGS84 frame. */
 	cv::Point3d toGeocentric_WGS84() const;
+	/**
+	 * @return ENU offset (meters) from @p origin to this point.
+	 * East = X, north = Y, up = Z.
+	 */
 	cv::Point3d toENU_WGS84(const GeodeticCoords & origin) const; // East=X, North=Y
 
+	/** @brief Sets this point from ECEF geocentric @p geocentric coordinates. */
 	void fromGeocentric_WGS84(const cv::Point3d& geocentric);
+	/** @brief Sets this point from an ENU offset relative to @p origin. */
 	void fromENU_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
 
+	/** @return ECEF geocentric coordinates of ENU point @p enu relative to @p origin. */
 	static cv::Point3d ENU_WGS84ToGeocentric_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
+	/**
+	 * @return ENU offset from geocentric @p origin_geocentric_WGS84 to @p geocentric_WGS84.
+	 * @param origin Geodetic origin used to define the local ENU basis.
+	 */
 	static cv::Point3d Geocentric_WGS84ToENU_WGS84(
 			const cv::Point3d & geocentric_WGS84,
 			const cv::Point3d & origin_geocentric_WGS84,

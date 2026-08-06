@@ -22,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 23)
-SET(RTABMAP_PATCH_VERSION 9)
+SET(RTABMAP_PATCH_VERSION 10)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -84,6 +84,11 @@ endif()
 # To suppress g2o related opengl warning
 if(POLICY CMP0072)
     cmake_policy(SET CMP0072 NEW)
+endif()
+# Timestamp the files extracted from a FetchContent URL download at extraction
+# time, so a changed URL actually triggers a rebuild of what depends on them.
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
 endif()
 
 IF(MINGW)
@@ -167,6 +172,61 @@ ENDIF(APPLE OR WIN32)
 OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
+# Off by default: it downloads the Doxygen theme at configure time, which an
+# ordinary build has no reason to need. Set by docs-report.sh.
+OPTION(BUILD_DOCUMENTATION "Prepare the API documentation build (downloads the Doxygen theme)" OFF)
+
+# The unit tests are host executables run by ctest, which can't be done from a
+# cross-compiled Android/iOS build.
+if(ANDROID OR IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+   set(BUILD_TESTING OFF CACHE BOOL "Build the testing tree." FORCE)
+endif()
+
+include(CTest)
+if(BUILD_TESTING)
+   # Add GTest using FetchContent
+   include(FetchContent)
+   FetchContent_Declare(
+       googletest
+       URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+   )
+   FetchContent_GetProperties(googletest)
+   if(NOT googletest_POPULATED)
+     FetchContent_Populate(googletest)
+     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+   endif()
+   include(GoogleTest)
+   set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data"
+       CACHE PATH "Root directory holding the test fixtures (data/tests/*.db)")
+endif()
+
+OPTION(ENABLE_COVERAGE "Build with gcov/lcov coverage (GCC/Clang, Debug only; see coverage-report.sh)" OFF)
+IF(ENABLE_COVERAGE)
+   IF(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+      MESSAGE(FATAL_ERROR "ENABLE_COVERAGE requires GCC or Clang with gcov/lcov (current: ${CMAKE_CXX_COMPILER_ID}).")
+   ENDIF()
+   IF(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+      MESSAGE(FATAL_ERROR "ENABLE_COVERAGE requires CMAKE_BUILD_TYPE=Debug (current: \"${CMAKE_BUILD_TYPE}\").")
+   ENDIF()
+   MESSAGE(STATUS "Coverage instrumentation enabled")
+   ADD_COMPILE_OPTIONS(--coverage -O0 -g)
+   ADD_LINK_OPTIONS(--coverage)
+ENDIF()
+
+# Check UDEBUG/UINFO/UWARN/UERROR/uFormat format strings against their
+# arguments.
+# -Wno-format-zero-length: UDEBUG("") is used deliberately as a trace point
+# -Wformat-security: non-literal format strings, e.g. UERROR(uFormat(...).c_str())
+OPTION(ENABLE_FORMAT_ERRORS "Treat log/uFormat format-string mismatches as errors (GCC/Clang)" OFF)
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+   ADD_COMPILE_OPTIONS(-Wformat -Wformat-security -Wno-format-zero-length)
+   IF(ENABLE_FORMAT_ERRORS)
+      MESSAGE(STATUS "Format-string mismatches are errors")
+      ADD_COMPILE_OPTIONS(-Werror=format -Werror=format-security)
+   ENDIF()
+ELSEIF(ENABLE_FORMAT_ERRORS)
+   MESSAGE(WARNING "ENABLE_FORMAT_ERRORS has no effect on ${CMAKE_CXX_COMPILER_ID} (needs GCC/Clang)")
+ENDIF()
 
 ####### DEPENDENCIES #######
 IF(MOBILE_BUILD)
@@ -1263,6 +1323,15 @@ ENDIF()
 
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
+# API documentation (Doxygen). Off by default: preparing it downloads the theme,
+# spawns Doxygen to regenerate the HTML header and runs the parameter-page
+# generator, none of which an ordinary build needs. docs-report.sh turns it on;
+# see also .github/workflows/docs.yml.
+IF(BUILD_DOCUMENTATION)
+   INCLUDE(RTABMapDocumentation)
+   RTABMAP_SETUP_DOCUMENTATION()
+ENDIF(BUILD_DOCUMENTATION)
+
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )
 
@@ -1495,6 +1564,9 @@ MESSAGE(STATUS "  CMAKE_INSTALL_LIBDIR = ${CMAKE_INSTALL_LIBDIR}")
 MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
+MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
+MESSAGE(STATUS "  ENABLE_FORMAT_ERRORS = ${ENABLE_FORMAT_ERRORS}")
 IF(NOT WIN32)
     # see comment above for the BUILD_SHARED_LIBS option on Windows
     MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")

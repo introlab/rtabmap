@@ -319,5 +319,7 @@ int main(int argc, char * argv[])
 
 	rtabmap.close(detected>0);
 
-	return detected>=0;
+	// Only a negative count is a failure (detection failed or was interrupted).
+	// Finding zero new loop closures is a valid outcome, so exit 0.
+	return detected<0?1:0;
 }

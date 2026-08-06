@@ -1,1 +1,5 @@
 ADD_SUBDIRECTORY( src )
+
+if(BUILD_TESTING)
+   ADD_SUBDIRECTORY( test )
+endif()

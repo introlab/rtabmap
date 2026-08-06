@@ -82,6 +82,7 @@ private:
 	int solver_;
 	int optimizer_;
 	double pixelVariance_;
+	double disparityVariance_;
 	double robustKernelDelta_;
 	double baseline_;
 };

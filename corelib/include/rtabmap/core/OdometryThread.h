@@ -39,13 +39,67 @@ namespace rtabmap {
 
 class Odometry;
 
+/**
+ * @class OdometryThread
+ * @brief Runs an @ref Odometry front-end in its own thread, driven by events.
+ *
+ * The thread owns the @ref Odometry object and calls @ref Odometry::process() on
+ * the frames it receives, so that a slow odometry update does not block the
+ * sensor thread. It sits in the middle of the event-based pipeline:
+ * @ref SensorCaptureThread &rarr; OdometryThread &rarr; @ref RtabmapThread.
+ *
+ * **Input events** (handled in @ref handleEvent(), i.e. in the caller's thread):
+ * - @ref SensorEvent &mdash; a frame to process. It is rejected with an error if
+ *   it carries neither a laser scan nor an image with its calibration (an
+ *   @ref OdometryMono front-end accepts RGB alone).
+ * - @ref IMUEvent &mdash; an IMU sample, kept in a separate buffer.
+ * - @ref OdometryResetEvent &mdash; resets the odometry to the pose it carries
+ *   (identity if null) and drops everything buffered. Unlike the others, it is
+ *   handled even before the thread is started.
+ *
+ * **Output event**: one @ref OdometryEvent per processed frame, carrying the
+ * data, the integrated pose and the @ref OdometryInfo. A null pose means
+ * odometry is lost; that is what @ref RtabmapThread reads to start a new map.
+ *
+ * **Buffering.** The frame buffer holds @p dataBufferMaxSize frames and drops
+ * the oldest when full, so with the default size of 1 the odometry always works
+ * on the freshest frame rather than falling behind. IMU samples are buffered
+ * apart and fed to the odometry up to the stamp of the frame about to be
+ * processed, so that tightly-coupled back-ends see them in order. A frame whose
+ * stamp falls outside the buffered IMU window is skipped with a warning: with an
+ * asynchronous IMU, it must be published faster (less delay) than the camera or lidar.
+ *
+ * When the incoming @ref SensorEvent already carries an odometry pose (a robot
+ * publishing its own odometry), the motion between two consecutive such poses is
+ * passed to @ref Odometry::process() as a guess.
+ *
+ * @see Odometry
+ * @see RtabmapThread
+ * @see SensorCaptureThread
+ */
 class RTABMAP_CORE_EXPORT OdometryThread : public UThread, public UEventsHandler {
 public:
-	// take ownership of Odometry
+	/**
+	 * @brief Constructor.
+	 * @param odometry The odometry to run; must not be null. The thread takes
+	 *                 ownership and deletes it in the destructor.
+	 * @param dataBufferMaxSize Maximum number of frames waiting to be processed
+	 *                          (0 = unlimited). Beyond that the oldest frame is
+	 *                          dropped, keeping the odometry on recent data.
+	 */
 	OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);
 	virtual ~OdometryThread();
 
 protected:
+	/**
+	 * @brief Receives the events listed in the class description.
+	 *
+	 * Runs in the posting thread: frames and IMU samples are only buffered here,
+	 * the odometry itself runs in the thread's main loop. Data events are ignored
+	 * until the thread is started, an @ref OdometryResetEvent is not.
+	 *
+	 * @return Always false, so the event keeps being dispatched to other handlers.
+	 */
 	virtual bool handleEvent(UEvent * event);
 
 private:

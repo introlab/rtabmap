@@ -811,13 +811,13 @@ void Optimizer::computeBACorrespondences(
 					}
 					else
 					{
-						UWARN("Not enough inliers (%d) between %d and %d", info.inliersIDs.size(), sFrom.id(), sTo.id());
+						UWARN("Not enough inliers (%d) between %d and %d", (int)info.inliersIDs.size(), sFrom.id(), sTo.id());
 					}
 				}
 			}
 		}
 	}
-	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, links.size());
+	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, (int)links.size());
 	if(links.empty())
 	{
 		UERROR("No links found for BA?!");

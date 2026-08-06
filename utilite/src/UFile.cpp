@@ -87,7 +87,7 @@ std::string UFile::getName(const std::string & filePath)
 std::string UFile::getExtension(const std::string &filePath)
 {
 	std::list<std::string> list = uSplit(filePath, '.');
-	if(list.size())
+	if(list.size()>1)
 	{
 		return list.back();
 	}

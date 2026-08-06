@@ -12,6 +12,20 @@ compile_flags.txt
 tags
 build_*
 *.bak
+build-*
+
+# Coverage (coverage-report.sh / .github/workflows/coverage.yml)
+coverage-html/
+lcov.info
+*.gcda
+*.gcno
+
+# Doxygen (docs-report.sh / .github/workflows/docs.yml)
+doc/
+# Byte-code of doxygen/generate_parameters_page.py
+__pycache__/
+# Generated from Doxyfile.in by CMake.
+Doxyfile
 
 # Windows bundle: vcpkg tree, build output, and deps built from source (bundle_windows_deps.bat)
 vcpkg/

@@ -625,11 +625,11 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			{
 				if (closing_)
 				{
-					UDEBUG("The device %d has been disconnected!", i);
+					UDEBUG("The device %d has been disconnected!", (int)i);
 				}
 				else
 				{
-					UERROR("The device %d has been disconnected!", i);
+					UERROR("The device %d has been disconnected!", (int)i);
 				}
 			}
 		}

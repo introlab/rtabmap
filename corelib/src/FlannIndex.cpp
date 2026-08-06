@@ -123,6 +123,22 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 		if(bytes_written < long(indexData.size()-headerSizeBytes))
 		{
 			//Expected data size and type
+			//
+			// dataType is stored in the header as a raw cv::Mat type and
+			// compared against features.type() on load. That value is NOT
+			// stable across OpenCV major versions: OpenCV 5 changed
+			// CV_CN_SHIFT from 3 to 5, so a multi-channel type serializes to
+			// a different integer than under OpenCV 4 (see the encoding
+			// helpers in Compression.cpp, which normalize it for the data
+			// blobs stored in the database).
+			//
+			// It is safe here only because descriptors are always
+			// single-channel (asserted CV_32FC1 or CV_8UC1 in buildKDTreeIndex()
+			// and friends), and 1-channel types have the same value in both
+			// versions. A mismatch would only make loadIndex() refuse the
+			// index and rebuild it, never corrupt data -- but if descriptors
+			// ever become multi-channel, this field needs the same
+			// normalization as Compression.cpp.
 			int dataRows = 0;
 			int dataCols = 0;
 			int dataType = -1;
@@ -302,6 +318,7 @@ void FlannIndex::buildIndex(
 		break;
 	case FLANN_INDEX_LSH:
 		UASSERT(features.type() == CV_8UC1);
+		UASSERT_MSG(features.cols >= 8, "LSH requires a minimum of 8 dimensions to provide valid results.");
 		params = rtflann::LshIndexParams(12, 20, 2);
 		break;
 	default:
@@ -452,6 +469,10 @@ bool FlannIndex::loadIndex(
 		}
 		return false;
 	}
+	// Raw cv::Mat type comparison: safe only because descriptors are always
+	// single-channel, whose type value is identical under OpenCV 4 and 5
+	// (OpenCV 5 changed CV_CN_SHIFT, which only shifts multi-channel types).
+	// See the note where the header is written in serializeIndex().
 	if(savedType != features.type()) {
 		if(error) {
 			*error = uFormat("Serialized feature type (%d) doesn't match the expected one (%d).", savedType, features.type());
@@ -471,7 +492,7 @@ bool FlannIndex::loadIndex(
 	}
 	if(savedIndexSize != int(indexDataSize - headerSizeBytes)) {
 		if(error) {
-			*error = uFormat("Serialized flann index size (%ld) doesn't match the expected one (%ld).", savedIndexSize, indexDataSize - headerSizeBytes);
+			*error = uFormat("Serialized flann index size (%ld) doesn't match the expected one (%ld).", (long)savedIndexSize, indexDataSize - headerSizeBytes);
 		}
 		return false;
 	}
@@ -712,10 +733,11 @@ void FlannIndex::knnSearch(
 		UERROR("Flann index not yet created!");
 		return;
 	}
-	indices.create(query.rows, knn, sizeof(size_t)==8?CV_64F:CV_32S);
-	dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
-	rtflann::Matrix<size_t> indicesF((size_t*)indices.data, indices.rows, indices.cols);
+	dists = cv::Mat(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F, cv::Scalar(-1));
+
+	std::vector<size_t> indicesBuffer(query.rows * knn, std::numeric_limits<size_t>::max());
+	rtflann::Matrix<size_t> indicesF((size_t*)indicesBuffer.data(), query.rows, knn);
 
 	rtflann::SearchParams params = rtflann::SearchParams(checks, eps, sorted);
 
@@ -741,6 +763,14 @@ void FlannIndex::knnSearch(
 		{
 			((rtflann::Index<rtflann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
 		}
+	}
+
+	indices.create(query.rows, knn, CV_32S);
+	int * ptr = indices.ptr<int>();
+	for(size_t i=0 ; i<indicesBuffer.size(); i+=2)
+	{
+		ptr[i] = indicesBuffer[i] == std::numeric_limits<size_t>::max()?-1:(int)indicesBuffer[i];
+		ptr[i+1] = indicesBuffer[i+1] == std::numeric_limits<size_t>::max()?-1:(int)indicesBuffer[i+1];
 	}
 }
 

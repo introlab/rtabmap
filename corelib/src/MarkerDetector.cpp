@@ -462,25 +462,6 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 }
 
 // deprecated
-std::map<int, Transform> MarkerDetector::detect(const cv::Mat & image, const CameraModel & model, const cv::Mat & depth, float * markerLengthOut, cv::Mat * imageWithDetections)
-{
-	UDEBUG("");
-    std::map<int, Transform> detections;
-    std::map<int, MarkerInfo> infos = detect(image, model, depth, std::map<int, float>(), imageWithDetections);
-    
-    for(std::map<int, MarkerInfo>::iterator iter=infos.begin(); iter!=infos.end(); ++iter)
-    {
-        detections.insert(std::make_pair(iter->first, iter->second.pose()));
-        
-        if(markerLengthOut)
-        {
-            *markerLengthOut = iter->second.length();
-        }
-    }
-    
-    return detections;
-}
-
 #if (((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)) && (CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7))
 // Drop-in replacement for cv::aruco::estimatePoseSingleMarkers(), which was deprecated
 // in OpenCV 4.7 and removed in OpenCV 5. It reproduces the legacy default behavior (marker
@@ -537,9 +518,14 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 		rgbToDepthFactorX = float(depthMap.cols) / float(image.cols);
 		rgbToDepthFactorY = float(depthMap.rows) / float(image.rows);
 	}
-	else if(markerLength_ == 0)
+	else if(markerLength_ == 0 && markerLengths_.empty())
 	{
-		UERROR("Depth image is empty, please set %s parameter to non-null.", Parameters::kMarkerLength().c_str());
+		// Without a depth image the length cannot be estimated, so it has to come
+		// from a parameter. Marker/Lengths is enough on its own: it gives an explicit
+		// length for every marker we accept.
+		UERROR("Depth image is empty, please set %s (or %s) parameter to non-null.",
+			Parameters::kMarkerLength().c_str(),
+			Parameters::kMarkerLengths().c_str());
 		return std::map<int, MarkerInfo>();
 	}
 
@@ -747,7 +733,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			{
 				if(tvecs[i].val[2] <=0)
 				{
-					UWARN("Skipping %d because its estimated pose is behind the camera %d", cvIdsPerCam[cam][i], cam);
+					UWARN("Skipping %d because its estimated pose is behind the camera %d", cvIdsPerCam[cam][i], (int)cam);
 					continue;
 				}
 				cv::Mat R;
@@ -835,6 +821,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 					UWARN("Marker's length of %d is defined both in extra lengths "
 						"(%f m) and the parameter %s (%f m), we will use the length "
 						"from extra lengths.",
+						ids[i],
 						findIter->second,
 						Parameters::kMarkerLengths().c_str(),
 						paramIter->second);

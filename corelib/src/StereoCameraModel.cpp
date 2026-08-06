@@ -256,7 +256,7 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 			n = fs["camera_name"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				name_ = (int)n;
+				name_ = n.string();
 			}
 			else
 			{

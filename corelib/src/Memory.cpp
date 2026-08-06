@@ -164,7 +164,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	if(corRatio >= 0.5)
 	{
 		UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
-			"laser scans to 100% (2 x Ratio). You may lower the ratio to accept proximity "
+			"laser scans to 100%% (2 x Ratio). You may lower the ratio to accept proximity "
 			"detection with not full scans overlapping.", Parameters::kIcpCorrespondenceRatio().c_str());
 	}
 	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
@@ -444,6 +444,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			else
 			{
 				_dbDriver->load(*_vwd, false, _dummyDictionary);
+				if(_dummyDictionary && _vwd->getVisualWords().empty())
+				{
+					_dummyDictionary = false;
+				}
 			}
 		}
 		else
@@ -451,6 +455,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			UDEBUG("load words");
 			// load the last dictionary
 			_dbDriver->load(*_vwd, _vwd->isIncremental(), _dummyDictionary);
+			if(_dummyDictionary && _vwd->getVisualWords().empty())
+			{
+				_dummyDictionary = false;
+			}
 		}
 		UDEBUG("%d words loaded! (type=%s, dim=%d)",
 			_vwd->getUnusedWordsSize(),
@@ -993,7 +1001,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			if(corRatio >= 0.5)
 			{
 				UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
-					"laser scans to 100% (2 x Ratio). You may lower the ratio to accept proximity "
+					"laser scans to 100%% (2 x Ratio). You may lower the ratio to accept proximity "
 					"detection with not full scans overlapping.", Parameters::kIcpCorrespondenceRatio().c_str());
 			}
 			_registrationIcpMulti->parseParameters(paramsMulti);
@@ -1346,7 +1354,7 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 		}
 		++_signaturesAdded;
 
-		UDEBUG("%d words ref for the signature %d (weight=%d)", signature->getWords().size(), signature->id(), signature->getWeight());
+		UDEBUG("%d words ref for the signature %d (weight=%d)", (int)signature->getWords().size(), signature->id(), signature->getWeight());
 		if(signature->getWords().size())
 		{
 			signature->setEnabled(true);
@@ -2149,7 +2157,7 @@ void Memory::clear()
 	}
 	if(_stMem.size() != 0)
 	{
-		ULOGGER_ERROR("_stMem must be empty here, size=%d", _stMem.size());
+		ULOGGER_ERROR("_stMem must be empty here, size=%d", (int)_stMem.size());
 	}
 	_stMem.clear();
 	_stMemIntermediateNodesCount = 0;
@@ -2177,7 +2185,7 @@ void Memory::clear()
 		// this is only a safe check...not supposed to occur.
 		UASSERT_MSG(memSize == _signatures.size(),
 				uFormat("The number of signatures don't match! _workingMem=%d, _stMem=%d, _signatures=%d",
-						workingMemSize, _stMem.size(), _signatures.size()).c_str());
+						(int)workingMemSize, (int)_stMem.size(), (int)_signatures.size()).c_str());
 
 		UDEBUG("Adding statistics after run...");
 		if(_memoryChanged)
@@ -2221,13 +2229,13 @@ void Memory::clear()
 
 	if(_workingMem.size() != 0 && !(_workingMem.size() == 1 && _workingMem.begin()->first == kIdVirtual))
 	{
-		ULOGGER_ERROR("_workingMem must be empty here, size=%d", _workingMem.size());
+		ULOGGER_ERROR("_workingMem must be empty here, size=%d", (int)_workingMem.size());
 	}
 	_workingMem.clear();
 	_workingMemIntermediateNodesCount = 0;
 	if(_signatures.size()!=0)
 	{
-		ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
+		ULOGGER_ERROR("_signatures must be empty here, size=%d", (int)_signatures.size());
 	}
 	_signatures.clear();
 
@@ -2623,9 +2631,15 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 
 void Memory::save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const
 {
-	if(_dbDriver)
+	if(_dbDriver && !this->isReadOnly())
 	{
 		_dbDriver->save2DMap(map, xMin, yMin, cellSize);
+	}
+	else
+	{
+		UERROR("Attempting to write back 2D map but the database "
+			"is opened in read-only mode (%s=true), skipping.",
+			Parameters::kMemLocalizationReadOnly().c_str());
 	}
 }
 
@@ -2717,7 +2731,9 @@ public:
 		}
 		return false;
 	}
-	int weight, age, id;
+	int weight;
+	double age;
+	int id;
 };
 
 std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
@@ -3189,7 +3205,7 @@ bool Memory::setUserData(int id, const cv::Mat & data)
 	}
 	else
 	{
-		UERROR("Node %d not found in RAM, failed to set user data (size=%d)!", id, data.total());
+		UERROR("Node %d not found in RAM, failed to set user data (size=%d)!", id, (int)data.total());
 	}
 	return false;
 }
@@ -3378,7 +3394,7 @@ Transform Memory::computeTransform(
 		{
 			info->rejectedMsg = msg;
 		}
-		UWARN(msg.c_str());
+		UWARN("%s", msg.c_str());
 	}
 	return transform;
 }
@@ -3757,7 +3773,7 @@ Transform Memory::computeTransform(
 		{
 			info->rejectedMsg = msg;
 		}
-		UWARN(msg.c_str());
+		UWARN("%s", msg.c_str());
 	}
 	return transform;
 }
@@ -5134,7 +5150,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 
 	if(this->getSignatures().empty() && isIntermediateNode)
 	{
-		UWARN("Ignoring input data with stamp %s because the first node in memory cannot be an intermediate node.", inputData.stamp());
+		UWARN("Ignoring input data with stamp %f because the first node in memory cannot be an intermediate node.", inputData.stamp());
 		return 0;
 	}
 
@@ -5425,7 +5441,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				      "with the first camera (rgb=%dx%d, depth=%dx%d). Aborting upside up rotation, "
 					  "will use original image orientation. Set parameter %s to false to avoid "
 					  "this warning.",
-						i,
+						(int)i,
 						rgb.cols, rgb.rows,
 						depth.cols, depth.rows,
 						subOutputImageWidth, rotatedColorImages.rows,
@@ -6252,7 +6268,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						{
 							// Bearing/Range in 2D, set X as bearing and Y as range (see OptimizerGTSAM)
 							covariance(cv::Range(0,1), cv::Range(0,1)) *= _markerAngVariance;
-							covariance(cv::Range(1,3), cv::Range(1,3)) *= _markerLinVariance;
+							covariance(cv::Range(1,2), cv::Range(1,2)) *= _markerLinVariance;
 						}
 						else
 						{
@@ -7003,7 +7019,7 @@ void Memory::disableWordsRef(int signatureId)
 void Memory::cleanUnusedWords()
 {
 	std::vector<VisualWord*> removedWords = _vwd->getUnusedWords();
-	UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
+	UDEBUG("Removing %d words (dictionary size=%d)...", (int)removedWords.size(), (int)_vwd->getVisualWords().size());
 	if(removedWords.size())
 	{
 		// remove them from the dictionary
@@ -7025,7 +7041,7 @@ void Memory::cleanUnusedWords()
 
 void Memory::enableWordsRef(const std::list<int> & signatureIds)
 {
-	UDEBUG("size=%d", signatureIds.size());
+	UDEBUG("size=%d", (int)signatureIds.size());
 	UTimer timer;
 	timer.start();
 
@@ -7057,7 +7073,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 		UWARN("Dictionary is fixed, but some words retrieved have not been found!?");
 	}
 
-	UDEBUG("oldWordIds.size()=%d, getOldIds time=%fs", oldWordIds.size(), timer.ticks());
+	UDEBUG("oldWordIds.size()=%d, getOldIds time=%fs", (int)oldWordIds.size(), timer.ticks());
 
 	// the words were deleted, so try to match it with an active word
 	std::list<VisualWord *> vws;
@@ -7066,14 +7082,14 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 		// get the descriptors
 		_dbDriver->loadWords(oldWordIds, vws);
 	}
-	UDEBUG("loading words(%d) time=%fs", oldWordIds.size(), timer.ticks());
+	UDEBUG("loading words(%d) time=%fs", (int)oldWordIds.size(), timer.ticks());
 
 
 	if(vws.size())
 	{
 		//Search in the dictionary
 		std::vector<int> vwActiveIds = _vwd->findNN(vws);
-		UDEBUG("find active ids (number=%d) time=%fs", vws.size(), timer.ticks());
+		UDEBUG("find active ids (number=%d) time=%fs", (int)vws.size(), timer.ticks());
 		int i=0;
 		for(std::list<VisualWord *>::iterator iterVws=vws.begin(); iterVws!=vws.end(); ++iterVws)
 		{
@@ -7097,7 +7113,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 			}
 			++i;
 		}
-		UDEBUG("Added %d to dictionary, time=%fs", vws.size()-refsToChange.size(), timer.ticks());
+		UDEBUG("Added %d to dictionary, time=%fs", (int)(vws.size()-refsToChange.size()), timer.ticks());
 
 		//update the global references map and update the signatures reactivated
 		for(std::map<int, int>::const_iterator iter=refsToChange.begin(); iter != refsToChange.end(); ++iter)
@@ -7108,7 +7124,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 				(*j)->changeWordsRef(iter->first, iter->second);
 			}
 		}
-		UDEBUG("changing ref, total=%d, time=%fs", refsToChange.size(), timer.ticks());
+		UDEBUG("changing ref, total=%d, time=%fs", (int)refsToChange.size(), timer.ticks());
 	}
 
 	int count = _vwd->getTotalActiveReferences();
@@ -7135,7 +7151,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 	}
 
 	count = _vwd->getTotalActiveReferences() - count;
-	UDEBUG("%d words total ref added from %d signatures, time=%fs...", count, surfSigns.size(), timer.ticks());
+	UDEBUG("%d words total ref added from %d signatures, time=%fs...", count, (int)surfSigns.size(), timer.ticks());
 }
 
 std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess)

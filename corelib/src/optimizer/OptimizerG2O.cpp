@@ -160,9 +160,10 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
-		pixelVariance_(Parameters::defaultg2oPixelVariance()),
-		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
-		baseline_(Parameters::defaultg2oBaseline())
+		pixelVariance_(Parameters::defaultOptimizerPixelVariance()),
+		disparityVariance_(Parameters::defaultOptimizerDisparityVariance()),
+		robustKernelDelta_(Parameters::defaultOptimizerRobustKernelDelta()),
+		baseline_(Parameters::defaultOptimizerBaseline())
 {
 #ifdef RTABMAP_G2O
 	// Issue on android, have to explicitly register this type when using fixed root prior below
@@ -184,10 +185,12 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kg2oSolver(), solver_);
 	Parameters::parse(parameters, Parameters::kg2oOptimizer(), optimizer_);
-	Parameters::parse(parameters, Parameters::kg2oPixelVariance(), pixelVariance_);
-	Parameters::parse(parameters, Parameters::kg2oRobustKernelDelta(), robustKernelDelta_);
-	Parameters::parse(parameters, Parameters::kg2oBaseline(), baseline_);
+	Parameters::parse(parameters, Parameters::kOptimizerPixelVariance(), pixelVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerDisparityVariance(), disparityVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerRobustKernelDelta(), robustKernelDelta_);
+	Parameters::parse(parameters, Parameters::kOptimizerBaseline(), baseline_);
 	UASSERT(pixelVariance_ > 0.0);
+	UASSERT(disparityVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
 
 #ifdef RTABMAP_ORB_SLAM
@@ -361,7 +364,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
 					{
 						if(rootId!=0) {
-							UDEBUG("Removed rootId=%d because there are priors.");
+							UDEBUG("Removed rootId=%d because there are priors.", rootId);
 						}
 						rootId = 0;
 						break;
@@ -1187,7 +1190,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimization error detected (%f), aborting optimization!",
+							optimizer.activeRobustChi2());
 					return optimizedPoses;
 				}
 
@@ -1236,7 +1240,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimization error detected (%f), aborting optimization!",
+					optimizer.activeRobustChi2());
 			return optimizedPoses;
 		}
 
@@ -1861,14 +1866,22 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						double variance = pixelVariance_;
 						if(uIsFinite(depth) && depth > 0.0 && baseline > 0.0)
 						{
+							// Stereo edge: per-axis info -- u, v use pixelVariance,
+							// disparity (u - u_right) uses disparityVariance.
+							// This keeps the depth measurement channel from being
+							// over-trusted relative to the u/v feature detector
+							// precision (or vice versa).
+							Eigen::Matrix3d stereoInfo = Eigen::Matrix3d::Zero();
+							stereoInfo(0, 0) = 1.0 / variance;
+							stereoInfo(1, 1) = 1.0 / variance;
+							stereoInfo(2, 2) = 1.0 / disparityVariance_;
 							// stereo edge
 #ifdef RTABMAP_ORB_SLAM
 							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
 							float disparity = baseline * iterModel->second[camIndex].fx() / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
-							//variance *= log(exp(1)+disparity);
-							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->setInformation(stereoInfo);
 							es->fx = iterModel->second[camIndex].fx();
 							es->fy = iterModel->second[camIndex].fy();
 							es->cx = iterModel->second[camIndex].cx();
@@ -1880,8 +1893,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							float disparity = baseline * vcam->estimate().Kcam(0,0) / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
-							//variance *= log(exp(1)+disparity);
-							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->setInformation(stereoInfo);
 							e = es;
 #endif
 						}
@@ -1961,7 +1973,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(i>0 && (optimizer.activeRobustChi2() > 1000000000000.0 || !uIsFinite(optimizer.activeRobustChi2())))
 			{
-				UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
+				UWARN("g2o: Large optimization error detected (%f), aborting optimization!",
+						optimizer.activeRobustChi2());
 				return optimizedPoses;
 			}
 
@@ -2022,7 +2035,8 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
+			UWARN("g2o: Large optimization error detected (%f), aborting optimization!",
+					optimizer.activeRobustChi2());
 			return optimizedPoses;
 		}
 
@@ -2683,9 +2697,13 @@ bool OptimizerG2O::saveGraph(
 				{
 					continue;
 				}
+				// Look up landmark info by landmark id (the negative endpoint),
+				// not by the multimap key -- callers may key landmark links
+				// either by from() or by the landmark id.
+				const int landmarkId = iter->second.from() < 0 ? iter->second.from() : iter->second.to();
 				if(isSlam2d())
 				{
-					if(uValue(isLandmarkWithRotation, iter->first, false))
+					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
 						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n",
@@ -2716,7 +2734,7 @@ bool OptimizerG2O::saveGraph(
 				}
 				else
 				{
-					if(uValue(isLandmarkWithRotation, iter->first, false))
+					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 						Eigen::Quaternionf q = iter->second.transform().getQuaternionf();

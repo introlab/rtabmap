@@ -328,8 +328,8 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%f", Parameters::kVisPnPReprojError().c_str(), _PnPReprojError);
 	UDEBUG("%s=%d", Parameters::kVisPnPFlags().c_str(), _PnPFlags);
 	UDEBUG("%s=%f", Parameters::kVisPnPMaxVariance().c_str(), _PnPMaxVar);
-	UDEBUG("%s=%f", Parameters::kVisPnPSplitLinearCovComponents().c_str(), _PnPSplitLinearCovarianceComponents);
-	UDEBUG("%s=%f", Parameters::kVisPnPVarianceMedianRatio().c_str(), _PnPVarMedianRatio);
+	UDEBUG("%s=%f", Parameters::kVisPnPSplitLinearCovComponents().c_str(), (double)_PnPSplitLinearCovarianceComponents);
+	UDEBUG("%s=%f", Parameters::kVisPnPVarianceMedianRatio().c_str(), (double)_PnPVarMedianRatio);
 	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowWinSize().c_str(), _flowWinSize);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
@@ -915,15 +915,15 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					UWARN("kptsFrom (%d) is not the same size as fromSignature.getWords3() (%d), there "
 						   "is maybe a problem with the logic above (getWords3() should be null or equal to kptsfrom). Regenerating kptsFrom3D...",
-						   kptsFrom.size(),
-						   fromSignature.getWords3().size());
+						   (int)kptsFrom.size(),
+						   (int)fromSignature.getWords3().size());
 				}
 				else if(fromSignature.sensorData().keypoints3D().size() && kptsFrom.size() != fromSignature.sensorData().keypoints3D().size())
 				{
 					UWARN("kptsFrom (%d) is not the same size as fromSignature.sensorData().keypoints3D() (%d), there "
 						   "is maybe a problem with the logic above (keypoints3D should be null or equal to kptsfrom). Regenerating kptsFrom3D...",
-						   kptsFrom.size(),
-						   fromSignature.sensorData().keypoints3D().size());
+						   (int)kptsFrom.size(),
+						   (int)fromSignature.sensorData().keypoints3D().size());
 				}
 				kptsFrom3D = _detectorFrom->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 				UDEBUG("generated kptsFrom3D=%d", (int)kptsFrom3D.size());
@@ -1653,26 +1653,26 @@ Transform RegistrationVis::computeTransformationImpl(
 						else
 						{
 							msg = uFormat("Variance is too high! (Max %s=%f, variance=%f)", Parameters::kVisEpipolarGeometryVar().c_str(), _epipolarGeometryVar, variance);
-							UINFO(msg.c_str());
+							UINFO("%s", msg.c_str());
 						}
 					}
 					else
 					{
 						msg = uFormat("Not enough inliers %d < %d", (int)inliers3D.size(), _minInliers);
-						UINFO(msg.c_str());
+						UINFO("%s", msg.c_str());
 					}
 				}
 				else
 				{
 					msg = uFormat("No camera transform found");
-					UINFO(msg.c_str());
+					UINFO("%s", msg.c_str());
 				}
 			}
 			else 
 			{
 				msg = uFormat("No enough features < %s=%d (from=%d to=%d)", 
 					Parameters::kVisMinInliers().c_str(), _minInliers, (int)fromSignature.getWords().size(), (int)toSignature.getWords().size());
-				UWARN(msg.c_str());
+				UWARN("%s", msg.c_str());
 			}
 		}
 		else if(_estimationType == 1) // PnP
@@ -1684,7 +1684,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				UERROR("Calibrated camera required. Id=%d Models=%d StereoModels=%d weight=%d",
 						toSignature.id(),
 						(int)toSignature.sensorData().cameraModels().size(),
-						toSignature.sensorData().stereoCameraModels().size(),
+						(int)toSignature.sensorData().stereoCameraModels().size(),
 						toSignature.getWeight());
 			}
 #ifndef RTABMAP_OPENGV
@@ -1803,7 +1803,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						msg = uFormat("Not enough inliers %d/%d (matches=%d) between %d and %d",
 								(int)inliers.size(), _minInliers, (int)matches.size(), fromSignature.id(), toSignature.id());
-						UINFO(msg.c_str());
+						UINFO("%s", msg.c_str());
 					}
 					else if(this->force3DoF())
 					{
@@ -1814,7 +1814,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
 							(int)fromSignature.getWords3().size(), (int)toSignature.getWords().size(), _minInliers);
-					UINFO(msg.c_str());
+					UINFO("%s", msg.c_str());
 				}
 			}
 
@@ -1857,7 +1857,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					msg = uFormat("Not enough inliers %d/%d (matches=%d) between %d and %d",
 							(int)inliers.size(), _minInliers, (int)matches.size(), fromSignature.id(), toSignature.id());
-					UINFO(msg.c_str());
+					UINFO("%s", msg.c_str());
 				}
 				else if(this->force3DoF())
 				{
@@ -1868,7 +1868,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				msg = uFormat("Not enough 3D features in images (old=%d, new=%d, min=%d)",
 						(int)fromSignature.getWords3().size(), (int)toSignature.getWords3().size(), _minInliers);
-				UINFO(msg.c_str());
+				UINFO("%s", msg.c_str());
 			}
 		}
 
@@ -1882,7 +1882,10 @@ Transform RegistrationVis::computeTransformationImpl(
 			(toSignature.sensorData().stereoCameraModels().size() >= 1 || toSignature.sensorData().cameraModels().size() >= 1))
 		{
 			UDEBUG("Refine with bundle adjustment");
-			Optimizer * sba = Optimizer::create(_bundleAdjustment==3?Optimizer::kTypeCeres:_bundleAdjustment==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, _bundleParameters);
+			// _bundleAdjustment matches the Optimizer/Strategy parameter 1:1
+			// (1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba); 0 was filtered out above.
+			Optimizer * sba = Optimizer::create(
+					static_cast<Optimizer::Type>(_bundleAdjustment), _bundleParameters);
 
 			std::map<int, Transform> poses;
 			std::multimap<int, Link> links;
@@ -2056,7 +2059,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				if((int)inliers.size() < _minInliers)
 				{
 					msg = uFormat("Not enough inliers after bundle adjustment %d/%d (matches=%d) between %d and %d",
-							(int)inliers.size(), _minInliers, (int)inliers.size()+sbaOutliers.size(), fromSignature.id(), toSignature.id());
+							(int)inliers.size(), _minInliers, (int)((int)inliers.size()+sbaOutliers.size()), fromSignature.id(), toSignature.id());
 					transform.setNull();
 				}
 				else
@@ -2165,7 +2168,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 				if(info.inliersMeanDistance > _maxInliersMeanDistance)
 				{
-					msg = uFormat("The mean distance of the inliers is over %s threshold (%f)",
+					msg = uFormat("The mean distance of the inliers (%f) is over %s threshold (%f)",
 							info.inliersMeanDistance, Parameters::kVisMeanInliersDistance().c_str(), _maxInliersMeanDistance);
 					transform.setNull();
 				}

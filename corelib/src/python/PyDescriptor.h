@@ -8,12 +8,13 @@
 
 #include <rtabmap/core/GlobalDescriptorExtractor.h>
 #include "rtabmap/core/PythonInterface.h"
+#include "rtabmap/core/rtabmap_core_export.h"
 #include <Python.h>
 
 namespace rtabmap
 {
 
-class PyDescriptor : public GlobalDescriptorExtractor
+class RTABMAP_CORE_EXPORT PyDescriptor : public GlobalDescriptorExtractor
 {
 public:
   PyDescriptor(const ParametersMap & parameters = ParametersMap());

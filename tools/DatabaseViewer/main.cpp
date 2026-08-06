@@ -28,9 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/utilite/ULogger.h"
-#ifdef RTABMAP_PYTHON
-#include <rtabmap/core/PythonInterface.h>
-#endif
 
 #include <vtkObject.h>
 #include <vtkVersionMacros.h>
@@ -58,10 +55,6 @@ int main(int argc, char * argv[])
 	// when render widgets live in / move across multiple top-level windows. Must be set
 	// before QApplication is constructed.
 	QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
-
-#ifdef RTABMAP_PYTHON
-	rtabmap::PythonInterface pythonInterface;
-#endif
 
 	QApplication * app = new QApplication(argc, argv);
 	rtabmap::DatabaseViewer * mainWindow = new rtabmap::DatabaseViewer();

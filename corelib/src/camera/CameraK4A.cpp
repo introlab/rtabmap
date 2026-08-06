@@ -158,7 +158,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		}
 
 		uint64_t recording_length = k4a_playback_get_recording_length_usec((k4a_playback_t)playbackHandle_);
-		UINFO("Recording is %lld seconds long", recording_length / 1000000);
+		UINFO("Recording is %lld seconds long", (long long)(recording_length / 1000000));
 
 		k4a_record_configuration_t config;
 		if(k4a_playback_get_record_configuration((k4a_playback_t)playbackHandle_, &config))

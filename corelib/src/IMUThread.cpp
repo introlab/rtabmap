@@ -67,7 +67,7 @@ bool IMUThread::init(const std::string & path)
 	int number_of_lines = 0;
 	while (std::getline(imuFile_, line))
 		++number_of_lines;
-	printf("No. IMU measurements: %d\n", number_of_lines-1);
+	UINFO("No. IMU measurements: %d", number_of_lines-1);
 	if (number_of_lines - 1 <= 0) {
 		UERROR("no imu messages present in %s", path.c_str());
 		return false;

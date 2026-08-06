@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/mls.h>
 #include <pcl18/surface/texture_mapping.h>
 #include <pcl/features/integral_image_normal.h>
+#include <algorithm>
 
 #ifdef RTABMAP_ALICE_VISION
 #include <aliceVision/sfmData/SfMData.hpp>
@@ -88,6 +89,61 @@ namespace rtabmap
 
 namespace util3d
 {
+
+namespace {
+float pcaEigenvalueAt(const cv::Mat & eigenvalues, int index)
+{
+	if(eigenvalues.empty())
+	{
+		return 0.f;
+	}
+	if(eigenvalues.rows == 1)
+	{
+		index = std::min(index, eigenvalues.cols - 1);
+		return eigenvalues.at<float>(0, index);
+	}
+	index = std::min(index, eigenvalues.rows - 1);
+	return eigenvalues.at<float>(index, 0);
+}
+
+// Shared eigendecomposition of a normals matrix (each row is a normal).
+// centered=true  -> covariance (cv::PCA): measures spread *around the mean*.
+//                  Misses degeneracy when ≤ dim distinct viewpoint-flipped
+//                  normal directions sit on a single (dim-1)-D affine
+//                  subspace (e.g. 3 perpendicular surfaces with normals
+//                  +x/+y/+z all sum to mean (1/3,1/3,1/3) -> rank-2).
+// centered=false -> uncentered second-moment matrix (1/N) * Σ nᵢ nᵢᵀ:
+//                  smallest eigenvalue is 0 iff normals are confined to a
+//                  (dim-1)-D linear subspace, which is the actual ICP
+//                  observability question.  Recommended for the
+//                  PointToPlane low-complexity check.
+// Returns smallest eigenvalue * dim (so values scale ~[0,1]).
+float normalsComplexity(
+		const cv::Mat & normals,
+		bool centered,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
+{
+	const int dim = normals.cols;
+	cv::Mat eigVals, eigVecs;
+	if(centered)
+	{
+		cv::PCA pca(normals, cv::Mat(), cv::PCA::DATA_AS_ROW);
+		eigVals = pca.eigenvalues;
+		eigVecs = pca.eigenvectors;
+	}
+	else
+	{
+		cv::Mat M;
+		cv::mulTransposed(normals, M, /*aTa=*/true);
+		M /= static_cast<float>(normals.rows);
+		cv::eigen(M, eigVals, eigVecs);
+	}
+	if(pcaEigenVectors) *pcaEigenVectors = eigVecs;
+	if(pcaEigenValues)  *pcaEigenValues  = eigVals;
+	return pcaEigenvalueAt(eigVals, dim - 1) * static_cast<float>(dim);
+}
+} // namespace
 
 void createPolygonIndexes(
 		const std::vector<pcl::Vertices> & polygons,
@@ -3163,7 +3219,8 @@ float computeNormalsComplexity(
 		const LaserScan & scan,
 		const Transform & t,
 		cv::Mat * pcaEigenVectors,
-		cv::Mat * pcaEigenValues)
+		cv::Mat * pcaEigenValues,
+		bool centered)
 {
 	if(!scan.isEmpty() && (scan.hasNormals()))
 	{
@@ -3216,19 +3273,9 @@ float computeNormalsComplexity(
 		}
 		if(oi>1)
 		{
-			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
-
-			if(pcaEigenVectors)
-			{
-				*pcaEigenVectors = pca_analysis.eigenvectors;
-			}
-			if(pcaEigenValues)
-			{
-				*pcaEigenValues = pca_analysis.eigenvalues;
-			}
-			UASSERT((is2d && pca_analysis.eigenvalues.total()>=2) || (!is2d && pca_analysis.eigenvalues.total()>=3));
-			// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-			return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+			return normalsComplexity(
+					cv::Mat(data_normals, cv::Range(0, oi)),
+					centered, pcaEigenVectors, pcaEigenValues);
 		}
 	}
 	else if(!scan.isEmpty())
@@ -3243,7 +3290,8 @@ float computeNormalsComplexity(
 		const Transform & t,
 		bool is2d,
 		cv::Mat * pcaEigenVectors,
-		cv::Mat * pcaEigenValues)
+		cv::Mat * pcaEigenValues,
+		bool centered)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(cloud.size()*2);
@@ -3277,19 +3325,9 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
-
-		if(pcaEigenVectors)
-		{
-			*pcaEigenVectors = pca_analysis.eigenvectors;
-		}
-		if(pcaEigenValues)
-		{
-			*pcaEigenValues = pca_analysis.eigenvalues;
-		}
-
-		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return normalsComplexity(
+				cv::Mat(data_normals, cv::Range(0, oi)),
+				centered, pcaEigenVectors, pcaEigenValues);
 	}
 	return 0.0f;
 }
@@ -3299,7 +3337,8 @@ float computeNormalsComplexity(
 		const Transform & t,
 		bool is2d,
 		cv::Mat * pcaEigenVectors,
-		cv::Mat * pcaEigenValues)
+		cv::Mat * pcaEigenValues,
+		bool centered)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(normals.size()*2);
@@ -3333,19 +3372,9 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
-
-		if(pcaEigenVectors)
-		{
-			*pcaEigenVectors = pca_analysis.eigenvectors;
-		}
-		if(pcaEigenValues)
-		{
-			*pcaEigenValues = pca_analysis.eigenvalues;
-		}
-
-		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return normalsComplexity(
+				cv::Mat(data_normals, cv::Range(0, oi)),
+				centered, pcaEigenVectors, pcaEigenValues);
 	}
 	return 0.0f;
 }
@@ -3355,7 +3384,8 @@ float computeNormalsComplexity(
 		const Transform & t,
 		bool is2d,
 		cv::Mat * pcaEigenVectors,
-		cv::Mat * pcaEigenValues)
+		cv::Mat * pcaEigenValues,
+		bool centered)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(cloud.size()*2);
@@ -3389,19 +3419,9 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
-
-		if(pcaEigenVectors)
-		{
-			*pcaEigenVectors = pca_analysis.eigenvectors;
-		}
-		if(pcaEigenValues)
-		{
-			*pcaEigenValues = pca_analysis.eigenvalues;
-		}
-
-		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return normalsComplexity(
+				cv::Mat(data_normals, cv::Range(0, oi)),
+				centered, pcaEigenVectors, pcaEigenValues);
 	}
 	return 0.0f;
 }
@@ -3411,7 +3431,8 @@ float computeNormalsComplexity(
 		const Transform & t,
 		bool is2d,
 		cv::Mat * pcaEigenVectors,
-		cv::Mat * pcaEigenValues)
+		cv::Mat * pcaEigenValues,
+		bool centered)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(cloud.size()*2);
@@ -3445,19 +3466,9 @@ float computeNormalsComplexity(
 	}
 	if(oi>1)
 	{
-		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), cv::PCA::DATA_AS_ROW);
-
-		if(pcaEigenVectors)
-		{
-			*pcaEigenVectors = pca_analysis.eigenvectors;
-		}
-		if(pcaEigenValues)
-		{
-			*pcaEigenValues = pca_analysis.eigenvalues;
-		}
-
-		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
-		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		return normalsComplexity(
+				cv::Mat(data_normals, cv::Range(0, oi)),
+				centered, pcaEigenVectors, pcaEigenValues);
 	}
 	return 0.0f;
 }

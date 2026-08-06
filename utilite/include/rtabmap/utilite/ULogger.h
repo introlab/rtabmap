@@ -318,7 +318,11 @@ public:
 
     /**
      * Set is the logger buffers messages, default false. When true, the messages are
-     * buffered until the application is closed or ULogger::flush() is called.
+     * buffered until the application is closed or ULogger::flush() is called. 
+     * 
+     * Note that if logging to a file, flush doesn't mean that messages are written to file right 
+     * away. To write everything on disk, set logger type to kTypeNoLog.
+     * 
      * @see ULogger::flush()
 	 * @param buffered true to buffer messages, otherwise set to false.
 	 */
@@ -374,14 +378,6 @@ public:
 	 */
 	static void flush();
 
-    /**
-     * Write a message directly to logger without level handling.
-     * @param msg the message to write.
-     * @param ... the variable arguments
-     * @deprecated use UDEBUG(), UINFO(), UWARN(), UERROR() or UFATAL()
-     */
-    static void write(const char* msg, ...);
-
     /*
      * Write a message to logger: use UDEBUG(), UINFO(), UWARN(), UERROR() or UFATAL() instead.
      * @param level the log level of this message
@@ -396,7 +392,19 @@ public:
     		int line,
     		const char *function,
     		const char* msg,
-    		...);
+    		...)
+#if defined(__GNUC__) || defined(__clang__)
+    		// Let the compiler type-check every UDEBUG/UINFO/UWARN/UERROR
+    		// format string against its arguments. Without this, a mismatch is
+    		// invisible until the line actually executes -- and since
+    		// ULogger::write() returns early when the message is below the
+    		// current log level, a bad format can sit latent for years and then
+    		// segfault only for users running at a lower level. `msg` is the
+    		// 5th parameter (no implicit `this`: the function is static) and
+    		// the varargs start at 6.
+    		__attribute__((format(printf, 5, 6)))
+#endif
+    		;
 
     /**
      * Get the time in the format "2008-7-13 12:23:44".

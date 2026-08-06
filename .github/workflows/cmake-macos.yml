@@ -5,8 +5,9 @@ on:
     branches: 
       - master
   pull_request:
-    branches: 
+    branches:
       - '**'
+  workflow_dispatch:
 
 env:
   BUILD_TYPE: Release
@@ -22,11 +23,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [macos-sequoia-intel, macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon, macos-tahoe-intel-cv5, macos-tahoe-apple-silicon-cv5]
+        build_name: [macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon, macos-tahoe-intel-cv5, macos-tahoe-apple-silicon-cv5]
         include:
-        - build_name: macos-sequoia-intel
-          os: macos-15-intel
-          cv: opencv@4
+        # macos-sequoia-intel temporarily disabled. Had some g2o optimizer issues.
+        #- build_name: macos-sequoia-intel
+        #  os: macos-15-intel
+        #  cv: opencv@4
         - build_name: macos-sequoia-apple-silicon
           os: macos-15
           cv: opencv@4
@@ -44,6 +46,21 @@ jobs:
           cv: opencv
     steps:
     - uses: actions/checkout@v4
+
+    - name: Restore test data
+      id: cache-testdata
+      uses: actions/cache@v4
+      with:
+        # SQLite DBs are binary-portable -> share the cache across
+        # linux / macos / windows. Key omits runner.os on purpose so all
+        # three OSes hit the same entry.
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/fetch_test_data.sh
 
     - name: Install Brew Dependencies
       run: |
@@ -66,6 +83,7 @@ jobs:
         LIBOMP=$(brew --prefix libomp)
         cmake -B ${{github.workspace}}/build \
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DBUILD_TESTING=ON \
           -DBUILD_AS_BUNDLE=ON \
           -DWITH_ORBBEC_SDK=ON \
           -DWITH_DEPTHAI=ON \
@@ -98,9 +116,45 @@ jobs:
         if-no-files-found: warn
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
-#    - name: Test
-#      working-directory: ${{github.workspace}}/build
-#      # Execute tests defined by the CMake configuration.  
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest -C ${{env.BUILD_TYPE}}
-      
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      # PYTHONNOUSERSITE=1: prevent the embedded Python interpreter from
+      # loading numpy / other site-packages from the user's site that were
+      # compiled against a different ABI than the build-time Python.
+      env:
+        PYTHONNOUSERSITE: 1
+      run: |
+        ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+
+    # A ctest SEGFAULT is reported as just "SEGFAULT" with no backtrace, which
+    # makes a crash inside a long integration test invisible -- the log simply
+    # stops mid-test. macOS's ReportCrash writes a symbolized .ips report for
+    # every crashed process, so surface any that appeared during this job.
+    - name: Dump macOS crash reports on failure
+      if: failure()
+      run: |
+        # ReportCrash can lag the process death by a few seconds.
+        sleep 20
+        found=0
+        for d in "$HOME/Library/Logs/DiagnosticReports" /Library/Logs/DiagnosticReports; do
+          [ -d "$d" ] || continue
+          while IFS= read -r f; do
+            found=1
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+          done < <(find "$d" -type f \( -name '*.ips' -o -name '*.crash' \) -mtime -1 2>/dev/null | sort)
+        done
+        if [ "$found" = 0 ]; then
+          echo "No crash reports found -- the job may have failed without a crash."
+        fi
+
+    - name: Upload ctest log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ctest-log-${{ matrix.build_name }}
+        path: build/Testing/Temporary/LastTest.log
+        if-no-files-found: warn
+        retention-days: 7
+

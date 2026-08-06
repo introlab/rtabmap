@@ -1077,7 +1077,7 @@ SensorData CameraImages::captureImage(SensorCaptureInfo * info)
 				img = cv::imread(imageFilePath.c_str(), -1);
 #endif
 				UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
-						img.cols, img.rows, img.channels(), img.elemSize(), img.total());
+						img.cols, img.rows, img.channels(), (int)img.elemSize(), (int)img.total());
 
 				if(_isDepth)
 				{

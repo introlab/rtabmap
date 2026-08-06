@@ -996,7 +996,7 @@ bool DatabaseViewer::openDatabase(const QString & path, const ParametersMap & ov
 										.arg(iter->first.c_str())
 										.arg(iter->second.c_str())
 										.arg(jter->second.c_str());
-								UWARN(msg.toStdString().c_str());
+								UWARN("%s", msg.toStdString().c_str());
 							}
 						}
 					}
@@ -1751,7 +1751,7 @@ void DatabaseViewer::extractImages()
 						UWARN("Failed saving \"%s\"", QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 					if(!cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw()))
 						UWARN("Failed saving \"%s\"", QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
-					UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
+					UINFO("%s", QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
 
 					if(databaseFileName_.empty())
 					{
@@ -1803,12 +1803,12 @@ void DatabaseViewer::extractImages()
 						if(!cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw().type()==CV_32FC1?util2d::cvtDepthFromFloat(data.depthRaw()):data.depthRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/depth/%2.png").arg(path).arg(id).toStdString().c_str());
 						if(data.depthConfidenceRaw().empty()) {
-							UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
+							UINFO("%s", QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
 						}
 						else {
 							if(!cv::imwrite(QString("%1/confidence/%2.png").arg(path).arg(id).toStdString(), data.depthConfidenceRaw()))
 								UWARN("Failed saving \"%s\"", QString("%1/confidence/%2.png").arg(path).arg(id).toStdString().c_str());
-							UINFO(QString("Saved rgb/%1.%2, depth/%1.png and confidence/%1.png").arg(id).arg(ext).toStdString().c_str());
+							UINFO("%s", QString("Saved rgb/%1.%2, depth/%1.png and confidence/%1.png").arg(id).arg(ext).toStdString().c_str());
 						}
 					}
 					else
@@ -1816,7 +1816,7 @@ void DatabaseViewer::extractImages()
 						if(!cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw()))
 							UWARN("Failed saving \"%s\"", QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString().c_str());
 						else
-							UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
+							UINFO("%s", QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
 					}
 
 					if(databaseFileName_.empty())
@@ -3139,7 +3139,7 @@ void DatabaseViewer::editSaved2DMap()
 			progressDialog.setMinimumWidth(800);
 			QApplication::processEvents();
 
-			UINFO("Cropping empty space... poses=%d cropRadius=%d", poses.size(), cropRadius);
+			UINFO("Cropping empty space... poses=%d cropRadius=%d", (int)poses.size(), cropRadius);
 			UASSERT(cropRadius>=0);
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end() && !progressDialog.isCanceled(); ++iter)
 			{
@@ -3609,7 +3609,7 @@ void DatabaseViewer::exportOptimizedMesh()
 					path += ".obj";
 				}
 				QString baseName = QFileInfo(path).baseName();
-				UDEBUG("Materials: %d", mesh->tex_materials.size());
+				UDEBUG("Materials: %d", (int)mesh->tex_materials.size());
 				if(mesh->tex_materials.size() == 1)
 				{
 					mesh->tex_materials.at(0).tex_file = baseName.toStdString() + ".png";
@@ -3916,7 +3916,7 @@ void DatabaseViewer::generateLocalGraph()
 						idsSet.insert(idsSet.end(), iter->first);
 						UINFO("Node %d", iter->first);
 					}
-					UINFO("idsSet=%d", idsSet.size());
+					UINFO("idsSet=%d", (int)idsSet.size());
 					dbDriver_->generateGraph(path.toStdString(), idsSet);
 				}
 				else
@@ -5849,11 +5849,11 @@ void DatabaseViewer::update(int value,
 												polygons = filteredPolygons;
 											}
 
-											cloudViewer_->addCloudMesh(uFormat("mesh_%d", i), cloud, polygons, pose);
+											cloudViewer_->addCloudMesh(uFormat("mesh_%d", (int)i), cloud, polygons, pose);
 										}
 										if(ui_->checkBox_showCloud->isChecked())
 										{
-											std::string cloudName = uFormat("cloud_%d", i);
+											std::string cloudName = uFormat("cloud_%d", (int)i);
 											cloudViewer_->addCloud(cloudName, cloud, pose);
 											if(colorIndexAndPointSizeMap.find(cloudName) != colorIndexAndPointSizeMap.end()) {
 												cloudViewer_->setCloudColorIndex(cloudName, colorIndexAndPointSizeMap.at(cloudName).first);
@@ -5888,7 +5888,7 @@ void DatabaseViewer::update(int value,
 											cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 										}
 
-										std::string cloudName = uFormat("cloud_%d", i);
+										std::string cloudName = uFormat("cloud_%d", (int)i);
 										cloudViewer_->addCloud(cloudName, cloud, pose);
 										if(colorIndexAndPointSizeMap.find(cloudName) != colorIndexAndPointSizeMap.end()) {
 											cloudViewer_->setCloudColorIndex(cloudName, colorIndexAndPointSizeMap.at(cloudName).first);
@@ -8293,7 +8293,7 @@ void DatabaseViewer::updateGraphView()
 			}
 			else
 			{
-				UWARN("Empty WM poses!? Ignoring WM state... (root id=%d, wmState=%d)", fromId, wmState.size());
+				UWARN("Empty WM poses!? Ignoring WM state... (root id=%d, wmState=%d)", fromId, (int)wmState.size());
 			}
 		}
 
@@ -9396,7 +9396,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 					std::string msg = "Option to generate scan from depth is checked (GUI Parameters->Refine), but "
 									  "resulting clouds from depth are empty. Transformation estimation will likely "
 									  "fails. Uncheck the parameter to use laser scans.";
-					UWARN(msg.c_str());
+					UWARN("%s", msg.c_str());
 					if(!silent)
 					{
 						QMessageBox::warning(this,
@@ -9674,7 +9674,7 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 					std::string msg = "Option to generate scan from depth is checked (GUI Parameters->Refine), but "
 									  "resulting clouds from depth are empty. Transformation estimation will likely "
 									  "fails. Uncheck the parameter to use laser scans.";
-					UWARN(msg.c_str());
+					UWARN("%s", msg.c_str());
 					if(!silent)
 					{
 						QMessageBox::warning(this,
@@ -9701,7 +9701,7 @@ bool DatabaseViewer::addConstraint(int from, int to, Registration * reg, bool si
 					fromS->id(),
 					toS->id(),
 					Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-			UWARN(msg.c_str());
+			UWARN("%s", msg.c_str());
 			if(!silent)
 			{
 				QMessageBox::warning(this,
