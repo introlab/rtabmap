@@ -2172,6 +2172,80 @@ TEST(MemoryTest, RepairedDictionaryIndexIsReusableOnNextLoad)
 #endif
 }
 
+TEST(MemoryTest, ReadOnlyLocalizationSavesNothingBackAfterRepair)
+{
+	// Mem/LocalizationReadOnly keeps close() from writing anything back, even
+	// when the session did change the memory. Repairing the dictionary is such a
+	// change (it sets _memoryChanged so the recovered words get saved), so a
+	// read-only session is where close() has to warn and skip the save instead.
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_GT(buildDictionaryDb(dbPath), 0);
+
+	// Remember which words are about to be dropped, to check further down that
+	// they did not come back.
+	std::set<int> droppedIds;
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+		ASSERT_GE(words.size(), 2u);
+		std::map<int, VisualWord *>::const_iterator iter = words.begin();
+		droppedIds.insert(iter->first);
+		droppedIds.insert((++iter)->first);
+		memory.close(false);
+	}
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->executeNoResult("DELETE FROM Word WHERE id IN (SELECT id FROM Word ORDER BY id ASC LIMIT 2);");
+		driver->closeConnection(false);
+		delete driver;
+	}
+
+	ParametersMap params = localizationFlannParams();
+	params[Parameters::kMemLocalizationReadOnly()] = "true";
+
+	size_t wordCount = 0;
+	{
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(dbPath));
+		ASSERT_TRUE(memory.isReadOnly());
+		wordCount = memory.getVWDictionary()->getVisualWords().size();
+		ASSERT_GT(wordCount, 0u);
+		// The repair happened in memory, and asks for the dictionary to be saved...
+		EXPECT_TRUE(memory.memoryChanged());
+		memory.close(true); // ...which a read-only memory refuses to do.
+	}
+
+	// The recovered words never reached the database.
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		std::list<VisualWord *> words;
+		driver->loadWords(droppedIds, words);
+		EXPECT_TRUE(words.empty()) << "a read-only memory should not have saved the repaired dictionary";
+		for(std::list<VisualWord *>::iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			delete *iter;
+		}
+		driver->closeConnection(false);
+		delete driver;
+	}
+
+	// Neither did the index rebuilt for them, so the next session repairs again.
+	{
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(dbPath));
+		EXPECT_EQ(memory.getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_FALSE(flannIndexReusedFromDb(memory));
+		memory.close(false);
+	}
+
+	UFile::erase(dbPath.c_str());
+}
+
 TEST(MemoryTest, ForgetTransfersBasedOnWordCountInWordRegime)
 {
 	// Branch (1) of Memory::forget() is gated on:

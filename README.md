@@ -5,6 +5,7 @@ rtabmap
 
 [![Release][release-image]][releases]
 [![Downloads][downloads-image]][downloads]
+[![codecov](https://codecov.io/gh/introlab/rtabmap/graph/badge.svg?token=mPwvfZMOia)](https://codecov.io/gh/introlab/rtabmap)
 [![License][license-image]][license]
 
 [release-image]: https://img.shields.io/badge/release-0.23.1-green.svg?style=flat
