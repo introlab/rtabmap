@@ -2040,6 +2040,138 @@ TEST(MemoryTest, SetDummyDictionaryIgnoredAfterInit)
 	UFile::erase(dbPath.c_str());
 }
 
+namespace {
+
+// Localization session (Mem/IncrementalMemory=false) with FLANN index
+// persistence enabled: the only configuration where Memory::saveFlannIndex()
+// writes an index (see Kp/FlannIndexSaved). Incremental FLANN is left on --
+// dictionaryDbParams() disables it -- because that is the path where newly
+// indexed words are appended to the existing index instead of rebuilding it.
+ParametersMap localizationFlannParams()
+{
+	ParametersMap params = dictionaryDbParams();
+	params[Parameters::kMemIncrementalMemory()] = "false";
+	params[Parameters::kKpFlannIndexSaved()] = "true";
+	params[Parameters::kKpIncrementalFlann()] = "true";
+	return params;
+}
+
+// Whether init() could reuse the index stored in the database. VWDictionary
+// only clears its "modified" flag when deserializeIndex() succeeds; an index
+// (re)built by update() leaves it set, which is also what makes Memory save it
+// back on close.
+bool flannIndexReusedFromDb(const Memory & memory)
+{
+	return !memory.getVWDictionary()->isModified();
+}
+
+} // namespace
+
+TEST(MemoryTest, FlannIndexSavedToDatabaseOnlyWhenDatabaseIsSaved)
+{
+#ifdef _WIN32
+	GTEST_SKIP() << "FlannIndex serialization is not implemented on Windows";
+#else
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_GT(buildDictionaryDb(dbPath), 0);
+
+	// First localization session: nothing stored yet, so the index is built by
+	// VWDictionary::update(). Discarding the session must not store it either.
+	{
+		Memory memory(localizationFlannParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		ASSERT_FALSE(memory.getVWDictionary()->getVisualWords().empty());
+		ASSERT_FALSE(flannIndexReusedFromDb(memory));
+		memory.close(false);
+	}
+
+	// Second session: still no index in the database, this time save it.
+	{
+		Memory memory(localizationFlannParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		EXPECT_FALSE(flannIndexReusedFromDb(memory)) << "close(false) should not have saved a FLANN index";
+		memory.close(true);
+	}
+
+	// Sessions 3, 4 and 5: the index stored by session 2 is reused on every
+	// re-open, and stays in the database whatever close() is given:
+	//   pass 0, close(false): the discarded session leaves the stored index alone,
+	//   pass 1, close(true) : the dictionary didn't change since it was loaded, so
+	//                         the re-save is skipped -- without clearing it,
+	//   pass 2              : final check that the two closes above kept it.
+	for(int pass = 0; pass < 3; ++pass)
+	{
+		SCOPED_TRACE(uFormat("pass %d", pass));
+		Memory memory(localizationFlannParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const VWDictionary * dictionary = memory.getVWDictionary();
+		EXPECT_TRUE(flannIndexReusedFromDb(memory)) << "the stored FLANN index should have been reused";
+		EXPECT_EQ((size_t)dictionary->getIndexedWordsCount(), dictionary->getVisualWords().size());
+		memory.close(pass == 1);
+	}
+
+	UFile::erase(dbPath.c_str());
+#endif
+}
+
+TEST(MemoryTest, RepairedDictionaryIndexIsReusableOnNextLoad)
+{
+#ifdef _WIN32
+	GTEST_SKIP() << "FlannIndex serialization is not implemented on Windows";
+#else
+	// A repaired dictionary must be re-indexed from scratch, not have its
+	// recovered words appended to the index already built from the words that
+	// were still in the database. The next load rebuilds the search data in
+	// word-id order, so an index holding the recovered words at the end no
+	// longer matches it and is rejected (see VWDictionary::rebuildIndex()).
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_GT(buildDictionaryDb(dbPath), 0);
+
+	// Drop the lowest word ids while the nodes keep referencing them (what
+	// happens when rtabmap is killed before it saves the dictionary), so the
+	// recovered words are exactly the ones that would end up out of order.
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->executeNoResult("DELETE FROM Word WHERE id IN (SELECT id FROM Word ORDER BY id ASC LIMIT 2);");
+		driver->closeConnection(false);
+		delete driver;
+	}
+
+	size_t wordCount = 0;
+	{
+		Memory memory(localizationFlannParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const VWDictionary * dictionary = memory.getVWDictionary();
+		wordCount = dictionary->getVisualWords().size();
+		ASSERT_GT(wordCount, 0u);
+		// Repaired: every word is indexed again, including the recovered ones.
+		EXPECT_EQ((size_t)dictionary->getIndexedWordsCount(), wordCount);
+		EXPECT_EQ(dictionary->getNotIndexedWordsCount(), 0u);
+		// Saves the recovered words back, along with the rebuilt index.
+		memory.close(true);
+	}
+
+	// Two re-opens: the first checks the index saved right after the repair is
+	// reusable, the second that it stays so once a session that merely loaded it
+	// has closed (nothing changed, so close(true) must leave it in place).
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		SCOPED_TRACE(uFormat("pass %d", pass));
+		Memory memory(localizationFlannParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const VWDictionary * dictionary = memory.getVWDictionary();
+		EXPECT_EQ(dictionary->getVisualWords().size(), wordCount) << "the recovered words should have been saved back";
+		EXPECT_TRUE(flannIndexReusedFromDb(memory)) << "the index saved after the repair should still match the stored dictionary";
+		EXPECT_EQ((size_t)dictionary->getIndexedWordsCount(), wordCount);
+		memory.close(pass == 0);
+	}
+
+	UFile::erase(dbPath.c_str());
+#endif
+}
+
 TEST(MemoryTest, ForgetTransfersBasedOnWordCountInWordRegime)
 {
 	// Branch (1) of Memory::forget() is gated on:

@@ -756,6 +756,162 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
     }
 }
 
+namespace {
+
+// One-hot descriptor, so every word is far from every other one and the
+// checksum over the search data changes as soon as two words are swapped.
+cv::Mat oneHotDescriptor(int hotIndex, int dim = 8)
+{
+    cv::Mat descriptor = cv::Mat::zeros(1, dim, CV_32F);
+    descriptor.at<float>(0, hotIndex) = 1000.0f;
+    return descriptor;
+}
+
+} // namespace
+
+TEST_F(VWDictionaryTest, RebuildIndexReordersIndexToWordIdOrder)
+{
+    // A dictionary loaded from a database gets its words back in word-id order
+    // (std::map), and deserializeIndex() rebuilds the search data in that same
+    // order. So a serialized index is only reusable if it was built in word-id
+    // order too.
+    //
+    // update() with incremental FLANN appends the not-yet-indexed words at the
+    // end of the existing index, whatever their id. That is what Memory does
+    // when it repairs a dictionary that is missing words: the repaired words
+    // usually have ids *lower* than the ones already indexed, so the index ends
+    // up in an order the next load cannot reproduce. rebuildIndex() re-indexes
+    // everything from scratch, which restores the word-id order.
+    dict->setNNStrategy(VWDictionary::kNNFlannKdTree);
+    ASSERT_TRUE(dict->isIncrementalFlann()) << "The out-of-order index only happens with incremental FLANN";
+
+    dict->addWord(new VisualWord(1, oneHotDescriptor(0)));
+    dict->addWord(new VisualWord(3, oneHotDescriptor(2)));
+    dict->update();
+    ASSERT_EQ(dict->getIndexedWordsCount(), 2u);
+
+    // Word 2 is indexed after word 3: index order (1, 3, 2) != id order (1, 2, 3).
+    dict->addWord(new VisualWord(2, oneHotDescriptor(1)));
+    dict->update();
+    ASSERT_EQ(dict->getIndexedWordsCount(), 3u);
+
+    std::vector<unsigned char> staleData = dict->serializeIndex();
+#ifdef _WIN32
+    // FlannIndex::serializeIndex() is not implemented on Windows
+    // (see corelib/src/FlannIndex.cpp), so there is nothing to round-trip.
+    EXPECT_EQ(staleData.size(), 0u);
+#else
+    ASSERT_GT(staleData.size(), 0u);
+
+    // Simulates the next load: same words, added in id order like DBDriver does.
+    {
+        VWDictionary reloaded;
+        reloaded.setNNStrategy(VWDictionary::kNNFlannKdTree);
+        reloaded.addWord(new VisualWord(1, oneHotDescriptor(0)));
+        reloaded.addWord(new VisualWord(2, oneHotDescriptor(1)));
+        reloaded.addWord(new VisualWord(3, oneHotDescriptor(2)));
+        EXPECT_FALSE(reloaded.deserializeIndex(staleData))
+            << "An index built out of word-id order should be rejected on load";
+    }
+
+    // Same words, same content, but re-indexed from scratch.
+    dict->rebuildIndex();
+    EXPECT_EQ(dict->getIndexedWordsCount(), 3u);
+    EXPECT_EQ(dict->getNotIndexedWordsCount(), 0u);
+
+    std::vector<unsigned char> rebuiltData = dict->serializeIndex();
+    ASSERT_GT(rebuiltData.size(), 0u);
+
+    {
+        VWDictionary reloaded;
+        reloaded.setNNStrategy(VWDictionary::kNNFlannKdTree);
+        reloaded.addWord(new VisualWord(1, oneHotDescriptor(0)));
+        reloaded.addWord(new VisualWord(2, oneHotDescriptor(1)));
+        reloaded.addWord(new VisualWord(3, oneHotDescriptor(2)));
+        EXPECT_TRUE(reloaded.deserializeIndex(rebuiltData));
+        EXPECT_EQ(reloaded.getIndexedWordsCount(), 3u);
+        // A deserialized index doesn't need to be saved back.
+        EXPECT_FALSE(reloaded.isModified());
+    }
+#endif
+}
+
+TEST_F(VWDictionaryTest, RebuildIndexKeepsWordsAndSearchResults)
+{
+    dict->setNNStrategy(VWDictionary::kNNFlannKdTree);
+
+    cv::Mat descriptors = (cv::Mat_<float>(3, 2) <<
+        0.0f, 0.0f,
+        10.0f, 0.0f,
+        0.0f, 100.0f);
+    std::list<int> wordIds = dict->addNewWords(descriptors, 1);
+    dict->update();
+    ASSERT_EQ(wordIds.size(), 3u);
+
+    cv::Mat query = (cv::Mat_<float>(2, 2) <<
+        0.5f, 0.5f,   // matches the first word
+        0.0f, 99.0f); // matches the third word
+    const std::vector<int> before = dict->findNN(query);
+    ASSERT_EQ(before.size(), 2u);
+    ASSERT_EQ(before[0], wordIds.front());
+    ASSERT_EQ(before[1], wordIds.back());
+
+    dict->rebuildIndex();
+
+    // Re-indexing doesn't touch the words themselves, only the search index.
+    EXPECT_EQ(dict->getVisualWords().size(), 3u);
+    EXPECT_EQ(dict->getIndexedWordsCount(), 3u);
+    EXPECT_EQ(dict->getNotIndexedWordsCount(), 0u);
+    EXPECT_EQ(dict->findNN(query), before);
+
+    // The index changed, so it has to be saved back (Memory::saveFlannIndex()
+    // only serializes a modified dictionary).
+    EXPECT_TRUE(dict->isModified());
+}
+
+TEST_F(VWDictionaryTest, RebuildIndexOnEmptyDictionaryIsSafe)
+{
+    dict->setNNStrategy(VWDictionary::kNNFlannKdTree);
+
+    dict->rebuildIndex();
+
+    EXPECT_EQ(dict->getVisualWords().size(), 0u);
+    EXPECT_EQ(dict->getIndexedWordsCount(), 0u);
+    EXPECT_EQ(dict->getNotIndexedWordsCount(), 0u);
+    EXPECT_TRUE(dict->serializeIndex().empty());
+}
+
+TEST_F(VWDictionaryTest, ByteToFloatChangeRebuildsIndex)
+{
+    // parseParameters() re-indexes through rebuildIndex() when the binary to
+    // float conversion changes, because the descriptors fed to the kd-tree
+    // change dimension (1 float per byte vs 1 float per bit).
+    dict->setNNStrategy(VWDictionary::kNNFlannKdTree);
+
+    cv::Mat descriptors = cv::Mat::zeros(3, 4, CV_8U);
+    for(int row = 0; row < descriptors.rows; ++row)
+    {
+        descriptors.at<unsigned char>(row, row) = 255;
+    }
+    dict->addNewWords(descriptors, 1);
+    dict->update();
+    ASSERT_EQ(dict->getIndexedWordsCount(), 3u);
+
+    ParametersMap params;
+    params.insert(ParametersPair(Parameters::kKpByteToFloat(), "true"));
+    dict->parseParameters(params);
+
+    EXPECT_EQ(dict->getVisualWords().size(), 3u);
+    EXPECT_EQ(dict->getIndexedWordsCount(), 3u);
+    EXPECT_EQ(dict->getNotIndexedWordsCount(), 0u);
+
+    // The re-indexed dictionary is still searchable, with the smaller
+    // byte-to-float descriptors this time.
+    const std::vector<int> matches = dict->findNN(descriptors.row(0));
+    ASSERT_EQ(matches.size(), 1u);
+    EXPECT_NE(matches[0], VWDictionary::ID_INVALID);
+}
+
 TEST_F(VWDictionaryTest, IsModified)
 {
     EXPECT_TRUE(dict->isModified());
