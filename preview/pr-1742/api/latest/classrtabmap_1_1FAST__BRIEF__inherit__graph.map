@@ -1,0 +1,7 @@
+<map id="rtabmap::FAST_BRIEF" name="rtabmap::FAST_BRIEF">
+<area shape="rect" id="Node000001" title="FAST corners + BRIEF descriptors." alt="" coords="5,152,167,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1FAST.html" title="FAST corner detector only (no descriptor)." alt="" coords="28,79,144,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,118,89,152,83,152,83,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="10,5,162,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="89,44,89,79,83,79,83,44"/>
+</map>
