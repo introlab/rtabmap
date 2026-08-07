@@ -1,0 +1,40 @@
+# Codecov configuration -- https://docs.codecov.com/docs/codecov-yaml
+#
+# The coverage data itself is produced by .github/workflows/coverage.yml (lcov
+# over a Debug build with ENABLE_COVERAGE=ON) and uploaded by
+# codecov/codecov-action. This file only controls what Codecov reports back on a
+# pull request.
+#
+# Note: nothing is posted to the PR unless the Codecov GitHub App is installed
+# on the repository, and the upload step is skipped entirely when the
+# CODECOV_TOKEN secret is unset.
+
+# Annotate the lines of the diff that no test executed, inline in the
+# "Files changed" tab.
+github_checks:
+  annotations: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "60...90"
+
+  status:
+    # Whole-project coverage, compared against the base commit: catches a slow
+    # slide down without pinning an absolute number.
+    project:
+      default:
+        target: auto
+        threshold: 1%
+
+    # Coverage of the lines this pull request touches -- the number that answers
+    # "is the new code tested?". Advisory for now: it is reported but does not
+    # block the merge. Remove "informational" to make it a required check.
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "condensed_header, diff, files"
+  behavior: default
+  require_changes: true # stay quiet on pull requests that don't move coverage
