@@ -134,9 +134,16 @@ echo "Filtering coverage data (repo sources only)..."
 lcov "${LCOV_IGNORE[@]}" --extract "$INFO_FILE" \
 	"${ROOT}/*" \
 	--output-file "$INFO_FILE"
+# The test sources are the instrument, not the subject: a line in a test counts
+# as uncovered only when the test skipped it (a defensive cleanup branch, a
+# platform guard), which says nothing about the library. They are also
+# near-fully covered by construction, so leaving them in inflates the overall
+# number. Kept in sync with the same list in .github/workflows/coverage.yml.
 lcov "${LCOV_IGNORE[@]}" --remove "$INFO_FILE" \
 	'*/sqlite3/*' \
 	'*/rtflann/*' \
+	'*/corelib/test/*' \
+	'*/utilite/test/*' \
 	--output-file "$INFO_FILE"
 
 echo "Generating HTML..."

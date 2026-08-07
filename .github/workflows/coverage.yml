@@ -100,9 +100,18 @@ jobs:
           lcov "${LCOV_IGNORE[@]}" --extract lcov.info \
             '${{ github.workspace }}/*' \
             --output-file lcov.info
+          # The test sources are the instrument, not the subject: a line in a
+          # test counts as uncovered only when the test skipped it (a defensive
+          # cleanup branch, a platform guard), which says nothing about the
+          # library. They are also near-fully covered by construction, so
+          # leaving them in inflates the overall number. Excluded here, before
+          # the upload, so the HTML artifact, the summary below and Codecov all
+          # report the same figure. Kept in sync with coverage-report.sh.
           lcov "${LCOV_IGNORE[@]}" --remove lcov.info \
             '*/sqlite3/*' \
             '*/rtflann/*' \
+            '*/corelib/test/*' \
+            '*/utilite/test/*' \
             --output-file lcov.info
 
           lcov --summary lcov.info
