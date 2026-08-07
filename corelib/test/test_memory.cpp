@@ -2246,6 +2246,63 @@ TEST(MemoryTest, ReadOnlyLocalizationSavesNothingBackAfterRepair)
 	UFile::erase(dbPath.c_str());
 }
 
+TEST(MemoryTest, DiscardedSessionSavesNothingBackWhenMemoryChanged)
+{
+	// The other side of the same branch: a writable memory that did change, but
+	// closed with databaseSaved=false. The changes are dropped (with a warning)
+	// rather than written, so the database keeps the nodes it already had.
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_GT(buildDictionaryDb(dbPath), 0);
+
+	std::set<int> idsBefore;
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->getAllNodeIds(idsBefore);
+		driver->closeConnection(false);
+		delete driver;
+	}
+	ASSERT_FALSE(idsBefore.empty());
+
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		ASSERT_FALSE(memory.isReadOnly());
+		ASSERT_FALSE(memory.memoryChanged());
+
+		const int kKeypoints = 3;
+		cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		SensorData data(image);
+		std::vector<cv::KeyPoint> kpts(kKeypoints, cv::KeyPoint(1.f, 1.f, 1.f));
+		std::vector<cv::Point3f> pts3(kKeypoints, cv::Point3f(0.f, 0.f, 1.f));
+		cv::Mat descriptors = cv::Mat::zeros(kKeypoints, 9, CV_32F);
+		for(int row = 0; row < kKeypoints; ++row)
+		{
+			descriptors.at<float>(row, row) = 1000.0f;
+		}
+		data.setFeatures(kpts, pts3, descriptors);
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		ASSERT_TRUE(memory.update(data, Transform(9.0f, 0.0f, 0.0f, 0, 0, 0), covariance));
+		ASSERT_TRUE(memory.memoryChanged());
+
+		memory.close(false);
+	}
+
+	std::set<int> idsAfter;
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->getAllNodeIds(idsAfter);
+		driver->closeConnection(false);
+		delete driver;
+	}
+	EXPECT_EQ(idsAfter, idsBefore) << "close(false) should not have saved the node added during the session";
+
+	UFile::erase(dbPath.c_str());
+}
+
 TEST(MemoryTest, ForgetTransfersBasedOnWordCountInWordRegime)
 {
 	// Branch (1) of Memory::forget() is gated on:
