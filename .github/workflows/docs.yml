@@ -207,5 +207,12 @@ jobs:
             echo ""
             echo "- Landing page: ${url}/"
             echo "- C++ API: ${url}/api/latest/"
-            [[ -n "${note}" ]] && { echo ""; echo "${note}"; }
+            # An `if` rather than `[[ ... ]] && { ... }`: as the last command in
+            # the group, a false test would make the group (and so the whole
+            # step) exit 1. `note` is empty on push, which failed every master
+            # run while pull requests passed.
+            if [[ -n "${note}" ]]; then
+              echo ""
+              echo "${note}"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

@@ -167,5 +167,12 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
+          # Upload ONLY lcov.info. By default the CLI also searches the tree and
+          # runs gcov over every .gcno it finds, uploading those .gcov files
+          # alongside -- which re-introduced corelib/test and utilite/test on
+          # Codecov even though the lcov --remove step had dropped them (the
+          # HTML artifact, built from the same lcov.info, was correctly clean).
+          disable_search: true
+          plugins: noop
           token: ${{ env.CODECOV_TOKEN }}
           fail_ci_if_error: false
