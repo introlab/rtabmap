@@ -9,6 +9,7 @@
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/core/Link.h>
 #include <opencv2/core.hpp>
 #include <memory>
 #include <rtabmap/utilite/UFile.h>
@@ -327,3 +328,116 @@ TEST_F(DBDriverSqlite3Fixture, RawOnlySensorDataIsNotPersisted)
 			<< "raw-only image unexpectedly survived a save/load round trip";
 	delete loaded.front();
 }
+
+// ---------------------------------------------------------------------------
+// Legacy schema round trips. Db/TargetVersion makes the driver create an older
+// schema, which is how a database recorded by an earlier rtabmap looks. The
+// readers for those layouts differ substantially -- e.g. link covariance was
+// stored as separate rotVariance/transVariance columns before the full
+// information matrix -- and none of it ran in the tests until now.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+class DBSchemaVersionTest : public ::testing::TestWithParam<const char *>
+{
+protected:
+	void SetUp() override
+	{
+		dbPath_ = uniqueDbPath();
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), GetParam()));
+		driver_ = new DBDriverSqlite3(parameters);
+		ASSERT_TRUE(driver_->openConnection(dbPath_, true))
+				<< "could not create a " << GetParam() << " database";
+	}
+
+	void TearDown() override
+	{
+		if(driver_)
+		{
+			driver_->closeConnection(false);
+			delete driver_;
+			driver_ = nullptr;
+		}
+		UFile::erase(dbPath_.c_str());
+	}
+
+	void saveSignature(Signature * s)
+	{
+		driver_->asyncSave(s);
+		driver_->emptyTrashes(false);
+	}
+
+	std::string dbPath_;
+	DBDriverSqlite3 * driver_ = nullptr;
+};
+
+}  // namespace
+
+TEST_P(DBSchemaVersionTest, NodesAndLinksSurviveARoundTrip)
+{
+	// Two nodes joined by a neighbour link carrying a non-default information
+	// matrix: older schemas store that as rotVariance/transVariance, newer ones
+	// as the full 6x6, so this exercises whichever reader the version needs.
+	cv::Mat info = cv::Mat::eye(6, 6, CV_64FC1);
+	info.at<double>(0,0) = info.at<double>(1,1) = info.at<double>(2,2) = 4.0;   // 1/transVariance
+	info.at<double>(3,3) = info.at<double>(4,4) = info.at<double>(5,5) = 100.0; // 1/rotVariance
+
+	const Transform motion(0.5f, 0.1f, 0.0f, 0.0f, 0.0f, 0.2f);
+	for(int id = 1; id <= 2; ++id)
+	{
+		const Transform pose(0.5f * (id - 1), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		Signature * s = new Signature(id, 0, 1, static_cast<double>(id), "", pose, Transform(),
+				makeRichData(id, static_cast<double>(id)));
+		if(id == 2)
+		{
+			s->addLink(Link(2, 1, Link::kNeighbor, motion.inverse(), info));
+		}
+		saveSignature(s);
+	}
+
+	EXPECT_FALSE(driver_->getDatabaseVersion().empty());
+
+	std::list<Signature *> loaded;
+	driver_->loadSignatures(std::list<int>{1, 2}, loaded);
+	ASSERT_EQ(2u, loaded.size()) << "nodes did not survive the round trip";
+
+	// Payloads
+	driver_->loadNodeData(loaded);
+	for(Signature * s : loaded)
+	{
+		s->sensorData().uncompressData();
+		EXPECT_FALSE(s->sensorData().imageRaw().empty()) << "node " << s->id() << " lost its image";
+		EXPECT_EQ(1u, s->sensorData().cameraModels().size());
+	}
+
+	// Links: the second node must still point back at the first, with the
+	// variances recovered from whatever columns this schema uses.
+	std::multimap<int, Link> links;
+	driver_->loadLinks(2, links);
+	ASSERT_FALSE(links.empty()) << "link did not survive the round trip";
+	const Link & link = links.begin()->second;
+	EXPECT_EQ(1, link.to());
+	EXPECT_LT(link.transform().getDistance(motion.inverse()), 1e-3f);
+	EXPECT_NEAR(4.0, link.infMatrix().at<double>(0,0), 1e-6) << "translational variance lost";
+	EXPECT_NEAR(100.0, link.infMatrix().at<double>(3,3), 1e-6) << "rotational variance lost";
+
+	for(Signature * s : loaded)
+	{
+		delete s;
+	}
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		Schemas,
+		DBSchemaVersionTest,
+		::testing::Values("0.16", "0.17", "0.18", "0.20", "0.22"),
+		[](const ::testing::TestParamInfo<const char *> & info) {
+			std::string name(info.param);
+			for(size_t i = 0; i < name.size(); ++i)
+			{
+				if(!isalnum(name[i])) name[i] = '_';
+			}
+			return "v" + name;
+		});

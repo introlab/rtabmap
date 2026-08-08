@@ -3972,3 +3972,57 @@ TEST(RtabmapTest, GetGraphWithSignaturePayloadsAttachesRequestedFields)
 	rtabmap.close(false);
 }
 
+
+// ---------------------------------------------------------------------------
+// Ground-truth statistics. Rtabmap/ComputeRMSE is on by default, but the block
+// that computes it only runs when the memory holds ground-truth poses, which
+// requires SensorData::setGroundTruth() -- something no test did, so the whole
+// RMSE-vs-ground-truth path only ran during the end-to-end replays.
+// ---------------------------------------------------------------------------
+
+TEST_F(RtabmapFixture, ComputesGroundTruthStatisticsWhenGroundTruthProvided)
+{
+	ParametersMap parameters = defaultRtabmapParams();
+	parameters[Parameters::kRtabmapComputeRMSE()] = "true";
+	reinit(parameters);
+
+	// More than 5 matched poses on purpose: graph::calcRMSE() only aligns the
+	// trajectories with an SVD fit above that count, and falls back to anchoring
+	// on the first pose below it -- so a shorter run would exercise a degenerate
+	// path and report a less meaningful error.
+	//
+	// Odometry drifts 5 cm per frame relative to the ground truth, so the RMSE
+	// must come out non-zero.
+	for(int i = 1; i <= 8; ++i)
+	{
+		SensorData data(image_);
+		data.setId(i);
+		const Transform truth(0.5f * i, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		const Transform odom (0.5f * i + 0.05f * i, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		data.setGroundTruth(truth);
+		ASSERT_TRUE(rtabmap_->process(data, odom, covariance_)) << "frame " << i << " rejected";
+	}
+
+	const std::map<std::string, float> & stats = rtabmap_->getStatistics().data();
+	ASSERT_TRUE(stats.find(Statistics::kGtTranslational_rmse()) != stats.end())
+			<< "no ground-truth RMSE statistic published";
+	const float rmse = stats.at(Statistics::kGtTranslational_rmse());
+	EXPECT_GT(rmse, 0.0f) << "ground truth differs from odometry, so RMSE cannot be zero";
+	EXPECT_LT(rmse, 1.0f) << "implausible RMSE " << rmse << " for a 20 cm drift";
+
+	// The companion statistics come from the same block.
+	EXPECT_TRUE(stats.find(Statistics::kGtTranslational_max()) != stats.end());
+	EXPECT_TRUE(stats.find(Statistics::kGtRotational_rmse()) != stats.end());
+	EXPECT_GE(stats.at(Statistics::kGtTranslational_max()), rmse)
+			<< "max error should be at least the RMSE";
+}
+
+// Without ground truth the same statistics must be absent rather than zero, so
+// a consumer can tell "not measured" from "perfect".
+TEST_F(RtabmapFixture, NoGroundTruthStatisticsWithoutGroundTruth)
+{
+	ASSERT_TRUE(process());
+	ASSERT_TRUE(process());
+	const std::map<std::string, float> & stats = rtabmap_->getStatistics().data();
+	EXPECT_TRUE(stats.find(Statistics::kGtTranslational_rmse()) == stats.end());
+}

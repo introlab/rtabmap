@@ -62,6 +62,7 @@ set(corelib_test_sources
 	test_sensorevent.cpp                #SensorEvent.h
 	test_sensordata.cpp                 #SensorData.h
 	test_sensorcapture.cpp              #SensorCapture.h
+	test_cameraimages.cpp               #camera/CameraImages.h
 	test_sensorcaptureinfo.cpp          #SensorCaptureInfo.h
 	test_sensorcapturethread.cpp        #SensorCaptureThread.h
 )
