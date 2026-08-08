@@ -117,7 +117,7 @@ jobs:
           ROS_LIB=/opt/ros/jazzy/lib
           export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin:${ROS_LIB}:${ROS_LIB}/$(gcc -dumpmachine)${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           find ${{ github.workspace }}/build -name '*.gcda' -delete
-          ctest --output-on-failure
+          ctest -V
 
       - name: Generate LCOV report
         run: |

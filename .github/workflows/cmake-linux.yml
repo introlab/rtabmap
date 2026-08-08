@@ -101,4 +101,4 @@ jobs:
       env:
         PYTHONNOUSERSITE: 1
       run: |
-        ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+        ctest -C ${{env.BUILD_TYPE}} -V
