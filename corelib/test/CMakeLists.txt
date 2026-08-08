@@ -76,6 +76,14 @@ IF(libpointmatcher_FOUND)
 	target_link_libraries(test_corelib ${libpointmatcher_LIBRARIES})
 ENDIF(libpointmatcher_FOUND)
 
+# The timeouts below are sized for an optimized build; at -O0 (Debug, or
+# coverage, which forces -O0) these tests run 5-40x slower.
+IF(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo|MinSizeRel)$")
+	SET(_test_timeout_scale 1)
+ELSE()
+	SET(_test_timeout_scale 6)
+ENDIF()
+
 # Split the run across processes so `ctest -j` still overlaps work, paying the
 # library load N times instead of once per source file. gtest partitions by
 # test index via these two env vars; the shards are disjoint and together
@@ -85,10 +93,11 @@ ENDIF(libpointmatcher_FOUND)
 set(CORELIB_TEST_SHARDS 4 CACHE STRING
 		"Number of processes the corelib unit tests are split across")
 math(EXPR _corelib_last_shard "${CORELIB_TEST_SHARDS} - 1")
+math(EXPR _corelib_shard_timeout "900 * ${_test_timeout_scale}")
 foreach(shard RANGE 0 ${_corelib_last_shard})
 	add_test(NAME test_corelib_${shard} COMMAND test_corelib)
 	set_tests_properties(test_corelib_${shard} PROPERTIES
-			TIMEOUT 900
+			TIMEOUT ${_corelib_shard_timeout}
 			ENVIRONMENT "GTEST_TOTAL_SHARDS=${CORELIB_TEST_SHARDS};GTEST_SHARD_INDEX=${shard}")
 endforeach()
 
@@ -107,8 +116,9 @@ target_link_libraries(test_rtabmap_integration gtest_main rtabmap_core)
 # while nightlies run:
 #  `ctest -L long`.
 add_test(NAME test_rtabmap_integration COMMAND test_rtabmap_integration)
+math(EXPR _integration_timeout "1800 * ${_test_timeout_scale}")
 set_tests_properties(test_rtabmap_integration PROPERTIES
-        TIMEOUT 1800
+        TIMEOUT ${_integration_timeout}
         LABELS  "long")
 
 #PythonInterface / PyDetector / PyDescriptor / PyMatcher (optional Python
