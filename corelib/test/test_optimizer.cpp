@@ -13,6 +13,7 @@
 // them rather than backend-specific quirks.
 
 #include <gtest/gtest.h>
+#include <rtabmap/core/Version.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
@@ -870,6 +871,14 @@ protected:
 		{
 			GTEST_SKIP() << optimizerTypeName(t) << " not built in";
 		}
+#ifndef RTABMAP_VERTIGO
+		if(std::get<1>(GetParam()))
+		{
+			// Without Vertigo, optimize() warns and silently clears the robust
+			// flag, so the corrupted loop closure is never rejected.
+			GTEST_SKIP() << "robust optimization needs Vertigo (WITH_VERTIGO=ON)";
+		}
+#endif
 	}
 };
 

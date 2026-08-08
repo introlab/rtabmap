@@ -91,7 +91,6 @@ jobs:
             -DWITH_G2O=ON \
             -DWITH_GTSAM=ON \
             -DWITH_MRPT=OFF \
-            -DWITH_VERTIGO=OFF \
             -DWITH_CVSBA=OFF \
             -DWITH_POINTMATCHER=ON \
             -DWITH_CCCORELIB=OFF \

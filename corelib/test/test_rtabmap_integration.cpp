@@ -1684,6 +1684,15 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 			std::cerr << "[skip] " << v.label << " (optimizer unavailable)\n";
 			continue;
 		}
+#ifndef RTABMAP_VERTIGO
+		if(v.robust)
+		{
+			// optimize() would warn and clear the robust flag, so this variant
+			// would silently measure the non-robust path instead of failing.
+			std::cerr << "[skip] " << v.label << " (needs Vertigo)\n";
+			continue;
+		}
+#endif
 		SCOPED_TRACE(std::string(v.label));
 
 		ParametersMap params = baseRtabmapParams();
