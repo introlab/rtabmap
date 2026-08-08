@@ -4123,3 +4123,40 @@ TEST_F(MemoryFixture, ComputeIcpTransformMultiRejectsNodesWithoutScans)
 			   "a genuine registration failure";
 	EXPECT_LE(info.icpInliersRatio, 0.0f);
 }
+
+// The registration is also declined when the guess puts the two viewpoints
+// beyond their combined sensor range, since the scans then cannot overlap. That
+// early-out reports its own reason, so a caller can tell it apart from a
+// failed alignment.
+TEST_F(MemoryFixture, ComputeIcpTransformMultiRejectsScansTooFarApart)
+{
+	reinit(icpMemoryParams());
+
+	// Same corner, but with a declared 2 m max range.
+	const LaserScan corner = memoryCorner2D();
+	const LaserScan ranged(corner.data(), corner.maxPoints(), /*rangeMax=*/2.0f, corner.format());
+	ASSERT_GT(ranged.rangeMax(), 0.0f);
+
+	SensorData first(image_);
+	first.setLaserScan(ranged);
+	ASSERT_TRUE(memory_->update(first, Transform::getIdentity(), covariance_));
+	const int oldId = memory_->getLastSignatureId();
+
+	SensorData second(image_);
+	second.setLaserScan(ranged);
+	const Transform farAway(20.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	ASSERT_TRUE(memory_->update(second, farAway, covariance_));
+	const int newId = memory_->getLastSignatureId();
+
+	// 20 m apart with 2 m + 2 m of range: no overlap is possible.
+	std::map<int, Transform> poses;
+	poses.insert(std::make_pair(oldId, Transform::getIdentity()));
+	poses.insert(std::make_pair(newId, farAway));
+
+	RegistrationInfo info;
+	const Transform t = memory_->computeIcpTransformMulti(newId, oldId, poses, &info);
+	EXPECT_TRUE(t.isNull()) << "aligned scans that cannot overlap: " << t.prettyPrint();
+	ASSERT_FALSE(info.rejectedMsg.empty()) << "declined without a reason";
+	EXPECT_NE(info.rejectedMsg.find("Too far"), std::string::npos)
+			<< "unexpected reason: " << info.rejectedMsg;
+}
