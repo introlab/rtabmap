@@ -30,6 +30,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore test data
+        id: cache-testdata
+        uses: actions/cache@v4
+        with:
+          # Same key as the other workflows so all of them share one entry.
+          path: data/tests/*.db
+          key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+      - name: Fetch test data
+        if: steps.cache-testdata.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch_test_data.sh
+
       - name: Install Linux dependencies
         run: |
           DEBIAN_FRONTEND=noninteractive
@@ -41,26 +54,46 @@ jobs:
             git \
             cmake \
             software-properties-common \
-            libyaml-cpp-dev
+            libyaml-cpp-dev \
+            libg2o-dev \
+            libceres-dev \
+            curl \
+            gnupg \
+            lsb-release
+
+          # GTSAM and libpointmatcher are not in the Ubuntu archive, and
+          # borglab's gtsam PPAs have no noble packages (gtsam-release-4.2 has
+          # no noble suite; gtsam-develop's noble Packages index is empty). The
+          # ROS 2 repo ships both for noble, which is also what the ROS CI jobs
+          # test against, so take them from there.
+          sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" \
+            | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y \
+            ros-jazzy-gtsam \
+            ros-jazzy-libpointmatcher
 
       - name: Configure CMake
         run: |
           cmake -B ${{ github.workspace }}/build \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DENABLE_COVERAGE=ON \
+            -DCMAKE_PREFIX_PATH=/opt/ros/jazzy \
             -DBUILD_TESTING=ON \
             -DBUILD_APP=OFF \
             -DBUILD_TOOLS=OFF \
             -DBUILD_EXAMPLES=OFF \
             -DWITH_QT=OFF \
             -DWITH_PYTHON=OFF \
-            -DWITH_CERES=OFF \
-            -DWITH_G2O=OFF \
-            -DWITH_GTSAM=OFF \
+            -DWITH_CERES=ON \
+            -DWITH_G2O=ON \
+            -DWITH_GTSAM=ON \
             -DWITH_MRPT=OFF \
             -DWITH_VERTIGO=OFF \
             -DWITH_CVSBA=OFF \
-            -DWITH_POINTMATCHER=OFF \
+            -DWITH_POINTMATCHER=ON \
             -DWITH_CCCORELIB=OFF \
             -DWITH_OPEN3D=OFF \
             -DWITH_LOAM=OFF \
@@ -77,7 +110,10 @@ jobs:
       - name: Test
         working-directory: ${{ github.workspace }}/build
         run: |
-          export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          # /opt/ros/jazzy/lib holds the GTSAM and libpointmatcher shared
+          # objects installed above; the ROS packages are not on the default
+          # loader path.
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin:/opt/ros/jazzy/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           find ${{ github.workspace }}/build -name '*.gcda' -delete
           ctest --output-on-failure
 
