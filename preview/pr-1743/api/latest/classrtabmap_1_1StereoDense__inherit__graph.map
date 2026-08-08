@@ -1,0 +1,7 @@
+<map id="rtabmap::StereoDense" name="rtabmap::StereoDense">
+<area shape="rect" id="Node000001" title="Abstract base class for dense stereo matching algorithms." alt="" coords="86,5,254,31"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1StereoBM.html" title="Block Matching algorithm for dense stereo matching." alt="" coords="5,79,153,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,41,96,81,93,76,143,37"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1StereoSGBM.html" title="Semi&#45;Global Block Matching algorithm for dense stereo matching." alt="" coords="177,79,344,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="197,37,247,76,244,81,194,41"/>
+</map>

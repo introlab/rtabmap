@@ -1,0 +1,5 @@
+<map id="rtabmap::SensorCaptureInfo" name="rtabmap::SensorCaptureInfo">
+<area shape="rect" id="Node000001" title="Metadata structure for sensor data capture and processing." alt="" coords="5,93,211,119"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Transform.html" title="Represents a 3D rigid body transformation (rotation + translation)." alt="" coords="33,5,183,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,45,111,93,105,93,105,45"/>
+</map>

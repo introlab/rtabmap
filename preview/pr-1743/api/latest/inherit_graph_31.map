@@ -1,0 +1,37 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual&#45;inertial odometry backends." alt="" coords="5,400,156,425"/>
+<area shape="rect" id="Node000001" href="$classrtabmap_1_1OdometryCuVSLAM.html" title=" " alt="" coords="209,5,422,31"/>
+<area shape="poly" id="edge25_Node000000_Node000001" title=" " alt="" coords="80,386,85,317,103,223,118,173,139,124,167,79,202,40,219,29,222,33,206,44,171,82,144,127,123,175,108,224,90,317,85,387"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1OdometryDVO.html" title=" " alt="" coords="226,55,405,80"/>
+<area shape="poly" id="edge26_Node000000_Node000002" title=" " alt="" coords="81,386,90,325,109,244,125,202,145,161,171,122,202,89,224,76,227,80,206,93,175,126,150,163,130,204,114,246,95,326,86,387"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1OdometryF2F.html" title=" " alt="" coords="228,104,403,129"/>
+<area shape="poly" id="edge27_Node000000_Node000003" title=" " alt="" coords="83,386,94,333,116,266,132,231,151,197,175,166,202,139,226,125,229,129,206,143,179,169,156,200,137,234,121,268,100,335,88,387"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1OdometryF2M.html" title=" " alt="" coords="226,153,405,179"/>
+<area shape="poly" id="edge28_Node000000_Node000004" title=" " alt="" coords="86,385,100,342,124,288,157,234,178,209,202,188,224,176,227,180,206,192,182,213,162,237,129,290,105,344,91,387"/>
+<area shape="rect" id="Node000005" href="$classrtabmap_1_1OdometryFLOAM.html" title=" " alt="" coords="217,203,413,228"/>
+<area shape="poly" id="edge29_Node000000_Node000005" title=" " alt="" coords="90,386,107,352,132,311,163,271,203,237,225,226,227,230,205,242,167,275,136,314,112,354,95,388"/>
+<area shape="rect" id="Node000006" href="$classrtabmap_1_1OdometryFovis.html" title=" " alt="" coords="223,252,407,277"/>
+<area shape="poly" id="edge30_Node000000_Node000006" title=" " alt="" coords="97,387,140,336,170,309,203,286,229,275,231,280,205,291,173,313,144,339,101,391"/>
+<area shape="rect" id="Node000007" href="$classrtabmap_1_1OdometryLIOSAM.html" title=" " alt="" coords="215,301,416,327"/>
+<area shape="poly" id="edge31_Node000000_Node000007" title=" " alt="" coords="109,389,152,361,203,336,239,324,240,329,205,340,154,366,112,394"/>
+<area shape="rect" id="Node000008" href="$classrtabmap_1_1OdometryLOAM.html" title=" " alt="" coords="221,351,409,376"/>
+<area shape="poly" id="edge32_Node000000_Node000008" title=" " alt="" coords="155,395,253,373,255,379,156,400"/>
+<area shape="rect" id="Node000009" href="$classrtabmap_1_1OdometryMSCKF.html" title=" " alt="" coords="217,400,413,425"/>
+<area shape="poly" id="edge33_Node000000_Node000009" title=" " alt="" coords="169,410,217,410,217,415,169,415"/>
+<area shape="rect" id="Node000010" href="$classrtabmap_1_1OdometryMono.html" title=" " alt="" coords="222,449,409,475"/>
+<area shape="poly" id="edge34_Node000000_Node000010" title=" " alt="" coords="156,426,255,447,253,452,155,431"/>
+<area shape="rect" id="Node000011" href="$classrtabmap_1_1OdometryORBSLAM2.html" title=" " alt="" coords="204,499,427,524"/>
+<area shape="poly" id="edge35_Node000000_Node000011" title=" " alt="" coords="112,431,155,458,205,484,245,496,243,501,203,488,152,463,109,436"/>
+<area shape="rect" id="Node000012" href="$classrtabmap_1_1OdometryORBSLAM3.html" title=" " alt="" coords="204,548,427,573"/>
+<area shape="poly" id="edge36_Node000000_Node000012" title=" " alt="" coords="101,434,144,485,173,511,205,533,235,545,233,550,203,538,170,515,141,489,97,438"/>
+<area shape="rect" id="Node000013" href="$classrtabmap_1_1OdometryOkvis.html" title=" " alt="" coords="222,597,409,623"/>
+<area shape="poly" id="edge37_Node000000_Node000013" title=" " alt="" coords="95,437,112,470,136,510,168,550,205,582,230,595,228,600,203,587,164,553,132,513,107,473,90,439"/>
+<area shape="rect" id="Node000014" href="$classrtabmap_1_1OdometryOpen3D.html" title=" " alt="" coords="214,647,417,672"/>
+<area shape="poly" id="edge38_Node000000_Node000014" title=" " alt="" coords="91,438,106,481,129,534,162,587,182,611,206,632,228,644,225,649,202,636,179,615,158,590,124,536,101,483,86,440"/>
+<area shape="rect" id="Node000015" href="$classrtabmap_1_1OdometryOpenVINS.html" title=" " alt="" coords="208,696,423,721"/>
+<area shape="poly" id="edge39_Node000000_Node000015" title=" " alt="" coords="89,439,100,491,122,557,156,624,179,655,206,681,226,694,223,698,202,685,175,658,152,627,117,559,95,492,83,440"/>
+<area shape="rect" id="Node000016" href="$classrtabmap_1_1OdometryVINSFusion.html" title=" " alt="" coords="204,745,427,771"/>
+<area shape="poly" id="edge40_Node000000_Node000016" title=" " alt="" coords="87,439,95,499,115,578,130,620,150,661,175,698,206,731,225,743,222,748,202,735,171,702,146,663,125,622,110,580,90,500,81,439"/>
+<area shape="rect" id="Node000017" href="$classrtabmap_1_1OdometryViso2.html" title=" " alt="" coords="222,795,409,820"/>
+<area shape="poly" id="edge41_Node000000_Node000017" title=" " alt="" coords="85,439,91,508,108,600,124,649,144,697,172,742,206,780,224,792,221,797,202,784,167,745,140,700,119,651,103,602,85,509,80,439"/>
+</map>
