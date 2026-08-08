@@ -110,10 +110,13 @@ jobs:
       - name: Test
         working-directory: ${{ github.workspace }}/build
         run: |
-          # /opt/ros/jazzy/lib holds the GTSAM and libpointmatcher shared
-          # objects installed above; the ROS packages are not on the default
-          # loader path.
-          export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin:/opt/ros/jazzy/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          # The ROS packages are not on the default loader path. Both
+          # directories are needed: GTSAM and libpointmatcher land in
+          # /opt/ros/jazzy/lib, but gtsam's own libmetis-gtsam.so goes to the
+          # multiarch subdirectory, and libgtsam.so carries no RUNPATH, so the
+          # loader can only find it through LD_LIBRARY_PATH.
+          ROS_LIB=/opt/ros/jazzy/lib
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin:${ROS_LIB}:${ROS_LIB}/$(gcc -dumpmachine)${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           find ${{ github.workspace }}/build -name '*.gcda' -delete
           ctest --output-on-failure
 
