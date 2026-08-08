@@ -4669,6 +4669,14 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 
 			for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 			{
+				if(((*i)->sensorData().imageCompressed().empty() && !(*i)->sensorData().imageRaw().empty()) ||
+				   ((*i)->sensorData().depthOrRightCompressed().empty() && !(*i)->sensorData().depthOrRightRaw().empty()) ||
+				   ((*i)->sensorData().laserScanCompressed().isEmpty() && !(*i)->sensorData().laserScanRaw().isEmpty()))
+				{
+					UWARN("Node %d carries raw sensor data but no compressed data. Only compressed "
+						  "buffers are saved, so that payload will be empty in the database. Compress "
+						  "it first (see compressImage2() / compressData2()).", (*i)->id());
+				}
 				if(!(*i)->sensorData().imageCompressed().empty() ||
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
 				   !(*i)->sensorData().depthConfidenceCompressed().empty() ||

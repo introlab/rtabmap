@@ -117,7 +117,18 @@ jobs:
           ROS_LIB=/opt/ros/jazzy/lib
           export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin:${ROS_LIB}:${ROS_LIB}/$(gcc -dumpmachine)${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           find ${{ github.workspace }}/build -name '*.gcda' -delete
-          ctest -V
+          # Unit tests only ("long" is the end-to-end replay suite).
+          #
+          # Two reasons. It costs ~90 min in this instrumented -O0 build, 94% of
+          # the job's test time, for ~3 points of coverage. And running it on
+          # some events but not others makes the numbers incomparable: Codecov
+          # measures a pull request against master, so a unit-only PR report
+          # against a full master report reads as a coverage regression on every
+          # PR. Same scope everywhere keeps the comparison meaningful.
+          #
+          # The replays still run (and gate) in the cmake-linux / macos /
+          # windows jobs; they are just not measured here.
+          ctest -V -LE long
 
       - name: Generate LCOV report
         run: |

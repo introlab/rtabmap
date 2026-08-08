@@ -7,6 +7,8 @@
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/RegistrationInfo.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
@@ -4014,4 +4016,110 @@ TEST(MemoryTest, CleanupLocalGridsFiltersObstaclesAgainstMap)
 		memory.close(false);
 	}
 	UFile::erase(dbPath.c_str());
+}
+
+// ---------------------------------------------------------------------------
+// Memory::computeIcpTransformMulti(): proximity refinement between two nodes
+// using their laser scans. Until now this only ran during the end-to-end
+// replays, which need the fetched sample databases.
+//
+// A corner is used so ICP has a unique optimum (a single line or plane would
+// leave a direction unobservable, making the result depend on the guess).
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// 2D corner: floor at y=-half, wall at x=-half, in the sensor frame.
+LaserScan memoryCorner2D(float length = 4.0f, int pointsPerLine = 300, uint64_t seed = 0xBEEF)
+{
+	cv::RNG rng(seed);
+	cv::Mat data(1, 2 * pointsPerLine, CV_32FC2);
+	const float half = 0.5f * length;
+	int idx = 0;
+	for(int i = 0; i < pointsPerLine; ++i, ++idx)
+	{
+		data.at<cv::Vec2f>(0, idx) = cv::Vec2f(
+				rng.uniform(-half, half), -half + rng.uniform(-0.005f, 0.005f));
+	}
+	for(int i = 0; i < pointsPerLine; ++i, ++idx)
+	{
+		data.at<cv::Vec2f>(0, idx) = cv::Vec2f(
+				-half + rng.uniform(-0.005f, 0.005f), rng.uniform(-half, half));
+	}
+	return LaserScan(data, /*maxPoints=*/0, /*maxRange=*/0.0f, LaserScan::kXY);
+}
+
+ParametersMap icpMemoryParams()
+{
+	ParametersMap p = defaultMemoryParams();
+	p[Parameters::kRegStrategy()]           = "1";     // ICP
+	p[Parameters::kRegForce3DoF()]          = "true";
+	p[Parameters::kMemBinDataKept()]        = "true";  // keep the scans
+	p[Parameters::kIcpPointToPlane()]       = "false";
+	p[Parameters::kIcpVoxelSize()]          = "0.0";
+	p[Parameters::kIcpCorrespondenceRatio()]= "0.1";
+	p[Parameters::kMemLaserScanVoxelSize()] = "0.0";
+	return p;
+}
+
+}  // namespace
+
+TEST_F(MemoryFixture, ComputeIcpTransformMultiAlignsCornerScans)
+{
+	reinit(icpMemoryParams());
+
+	// Same corner seen from two viewpoints 12 cm / 2.9 deg apart.
+	const Transform motion(0.10f, 0.06f, 0.0f, 0.0f, 0.0f, 0.05f);
+	const LaserScan corner = memoryCorner2D();
+
+	SensorData first(image_);
+	first.setLaserScan(corner);
+	ASSERT_TRUE(memory_->update(first, Transform::getIdentity(), covariance_));
+	const int oldId = memory_->getLastSignatureId();
+
+	SensorData second(image_);
+	second.setLaserScan(util3d::transformLaserScan(corner, motion.inverse()));
+	ASSERT_TRUE(memory_->update(second, motion, covariance_));
+	const int newId = memory_->getLastSignatureId();
+	ASSERT_NE(oldId, newId);
+
+	std::map<int, Transform> poses;
+	poses.insert(std::make_pair(oldId, Transform::getIdentity()));
+	poses.insert(std::make_pair(newId, motion));
+
+	RegistrationInfo info;
+	const Transform t = memory_->computeIcpTransformMulti(newId, oldId, poses, &info);
+	ASSERT_FALSE(t.isNull()) << "ICP refinement failed: " << info.rejectedMsg;
+
+	// computeIcpTransformMulti(newId, oldId, ...) reports the transform from the
+	// new node to the old one, i.e. the inverse of the motion between them.
+	const Transform expected = motion.inverse();
+	EXPECT_LT(t.getDistance(expected), 0.002f)
+			<< "got " << t.prettyPrint() << " expected " << expected.prettyPrint();
+	const float angDeg = t.getAngle(expected) * 180.0f / static_cast<float>(CV_PI);
+	EXPECT_LT(angDeg, 0.2f) << "rotation off by " << angDeg << " deg";
+	EXPECT_GT(info.icpInliersRatio, 0.5f) << "poor overlap for two views of the same corner";
+}
+
+// Without scans there is nothing for ICP to align: the refinement must decline
+// with a reason rather than returning a bogus transform.
+TEST_F(MemoryFixture, ComputeIcpTransformMultiRejectsNodesWithoutScans)
+{
+	reinit(icpMemoryParams());
+	ASSERT_TRUE(update());
+	const int oldId = memory_->getLastSignatureId();
+	ASSERT_TRUE(update());
+	const int newId = memory_->getLastSignatureId();
+
+	std::map<int, Transform> poses;
+	poses.insert(std::make_pair(oldId, Transform::getIdentity()));
+	poses.insert(std::make_pair(newId, Transform(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)));
+
+	RegistrationInfo info;
+	const Transform t = memory_->computeIcpTransformMulti(newId, oldId, poses, &info);
+	EXPECT_TRUE(t.isNull()) << "expected refusal, got " << t.prettyPrint();
+	EXPECT_FALSE(info.rejectedMsg.empty())
+			<< "declined without a reason, so a caller cannot tell 'no scans' from "
+			   "a genuine registration failure";
+	EXPECT_LE(info.icpInliersRatio, 0.0f);
 }

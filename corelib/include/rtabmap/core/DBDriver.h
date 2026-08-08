@@ -93,7 +93,18 @@ public:
 	/** @return Target schema version for new databases (from parameters). */
 	const std::string & getTargetVersion() const {return _targetVersion;}
 
-	/** @brief Queue a signature for deferred save; ownership is transferred. */
+	/**
+	 * @brief Queue a signature for deferred save; ownership is transferred.
+	 *
+	 * @note Only the *compressed* sensor buffers are written
+	 * (SensorData::imageCompressed(), depthOrRightCompressed(),
+	 * laserScanCompressed(), ...). Raw matrices are ignored, so a signature
+	 * carrying only raw data is stored with empty payloads. Memory compresses
+	 * before saving; a caller driving the driver directly should compress first
+	 * with @ref compressImage2() / @ref compressData2(), or pass the compressed
+	 * buffers to SensorData::setRGBDImage() / setLaserScan(), which treat a
+	 * 1-row CV_8UC1 matrix as already compressed.
+	 */
 	void asyncSave(Signature * s);
 	/** @brief Queue a visual word for deferred save; ownership is transferred. */
 	void asyncSave(VisualWord * vw);

@@ -3850,7 +3850,12 @@ Transform Memory::computeIcpTransformMulti(
 			guessNorm > fromScan.rangeMax() + toScan.rangeMax())
 		{
 			// stop right known,it is impossible that scans overlay.
-			UINFO("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.rangeMax(), toScan.rangeMax());
+			const std::string rejected = uFormat("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.rangeMax(), toScan.rangeMax());
+			UINFO("%s", rejected.c_str());
+			if(info)
+			{
+				info->rejectedMsg = rejected;
+			}
 			return t;
 		}
 
@@ -3988,6 +3993,12 @@ Transform Memory::computeIcpTransformMulti(
 		{
 			t = t.inverse();
 		}
+	}
+	else if(info)
+	{
+		info->rejectedMsg = uFormat("Node %d (scan %s) or %d (scan %s) has no laser scan, cannot compute ICP transform.",
+				fromId, fromScan.isEmpty()?"empty":"ok",
+				toId, toScan.isEmpty()?"empty":"ok");
 	}
 
 	return t;

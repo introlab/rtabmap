@@ -7,9 +7,24 @@
 #include <sstream>
 #include <thread>
 
-TEST(ULoggerTest, DefaultState)
+namespace {
+
+// The tests below set the logger's type/level as part of what they verify.
+// Restore the defaults afterwards (kTypeNoLog, kInfo, ...) so a test can never
+// leave the process logging and spill output into whatever runs next.
+class ULoggerTest : public ::testing::Test
 {
-    ULogger::reset();
+protected:
+	void TearDown() override
+	{
+		ULogger::reset();
+	}
+};
+
+} // namespace
+
+TEST_F(ULoggerTest, DefaultState)
+{
     
     EXPECT_EQ(ULogger::type(), ULogger::kTypeNoLog);
     EXPECT_EQ(ULogger::level(), ULogger::kInfo);
@@ -23,7 +38,7 @@ TEST(ULoggerTest, DefaultState)
     EXPECT_FALSE(ULogger::isBuffered());
 }
 
-TEST(ULoggerTest, SetType)
+TEST_F(ULoggerTest, SetType)
 {
     ULogger::setType(ULogger::kTypeConsole);
     EXPECT_EQ(ULogger::type(), ULogger::kTypeConsole);
@@ -38,7 +53,7 @@ TEST(ULoggerTest, SetType)
     UFile::erase("test_log.txt");
 }
 
-TEST(ULoggerTest, SetLevel)
+TEST_F(ULoggerTest, SetLevel)
 {
     ULogger::setLevel(ULogger::kDebug);
     EXPECT_EQ(ULogger::level(), ULogger::kDebug);
@@ -56,9 +71,8 @@ TEST(ULoggerTest, SetLevel)
     EXPECT_EQ(ULogger::level(), ULogger::kFatal);
 }
 
-TEST(ULoggerTest, LevelFiltering)
+TEST_F(ULoggerTest, LevelFiltering)
 {
-    ULogger::reset();
     std::string testFile = "logger_level_filtering_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
 
@@ -88,9 +102,8 @@ TEST(ULoggerTest, LevelFiltering)
     EXPECT_TRUE(uStrContains(fileContent, "ERROR"));
 }
 
-TEST(ULoggerTest, SetPrintTime)
+TEST_F(ULoggerTest, SetPrintTime)
 {
-    ULogger::reset();
 
     std::string testFile = "logger_print_time_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
@@ -119,9 +132,8 @@ TEST(ULoggerTest, SetPrintTime)
     file.close(); 
 }
 
-TEST(ULoggerTest, SetPrintLevel)
+TEST_F(ULoggerTest, SetPrintLevel)
 {
-    ULogger::reset();
 
     std::string testFile = "logger_print_level_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
@@ -150,9 +162,8 @@ TEST(ULoggerTest, SetPrintLevel)
     file.close(); 
 }
 
-TEST(ULoggerTest, SetPrintEndline)
+TEST_F(ULoggerTest, SetPrintEndline)
 {
-    ULogger::reset();
     std::string testFile = "logger_print_endline_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
     
@@ -179,9 +190,8 @@ TEST(ULoggerTest, SetPrintEndline)
     file.close(); 
 }
 
-TEST(ULoggerTest, SetPrintColored)
+TEST_F(ULoggerTest, SetPrintColored)
 {
-    ULogger::reset();
     
     ULogger::setPrintColored(false);
     EXPECT_FALSE(ULogger::isPrintColored());
@@ -190,9 +200,8 @@ TEST(ULoggerTest, SetPrintColored)
     EXPECT_TRUE(ULogger::isPrintColored());
 }
 
-TEST(ULoggerTest, SetPrintWhere)
+TEST_F(ULoggerTest, SetPrintWhere)
 {
-    ULogger::reset();
     std::string testFile = "logger_print_where_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
     
@@ -219,9 +228,8 @@ TEST(ULoggerTest, SetPrintWhere)
     file.close(); 
 }
 
-TEST(ULoggerTest, SetPrintWhereFullPath)
+TEST_F(ULoggerTest, SetPrintWhereFullPath)
 {
-    ULogger::reset();
     std::string testFile = "logger_print_where_full_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
     
@@ -248,9 +256,8 @@ TEST(ULoggerTest, SetPrintWhereFullPath)
     file.close(); 
 }
 
-TEST(ULoggerTest, SetPrintThreadId)
+TEST_F(ULoggerTest, SetPrintThreadId)
 {
-    ULogger::reset();
     std::string testFile = "logger_print_thread_id_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
     
@@ -277,9 +284,8 @@ TEST(ULoggerTest, SetPrintThreadId)
     file.close(); 
 }
 
-TEST(ULoggerTest, SetBuffered)
+TEST_F(ULoggerTest, SetBuffered)
 {
-    ULogger::reset();
     ULogger::setBuffered(true);
     EXPECT_TRUE(ULogger::isBuffered());
     
@@ -287,9 +293,8 @@ TEST(ULoggerTest, SetBuffered)
     EXPECT_FALSE(ULogger::isBuffered());
 }
 
-TEST(ULoggerTest, FileLogging)
+TEST_F(ULoggerTest, FileLogging)
 {
-    ULogger::reset();
     std::string testFile = "test_ulogger_file.txt";
     
     // Remove file if exists
@@ -313,9 +318,8 @@ TEST(ULoggerTest, FileLogging)
     EXPECT_GT(UFile::length(testFile), 0);
 }
 
-TEST(ULoggerTest, FileLoggingAppend)
+TEST_F(ULoggerTest, FileLoggingAppend)
 {
-    ULogger::reset();
     std::string testFile = "test_ulogger_append.txt";
     
     // Remove file if exists
@@ -343,9 +347,8 @@ TEST(ULoggerTest, FileLoggingAppend)
     EXPECT_GT(length2, length1);
 }
 
-TEST(ULoggerTest, BufferedLogging)
+TEST_F(ULoggerTest, BufferedLogging)
 {
-    ULogger::reset();
     std::string testFile = "test_ulogger_buffered.txt";
     
     // Remove file if exists
@@ -371,7 +374,7 @@ TEST(ULoggerTest, BufferedLogging)
     EXPECT_GT(UFile::length(testFile), 0);
 }
 
-TEST(ULoggerTest, GetTime)
+TEST_F(ULoggerTest, GetTime)
 {
     std::string timeStr;
     int result = ULogger::getTime(timeStr);
@@ -384,9 +387,8 @@ TEST(ULoggerTest, GetTime)
     EXPECT_NE(timeStr.find("-"), std::string::npos);
 }
 
-TEST(ULoggerTest, SetEventLevel)
+TEST_F(ULoggerTest, SetEventLevel)
 {
-    ULogger::reset();
 
     ULogger::setEventLevel(ULogger::kDebug);
     EXPECT_EQ(ULogger::eventLevel(), ULogger::kDebug);
@@ -401,9 +403,8 @@ TEST(ULoggerTest, SetEventLevel)
     EXPECT_EQ(ULogger::eventLevel(), ULogger::kError);
 }
 
-TEST(ULoggerTest, RegisterCurrentThread)
+TEST_F(ULoggerTest, RegisterCurrentThread)
 {
-    ULogger::reset();
     ULogger::registerCurrentThread("TestThread");
     
     std::map<std::string, unsigned long> threads = ULogger::getRegisteredThreads();
@@ -416,9 +417,8 @@ TEST(ULoggerTest, RegisterCurrentThread)
     EXPECT_EQ(threads.find("TestThread"), threads.end());
 }
 
-TEST(ULoggerTest, ThreadIdFilter)
+TEST_F(ULoggerTest, ThreadIdFilter)
 {
-    ULogger::reset();
 
     unsigned long currentId = UThread::currentThreadId();
     std::set<unsigned long> filter;
@@ -452,9 +452,8 @@ private:
     bool logOnce_;
 };
 
-TEST(ULoggerTest, ThreadIdFilterVector)
+TEST_F(ULoggerTest, ThreadIdFilterVector)
 {
-    ULogger::reset();
 
     // Both threads are registering to logger
     ULogger::registerCurrentThread("FilterThread");
@@ -513,9 +512,8 @@ TEST(ULoggerTest, ThreadIdFilterVector)
     ULogger::unregisterCurrentThread();
 }
 
-TEST(ULoggerTest, WriteWithLevel)
+TEST_F(ULoggerTest, WriteWithLevel)
 {
-    ULogger::reset();
 
     std::string testFile = "logger_write_level_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
@@ -550,9 +548,8 @@ TEST(ULoggerTest, WriteWithLevel)
     file.close(); 
 }
 
-TEST(ULoggerTest, Macros)
+TEST_F(ULoggerTest, Macros)
 {
-    ULogger::reset();
     std::string testFile = "logger_macros_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
 
@@ -585,9 +582,8 @@ TEST(ULoggerTest, Macros)
     file.close(); 
 }
 
-TEST(ULoggerTest, Reset)
+TEST_F(ULoggerTest, Reset)
 {
-    ULogger::reset();
     // Change some settings
     ULogger::setType(ULogger::kTypeConsole);
     ULogger::setLevel(ULogger::kDebug);
@@ -606,9 +602,8 @@ TEST(ULoggerTest, Reset)
     EXPECT_FALSE(ULogger::isBuffered());
 }
 
-TEST(ULoggerTest, MultipleLogLevels)
+TEST_F(ULoggerTest, MultipleLogLevels)
 {
-    ULogger::reset();
     std::string testFile = "logger_multiple_levels_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
     
@@ -656,9 +651,8 @@ TEST(ULoggerTest, MultipleLogLevels)
     file.close(); 
 }
 
-TEST(ULoggerTest, FileContent)
+TEST_F(ULoggerTest, FileContent)
 {
-    ULogger::reset();
     std::string testFile = "test_ulogger_content.txt";
     
     ULogger::setType(ULogger::kTypeFile, testFile, false);
@@ -679,9 +673,8 @@ TEST(ULoggerTest, FileContent)
     EXPECT_NE(content.find("Test content message"), std::string::npos);
 }
 
-TEST(ULoggerTest, ThreadSafety)
+TEST_F(ULoggerTest, ThreadSafety)
 {
-    ULogger::reset();
     std::string testFile = "logger_thread_safety_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
 
@@ -739,14 +732,13 @@ TEST(ULoggerTest, ThreadSafety)
     file.close(); 
 }
 
-TEST(ULoggerTest, DefaultLogFileName)
+TEST_F(ULoggerTest, DefaultLogFileName)
 {
     EXPECT_EQ(ULogger::kDefaultLogFileName, "./ULog.txt");
 }
 
-TEST(ULoggerTest, AllPrintOptions)
+TEST_F(ULoggerTest, AllPrintOptions)
 {
-    ULogger::reset();
     std::string testFile = "logger_all_print_options_test.txt";
     ULogger::setType(ULogger::kTypeFile, testFile, false);
     
