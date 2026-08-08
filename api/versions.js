@@ -13,5 +13,4 @@
  */
 window.RTABMAP_DOC_VERSIONS = [
     ['latest', 'latest'],
-    ['0.23.10', '0.23.10'],
 ];

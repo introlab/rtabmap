@@ -194,7 +194,7 @@ var searchData=
   ['globalmap_191',['GlobalMap',['../classrtabmap_1_1GlobalMap.html#a03581caaa2a313b131726af4e4a6b714',1,'rtabmap::GlobalMap']]],
   ['globalpose_192',['globalPose',['../classrtabmap_1_1SensorData.html#a55e6ca21bfd11b7afb375451a2a77b87',1,'rtabmap::SensorData']]],
   ['globalposecovariance_193',['globalPoseCovariance',['../classrtabmap_1_1SensorData.html#a569af71e8757105dc040251a3805fe97',1,'rtabmap::SensorData']]],
-  ['gps_194',['gps',['../classrtabmap_1_1GPS.html#a4ea914df744ae5a9ff60eff6bb2c734d',1,'rtabmap::GPS::GPS()'],['../classrtabmap_1_1SensorData.html#a176b8160afc549fc6eaa2d0567c12957',1,'rtabmap::SensorData::gps()'],['../classrtabmap_1_1GPS.html#a488bb172e3b8836387e0994a31e709ef',1,'rtabmap::GPS::GPS()']]],
+  ['gps_194',['gps',['../classrtabmap_1_1SensorData.html#a176b8160afc549fc6eaa2d0567c12957',1,'rtabmap::SensorData::gps()'],['../classrtabmap_1_1GPS.html#a488bb172e3b8836387e0994a31e709ef',1,'rtabmap::GPS::GPS(const double &amp;stamp, const double &amp;longitude, const double &amp;latitude, const double &amp;altitude, const double &amp;error, const double &amp;bearing)'],['../classrtabmap_1_1GPS.html#a4ea914df744ae5a9ff60eff6bb2c734d',1,'rtabmap::GPS::GPS()']]],
   ['gravitysigma_195',['gravitySigma',['../classrtabmap_1_1Optimizer.html#aceb68e0f692b81c4a978e46f804515d7',1,'rtabmap::Optimizer']]],
   ['gridcellsize_196',['gridCellSize',['../classrtabmap_1_1SensorData.html#a984ce55b6b75152a63441bd07288dc6c',1,'rtabmap::SensorData']]],
   ['gridemptycellscompressed_197',['gridEmptyCellsCompressed',['../classrtabmap_1_1SensorData.html#ac2bae4f0747795f778275102b4ebf1b3',1,'rtabmap::SensorData']]],
