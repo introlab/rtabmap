@@ -1097,7 +1097,8 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 				/*align2D=*/false);
 		std::cerr << "[" << v.label << "] trans rmse=" << tRmse << "m max="
 				  << tMax << "m, rot rmse=" << rRmse << "deg max="
-				  << rMax << "deg\n";
+				  << rMax << "deg, replay=" << result.replayWallSeconds
+				  << "s odom=" << result.odomTotalSeconds << "s\n";
 
 		// Golden is BA-optimized; the test runs only the real-time SLAM
 		// pipeline with the matching BA backend, so the natural gap to

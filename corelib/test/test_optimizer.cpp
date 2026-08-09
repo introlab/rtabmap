@@ -2970,6 +2970,12 @@ std::set<int> outliersFor(const BAOutliers & outliers, int wordId)
 	return iter != outliers.end() ? iter->second : std::set<int>();
 }
 
+float pointDistance(const cv::Point3f & a, const cv::Point3f & b)
+{
+	const cv::Point3f d = a - b;
+	return std::sqrt(d.x*d.x + d.y*d.y + d.z*d.z);
+}
+
 // The observations of `wordId` that were *not* reported as outliers.
 std::set<int> keptFor(const BAOutliers & all, const BAOutliers & rejected, int wordId)
 {
@@ -3180,9 +3186,22 @@ TEST_P(BAOutlierRejectionTest, RejectsBadObservationsAndReportsThem)
 	EXPECT_TRUE(keptFor(allObservations_, outliers, rejectedWordId_).empty()) << dump;
 
 	// Word 7: both observations are outliers, so nothing constrains the point once
-	// they go and whatever the solver left is meaningless. Writing it back would
-	// corrupt the caller's map.
-	expectPointNear(rejectedWordId_, rejectedInitial_, 0.0001f);
+	// they go and whatever the solver left is meaningless. The write-back is
+	// skipped outright, so it must come back bit-identical, not merely close.
+	const cv::Point3f rejectedOut = points3DMap_.at(rejectedWordId_);
+	EXPECT_EQ(rejectedOut.x, rejectedInitial_.x) << optimizerTypeName(GetParam());
+	EXPECT_EQ(rejectedOut.y, rejectedInitial_.y) << optimizerTypeName(GetParam());
+	EXPECT_EQ(rejectedOut.z, rejectedInitial_.z) << optimizerTypeName(GetParam());
+
+	// The contrast that makes the clause above meaningful: word -42 still has
+	// eight good views, so it must NOT be restored. A backend that falls back on
+	// any rejection rather than only on total rejection leaves both landmarks at
+	// their input estimates, and only this check separates the two behaviours.
+	EXPECT_GT(pointDistance(points3DMap_.at(partialWordId_), partialInitial_), 0.05f)
+			<< optimizerTypeName(GetParam()) << " left the partially rejected landmark"
+			   " at its input estimate instead of optimizing it";
+	EXPECT_LT(pointDistance(points3DMap_.at(rejectedWordId_), rejectedInitial_), 1e-6f)
+			<< optimizerTypeName(GetParam()) << " moved the fully rejected landmark";
 }
 
 TEST_P(BAOutlierRejectionTest, RejectsOnDocumentedChi2Threshold)

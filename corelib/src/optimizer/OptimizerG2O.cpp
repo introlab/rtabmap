@@ -2075,6 +2075,12 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				pointsToRestore.insert(iter->first);
 			}
 		}
+		// Landmarks keeping at least one active projection are re-optimized; only
+		// the fully rejected ones fall back to the caller's estimate.
+		UDEBUG("words=%d, with rejected observations=%d (partially=%d, fully=%d)",
+				(int)edgesPerWord.size(), (int)outlierEdgesPerWord.size(),
+				(int)(outlierEdgesPerWord.size() - pointsToRestore.size()),
+				(int)pointsToRestore.size());
 		UDEBUG("g2o optimizing end (%d iterations done, error=%f, outliers=%d/%d (delta=%f) time = %f s)", it, optimizer.activeRobustChi2(), outliersCount, (int)edges.size(), robustKernelDelta_, timer.ticks());
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)

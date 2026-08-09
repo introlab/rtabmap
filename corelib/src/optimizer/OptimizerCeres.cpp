@@ -938,17 +938,21 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			ceres::Solve(options, &problem, &reSummary);
 			if(!reSummary.IsSolutionUsable())
 			{
-				UWARN("ceres: re-solve without the %d rejected observation(s) is unusable, "
-					  "keeping the first-pass solution.", rejectedCount);
+				// The first-pass solution still carries the outliers' pull, so it
+				// is not worth handing back. Empty on failure, per the
+				// Optimizer::optimizeBA() contract.
+				UWARN("ceres: re-solve without the %d rejected observation(s) is "
+					  "unusable, aborting optimization!", rejectedCount);
+				return std::map<int, Transform>();
 			}
 		}
 		else
 		{
-			// No residuals to threshold: finish the truncated first pass anyway.
-			UWARN("ceres: could not evaluate reprojection residuals, skipping outlier rejection.");
-			options.max_num_iterations = iterations();
-			ceres::Solver::Summary reSummary;
-			ceres::Solve(options, &problem, &reSummary);
+			// Without residuals there is no way to reject anything, and the first
+			// pass was deliberately truncated, so all we could hand back is an
+			// under-converged solution that still has its outliers in it.
+			UWARN("ceres: could not evaluate reprojection residuals, aborting optimization!");
+			return std::map<int, Transform>();
 		}
 	}
 

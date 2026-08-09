@@ -1534,6 +1534,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	const bool rejectOutliers = robustKernelDelta_ > 0.0;
 	if(!solveGraph(rejectOutliers ? std::min(5, iterations()) : iterations()))
 	{
+		UWARN("GTSAM BA: solve failed, aborting optimization!");
 		return optimizedPoses;
 	}
 
@@ -1577,16 +1578,11 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		if(!solveGraph(iterations()))
 		{
 			// Rejection left something unsolvable (a landmark down to one ray).
-			// Rebuild pass 1 so readback matches `result`, and keep it.
+			// The first-pass solution still carries the outliers' pull, so it is
+			// not worth handing back -- fail like the other solver paths do.
 			UWARN("GTSAM BA: re-solve without the %d rejected observation(s) failed, "
-				  "keeping the first-pass solution.", rejectedCount);
-			graph = poseGraph;
-			initialEstimate = poseValues;
-			addLandmarks(BAOutliers());
-			if(!solveGraph(iterations()))
-			{
-				return optimizedPoses;
-			}
+				  "aborting optimization!", rejectedCount);
+			return optimizedPoses;
 		}
 	}
 	if(outliers)
