@@ -150,9 +150,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a79365611bce06aeda0d078641be89cab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a456bc49e8e60e0c754078a4b09e3f1a1" id="r_a456bc49e8e60e0c754078a4b09e3f1a1"><td class="memItemLeft" align="right" valign="top">const std::string &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a456bc49e8e60e0c754078a4b09e3f1a1">getTargetVersion</a> () const</td></tr>
 <tr class="separator:a456bc49e8e60e0c754078a4b09e3f1a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad1510e157f3ab8df3284528369a6d88f" id="r_ad1510e157f3ab8df3284528369a6d88f"><td class="memItemLeft" align="right" valign="top"><a id="ad1510e157f3ab8df3284528369a6d88f" name="ad1510e157f3ab8df3284528369a6d88f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>asyncSave</b> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> *s)</td></tr>
-<tr class="memdesc:ad1510e157f3ab8df3284528369a6d88f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Queue a signature for deferred save; ownership is transferred. <br /></td></tr>
+<tr class="memitem:ad1510e157f3ab8df3284528369a6d88f" id="r_ad1510e157f3ab8df3284528369a6d88f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#ad1510e157f3ab8df3284528369a6d88f">asyncSave</a> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> *s)</td></tr>
+<tr class="memdesc:ad1510e157f3ab8df3284528369a6d88f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Queue a signature for deferred save; ownership is transferred.  <br /></td></tr>
 <tr class="separator:ad1510e157f3ab8df3284528369a6d88f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a88eee22aa9707a6993f734fe29f6af5d" id="r_a88eee22aa9707a6993f734fe29f6af5d"><td class="memItemLeft" align="right" valign="top"><a id="a88eee22aa9707a6993f734fe29f6af5d" name="a88eee22aa9707a6993f734fe29f6af5d"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>asyncSave</b> (<a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> *vw)</td></tr>
@@ -863,6 +862,27 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
+<a id="ad1510e157f3ab8df3284528369a6d88f" name="ad1510e157f3ab8df3284528369a6d88f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad1510e157f3ab8df3284528369a6d88f">&#9670;&#160;</a></span>asyncSave()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::DBDriver::asyncSave </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1Signature.html">Signature</a> *&#160;</td>
+          <td class="paramname"><em>s</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Queue a signature for deferred save; ownership is transferred. </p>
+<dl class="section note"><dt>Note</dt><dd>Only the <em>compressed</em> sensor buffers are written (<a class="el" href="classrtabmap_1_1SensorData.html#aafcc6b483798b7a99fafa8f929db1029" title="Returns the compressed RGB/grayscale image.">SensorData::imageCompressed()</a>, depthOrRightCompressed(), laserScanCompressed(), ...). Raw matrices are ignored, so a signature carrying only raw data is stored with empty payloads. <a class="el" href="classrtabmap_1_1Memory.html" title="Three-tiered memory management (STM, WM, LTM) for RTAB-Map.">Memory</a> compresses before saving; a caller driving the driver directly should compress first with <a class="el" href="namespacertabmap.html#abd9d5523210562abd9b5dc8fa9dbeb99">compressImage2()</a> / <a class="el" href="namespacertabmap.html#aca82ee9efc46461c648c7ab8999e1d5b">compressData2()</a>, or pass the compressed buffers to <a class="el" href="classrtabmap_1_1SensorData.html#a203770ef217dfdc67b98ca593b2cab24">SensorData::setRGBDImage()</a> / setLaserScan(), which treat a 1-row CV_8UC1 matrix as already compressed. </dd></dl>
+
+</div>
+</div>
 <a id="ab4a0036162994c2ef76d4236e2a7ea0a" name="ab4a0036162994c2ef76d4236e2a7ea0a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab4a0036162994c2ef76d4236e2a7ea0a">&#9670;&#160;</a></span>emptyTrashes()</h2>
 
@@ -912,7 +932,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="DBDriver_8h_source.html#l00105">105</a> of file <a class="el" href="DBDriver_8h_source.html">DBDriver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="DBDriver_8h_source.html#l00116">116</a> of file <a class="el" href="DBDriver_8h_source.html">DBDriver.h</a>.</p>
 
 </div>
 </div>
@@ -940,7 +960,7 @@ Additional Inherited Members</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="DBDriver_8h_source.html#l00106">106</a> of file <a class="el" href="DBDriver_8h_source.html">DBDriver.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="DBDriver_8h_source.html#l00117">117</a> of file <a class="el" href="DBDriver_8h_source.html">DBDriver.h</a>.</p>
 
 </div>
 </div>
