@@ -19,8 +19,10 @@ namespace ceres {
 // parameterized using 6 parameters: 3 for rotation, 3 for translation. The principal point is not modeled
 // (i.e. it is assumed be located at the image center).
 struct SnavelyReprojectionError {
-  SnavelyReprojectionError(double observed_x, double observed_y, double fx, double fy)
-      : observed_x(observed_x), observed_y(observed_y), fx(fx), fy(fy) {}
+  SnavelyReprojectionError(double observed_x, double observed_y, double fx, double fy,
+                           double inv_sigma_uv)
+      : observed_x(observed_x), observed_y(observed_y), fx(fx), fy(fy),
+        inv_sigma_uv(inv_sigma_uv) {}
 
   template <typename T>
   bool operator()(const T* const camera,
@@ -43,9 +45,10 @@ struct SnavelyReprojectionError {
     T predicted_x = fx * xp;
     T predicted_y = fy * yp;
 
-    // The error is the difference between the predicted and observed position.
-    residuals[0] = predicted_x - observed_x;
-    residuals[1] = predicted_y - observed_y;
+    // Whitened by 1/sigma so Optimizer/PixelVariance means the same here as in
+    // the stereo functor and the g2o / GTSAM backends.
+    residuals[0] = inv_sigma_uv * (predicted_x - observed_x);
+    residuals[1] = inv_sigma_uv * (predicted_y - observed_y);
 
     return true;
   }
@@ -54,14 +57,16 @@ struct SnavelyReprojectionError {
   static ceres::CostFunction* Create(const double observed_x,
                                      const double observed_y,
 									 const double fx,
-									 const double fy) {
+									 const double fy,
+									 const double inv_sigma_uv) {
     return (new ceres::AutoDiffCostFunction<SnavelyReprojectionError, 2, 6, 3>(
-                new SnavelyReprojectionError(observed_x, observed_y, fx, fy)));
+                new SnavelyReprojectionError(observed_x, observed_y, fx, fy, inv_sigma_uv)));
   }
   double observed_x;
   double observed_y;
   double fx;
   double fy;
+  double inv_sigma_uv;
 };
 
 }

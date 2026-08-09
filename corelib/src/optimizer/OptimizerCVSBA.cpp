@@ -60,8 +60,12 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
+	if(outliers)
+	{
+		outliers->clear();
+	}
 #ifdef RTABMAP_CVSBA
 	// run sba optimization
 	cvsba::Sba sba;

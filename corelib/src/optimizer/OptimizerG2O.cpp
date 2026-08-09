@@ -25,6 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <algorithm>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
@@ -1438,9 +1439,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
+	if(outliers)
+	{
+		outliers->clear();
+	}
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
 	UDEBUG("Optimizing graph...");
 
@@ -1544,6 +1549,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 
 		UDEBUG("fill %ld poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", poses.size(), rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
+		int freeCamVertices = 0;
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first > 0)
@@ -1650,8 +1656,24 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							iterModel->second[i].Tx(),
 							iterModel->second[i].Tx()<0.0?-iterModel->second[i].Tx()/iterModel->second[i].fx():baseline_,
 							camPose.prettyPrint().c_str());*/
+
+					if(!vCam->fixed())
+					{
+						++freeCamVertices;
+					}
 				}
 			}
+		}
+
+		// Every camera fixed leaves BlockSolver_6_3's pose block empty and g2o
+		// dereferences it unconditionally (fillCSparse -> SIGSEGV). Reachable via
+		// a negative rootId whose -rootId isn't in poses, so refuse instead.
+		if(freeCamVertices == 0)
+		{
+			UERROR("BA has no free camera vertex (rootId=%d, poses=%d): every pose "
+				   "is fixed, there is nothing for g2o to solve. Not optimizing.",
+					rootId, (int)poses.size());
+			return optimizedPoses;
 		}
 
 		UDEBUG("fill edges to g2o...");
@@ -1809,7 +1831,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			negVertexOffset += wordReferences.rbegin()->first;
 		}
 		UDEBUG("stepVertexId=%d, negVertexOffset=%d", stepVertexId, negVertexOffset);
-		std::list<g2o::OptimizableGraph::Edge*> edges;
+		struct EdgeReference
+		{
+			g2o::OptimizableGraph::Edge* edge;
+			int wordId;
+			int poseId;
+		};
+		std::list<EdgeReference> edges;
 		for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
 			int id = iter->first;
@@ -1932,12 +1960,24 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						if(robustKernelDelta_ > 0.0)
 						{
 							g2o::RobustKernelHuber* kernel = new g2o::RobustKernelHuber;
+							// Huber reads delta in |r| units but
+							// Optimizer/RobustKernelDelta is a chi^2 threshold, so the
+							// knee deliberately sits above the rejection threshold:
+							// pass 1 then only caps gross outliers, which keeps its
+							// estimate a good basis for deciding what to reject.
+							// Matching them throttles legitimate noise and costs
+							// accuracy on weakly constrained far points.
 							kernel->setDelta(robustKernelDelta_);
 							e->setRobustKernel(kernel);
 						}
 
-						optimizer.addEdge(e);
-						edges.push_back(e);
+						if(!optimizer.addEdge(e))
+						{
+							delete e;
+							UERROR("Failed adding BA observation for word %d in pose %d.", id, poseId);
+							return optimizedPoses;
+						}
+						edges.push_back(EdgeReference{e, id, poseId});
 					}
 				}
 			}
@@ -1957,7 +1997,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		for(int i=0; i<(robustKernelDelta_>0.0?2:1); ++i)
 		{
-			it += optimizer.optimize(i==0&&robustKernelDelta_>0.0?5:iterations());
+			// Pass 1 only needs to expose the bad residuals; pass 2 gets the full
+			// budget. std::min so a caller asking for fewer than 5 gets that.
+			it += optimizer.optimize(i==0&&robustKernelDelta_>0.0?std::min(5, iterations()):iterations());
 
 			// early stop condition
 			optimizer.computeActiveErrors();
@@ -1980,45 +2022,24 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(robustKernelDelta_>0.0)
 			{
-				for(std::list<g2o::OptimizableGraph::Edge*>::iterator iter=edges.begin(); iter!=edges.end();++iter)
+				for(std::list<EdgeReference>::iterator iter=edges.begin(); iter!=edges.end();++iter)
 				{
-					if((*iter)->level() == 0 && (*iter)->chi2() > (*iter)->robustKernel()->delta())
+					if(iter->edge->level() == 0 && iter->edge->chi2() > iter->edge->robustKernel()->delta())
 					{
-						(*iter)->setLevel(1);
+						iter->edge->setLevel(1);
 						++outliersCount;
 						double d = 0.0;
-#ifdef RTABMAP_ORB_SLAM
-						if(dynamic_cast<g2o::EdgeStereoSE3ProjectXYZ*>(*iter) != 0)
+	#ifdef RTABMAP_ORB_SLAM
+						if(dynamic_cast<g2o::EdgeStereoSE3ProjectXYZ*>(iter->edge) != 0)
 						{
-							d = ((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[2];
+							d = ((g2o::EdgeStereoSE3ProjectXYZ*)iter->edge)->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)iter->edge)->measurement()[2];
 						}
-						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
-#else
-						if(dynamic_cast<g2o::EdgeProjectP2SC*>(*iter) != 0)
+	#else
+						if(dynamic_cast<g2o::EdgeProjectP2SC*>(iter->edge) != 0)
 						{
-							d = ((g2o::EdgeProjectP2SC*)(*iter))->measurement()[0]-((g2o::EdgeProjectP2SC*)(*iter))->measurement()[2];
+							d = ((g2o::EdgeProjectP2SC*)iter->edge)->measurement()[0]-((g2o::EdgeProjectP2SC*)iter->edge)->measurement()[2];
 						}
-						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
-#endif
-
-						int id=-1;
-						if((*iter)->vertex(0)->id() > negVertexOffset)
-						{
-							id = negVertexOffset - (*iter)->vertex(0)->id();
-						}
-						else
-						{
-							id = (*iter)->vertex(0)->id() - stepVertexId;
-						}
-						UASSERT_MSG(points3DMap.find(id) != points3DMap.end(), uFormat("word id=%d points3DMap=%ld vertex id=%d (negVertexOffset=%d stepVertexId=%d)",
-							id, points3DMap.size(), (*iter)->vertex(0)->id(), negVertexOffset, stepVertexId).c_str());
-						cv::Point3f pt3d = points3DMap.at(id);
-						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
-
-						if(outliers)
-						{
-							outliers->insert((*iter)->vertex(0)->id()-stepVertexId);
-						}
+	#endif
 						if(d < 5.0)
 						{
 							outliersCountFar++;
@@ -2029,6 +2050,29 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				if(i==0)
 					optimizer.initializeOptimization(0);
 				UDEBUG("outliers=%d outliersCountFar=%d", outliersCount, outliersCountFar);
+			}
+		}
+
+		std::map<int, int> edgesPerWord;
+		std::map<int, int> outlierEdgesPerWord;
+		for(std::list<EdgeReference>::const_iterator iter=edges.begin(); iter!=edges.end(); ++iter)
+		{
+			++edgesPerWord[iter->wordId];
+			if(iter->edge->level() != 0)
+			{
+				++outlierEdgesPerWord[iter->wordId];
+				if(outliers)
+				{
+					(*outliers)[iter->wordId].insert(iter->poseId);
+				}
+			}
+		}
+		std::set<int> pointsToRestore;
+		for(std::map<int, int>::const_iterator iter=outlierEdgesPerWord.begin(); iter!=outlierEdgesPerWord.end(); ++iter)
+		{
+			if(iter->second == edgesPerWord.at(iter->first))
+			{
+				pointsToRestore.insert(iter->first);
 			}
 		}
 		UDEBUG("g2o optimizing end (%d iterations done, error=%f, outliers=%d/%d (delta=%f) time = %f s)", it, optimizer.activeRobustChi2(), outliersCount, (int)edges.size(), robustKernelDelta_, timer.ticks());
@@ -2120,9 +2164,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(v)
 			{
-				cv::Point3f p(v->estimate()[0], v->estimate()[1], v->estimate()[2]);
-				//UDEBUG("%d from=%f,%f,%f to=%f,%f,%f", iter->first, iter->second.x, iter->second.y, iter->second.z, p.x, p.y, p.z);
-				iter->second = p;
+				// Keep an optimized landmark when at least one projection remains active.
+				// Otherwise, leave its input estimate untouched.
+				if(pointsToRestore.find(id) == pointsToRestore.end())
+				{
+					cv::Point3f p(v->estimate()[0], v->estimate()[1], v->estimate()[2]);
+					iter->second = p;
+				}
 			}
 			else
 			{

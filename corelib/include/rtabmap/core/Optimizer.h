@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <map>
 #include <list>
+#include <set>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
@@ -63,6 +64,8 @@ public:
 	cv::Mat descriptor;   ///< Optional descriptor for the keypoint (used when re-matching is enabled).
 	int cameraIndex;      ///< Index into the frame's camera model list for multi-camera rigs.
 };
+
+typedef std::map<int, std::set<int> > BAOutliers; // <word ID, rejected pose IDs>, matching wordReferences
 
 /**
  * @class Optimizer
@@ -257,7 +260,7 @@ public:
 			const std::map<int, std::vector<CameraModel> > & models,
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-			std::set<int> * outliers = 0);
+			BAOutliers * outliers = 0);
 
 	/**
 	 * @brief BA wrapper that derives camera models and correspondences from signatures.
@@ -303,7 +306,7 @@ public:
 			const CameraModel & model,
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-			std::set<int> * outliers = 0);
+			BAOutliers * outliers = 0);
 
 	/**
 	 * @brief Build BA correspondences (3D points + per-frame observations) from signatures.

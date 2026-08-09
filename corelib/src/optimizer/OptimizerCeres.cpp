@@ -24,6 +24,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <algorithm>
 #include "rtabmap/core/Graph.h"
 
 #if CV_MAJOR_VERSION < 5
@@ -135,7 +136,10 @@ std::map<int, Transform> OptimizerCeres::optimize(
 	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
 		//Build problem
-		ceres::Problem problem;
+		// enable_fast_removal: the outlier pass below removes blocks by id.
+	ceres::Problem::Options problemOptions;
+	problemOptions.enable_fast_removal = true;
+	ceres::Problem problem(problemOptions);
 		std::map<int, ceres::examples::Pose2d> poses2d;
 		ceres::examples::MapOfPoses poses3d;
 
@@ -411,8 +415,12 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
+	if(outliers)
+	{
+		outliers->clear();
+	}
 #ifdef RTABMAP_CERES
 	// run sba optimization
 
@@ -509,6 +517,8 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// branch picks the mono cost function in that case.
 	std::vector<double> observed_disparity(baProblem.num_observations_, 0.0);
 	std::vector<double> baseline_fx(baProblem.num_observations_, 0.0);
+	// <word, pose> per observation: names the rejections, counts views left.
+	std::vector<std::pair<int,int> > obsWordPose(baProblem.num_observations_);
 
 	oi = 0;
 	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
@@ -533,6 +543,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 			baProblem.camera_index_[oi] = camIt->second;
 			baProblem.point_index_[oi] = pointIdToIndex.at(iter->first);
+			obsWordPose[oi] = std::make_pair(iter->first, poseId);
 			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - m.cx();
 			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - m.cy();
 			baProblem.observations_[4*oi+2] = m.fx();
@@ -574,6 +585,10 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	const double inv_sigma_d  = 1.0 / std::sqrt(disparityVariance_);
 	int monoObsCount   = 0;
 	int stereoObsCount = 0;
+	// Per observation: its residual block, and 2 (mono) or 3 (stereo) residuals,
+	// to slice Problem::Evaluate's flat vector into per-observation chi2.
+	std::vector<ceres::ResidualBlockId> obsBlockIds(baProblem.num_observations(), nullptr);
+	std::vector<int> obsResidualCount(baProblem.num_observations(), 2);
 	for (int i = 0; i < baProblem.num_observations(); ++i) {
 		const double u  = observations[4 * i];
 		const double v  = observations[4 * i + 1];
@@ -590,19 +605,26 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 					u, v, observed_disparity[i], fx, fy, baseline_fx[i],
 					inv_sigma_uv, inv_sigma_d);
 			++stereoObsCount;
+			obsResidualCount[i] = 3;
 		}
 		else
 		{
 			// Mono (2 residuals: u, v).
-			cost_function = ceres::SnavelyReprojectionError::Create(u, v, fx, fy);
+			cost_function = ceres::SnavelyReprojectionError::Create(u, v, fx, fy, inv_sigma_uv);
 			++monoObsCount;
+			obsResidualCount[i] = 2;
 		}
 		// Pass nullptr when robustKernelDelta_ <= 0 -- Ceres treats that as
 		// identity (no kernel). A new loss instance per block is required:
 		// Ceres takes ownership and deletes each.
+		// Huber reads delta in |r| units but Optimizer/RobustKernelDelta is a chi^2
+		// threshold, so the knee deliberately sits above the rejection threshold: pass 1
+		// then only caps gross outliers, which keeps its estimate a good basis for
+		// deciding what to reject. Matching them throttles legitimate noise and costs
+		// accuracy on weakly constrained far points.
 		ceres::LossFunction* loss_function =
 				robustKernelDelta_ > 0.0 ? new ceres::HuberLoss(robustKernelDelta_) : nullptr;
-		problem.AddResidualBlock(cost_function,
+		obsBlockIds[i] = problem.AddResidualBlock(cost_function,
 								 loss_function,
 								 baProblem.mutable_camera_for_observation(i),
 								 baProblem.mutable_point_for_observation(i));
@@ -733,11 +755,45 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		UDEBUG("Ceres BA: %d multi-cam rigid edges", rigEdgeCount);
 	}
 
-	// 2D / planar BA mode: lock each non-root pose's primary (cam 0)
+	// Fixed cameras: rootId >= 0 fixes that pose, rootId < 0 fixes all but -rootId
+	// (the optimizeBA() contract). Without it the gauge is free, so poses the
+	// caller pinned drift away and take the landmarks with them.
+	int fixedCamCount = 0;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		const bool fixNode = (rootId >= 0 && iter->first == rootId) ||
+		                     (rootId <  0 && iter->first != -rootId);
+		if(!fixNode)
+		{
+			continue;
+		}
+		// All cameras of the rig, like g2o: the rig edges are stiff but not
+		// rigid, so pinning cam 0 alone leaves the others slightly free.
+		std::map<int, std::vector<CameraModel> >::const_iterator iterModel = models.find(iter->first);
+		const size_t rigSize = iterModel != models.end() ? iterModel->second.size() : 0;
+		for(size_t c = 0; c < rigSize; ++c)
+		{
+			std::map<std::pair<int,int>, int>::const_iterator camIt =
+					camIdxByKey.find(std::make_pair(iter->first, (int)c));
+			if(camIt == camIdxByKey.end())
+			{
+				continue;
+			}
+			double * cam_block = baProblem.cameras_ + camIt->second * 6;
+			// A pose with no observations and no links never entered the problem.
+			if(problem.HasParameterBlock(cam_block))
+			{
+				problem.SetParameterBlockConstant(cam_block);
+				++fixedCamCount;
+			}
+		}
+	}
+	UDEBUG("Ceres BA: %d fixed camera block(s) (rootId=%d)", fixedCamCount, rootId);
+
+	// 2D / planar BA mode: lock each non-fixed pose's primary (cam 0)
 	// vertex to its initial body-z (lateral motion + yaw stay free).
 	// Other cameras of a multi-cam rig follow via the rigid edges above.
-	// Root pose's cam 0 is fixed entirely so the gauge has no remaining
-	// z-DOF. Mirrors the g2o EdgeSBACamPrior path.
+	// Mirrors the g2o EdgeSBACamPrior path.
 	if(isSlam2d())
 	{
 		const double sqrtInfo = std::sqrt(1e9);  // matches g2o pinfo(2,2) = 1e9
@@ -755,7 +811,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			                     (rootId <  0 && iter->first != -rootId);
 			if(fixNode)
 			{
-				problem.SetParameterBlockConstant(cam_block);
+				// Already constant from the loop above.
 				continue;
 			}
 			// Unary planar constraint on the BODY z (the camera vertex is in
@@ -800,6 +856,11 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// before the constraint is fully satisfied.
 	options.parameter_tolerance = 0.0;
 	options.gradient_tolerance  = 0.0;
+	// Pass 1 only needs to get close enough for bad residuals to stand out; pass 2
+	// re-solves with the full budget. 5 matches the g2o backend. With no kernel
+	// there is only one pass, so it gets everything.
+	const bool rejectOutliers = robustKernelDelta_ > 0.0 && baProblem.num_observations() > 0;
+	options.max_num_iterations = rejectOutliers ? std::min(5, iterations()) : iterations();
 	ceres::Solver::Summary summary;
 	ceres::Solve(options, &problem, &summary);
 	if(ULogger::level() == ULogger::kDebug)
@@ -811,6 +872,84 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	{
 		UWARN("ceres: Could not find a usable solution, aborting optimization!");
 		return poses;
+	}
+
+	// Hard rejection, like g2o and GTSAM. HuberLoss only down-weights: past the
+	// delta its gradient is constant, not zero, so an outlier keeps pulling the
+	// landmark however long the solve runs. Drop those blocks and re-solve. Runs
+	// even when the caller wants no report -- rejection is what fixes the estimate.
+	std::set<int> pointsToRestore;
+	if(rejectOutliers)
+	{
+		// apply_loss_function=false: threshold the raw chi^2, not the Huber cost.
+		ceres::Problem::EvaluateOptions evalOptions;
+		evalOptions.residual_blocks     = obsBlockIds;
+		evalOptions.apply_loss_function = false;
+		double residualCost = 0.0;
+		std::vector<double> residuals;
+		if(problem.Evaluate(evalOptions, &residualCost, &residuals, 0, 0))
+		{
+			// chi^2 > delta, the documented meaning of Optimizer/RobustKernelDelta.
+			std::map<int, int> observationsPerWord;
+			std::map<int, int> rejectedPerWord;
+			int rejectedCount = 0;
+			size_t offset = 0;
+			for(int i=0; i<baProblem.num_observations(); ++i)
+			{
+				const int wordId = obsWordPose[i].first;
+				++observationsPerWord[wordId];
+				double chi2 = 0.0;
+				for(int k=0; k<obsResidualCount[i] && offset+k < residuals.size(); ++k)
+				{
+					chi2 += residuals[offset+k] * residuals[offset+k];
+				}
+				offset += obsResidualCount[i];
+				if(chi2 > robustKernelDelta_)
+				{
+					if(outliers)
+					{
+						(*outliers)[wordId].insert(obsWordPose[i].second);
+					}
+					++rejectedPerWord[wordId];
+					++rejectedCount;
+					problem.RemoveResidualBlock(obsBlockIds[i]);
+				}
+			}
+			// A landmark with every view rejected is unconstrained: freeze it, and
+			// leave the caller's input estimate alone on readback.
+			for(std::map<int, int>::const_iterator iter=rejectedPerWord.begin(); iter!=rejectedPerWord.end(); ++iter)
+			{
+				if(iter->second == observationsPerWord.at(iter->first))
+				{
+					pointsToRestore.insert(iter->first);
+					double * point_block = baProblem.points_ + pointIdToIndex.at(iter->first) * 3;
+					if(problem.HasParameterBlock(point_block))
+					{
+						problem.SetParameterBlockConstant(point_block);
+					}
+				}
+			}
+			// Always run pass 2, even with nothing rejected: pass 1 was truncated.
+			// The parameter arrays hold pass 1's values, so it warm-starts free.
+			UDEBUG("Ceres BA: re-solving without %d rejected observation(s) over %d word(s), %d point(s) restored...",
+					rejectedCount, (int)rejectedPerWord.size(), (int)pointsToRestore.size());
+			options.max_num_iterations = iterations();
+			ceres::Solver::Summary reSummary;
+			ceres::Solve(options, &problem, &reSummary);
+			if(!reSummary.IsSolutionUsable())
+			{
+				UWARN("ceres: re-solve without the %d rejected observation(s) is unusable, "
+					  "keeping the first-pass solution.", rejectedCount);
+			}
+		}
+		else
+		{
+			// No residuals to threshold: finish the truncated first pass anyway.
+			UWARN("ceres: could not evaluate reprojection residuals, skipping outlier rejection.");
+			options.max_num_iterations = iterations();
+			ceres::Solver::Summary reSummary;
+			ceres::Solve(options, &problem, &reSummary);
+		}
 	}
 
 	//update poses (read back from cam 0 of each rig -- the other cameras
@@ -864,13 +1003,17 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 	}
 
-	//update 3D points
+	//update 3D points; the fully-rejected ones keep the caller's estimate.
 	oi = 0;
 	for(std::map<int, cv::Point3f>::iterator kter = points3DMap.begin(); kter!=points3DMap.end(); ++kter)
 	{
-		kter->second.x = baProblem.points_[oi++];
-		kter->second.y = baProblem.points_[oi++];
-		kter->second.z = baProblem.points_[oi++];
+		if(pointsToRestore.find(kter->first) == pointsToRestore.end())
+		{
+			kter->second.x = baProblem.points_[oi];
+			kter->second.y = baProblem.points_[oi+1];
+			kter->second.z = baProblem.points_[oi+2];
+		}
+		oi += 3;
 	}
 
 	return newPoses;

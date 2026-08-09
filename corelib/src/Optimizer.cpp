@@ -476,8 +476,12 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
+	if(outliers)
+	{
+		outliers->clear();
+	}
 	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
 	return std::map<int, Transform>();
 }
@@ -563,7 +567,7 @@ Transform Optimizer::optimizeBA(
 		const CameraModel & model,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
 	std::map<int, Transform> poses;
 	poses.insert(std::make_pair(link.from(), Transform::getIdentity()));

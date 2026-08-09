@@ -2309,15 +2309,18 @@ INSTANTIATE_TEST_SUITE_P(
 		});
 
 // ---------------------------------------------------------------------------
-// Regression test: wordReferences with negative ids. Memory.cpp assigns
-// sequential negative ids (-1, -2, -3, ...) to features that aren't
-// quantized into the visual vocabulary, and OdometryF2M forwards them
-// straight into optimizeBA(). gtsam::Symbol packs the index into 56
-// unsigned bits and used to overflow on these ("Symbol index is too
-// large"); g2o remaps them via negVertexOffset; Ceres handles them too.
-// Build the standard BA scenario, then negate every point id so the
-// optimizer sees what F2M's wordReferences actually looks like in
-// production.
+// Regression test: wordReferences with negative ids. optimizeBA() puts no sign
+// restriction on them, and each backend remaps differently: g2o shifts landmark
+// vertices by negVertexOffset, GTSAM packs the index into a gtsam::Symbol's 56
+// unsigned bits and can overflow there ("Symbol index is too large"), Ceres
+// indexes its own array. Negate every point id of the standard scenario.
+//
+// No in-tree caller feeds negative ids in today, so this guards the API
+// contract rather than a live path: Memory.cpp's negatives are frame-local
+// (negIndex resets per signature) and never leave its own signatures, while
+// both BA entry points renumber first -- computeBACorrespondences() keys on
+// keypoint identity, and OdometryF2M's ids come from RegistrationVis, which
+// only generates non-negative ones.
 // ---------------------------------------------------------------------------
 class NegativeWordIdBaTest : public ::testing::TestWithParam<Optimizer::Type>
 {
@@ -2896,3 +2899,318 @@ TEST(OptimizerTest, CvsbaPoseGraphOptimizeReturnsEmpty)
 	std::map<int, Transform> out = opt->optimize(1, in, inLinks);
 	EXPECT_TRUE(out.empty()) << "CVSBA should not handle pose-graph optimize()";
 }
+
+
+// ---------------------------------------------------------------------------
+// BAOutlierRejectionTest -- how each BA backend handles gross observation
+// outliers, and what it reports back through the BAOutliers out-parameter.
+//
+// Every backend that implements optimizeBA() is held to the same contract:
+// reject the bad observations, report them per <word, pose>, keep refining the
+// landmarks that still have good views, and leave a landmark whose every view
+// is rejected at the caller's input estimate. Backends that only down-weight
+// outliers through an m-estimator do not meet that contract, and these tests
+// are meant to fail for them until they do.
+//
+// The scene is deliberately rigid on the pose side. rootId is negative, which
+// all three backends read as "fix every pose except -rootId", so the camera
+// geometry is locked and the problem reduces to structure refinement -- that is
+// what makes the landmark assertions exact rather than approximate. It still
+// needs one free pose, since OptimizerG2O refuses an all-fixed BA (see
+// EveryPoseFixedIsRefusedInsteadOfCrashing). Pose 10 is it: a duplicate of pose
+// 4 welded to it by an identity link with information 1e6, so the link residual
+// starts at zero and the free pose can't perturb anything. It carries no
+// observations, which doubles as coverage for unobserved poses surviving BA.
+//
+// Two landmarks, each a different outlier shape:
+//   word -42: 9 observations, 8 exact and pose 4's displaced by (+80,-80) px.
+//       Plenty of good data left, so the point must still land on truth. The id
+//       is negative so g2o has to map the landmark vertex back through
+//       negVertexOffset to attribute the outlier -- NegativeWordIdBaTest above
+//       covers negative ids for the solve, but never passes an outliers pointer.
+//   word 7: 2 observations (poses 1 and 9), both displaced by +/-100 px. Every
+//       observation is an outlier, so nothing is left to constrain the point
+//       and the caller's input estimate has to survive untouched.
+//
+// The 45 cm pose spacing matters: at 5 m depth with fx=100, a 4 m baseline puts
+// depth uncertainty near 6 cm/px. Tighter spacing makes depth so weakly
+// observable that it tests conditioning rather than outlier handling.
+//
+// CVSBA is excluded: it ignores rootId entirely (it has no fixed-camera
+// concept), so the locked-geometry premise doesn't hold for it, and no CI job
+// builds it.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// A measurement of `point` as seen from `pose`, i.e. the exact projection of
+// the ground-truth point. (offsetU, offsetV) displaces it in pixels to
+// manufacture a gross outlier.
+FeatureBA baObservation(
+		const cv::Point3f & point,
+		const Transform & pose,
+		const CameraModel & model,
+		float offsetU = 0.0f,
+		float offsetV = 0.0f)
+{
+	const Transform cameraPose = pose * model.localTransform();
+	const cv::Point3f pointInCamera = util3d::transformPoint(point, cameraPose.inverse());
+	float u = 0.0f;
+	float v = 0.0f;
+	model.reproject(pointInCamera.x, pointInCamera.y, pointInCamera.z, u, v);
+	return FeatureBA(cv::KeyPoint(u+offsetU, v+offsetV, 1.0f));
+}
+
+// The rejected poses reported for one word, or an empty set if the word wasn't
+// flagged at all -- lets a missing word be compared like a wrong one instead of
+// aborting the test on a bad at().
+std::set<int> outliersFor(const BAOutliers & outliers, int wordId)
+{
+	BAOutliers::const_iterator iter = outliers.find(wordId);
+	return iter != outliers.end() ? iter->second : std::set<int>();
+}
+
+// The observations of `wordId` that were *not* reported as outliers.
+std::set<int> keptFor(const BAOutliers & all, const BAOutliers & rejected, int wordId)
+{
+	std::set<int> kept = outliersFor(all, wordId);
+	for(int poseId : outliersFor(rejected, wordId))
+	{
+		kept.erase(poseId);
+	}
+	return kept;
+}
+
+std::string formatOutliers(const BAOutliers & outliers)
+{
+	std::ostringstream stream;
+	for(BAOutliers::const_iterator iter=outliers.begin(); iter!=outliers.end(); ++iter)
+	{
+		stream << iter->first << ":";
+		for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		{
+			stream << " " << *jter;
+		}
+		stream << "; ";
+	}
+	return stream.str();
+}
+
+class BAOutlierRejectionTest : public ::testing::TestWithParam<Optimizer::Type>
+{
+protected:
+	const int          partialWordId_   = -42;
+	const int          rejectedWordId_  = 7;
+	const cv::Point3f  partialTruth_    {5.0f, -0.1f, 0.1f};
+	const cv::Point3f  partialInitial_  {5.0f, -0.2f, 0.1f};
+	const cv::Point3f  rejectedTruth_   {5.0f,  0.0f, 0.0f};
+	const cv::Point3f  rejectedInitial_ {5.0f, -0.5f, 0.0f};
+
+	void SetUp() override
+	{
+		if(!Optimizer::isAvailable(GetParam()))
+		{
+			GTEST_SKIP() << optimizerTypeName(GetParam()) << " not built in";
+		}
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kOptimizerRobustKernelDelta(), "8"));
+		opt_.reset(Optimizer::create(GetParam(), parameters));
+		ASSERT_NE(opt_.get(), nullptr);
+		opt_->setIterations(50);
+
+		model_ = CameraModel(100.0, 100.0, 320.0, 240.0,
+				CameraModel::opticalRotation(), 0.0, cv::Size(640, 480));
+	}
+
+	// Builds the scene described above. With withOutliers=false every
+	// observation is the exact projection of its ground-truth point, which
+	// isolates the outlier effect from the scene's own conditioning.
+	void buildScene(bool withOutliers, float partialOffsetPx = 80.0f)
+	{
+		for(int id=1; id<=10; ++id)
+		{
+			poses_.insert({id, Transform(0.0f, 0.45f*(id-1), 0.0f, 0.0f, 0.0f, 0.0f)});
+			models_.insert({id, std::vector<CameraModel>(1, model_)});
+		}
+		poses_.at(10) = poses_.at(4);
+		cv::Mat information = cv::Mat::eye(6, 6, CV_64FC1) * 1000000.0;
+		links_.insert({4, Link(4, 10, Link::kNeighbor, Transform::getIdentity(), information)});
+
+		points3DMap_.insert({partialWordId_,  partialInitial_});
+		points3DMap_.insert({rejectedWordId_, rejectedInitial_});
+
+		for(int id=1; id<=9; ++id)
+		{
+			const bool corrupt = withOutliers && id == 4;
+			wordReferences_[partialWordId_].insert({id, baObservation(
+					partialTruth_, poses_.at(id), model_,
+					corrupt ?  partialOffsetPx : 0.0f,
+					corrupt ? -partialOffsetPx : 0.0f)});
+			allObservations_[partialWordId_].insert(id);
+			if(corrupt)
+			{
+				corrupted_[partialWordId_].insert(id);
+			}
+		}
+		// Poses 1 and 9 -- the ends of the trajectory -- so that the two
+		// observations still triangulate well on their own. A short-baseline
+		// pair would fail the clean control for conditioning reasons alone.
+		const int rejectedPoses[2] = {1, 9};
+		for(int i=0; i<2; ++i)
+		{
+			const float offsetU = withOutliers ? (i == 0 ? 100.0f : -100.0f) : 0.0f;
+			wordReferences_[rejectedWordId_].insert({rejectedPoses[i], baObservation(
+					rejectedTruth_, poses_.at(rejectedPoses[i]), model_, offsetU)});
+			allObservations_[rejectedWordId_].insert(rejectedPoses[i]);
+			if(withOutliers)
+			{
+				corrupted_[rejectedWordId_].insert(rejectedPoses[i]);
+			}
+		}
+	}
+
+	// Runs BA over the scene. points3DMap_ is refined in place.
+	std::map<int, Transform> runBA(BAOutliers & outliers, int rootId = -10)
+	{
+		return opt_->optimizeBA(rootId, poses_, links_, models_, points3DMap_, wordReferences_, &outliers);
+	}
+
+	void expectPointNear(int wordId, const cv::Point3f & expected, float tolerance)
+	{
+		const cv::Point3f p = points3DMap_.at(wordId);
+		EXPECT_NEAR(p.x, expected.x, tolerance) << optimizerTypeName(GetParam()) << " word " << wordId;
+		EXPECT_NEAR(p.y, expected.y, tolerance) << optimizerTypeName(GetParam()) << " word " << wordId;
+		EXPECT_NEAR(p.z, expected.z, tolerance) << optimizerTypeName(GetParam()) << " word " << wordId;
+	}
+
+	// Every observation the scene contains, and exactly the subset buildScene()
+	// displaced, both as <word, poses>. Expectations are derived from these rather
+	// than restated as literals, so editing the scene cannot leave the assertions
+	// describing the old one.
+	BAOutliers                                     allObservations_;
+	BAOutliers                                     corrupted_;
+
+	std::unique_ptr<Optimizer>                     opt_;
+	CameraModel                                    model_;
+	std::map<int, Transform>                       poses_;
+	std::multimap<int, Link>                       links_;
+	std::map<int, std::vector<CameraModel> >       models_;
+	std::map<int, cv::Point3f>                     points3DMap_;
+	std::map<int, std::map<int, FeatureBA> >       wordReferences_;
+};
+
+}  // namespace
+
+TEST_P(BAOutlierRejectionTest, EveryPoseFixedIsRefusedInsteadOfCrashing)
+{
+	// A negative rootId whose -rootId isn't in poses fixes every camera, leaving
+	// g2o's BlockSolver_6_3 pose block empty -- LinearSolverCSparse dereferences
+	// that unconditionally and segfaults, so the backend has to decline the
+	// problem. Reaching the end of this test is the regression check; the
+	// assertion also rules out a partially filled result.
+	buildScene(true);
+	BAOutliers outliers;
+	const std::map<int, Transform> optimized = runBA(outliers, -11);
+
+	EXPECT_TRUE(optimized.empty() || optimized.size() == poses_.size())
+			<< optimizerTypeName(GetParam()) << " returned " << optimized.size()
+			<< " of " << poses_.size() << " poses";
+}
+
+TEST_P(BAOutlierRejectionTest, CleanObservationsRecoverBothLandmarks)
+{
+	// Control: no outliers anywhere, so both landmarks must snap onto truth from
+	// their 0.1 m / 0.5 m off estimates. If this fails the scene is badly
+	// conditioned for the backend and the outlier results below say nothing.
+	buildScene(false);
+	BAOutliers outliers;
+	ASSERT_FALSE(runBA(outliers).empty());
+
+	expectPointNear(partialWordId_,  partialTruth_,  0.01f);
+	expectPointNear(rejectedWordId_, rejectedTruth_, 0.01f);
+	EXPECT_TRUE(outliers.empty())
+			<< optimizerTypeName(GetParam()) << " flagged outliers on a clean scene: "
+			<< formatOutliers(outliers);
+}
+
+TEST_P(BAOutlierRejectionTest, RejectsBadObservationsAndReportsThem)
+{
+	// One BA run, four independent post-conditions. EXPECTs rather than ASSERTs so
+	// a backend meeting some clauses and not others reports all of them at once.
+	buildScene(true);
+	BAOutliers outliers;
+	const std::map<int, Transform> optimized = runBA(outliers);
+	ASSERT_FALSE(optimized.empty())
+			<< optimizerTypeName(GetParam()) << " BA returned no poses at all";
+	const std::string dump = formatOutliers(outliers);
+
+	// Pose 10 has no projection at all -- it is held only by its link to
+	// pose 4. A backend must still hand it back rather than silently drop it.
+	EXPECT_EQ(optimized.size(), poses_.size())
+			<< optimizerTypeName(GetParam()) << " did not return all poses";
+	EXPECT_TRUE(optimized.find(10) != optimized.end())
+			<< optimizerTypeName(GetParam()) << " dropped the observation-less pose";
+
+	// Word -42: 8 exact observations against 1 gross outlier. Rejection should
+	// win, moving the point from y=-0.2 to the truth's y=-0.1 as in the clean
+	// case. This is the clause a backend fails when it only down-weights -- the
+	// m-estimator's constant residual pull biases the landmark -- or when flagging
+	// any one edge resets the whole landmark to its input estimate.
+	expectPointNear(partialWordId_, partialTruth_, 0.01f);
+
+	// First pin what the scene actually holds, so the check below can't be
+	// vacuous: word -42 seen from poses 1-9 with only pose 4 displaced, word 7
+	// seen from poses 1 and 9 with both displaced.
+	ASSERT_EQ(allObservations_[partialWordId_],  std::set<int>({1, 2, 3, 4, 5, 6, 7, 8, 9}));
+	ASSERT_EQ(allObservations_[rejectedWordId_], std::set<int>({1, 9}));
+	ASSERT_EQ(corrupted_[partialWordId_],        std::set<int>({4}));
+	ASSERT_EQ(corrupted_[rejectedWordId_],       std::set<int>({1, 9}));
+
+	// Then: exactly those, attributed to the right word *and* pose -- a flat set
+	// of word ids could not say which view was the bad one.
+	EXPECT_EQ(outliers, corrupted_) << "got " << dump << "want " << formatOutliers(corrupted_);
+
+	// And spelled out per word, so both halves are readable and a partial match
+	// says which side went wrong. Over-reporting costs the caller good data, so
+	// the eight clean views of word -42 have to survive; word 7 keeps none.
+	EXPECT_EQ(outliersFor(outliers, partialWordId_), std::set<int>({4})) << dump;
+	EXPECT_EQ(keptFor(allObservations_, outliers, partialWordId_),
+			std::set<int>({1, 2, 3, 5, 6, 7, 8, 9})) << dump;
+	EXPECT_EQ(outliersFor(outliers, rejectedWordId_), std::set<int>({1, 9})) << dump;
+	EXPECT_TRUE(keptFor(allObservations_, outliers, rejectedWordId_).empty()) << dump;
+
+	// Word 7: both observations are outliers, so nothing constrains the point once
+	// they go and whatever the solver left is meaningless. Writing it back would
+	// corrupt the caller's map.
+	expectPointNear(rejectedWordId_, rejectedInitial_, 0.0001f);
+}
+
+TEST_P(BAOutlierRejectionTest, RejectsOnDocumentedChi2Threshold)
+{
+	// The backends must agree on *where* the threshold is, not merely that they
+	// have one. Optimizer/RobustKernelDelta documents itself as a chi2 threshold,
+	// so the default 8 rejects at chi2 > 8, i.e. |r| > sqrt(8) ~ 2.83 sigma. The
+	// Huber knee deliberately sits higher, at 8 sigma (see the backends' notes).
+	//
+	// A (+4,-4) px displacement at sigma = 1 px gives chi2 = 32, inside the band
+	// (8, 64]: rejected on the documented chi2 reading, silently kept if a
+	// backend drifts to reading delta as |r|.
+	buildScene(true, 4.0f);
+	BAOutliers outliers;
+	ASSERT_FALSE(runBA(outliers).empty());
+
+	EXPECT_EQ(outliers, corrupted_)
+			<< optimizerTypeName(GetParam()) << ": " << formatOutliers(outliers);
+	EXPECT_EQ(keptFor(allObservations_, outliers, partialWordId_),
+			std::set<int>({1, 2, 3, 5, 6, 7, 8, 9}))
+			<< optimizerTypeName(GetParam()) << ": " << formatOutliers(outliers);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		BABackends,
+		BAOutlierRejectionTest,
+		::testing::Values(Optimizer::kTypeG2O, Optimizer::kTypeGTSAM, Optimizer::kTypeCeres),
+		[](const ::testing::TestParamInfo<Optimizer::Type> & info)
+		{
+			return optimizerTypeName(info.param);
+		});

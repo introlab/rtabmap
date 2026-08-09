@@ -65,7 +65,7 @@ public:
 			const std::map<int, std::vector<CameraModel> > & models,
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-			std::set<int> * outliers = 0);
+			BAOutliers * outliers = 0);
 
 private:
 	int internalOptimizerType_;
