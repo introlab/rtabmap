@@ -133,9 +133,9 @@ Public Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A single bundle adjustment feature observation: one keypoint seen in one frame. </p>
-<p>Used as the per-frame value in the <code>wordReferences</code> map (<code>&lt;wordId, &lt;frameId, <a class="el" href="classrtabmap_1_1FeatureBA.html" title="A single bundle adjustment feature observation: one keypoint seen in one frame.">FeatureBA</a>&gt;&gt;</code>) passed to <a class="el" href="classrtabmap_1_1Optimizer.html#a038e8df970ab744f6f4ba7027f62b263">Optimizer::optimizeBA()</a>. <a class="el" href="classrtabmap_1_1FeatureBA.html#ad48600a5b6ed17e7713f1485c4317948">depth</a> is in meters when available (RGB-D / stereo with disparity) or 0 if unknown (monocular). <a class="el" href="classrtabmap_1_1FeatureBA.html#a7db630b2f418b05d2fbd772d1caadf48">descriptor</a> and <a class="el" href="classrtabmap_1_1FeatureBA.html#a8db953b6f93249d5c28c25073cd4e095">cameraIndex</a> are optional; <a class="el" href="classrtabmap_1_1FeatureBA.html#a8db953b6f93249d5c28c25073cd4e095">cameraIndex</a> selects which <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> of a multi-camera rig the keypoint belongs to. </p>
+<p>Used as the per-frame value in the <code>wordReferences</code> map (<code>&lt;wordId, &lt;frameId, <a class="el" href="classrtabmap_1_1FeatureBA.html" title="A single bundle adjustment feature observation: one keypoint seen in one frame.">FeatureBA</a>&gt;&gt;</code>) passed to <a class="el" href="classrtabmap_1_1Optimizer.html#a1122f017f10105f7e6c14039d41709e5">Optimizer::optimizeBA()</a>. <a class="el" href="classrtabmap_1_1FeatureBA.html#ad48600a5b6ed17e7713f1485c4317948">depth</a> is in meters when available (RGB-D / stereo with disparity) or 0 if unknown (monocular). <a class="el" href="classrtabmap_1_1FeatureBA.html#a7db630b2f418b05d2fbd772d1caadf48">descriptor</a> and <a class="el" href="classrtabmap_1_1FeatureBA.html#a8db953b6f93249d5c28c25073cd4e095">cameraIndex</a> are optional; <a class="el" href="classrtabmap_1_1FeatureBA.html#a8db953b6f93249d5c28c25073cd4e095">cameraIndex</a> selects which <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> of a multi-camera rig the keypoint belongs to. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00050">50</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00051">51</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a9e3336b09b6913c0b922e6b2f194ba76" name="a9e3336b09b6913c0b922e6b2f194ba76"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9e3336b09b6913c0b922e6b2f194ba76">&#9670;&#160;</a></span>FeatureBA()</h2>
@@ -183,7 +183,7 @@ Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00053">53</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00054">54</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -202,7 +202,7 @@ Public Attributes</h2></td></tr>
 
 <p>2D image keypoint. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00061">61</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00062">62</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -220,7 +220,7 @@ Public Attributes</h2></td></tr>
 
 <p>Depth at <a class="el" href="classrtabmap_1_1FeatureBA.html#a2bea5690d958d81f5edfa6df954d4a8b">kpt</a> in meters, or 0 if unknown (monocular). </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00062">62</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00063">63</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -238,7 +238,7 @@ Public Attributes</h2></td></tr>
 
 <p>Optional descriptor for the keypoint (used when re-matching is enabled). </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00063">63</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00064">64</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -256,7 +256,7 @@ Public Attributes</h2></td></tr>
 
 <p>Index into the frame's camera model list for multi-camera rigs. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00064">64</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00065">65</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>

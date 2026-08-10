@@ -166,9 +166,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:af59c8340394268f9a1eb76fd5709f2c3" id="r_af59c8340394268f9a1eb76fd5709f2c3"><td class="memItemLeft" align="right" valign="top">virtual std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#af59c8340394268f9a1eb76fd5709f2c3">optimize</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;constraints, cv::Mat &amp;outputCovariance, std::list&lt; std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &gt; *intermediateGraphes=0, double *finalError=0, int *iterationsDone=0)</td></tr>
 <tr class="memdesc:af59c8340394268f9a1eb76fd5709f2c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pose-graph optimization with marginal covariance of <code>rootId</code>.  <br /></td></tr>
 <tr class="separator:af59c8340394268f9a1eb76fd5709f2c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a038e8df970ab744f6f4ba7027f62b263" id="r_a038e8df970ab744f6f4ba7027f62b263"><td class="memItemLeft" align="right" valign="top">virtual std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a038e8df970ab744f6f4ba7027f62b263">optimizeBA</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &gt; &amp;models, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, std::set&lt; int &gt; *outliers=0)</td></tr>
-<tr class="memdesc:a038e8df970ab744f6f4ba7027f62b263"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bundle adjustment: jointly refine poses and 3D points (back-end-level entry point).  <br /></td></tr>
-<tr class="separator:a038e8df970ab744f6f4ba7027f62b263"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1122f017f10105f7e6c14039d41709e5" id="r_a1122f017f10105f7e6c14039d41709e5"><td class="memItemLeft" align="right" valign="top">virtual std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a1122f017f10105f7e6c14039d41709e5">optimizeBA</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &gt; &amp;models, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, BAOutliers *outliers=0)</td></tr>
+<tr class="memdesc:a1122f017f10105f7e6c14039d41709e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bundle adjustment: jointly refine poses and 3D points (back-end-level entry point).  <br /></td></tr>
+<tr class="separator:a1122f017f10105f7e6c14039d41709e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2f7cbdebed9787ffa6b0b30536dfa1a0" id="r_a2f7cbdebed9787ffa6b0b30536dfa1a0"><td class="memItemLeft" align="right" valign="top">std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a2f7cbdebed9787ffa6b0b30536dfa1a0">optimizeBA</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &gt; &amp;signatures, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, bool rematchFeatures=false, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;registrationParameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a2f7cbdebed9787ffa6b0b30536dfa1a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">BA wrapper that derives camera models and correspondences from signatures.  <br /></td></tr>
 <tr class="separator:a2f7cbdebed9787ffa6b0b30536dfa1a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -176,9 +176,9 @@ Public Member Functions</h2></td></tr>
 std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>optimizeBA</b> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &gt; &amp;signatures, bool rematchFeatures=false, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;registrationParameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:aab99f045516162944ad68fdabacb53dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">BA convenience wrapper: like the overload above but ignores the refined 3D points and observation map. <br /></td></tr>
 <tr class="separator:aab99f045516162944ad68fdabacb53dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad6b32a9697837f03941773f6a5bbf91c" id="r_ad6b32a9697837f03941773f6a5bbf91c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1Transform.html">Transform</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#ad6b32a9697837f03941773f6a5bbf91c">optimizeBA</a> (const <a class="el" href="classrtabmap_1_1Link.html">Link</a> &amp;link, const <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, std::set&lt; int &gt; *outliers=0)</td></tr>
-<tr class="memdesc:ad6b32a9697837f03941773f6a5bbf91c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refine a single two-frame link via BA.  <br /></td></tr>
-<tr class="separator:ad6b32a9697837f03941773f6a5bbf91c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedaeb7cc371f3685f8595d9a151f6605" id="r_aedaeb7cc371f3685f8595d9a151f6605"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1Transform.html">Transform</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#aedaeb7cc371f3685f8595d9a151f6605">optimizeBA</a> (const <a class="el" href="classrtabmap_1_1Link.html">Link</a> &amp;link, const <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, BAOutliers *outliers=0)</td></tr>
+<tr class="memdesc:aedaeb7cc371f3685f8595d9a151f6605"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refine a single two-frame link via BA.  <br /></td></tr>
+<tr class="separator:aedaeb7cc371f3685f8595d9a151f6605"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a93fb09dac068e64de000f692bcb8216f" id="r_a93fb09dac068e64de000f692bcb8216f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a93fb09dac068e64de000f692bcb8216f">computeBACorrespondences</a> (const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &gt; &amp;signatures, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, bool rematchFeatures=false, bool useLinkTransformAsGuess=false, <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> registrationParameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a93fb09dac068e64de000f692bcb8216f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build BA correspondences (3D points + per-frame observations) from signatures.  <br /></td></tr>
 <tr class="separator:a93fb09dac068e64de000f692bcb8216f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -252,11 +252,11 @@ Protected Member Functions</h2></td></tr>
 <p><a class="el" href="classrtabmap_1_1Optimizer.html" title="Abstract base for pose-graph and bundle-adjustment optimizers.">Optimizer</a> is a factory + interface in front of several third-party back-ends (<a class="el" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16a6065bdb6e49c0f5ffc98d5f2f6b0d5ab">TORO</a>, <a class="el" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16aa4d070fe00ba5e81adbc958bad18d853">g2o</a>, <a class="el" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16ab71c83617497f5da0607a47ab162630f">GTSAM</a>, <a class="el" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16a891b6c7cbbe5e149e583ac1fc14fc91d">Ceres</a>, <a class="el" href="classrtabmap_1_1Optimizer.html#a18ae8ac76346d1adc68ab176a5b02d16a53545e83af9618cb4d39cf0420b3cd54">cvsba</a>). Use <a class="el" href="classrtabmap_1_1Optimizer.html#a78b457bec2cdb7bdd320e2bfcca759df">create()</a> to instantiate one based on the <code>Optimizer/Strategy</code> parameter; use <a class="el" href="classrtabmap_1_1Optimizer.html#afe0381a3b42926b7634027e522766eb1">isAvailable()</a> to check whether a given back-end was compiled in.</p>
 <p>Two families of methods are exposed:</p><ul>
 <li><b>Pose-graph optimization</b> (<a class="el" href="classrtabmap_1_1Optimizer.html#a7e3aff943e77603493a358ff522fa2dc">optimize</a> / <a class="el" href="classrtabmap_1_1Optimizer.html#a278f42e0d250085ac6fe9ed425627acf">optimizeIncremental</a>) — refines poses given relative-pose constraints. Subclasses override <a class="el" href="classrtabmap_1_1Optimizer.html#a7e3aff943e77603493a358ff522fa2dc">optimize()</a> with covariance output.</li>
-<li><b>Bundle adjustment</b> (<a class="el" href="classrtabmap_1_1Optimizer.html#a038e8df970ab744f6f4ba7027f62b263">optimizeBA</a>) — jointly refines poses and 3D points using reprojection error. Subclasses override the lowest-level overload; the others are convenience wrappers that fill in models/correspondences from <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> data.</li>
+<li><b>Bundle adjustment</b> (<a class="el" href="classrtabmap_1_1Optimizer.html#a1122f017f10105f7e6c14039d41709e5">optimizeBA</a>) — jointly refines poses and 3D points using reprojection error. Subclasses override the lowest-level overload; the others are convenience wrappers that fill in models/correspondences from <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> data.</li>
 </ul>
 <p>Common knobs (iterations, robust kernels, 2D-vs-3D, etc.) are configured through <a class="el" href="classrtabmap_1_1Optimizer.html#a0a942bd7902c8d2f9444b8eba6a648a3">parseParameters()</a> or per-attribute setters and apply to whichever back-end is selected. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00087">87</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00090">90</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 </div><h2 class="groupheader">Member Enumeration Documentation</h2>
 <a id="a18ae8ac76346d1adc68ab176a5b02d16" name="a18ae8ac76346d1adc68ab176a5b02d16"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a18ae8ac76346d1adc68ab176a5b02d16">&#9670;&#160;</a></span>Type</h2>
@@ -286,7 +286,7 @@ Protected Member Functions</h2></td></tr>
 </td></tr>
 </table>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00091">91</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00094">94</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -314,7 +314,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00135">135</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00138">138</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -480,7 +480,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>Max solver iterations. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00142">142</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00145">145</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -509,7 +509,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>True if optimizing in SE(2) instead of SE(3). </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00143">143</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00146">146</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -538,7 +538,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>If true, all edges share an identity information matrix. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00144">144</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00147">147</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -567,7 +567,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>Convergence threshold on cost decrease. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00145">145</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00148">148</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -596,7 +596,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>If true, use a robust kernel / switchable factors against bad loop closures. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00146">146</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00149">149</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -625,7 +625,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>If true, unary priors on poses are dropped. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00147">147</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00150">150</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -654,7 +654,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>If true, landmark/marker observations are dropped. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00148">148</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00151">151</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -683,7 +683,7 @@ Protected Member Functions</h2></td></tr>
 
 <p>Std-dev (rad) of the gravity prior on roll/pitch; 0 disables it. </p>
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00149">149</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00152">152</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -711,7 +711,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00154">154</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00157">157</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -739,7 +739,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00155">155</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00158">158</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -767,7 +767,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00156">156</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00159">159</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -795,7 +795,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00157">157</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00160">160</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -823,7 +823,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00158">158</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00161">161</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -851,7 +851,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00159">159</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00162">162</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -879,7 +879,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00160">160</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00163">163</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -907,7 +907,7 @@ Protected Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00161">161</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Optimizer_8h_source.html#l00164">164</a> of file <a class="el" href="Optimizer_8h_source.html">Optimizer.h</a>.</p>
 
 </div>
 </div>
@@ -1148,8 +1148,8 @@ Protected Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a038e8df970ab744f6f4ba7027f62b263" name="a038e8df970ab744f6f4ba7027f62b263"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a038e8df970ab744f6f4ba7027f62b263">&#9670;&#160;</a></span>optimizeBA() <span class="overload">[1/3]</span></h2>
+<a id="a1122f017f10105f7e6c14039d41709e5" name="a1122f017f10105f7e6c14039d41709e5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1122f017f10105f7e6c14039d41709e5">&#9670;&#160;</a></span>optimizeBA() <span class="overload">[1/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1196,7 +1196,7 @@ Protected Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::set&lt; int &gt; *&#160;</td>
+          <td class="paramtype">BAOutliers *&#160;</td>
           <td class="paramname"><em>outliers</em> = <code>0</code>&#160;</td>
         </tr>
         <tr>
@@ -1213,7 +1213,7 @@ Protected Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Bundle adjustment: jointly refine poses and 3D points (back-end-level entry point). </p>
-<p>Concrete subclasses (g2o, Ceres, cvsba) override this; the base implementation errors out. The other <a class="el" href="classrtabmap_1_1Optimizer.html#a038e8df970ab744f6f4ba7027f62b263">optimizeBA()</a> overloads ultimately funnel here.</p>
+<p>Concrete subclasses (g2o, Ceres, cvsba) override this; the base implementation errors out. The other <a class="el" href="classrtabmap_1_1Optimizer.html#a1122f017f10105f7e6c14039d41709e5">optimizeBA()</a> overloads ultimately funnel here.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">rootId</td><td>Pose to hold fixed. If negative, ALL poses other than the (positive) lowest id are held fixed. </td></tr>
@@ -1228,7 +1228,7 @@ Protected Member Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Refined poses, or empty on failure. </dd></dl>
 
-<p>Reimplemented in <a class="el" href="classrtabmap_1_1OptimizerCeres.html#a5057dd09f74610f3092bb597f6af0413">rtabmap::OptimizerCeres</a>, <a class="el" href="classrtabmap_1_1OptimizerCVSBA.html#ad6ff3fec8e75ab76290da5763022a903">rtabmap::OptimizerCVSBA</a>, <a class="el" href="classrtabmap_1_1OptimizerG2O.html#a17edfbaeee93d32153782f61212a88f0">rtabmap::OptimizerG2O</a>, and <a class="el" href="classrtabmap_1_1OptimizerGTSAM.html#a7a2033a466505f8c2191b8329b5b342c">rtabmap::OptimizerGTSAM</a>.</p>
+<p>Reimplemented in <a class="el" href="classrtabmap_1_1OptimizerCeres.html#af5c6d465dc4fa7c9045cd241dae5d077">rtabmap::OptimizerCeres</a>, <a class="el" href="classrtabmap_1_1OptimizerCVSBA.html#a48fce33707a004a0d89db99c1c39d999">rtabmap::OptimizerCVSBA</a>, <a class="el" href="classrtabmap_1_1OptimizerG2O.html#af808c77c716d30691670c18955f08f61">rtabmap::OptimizerG2O</a>, and <a class="el" href="classrtabmap_1_1OptimizerGTSAM.html#a8009ace7ad9f50214bc359421546a54b">rtabmap::OptimizerGTSAM</a>.</p>
 
 </div>
 </div>
@@ -1306,8 +1306,8 @@ Protected Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ad6b32a9697837f03941773f6a5bbf91c" name="ad6b32a9697837f03941773f6a5bbf91c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad6b32a9697837f03941773f6a5bbf91c">&#9670;&#160;</a></span>optimizeBA() <span class="overload">[3/3]</span></h2>
+<a id="aedaeb7cc371f3685f8595d9a151f6605" name="aedaeb7cc371f3685f8595d9a151f6605"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aedaeb7cc371f3685f8595d9a151f6605">&#9670;&#160;</a></span>optimizeBA() <span class="overload">[3/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1339,7 +1339,7 @@ Protected Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::set&lt; int &gt; *&#160;</td>
+          <td class="paramtype">BAOutliers *&#160;</td>
           <td class="paramname"><em>outliers</em> = <code>0</code>&#160;</td>
         </tr>
         <tr>

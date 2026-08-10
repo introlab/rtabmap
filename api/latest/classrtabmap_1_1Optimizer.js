@@ -22,9 +22,9 @@ var classrtabmap_1_1Optimizer =
     [ "optimizeIncremental", "classrtabmap_1_1Optimizer.html#a278f42e0d250085ac6fe9ed425627acf", null ],
     [ "optimize", "classrtabmap_1_1Optimizer.html#a7e3aff943e77603493a358ff522fa2dc", null ],
     [ "optimize", "classrtabmap_1_1Optimizer.html#af59c8340394268f9a1eb76fd5709f2c3", null ],
-    [ "optimizeBA", "classrtabmap_1_1Optimizer.html#a038e8df970ab744f6f4ba7027f62b263", null ],
+    [ "optimizeBA", "classrtabmap_1_1Optimizer.html#a1122f017f10105f7e6c14039d41709e5", null ],
     [ "optimizeBA", "classrtabmap_1_1Optimizer.html#a2f7cbdebed9787ffa6b0b30536dfa1a0", null ],
     [ "optimizeBA", "classrtabmap_1_1Optimizer.html#aab99f045516162944ad68fdabacb53dc", null ],
-    [ "optimizeBA", "classrtabmap_1_1Optimizer.html#ad6b32a9697837f03941773f6a5bbf91c", null ],
+    [ "optimizeBA", "classrtabmap_1_1Optimizer.html#aedaeb7cc371f3685f8595d9a151f6605", null ],
     [ "computeBACorrespondences", "classrtabmap_1_1Optimizer.html#a93fb09dac068e64de000f692bcb8216f", null ]
 ];

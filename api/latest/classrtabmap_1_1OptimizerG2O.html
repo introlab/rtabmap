@@ -140,9 +140,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a9400bdf57331af310cf6b02e661d0a03" id="r_a9400bdf57331af310cf6b02e661d0a03"><td class="memItemLeft" align="right" valign="top">virtual std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OptimizerG2O.html#a9400bdf57331af310cf6b02e661d0a03">optimize</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;edgeConstraints, cv::Mat &amp;outputCovariance, std::list&lt; std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &gt; *intermediateGraphes=0, double *finalError=0, int *iterationsDone=0)</td></tr>
 <tr class="memdesc:a9400bdf57331af310cf6b02e661d0a03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pose-graph optimization with marginal covariance of <code>rootId</code>.  <br /></td></tr>
 <tr class="separator:a9400bdf57331af310cf6b02e661d0a03"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a17edfbaeee93d32153782f61212a88f0" id="r_a17edfbaeee93d32153782f61212a88f0"><td class="memItemLeft" align="right" valign="top">virtual std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OptimizerG2O.html#a17edfbaeee93d32153782f61212a88f0">optimizeBA</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &gt; &amp;models, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, std::set&lt; int &gt; *outliers=0)</td></tr>
-<tr class="memdesc:a17edfbaeee93d32153782f61212a88f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bundle adjustment: jointly refine poses and 3D points (back-end-level entry point).  <br /></td></tr>
-<tr class="separator:a17edfbaeee93d32153782f61212a88f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af808c77c716d30691670c18955f08f61" id="r_af808c77c716d30691670c18955f08f61"><td class="memItemLeft" align="right" valign="top">virtual std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1OptimizerG2O.html#af808c77c716d30691670c18955f08f61">optimizeBA</a> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &gt; &amp;models, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, BAOutliers *outliers=0)</td></tr>
+<tr class="memdesc:af808c77c716d30691670c18955f08f61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bundle adjustment: jointly refine poses and 3D points (back-end-level entry point).  <br /></td></tr>
+<tr class="separator:af808c77c716d30691670c18955f08f61"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a95bdf1f9c400e81365030da40b105383" id="r_a95bdf1f9c400e81365030da40b105383"><td class="memItemLeft" align="right" valign="top"><a id="a95bdf1f9c400e81365030da40b105383" name="a95bdf1f9c400e81365030da40b105383"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>saveGraph</b> (const std::string &amp;fileName, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;edgeConstraints)</td></tr>
 <tr class="separator:a95bdf1f9c400e81365030da40b105383"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -163,9 +163,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>saveGraph</b> (const 
 std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>optimizeBA</b> (int rootId, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &gt; &amp;signatures, bool rematchFeatures=false, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;registrationParameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:aab99f045516162944ad68fdabacb53dc inherit pub_methods_classrtabmap_1_1Optimizer"><td class="mdescLeft">&#160;</td><td class="mdescRight">BA convenience wrapper: like the overload above but ignores the refined 3D points and observation map. <br /></td></tr>
 <tr class="separator:aab99f045516162944ad68fdabacb53dc inherit pub_methods_classrtabmap_1_1Optimizer"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad6b32a9697837f03941773f6a5bbf91c inherit pub_methods_classrtabmap_1_1Optimizer" id="r_ad6b32a9697837f03941773f6a5bbf91c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1Transform.html">Transform</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#ad6b32a9697837f03941773f6a5bbf91c">optimizeBA</a> (const <a class="el" href="classrtabmap_1_1Link.html">Link</a> &amp;link, const <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, std::set&lt; int &gt; *outliers=0)</td></tr>
-<tr class="memdesc:ad6b32a9697837f03941773f6a5bbf91c inherit pub_methods_classrtabmap_1_1Optimizer"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refine a single two-frame link via BA.  <br /></td></tr>
-<tr class="separator:ad6b32a9697837f03941773f6a5bbf91c inherit pub_methods_classrtabmap_1_1Optimizer"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedaeb7cc371f3685f8595d9a151f6605 inherit pub_methods_classrtabmap_1_1Optimizer" id="r_aedaeb7cc371f3685f8595d9a151f6605"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1Transform.html">Transform</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#aedaeb7cc371f3685f8595d9a151f6605">optimizeBA</a> (const <a class="el" href="classrtabmap_1_1Link.html">Link</a> &amp;link, const <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, const std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, BAOutliers *outliers=0)</td></tr>
+<tr class="memdesc:aedaeb7cc371f3685f8595d9a151f6605 inherit pub_methods_classrtabmap_1_1Optimizer"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refine a single two-frame link via BA.  <br /></td></tr>
+<tr class="separator:aedaeb7cc371f3685f8595d9a151f6605 inherit pub_methods_classrtabmap_1_1Optimizer"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a93fb09dac068e64de000f692bcb8216f inherit pub_methods_classrtabmap_1_1Optimizer" id="r_a93fb09dac068e64de000f692bcb8216f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Optimizer.html#a93fb09dac068e64de000f692bcb8216f">computeBACorrespondences</a> (const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, const std::map&lt; int, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &gt; &amp;signatures, std::map&lt; int, cv::Point3f &gt; &amp;points3DMap, std::map&lt; int, std::map&lt; int, <a class="el" href="classrtabmap_1_1FeatureBA.html">FeatureBA</a> &gt; &gt; &amp;wordReferences, bool rematchFeatures=false, bool useLinkTransformAsGuess=false, <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> registrationParameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
 <tr class="memdesc:a93fb09dac068e64de000f692bcb8216f inherit pub_methods_classrtabmap_1_1Optimizer"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build BA correspondences (3D points + per-frame observations) from signatures.  <br /></td></tr>
 <tr class="separator:a93fb09dac068e64de000f692bcb8216f inherit pub_methods_classrtabmap_1_1Optimizer"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -437,8 +437,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a17edfbaeee93d32153782f61212a88f0" name="a17edfbaeee93d32153782f61212a88f0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a17edfbaeee93d32153782f61212a88f0">&#9670;&#160;</a></span>optimizeBA()</h2>
+<a id="af808c77c716d30691670c18955f08f61" name="af808c77c716d30691670c18955f08f61"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af808c77c716d30691670c18955f08f61">&#9670;&#160;</a></span>optimizeBA()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -485,7 +485,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::set&lt; int &gt; *&#160;</td>
+          <td class="paramtype">BAOutliers *&#160;</td>
           <td class="paramname"><em>outliers</em> = <code>0</code>&#160;</td>
         </tr>
         <tr>
@@ -502,7 +502,7 @@ Additional Inherited Members</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Bundle adjustment: jointly refine poses and 3D points (back-end-level entry point). </p>
-<p>Concrete subclasses (g2o, Ceres, cvsba) override this; the base implementation errors out. The other <a class="el" href="classrtabmap_1_1OptimizerG2O.html#a17edfbaeee93d32153782f61212a88f0">optimizeBA()</a> overloads ultimately funnel here.</p>
+<p>Concrete subclasses (g2o, Ceres, cvsba) override this; the base implementation errors out. The other <a class="el" href="classrtabmap_1_1OptimizerG2O.html#af808c77c716d30691670c18955f08f61">optimizeBA()</a> overloads ultimately funnel here.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">rootId</td><td>Pose to hold fixed. If negative, ALL poses other than the (positive) lowest id are held fixed. </td></tr>
@@ -517,7 +517,7 @@ Additional Inherited Members</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Refined poses, or empty on failure. </dd></dl>
 
-<p>Reimplemented from <a class="el" href="classrtabmap_1_1Optimizer.html#a038e8df970ab744f6f4ba7027f62b263">rtabmap::Optimizer</a>.</p>
+<p>Reimplemented from <a class="el" href="classrtabmap_1_1Optimizer.html#a1122f017f10105f7e6c14039d41709e5">rtabmap::Optimizer</a>.</p>
 
 </div>
 </div>
