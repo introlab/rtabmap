@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/FlannIndex.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
@@ -1224,25 +1225,33 @@ Transform RegistrationVis::computeTransformationImpl(
 						else
 						{
 							UDEBUG("match projected to frame");
-							std::vector<cv::Point2f> pointsTo;
-							cv::KeyPoint::convert(kptsTo, pointsTo);
-							rtflann::Matrix<float> pointsToMat((float*)pointsTo.data(), pointsTo.size(), 2);
-							rtflann::Index<rtflann::L2_Simple<float> > index(pointsToMat, rtflann::KDTreeIndexParams());
-							index.buildIndex();
+							cv::Mat pointsToMat(kptsTo.size(), 2, CV_32FC1);
+							for(size_t i = 0; i < kptsTo.size(); ++i) {
+								pointsToMat.at<float>(i, 0) = kptsTo[i].pt.x;
+								pointsToMat.at<float>(i, 1) = kptsTo[i].pt.y;
+							}
 
-							std::vector< std::vector<size_t> > indices;
-							std::vector<std::vector<float> > dists;
+							std::unique_ptr<FlannIndex> flannIndex(FlannIndex::create(FlannIndex::kNanoFlann));
+
+							flannIndex->buildIndex(FlannIndex::FLANN_INDEX_KDTREE_SINGLE, pointsToMat);
+
+							cv::Mat queryMat(cornersProjected.size(), 2, CV_32FC1);
+							for(size_t i = 0; i < cornersProjected.size(); ++i) {
+								queryMat.at<float>(i, 0) = cornersProjected[i].x;
+								queryMat.at<float>(i, 1) = cornersProjected[i].y;
+							}
+
+							std::vector<std::vector<size_t>> indices;
+							std::vector<std::vector<float>> dists;
 							float radius = (float)_guessWinSize; // pixels
-							rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
-							index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams(32, 0, false));
 
-							UASSERT(indices.size() == cornersProjectedMat.rows);
-							UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
-							UASSERT(descriptorsFrom.rows == (int)kptsFrom.size());
+							flannIndex->radiusSearch(queryMat, indices, dists, radius, 0, 32, 0.0, false);
+
+							UASSERT(indices.size() == cornersProjected.size());
 							UASSERT((int)pointsToMat.rows == descriptorsTo.rows);
 							UASSERT(pointsToMat.rows == kptsTo.size());
 							UDEBUG("radius search done for guess");
-
+							
 							// Process results (Nearest Neighbor Distance Ratio)
 							std::set<int> addedWordsTo;
 							std::set<int> addedWordsFrom;
@@ -1250,7 +1259,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							double bruteForceDescCopy = 0.0;
 							UTimer bruteForceTimer;
 							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
-							for(unsigned int i = 0; i < cornersProjectedMat.rows; ++i)
+							for(unsigned int i = 0; i < cornersProjected.size(); ++i)
 							{
 								int matchedIndexFrom = projectedIndexToDescIndex[i];
 

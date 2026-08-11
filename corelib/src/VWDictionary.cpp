@@ -71,7 +71,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_serializeWithChecksum(Parameters::defaultKpSerializeWithChecksum()),
 	_lastWordId(0),
 	useDistanceL1_(false),
-	_flannIndex(new FlannIndex()),
+	_flannIndex(FlannIndex::create(FlannIndex::kRtFlann)),
 	_modified(true),
 	_strategy(kNNBruteForce)
 {
