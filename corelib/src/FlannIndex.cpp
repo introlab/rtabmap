@@ -34,24 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 
 #include "rtflann/flann.hpp"
+#include "nanoflann/NanoFlannIndex.h"
 #include <boost/crc.hpp>
 
 namespace rtabmap {
 
-FlannIndex* FlannIndex::create(Type type)
-{
-	if (type == kNanoFlann) {
-		return new NanoFlannIndex();
-	}
-	return new RtFlannIndex();
-}
-
-// 2. Добавляем пустой конструктор и деструктор для интерфейса
-FlannIndex::FlannIndex() {}
-FlannIndex::~FlannIndex() {}
-
-RtFlannIndex::RtFlannIndex():
+FlannIndex::FlannIndex():
 		index_(0),
+		nanoIndex_(0),
 		nextIndex_(0),
 		featuresType_(0),
 		featuresDim_(0),
@@ -59,13 +49,20 @@ RtFlannIndex::RtFlannIndex():
 		rebalancingFactor_(2.0f)
 {
 }
-RtFlannIndex::~RtFlannIndex()
+FlannIndex::~FlannIndex()
 {
 	this->release();
 }
 
-void RtFlannIndex::release()
+void FlannIndex::release()
 {
+	if(nanoIndex_)
+	{
+		UDEBUG("Clearing nanoflann index...");
+		delete nanoIndex_;
+		nanoIndex_ = 0;
+		UDEBUG("Clearing nanoflann index... done!");
+	}
 	if(index_)
 	{
 		UDEBUG("Clearing flann index...");
@@ -98,7 +95,111 @@ void RtFlannIndex::release()
 
 #define FLANN_INDEX_HEADER_SIZE 12
 
-std::vector<unsigned char> RtFlannIndex::serializeIndex(bool computeChecksum) const {
+// The rebalancing factor is turned into the fraction of removed features an
+// index is allowed to hold before being rebuilt. A factor of 2 used to mean
+// "rebuild once the index has doubled in size", it now means "rebuild once half
+// of it has been removed": growing an index doesn't degrade it enough to be
+// worth a rebuild, removing from it does, as removed features are only marked
+// as such and stay in the index until it is rebuilt (see
+// corelib/test/test_flann_index.cpp). This is nanoflann's alpha_deleted, which
+// both backends now share.
+static float removedRatioThreshold(float rebalancingFactor)
+{
+	if(rebalancingFactor <= 1.0f)
+	{
+		return 1.0f; // never rebuilt, a ratio of 1 is never reached
+	}
+	return (rebalancingFactor-1.0f)/rebalancingFactor;
+}
+
+template<class T>
+static bool needsRebuild(const T * index, float removedRatio)
+{
+	const size_t total = index->size() + index->removedCount();
+	return removedRatio < 1.0f &&
+		   total > 0 &&
+		   float(index->removedCount()) > removedRatio * float(total);
+}
+
+static bool isNanoFlannAlgorithm(FlannIndex::flann_algorithm_t algorithm)
+{
+	return algorithm == FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL ||
+		   algorithm == FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE;
+}
+
+static unsigned int computeCrc(const cv::Mat & data)
+{
+	boost::crc_32_type result;
+	result.process_bytes(data.data, data.total()*data.elemSize());
+	return result.checksum();
+}
+
+// Fill the header prefixing a serialized index. Shared by both backends: the
+// same fields are checked back by loadIndex() whichever one produced the index.
+static void fillIndexHeader(
+		int * header,
+		int algorithm,
+		int featuresDim,
+		bool useDistanceL1,
+		float rebalancingFactor, // Deprecated
+		int dataRows,
+		int dataCols,
+		int dataType,
+		unsigned int crcValue,
+		int indexSize)
+{
+	int rebalancingFactorAsInt; // Deprecated
+	memcpy(&rebalancingFactorAsInt, &rebalancingFactor, sizeof(rebalancingFactor)); // Deprecated
+	int crcValueAsInt;
+	memcpy(&crcValueAsInt, &crcValue, sizeof(crcValue));
+	header[0] = RTABMAP_VERSION_MAJOR;
+	header[1] = RTABMAP_VERSION_MINOR;
+	header[2] = RTABMAP_VERSION_PATCH;
+	header[3] = algorithm;
+	header[4] = featuresDim;
+	header[5] = useDistanceL1?1:0;
+	header[6] = rebalancingFactorAsInt; // Deprecated
+	header[7] = dataRows;
+	header[8] = dataCols;
+	header[9] = dataType;
+	header[10] = crcValueAsInt;
+	header[11] = indexSize;
+	UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f data(%dx%d type=%d, crc=%X) %d",
+		header[0],header[1],header[2],
+		header[3],
+		header[4],
+		header[5],
+		rebalancingFactor, // Deprecated
+		header[7], header[8], header[9], crcValue,
+		header[11]);
+}
+
+std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) const {
+	if(nanoIndex_)
+	{
+		std::vector<unsigned char> nanoIndexData = nanoIndex_->serializeIndex();
+		if(!nanoIndexData.empty())
+		{
+			const size_t headerSizeBytes = sizeof(int)*FLANN_INDEX_HEADER_SIZE;
+			const cv::Mat dataset = nanoIndex_->indexedPoints();
+			std::vector<unsigned char> indexData(headerSizeBytes + nanoIndexData.size());
+			int header[FLANN_INDEX_HEADER_SIZE];
+			fillIndexHeader(header,
+				algorithm_,
+				featuresDim_,
+				useDistanceL1_,
+				rebalancingFactor_,
+				dataset.rows,
+				dataset.cols,
+				dataset.type(),
+				computeChecksum?computeCrc(dataset):0,
+				(int)nanoIndexData.size());
+			memcpy(indexData.data(), header, headerSizeBytes);
+			memcpy(indexData.data()+headerSizeBytes, nanoIndexData.data(), nanoIndexData.size());
+			return indexData;
+		}
+		return std::vector<unsigned char>();
+	}
 	if(index_ && !addedDescriptors_.empty())
 	{
 #ifdef WIN32
@@ -159,6 +260,10 @@ std::vector<unsigned char> RtFlannIndex::serializeIndex(bool computeChecksum) co
 			if(computeChecksum){
 				removedDescriptors.insert(removedIndexes_.begin(), removedIndexes_.end());
 			}
+			// A descriptor header can cover more than one point (see the end of
+			// buildIndex() and addPoints()), the index of its row r being
+			// iter.first+r. addedDescriptors_ is sorted by index, so walking it
+			// gives the points back in the order they were added.
 			for(const auto & iter: addedDescriptors_)
 			{
 				UASSERT(!iter.second.empty());
@@ -175,59 +280,43 @@ std::vector<unsigned char> RtFlannIndex::serializeIndex(bool computeChecksum) co
 				else {
 					UASSERT(dataType == iter.second.type());
 				}
-				if(computeChecksum){
-					if(removedDescriptors.find(iter.first) == removedDescriptors.end()) {
-						if(dataset.empty()) {
-							dataset = iter.second.clone();
-						}
-						else {
-							dataset.push_back(iter.second);
-						}
-					}
-					else {
-						dataRows -= iter.second.rows;
-					}
-				}
 			}
-			if(!computeChecksum) {
-				for(const auto & index: removedIndexes_)
+			// Each removed index is one point, whatever the headers cover.
+			dataRows -= (int)removedIndexes_.size();
+
+			if(computeChecksum && dataRows > 0) {
+				// The checksum is compared against the one of the features
+				// given back to loadIndex(), so it is computed over the points
+				// still indexed, in the same order.
+				dataset.create(dataRows, dataCols, dataType);
+				int row = 0;
+				for(const auto & iter: addedDescriptors_)
 				{
-					dataRows -= addedDescriptors_.at(index).rows;
+					for(int r=0; r<iter.second.rows; ++r)
+					{
+						if(removedDescriptors.find(iter.first+r) == removedDescriptors.end())
+						{
+							UASSERT(row < dataRows);
+							iter.second.row(r).copyTo(dataset.row(row++));
+						}
+					}
 				}
+				UASSERT(row == dataRows);
 			}
 
-			unsigned int crcValue = 0;
-			if(computeChecksum) {
-				boost::crc_32_type result;
-				result.process_bytes(dataset.data, dataset.total()*dataset.elemSize());
-				crcValue = result.checksum(); 
-			}
-			
 			indexData.resize(bytes_written+headerSizeBytes);
 			indexData.shrink_to_fit();
-			int rebalancingFactorAsInt; // Deprecated
-			memcpy(&rebalancingFactorAsInt, &rebalancingFactor_, sizeof(rebalancingFactor_)); // Deprecated
-			int crcValueAsInt;
-			memcpy(&crcValueAsInt, &crcValue, sizeof(crcValue));
-			int header[FLANN_INDEX_HEADER_SIZE] = {
-					RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR, RTABMAP_VERSION_PATCH, // 0,1,2
-					algorithm_,                                                          // 3,
-					featuresDim_,                                                        // 4,
-					useDistanceL1_?1:0,                                                  // 5,
-					rebalancingFactorAsInt,                                              // 6, Deprecated
-					dataRows,                                                            // 7,
-					dataCols,                                                            // 8,			
-					dataType,                                                            // 9,
-					crcValueAsInt,                                                       // 10         
-					(int)bytes_written};                                                 // 11
-			UDEBUG("Header: \"%d.%d.%d\" alg=%d dim=%d L1=%d factor=%f data(%dx%d type=%d, crc=%X) %d", 
-				header[0],header[1],header[2],
-				header[3],
-				header[4],
-				header[5],
-				rebalancingFactor_, // Deprecated
-				header[7], header[8], header[9], crcValueAsInt, 
-				header[11]);
+			int header[FLANN_INDEX_HEADER_SIZE];
+			fillIndexHeader(header,
+				algorithm_,
+				featuresDim_,
+				useDistanceL1_,
+				rebalancingFactor_,
+				dataRows,
+				dataCols,
+				dataType,
+				computeChecksum?computeCrc(dataset):0,
+				(int)bytes_written);
 			memcpy(indexData.data(), header, headerSizeBytes);
 			return indexData;
 		}
@@ -240,18 +329,12 @@ std::vector<unsigned char> RtFlannIndex::serializeIndex(bool computeChecksum) co
 	return std::vector<unsigned char>();
 }
 
-int RtFlannIndex::featuresType() const 
+size_t FlannIndex::indexedFeatures() const
 {
-	return featuresType_;
-}
-
-int RtFlannIndex::featuresDim() const 
-{
-	return featuresDim_;
-}
-
-size_t RtFlannIndex::indexedFeatures() const
-{
+	if(nanoIndex_)
+	{
+		return nanoIndex_->indexedFeatures();
+	}
 	if(!index_)
 	{
 		return 0;
@@ -278,13 +361,17 @@ size_t RtFlannIndex::indexedFeatures() const
 }
 
 // return Bytes
-size_t RtFlannIndex::memoryUsed() const
+size_t FlannIndex::memoryUsed() const
 {
+	if(nanoIndex_)
+	{
+		return nanoIndex_->memoryUsed();
+	}
 	if(!index_)
 	{
 		return 0;
 	}
-	size_t memoryUsage = sizeof(RtFlannIndex);
+	size_t memoryUsage = sizeof(FlannIndex);
 	memoryUsage += addedDescriptors_.size() * (sizeof(int) + sizeof(cv::Mat) + sizeof(std::map<int, cv::Mat>::iterator)) + sizeof(std::map<int, cv::Mat>);
 	memoryUsage += sizeof(std::list<int>) + removedIndexes_.size() * sizeof(int);
 	if(featuresType_ == CV_8UC1)
@@ -309,7 +396,7 @@ size_t RtFlannIndex::memoryUsed() const
 	return memoryUsage;
 }
 
-void RtFlannIndex::buildIndex(
+void FlannIndex::buildIndex(
 		flann_algorithm_t algorithm,
 		const cv::Mat & features,
 		bool useDistanceL1,
@@ -324,6 +411,19 @@ void RtFlannIndex::buildIndex(
 	useDistanceL1_ = useDistanceL1;
 	rebalancingFactor_ = rebalancingFactor;
 	algorithm_ = algorithm;
+
+	if(isNanoFlannAlgorithm(algorithm))
+	{
+		// The tree keeps its own copy of the points and rebuilds itself, so
+		// addedDescriptors_ is not used here.
+		nanoIndex_ = new NanoFlannIndex();
+		nanoIndex_->buildIndex(
+			features,
+			useDistanceL1_,
+			algorithm == NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL,
+			removedRatioThreshold(rebalancingFactor_));
+		return;
+	}
 
 	rtflann::IndexParams params;
 
@@ -392,7 +492,7 @@ void RtFlannIndex::buildIndex(
 	UDEBUG("");
 }
 
-bool RtFlannIndex::loadIndex(
+bool FlannIndex::loadIndex(
 	const std::vector<unsigned char> & indexData,
 	flann_algorithm_t algorithm,
 	const cv::Mat & features,
@@ -406,10 +506,10 @@ bool RtFlannIndex::loadIndex(
 		algorithm,
 		features,
 		useDistanceL1,
-		rebalancingFactor),
-		error;
+		rebalancingFactor,
+		error);
 }
-bool RtFlannIndex::loadIndex(
+bool FlannIndex::loadIndex(
 	const unsigned char * indexData,
 	size_t indexDataSize,
 	flann_algorithm_t algorithm,
@@ -418,16 +518,20 @@ bool RtFlannIndex::loadIndex(
 	float rebalancingFactor,
 	std::string * error)
 {
-	UASSERT(indexData!=NULL);
 	if(indexDataSize == 0) {
 		UWARN("Trying to load empty index....");
+		if(error) {
+			*error = "Trying to load an empty index.";
+		}
 		return false;
 	}
-
+	UASSERT(indexData!=NULL);
 #ifdef WIN32
-	UERROR("FLANN index deserialization is not yet implemented on Windows. Index cannot be loaded from memory buffer.");
-	return false;
-#else
+	if(!isNanoFlannAlgorithm(algorithm)) {
+		UERROR("FLANN index deserialization is not yet implemented on Windows. Index cannot be loaded from memory buffer.");
+		return false;
+	}
+#endif
 
 	// Check if the features match the expected data from the index
 	size_t headerSizeBytes = sizeof(int)*FLANN_INDEX_HEADER_SIZE;
@@ -536,6 +640,28 @@ bool RtFlannIndex::loadIndex(
 
 	UDEBUG("algorithm=%d", (int)algorithm);
 
+	if(isNanoFlannAlgorithm(algorithm))
+	{
+		nanoIndex_ = new NanoFlannIndex();
+		if(!nanoIndex_->loadIndex(
+				features,
+				useDistanceL1_,
+				algorithm == NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL,
+				indexData+headerSizeBytes,
+				indexDataSize-headerSizeBytes,
+				removedRatioThreshold(rebalancingFactor_),
+				10,
+				error))
+		{
+			this->release();
+			return false;
+		}
+		return true;
+	}
+
+#ifdef WIN32
+	return false; // rtflann deserialization is not implemented on Windows, rejected above
+#else
 	rtflann::IndexParams params;
 
 	switch (algorithm)
@@ -607,13 +733,17 @@ bool RtFlannIndex::loadIndex(
 #endif
 }
 
-bool RtFlannIndex::isBuilt()
+bool FlannIndex::isBuilt()
 {
-	return index_!=0;
+	return index_!=0 || nanoIndex_!=0;
 }
 
-std::vector<unsigned int> RtFlannIndex::addPoints(const cv::Mat & features)
+std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 {
+	if(nanoIndex_)
+	{
+		return nanoIndex_->addPoints(features);
+	}
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -623,16 +753,16 @@ std::vector<unsigned int> RtFlannIndex::addPoints(const cv::Mat & features)
 	UASSERT(features.cols == featuresDim_);
 	bool indexRebuilt = false;
 	size_t removedPts = 0;
+	const float removedRatio = removedRatioThreshold(rebalancingFactor_);
 	if(featuresType_ == CV_8UC1)
 	{
 		rtflann::Matrix<unsigned char> points(features.data, features.rows, features.cols);
 		rtflann::Index<rtflann::Hamming<unsigned char> > * index = (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
 		removedPts = index->removedCount();
 		index->addPoints(points, 0);
-		// Rebuild index if it is now X times in size
-		if(rebalancingFactor_ > 1.0f && size_t(float(index->sizeAtBuild()) * rebalancingFactor_) < index->size()+index->removedCount())
+		if(needsRebuild(index, removedRatio))
 		{
-			UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
+			UDEBUG("Rebuilding FLANN index: %d removed of %d", (int)index->removedCount(), (int)(index->size()+index->removedCount()));
 			index->buildIndex();
 		}
 		// if no more removed points, the index has been rebuilt
@@ -646,10 +776,9 @@ std::vector<unsigned int> RtFlannIndex::addPoints(const cv::Mat & features)
 			rtflann::Index<rtflann::L1<float> > * index = (rtflann::Index<rtflann::L1<float> >*)index_;
 			removedPts = index->removedCount();
 			index->addPoints(points, 0);
-			// Rebuild index if it doubles in size
-			if(rebalancingFactor_ > 1.0f && size_t(float(index->sizeAtBuild()) * rebalancingFactor_) < index->size()+index->removedCount())
+			if(needsRebuild(index, removedRatio))
 			{
-				UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
+				UDEBUG("Rebuilding FLANN index: %d removed of %d", (int)index->removedCount(), (int)(index->size()+index->removedCount()));
 				index->buildIndex();
 			}
 			// if no more removed points, the index has been rebuilt
@@ -660,10 +789,9 @@ std::vector<unsigned int> RtFlannIndex::addPoints(const cv::Mat & features)
 			rtflann::Index<rtflann::L2_Simple<float> > * index = (rtflann::Index<rtflann::L2_Simple<float> >*)index_;
 			removedPts = index->removedCount();
 			index->addPoints(points, 0);
-			// Rebuild index if it doubles in size
-			if(rebalancingFactor_ > 1.0f && size_t(float(index->sizeAtBuild()) * rebalancingFactor_) < index->size()+index->removedCount())
+			if(needsRebuild(index, removedRatio))
 			{
-				UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
+				UDEBUG("Rebuilding FLANN index: %d removed of %d", (int)index->removedCount(), (int)(index->size()+index->removedCount()));
 				index->buildIndex();
 			}
 			// if no more removed points, the index has been rebuilt
@@ -674,10 +802,9 @@ std::vector<unsigned int> RtFlannIndex::addPoints(const cv::Mat & features)
 			rtflann::Index<rtflann::L2<float> > * index = (rtflann::Index<rtflann::L2<float> >*)index_;
 			removedPts = index->removedCount();
 			index->addPoints(points, 0);
-			// Rebuild index if it doubles in size
-			if(rebalancingFactor_ > 1.0f && size_t(float(index->sizeAtBuild()) * rebalancingFactor_) < index->size()+index->removedCount())
+			if(needsRebuild(index, removedRatio))
 			{
-				UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
+				UDEBUG("Rebuilding FLANN index: %d removed of %d", (int)index->removedCount(), (int)(index->size()+index->removedCount()));
 				index->buildIndex();
 			}
 			// if no more removed points, the index has been rebuilt
@@ -696,20 +823,39 @@ std::vector<unsigned int> RtFlannIndex::addPoints(const cv::Mat & features)
 		removedIndexes_.clear();
 	}
 
-	// incremental FLANN: we should add all headers separately in case we remove
-	// some indexes (to keep underlying matrix data allocated)
 	std::vector<unsigned int> indexes;
+	indexes.reserve(features.rows);
 	for(int i=0; i<features.rows; ++i)
 	{
-		indexes.push_back(nextIndex_);
-		addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+		indexes.push_back(nextIndex_ + i);
+	}
+
+	// incremental FLANN: we should add all headers separately in case we remove
+	// some indexes (to keep underlying matrix data allocated)
+	if(rebalancingFactor_ > 1.0f)
+	{
+		for(int i=0; i<features.rows; ++i)
+		{
+			addedDescriptors_.insert(std::make_pair(nextIndex_++, features.row(i)));
+		}
+	}
+	else
+	{
+		// tree won't ever be rebalanced, so just keep only one header for the data
+		addedDescriptors_.insert(std::make_pair(nextIndex_, features));
+		nextIndex_ += features.rows;
 	}
 
 	return indexes;
 }
 
-void RtFlannIndex::removePoint(unsigned int index)
+void FlannIndex::removePoint(unsigned int index)
 {
+	if(nanoIndex_)
+	{
+		nanoIndex_->removePoint(index);
+		return;
+	}
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -741,7 +887,7 @@ void RtFlannIndex::removePoint(unsigned int index)
 	removedIndexes_.push_back(index);
 }
 
-void RtFlannIndex::knnSearch(
+void FlannIndex::knnSearch(
 		const cv::Mat & query,
 		cv::Mat & indices,
 		cv::Mat & dists,
@@ -750,6 +896,12 @@ void RtFlannIndex::knnSearch(
 		float eps,
 		bool sorted) const
 {
+	if(nanoIndex_)
+	{
+		// exact search, "checks", "eps" and "sorted" don't apply
+		nanoIndex_->knnSearch(query, indices, dists, knn);
+		return;
+	}
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -789,14 +941,16 @@ void RtFlannIndex::knnSearch(
 
 	indices.create(query.rows, knn, CV_32S);
 	int * ptr = indices.ptr<int>();
-	for(size_t i=0 ; i<indicesBuffer.size(); i+=2)
+	for(size_t i=0 ; i<indicesBuffer.size(); ++i)
 	{
+		// Note: this loop used to write two entries per iteration, which read
+		// and wrote one past the end when query.rows*knn is odd (an odd knn on
+		// an odd number of queries).
 		ptr[i] = indicesBuffer[i] == std::numeric_limits<size_t>::max()?-1:(int)indicesBuffer[i];
-		ptr[i+1] = indicesBuffer[i+1] == std::numeric_limits<size_t>::max()?-1:(int)indicesBuffer[i+1];
 	}
 }
 
-void RtFlannIndex::radiusSearch(
+void FlannIndex::radiusSearch(
 		const cv::Mat & query,
 		std::vector<std::vector<size_t> > & indices,
 		std::vector<std::vector<float> > & dists,
@@ -806,6 +960,12 @@ void RtFlannIndex::radiusSearch(
 		float eps,
 		bool sorted) const
 {
+	if(nanoIndex_)
+	{
+		// "checks" doesn't apply
+		nanoIndex_->radiusSearch(query, indices, dists, radius, maxNeighbors, eps, sorted);
+		return;
+	}
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -847,138 +1007,5 @@ void RtFlannIndex::radiusSearch(
 		}
 	}
 }
-
-
-NanoFlannIndex::NanoFlannIndex() : 
-	index_(NULL),
-	isBuilt_(false) 
-{
-}
-
-NanoFlannIndex::~NanoFlannIndex() 
-{ 
-	if (this) {
-		release(); 
-	}
-}
-
-void NanoFlannIndex::release() {
-	if (index_) {
-		delete index_;
-		index_ = 0;
-	}
-	index_ = NULL;
-	pc_adapter_.pts.clear();
-	isBuilt_ = false;
-}
-
-std::vector<unsigned char> NanoFlannIndex::serializeIndex(bool computeChecksum) const {
-	return std::vector<unsigned char>();
-}
-
-size_t NanoFlannIndex::indexedFeatures() const { 
-	return pc_adapter_.pts.size();
- }
-size_t NanoFlannIndex::memoryUsed() const { 
-	return pc_adapter_.pts.size() * sizeof(cv::Point2f);
-}
-
-void NanoFlannIndex::buildIndex(
-		flann_algorithm_t algorithm,
-		const cv::Mat & features,
-		bool useDistanceL1,
-		float rebalancingFactor) 
-{
-	release(); // Сбрасываем старые данные, если они были
-
-	if (features.empty()) return;
-
-	// Конвертируем cv::Mat (координаты X и Y) в наш внутренний вектор точек pc_adapter_
-	pc_adapter_.pts.resize(features.rows);
-	for (int i = 0; i < features.rows; ++i) {
-		pc_adapter_.pts[i].x = features.at<float>(i, 0);
-		pc_adapter_.pts[i].y = features.at<float>(i, 1);
-	}
-
-	index_ = new MyKDTree(2, pc_adapter_, nanoflann::KDTreeSingleIndexAdaptorParams(10 /* max leaf */));
-	index_->buildIndex();
-
-	isBuilt_ = true;
-}
-
-bool NanoFlannIndex::loadIndex(const std::vector<unsigned char> & indexData, flann_algorithm_t algorithm, const cv::Mat & features, bool useDistanceL1, float rebalancingFactor, std::string * errorMsg) { return false; }
-bool NanoFlannIndex::loadIndex(const unsigned char * indexData, size_t indexDataSize, flann_algorithm_t algorithm, const cv::Mat & features, bool useDistanceL1, float rebalancingFactor, std::string * errorMsg) { return false; }
-
-bool NanoFlannIndex::isBuilt() { return isBuilt_; }
-int NanoFlannIndex::featuresType() const { return CV_32FC1; }
-int NanoFlannIndex::featuresDim() const { return 2; }
-
-std::vector<unsigned int> NanoFlannIndex::addPoints(const cv::Mat & features) {
-	return std::vector<unsigned int>();
-}
-
-void NanoFlannIndex::removePoint(unsigned int index) {}
-
-void NanoFlannIndex::knnSearch(
-		const cv::Mat & query,
-		cv::Mat & indices,
-		cv::Mat & dists,
-		int knn,
-		int checks,
-		float eps,
-		bool sorted) const 
-{
-	if (!isBuilt_ || !index_ || query.empty()) return;
-
-	indices = cv::Mat(query.rows, knn, CV_32SC1, cv::Scalar(-1));
-	dists = cv::Mat(query.rows, knn, CV_32FC1, cv::Scalar(-1.0f));
-
-	for (int i = 0; i < query.rows; ++i) {
-		float query_pt[2] = { query.at<float>(i, 0), query.at<float>(i, 1) };
-		
-		std::vector<uint32_t> ret_index(knn);
-		std::vector<float> out_dist_sqr(knn);
-		
-		size_t num_results = index_->knnSearch(&query_pt[0], knn, &ret_index[0], &out_dist_sqr[0]);
-		
-		for (size_t j = 0; j < num_results; ++j) {
-			indices.at<int>(i, j) = static_cast<int>(ret_index[j]);
-			dists.at<float>(i, j) = out_dist_sqr[j];
-		}
-	}
-}
-
-void NanoFlannIndex::radiusSearch(
-		const cv::Mat & query,
-		std::vector<std::vector<size_t> > & indices,
-		std::vector<std::vector<float> > & dists,
-		float radius,
-		int maxNeighbors,
-		int checks,
-		float eps,
-		bool sorted) const {
-			if (!isBuilt_ || !index_ || query.empty()) return;
-
-			indices.resize(query.rows);
-			dists.resize(query.rows);
-			float search_radius_sqr = radius * radius;
-
-			nanoflann::SearchParameters search_params;
-			search_params.sorted = sorted; 
-
-			for (int i = 0; i < query.rows; ++i) {
-				float query_pt[2] = { query.at<float>(i, 0), query.at<float>(i, 1) };
-				
-				std::vector<nanoflann::ResultItem<uint32_t, float>> matches;
-				index_->radiusSearch(query_pt, search_radius_sqr, matches, search_params);
-				
-				indices[i].reserve(matches.size());
-				dists[i].reserve(matches.size());
-				for (const auto& match : matches) {
-					indices[i].push_back(static_cast<size_t>(match.first));   // Индекс найденной точки
-					dists[i].push_back(match.second);                        // Квадрат расстояния
-				}
-			}
-		}
 
 } /* namespace rtabmap */

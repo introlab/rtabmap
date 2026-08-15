@@ -28,6 +28,7 @@ set(corelib_test_sources
 	test_util3d_surface.cpp             #util3d_surface.h
 	test_visualword.cpp                 #VisualWord.h
 	test_vwdictionary.cpp               #VWDictionary.h
+	test_flann_index.cpp                #FlannIndex.h
 	test_transform.cpp                  #Transform.h
 	test_stereo_dense.cpp               #StereoDense.h (BM and SGBM strategies)
 	test_stereo.cpp                     #Stereo.h (BlockMatching and OpticalFlow)
@@ -101,6 +102,24 @@ foreach(shard RANGE 0 ${_corelib_last_shard})
 			TIMEOUT ${_corelib_shard_timeout}
 			ENVIRONMENT "GTEST_TOTAL_SHARDS=${CORELIB_TEST_SHARDS};GTEST_SHARD_INDEX=${shard}")
 endforeach()
+
+# Comparison of the FlannIndex backends (times, memory, recall). Its own
+# executable so that it can be run on demand:
+#   bin/test_flann_index_perf
+#   bin/test_flann_index_perf --gtest_filter=*Descriptors*
+# and so that its seconds of benchmarking stay out of the unit test shards.
+IF(BUILD_PERF_TESTS)
+	add_executable(test_flann_index_perf perf_flann_index.cpp)
+	target_link_libraries(test_flann_index_perf gtest_main rtabmap_core)
+
+	# Labelled "performance" so CI jobs can opt out via `ctest -LE performance`,
+	# and run them alone with `ctest -L performance`.
+	add_test(NAME test_flann_index_perf COMMAND test_flann_index_perf)
+	math(EXPR _perf_timeout "600 * ${_test_timeout_scale}")
+	set_tests_properties(test_flann_index_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
+ENDIF(BUILD_PERF_TESTS)
 
 # Rtabmap end-to-end replay of sample DBs (test data fetched by
 # scripts/fetch_test_data.sh into data/tests/*.db). Skips at runtime if the

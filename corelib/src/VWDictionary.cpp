@@ -56,6 +56,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+static FlannIndex::flann_algorithm_t flannAlgorithm(VWDictionary::NNStrategy strategy)
+{
+	switch(strategy)
+	{
+	case VWDictionary::kNNFlannNaive:
+		return FlannIndex::FLANN_INDEX_LINEAR;
+	case VWDictionary::kNNFlannLSH:
+		return FlannIndex::FLANN_INDEX_LSH;
+	case VWDictionary::kNNNanoFlannKdTree:
+		return FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL;
+	default:
+		return FlannIndex::FLANN_INDEX_KDTREE; // kNNFlannKdTree
+	}
+}
+
 const int VWDictionary::ID_START = 1;
 const int VWDictionary::ID_INVALID = 0;
 
@@ -71,7 +86,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_serializeWithChecksum(Parameters::defaultKpSerializeWithChecksum()),
 	_lastWordId(0),
 	useDistanceL1_(false),
-	_flannIndex(FlannIndex::create(FlannIndex::kRtFlann)),
+	_flannIndex(new FlannIndex()),
 	_modified(true),
 	_strategy(kNNBruteForce)
 {
@@ -115,7 +130,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 		NNStrategy nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
 		treeUpdated = this->setNNStrategy(nnStrategy);
 	}
-	if(!treeUpdated && byteToFloat!=_byteToFloat && _strategy == kNNFlannKdTree)
+	if(!treeUpdated && byteToFloat!=_byteToFloat && isKdTreeStrategy(_strategy))
 	{
 		UINFO("KDTree: Binary to Float conversion approach has changed, re-initialize kd-tree.");
 		this->rebuildIndex();
@@ -392,7 +407,7 @@ unsigned long VWDictionary::getMemoryUsed() const
 		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
 		if(_dataTree.empty() &&
 			_visualWords.begin()->second->getDescriptor().type() == CV_8U &&
-			_strategy == kNNFlannKdTree)
+			isKdTreeStrategy(_strategy))
 		{
 			// Binary descriptors were converted to float, and not included in _dataTree
 			memoryUsage += _visualWords.size() * _visualWords.begin()->second->getDescriptor().total() * sizeof(float) * (_byteToFloat?1:8);
@@ -507,7 +522,7 @@ void VWDictionary::update()
 
 		if(!firstUpdate &&
 			_incrementalFlann &&
-		   _strategy < kNNBruteForce &&
+		   isFlannStrategy(_strategy) &&
 		   _visualWords.size())
 		{
 			ULOGGER_DEBUG("Incremental FLANN: Removing %d words...", (int)_removedIndexedWords.size());
@@ -535,7 +550,7 @@ void VWDictionary::update()
 					if(w->getDescriptor().type() == CV_8U)
 					{
 						useDistanceL1_ = true;
-						if(_strategy == kNNFlannKdTree)
+						if(isKdTreeStrategy(_strategy))
 						{
 							descriptor = convertBinTo32F(w->getDescriptor(), _byteToFloat);
 						}
@@ -555,9 +570,7 @@ void VWDictionary::update()
 						UDEBUG("Building FLANN index... (strategy=%s, byteToFloat=%s, useDistanceL1=%s, rebalancingFactor=%f)",
 							nnStrategyName(_strategy).c_str(), _byteToFloat?"true":"false", useDistanceL1_?"true":"false", _rebalancingFactor);
 						_flannIndex->buildIndex(
-							_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-							_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-							FlannIndex::FLANN_INDEX_KDTREE, // kNNFlannKdTree
+							flannAlgorithm(_strategy),
 							descriptor, useDistanceL1_, _rebalancingFactor);
 						UDEBUG("Building FLANN index... done!");
 					}
@@ -577,7 +590,7 @@ void VWDictionary::update()
 				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words... done! (in %f s)", (int)_notIndexedWords.size(), timer.ticks());
 			}
 		}
-		else if(_strategy >= kNNBruteForce &&
+		else if(!isFlannStrategy(_strategy) &&
 				_notIndexedWords.size() &&
 				_removedIndexedWords.size() == 0 &&
 				_visualWords.size())
@@ -587,8 +600,8 @@ void VWDictionary::update()
 			if(_dataTree.rows >= IMGIDX_ONE)
 			{
 				UWARN("%s=%d is not a FLANN strategy and the number of words in the vocabulary (%d) is over %d (IMGIDX_ONE), so opencv may "
-					"assert on an IMGIDX_ONE check when adding new words. Use a FLANN strategy instead (%s<%d).",
-					Parameters::kKpNNStrategy().c_str(), _strategy, _dataTree.rows, IMGIDX_ONE, Parameters::kKpNNStrategy().c_str(), kNNBruteForce);
+					"assert on an IMGIDX_ONE check when adding new words. Use a FLANN strategy instead (e.g. %s=%d).",
+					Parameters::kKpNNStrategy().c_str(), _strategy, _dataTree.rows, IMGIDX_ONE, Parameters::kKpNNStrategy().c_str(), kNNFlannKdTree);
 			}
 
 			//just add not indexed words
@@ -633,7 +646,7 @@ void VWDictionary::update()
 				if(_visualWords.begin()->second->getDescriptor().type() == CV_8U)
 				{
 					useDistanceL1_ = true;
-					if(_strategy == kNNFlannKdTree)
+					if(isKdTreeStrategy(_strategy))
 					{
 						type = CV_32F;
 						if(!_byteToFloat)
@@ -662,7 +675,7 @@ void VWDictionary::update()
 					cv::Mat descriptor;
 					if(iter->second->getDescriptor().type() == CV_8U)
 					{
-						if(_strategy == kNNFlannKdTree)
+						if(isKdTreeStrategy(_strategy))
 						{
 							descriptor = convertBinTo32F(iter->second->getDescriptor(), _byteToFloat);
 						}
@@ -687,12 +700,10 @@ void VWDictionary::update()
 				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",(int)_mapIndexId.size(), (int)_visualWords.size(), dim);
 				ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
-				if(_strategy < kNNBruteForce)
+				if(isFlannStrategy(_strategy))
 				{
 					_flannIndex->buildIndex(
-						_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-							_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-								FlannIndex::FLANN_INDEX_KDTREE, // kNNFlannKdTree
+						flannAlgorithm(_strategy),
 						_dataTree,
 						useDistanceL1_,
 						_incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
@@ -714,7 +725,7 @@ void VWDictionary::update()
 
 std::vector<unsigned char> VWDictionary::serializeIndex() const
 {
-	if(_strategy >= kNNBruteForce) {
+	if(!isFlannStrategy(_strategy)) {
 		UINFO("Not flann strategy, ignoring serialization...");
 		return std::vector<unsigned char>();
 	}
@@ -739,7 +750,7 @@ bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 		return false;
 	}
 	UDEBUG("Loading flann index... (data size=%ld bytes)", size);
-	if(_strategy >= kNNBruteForce) {
+	if(!isFlannStrategy(_strategy)) {
 		//ignore
 		return false;
 	}
@@ -772,7 +783,7 @@ bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 	if(_visualWords.begin()->second->getDescriptor().type() == CV_8U)
 	{
 		useDistanceL1_ = true;
-		if(_strategy == kNNFlannKdTree)
+		if(isKdTreeStrategy(_strategy))
 		{
 			type = CV_32F;
 			if(!_byteToFloat)
@@ -801,7 +812,7 @@ bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 		cv::Mat descriptor;
 		if(iter->second->getDescriptor().type() == CV_8U)
 		{
-			if(_strategy == kNNFlannKdTree)
+			if(isKdTreeStrategy(_strategy))
 			{
 				descriptor = convertBinTo32F(iter->second->getDescriptor(), _byteToFloat);
 			}
@@ -830,9 +841,7 @@ bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 	if(_flannIndex->loadIndex(
 		data,
 		size,
-		_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-			_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-				FlannIndex::FLANN_INDEX_KDTREE, 
+		flannAlgorithm(_strategy),
 		dataTree, 
 		useDistanceL1_,
 		_incrementalDictionary && _incrementalFlann ? _rebalancingFactor:1,
@@ -975,7 +984,7 @@ std::list<int> VWDictionary::addNewWords(
 	if(descriptorsIn.type() == CV_8U)
 	{
 		useDistanceL1_ = true;
-		if(_strategy == kNNFlannKdTree)
+		if(isKdTreeStrategy(_strategy))
 		{
 			descriptors = convertBinTo32F(descriptorsIn, _byteToFloat);
 		}
@@ -1031,7 +1040,7 @@ std::list<int> VWDictionary::addNewWords(
 		//Find nearest neighbors
 		UDEBUG("newPts.total()=%d _strategy=%d", descriptors.rows, _strategy);
 
-		if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
+		if(isFlannStrategy(_strategy))
 		{
 			_flannIndex->knnSearch(descriptors, results, dists, k, KNN_CHECKS);
 		}
@@ -1308,7 +1317,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 		cv::Mat query;
 		if(queryIn.type() == CV_8U)
 		{
-			if(_strategy == kNNFlannKdTree)
+			if(isKdTreeStrategy(_strategy))
 			{
 				query = convertBinTo32F(queryIn, _byteToFloat);
 			}
@@ -1353,7 +1362,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 			//Find nearest neighbors
 			UDEBUG("query.rows=%d ", query.rows);
 
-			if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
+			if(isFlannStrategy(_strategy))
 			{
 				_flannIndex->knnSearch(query, results, dists, k, KNN_CHECKS);
 			}
@@ -1436,7 +1445,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				cv::Mat descriptor;
 				if(vw->getDescriptor().type() == CV_8U)
 				{
-					if(_strategy == kNNFlannKdTree)
+					if(isKdTreeStrategy(_strategy))
 					{
 						descriptor = convertBinTo32F(vw->getDescriptor(), _byteToFloat);
 					}

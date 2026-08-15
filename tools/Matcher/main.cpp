@@ -423,11 +423,11 @@ int main(int argc, char * argv[])
 				.arg(reg.getDetector()?Feature2D::typeName(reg.getDetector()->getType()).c_str():"?")
 				.arg(Parameters::kVisCorNNType().c_str())
 				.arg(reg.getNNType())
-				.arg(reg.getNNType()<VWDictionary::kNNUndef?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():
+				.arg(VWDictionary::isValidStrategy(reg.getNNType())?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():
 						reg.getNNType()==5||(reg.getNNType()==6&&!dataFrom.getWordsDescriptors().empty()&& dataFrom.getWordsDescriptors().type()!=CV_32F)?"BFCrossCheck":
 						reg.getNNType()==6?QString(uSplit(UFile::getName(pyMatcherPath), '.').front().c_str()).replace("rtabmap_", ""):
 						reg.getNNType()==7?"GMS":"?")
-				.arg(reg.getNNType()<5?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
+				.arg(VWDictionary::isValidStrategy(reg.getNNType())?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
 				.arg(Parameters::kVisEstimationType().c_str())
 				.arg(reg.getEstimationType())
 				.arg(reg.getEstimationType()==0?"3D->3D":reg.getEstimationType()==1?"3D->2D":reg.getEstimationType()==2?"2D->2D":"?")

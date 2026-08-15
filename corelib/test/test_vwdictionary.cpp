@@ -52,7 +52,8 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
         VWDictionary::kNNFlannKdTree,
         VWDictionary::kNNFlannLSH,
         VWDictionary::kNNBruteForce,
-        VWDictionary::kNNBruteForceGPU
+        VWDictionary::kNNBruteForceGPU,
+        VWDictionary::kNNNanoFlannKdTree
     };
 
     // That will mke logic below works with numbers chosen
@@ -556,6 +557,7 @@ TEST_F(VWDictionaryTest, NNStrategyName)
     EXPECT_EQ(VWDictionary::nnStrategyName(VWDictionary::kNNFlannLSH), "FLANN LSH");
     EXPECT_EQ(VWDictionary::nnStrategyName(VWDictionary::kNNBruteForce), "BRUTE FORCE");
     EXPECT_EQ(VWDictionary::nnStrategyName(VWDictionary::kNNBruteForceGPU), "BRUTE FORCE GPU");
+    EXPECT_EQ(VWDictionary::nnStrategyName(VWDictionary::kNNNanoFlannKdTree), "NANOFLANN KD-TREE");
     EXPECT_EQ(VWDictionary::nnStrategyName(VWDictionary::kNNUndef), "Unknown");
 }
 
@@ -631,7 +633,8 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         VWDictionary::kNNFlannKdTree,
         VWDictionary::kNNFlannLSH,
         VWDictionary::kNNBruteForce,
-        VWDictionary::kNNBruteForceGPU
+        VWDictionary::kNNBruteForceGPU,
+        VWDictionary::kNNNanoFlannKdTree
     };
 
     for(VWDictionary::NNStrategy strategy : strategies)
@@ -687,12 +690,12 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         continue;
 #else
-        if(strategy < VWDictionary::kNNBruteForce)
+        if(VWDictionary::isFlannStrategy(strategy))
         {
-            // flann strategies
             EXPECT_GT(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         }
         else {
+            // brute force strategies have no index to serialize
             EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         }
 #endif
@@ -722,9 +725,8 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         dict3.setNNStrategy(strategy);
         dict3.addNewWords(descriptors, 1);
         success = dict3.deserializeIndex(data);
-        if(strategy < VWDictionary::kNNBruteForce)
+        if(VWDictionary::isFlannStrategy(strategy))
         {
-            // flann strategies
             EXPECT_TRUE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
 
             // Index should be loaded

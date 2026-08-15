@@ -182,6 +182,13 @@ if(ANDROID OR IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
    set(BUILD_TESTING OFF CACHE BOOL "Build the testing tree." FORCE)
 endif()
 
+# Performance tests are benchmarks: they report times, memory and recall
+# instead of asserting on them, as those depend on the machine. They are built
+# by default so they cannot rot, but are labelled "performance" so that a run
+# opts in with `ctest -L performance` and CI opts out with `ctest -LE
+# performance`. They can also be run directly, e.g. bin/test_flann_index_perf.
+OPTION(BUILD_PERF_TESTS "Build the performance tests (see ctest -L performance)" ON)
+
 include(CTest)
 if(BUILD_TESTING)
    # Add GTest using FetchContent
@@ -1565,6 +1572,7 @@ MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
 MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
+MESSAGE(STATUS "  BUILD_PERF_TESTS =     ${BUILD_PERF_TESTS}")
 MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
 MESSAGE(STATUS "  ENABLE_FORMAT_ERRORS = ${ENABLE_FORMAT_ERRORS}")
 IF(NOT WIN32)

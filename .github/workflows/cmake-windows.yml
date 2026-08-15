@@ -125,7 +125,8 @@ jobs:
         PYTHONHOME: ${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3
         PYTHONNOUSERSITE: 1
       run: |
-        ctest -C ${{env.BUILD_TYPE}} -V --timeout 300
+        # -LE performance: see the note in cmake-linux.yml.
+        ctest -C ${{env.BUILD_TYPE}} -V --timeout 300 -LE performance
 
     - name: Info
       # Skipped for CUDA: the binary links ZED (sl_zed64.dll -> nvcuvid/nvEncodeAPI64),

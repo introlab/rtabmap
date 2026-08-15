@@ -238,7 +238,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 
 	if(uContains(parameters, Parameters::kVisCorNNType()))
 	{
-		if(_nnType<VWDictionary::kNNUndef)
+		if(VWDictionary::isValidStrategy(_nnType))
 		{
 			uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_nnType)));
 		}
@@ -1100,7 +1100,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
 							UASSERT(descriptorsFrom.rows == (int)kptsFrom.size());
 							UASSERT((int)pointsToMat.rows == descriptorsTo.rows);
-							UASSERT(pointsToMat.rows == kptsTo.size());
+							UASSERT(pointsToMat.rows == (int)kptsTo.size());
 							UDEBUG("radius search done for guess");
 
 							// Process results (Nearest Neighbor Distance Ratio)
@@ -1231,9 +1231,8 @@ Transform RegistrationVis::computeTransformationImpl(
 								pointsToMat.at<float>(i, 1) = kptsTo[i].pt.y;
 							}
 
-							std::unique_ptr<FlannIndex> flannIndex(FlannIndex::create(FlannIndex::kNanoFlann));
-
-							flannIndex->buildIndex(FlannIndex::FLANN_INDEX_KDTREE_SINGLE, pointsToMat);
+							FlannIndex flannIndex;
+							flannIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, pointsToMat);
 
 							cv::Mat queryMat(cornersProjected.size(), 2, CV_32FC1);
 							for(size_t i = 0; i < cornersProjected.size(); ++i) {
@@ -1245,11 +1244,11 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::vector<std::vector<float>> dists;
 							float radius = (float)_guessWinSize; // pixels
 
-							flannIndex->radiusSearch(queryMat, indices, dists, radius, 0, 32, 0.0, false);
+							flannIndex.radiusSearch(queryMat, indices, dists, radius, 0, 32, 0.0, false);
 
 							UASSERT(indices.size() == cornersProjected.size());
 							UASSERT((int)pointsToMat.rows == descriptorsTo.rows);
-							UASSERT(pointsToMat.rows == kptsTo.size());
+							UASSERT(pointsToMat.rows == (int)kptsTo.size());
 							UDEBUG("radius search done for guess");
 							
 							// Process results (Nearest Neighbor Distance Ratio)

@@ -11902,7 +11902,7 @@ generate the number of words requested.</string>
                        <item row="9" column="2">
                         <widget class="QLabel" name="label_451">
                          <property name="text">
-                          <string>Factor used when rebuilding the incremental FLANN index. Set 1 to disable.</string>
+                          <string>Rebuild the incremental FLANN index once the ratio (factor-1)/factor of its features has been removed, e.g. half of them for a factor of 2. Rebuilding frees the memory of the removed features and speeds up the searches. Features are mostly removed when memory management is enabled. Set to 1 to never rebuild, which also uses less memory as the features don't have to be referenced one by one.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -11930,7 +11930,7 @@ Lower the ratio -&gt; higher the precision.</string>
                        <item row="8" column="2">
                         <widget class="QLabel" name="label_260">
                          <property name="text">
-                          <string>When using a FLANN-based nearest neighbor strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary increases of the factor below in size).</string>
+                          <string>When using a FLANN-based nearest neighbor strategy, add/remove points to its index without always rebuilding the index (the index is only rebuilt when too many of its features have been removed, see the factor below).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>

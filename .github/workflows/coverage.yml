@@ -128,7 +128,7 @@ jobs:
           #
           # The replays still run (and gate) in the cmake-linux / macos /
           # windows jobs; they are just not measured here.
-          ctest -V -LE long
+          ctest -V -LE "long|performance"
 
       - name: Generate LCOV report
         run: |
