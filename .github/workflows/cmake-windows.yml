@@ -125,7 +125,6 @@ jobs:
         PYTHONHOME: ${{env.VCPKG_EXPORT_PATH}}/installed/x64-windows-release/tools/python3
         PYTHONNOUSERSITE: 1
       run: |
-        # -LE performance: see the note in cmake-linux.yml.
         ctest -C ${{env.BUILD_TYPE}} -V --timeout 300 -LE performance
 
     - name: Info

@@ -101,7 +101,4 @@ jobs:
       env:
         PYTHONNOUSERSITE: 1
       run: |
-        # -LE performance: the FlannIndex backend benchmarks only report
-        # times and memory, which are noise on a shared runner. Run them with
-        # `ctest -L performance` (or bin/test_flann_index_perf) on a real machine.
         ctest -C ${{env.BUILD_TYPE}} -V -LE performance

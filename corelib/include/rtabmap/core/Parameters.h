@@ -252,7 +252,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, RotateImagesUpsideUp,        bool, false,    "Rotate images so that upside is up if they are not already. This can be useful in case the robots don't have all same camera orientation but are using the same map, so that not rotation-invariant visual features can still be used across the fleet.");
 
     // KeypointMemory (Keypoint-based)
-    RTABMAP_PARAM(Kp, NNStrategy,               int, 1,       "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, kNNNanoFlannKdTree=8");
+    RTABMAP_PARAM(Kp, NNStrategy,               int, 1,       "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, kNNNanoFlannKdTree=5");
     RTABMAP_PARAM(Kp, IncrementalDictionary,    bool, true,   "");
     RTABMAP_PARAM(Kp, IncrementalFlann,         bool, true,   uFormat("When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is only rebuilt when too many of its features have been removed, see \"%s\").", kKpFlannRebalancingFactor().c_str()));
     RTABMAP_PARAM(Kp, FlannRebalancingFactor,   float, 2.0,   uFormat("Rebuild the incremental FLANN index (see \"%s\") once the ratio (factor-1)/factor of its features has been removed, e.g. half of them for a factor of 2. Rebuilding frees the memory of the removed features and speeds up the searches. Features are mostly removed when memory management is enabled (\"%s\" or \"%s\"). Set to 1 to never rebuild, which also uses less memory as the features don't have to be referenced one by one.", kKpIncrementalFlann().c_str(), kRtabmapTimeThr().c_str(), kRtabmapMemoryThr().c_str()));

@@ -152,6 +152,8 @@ static void fillIndexHeader(
 	memcpy(&rebalancingFactorAsInt, &rebalancingFactor, sizeof(rebalancingFactor)); // Deprecated
 	int crcValueAsInt;
 	memcpy(&crcValueAsInt, &crcValue, sizeof(crcValue));
+	// Not checked on load: kept so that a later change of the format, adding or
+	// removing a field, can tell which one it is reading.
 	header[0] = RTABMAP_VERSION_MAJOR;
 	header[1] = RTABMAP_VERSION_MINOR;
 	header[2] = RTABMAP_VERSION_PATCH;

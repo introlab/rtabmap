@@ -66,6 +66,52 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+// The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
+// shares the values of Kp/NNStrategy for the strategies the dictionary
+// implements, and extends them with matching approaches of its own, hence the
+// mapping. Return VWDictionary::kNNUndef for the values RegistrationVis handles
+// itself (BruteForceCrossCheck, SuperGlue, GMS).
+static VWDictionary::NNStrategy nnStrategyFromCorNNType(int nnType)
+{
+	// 0 to 4 are the dictionary strategies themselves, 5, 6 and 7 are the
+	// approaches RegistrationVis implements (BruteForceCrossCheck, SuperGlue
+	// and GMS), and the ones after them are dictionary strategies again, at an
+	// offset of the three above.
+	if(nnType >= 0 && nnType <= VWDictionary::kNNBruteForceGPU)
+	{
+		return (VWDictionary::NNStrategy)nnType;
+	}
+	if(nnType > 7)
+	{
+		const int strategy = nnType - 3;
+		if(strategy < VWDictionary::kNNUndef)
+		{
+			return (VWDictionary::NNStrategy)strategy;
+		}
+	}
+	return VWDictionary::kNNUndef;
+}
+
+std::string RegistrationVis::getNNTypeName(int nnType)
+{
+	const VWDictionary::NNStrategy strategy = nnStrategyFromCorNNType(nnType);
+	if(strategy != VWDictionary::kNNUndef)
+	{
+		return VWDictionary::nnStrategyName(strategy);
+	}
+	switch(nnType)
+	{
+	case 5:
+		return "BRUTE FORCE CROSS CHECK";
+	case 6:
+		return "PY MATCHER";
+	case 7:
+		return "GMS";
+	default:
+		return "Unknown";
+	}
+}
+
 RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration * child) :
 		Registration(parameters, child),
 		_minInliers(Parameters::defaultVisMinInliers()),
@@ -238,9 +284,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 
 	if(uContains(parameters, Parameters::kVisCorNNType()))
 	{
-		if(VWDictionary::isValidStrategy(_nnType))
+		const VWDictionary::NNStrategy strategy = nnStrategyFromCorNNType(_nnType);
+		if(strategy != VWDictionary::kNNUndef)
 		{
-			uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(_nnType)));
+			uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str((int)strategy)));
 		}
 	}
 	if(uContains(parameters, Parameters::kVisCorNNDR()))

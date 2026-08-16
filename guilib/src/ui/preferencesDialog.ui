@@ -11980,6 +11980,11 @@ Lower the ratio -&gt; higher the precision.</string>
                            <string>Brute Force GPU</string>
                           </property>
                          </item>
+                         <item>
+                          <property name="text">
+                           <string>NanoFLANN KdTree</string>
+                          </property>
+                         </item>
                         </widget>
                        </item>
                        <item row="2" column="0">
@@ -23536,6 +23541,11 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                            <item>
                             <property name="text">
                              <string>GMS</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>NanoFLANN KdTree</string>
                             </property>
                            </item>
                           </widget>

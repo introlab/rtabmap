@@ -490,3 +490,64 @@ TEST(FlannIndexPerfTest, DISABLED_RecallAgainstTheFractionOfRemovedPointsOnAMill
 {
 	compareRemovedFractions(1000000, 3, 100, {50, 90});
 }
+
+// The search RegistrationVis does per frame when a guess transform is given
+// (Vis/CorGuessWinSize): the keypoints of the frame are indexed, and the points
+// projected from the previous frame are looked up around their projection. The
+// index is built and thrown away every frame, so its build time weighs as much
+// as its search time. Before the nanoflann backend, this was a rtflann
+// randomized kd-tree forest.
+TEST(FlannIndexPerfTest, RegistrationGuessMatching)
+{
+	const int keypoints = 1000;   // Vis/MaxFeatures
+	const float radius = 40.0f;   // Vis/CorGuessWinSize
+	const int frames = 1000;      // ~ a 50 s sequence at 20 Hz
+
+	// Image points rather than a cube of them.
+	cv::RNG rng(140);
+	cv::Mat points(keypoints, 2, CV_32FC1);
+	cv::Mat projected(keypoints, 2, CV_32FC1);
+	for(int i=0; i<keypoints; ++i)
+	{
+		points.at<float>(i, 0) = rng.uniform(0.0f, 640.0f);
+		points.at<float>(i, 1) = rng.uniform(0.0f, 480.0f);
+		projected.at<float>(i, 0) = rng.uniform(0.0f, 640.0f);
+		projected.at<float>(i, 1) = rng.uniform(0.0f, 480.0f);
+	}
+
+	const Backend backends[] = {
+		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
+		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
+		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE},
+	};
+
+	std::cout << "[          ] " << keypoints << " keypoints indexed and as many looked up in a "
+			  << radius << " px radius, per frame" << std::endl;
+
+	for(const Backend & backend: backends)
+	{
+		std::vector<std::vector<size_t> > indices;
+		std::vector<std::vector<float> > dists;
+
+		UTimer timer;
+		for(int frame=0; frame<frames; ++frame)
+		{
+			FlannIndex index;
+			index.buildIndex(backend.algorithm, points, false, 1.0f);
+			index.radiusSearch(projected, indices, dists, radius, 0, 32, 0.0f, false);
+		}
+		const double perFrame = timer.ticks()/double(frames);
+
+		size_t found = 0;
+		for(const auto & neighbors: indices)
+		{
+			found += neighbors.size();
+		}
+		ASSERT_GT(found, 0u) << backend.name;
+
+		std::cout << "[          ]   " << backend.name
+				  << " build+search=" << uFormat("%6.3f", perFrame*1000.0) << " ms/frame"
+				  << " (" << uFormat("%5.2f", perFrame*1000.0*20.0) << " ms/s at 20 Hz)"
+				  << std::endl;
+	}
+}

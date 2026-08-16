@@ -75,6 +75,13 @@ public:
 	int getMinInliers() const {return _minInliers;}
 	/** @return **Vis/CorNNType** nearest-neighbor strategy. */
 	int getNNType() const {return _nnType;}
+	/** @return Name of the **Vis/CorNNType** nearest-neighbor strategy in use. */
+	std::string getNNTypeName() const {return getNNTypeName(_nnType);}
+
+	/**
+	 * @brief Name of a Vis/CorNNType value
+	 */
+	static std::string getNNTypeName(int nnType);
 	/** @return **Vis/CorNNDR** ratio test threshold. */
 	float getNNDR() const {return _nndr;}
 	/** @return **Vis/EstimationType** (0: 3D→3D, 1: PnP, 2: epipolar). */

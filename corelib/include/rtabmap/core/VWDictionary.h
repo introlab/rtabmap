@@ -68,6 +68,11 @@ public:
 	/**
 	 * @enum NNStrategy
 	 * @brief Nearest neighbor search strategies for descriptor matching
+	 *
+	 * The values are those of the Kp/NNStrategy parameter, saved in user
+	 * configurations and databases: append, never renumber. The Vis/CorNNType
+	 * parameter has strategies of its own, its values are mapped to these ones
+	 * by RegistrationVis::nnStrategyFromCorNNType().
 	 */
 	enum NNStrategy{
 		kNNFlannNaive,      ///< FLANN naive search (exhaustive)
@@ -75,15 +80,8 @@ public:
 		kNNFlannLSH,        ///< FLANN Locality-Sensitive Hashing (ideal for binary descriptors)
 		kNNBruteForce,      ///< Brute force CPU search
 		kNNBruteForceGPU,   ///< Brute force GPU-accelerated search (requires CUDA)
-		// New strategies have to be appended: the values are those of the
-		// Kp/NNStrategy parameter, saved in the user configuration and in the
-		// databases, so renumbering an existing one would silently change the
-		// strategy used by an existing setup. 5, 6 and 7 are skipped because
-		// the Vis/CorNNType parameter extends this enumeration with matching
-		// approaches of its own (BruteForceCrossCheck, SuperGlue and GMS), and
-		// both parameters are meant to share the same values.
-		kNNNanoFlannKdTree = 8, ///< nanoflann kd-tree index (float descriptors only, incremental)
-		kNNUndef                ///< Undefined strategy
+		kNNNanoFlannKdTree, ///< nanoflann kd-tree index (float descriptors only, incremental)
+		kNNUndef            ///< Undefined strategy
 	};
 	
 	/**
@@ -121,38 +119,7 @@ public:
 		}
 	}
 
-	/**
-	 * @brief Whether the strategy searches with a FlannIndex, as opposed to the
-	 * brute force ones matching against the _dataTree matrix.
-	 */
-	static bool isFlannStrategy(NNStrategy strategy)
-	{
-		return strategy == kNNFlannNaive ||
-			   strategy == kNNFlannKdTree ||
-			   strategy == kNNFlannLSH ||
-			   strategy == kNNNanoFlannKdTree;
-	}
 
-	/**
-	 * @brief Whether the strategy indexes float descriptors in a kd-tree, in
-	 * which case binary descriptors have to be converted first.
-	 */
-	static bool isKdTreeStrategy(NNStrategy strategy)
-	{
-		return strategy == kNNFlannKdTree ||
-			   strategy == kNNNanoFlannKdTree;
-	}
-
-	/**
-	 * @brief Whether a value is one of the strategies above. The enumeration
-	 * has holes (see kNNNanoFlannKdTree), so it cannot be tested with a
-	 * comparison against kNNUndef.
-	 */
-	static bool isValidStrategy(int value)
-	{
-		return (value >= kNNFlannNaive && value <= kNNBruteForceGPU) ||
-			   value == kNNNanoFlannKdTree;
-	}
 
 public:
 	/**

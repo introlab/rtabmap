@@ -56,6 +56,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+// Whether the strategy searches with a FlannIndex, as opposed to the brute
+// force ones matching against the _dataTree matrix.
+static bool isFlannStrategy(VWDictionary::NNStrategy strategy)
+{
+	return strategy == VWDictionary::kNNFlannNaive ||
+		   strategy == VWDictionary::kNNFlannKdTree ||
+		   strategy == VWDictionary::kNNFlannLSH ||
+		   strategy == VWDictionary::kNNNanoFlannKdTree;
+}
+
+// Whether the strategy indexes float descriptors in a kd-tree, in which case
+// binary descriptors have to be converted first.
+static bool isKdTreeStrategy(VWDictionary::NNStrategy strategy)
+{
+	return strategy == VWDictionary::kNNFlannKdTree ||
+		   strategy == VWDictionary::kNNNanoFlannKdTree;
+}
+
 static FlannIndex::flann_algorithm_t flannAlgorithm(VWDictionary::NNStrategy strategy)
 {
 	switch(strategy)

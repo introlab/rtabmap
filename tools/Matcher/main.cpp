@@ -414,6 +414,24 @@ int main(int argc, char * argv[])
 		std::string pyMatcherPath;
 		Parameters::parse(parameters, Parameters::kVisPnPReprojError(), reprojError);
 		Parameters::parse(parameters, Parameters::kPyMatcherPath(), pyMatcherPath);
+
+		// PyMatcher cannot match binary features, RegistrationVis falls back to
+		// brute force with cross check (see the warning above).
+		const bool pyMatcherOnBinaryFeatures =
+				reg.getNNType()==6 &&
+				!dataFrom.getWordsDescriptors().empty() &&
+				dataFrom.getWordsDescriptors().type()!=CV_32F;
+		QString nnTypeName = (pyMatcherOnBinaryFeatures?
+				RegistrationVis::getNNTypeName(5):reg.getNNTypeName()).c_str();
+		// 5, 6 and 7 are the approaches RegistrationVis matches with itself,
+		// the others search for the k nearest neighbors and do the ratio test.
+		const bool nndrUsed = reg.getNNType()<5 || reg.getNNType()>7;
+		if(reg.getNNType()==6 && !pyMatcherOnBinaryFeatures)
+		{
+			// the script actually used is more telling than the generic name
+			nnTypeName = QString(uSplit(UFile::getName(pyMatcherPath), '.').front().c_str()).replace("rtabmap_", "");
+		}
+
 		dialog.setWindowTitle(QString("Matches (%1/%2) %3 sec [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13) %14=%15]")
 				.arg(info.inliers)
 				.arg(info.matches)
@@ -423,11 +441,8 @@ int main(int argc, char * argv[])
 				.arg(reg.getDetector()?Feature2D::typeName(reg.getDetector()->getType()).c_str():"?")
 				.arg(Parameters::kVisCorNNType().c_str())
 				.arg(reg.getNNType())
-				.arg(VWDictionary::isValidStrategy(reg.getNNType())?VWDictionary::nnStrategyName((VWDictionary::NNStrategy)reg.getNNType()).c_str():
-						reg.getNNType()==5||(reg.getNNType()==6&&!dataFrom.getWordsDescriptors().empty()&& dataFrom.getWordsDescriptors().type()!=CV_32F)?"BFCrossCheck":
-						reg.getNNType()==6?QString(uSplit(UFile::getName(pyMatcherPath), '.').front().c_str()).replace("rtabmap_", ""):
-						reg.getNNType()==7?"GMS":"?")
-				.arg(VWDictionary::isValidStrategy(reg.getNNType())?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
+				.arg(nnTypeName)
+				.arg(nndrUsed?QString(" %1=%2").arg(Parameters::kVisCorNNDR().c_str()).arg(reg.getNNDR()):"")
 				.arg(Parameters::kVisEstimationType().c_str())
 				.arg(reg.getEstimationType())
 				.arg(reg.getEstimationType()==0?"3D->3D":reg.getEstimationType()==1?"3D->2D":reg.getEstimationType()==2?"2D->2D":"?")

@@ -124,7 +124,6 @@ jobs:
       env:
         PYTHONNOUSERSITE: 1
       run: |
-        # -LE performance: see the note in cmake-linux.yml.
         ctest -C ${{env.BUILD_TYPE}} -V -LE performance
 
     # A ctest SEGFAULT is reported as just "SEGFAULT" with no backtrace, which

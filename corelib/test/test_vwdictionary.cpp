@@ -20,6 +20,19 @@
 
 using namespace rtabmap;
 
+namespace {
+// Spelled out rather than taken from VWDictionary: the point is to check the
+// strategies that are expected to build an index, not to agree with whatever
+// the implementation classifies as one.
+bool hasFlannIndex(VWDictionary::NNStrategy strategy)
+{
+    return strategy == VWDictionary::kNNFlannNaive ||
+           strategy == VWDictionary::kNNFlannKdTree ||
+           strategy == VWDictionary::kNNFlannLSH ||
+           strategy == VWDictionary::kNNNanoFlannKdTree;
+}
+} // namespace
+
 class VWDictionaryTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -690,7 +703,7 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         continue;
 #else
-        if(VWDictionary::isFlannStrategy(strategy))
+        if(hasFlannIndex(strategy))
         {
             EXPECT_GT(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         }
@@ -725,7 +738,7 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         dict3.setNNStrategy(strategy);
         dict3.addNewWords(descriptors, 1);
         success = dict3.deserializeIndex(data);
-        if(VWDictionary::isFlannStrategy(strategy))
+        if(hasFlannIndex(strategy))
         {
             EXPECT_TRUE(success) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
 
