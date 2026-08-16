@@ -873,6 +873,14 @@ add_definitions(${PCL_DEFINITIONS})
 
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
+IF(FLANN_KDTREE_MEM_OPT)
+    # Make sure FlannIndex.cpp is the only source instantiating rtflann's
+	# templates, so the definition is attached to it rather than to the
+	# whole project
+    set_source_files_properties(FlannIndex.cpp PROPERTIES
+            COMPILE_DEFINITIONS FLANN_KDTREE_MEM_OPT)
+ENDIF(FLANN_KDTREE_MEM_OPT)
+
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
 ADD_LIBRARY(rtabmap::core ALIAS rtabmap_core)
 

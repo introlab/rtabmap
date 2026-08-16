@@ -57,7 +57,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/cudaimgproc.hpp>
 #endif
 
-#include <rtflann/flann.hpp>
 
 
 #ifdef RTABMAP_PYTHON
