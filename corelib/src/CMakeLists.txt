@@ -873,12 +873,13 @@ add_definitions(${PCL_DEFINITIONS})
 
 # Add binary that is built from the source file "main.cpp".
 # The extension is automatically found.
-# The FLANN_KDTREE_MEM_OPT option reaches rtflann through a generated header
-# rather than a compile definition, so that toggling it recompiles the sources
-# including rtflann instead of the whole library
+# rtflann's config.h is generated, as it is upstream, so that the
+# FLANN_KDTREE_MEM_OPT option travels in a header instead of a compile
+# definition: toggling it then recompiles the sources including rtflann rather
+# than every object file of the library (see the header for the details).
 configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/rtflann/rtabmap_config.h.in
-        ${CMAKE_CURRENT_BINARY_DIR}/rtflann/rtabmap_config.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/rtflann/config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/rtflann/config.h)
 
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
 ADD_LIBRARY(rtabmap::core ALIAS rtabmap_core)
