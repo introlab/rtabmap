@@ -531,6 +531,9 @@ bool FlannIndex::loadIndex(
 #ifdef WIN32
 	if(!isNanoFlannAlgorithm(algorithm)) {
 		UERROR("FLANN index deserialization is not yet implemented on Windows. Index cannot be loaded from memory buffer.");
+		if(error) {
+			*error = "FLANN index deserialization is not yet implemented on Windows.";
+		}
 		return false;
 	}
 #endif

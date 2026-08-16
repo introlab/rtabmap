@@ -696,13 +696,15 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
         // Serialize
         std::vector<unsigned char> data = dict->serializeIndex();
 #ifdef _WIN32
-        // FlannIndex::serializeIndex() is not implemented on Windows
-        // (see corelib/src/FlannIndex.cpp), so it always returns empty
-        // data regardless of the strategy. Skip the rest of the
-        // round-trip assertions on Windows.
-        EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
-        continue;
-#else
+        // The rtflann serialization needs fmemopen, which Windows doesn't have
+        // (see FlannIndex::serializeIndex()): there, only the nanoflann index
+        // gives data back, the others are left out of the round trip below.
+        if(strategy != VWDictionary::kNNNanoFlannKdTree)
+        {
+            EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
+            continue;
+        }
+#endif
         if(hasFlannIndex(strategy))
         {
             EXPECT_GT(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
@@ -711,7 +713,6 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
             // brute force strategies have no index to serialize
             EXPECT_EQ(data.size(), 0u) << "Strategy: " << VWDictionary::nnStrategyName(strategy);
         }
-#endif
         
         // Create new dictionary and deserialize
         VWDictionary dict2;
