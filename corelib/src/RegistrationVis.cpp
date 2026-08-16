@@ -170,6 +170,12 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpGridRows(), _featureParameters.at(Parameters::kVisGridRows())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpGridCols(), _featureParameters.at(Parameters::kVisGridCols())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+	// The dictionary used to match descriptors (see computeTransformationImpl())
+	// is built once and searched once, then thrown away: the words added while
+	// searching it are never indexed. Nothing is gained by keeping its index
+	// ready to be added to, and the bookkeeping that needs costs a descriptor
+	// reference per feature on every registration.
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpIncrementalFlann(), "false"));
 
 	this->parseParameters(parameters);
 }
@@ -1279,7 +1285,9 @@ Transform RegistrationVis::computeTransformationImpl(
 							}
 
 							FlannIndex flannIndex;
-							flannIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, pointsToMat);
+							// A rebalancing factor of 1: the index is thrown away with
+							// the frame, nothing is ever added to or removed from it.
+							flannIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, pointsToMat, false, 1.0f);
 
 							cv::Mat queryMat(cornersProjected.size(), 2, CV_32FC1);
 							for(size_t i = 0; i < cornersProjected.size(); ++i) {

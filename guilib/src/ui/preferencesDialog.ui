@@ -11985,6 +11985,11 @@ Lower the ratio -&gt; higher the precision.</string>
                            <string>NanoFLANN KdTree</string>
                           </property>
                          </item>
+                         <item>
+                          <property name="text">
+                           <string>FLANN KdTree Single</string>
+                          </property>
+                         </item>
                         </widget>
                        </item>
                        <item row="2" column="0">
@@ -23546,6 +23551,11 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                            <item>
                             <property name="text">
                              <string>NanoFLANN KdTree</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>FLANN KdTree Single</string>
                             </property>
                            </item>
                           </widget>

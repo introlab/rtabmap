@@ -35,8 +35,9 @@ namespace rtabmap {
 class NanoFlannIndexImpl;
 
 /**
- * kd-tree backed by nanoflann, held by FlannIndex when one of its
- * NANOFLANN_INDEX_* algorithms is selected. Two trees are available:
+ * kd-tree backed by nanoflann, held by FlannIndex when its
+ * NANOFLANN_INDEX_KDTREE_SINGLE algorithm is selected. Two trees are available,
+ * buildIndex() picking one with its "incremental" argument:
  *
  * Incremental (nanoflann's KDTreeSingleIndexIncrementalAdaptor), a single
  * weight-balanced tree accepting points after it is built:
@@ -48,9 +49,10 @@ class NanoFlannIndexImpl;
  * points are only appended and removals never renumber the remaining ones.
  *
  * Static (nanoflann's KDTreeSingleIndexAdaptor), built once from all the points
- * given to buildIndex(): cheaper to build and to search, at the price of
- * rejecting addPoints() and removePoint(). Use it for a dataset known to be
- * fixed, like the image points searched during registration.
+ * given to buildIndex(): cheaper to build and to search. Use it for a dataset
+ * known to be fixed, like the image points searched during registration. Adding
+ * or removing points is still possible, it rebuilds itself as the incremental
+ * tree when that happens.
  *
  * Only float features are supported (nanoflann has no Hamming metric, binary
  * descriptors have to be converted first), with the L2 or L1 metric. Searches
@@ -73,6 +75,10 @@ public:
 	// rebuild (1 to never rebuild). "leafMaxSize" is the number of points under
 	// which the static tree stops splitting, it doesn't apply to the
 	// incremental one, which holds a single point per node.
+	//
+	// A static tree given points to add afterwards is rebuilt as an incremental
+	// one, so that building without the intention of adding points doesn't
+	// prevent it (see addPoints()).
 	void buildIndex(
 			const cv::Mat & features,
 			bool useDistanceL1,
@@ -139,9 +145,13 @@ private:
 	// implementation, which also owns the points it indexes. Keeping nanoflann
 	// out of this header is a side effect, not the reason.
 	size_t appendPoints(const cv::Mat & features);
+	void makeIncremental();
 
 	NanoFlannIndexImpl * index_;
 	int featuresDim_;
+	// kept to rebuild the tree as an incremental one, see makeIncremental()
+	bool useDistanceL1_;
+	float removedRatio_;
 };
 
 } /* namespace rtabmap */

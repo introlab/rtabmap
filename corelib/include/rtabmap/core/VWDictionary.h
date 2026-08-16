@@ -80,7 +80,8 @@ public:
 		kNNFlannLSH,        ///< FLANN Locality-Sensitive Hashing (ideal for binary descriptors)
 		kNNBruteForce,      ///< Brute force CPU search
 		kNNBruteForceGPU,   ///< Brute force GPU-accelerated search (requires CUDA)
-		kNNNanoFlannKdTree, ///< nanoflann kd-tree index (float descriptors only, incremental)
+		kNNFlannKdTreeSingle, ///< FLANN single exact kd-tree index (rebuilt whenever a word is added, for an index built once)
+		kNNNanoFlannKdTree,   ///< nanoflann kd-tree index (float descriptors only, incremental)
 		kNNUndef            ///< Undefined strategy
 	};
 	
@@ -114,6 +115,8 @@ public:
 			return "BRUTE FORCE GPU";
 		case kNNNanoFlannKdTree:
 			return "NANOFLANN KD-TREE";
+		case kNNFlannKdTreeSingle:
+			return "FLANN KD-TREE SINGLE";
 		default:
 			return "Unknown";
 		}

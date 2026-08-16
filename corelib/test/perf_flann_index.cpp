@@ -151,7 +151,7 @@ TEST(FlannIndexPerfTest, RebalancingFactorOnAGrowingIndex)
 
 	const Backend growingBackends[] = {
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
-		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
 
 	std::cout << "[          ] " << dim << "D float descriptors, " << initialCount
@@ -206,7 +206,7 @@ TEST(FlannIndexPerfTest, RebalancingFactorOnAChurningIndex)
 
 	const Backend churningBackends[] = {
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
-		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
 
 	std::cout << "[          ] " << dim << "D float descriptors, " << initialCount
@@ -515,10 +515,13 @@ TEST(FlannIndexPerfTest, RegistrationGuessMatching)
 		projected.at<float>(i, 1) = rng.uniform(0.0f, 480.0f);
 	}
 
+	// A factor of 1 for the rtflann rows keeps their per-point bookkeeping out
+	// of the measurement, and picks the nanoflann tree that is built once.
 	const Backend backends[] = {
-		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
-		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
-		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE},
+		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE, 1.0f},
+		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f},
+		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
+		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
 
 	std::cout << "[          ] " << keypoints << " keypoints indexed and as many looked up in a "
@@ -533,7 +536,7 @@ TEST(FlannIndexPerfTest, RegistrationGuessMatching)
 		for(int frame=0; frame<frames; ++frame)
 		{
 			FlannIndex index;
-			index.buildIndex(backend.algorithm, points, false, 1.0f);
+			index.buildIndex(backend.algorithm, points, false, backend.rebalancingFactor);
 			index.radiusSearch(projected, indices, dists, radius, 0, 32, 0.0f, false);
 		}
 		const double perFrame = timer.ticks()/double(frames);
@@ -550,4 +553,75 @@ TEST(FlannIndexPerfTest, RegistrationGuessMatching)
 				  << " (" << uFormat("%5.2f", perFrame*1000.0*20.0) << " ms/s at 20 Hz)"
 				  << std::endl;
 	}
+}
+
+// The dictionary that is built to match two sets of descriptors and thrown
+// away: the "from" ones are indexed, the "to" ones are searched with knn=2 for
+// the ratio test. Both are a frame's worth of features, or a feature map's
+// worth for the odometry, which makes the build weigh as much as the searches,
+// unlike the vocabulary sized comparison above.
+namespace {
+
+void compareDictionaryMatching(int indexedCount, int queriedCount)
+{
+	const int frames = 10;
+
+	// A factor of 1 as RegistrationVis sets it for that dictionary: the index is
+	// built once, so it is neither kept ready to be added to nor rebuilt. The
+	// incremental nanoflann tree is kept in the comparison to show what asking
+	// for one costs here.
+	const Backend backends[] = {
+		{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f},
+		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE, 1.0f},
+		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f},
+		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
+		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
+	};
+
+	for(int dim: {32, 64, 128, 256})
+	{
+		const cv::Mat from = makeDescriptors(indexedCount, dim, clusterCount(indexedCount), 150);
+		const cv::Mat to = perturbedQueries(from, queriedCount, 151);
+		const cv::Mat reference = groundTruth(from, to);
+
+		std::cout << "[          ] " << dim << "D float descriptors, " << indexedCount
+				  << " indexed and " << queriedCount << " matched against them, per frame" << std::endl;
+
+		for(const Backend & backend: backends)
+		{
+			cv::Mat indices;
+			cv::Mat dists;
+
+			UTimer timer;
+			for(int frame=0; frame<frames; ++frame)
+			{
+				FlannIndex index;
+				index.buildIndex(backend.algorithm, from, false, backend.rebalancingFactor);
+				index.knnSearch(to, indices, dists, KNN);
+			}
+			const double perFrame = timer.ticks()/double(frames);
+
+			std::cout << "[          ]   " << backend.name
+					  << " build+search=" << uFormat("%7.2f", perFrame*1000.0) << " ms/frame"
+					  << " recall=" << uFormat("%5.1f", recall(indices, reference)*100.0f) << " %"
+					  << std::endl;
+		}
+	}
+}
+
+} // namespace
+
+// What RegistrationVis does to match two frames: as many descriptors indexed as
+// searched (Vis/MaxFeatures on both sides).
+TEST(FlannIndexPerfTest, RegistrationDictionaryMatching)
+{
+	compareDictionaryMatching(1000, 1000);
+}
+
+// What OdometryF2M does: the frame is matched against the feature map, which
+// holds more of them (Odom/F2M/MaxSize), so the index is bigger than the set of
+// queries and its build weighs more.
+TEST(FlannIndexPerfTest, OdometryFrameToMapMatching)
+{
+	compareDictionaryMatching(2000, 1000);
 }

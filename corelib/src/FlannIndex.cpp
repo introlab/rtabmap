@@ -123,8 +123,7 @@ static bool needsRebuild(const T * index, float removedRatio)
 
 static bool isNanoFlannAlgorithm(FlannIndex::flann_algorithm_t algorithm)
 {
-	return algorithm == FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL ||
-		   algorithm == FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE;
+	return algorithm == FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE;
 }
 
 static unsigned int computeCrc(const cv::Mat & data)
@@ -419,10 +418,13 @@ void FlannIndex::buildIndex(
 		// The tree keeps its own copy of the points and rebuilds itself, so
 		// addedDescriptors_ is not used here.
 		nanoIndex_ = new NanoFlannIndex();
+		// Nothing to rebuild for a factor of 1: the tree that cannot be added
+		// to is the cheapest one, and it upgrades itself if points are added
+		// after all.
 		nanoIndex_->buildIndex(
 			features,
 			useDistanceL1_,
-			algorithm == NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL,
+			rebalancingFactor_ > 1.0f,
 			removedRatioThreshold(rebalancingFactor_));
 		return;
 	}
@@ -582,6 +584,15 @@ bool FlannIndex::loadIndex(
 		}
 		return false;
 	}
+	if(isNanoFlannAlgorithm(algorithm) && (savedRebalancingFactor > 1.0f) != (rebalancingFactor > 1.0f)) {
+		// The factor is what tells the nanoflann structures apart, and they
+		// don't serialize to the same thing.
+		if(error) {
+			*error = uFormat("Serialized index was built with a rebalancing factor of %f, which doesn't select the same structure as %f.",
+				savedRebalancingFactor, rebalancingFactor);
+		}
+		return false;
+	}
 	if(savedDistanceL1 != useDistanceL1) {
 		if(error) {
 			*error = uFormat("Serialized \"use distance L1\" (%s) doesn't match the expected one (%s).", savedDistanceL1?"true":"false", useDistanceL1?"true":"false");
@@ -651,7 +662,7 @@ bool FlannIndex::loadIndex(
 		if(!nanoIndex_->loadIndex(
 				features,
 				useDistanceL1_,
-				algorithm == NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL,
+				rebalancingFactor_ > 1.0f,
 				indexData+headerSizeBytes,
 				indexDataSize-headerSizeBytes,
 				removedRatioThreshold(rebalancingFactor_),

@@ -65,7 +65,7 @@ public:
 	 * written in the serialized index header and checked back on load, so none
 	 * of them may be renumbered.
 	 *
-	 * Both nanoflann structures take float features only (nanoflann has no
+	 * The nanoflann structures take float features only (nanoflann has no
 	 * Hamming metric) and search exactly, ignoring "checks". That makes them
 	 * the fastest ones for 2D and 3D points, and the wrong ones for
 	 * descriptors: an exact search visits more and more of the tree as the
@@ -79,14 +79,11 @@ public:
 		FLANN_INDEX_KDTREE_SINGLE   = 4, ///< Single kd-tree, searched exactly
 		FLANN_INDEX_LSH 			= 6, ///< Locality-Sensitive Hashing (binary descriptors)
 
-		/// nanoflann kd-tree accepting addPoints()/removePoint(), rebuilt once
-		/// the fraction of it given by "rebalancingFactor" has been removed.
-		/// Cannot be serialized while some of its points are removed.
-		NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL = 100,
-
-		/// nanoflann kd-tree built once: cheaper to build and to search, but
-		/// addPoints() and removePoint() are not supported.
-		NANOFLANN_INDEX_KDTREE_SINGLE = 101,
+		/// nanoflann kd-tree. With a rebalancing factor of 1 it is built once,
+		/// which is the cheapest to build and to search; over 1 it is the
+		/// weight-balanced tree accepting addPoints()/removePoint(), which
+		/// cannot be serialized while some of its points are removed.
+		NANOFLANN_INDEX_KDTREE_SINGLE = 100,
 	};
 
 	FlannIndex();

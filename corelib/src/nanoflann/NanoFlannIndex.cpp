@@ -207,7 +207,9 @@ NanoFlannIndexImpl * createImpl(int dim, bool useDistanceL1, bool incremental, f
 
 NanoFlannIndex::NanoFlannIndex() :
 	index_(0),
-	featuresDim_(0)
+	featuresDim_(0),
+	useDistanceL1_(false),
+	removedRatio_(0.5f)
 {
 }
 
@@ -236,6 +238,8 @@ void NanoFlannIndex::buildIndex(
 	UASSERT(features.cols > 0);
 
 	featuresDim_ = features.cols;
+	useDistanceL1_ = useDistanceL1;
+	removedRatio_ = removedRatio;
 	index_ = createImpl(featuresDim_, useDistanceL1, incremental, removedRatio, leafMaxSize);
 	index_->cloud.dim = featuresDim_;
 
@@ -285,6 +289,24 @@ size_t NanoFlannIndex::appendPoints(const cv::Mat & features)
 	return start;
 }
 
+// Swap the tree that is built once for the one that accepts points, keeping
+// the points already indexed and the indexes they were given.
+void NanoFlannIndex::makeIncremental()
+{
+	UDEBUG("Rebuilding the nanoflann index as an incremental one (%d points)",
+		(int)index_->cloud.pts.size());
+
+	const cv::Mat points = this->indexedPoints();
+	delete index_;
+	index_ = createImpl(featuresDim_, useDistanceL1_, true, removedRatio_, 10);
+	index_->cloud.dim = featuresDim_;
+	if(!points.empty())
+	{
+		this->appendPoints(points);
+		index_->buildIndex();
+	}
+}
+
 std::vector<unsigned int> NanoFlannIndex::addPoints(const cv::Mat & features)
 {
 	if(!index_)
@@ -294,8 +316,9 @@ std::vector<unsigned int> NanoFlannIndex::addPoints(const cv::Mat & features)
 	}
 	if(!index_->isIncremental())
 	{
-		UERROR("Points cannot be added to a static nanoflann index, it has to be rebuilt instead.");
-		return std::vector<unsigned int>();
+		// Built as the tree that cannot be added to, but points are added after
+		// all: rebuild it as the one that can.
+		this->makeIncremental();
 	}
 	UASSERT(features.type() == CV_32FC1);
 	UASSERT(features.cols == featuresDim_);
@@ -364,6 +387,8 @@ bool NanoFlannIndex::loadIndex(
 	}
 
 	featuresDim_ = features.cols;
+	useDistanceL1_ = useDistanceL1;
+	removedRatio_ = removedRatio;
 	index_ = createImpl(featuresDim_, useDistanceL1, incremental, removedRatio, leafMaxSize);
 	index_->cloud.dim = featuresDim_;
 	this->appendPoints(features);
@@ -425,8 +450,9 @@ void NanoFlannIndex::removePoint(unsigned int index)
 	}
 	if(!index_->isIncremental())
 	{
-		UERROR("Points cannot be removed from a static nanoflann index, it has to be rebuilt instead.");
-		return;
+		// Same as addPoints(): a tree built without the intention of changing
+		// it can still be changed.
+		this->makeIncremental();
 	}
 	// The point stays in cloud so that the indexes of the other points don't
 	// move, only the tree drops it.

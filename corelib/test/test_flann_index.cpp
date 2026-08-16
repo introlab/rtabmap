@@ -16,7 +16,7 @@ TEST(FlannIndexTest, ExactBackendsFindTheSameNeighbors)
 			for(const Backend & backend: EXACT_BACKENDS)
 			{
 				FlannIndex index;
-				index.buildIndex(backend.algorithm, cloud);
+				index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 				ASSERT_TRUE(index.isBuilt()) << backend.name;
 				EXPECT_EQ(index.indexedFeatures(), (size_t)cloud.rows) << backend.name;
 
@@ -69,7 +69,7 @@ TEST(FlannIndexTest, ExactBackendsFindTheSamePointsInRadius)
 		for(const Backend & backend: EXACT_BACKENDS)
 		{
 			FlannIndex index;
-			index.buildIndex(backend.algorithm, cloud);
+			index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 
 			std::vector<std::vector<size_t> > indices;
 			std::vector<std::vector<float> > dists;
@@ -114,7 +114,7 @@ TEST(FlannIndexTest, SerializedIndexIsLoadedBack)
 		for(bool checksum: {true, false})
 		{
 			FlannIndex index;
-			index.buildIndex(backend.algorithm, cloud);
+			index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 			cv::Mat indices;
 			cv::Mat dists;
 			index.knnSearch(queries, indices, dists, knn);
@@ -123,8 +123,7 @@ TEST(FlannIndexTest, SerializedIndexIsLoadedBack)
 #ifdef _WIN32
 			// rtflann serialization needs fmemopen, only the nanoflann backends
 			// give back something on Windows.
-			if(backend.algorithm != FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE &&
-			   backend.algorithm != FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL)
+			if(backend.algorithm != FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE)
 			{
 				EXPECT_TRUE(data.empty()) << backend.name;
 				continue;
@@ -134,7 +133,7 @@ TEST(FlannIndexTest, SerializedIndexIsLoadedBack)
 
 			FlannIndex loaded;
 			std::string error;
-			ASSERT_TRUE(loaded.loadIndex(data, backend.algorithm, cloud, false, 2.0f, &error))
+			ASSERT_TRUE(loaded.loadIndex(data, backend.algorithm, cloud, false, backend.rebalancingFactor, &error))
 				<< backend.name << " checksum=" << checksum << ": " << error;
 			EXPECT_TRUE(loaded.isBuilt()) << backend.name;
 			EXPECT_EQ(loaded.indexedFeatures(), (size_t)cloud.rows) << backend.name;
@@ -157,7 +156,7 @@ TEST(FlannIndexTest, SerializedIndexIsLoadedBack)
 
 			// The raw pointer overload takes the same data.
 			FlannIndex loadedRaw;
-			EXPECT_TRUE(loadedRaw.loadIndex(data.data(), data.size(), backend.algorithm, cloud, false, 2.0f, &error))
+			EXPECT_TRUE(loadedRaw.loadIndex(data.data(), data.size(), backend.algorithm, cloud, false, backend.rebalancingFactor, &error))
 				<< backend.name << ": " << error;
 		}
 	}
@@ -246,13 +245,13 @@ TEST(FlannIndexTest, AddedPointsAreFoundAndRemovedOnesAreNot)
 
 	const Backend backends[] = {
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
-		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
 
 	for(const Backend & backend: backends)
 	{
 		FlannIndex index;
-		index.buildIndex(backend.algorithm, cloud);
+		index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 		ASSERT_EQ(index.indexedFeatures(), (size_t)cloud.rows) << backend.name;
 
 		const std::vector<unsigned int> indexes = index.addPoints(added);
@@ -297,7 +296,7 @@ TEST(FlannIndexTest, IndexesSurviveARebuild)
 
 	const Backend backends[] = {
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
-		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
 
 	for(const Backend & backend: backends)
@@ -336,17 +335,29 @@ TEST(FlannIndexTest, UnsupportedOperationsAreRefused)
 	const cv::Mat cloud = makeCloud(200, 3, 30);
 	const cv::Mat added = makeCloud(10, 3, 31);
 
-	// The static nanoflann tree indexes what it was built with, once.
+	// A nanoflann index built to never be rebuilt (factor 1) still takes points,
+	// rebuilding itself as the tree that accepts them.
 	FlannIndex staticIndex;
-	staticIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, cloud);
-	EXPECT_TRUE(staticIndex.addPoints(added).empty());
+	staticIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, cloud, false, 1.0f);
+	const std::vector<unsigned int> addedIndexes = staticIndex.addPoints(added);
+	ASSERT_EQ(addedIndexes.size(), (size_t)added.rows);
+	EXPECT_EQ(addedIndexes[0], (unsigned int)cloud.rows);
+	EXPECT_EQ(staticIndex.indexedFeatures(), (size_t)(cloud.rows + added.rows));
 	staticIndex.removePoint(0);
-	EXPECT_EQ(staticIndex.indexedFeatures(), (size_t)cloud.rows);
+	EXPECT_EQ(staticIndex.indexedFeatures(), (size_t)(cloud.rows + added.rows - 1));
+
+	// The points it held are still there, under the same indexes.
+	cv::Mat indices;
+	cv::Mat dists;
+	staticIndex.knnSearch(cloud.row(1), indices, dists, 1);
+	EXPECT_EQ(indices.at<int>(0, 0), 1);
+	staticIndex.knnSearch(added.row(0), indices, dists, 1);
+	EXPECT_EQ(indices.at<int>(0, 0), (int)addedIndexes[0]);
 
 	// An index with removed points refers to holes in the features it was built
 	// with, which the ones given back to loadIndex() cannot reproduce.
 	FlannIndex incremental;
-	incremental.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL, cloud);
+	incremental.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, cloud, false, 2.0f);
 	EXPECT_FALSE(incremental.serializeIndex(true).empty());
 	incremental.removePoint(0);
 	EXPECT_TRUE(incremental.serializeIndex(true).empty());
@@ -363,7 +374,7 @@ TEST(FlannIndexTest, DistanceL1BackendsAgree)
 	for(const Backend & backend: EXACT_BACKENDS)
 	{
 		FlannIndex index;
-		index.buildIndex(backend.algorithm, cloud, true /* useDistanceL1 */);
+		index.buildIndex(backend.algorithm, cloud, true /* useDistanceL1 */, backend.rebalancingFactor);
 
 		cv::Mat indices;
 		cv::Mat dists;
@@ -410,7 +421,7 @@ TEST(FlannIndexTest, BinaryDescriptorsUseHammingDistances)
 	for(const Backend & backend: backends)
 	{
 		FlannIndex index;
-		index.buildIndex(backend.algorithm, descriptors);
+		index.buildIndex(backend.algorithm, descriptors, false, backend.rebalancingFactor);
 		EXPECT_EQ(index.featuresType(), CV_8UC1) << backend.name;
 		EXPECT_EQ(index.featuresDim(), descriptors.cols) << backend.name;
 
@@ -438,7 +449,7 @@ TEST(FlannIndexTest, RadiusSearchKeepsTheNearestMaxNeighbors)
 	for(const Backend & backend: EXACT_BACKENDS)
 	{
 		FlannIndex index;
-		index.buildIndex(backend.algorithm, cloud);
+		index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 
 		std::vector<std::vector<size_t> > indices;
 		std::vector<std::vector<float> > dists;
@@ -485,7 +496,7 @@ TEST(FlannIndexTest, ReleasedIndexIsEmptyAndSearchable)
 		EXPECT_EQ(index.indexedFeatures(), 0u) << backend.name;
 		EXPECT_EQ(index.memoryUsed(), 0u) << backend.name;
 
-		index.buildIndex(backend.algorithm, cloud);
+		index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 		EXPECT_TRUE(index.isBuilt()) << backend.name;
 		EXPECT_GT(index.memoryUsed(), 0u) << backend.name;
 
@@ -514,7 +525,7 @@ TEST(FlannIndexTest, AsksForMoreNeighborsThanIndexed)
 	for(const Backend & backend: EXACT_BACKENDS)
 	{
 		FlannIndex index;
-		index.buildIndex(backend.algorithm, cloud);
+		index.buildIndex(backend.algorithm, cloud, false, backend.rebalancingFactor);
 
 		cv::Mat indices;
 		cv::Mat dists;

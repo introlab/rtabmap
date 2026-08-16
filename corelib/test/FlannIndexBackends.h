@@ -22,6 +22,9 @@ struct Backend
 {
 	const char * name;
 	FlannIndex::flann_algorithm_t algorithm;
+	// The nanoflann structures differ by their rebalancing factor: 1 for the one
+	// built once, more for the one accepting points afterwards.
+	float rebalancingFactor = 2.0f;
 };
 
 // Every algorithm that indexes float features. The exhaustive search comes
@@ -31,8 +34,8 @@ const Backend FLOAT_BACKENDS[] = {
 	{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR},
 	{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
 	{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
-	{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE},
-	{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+	{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
+	{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 };
 
 // Those of them that search exactly, so are expected to return the very same
@@ -40,8 +43,8 @@ const Backend FLOAT_BACKENDS[] = {
 const Backend EXACT_BACKENDS[] = {
 	{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR},
 	{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
-	{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE},
-	{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+	{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
+	{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 };
 
 // Binary features only have the Hamming based algorithms: nanoflann has no
@@ -52,13 +55,12 @@ const Backend BINARY_BACKENDS[] = {
 	{"rtflann   LSH                       ", FlannIndex::FLANN_INDEX_LSH},
 };
 
-// Those accepting points after the index is built. The static nanoflann tree
-// rejects them by design, and so is not part of that comparison.
+// Those compared when points are added after the index is built.
 const Backend INCREMENTAL_BACKENDS[] = {
 	{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR},
 	{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
 	{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
-	{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL},
+	{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 };
 
 // Note when reading the times of the first configuration of a comparison: it
@@ -239,7 +241,8 @@ inline void compare(
 	cv::Mat reference;
 	for(size_t i=0; i<count; ++i)
 	{
-		const Result result = run(backends[i].algorithm, data, queries, knn, radius, rebalancingFactor);
+		const Result result = run(backends[i].algorithm, data, queries, knn, radius,
+				backends[i].rebalancingFactor!=2.0f?backends[i].rebalancingFactor:rebalancingFactor);
 		ASSERT_EQ(result.indices.rows, queries.rows) << backends[i].name;
 		if(reference.empty())
 		{

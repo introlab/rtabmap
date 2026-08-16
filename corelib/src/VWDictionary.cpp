@@ -63,7 +63,8 @@ static bool isFlannStrategy(VWDictionary::NNStrategy strategy)
 	return strategy == VWDictionary::kNNFlannNaive ||
 		   strategy == VWDictionary::kNNFlannKdTree ||
 		   strategy == VWDictionary::kNNFlannLSH ||
-		   strategy == VWDictionary::kNNNanoFlannKdTree;
+		   strategy == VWDictionary::kNNNanoFlannKdTree ||
+		   strategy == VWDictionary::kNNFlannKdTreeSingle;
 }
 
 // Whether the strategy indexes float descriptors in a kd-tree, in which case
@@ -71,7 +72,8 @@ static bool isFlannStrategy(VWDictionary::NNStrategy strategy)
 static bool isKdTreeStrategy(VWDictionary::NNStrategy strategy)
 {
 	return strategy == VWDictionary::kNNFlannKdTree ||
-		   strategy == VWDictionary::kNNNanoFlannKdTree;
+		   strategy == VWDictionary::kNNNanoFlannKdTree ||
+		   strategy == VWDictionary::kNNFlannKdTreeSingle;
 }
 
 static FlannIndex::flann_algorithm_t flannAlgorithm(VWDictionary::NNStrategy strategy)
@@ -83,7 +85,9 @@ static FlannIndex::flann_algorithm_t flannAlgorithm(VWDictionary::NNStrategy str
 	case VWDictionary::kNNFlannLSH:
 		return FlannIndex::FLANN_INDEX_LSH;
 	case VWDictionary::kNNNanoFlannKdTree:
-		return FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE_INCREMENTAL;
+		return FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE;
+	case VWDictionary::kNNFlannKdTreeSingle:
+		return FlannIndex::FLANN_INDEX_KDTREE_SINGLE;
 	default:
 		return FlannIndex::FLANN_INDEX_KDTREE; // kNNFlannKdTree
 	}
@@ -148,6 +152,16 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 		NNStrategy nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
 		treeUpdated = this->setNNStrategy(nnStrategy);
 	}
+	if(_strategy == kNNFlannKdTreeSingle && _incrementalDictionary && _incrementalFlann)
+	{
+		UWARN("%s=%d (%s) rebuilds its whole index every time a word is added, which "
+			  "is very slow with %s=true. It is meant for an index built once and "
+			  "searched once, like the one matching the features of two frames.",
+			  Parameters::kKpNNStrategy().c_str(), (int)_strategy,
+			  nnStrategyName(_strategy).c_str(),
+			  Parameters::kKpIncrementalFlann().c_str());
+	}
+
 	if(!treeUpdated && byteToFloat!=_byteToFloat && isKdTreeStrategy(_strategy))
 	{
 		UINFO("KDTree: Binary to Float conversion approach has changed, re-initialize kd-tree.");
