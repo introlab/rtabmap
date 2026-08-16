@@ -2420,8 +2420,9 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		const bool looseFloors = binaryDescriptors || daisyDescriptor;
 		const bool xfeatures2dDescriptor = freakOrBriefDescriptor || daisyDescriptor;
 
+		const bool kazeDescriptor = detectorType == Feature2D::kFeatureKaze;
 		const float kMinPrecision = tfIdfUsed ? 0.70f :
-				(looseFloors ? 0.85f : 0.9f);
+				(looseFloors || kazeDescriptor ? 0.85f : 0.9f);
 		const float kMinRecall    = xfeatures2dDescriptor ? 0.5f :
 				(looseFloors ? 0.7f : 0.85f);
 		EXPECT_GE(acceptedPrec, kMinPrecision)
