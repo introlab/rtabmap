@@ -1136,20 +1136,23 @@ Transform RegistrationVis::computeTransformationImpl(
 						if(_guessMatchToProjection)
 						{
 							UDEBUG("match frame to projected");
-							// Create kd-tree for projected keypoints
-							rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
-							rtflann::Index<rtflann::L2_Simple<float> > index(cornersProjectedMat, rtflann::KDTreeIndexParams());
-							index.buildIndex();
+							// Index the projected keypoints. A rebalancing factor of 1:
+							// the index is thrown away with the frame, nothing is ever
+							// added to or removed from it. cv::Point2f being two floats,
+							// the points are indexed where they are.
+							cv::Mat cornersProjectedMat((int)cornersProjected.size(), 2, CV_32FC1, (void*)cornersProjected.data());
+							FlannIndex flannIndex;
+							flannIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, cornersProjectedMat, false, 1.0f);
 
 							std::vector< std::vector<size_t> > indices;
 							std::vector<std::vector<float> > dists;
 							float radius = (float)_guessWinSize; // pixels
 							std::vector<cv::Point2f> pointsTo;
 							cv::KeyPoint::convert(kptsTo, pointsTo);
-							rtflann::Matrix<float> pointsToMat((float*)pointsTo.data(), pointsTo.size(), 2);
-							index.radiusSearch(pointsToMat, indices, dists, radius*radius, rtflann::SearchParams());
+							cv::Mat pointsToMat((int)pointsTo.size(), 2, CV_32FC1, (void*)pointsTo.data());
+							flannIndex.radiusSearch(pointsToMat, indices, dists, radius);
 
-							UASSERT(indices.size() == pointsToMat.rows);
+							UASSERT(indices.size() == (size_t)pointsToMat.rows);
 							UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
 							UASSERT(descriptorsFrom.rows == (int)kptsFrom.size());
 							UASSERT((int)pointsToMat.rows == descriptorsTo.rows);
@@ -1161,9 +1164,21 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::map<int,int> addedWordsFrom; //<id, index>
 							std::map<int, int> duplicates; //<fromId, toId>
 							int newWords = 0;
+							// The projected words that a keypoint of the frame was found
+							// near, as the other branch collects them: several keypoints
+							// can be near the same one, hence the set. OdometryF2M uses
+							// them to know which words of its map are still seen.
+							std::set<int> projectedIDs;
 							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
-							for(unsigned int i = 0; i < pointsToMat.rows; ++i)
+							for(int i = 0; i < pointsToMat.rows; ++i)
 							{
+								for(unsigned int j=0; j<indices[i].size(); ++j)
+								{
+									const int projectedIndexFrom = projectedIndexToDescIndex[indices[i].at(j)];
+									projectedIDs.insert(!orignalWordsFromIds.empty()?
+											orignalWordsFromIds[projectedIndexFrom]:projectedIndexFrom);
+								}
+
 								int matchedIndex = -1;
 								if(indices[i].size() >= 2)
 								{
@@ -1254,9 +1269,10 @@ Transform RegistrationVis::computeTransformationImpl(
 									++newWords;
 								}
 							}
-							UDEBUG("addedWordsFrom=%d/%d (duplicates=%d, newWords=%d), kptsTo=%d, wordsTo=%d, words3From=%d",
+							info.projectedIDs = std::vector<int>(projectedIDs.begin(), projectedIDs.end());
+							UDEBUG("addedWordsFrom=%d/%d (duplicates=%d, newWords=%d), kptsTo=%d, wordsTo=%d, words3From=%d, projectedIDs=%d",
 								(int)addedWordsFrom.size(), (int)cornersProjected.size(), (int)duplicates.size(), newWords,
-								(int)kptsTo.size(), (int)wordsTo.size(), (int)words3From.size());
+								(int)kptsTo.size(), (int)wordsTo.size(), (int)words3From.size(), (int)info.projectedIDs.size());
 
 							// create fake ids for not matched words from "from"
 							int addWordsFromNotMatched = 0;
@@ -1278,22 +1294,17 @@ Transform RegistrationVis::computeTransformationImpl(
 						else
 						{
 							UDEBUG("match projected to frame");
-							cv::Mat pointsToMat(kptsTo.size(), 2, CV_32FC1);
-							for(size_t i = 0; i < kptsTo.size(); ++i) {
-								pointsToMat.at<float>(i, 0) = kptsTo[i].pt.x;
-								pointsToMat.at<float>(i, 1) = kptsTo[i].pt.y;
-							}
-
+							// Index the frame's keypoints. A rebalancing factor of 1:
+							// the index is thrown away with the frame, nothing is ever
+							// added to or removed from it. cv::Point2f being two floats,
+							// the points are indexed where they are.
+							std::vector<cv::Point2f> pointsTo;
+							cv::KeyPoint::convert(kptsTo, pointsTo);
+							cv::Mat pointsToMat((int)pointsTo.size(), 2, CV_32FC1, (void*)pointsTo.data());
 							FlannIndex flannIndex;
-							// A rebalancing factor of 1: the index is thrown away with
-							// the frame, nothing is ever added to or removed from it.
 							flannIndex.buildIndex(FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, pointsToMat, false, 1.0f);
 
-							cv::Mat queryMat(cornersProjected.size(), 2, CV_32FC1);
-							for(size_t i = 0; i < cornersProjected.size(); ++i) {
-								queryMat.at<float>(i, 0) = cornersProjected[i].x;
-								queryMat.at<float>(i, 1) = cornersProjected[i].y;
-							}
+							cv::Mat queryMat((int)cornersProjected.size(), 2, CV_32FC1, (void*)cornersProjected.data());
 
 							std::vector<std::vector<size_t>> indices;
 							std::vector<std::vector<float>> dists;

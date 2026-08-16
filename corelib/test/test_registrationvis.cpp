@@ -135,14 +135,14 @@ static Transform computeRegistration(
 		const SensorData & fromData,
 		const SensorData & toData,
 		const ParametersMap & params,
-		RegistrationInfo * infoOut = nullptr)
+		RegistrationInfo * infoOut = nullptr,
+		const Transform & guess = Transform())
 {
 	RegistrationVis reg(params);
 	Signature from(fromData);
 	Signature to(toData);
 	RegistrationInfo info;
-	Transform nullGuess;
-	return reg.computeTransformation(from, to, nullGuess, infoOut ? infoOut : &info);
+	return reg.computeTransformation(from, to, guess, infoOut ? infoOut : &info);
 }
 
 // Golden transforms (GFTT/ORB, MinDistance=3, QualityLevel=0.01, MaxFeatures=3000, RoiRatios=0 0 0 0.3).
@@ -197,7 +197,8 @@ static Transform computeRegistrationRobust(
 		const SensorData & fromData,
 		const SensorData & toData,
 		const ParametersMap & params,
-		RegistrationInfo * infoOut = nullptr)
+		RegistrationInfo * infoOut = nullptr,
+		const Transform & guess = Transform())
 {
 	const int estimationType = std::atoi(params.at(Parameters::kVisEstimationType()).c_str());
 	// Epipolar (type=2) is the most RANSAC-sensitive so it gets the biggest
@@ -213,7 +214,7 @@ static Transform computeRegistrationRobust(
 	{
 		cv::theRNG() = cv::RNG(static_cast<uint64_t>(0x9e3779b97f4a7c15ULL) ^
 				static_cast<uint64_t>(attempt + 1));
-		result = computeRegistration(fromData, toData, params, &info);
+		result = computeRegistration(fromData, toData, params, &info, guess);
 		if(!result.isNull())
 		{
 			break;
@@ -514,6 +515,44 @@ TEST(RegistrationVisTest, StereoFeatureMatchingAndOpticalFlowSucceed3DTo3D)
 }
 
 #if defined(RTABMAP_G2O)
+// Guess based matching (Vis/CorGuessWinSize): the words of "from" are projected
+// into "to" with the guess, and only the features within a radius of their
+// projection are compared. Vis/CorGuessMatchToProjection picks which of the two
+// sets is indexed and which one searches it, so both directions index 2D points
+// and search them by radius.
+TEST(RegistrationVisTest, RgbdGuessMatchingBothDirections)
+{
+	const SensorData fromData = loadRgbdSensorData("17");
+	const SensorData toData = loadRgbdSensorData("154");
+	ASSERT_FALSE(fromData.imageRaw().empty());
+	ASSERT_FALSE(toData.imageRaw().empty());
+
+	// A guess a few centimeters and a degree away from the answer, the way
+	// odometry gives one. Far enough to matter, close enough for the projected
+	// words to land inside the search radius.
+	const Transform expected = kRgbd17To154Expected[1]; // PnP
+	const Transform guess = expected * Transform(0.03f, -0.02f, 0.01f, 0.0f, 0.0f, 0.02f);
+
+	for(bool matchToProjection: {false, true})
+	{
+		ParametersMap params = registrationVisTestParams(1 /* PnP */);
+		params[Parameters::kVisCorGuessMatchToProjection()] = matchToProjection?"true":"false";
+
+		RegistrationInfo info;
+		const Transform result = computeRegistrationRobust(fromData, toData, params, &info, guess);
+
+		const std::string label = std::string(Parameters::kVisCorGuessMatchToProjection()) +
+				(matchToProjection?"=true":"=false");
+		expectTransformNearExpected(result, expected, kGoldenTransTolM, kGoldenAngleTolRad, label);
+		EXPECT_GE(info.inliers, 6) << label;
+		// Only the guess based matching fills projectedIDs, whichever of its two
+		// directions is taken, so this is what tells that it produced the
+		// result rather than the plain descriptor matching. OdometryF2M relies
+		// on them being filled to know which words of its map are still seen.
+		EXPECT_FALSE(info.projectedIDs.empty()) << label;
+	}
+}
+
 TEST(RegistrationVisTest, RgbdTwoFramesMatchExpectedTransformWithG2oBundleAdjustment)
 {
 	const SensorData fromData = loadRgbdSensorData("17");
