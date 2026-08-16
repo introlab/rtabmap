@@ -7,6 +7,7 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <opencv2/core.hpp>
+#include <opencv2/features2d.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -25,6 +26,14 @@ struct Backend
 	// The nanoflann structures differ by their rebalancing factor: 1 for the one
 	// built once, more for the one accepting points afterwards.
 	float rebalancingFactor = 2.0f;
+	// Not a FlannIndex at all: cv::BFMatcher, what the brute force strategies of
+	// VWDictionary and RegistrationVis use. Kept in the comparisons as the
+	// baseline every index has to beat. OpenCV threads its search where the
+	// indexes here search on one core, so it comes in two flavours: as the
+	// application gets it, and held to one core to compare the work done rather
+	// than the time it takes on an idle machine.
+	bool bruteForce = false;
+	bool singleCore = false;
 };
 
 // Every algorithm that indexes float features. The exhaustive search comes
@@ -32,6 +41,9 @@ struct Backend
 // found and for the time taken.
 const Backend FLOAT_BACKENDS[] = {
 	{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR},
+	// No single core row for the float features: OpenCV doesn't thread that
+	// match at these sizes, it measures the same thing as the one above.
+	{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
 	{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
 	{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
 	{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
@@ -52,6 +64,8 @@ const Backend EXACT_BACKENDS[] = {
 // LSH is for.
 const Backend BINARY_BACKENDS[] = {
 	{"linear    exhaustive (hamming)      ", FlannIndex::FLANN_INDEX_LINEAR},
+	{"cv        BFMatcher (hamming)       ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
+	{"cv        BFMatcher (hamming,1 core)", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, true},
 	{"rtflann   LSH                       ", FlannIndex::FLANN_INDEX_LSH},
 };
 
@@ -161,20 +175,62 @@ struct Result
 };
 
 inline Result run(
-		FlannIndex::flann_algorithm_t algorithm,
+		const Backend & backend,
 		const cv::Mat & data,
 		const cv::Mat & queries,
 		int knn,
 		float radius,
 		float rebalancingFactor)
 {
-	FlannIndex index;
 	Result result;
 	result.radiusTime = -1.0;
 	cv::Mat dists;
 
+	if(backend.bruteForce)
+	{
+		// cv::setNumThreads() is global, put it back before leaving.
+		const int threads = cv::getNumThreads();
+		if(backend.singleCore)
+		{
+			cv::setNumThreads(1);
+		}
+
+		UTimer timer;
+		cv::BFMatcher matcher(data.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+		matcher.add(std::vector<cv::Mat>(1, data));
+		matcher.train(); // nothing to build, kept for the symmetry of the times
+		result.buildTime = timer.ticks();
+
+		std::vector<std::vector<cv::DMatch> > matches;
+		matcher.knnMatch(queries, matches, knn);
+		result.knnTime = timer.ticks();
+
+		result.indices = cv::Mat(queries.rows, knn, CV_32SC1, cv::Scalar(-1));
+		for(size_t i=0; i<matches.size(); ++i)
+		{
+			for(size_t j=0; j<matches[i].size() && (int)j<knn; ++j)
+			{
+				result.indices.at<int>((int)i, (int)j) = matches[i][j].trainIdx;
+			}
+		}
+
+		if(radius > 0.0f)
+		{
+			std::vector<std::vector<cv::DMatch> > radiusMatches;
+			matcher.radiusMatch(queries, radiusMatches, radius);
+			result.radiusTime = timer.ticks();
+		}
+		result.memory = 0; // it indexes nothing
+		if(backend.singleCore)
+		{
+			cv::setNumThreads(threads);
+		}
+		return result;
+	}
+
+	FlannIndex index;
 	UTimer timer;
-	index.buildIndex(algorithm, data, false, rebalancingFactor);
+	index.buildIndex(backend.algorithm, data, false, rebalancingFactor);
 	result.buildTime = timer.ticks();
 
 	index.knnSearch(queries, result.indices, dists, knn);
@@ -241,7 +297,7 @@ inline void compare(
 	cv::Mat reference;
 	for(size_t i=0; i<count; ++i)
 	{
-		const Result result = run(backends[i].algorithm, data, queries, knn, radius,
+		const Result result = run(backends[i], data, queries, knn, radius,
 				backends[i].rebalancingFactor!=2.0f?backends[i].rebalancingFactor:rebalancingFactor);
 		ASSERT_EQ(result.indices.rows, queries.rows) << backends[i].name;
 		if(reference.empty())

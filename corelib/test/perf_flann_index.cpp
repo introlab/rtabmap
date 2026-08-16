@@ -518,6 +518,7 @@ TEST(FlannIndexPerfTest, RegistrationGuessMatching)
 	// A factor of 1 for the rtflann rows keeps their per-point bookkeeping out
 	// of the measurement, and picks the nanoflann tree that is built once.
 	const Backend backends[] = {
+		{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE, 1.0f},
 		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f},
 		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
@@ -572,6 +573,7 @@ void compareDictionaryMatching(int indexedCount, int queriedCount)
 	// for one costs here.
 	const Backend backends[] = {
 		{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f},
+		{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE, 1.0f},
 		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f},
 		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
