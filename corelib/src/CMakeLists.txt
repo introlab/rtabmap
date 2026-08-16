@@ -877,8 +877,8 @@ add_definitions(${PCL_DEFINITIONS})
 # rather than a compile definition, so that toggling it recompiles the sources
 # including rtflann instead of the whole library
 configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/rtflann/config.h.in
-        ${CMAKE_CURRENT_BINARY_DIR}/rtflann/config.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/rtflann/rtabmap_config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/rtflann/rtabmap_config.h)
 
 ADD_LIBRARY(rtabmap_core ${SRC_FILES} ${RESOURCES_HEADERS})
 ADD_LIBRARY(rtabmap::core ALIAS rtabmap_core)
