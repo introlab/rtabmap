@@ -100,6 +100,7 @@ $(document).ready(function(){initNavTree('classrtabmap_1_1RegistrationVis.html',
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="classrtabmap_1_1RegistrationVis-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">rtabmap::RegistrationVis Class Reference</div></div>
@@ -148,6 +149,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:ae951e95c4ae2ea1ab5c4d849823d66c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a697d562bebe30b73a1ecd34dabee4347" id="r_a697d562bebe30b73a1ecd34dabee4347"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#a697d562bebe30b73a1ecd34dabee4347">getNNType</a> () const</td></tr>
 <tr class="separator:a697d562bebe30b73a1ecd34dabee4347"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9fd0ba3453d2c658d8a9b1cee5ba132c" id="r_a9fd0ba3453d2c658d8a9b1cee5ba132c"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#a9fd0ba3453d2c658d8a9b1cee5ba132c">getNNTypeName</a> () const</td></tr>
+<tr class="separator:a9fd0ba3453d2c658d8a9b1cee5ba132c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aed9e9e593b290a4be1aeda05967a631a" id="r_aed9e9e593b290a4be1aeda05967a631a"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#aed9e9e593b290a4be1aeda05967a631a">getNNDR</a> () const</td></tr>
 <tr class="separator:aed9e9e593b290a4be1aeda05967a631a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a951c79dd9be75b896c551e5213c0ee31" id="r_a951c79dd9be75b896c551e5213c0ee31"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#a951c79dd9be75b896c551e5213c0ee31">getEstimationType</a> () const</td></tr>
@@ -200,6 +203,22 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>setChildRegistration<
 <tr class="memdesc:a44530cd77f6d0a9657251864fb136c0d inherit pub_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Registers <code>from</code> to <code>to</code>; signatures may be modified by the implementation. <br /></td></tr>
 <tr class="separator:a44530cd77f6d0a9657251864fb136c0d inherit pub_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a770e36d382cf124c47847e50436ae40e" id="r_a770e36d382cf124c47847e50436ae40e"><td class="memItemLeft" align="right" valign="top"><a id="a770e36d382cf124c47847e50436ae40e" name="a770e36d382cf124c47847e50436ae40e"></a>
+static std::string&#160;</td><td class="memItemRight" valign="bottom"><b>getNNTypeName</b> (int nnType)</td></tr>
+<tr class="memdesc:a770e36d382cf124c47847e50436ae40e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Name of a Vis/CorNNType value. <br /></td></tr>
+<tr class="separator:a770e36d382cf124c47847e50436ae40e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_static_methods_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
+<tr class="memitem:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration" id="r_a516e8d64cdb3e7a743a3aa40ab026def"><td class="memItemLeft" align="right" valign="top">
+static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
+<tr class="memdesc:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration from <b>Reg/Strategy</b> in <code>parameters</code>. Caller owns the pointer. <br /></td></tr>
+<tr class="separator:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration" id="r_a1e3493a850551c98f9e814fed74400e6"><td class="memItemLeft" align="right" valign="top">
+static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (<a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> &amp;type, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
+<tr class="memdesc:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration of <code>type</code> (may be adjusted, e.g. to <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8e6dbf98a9a843c34d16b8c7e546c724">kTypeVis</a>). Caller owns the pointer. <br /></td></tr>
+<tr class="separator:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:aa47fd3a0599ee918e024161db330a92f" id="r_aa47fd3a0599ee918e024161db330a92f"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="classrtabmap_1_1Transform.html">Transform</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1RegistrationVis.html#aa47fd3a0599ee918e024161db330a92f">computeTransformationImpl</a> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;from, <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;to, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> guess, <a class="el" href="classrtabmap_1_1RegistrationInfo.html">RegistrationInfo</a> &amp;info) const</td></tr>
@@ -233,15 +252,6 @@ Additional Inherited Members</h2></td></tr>
  }</td></tr>
 <tr class="memdesc:ae693713cd8b7ece4b147eae99880b849"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Registration.html" title="Abstract base for registering two observations (visual, ICP, or both).">Registration</a> strategy selected by <b>Reg/Strategy</b>.  <a href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">More...</a><br /></td></tr>
 <tr class="separator:ae693713cd8b7ece4b147eae99880b849 inherit pub_types_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="inherit_header pub_static_methods_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
-<tr class="memitem:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration" id="r_a516e8d64cdb3e7a743a3aa40ab026def"><td class="memItemLeft" align="right" valign="top">
-static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
-<tr class="memdesc:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration from <b>Reg/Strategy</b> in <code>parameters</code>. Caller owns the pointer. <br /></td></tr>
-<tr class="separator:a516e8d64cdb3e7a743a3aa40ab026def inherit pub_static_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration" id="r_a1e3493a850551c98f9e814fed74400e6"><td class="memItemLeft" align="right" valign="top">
-static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>create</b> (<a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849">Type</a> &amp;type, const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
-<tr class="memdesc:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a registration of <code>type</code> (may be adjusted, e.g. to <a class="el" href="classrtabmap_1_1Registration.html#ae693713cd8b7ece4b147eae99880b849a8e6dbf98a9a843c34d16b8c7e546c724">kTypeVis</a>). Caller owns the pointer. <br /></td></tr>
-<tr class="separator:a1e3493a850551c98f9e814fed74400e6 inherit pub_static_methods_classrtabmap_1_1Registration"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_attribs_classrtabmap_1_1Registration"><td colspan="2" onclick="javascript:toggleInherit('pub_static_attribs_classrtabmap_1_1Registration')"><img src="closed.png" alt="-"/>&#160;Static Public Attributes inherited from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a></td></tr>
 <tr class="memitem:a7c8c2d7a65357ef9f5d60ce3f763f4b3 inherit pub_static_attribs_classrtabmap_1_1Registration" id="r_a7c8c2d7a65357ef9f5d60ce3f763f4b3"><td class="memItemLeft" align="right" valign="top">static double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Registration.html#a7c8c2d7a65357ef9f5d60ce3f763f4b3">COVARIANCE_LINEAR_EPSILON</a></td></tr>
 <tr class="memdesc:a7c8c2d7a65357ef9f5d60ce3f763f4b3 inherit pub_static_attribs_classrtabmap_1_1Registration"><td class="mdescLeft">&#160;</td><td class="mdescRight">Minimum diagonal value for linear covariance (m²).  <br /></td></tr>
@@ -402,6 +412,34 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 
 </div>
 </div>
+<a id="a9fd0ba3453d2c658d8a9b1cee5ba132c" name="a9fd0ba3453d2c658d8a9b1cee5ba132c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9fd0ba3453d2c658d8a9b1cee5ba132c">&#9670;&#160;</a></span>getNNTypeName()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string rtabmap::RegistrationVis::getNNTypeName </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>Name of the <b>Vis/CorNNType</b> nearest-neighbor strategy in use. </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00079">79</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+
+</div>
+</div>
 <a id="aed9e9e593b290a4be1aeda05967a631a" name="aed9e9e593b290a4be1aeda05967a631a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aed9e9e593b290a4be1aeda05967a631a">&#9670;&#160;</a></span>getNNDR()</h2>
 
@@ -426,7 +464,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd><b>Vis/CorNNDR</b> ratio test threshold. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00079">79</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00086">86</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
 
 </div>
 </div>
@@ -454,7 +492,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd><b>Vis/EstimationType</b> (0: 3D→3D, 1: PnP, 2: epipolar). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00081">81</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00088">88</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
 
 </div>
 </div>
@@ -482,7 +520,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>Feature detector used for the “from” signature. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00084">84</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00091">91</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
 
 </div>
 </div>
@@ -564,7 +602,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 
 <p>Reimplemented from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00093">93</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00100">100</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
 
 </div>
 </div>
@@ -593,7 +631,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 
 <p>Reimplemented from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00094">94</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00101">101</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
 
 </div>
 </div>
@@ -622,7 +660,7 @@ static <a class="el" href="classrtabmap_1_1Registration.html">Registration</a> *
 
 <p>Reimplemented from <a class="el" href="classrtabmap_1_1Registration.html">rtabmap::Registration</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00095">95</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="RegistrationVis_8h_source.html#l00102">102</a> of file <a class="el" href="RegistrationVis_8h_source.html">RegistrationVis.h</a>.</p>
 
 </div>
 </div>

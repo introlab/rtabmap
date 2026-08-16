@@ -155,7 +155,9 @@ var menudata={children:[
 {text:"w",url:"functions_vars.html#index_w"}]},
 {text:"Enumerations",url:"functions_enum.html"},
 {text:"Enumerator",url:"functions_eval.html",children:[
-{text:"k",url:"functions_eval.html#index_k"}]},
+{text:"f",url:"functions_eval.html#index_f"},
+{text:"k",url:"functions_eval.html#index_k"},
+{text:"n",url:"functions_eval.html#index_n"}]},
 {text:"Related Symbols",url:"functions_rela.html"}]}]},
 {text:"Files",url:"files.html",children:[
 {text:"File List",url:"files.html"},

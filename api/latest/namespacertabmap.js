@@ -371,7 +371,7 @@ var namespacertabmap =
     [ "FAST_FREAK", "classrtabmap_1_1FAST__FREAK.html", null ],
     [ "Feature2D", "classrtabmap_1_1Feature2D.html", "classrtabmap_1_1Feature2D" ],
     [ "FeatureBA", "classrtabmap_1_1FeatureBA.html", "classrtabmap_1_1FeatureBA" ],
-    [ "FlannIndex", "classrtabmap_1_1FlannIndex.html", null ],
+    [ "FlannIndex", "classrtabmap_1_1FlannIndex.html", "classrtabmap_1_1FlannIndex" ],
     [ "GainCompensator", "classrtabmap_1_1GainCompensator.html", null ],
     [ "GeodeticCoords", "classrtabmap_1_1GeodeticCoords.html", "classrtabmap_1_1GeodeticCoords" ],
     [ "GFTT", "classrtabmap_1_1GFTT.html", "classrtabmap_1_1GFTT" ],

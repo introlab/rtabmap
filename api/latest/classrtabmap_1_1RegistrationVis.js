@@ -6,6 +6,7 @@ var classrtabmap_1_1RegistrationVis =
     [ "getIterations", "classrtabmap_1_1RegistrationVis.html#a93331add1822dd6f02bc74efec6d6834", null ],
     [ "getMinInliers", "classrtabmap_1_1RegistrationVis.html#ae951e95c4ae2ea1ab5c4d849823d66c4", null ],
     [ "getNNType", "classrtabmap_1_1RegistrationVis.html#a697d562bebe30b73a1ecd34dabee4347", null ],
+    [ "getNNTypeName", "classrtabmap_1_1RegistrationVis.html#a9fd0ba3453d2c658d8a9b1cee5ba132c", null ],
     [ "getNNDR", "classrtabmap_1_1RegistrationVis.html#aed9e9e593b290a4be1aeda05967a631a", null ],
     [ "getEstimationType", "classrtabmap_1_1RegistrationVis.html#a951c79dd9be75b896c551e5213c0ee31", null ],
     [ "getDetector", "classrtabmap_1_1RegistrationVis.html#a0a860fb3509b4c5b135b66ebd5cd6e55", null ],

@@ -6,6 +6,8 @@ var classrtabmap_1_1VWDictionary =
       [ "kNNFlannLSH", "classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655a89ab72d0bccd61bb11abbd1edf1e6992", null ],
       [ "kNNBruteForce", "classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655a1745dd334296b8a41cf0c88dcc8a7d5d", null ],
       [ "kNNBruteForceGPU", "classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655a602d99d5bdef453a39339a0b45979451", null ],
+      [ "kNNFlannKdTreeSingle", "classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655a994442dbb17b48ba9a9315edee24a7a1", null ],
+      [ "kNNNanoFlannKdTree", "classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655a306c8d555b740267fa80a1ee673ef7c7", null ],
       [ "kNNUndef", "classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655afeba67ed0aafc39aa35b2a194e147ff9", null ]
     ] ],
     [ "VWDictionary", "classrtabmap_1_1VWDictionary.html#ada3980b520d8411a1ebb3ce14e2f8734", null ],

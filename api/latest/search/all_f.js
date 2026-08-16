@@ -25,8 +25,9 @@ var searchData=
   ['memory_20management_22',['Memory management',['../index.html#autotoc_md2',1,'']]],
   ['memorychanged_23',['memoryChanged',['../classrtabmap_1_1Memory.html#a8720df55fa6f8be933827808d364f20a',1,'rtabmap::Memory']]],
   ['memoryusage_24',['memoryUsage',['../classrtabmap_1_1OdometryInfo.html#ad7f7beb7810db1912c20b05e94eafdf3',1,'rtabmap::OdometryInfo']]],
-  ['merge_25',['merge',['../classrtabmap_1_1Link.html#a953a029f601d7ca3efbb12ca22da4542',1,'rtabmap::Link']]],
-  ['mergetextures_26',['mergeTextures',['../namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238',1,'rtabmap::util3d']]],
-  ['mindisparity_27',['minDisparity',['../classrtabmap_1_1Stereo.html#aaeec1e0e5470b1b1268b4e04bff81742',1,'rtabmap::Stereo']]],
-  ['multibandtexturing_28',['multiBandTexturing',['../namespacertabmap_1_1util3d.html#a695eb29e9b2679634edb6b8c36a11942',1,'rtabmap::util3d']]]
+  ['memoryused_25',['memoryUsed',['../classrtabmap_1_1FlannIndex.html#a5a2eed18fe1216142d09c05243e9d06f',1,'rtabmap::FlannIndex']]],
+  ['merge_26',['merge',['../classrtabmap_1_1Link.html#a953a029f601d7ca3efbb12ca22da4542',1,'rtabmap::Link']]],
+  ['mergetextures_27',['mergeTextures',['../namespacertabmap_1_1util3d.html#aeec8dd0024231c36c089340895609238',1,'rtabmap::util3d']]],
+  ['mindisparity_28',['minDisparity',['../classrtabmap_1_1Stereo.html#aaeec1e0e5470b1b1268b4e04bff81742',1,'rtabmap::Stereo']]],
+  ['multibandtexturing_29',['multiBandTexturing',['../namespacertabmap_1_1util3d.html#a695eb29e9b2679634edb6b8c36a11942',1,'rtabmap::util3d']]]
 ];

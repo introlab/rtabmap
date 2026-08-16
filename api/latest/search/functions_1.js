@@ -4,5 +4,6 @@ var searchData=
   ['baseline_1',['baseline',['../classrtabmap_1_1StereoCameraModel.html#a8dc48f95fcf68eb81da96941f778535f',1,'rtabmap::StereoCameraModel']]],
   ['bayesfilter_2',['BayesFilter',['../classrtabmap_1_1BayesFilter.html#a2955edc4b79110b5bd1bd03f1616056e',1,'rtabmap::BayesFilter']]],
   ['bearing_3',['bearing',['../classrtabmap_1_1GPS.html#a9285c1d2e97f83dc0b8df3666b912169',1,'rtabmap::GPS']]],
-  ['brightnessandcontrastauto_4',['brightnessAndContrastAuto',['../namespacertabmap_1_1util2d.html#a89ec90b2659c764ba22b5c36d729c8f8',1,'rtabmap::util2d']]]
+  ['brightnessandcontrastauto_4',['brightnessAndContrastAuto',['../namespacertabmap_1_1util2d.html#a89ec90b2659c764ba22b5c36d729c8f8',1,'rtabmap::util2d']]],
+  ['buildindex_5',['buildIndex',['../classrtabmap_1_1FlannIndex.html#aad2f29314c6b021d1c53217a7a041521',1,'rtabmap::FlannIndex']]]
 ];
