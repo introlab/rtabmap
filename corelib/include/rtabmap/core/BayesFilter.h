@@ -182,9 +182,12 @@ private:
 			const std::vector<int> & newIds);
 
 	/**
-	 * @brief Realigns the posterior map with the current set of likelihood ids.
+	 * @brief Realigns the posterior with the ids of the likelihood.
+	 *
+	 * Rebuilds @ref _posterior and the vectors indexed the same way, keeping the probability
+	 * of the locations that are in both. Called only when the ids differ.
 	 */
-	void updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds);
+	void updatePosterior(const Memory * memory, const std::map<int, float> & likelihood);
 
 	/**
 	 * @brief Fills the column of the virtual place (the unvisited location hypothesis).
@@ -277,13 +280,18 @@ private:
 	 * Mathematically identical to the dense multiplication, up to the order the products of a
 	 * row are summed in.
 	 *
-	 * @param posterior Column vector of the last posterior, as many rows as the prediction.
-	 * @param prior Output column vector, allocated by this method.
+	 * @param posterior The last posterior, as many values as the prediction has columns.
+	 * @param prior Output, sized by this method.
 	 */
-	void multiplySparsePrediction(const cv::Mat & posterior, cv::Mat & prior) const;
+	void multiplySparsePrediction(const std::vector<float> & posterior, std::vector<float> & prior) const;
 
 private:
 	std::map<int, float> _posterior;              ///< Current posterior (signature id → probability).
+	std::vector<int> _posteriorIds;               ///< The ids of _posterior, in its order.
+	std::vector<float> _posteriorValues;          ///< The probabilities of _posterior, in its order: what an iteration works on.
+	std::vector<int> _likelihoodIds;              ///< The ids of the likelihood of an iteration, in its order.
+	std::vector<float> _likelihoodValues;         ///< The likelihood of an iteration, in the same order.
+	std::vector<float> _priorValues;              ///< The prior of an iteration, in the same order.
 	cv::Mat _prediction;                          ///< Cached prediction/transition matrix.
 	float _virtualPlacePrior;                     ///< Prior for virtual place transitions.
 	std::vector<double> _predictionLC;            ///< Model `{Vp, Lc, l1, l2, ...}`.

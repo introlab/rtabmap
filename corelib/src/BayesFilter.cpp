@@ -158,29 +158,17 @@ std::string BayesFilter::getPredictionLCStr() const
 	return values;
 }
 
-// Whether the posterior is indexed by exactly these ids, in this order. Both are
-// sorted by id, so they are compared side by side rather than collecting the keys of
-// the posterior into a vector of their own to compare with.
+// Whether the posterior is indexed by exactly these ids, in this order.
 bool BayesFilter::posteriorHasSameIds(const std::vector<int> & ids) const
 {
-	if(_posterior.size() != ids.size())
-	{
-		return false;
-	}
-	std::map<int, float>::const_iterator iter = _posterior.begin();
-	for(size_t i=0; i<ids.size(); ++i, ++iter)
-	{
-		if(iter->first != ids[i])
-		{
-			return false;
-		}
-	}
-	return true;
+	return _posteriorIds == ids;
 }
 
 void BayesFilter::reset()
 {
 	_posterior.clear();
+	_posteriorIds.clear();
+	_posteriorValues.clear();
 	_prediction = cv::Mat();
 	this->clearSparsePrediction();
 	_predictionChanged = true;
@@ -213,19 +201,26 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	UTimer timer;
 	timer.start();
 
-	cv::Mat prior;
-	cv::Mat posterior;
-
-	float sum = 0;
-	int j=0;
-
-	// The ids of the likelihood, which both the prediction and the posterior are
-	// indexed by, taken once: there are as many of them as there are locations in the
-	// working memory, and walking the map to collect them is not free at that size.
-	const std::vector<int> ids = uKeys(likelihood);
-	// Whether they are the locations of the last iteration, which over a fixed graph they
-	// always are: the prediction and the posterior are then both kept as they are.
-	const bool sameIds = this->posteriorHasSameIds(ids);
+	// One walk of the likelihood: its values into a vector of their own, and its ids
+	// against the ones the posterior is indexed by. Everything below then works on
+	// vectors, which at the size of the working memory is the difference between walking a
+	// tree of tens of thousands of nodes once and walking it half a dozen times.
+	_likelihoodIds.resize(likelihood.size());
+	_likelihoodValues.resize(likelihood.size());
+	bool sameIds = _posteriorIds.size() == likelihood.size();
+	{
+		size_t k = 0;
+		for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter, ++k)
+		{
+			_likelihoodIds[k] = iter->first;
+			_likelihoodValues[k] = iter->second;
+			if(sameIds && _posteriorIds[k] != iter->first)
+			{
+				sameIds = false;
+			}
+		}
+	}
+	const std::vector<int> & ids = _likelihoodIds;
 
 	// Recursive Bayes estimation...
 	// STEP 1 - Prediction : Prior*lastPosterior
@@ -280,66 +275,65 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	}
 
 	// Adjust the last posterior if some images were
-	// reactivated or removed from the working memory
-	posterior = cv::Mat(likelihood.size(), 1, CV_32FC1);
-	this->updatePosterior(memory, ids);
-	j=0;
-	for(std::map<int, float>::const_iterator i=_posterior.begin(); i!= _posterior.end(); ++i)
+	// reactivated or removed from the working memory. After the prediction, which is built
+	// against the ids the posterior still holds from the last iteration.
+	if(!sameIds)
 	{
-		((float*)posterior.data)[j++] = (*i).second;
+		this->updatePosterior(memory, likelihood);
 	}
-	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior rows=%d, _posterior size=%d", timer.ticks(), posterior.rows, (int)_posterior.size());
-	//std::cout << "LastPosterior=" << posterior << std::endl;
+	UASSERT(_posteriorValues.size() == likelihood.size());
+	ULOGGER_DEBUG("STEP1-update posterior=%fs, _posterior size=%d", timer.ticks(), (int)_posterior.size());
 
 	// Multiply prediction matrix with the last posterior
 	// (m,m) X (m,1) = (m,1)
 	// The sparse form is empty when disabled, or when the prediction was found too
 	// dense for it to be worth it.
 	const bool sparse = _sparsePrediction && !_sparsePredictionColumns.empty();
+	const float * priorPtr = 0;
+	cv::Mat priorMat;
 	if(sparse)
 	{
-		this->multiplySparsePrediction(posterior, prior);
+		this->multiplySparsePrediction(_posteriorValues, _priorValues);
+		priorPtr = &_priorValues[0];
 	}
 	else
 	{
-		prior = _prediction * posterior;
+		// A header over the values, so the matrix multiplication reads them where they are.
+		const cv::Mat posteriorMat((int)_posteriorValues.size(), 1, CV_32FC1, (void*)&_posteriorValues[0]);
+		priorMat = _prediction * posteriorMat;
+		priorPtr = (const float *)priorMat.data;
 	}
 	ULOGGER_DEBUG("STEP1-matrix mult time=%fs (sparse=%d)", timer.ticks(), sparse?1:0);
 	//std::cout << "ResultingPrior=" << prior << std::endl;
 
 	// STEP 2 - Update : Multiply with observations (likelihood)
-	// The posterior holds the ids of the likelihood, updatePosterior() having just made
-	// sure of it, and both are sorted by id: they are walked side by side instead of
-	// looking up each id in the posterior, which at the size of the working memory is
-	// as many searches through the map.
-	j=0;
-	std::map<int, float>::iterator p = _posterior.begin();
-	for(std::map<int, float>::const_iterator i=likelihood.begin(); i!= likelihood.end(); ++i)
+	// The likelihood, the posterior and the prior are all indexed the same way, so this is
+	// three vectors walked side by side rather than a search through the posterior per id.
+	float sum = 0;
+	for(size_t k=0; k<_posteriorValues.size(); ++k)
 	{
-		if(p == _posterior.end() || p->first != (*i).first)
-		{
-			// Should not happen. Searched for rather than assumed if it ever does.
-			p = _posterior.find((*i).first);
-			if(p == _posterior.end())
-			{
-				ULOGGER_ERROR("Problem1! can't find id=%d", (*i).first);
-				continue;
-			}
-		}
-		p->second = (*i).second * ((float*)prior.data)[j++];
-		sum += p->second;
-		++p;
+		_posteriorValues[k] = _likelihoodValues[k] * priorPtr[k];
+		sum += _posteriorValues[k];
 	}
 	ULOGGER_DEBUG("STEP2-likelihood time=%fs", timer.ticks());
-	//std::cout << "Posterior (before normalization)=" << _posterior << std::endl;
 
 	// Normalize
 	ULOGGER_DEBUG("sum=%f", sum);
 	if(sum != 0)
 	{
-		for(std::map<int, float>::iterator i=_posterior.begin(); i!= _posterior.end(); ++i)
+		for(size_t k=0; k<_posteriorValues.size(); ++k)
 		{
-			(*i).second /= sum;
+			_posteriorValues[k] /= sum;
+		}
+	}
+
+	// The posterior the caller reads is the map, which is filled from the values in one
+	// walk of it: its ids are the ones of the likelihood, in the same order.
+	{
+		size_t k = 0;
+		for(std::map<int, float>::iterator iter=_posterior.begin(); iter!=_posterior.end(); ++iter)
+		{
+			iter->second = _posteriorValues[k++];
 		}
 	}
 	ULOGGER_DEBUG("normalize time=%fs", timer.ticks());
@@ -863,22 +857,21 @@ unsigned long BayesFilter::getSparsePredictionMemoryUsed() const
 			+ _sparsePredictionIds.capacity() * sizeof(int);
 }
 
-void BayesFilter::multiplySparsePrediction(const cv::Mat & posterior, cv::Mat & prior) const
+void BayesFilter::multiplySparsePrediction(const std::vector<float> & posterior, std::vector<float> & prior) const
 {
-	const int size = (int)_sparsePredictionColumns.size();
+	const size_t size = _sparsePredictionColumns.size();
 	UASSERT(size > 0);
-	UASSERT(posterior.cols == 1 && posterior.type() == CV_32FC1);
-	UASSERT_MSG(posterior.rows == size,
-			uFormat("posterior=%d prediction=%d", posterior.rows, size).c_str());
+	UASSERT_MSG(posterior.size() == size,
+			uFormat("posterior=%d prediction=%d", (int)posterior.size(), (int)size).c_str());
 
-	prior = cv::Mat::zeros(size, 1, CV_32FC1);
-	const float * posteriorPtr = (const float *)posterior.data;
-	float * priorPtr = (float *)prior.data;
+	prior.assign(size, 0.0f);
+	const float * posteriorPtr = &posterior[0];
+	float * priorPtr = &prior[0];
 
 	// The prior is the sum of the columns of the prediction weighted by the posterior.
 	// Going by column is the order the values are stored in, and lets a location the
 	// posterior has ruled out be skipped whole.
-	for(int col=0; col<size; ++col)
+	for(size_t col=0; col<size; ++col)
 	{
 		const float weight = posteriorPtr[col];
 		if(weight == 0.0f)
@@ -1229,35 +1222,26 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	return prediction;
 }
 
-void BayesFilter::updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds)
+// Realigns the posterior with the ids of the likelihood, keeping the probability of the
+// locations that are in both. Called only when they differ, which over a fixed graph never
+// happens after the first iteration.
+void BayesFilter::updatePosterior(const Memory * memory, const std::map<int, float> & likelihood)
 {
 	ULOGGER_DEBUG("");
-	if(this->posteriorHasSameIds(likelihoodIds))
-	{
-		// Nothing was added to or removed from the working memory, which over a fixed
-		// graph is every iteration: the map below would be rebuilt identical, at the
-		// cost of allocating and freeing a node per location.
-		return;
-	}
+	const bool wasEmpty = _posterior.empty();
 	std::map<int, float> newPosterior;
-	for(std::vector<int>::const_iterator i=likelihoodIds.begin(); i != likelihoodIds.end(); ++i)
+	_posteriorIds.clear();
+	_posteriorIds.reserve(likelihood.size());
+	_posteriorValues.resize(likelihood.size());
+	size_t k = 0;
+	for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter)
 	{
-		std::map<int, float>::iterator post = _posterior.find(*i);
-		if(post == _posterior.end())
-		{
-			if(_posterior.size() == 0)
-			{
-				newPosterior.insert(std::pair<int, float>(*i, 1));
-			}
-			else
-			{
-				newPosterior.insert(std::pair<int, float>(*i, 0));
-			}
-		}
-		else
-		{
-			newPosterior.insert(std::pair<int, float>((*post).first, (*post).second));
-		}
+		const std::map<int, float>::const_iterator post = _posterior.find(iter->first);
+		const float value = post != _posterior.end() ? post->second : (wasEmpty ? 1.0f : 0.0f);
+		// The ids come from a map, so they arrive sorted and each one belongs at the end.
+		newPosterior.insert(newPosterior.end(), std::make_pair(iter->first, value));
+		_posteriorIds.push_back(iter->first);
+		_posteriorValues[k++] = value;
 	}
 	_posterior = newPosterior;
 }
