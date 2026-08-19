@@ -166,7 +166,6 @@ bool BayesFilter::posteriorHasSameIds(const std::vector<int> & ids) const
 
 void BayesFilter::reset()
 {
-	_posterior.clear();
 	_posteriorIds.clear();
 	_posteriorValues.clear();
 	_prediction = cv::Mat();
@@ -176,26 +175,26 @@ void BayesFilter::reset()
 	_neighborsIndex.clear();
 }
 
-const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory, const std::map<int, float> & likelihood)
+bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, float> & likelihood)
 {
 	ULOGGER_DEBUG("");
 
 	if(!memory)
 	{
 		ULOGGER_ERROR("Memory is Null!");
-		return _posterior;
+		return false;
 	}
 
 	if(!likelihood.size())
 	{
 		ULOGGER_ERROR("likelihood is empty!");
-		return _posterior;
+		return false;
 	}
 
 	if(_predictionLC.size() < 2)
 	{
 		ULOGGER_ERROR("Prediction is not valid!");
-		return _posterior;
+		return false;
 	}
 
 	UTimer timer;
@@ -282,7 +281,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 		this->updatePosterior(memory, likelihood);
 	}
 	UASSERT(_posteriorValues.size() == likelihood.size());
-	ULOGGER_DEBUG("STEP1-update posterior=%fs, _posterior size=%d", timer.ticks(), (int)_posterior.size());
+	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior size=%d", timer.ticks(), (int)_posteriorValues.size());
 
 	// Multiply prediction matrix with the last posterior
 	// (m,m) X (m,1) = (m,1)
@@ -327,19 +326,8 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 		}
 	}
 
-	// The posterior the caller reads is the map, which is filled from the values in one
-	// walk of it: its ids are the ones of the likelihood, in the same order.
-	{
-		size_t k = 0;
-		for(std::map<int, float>::iterator iter=_posterior.begin(); iter!=_posterior.end(); ++iter)
-		{
-			iter->second = _posteriorValues[k++];
-		}
-	}
 	ULOGGER_DEBUG("normalize time=%fs", timer.ticks());
-	//std::cout << "Posterior=" << _posterior << std::endl;
-
-	return _posterior;
+	return true;
 }
 
 // A column of the prediction matrix, given as a pointer to its first value and the
@@ -428,11 +416,10 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	{
 		return _prediction;
 	}
-	std::vector<int> oldIds = uKeys(_posterior);
-
 	if(!_fullPredictionUpdate && !_prediction.empty())
 	{
-		return updatePrediction(_prediction, memory, oldIds, ids);
+		// The ids the matrix was built for, which the posterior is still indexed by.
+		return updatePrediction(_prediction, memory, _posteriorIds, ids);
 	}
 	UDEBUG("");
 
@@ -889,7 +876,6 @@ void BayesFilter::multiplySparsePrediction(const std::vector<float> & posterior,
 unsigned long BayesFilter::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(BayesFilter);
-	memoryUsage += _posterior.size() * (sizeof(float)+sizeof(int)+sizeof(std::map<int, float>::iterator)) + sizeof(std::map<int, float>);
 	if(!_prediction.empty())
 	{
 		memoryUsage += _prediction.total() * _prediction.elemSize();
@@ -1231,25 +1217,34 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 // Realigns the posterior with the ids of the likelihood, keeping the probability of the
 // locations that are in both. Called only when they differ, which over a fixed graph never
 // happens after the first iteration.
+//
+// Both are sorted by id, so the ones in both are found by walking them side by side rather
+// than searching for each.
 void BayesFilter::updatePosterior(const Memory * memory, const std::map<int, float> & likelihood)
 {
 	ULOGGER_DEBUG("");
-	const bool wasEmpty = _posterior.empty();
-	std::map<int, float> newPosterior;
-	_posteriorIds.clear();
-	_posteriorIds.reserve(likelihood.size());
-	_posteriorValues.resize(likelihood.size());
+	const bool wasEmpty = _posteriorIds.empty();
+	std::vector<int> ids;
+	std::vector<float> values;
+	ids.reserve(likelihood.size());
+	values.reserve(likelihood.size());
 	size_t k = 0;
 	for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter)
 	{
-		const std::map<int, float>::const_iterator post = _posterior.find(iter->first);
-		const float value = post != _posterior.end() ? post->second : (wasEmpty ? 1.0f : 0.0f);
-		// The ids come from a map, so they arrive sorted and each one belongs at the end.
-		newPosterior.insert(newPosterior.end(), std::make_pair(iter->first, value));
-		_posteriorIds.push_back(iter->first);
-		_posteriorValues[k++] = value;
+		while(k < _posteriorIds.size() && _posteriorIds[k] < iter->first)
+		{
+			++k;
+		}
+		float value = wasEmpty ? 1.0f : 0.0f;
+		if(k < _posteriorIds.size() && _posteriorIds[k] == iter->first)
+		{
+			value = _posteriorValues[k];
+		}
+		ids.push_back(iter->first);
+		values.push_back(value);
 	}
-	_posterior = newPosterior;
+	_posteriorIds.swap(ids);
+	_posteriorValues.swap(values);
 }
 
 } // namespace rtabmap

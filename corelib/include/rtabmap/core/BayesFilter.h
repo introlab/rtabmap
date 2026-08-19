@@ -95,12 +95,14 @@ public:
 	 * The prediction matrix is generated or updated from @ref Memory using the ids present
 	 * in @p likelihood.
 	 *
+	 * Read the result with @ref getPosteriorIds() and @ref getPosteriorValues().
+	 *
 	 * @param memory Working memory instance (must not be null).
 	 * @param likelihood Observation likelihood per signature id (must not be empty).
-	 * @return Reference to the internal posterior map (id → probability). On error (null
-	 *         memory, empty likelihood, or invalid prediction model), returns the unchanged posterior.
+	 * @return False on error (null memory, empty likelihood, or invalid prediction model),
+	 *         the posterior being left unchanged.
 	 */
-	const std::map<int, float> & computePosterior(const Memory * memory, const std::map<int, float> & likelihood);
+	bool computePosterior(const Memory * memory, const std::map<int, float> & likelihood);
 
 	/**
 	 * @brief Clears posterior, prediction matrix and cached neighbor indices.
@@ -123,10 +125,16 @@ public:
 	void setPredictionLC(const std::string & prediction);
 
 	/**
-	 * @brief Returns the current posterior probability map.
-	 * @return Map of signature id to normalized posterior probability. This is the probability to be at the given location.
+	 * @brief The locations the posterior is over, ascending by id.
+	 *
+	 * The virtual place (@ref Memory::kIdVirtual) is the first of them when it is one.
 	 */
-	const std::map<int, float> & getPosterior() const {return _posterior;}
+	const std::vector<int> & getPosteriorIds() const {return _posteriorIds;}
+
+	/**
+	 * @brief The probability of each location of @ref getPosteriorIds(), in the same order.
+	 */
+	const std::vector<float> & getPosteriorValues() const {return _posteriorValues;}
 
 	/**
 	 * @brief Returns the virtual place prior threshold.
@@ -286,9 +294,8 @@ private:
 	void multiplySparsePrediction(const std::vector<float> & posterior, std::vector<float> & prior) const;
 
 private:
-	std::map<int, float> _posterior;              ///< Current posterior (signature id → probability).
-	std::vector<int> _posteriorIds;               ///< The ids of _posterior, in its order.
-	std::vector<float> _posteriorValues;          ///< The probabilities of _posterior, in its order: what an iteration works on.
+	std::vector<int> _posteriorIds;               ///< The locations the posterior is over, ascending by id.
+	std::vector<float> _posteriorValues;          ///< The probability of each of them, in the same order.
 	std::vector<int> _likelihoodIds;              ///< The ids of the likelihood of an iteration, in its order.
 	std::vector<float> _likelihoodValues;         ///< The likelihood of an iteration, in the same order.
 	std::vector<float> _priorValues;              ///< The prior of an iteration, in the same order.

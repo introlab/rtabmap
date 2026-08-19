@@ -28,6 +28,20 @@ static const char kPredictionNewPlace10Stay70Neighbor20[] = "0.1 0.7 0.2";     /
 static const char kPredictionNewPlace10Stay50Neighbor25_15[] = "0.1 0.5 0.25 0.15"; // sum = 1
 static const char kPredictionSumBelowOne[] = "0.1 0.5";                         // sum = 0.6 (non-default, tests normalization)
 
+// The posterior as a map, which the filter no longer builds: it holds the locations and
+// their probabilities as two vectors, and a test reads them more easily as a map.
+static std::map<int, float> posteriorOf(const BayesFilter & filter)
+{
+	const std::vector<int> & ids = filter.getPosteriorIds();
+	const std::vector<float> & values = filter.getPosteriorValues();
+	std::map<int, float> posterior;
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		posterior.insert(posterior.end(), std::make_pair(ids[i], values[i]));
+	}
+	return posterior;
+}
+
 static bool approxEqual(float a, float b, float epsilon = 1e-5f)
 {
 	return std::fabs(a - b) < epsilon;
@@ -262,7 +276,7 @@ protected:
 		likelihood = uniformLikelihood(ids);
 		filter.computePosterior(memory_, likelihood);
 
-		return std::make_pair(filter.getPosterior(), filter.generatePrediction(memory_, ids));
+		return std::make_pair(posteriorOf(filter), filter.generatePrediction(memory_, ids));
 	}
 
 	Memory * memory_ = nullptr;
@@ -276,7 +290,7 @@ TEST(BayesFilterTest, DefaultConstructor)
 {
 	BayesFilter filter;
 
-	EXPECT_TRUE(filter.getPosterior().empty());
+	EXPECT_TRUE(posteriorOf(filter).empty());
 	EXPECT_FLOAT_EQ(filter.getVirtualPlacePrior(), Parameters::defaultBayesVirtualPlacePriorThr());
 	EXPECT_GE(filter.getPredictionLC().size(), 2u);
 	EXPECT_FALSE(filter.getPredictionLCStr().empty());
@@ -372,10 +386,10 @@ TEST(BayesFilterTest, Reset)
 	std::map<int, float> likelihood;
 	likelihood[Memory::kIdVirtual] = 1.0f;
 	filter.computePosterior(&memory, likelihood);
-	ASSERT_FALSE(filter.getPosterior().empty());
+	ASSERT_FALSE(posteriorOf(filter).empty());
 
 	filter.reset();
-	EXPECT_TRUE(filter.getPosterior().empty());
+	EXPECT_TRUE(posteriorOf(filter).empty());
 }
 
 // getMemoryUsed Tests
@@ -400,8 +414,8 @@ TEST(BayesFilterTest, ComputePosteriorNullMemory)
 	std::map<int, float> likelihood;
 	likelihood[1] = 1.0f;
 
-	const std::map<int, float> & result = filter.computePosterior(nullptr, likelihood);
-	EXPECT_TRUE(result.empty());
+	EXPECT_FALSE(filter.computePosterior(nullptr, likelihood));
+	EXPECT_TRUE(posteriorOf(filter).empty());
 }
 
 TEST(BayesFilterTest, ComputePosteriorEmptyLikelihood)
@@ -410,8 +424,8 @@ TEST(BayesFilterTest, ComputePosteriorEmptyLikelihood)
 	BayesFilter filter;
 	std::map<int, float> likelihood;
 
-	const std::map<int, float> & result = filter.computePosterior(&memory, likelihood);
-	EXPECT_TRUE(result.empty());
+	EXPECT_FALSE(filter.computePosterior(&memory, likelihood));
+	EXPECT_TRUE(posteriorOf(filter).empty());
 }
 
 // generatePrediction Tests (virtual place only, no graph)
@@ -466,7 +480,7 @@ TEST(BayesFilterTest, ComputePosteriorVirtualPlaceOnly)
 
 	filter.computePosterior(&memory, likelihood);
 
-	const std::map<int, float> & posterior = filter.getPosterior();
+	const std::map<int, float> & posterior = posteriorOf(filter);
 	ASSERT_EQ(posterior.size(), 1u);
 	EXPECT_EQ(posterior.begin()->first, Memory::kIdVirtual);
 	EXPECT_TRUE(approxEqual(posterior.begin()->second, 1.0f));
@@ -484,7 +498,7 @@ TEST(BayesFilterTest, ComputePosteriorNormalizesPosterior)
 
 	filter.computePosterior(&memory, likelihood);
 
-	const std::map<int, float> & posterior = filter.getPosterior();
+	const std::map<int, float> & posterior = posteriorOf(filter);
 	ASSERT_EQ(posterior.size(), 1u);
 	EXPECT_TRUE(approxEqual(posterior.begin()->second, 1.0f));
 }
@@ -503,7 +517,7 @@ TEST(BayesFilterTest, ComputePosteriorUpdatesWithNewLikelihood)
 	likelihood[Memory::kIdVirtual] = 0.5f;
 	filter.computePosterior(&memory, likelihood);
 
-	const std::map<int, float> & posterior = filter.getPosterior();
+	const std::map<int, float> & posterior = posteriorOf(filter);
 	ASSERT_EQ(posterior.size(), 1u);
 	EXPECT_TRUE(approxEqual(posterior.begin()->second, 1.0f));
 }
@@ -666,7 +680,7 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorNormalizedWithGraph)
 	std::map<int, float> likelihood = uniformLikelihood(ids);
 	filter.computePosterior(memory_, likelihood);
 
-	const std::map<int, float> & posterior = filter.getPosterior();
+	const std::map<int, float> & posterior = posteriorOf(filter);
 	ASSERT_EQ(posterior.size(), ids.size());
 
 	// Linear chain ids: [virtual, 1..15]. Uniform likelihood, init posterior on virtual place.
@@ -738,7 +752,7 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorFavorsHighLikelihood)
 	{
 		filter.computePosterior(memory_, likelihood);
 
-		const std::map<int, float> & posterior = filter.getPosterior();
+		const std::map<int, float> & posterior = posteriorOf(filter);
 		ASSERT_EQ(posterior.size(), ids.size());
 
 		for(size_t i = 0; i < ids.size(); ++i)
@@ -803,7 +817,7 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorSequentialIterations)
 
 		filter.computePosterior(memory_, likelihood);
 
-		const std::map<int, float> & posterior = filter.getPosterior();
+		const std::map<int, float> & posterior = posteriorOf(filter);
 		ASSERT_EQ(posterior.size(), ids.size());
 
 		ASSERT_GE(iter, 5);
@@ -860,7 +874,7 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorSequentialIterationsWithLoopClo
 
 		filter.computePosterior(memory_, likelihood);
 
-		const std::map<int, float> & posterior = filter.getPosterior();
+		const std::map<int, float> & posterior = posteriorOf(filter);
 		ASSERT_EQ(posterior.size(), ids.size());
 
 		ASSERT_GE(iter, 5);
@@ -918,8 +932,8 @@ TEST_F(BayesFilterMemoryFixture, CompareFullPredictionUpdateModes)
 	filterIncremental.computePosterior(memory_, likelihood);
 	filterFull.computePosterior(memory_, likelihood);
 
-	const std::map<int, float> & posteriorIncremental = filterIncremental.getPosterior();
-	const std::map<int, float> & posteriorFull = filterFull.getPosterior();
+	const std::map<int, float> & posteriorIncremental = posteriorOf(filterIncremental);
+	const std::map<int, float> & posteriorFull = posteriorOf(filterFull);
 	ASSERT_EQ(posteriorIncremental.size(), posteriorFull.size());
 	for(size_t i = 0; i < ids.size(); ++i)
 	{
@@ -1038,8 +1052,8 @@ TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModes)
 		filterDense.computePosterior(memory_, likelihood);
 		filterSparse.computePosterior(memory_, likelihood);
 
-		const std::map<int, float> & posteriorDense = filterDense.getPosterior();
-		const std::map<int, float> & posteriorSparse = filterSparse.getPosterior();
+		const std::map<int, float> & posteriorDense = posteriorOf(filterDense);
+		const std::map<int, float> & posteriorSparse = posteriorOf(filterSparse);
 		ASSERT_EQ(posteriorDense.size(), posteriorSparse.size());
 		for(size_t i = 0; i < ids.size(); ++i)
 		{
@@ -1071,11 +1085,11 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionFallsBackWhenModelSumsBelowOne)
 	filterDense.computePosterior(memory_, likelihood);
 	filterSparse.computePosterior(memory_, likelihood);
 
-	ASSERT_EQ(filterDense.getPosterior().size(), filterSparse.getPosterior().size());
+	ASSERT_EQ(posteriorOf(filterDense).size(), posteriorOf(filterSparse).size());
 	for(size_t i = 0; i < ids.size(); ++i)
 	{
-		EXPECT_NEAR(filterDense.getPosterior().at(ids[i]),
-		            filterSparse.getPosterior().at(ids[i]), 1e-5f) << "id=" << ids[i];
+		EXPECT_NEAR(posteriorOf(filterDense).at(ids[i]),
+		            posteriorOf(filterSparse).at(ids[i]), 1e-5f) << "id=" << ids[i];
 	}
 
 	// Falling back means the sparse view was left empty, so no extra memory is used.
@@ -1148,7 +1162,7 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionIsExactOnASingleColumn)
 		}
 		filterDense.computePosterior(memory_, oneHot);
 		filterSparse.computePosterior(memory_, oneHot);
-		ASSERT_FLOAT_EQ(filterDense.getPosterior().at(ids[selected]), 1.0f) << "column=" << selected;
+		ASSERT_FLOAT_EQ(posteriorOf(filterDense).at(ids[selected]), 1.0f) << "column=" << selected;
 
 		const std::map<int, float> uniform = uniformLikelihood(ids);
 		filterDense.computePosterior(memory_, uniform);
@@ -1156,8 +1170,8 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionIsExactOnASingleColumn)
 
 		for(size_t i = 0; i < ids.size(); ++i)
 		{
-			EXPECT_FLOAT_EQ(filterDense.getPosterior().at(ids[i]),
-			                filterSparse.getPosterior().at(ids[i]))
+			EXPECT_FLOAT_EQ(posteriorOf(filterDense).at(ids[i]),
+			                posteriorOf(filterSparse).at(ids[i]))
 				<< "column=" << selected << " id=" << ids[i];
 		}
 	}
@@ -1194,11 +1208,11 @@ TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModesInLocalizationMode)
 		filterDense.computePosterior(memory_, likelihood);
 		filterSparse.computePosterior(memory_, likelihood);
 
-		ASSERT_EQ(filterDense.getPosterior().size(), filterSparse.getPosterior().size());
+		ASSERT_EQ(posteriorOf(filterDense).size(), posteriorOf(filterSparse).size());
 		for(size_t i = 0; i < ids.size(); ++i)
 		{
-			EXPECT_NEAR(filterDense.getPosterior().at(ids[i]),
-			            filterSparse.getPosterior().at(ids[i]), 1e-5f)
+			EXPECT_NEAR(posteriorOf(filterDense).at(ids[i]),
+			            posteriorOf(filterSparse).at(ids[i]), 1e-5f)
 				<< "iter=" << iter << " id=" << ids[i];
 		}
 	}
@@ -1243,8 +1257,8 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeIsExactOnASin
 
 		for(size_t i = 0; i < ids.size(); ++i)
 		{
-			EXPECT_FLOAT_EQ(filterDense.getPosterior().at(ids[i]),
-			                filterSparse.getPosterior().at(ids[i]))
+			EXPECT_FLOAT_EQ(posteriorOf(filterDense).at(ids[i]),
+			                posteriorOf(filterSparse).at(ids[i]))
 				<< "column=" << selected << " id=" << ids[i];
 		}
 	}

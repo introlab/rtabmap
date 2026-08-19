@@ -342,6 +342,20 @@ void printGraph(const std::string & path, const RealGraph & graph, int removedLi
 	std::cout << " (" << graph.skippedLinks << " on a single location or on a landmark not rebuilt, "
 			  << removedLinks << " gaps in the chain)" << std::endl;
 }
+// The posterior as a map, which the filter no longer builds: it holds the locations and
+// their probabilities as two vectors, and a test reads them more easily as a map.
+static std::map<int, float> posteriorOf(const BayesFilter & filter)
+{
+	const std::vector<int> & ids = filter.getPosteriorIds();
+	const std::vector<float> & values = filter.getPosteriorValues();
+	std::map<int, float> posterior;
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		posterior.insert(posterior.end(), std::make_pair(ids[i], values[i]));
+	}
+	return posterior;
+}
+
 struct Result
 {
 	double firstIteration = 0.0;   // includes generating the prediction, sparse or dense
@@ -396,7 +410,7 @@ Result run(const Memory * memory,
 	}
 	result.steadyState = best > 0.0 ? best : result.firstIteration;
 	result.memoryUsed = filter.getMemoryUsed();
-	result.posterior = filter.getPosterior();
+	result.posterior = posteriorOf(filter);
 	return result;
 }
 
@@ -709,7 +723,7 @@ TEST(BayesFilterPerfTest, DenseVsSparsePredictionWhileMappingARealSession)
 			if(best == 0.0 || elapsed < best) best = elapsed;
 			if(elapsed > worst) worst = elapsed;
 		}
-		lastPosterior[sparse] = filter.getPosterior();
+		lastPosterior[sparse] = posteriorOf(filter);
 
 		printf("[          ]   %-6s first iteration %8.1f ms, then per added location: "
 			   "fastest %8.1f ms, mean %8.1f ms, slowest %8.1f ms, filter memory %7.1f MB\n",
