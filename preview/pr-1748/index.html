@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,maximum-scale=2">
+    <link rel="stylesheet" type="text/css" media="screen" href="/rtabmap/preview/pr-1748/assets/css/style.css?v=8c00db7e8fccd8dd9f6a50e72ed159f86d04c400">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>RTAB-Map | Real-Time Appearance-Based Mapping</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="RTAB-Map" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Real-Time Appearance-Based Mapping" />
+<meta property="og:description" content="Real-Time Appearance-Based Mapping" />
+<link rel="canonical" href="http://introlab.github.io/rtabmap/preview/pr-1748/" />
+<meta property="og:url" content="http://introlab.github.io/rtabmap/preview/pr-1748/" />
+<meta property="og:site_name" content="RTAB-Map" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="RTAB-Map" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","description":"Real-Time Appearance-Based Mapping","headline":"RTAB-Map","name":"RTAB-Map","url":"http://introlab.github.io/rtabmap/preview/pr-1748/"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    ga('create', 'UA-56986679-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/rtabmap/preview/pr-1748/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          
+            <a id="forkme_banner" href="https://github.com/introlab/rtabmap">View on GitHub</a>
+          
+
+          <h1 id="project_title">RTAB-Map</h1>
+          <h2 id="project_tagline">Real-Time Appearance-Based Mapping</h2>
+
+          
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/introlab/rtabmap/releases/latest">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/introlab/rtabmap/releases/latest">Download this project as a tar.gz file</a>
+            </section>
+          
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        
+<p><a href="https://youtu.be/71eRxTc1DaU" target="_blank"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/youtube.jpg" alt="video" title="video" /></a></p>
+
+<h2 id="overview">Overview</h2>
+<p><img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" alt="RTAB-Map logo" title="RTAB-Map" align="left" width="120" /></p>
+
+<p><strong>RTAB-Map</strong> (Real-Time Appearance-Based Mapping) is a RGB-D, Stereo and Lidar Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map’s graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a handheld Kinect, a stereo camera or a 3D lidar for 6DoF mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.</p>
+
+<h4 id="illumination-invariant-visual-re-localization">Illumination-Invariant Visual Re-Localization</h4>
+<ul>
+  <li>M. Labbé and F. Michaud, “<a href="https://arxiv.org/abs/2103.03827">Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments</a>,” in <em>Frontiers in Robotics and AI</em>, vol. 9, 2022. (<a href="https://doi.org/10.3389/frobt.2022.801886">Frontiers</a>) (<a href="https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant">Dataset link</a>) (<a href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=G3BrBkMAAAAJ&amp;citation_for_view=G3BrBkMAAAAJ:ufrVoPGSRksC">Google Scholar</a>)</li>
+</ul>
+
+<h4 id="lidar-and-visual-slam">Lidar and Visual SLAM</h4>
+<ul>
+  <li>M. Labbé and F. Michaud, “<a href="https://arxiv.org/abs/2403.06341">RTAB-Map as an Open-Source Lidar and Visual SLAM Library for Large-Scale and Long-Term Online Operation</a>,” in <em>Journal of Field Robotics</em>, vol. 36, no. 2, pp. 416–446, 2019.  (<a href="https://doi.org/10.1002/rob.21831">Wiley</a>) (<a href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=G3BrBkMAAAAJ&amp;citation_for_view=G3BrBkMAAAAJ:Y0pCki6q_DkC">Google Scholar</a>)</li>
+</ul>
+
+<h4 id="simultaneous-planning-localization-and-mapping-splam">Simultaneous Planning, Localization and Mapping (SPLAM)</h4>
+<ul>
+  <li>M. Labbé and F. Michaud, “<a href="https://arxiv.org/abs/2301.00050">Long-term online multi-session graph-based SPLAM with memory management</a>,” in <em>Autonomous Robots</em>, vol. 42, no. 6, pp. 1133-1150, 2018.  (<a href="http://dx.doi.org/10.1007/s10514-017-9682-5">Springer</a>) (<a href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=G3BrBkMAAAAJ&amp;citation_for_view=G3BrBkMAAAAJ:Tyk-4Ss8FVUC">Google Scholar</a>)</li>
+</ul>
+
+<h4 id="multi-session-slam">Multi-session SLAM</h4>
+<ul>
+  <li>M. Labbé and F. Michaud, “<a href="https://arxiv.org/abs/2407.15305">Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2014. (<a href="http://ieeexplore.ieee.org/document/6942926/">IEEE Xplore</a>) (<a href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=G3BrBkMAAAAJ&amp;citation_for_view=G3BrBkMAAAAJ:9yKSN-GCB0IC">Google Scholar</a>)
+    <ul>
+      <li>Results shown in this paper can be reproduced by the <a href="https://github.com/introlab/rtabmap/wiki/Multi-session">Multi-session mapping</a> tutorial.</li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="loop-closure-detection">Loop closure detection</h4>
+<ul>
+  <li>M. Labbé and F. Michaud, “<a href="https://arxiv.org/abs/2407.15304">Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation</a>,” in <em>IEEE Transactions on Robotics</em>, vol. 29, no. 3, pp. 734-745, 2013. (<a href="http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608">IEEE Xplore</a>) (<a href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=G3BrBkMAAAAJ&amp;citation_for_view=G3BrBkMAAAAJ:u-x6o8ySG0sC">Google Scholar</a>)</li>
+  <li>M. Labbé and F. Michaud, “<a href="https://arxiv.org/abs/2407.15890">Memory management for real-time appearance-based loop closure detection</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2011, pp. 1271–1276. (<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602">IEEE Xplore</a>) (<a href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=G3BrBkMAAAAJ&amp;citation_for_view=G3BrBkMAAAAJ:u5HHmVD_uO8C">Google Scholar</a>)
+    <ul>
+      <li>Visit <a href="https://introlab.3it.usherbrooke.ca/index.php/RTAB-Map">RTAB-Map’s page on IntRoLab</a> for detailed information on the loop closure detection approach and related datasets.</li>
+      <li>Visit this <a href="https://github.com/introlab/rtabmap/tree/master/archive/2010-LoopClosure">page</a> for usage example of the CLI tool that van be used to evaluate only RTAB-Map’s loop closure detector on new datasets.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="install">Install</h2>
+<p><a href="https://github.com/introlab/rtabmap_ros#rtabmap_ros"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ros.png" alt="ROS" width="125" /></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#ubuntu"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ubuntu.png" alt="Ubuntu" width="50" /></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#macosx"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/apple.png" alt="Mac OS X" width="50" /></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#windows"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/windows.png" alt="Windows" width="50" /></a>  <a href="https://apps.apple.com/ca/app/rtab-map-3d-lidar-scanner/id1564774365"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ios.png" alt="iOS" width="50" /></a> <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/tango.png" alt="Google Tango" width="50" /></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#raspberrypi"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/raspberrypi.png" alt="Raspberry Pi" width="40" /></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#docker"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/docker.png" alt="Docker" width="50" /></a> <a href="https://www.youtube.com/@matlabbe/videos" target="_blank"><img src="https://www.gstatic.com/youtube/img/branding/youtubelogo/svg/youtubelogo.svg" alt="youtube" title="youtube" width="100" /></a></p>
+
+<ul>
+  <li><a href="https://github.com/introlab/rtabmap/wiki/Installation">Installation</a> instructions.</li>
+  <li><a href="https://github.com/introlab/rtabmap/wiki/Tutorials">Tutorials</a>.</li>
+  <li><a href="https://github.com/introlab/rtabmap/wiki/Tools">Tools</a>.</li>
+  <li><a href="/rtabmap/preview/pr-1748/api/">C++ API documentation</a> of the rtabmap library.</li>
+  <li>For <strong>ROS</strong> users, take a look to <a href="http://wiki.ros.org/rtabmap">rtabmap</a> page on the ROS wiki for a package overview. See also <a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot">SetupOnYourRobot</a> to know how to integrate RTAB-Map on your robot.</li>
+</ul>
+
+<h3 id="troubleshooting">Troubleshooting</h3>
+<p><strong>Standalone</strong></p>
+
+<ul>
+  <li>Visit the <a href="https://github.com/introlab/rtabmap/wiki">wiki</a>.</li>
+  <li>Ask a question on <a href="http://official-rtab-map-forum.206.s1.nabble.com/">RTAB-Map Forum</a> (<strong>New address! August 9, 2021</strong>).</li>
+  <li>Post an <a href="https://github.com/introlab/rtabmap/issues">issue on GitHub</a></li>
+  <li>For the loop closure detection approach, visit <a href="https://introlab.3it.usherbrooke.ca/index.php/RTAB-Map">RTAB-Map on IntRoLab website</a></li>
+  <li>Enabled <a href="https://github.com/introlab/rtabmap/discussions">Github Discussions</a> (<strong>New! November 2022</strong>)</li>
+</ul>
+
+<p><strong>ROS</strong></p>
+
+<ul>
+  <li>Visit <a href="http://wiki.ros.org/rtabmap_ros">rtabmap_ros</a> wiki page for nodes documentation, demos and tutorials on ROS.</li>
+  <li>Ask a question on <del><a href="http://answers.ros.org/questions/scope:all/sort:activity-desc/tags:rtabmap_ros/page:1/">answers.ros.org</a></del> <a href="https://robotics.stackexchange.com/questions/tagged/rtabmap">robotics.stackexchange.com</a> with <strong>rtabmap</strong> or <strong>rtabmap-ros</strong> tag.</li>
+</ul>
+
+<h2 id="license">License</h2>
+<ul>
+  <li>If OpenCV is built <strong>without the nonfree</strong> module, RTAB-Map can be used under the permissive BSD License.</li>
+  <li>If OpenCV is built <strong>with the nonfree</strong> module, RTAB-Map is free for research only because it depends on <strong>SURF</strong> features. <strong>SURF</strong> is not free for commercial use. Note that SIFT patent has expired, so it can be a good free equivalent of SURF.
+    <ul>
+      <li>SURF noncommercial notice: http://www.vision.ee.ethz.ch/~surf/download.html</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="privacy-policy">Privacy Policy</h2>
+<p>RTAB-Map App on <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap&amp;hl=en">Google Play Store</a> or <a href="https://apps.apple.com/ca/app/rtab-map-3d-lidar-scanner/id1564774365">Apple Store</a> requires access to camera to record images that will be used for creating the map. When saving, a database containing these images is created. That database is saved locally on the device (on the sd-card under RTAB-Map folder). While location permission is required to install RTAB-Map Tango, the GPS coordinates are not saved by default, the option “Settings-&gt;Mapping…-&gt;Save GPS” should be enabled first. RTAB-Map requires read/write access to RTAB-Map folder only, to save, export and open maps. RTAB-Map doesn’t access any other information outside the RTAB-Map folder. RTAB-Map doesn’t share information over Internet unless the user explicitly exports a map to Sketchfab or anywhere else, for which RTAB-Map needs the network. If so, the user will be asked for authorization (<a href="https://oauth.net/">oauth2</a>) by Sketchfab (see their Privacy Policy <a href="https://sketchfab.com/privacy">here</a>).</p>
+
+<p>This website uses Google Analytics. See their Privacy Policy <a href="https://support.google.com/analytics/answer/6004245?hl=en">here</a>.</p>
+
+<h2 id="author">Author</h2>
+<ul>
+  <li><a href="https://introlab.3it.usherbrooke.ca/index.php?title=Mathieu_Labbe&amp;setlang=en">Mathieu Labbé</a>
+    <ul>
+      <li><a href="http://introlab.3it.usherbrooke.ca/index.php/RTAB-Map">RTAB-Map’s page at IntRoLab</a></li>
+      <li><a href="https://introlab.3it.usherbrooke.ca/index.php/RTAB-Map#Publications">Papers</a></li>
+      <li>Similar projects: <a href="http://introlab.github.io/find-object/">Find-Object</a></li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="whats-new">What’s new</h2>
+
+<h3 id="december-2024">December 2024</h3>
+<p>ROS2 packages overhaul (see <a href="https://github.com/introlab/rtabmap_ros/tree/ros2?tab=readme-ov-file#usage">ros2 branch</a>): we added new ROS2 <a href="https://github.com/introlab/rtabmap_ros/tree/ros2/rtabmap_demos#rtabmap_demos">demos</a> and <a href="https://github.com/introlab/rtabmap_ros/tree/ros2/rtabmap_examples/launch">examples</a>. We also fixed <code class="language-plaintext highlighter-rouge">message_filters</code> related synchronization <a href="https://github.com/introlab/rtabmap_ros/pull/1206">issues</a> causing significant lags when using ROS2 nodes (in comparison to ROS1). Binaries <code class="language-plaintext highlighter-rouge">ros-$ROS_DISTRO-rtabmap-ros</code> will be released under version <code class="language-plaintext highlighter-rouge">0.21.9</code>.
+<a href="https://github.com/introlab/rtabmap_ros/tree/ros2/rtabmap_demos#rtabmap_demos"><img src="https://github.com/user-attachments/assets/f64a44bf-148b-4658-9b25-b46bd0411a69" alt="Peek 2024-11-30 20-35" /></a></p>
+
+<h3 id="november-2023">November 2023</h3>
+<p>We had new papers published this year on a very fun project about underground mines scanning. Here is a video of the SLAM part of the project realized with RTAB-Map (it is an early field test we did before going in the mines):
+<a href="https://youtu.be/ytsfhMdv9W0"><img src="https://img.youtube.com/vi/ytsfhMdv9W0/sddefault.jpg" alt="Watch the video" /></a></p>
+
+<p>Related papers:</p>
+<ul>
+  <li>
+    <p>Leclerc, M.A., Bass, J., Labbé, M., Dozois, D., Delisle, J., Rancourt, D. and Lussier Desbiens, A., 2023. “<a href="https://cdnsciencepub.com/doi/pdf/10.1139/dsa-2023-0001">NetherDrone: A tethered and ducted propulsion multirotor drone for complex underground mining stopes inspection</a>”. Drone Systems and Applications. (<a href="https://cdnsciencepub.com/doi/full/10.1139/dsa-2023-0001">Canadian Science Publishing</a>) (<strong>Editor’s Choice</strong>)</p>
+  </li>
+  <li>
+    <p>Petit, L. and Desbiens, A.L., 2022. “<a href="https://www.researchgate.net/profile/Louis-Petit/publication/362336640_TAPE_Tether-Aware_Path_Planning_for_Autonomous_Exploration_of_Unknown_3D_Cavities_using_a_Tangle-compatible_Tethered_Aerial_Robot/links/62e94ab93c0ea8788776c506/TAPE-Tether-Aware-Path-Planning-for-Autonomous-Exploration-of-Unknown-3D-Cavities-Using-a-Tangle-Compatible-Tethered-Aerial-Robot.pdf">Tape: Tether-aware path planning for autonomous exploration of unknown 3d cavities using a tangle-compatible tethered aerial robot</a>”. IEEE Robotics and Automation Letters, 7(4), pp.10550-10557. (<a href="https://ieeexplore.ieee.org/document/9844242">IEEE Xplore</a>)
+ <a href="https://youtu.be/nROO0BFK4lc"><img src="https://img.youtube.com/vi/nROO0BFK4lc/maxresdefault.jpg" alt="Watch the video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="march-2023">March 2023</h3>
+<p>New release <a href="https://github.com/introlab/rtabmap/releases/tag/0.21.0">v0.21.0</a>!</p>
+
+<h3 id="june-2022">June 2022</h3>
+<p>A new paper has been published: <strong>Multi-Session Visual SLAM for Illumination-Invariant Re-Localization in Indoor Environments</strong>. The general idea is to remap multiple times the same environment to capture multiple illumination variations caused by natural and artificial lighting, then the robot would be able to localize afterwards at any hour of the day. For more details, see this <a href="https://github.com/introlab/rtabmap/tree/master/archive/2022-IlluminationInvariant">page</a> and the linked paper. Some great comparisons about robustness to illumination variations between binary descriptors (BRIEF/ORB, BRISK), float descriptors (SURF/SIFT/KAZE/DAISY) and learned descriptors (SuperPoint).
+<img src="https://github.com/introlab/rtabmap/raw/master/archive/2022-IlluminationInvariant/images/fig_overview.jpg" alt="Illumination-invariant" /></p>
+
+<h3 id="january-2022">January 2022</h3>
+<p>Added <a href="https://github.com/introlab/rtabmap_ros/blob/master/launch/demo/demo_catvehicle_mapping.launch">demo</a> for car mapping and localization with <a href="https://github.com/osrf/citysim">CitySim</a> simulator and <a href="https://github.com/jmscslgroup/catvehicle">CAT Vehicle</a>:
+<a href="https://youtu.be/vKCTg4plPkw"><img src="https://img.youtube.com/vi/vKCTg4plPkw/maxresdefault.jpg" alt="Watch the video" /></a></p>
+
+<h3 id="december-2021">December 2021</h3>
+<p>Added indoor drone visual navigation example using <a href="http://wiki.ros.org/move_base">move_base</a>, <a href="https://github.com/PX4/PX4-Autopilot">PX4</a> and <a href="http://wiki.ros.org/mavros">mavros</a>:
+<a href="https://youtu.be/A487ybS7E4E"><img src="https://img.youtube.com/vi/A487ybS7E4E/maxresdefault.jpg" alt="Watch the video" /></a></p>
+
+<p>More info on the <a href="https://github.com/matlabbe/rtabmap_drone_example">rtabmap-drone-example</a> github repo.</p>
+
+<h3 id="june-2021">June 2021</h3>
+<ul>
+  <li>
+    <p>I’m pleased to announce that RTAB-Map is now on <strong>iOS</strong> (iPhone/iPad with LiDAR required). The app is <a href="https://apps.apple.com/ca/app/rtab-map-3d-lidar-scanner/id1564774365">available</a> on App Store.</p>
+
+    <p><a href="https://youtu.be/rVpIcrgD5c0"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-ios.jpg" alt="video" title="video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="december-2020">December 2020</h3>
+<p>New release <a href="https://github.com/introlab/rtabmap/releases/tag/0.20.7">v0.20.7</a>!</p>
+
+<h3 id="august-2020">August 2020</h3>
+<p>New release <a href="https://github.com/introlab/rtabmap/releases/tag/0.20.3">v0.20.3</a>!</p>
+
+<h3 id="july-2020">July 2020</h3>
+<p>New release <a href="https://github.com/introlab/rtabmap/releases/tag/0.20.2">v0.20.2</a>!</p>
+
+<h3 id="november-2019">November 2019</h3>
+<ul>
+  <li><a href="https://alicevision.org/">AliceVision</a> library has been integrated to RTAB-Map to provide higher texture quality. Compare the <a href="https://skfb.ly/6OyUy">updated version of the Ski Cottage on Sketchfab</a> with the <a href="https://skfb.ly/6KBFz">old version</a>. Look at how the edges between camera texures are smoother (thx to multi-band blending), decreasing significantly the sharp edge artifacts. Multi-band blending approach can be enabled in File-&gt;Export Clouds dialog under Texturing section. RTAB-Map should be built with AliceVision support (CUDA is not required as only texture pipeline is used). A <a href="https://gist.github.com/matlabbe/469bba5e7733ad6f2e3d7857b84f1f9e">patch</a> is required to avoid problems with Eigen, refer to Docker file <a href="https://github.com/introlab/rtabmap/blob/e7be12e0ff7ae95e492837f0414d553c977d6d4d/docker/bionic/Dockerfile#L69-L116">here</a>.</li>
+</ul>
+
+<p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/texture_old.jpg" alt="texture_old" width="300" /><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/texture_new.jpg" alt="texture_new" width="300" /></p>
+
+<h3 id="september-2017">September 2017</h3>
+<ul>
+  <li>New version 0.14 of RTAB-Map Tango with GPS support. See it on <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap&amp;hl=en">play store</a>.</li>
+</ul>
+
+<h3 id="july-2017">July 2017</h3>
+<ul>
+  <li>New version 0.13 of RTAB-Map Tango. See it on <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap&amp;hl=en">play store</a>.</li>
+  <li>
+    <p>I uploaded a <a href="https://introlab.3it.usherbrooke.ca/images/3/31/Labbe2015ULaval.pdf">presentation</a> that I did in 2015 at Université Laval in Québec! A summary of RTAB-Map as a RGBD-SLAM approach:</p>
+
+    <p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Labbe2015ULavalOverview.jpg" alt="RTAB-Map overview" width="400" /></p>
+  </li>
+</ul>
+
+<h3 id="march-2017">March 2017</h3>
+<ul>
+  <li>
+    <p>New tutorial: <a href="https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango">Multi-Session Mapping with RTAB-Map Tango</a></p>
+
+    <p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/mesh.jpg" alt="Mesh" width="400" /><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/cloudSessionColor.jpg" alt="Cloud" width="200" /></p>
+  </li>
+</ul>
+
+<h3 id="february-2017">February 2017</h3>
+<ul>
+  <li><strong>Version 0.11.14</strong> : Visit the <a href="https://github.com/introlab/rtabmap/releases/0.11.14">release page</a> for more info!
+    <ul>
+      <li>Tango app also updated:</li>
+    </ul>
+
+    <p><a href="https://youtu.be/FvhxdUhsNUk"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/tango0.11.14.jpg" alt="video" title="video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="october-2016">October 2016</h3>
+<ul>
+  <li>
+    <p>Application example: See how RTAB-Map is helping nuclear dismantling with Orano’s MANUELA project (Mobile Apparatus for Nuclear Expertise and Localisation Assistance):</p>
+
+    <p><a href="https://www.youtube.com/watch?v=V4dN2qnJXOU"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/manuela.jpg" alt="video" title="video" /></a></p>
+  </li>
+  <li>
+    <p><strong>Version 0.11.11</strong>: Visit the <a href="https://github.com/introlab/rtabmap/releases/0.11.11">release page</a> for more info!</p>
+  </li>
+</ul>
+
+<h3 id="july-2016">July 2016</h3>
+
+<ul>
+  <li><strong>Version 0.11.8</strong>: Visit the <a href="https://github.com/introlab/rtabmap/releases/0.11.8">release page</a> for more info!</li>
+</ul>
+
+<h3 id="june-2016">June 2016</h3>
+
+<ul>
+  <li><strong>Version 0.11.7</strong>: Visit the <a href="https://github.com/introlab/rtabmap/releases/0.11.7">release page</a> for more info!</li>
+</ul>
+
+<h3 id="february-2016">February 2016</h3>
+
+<ul>
+  <li>
+    <p>I’m pleased to announce that RTAB-Map is now on <strong>Project Tango</strong>. The app is <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap">available</a> on Google Play Store.</p>
+
+    <p><a href="https://youtu.be/BE8kMkrCeuA"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango.jpeg" alt="video" title="video" /></a></p>
+
+    <ul>
+      <li>Screenshots:</li>
+    </ul>
+
+    <p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango.png" alt="rtabmap tango 1" width="600" /></p>
+
+    <p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango2.png" alt="rtabmap tango 2" width="600" /></p>
+  </li>
+</ul>
+
+<h3 id="october-2015">October 2015</h3>
+
+<ul>
+  <li><strong>Version 0.10.10</strong>: Visit the <a href="https://github.com/introlab/rtabmap/releases/0.10.10">release page</a> for more info!</li>
+</ul>
+
+<h3 id="september-2015">September 2015</h3>
+
+<ul>
+  <li>
+    <p><strong>Version 0.10.6</strong>: Integration of a robust graph optimization approach called <a href="https://openslam.org/vertigo.html">Vertigo</a> (which uses <a href="https://openslam.org/g2o.html">g2o</a> or <a href="https://collab.cc.gatech.edu/borg/gtsam">GTSAM</a>), see <a href="https://github.com/introlab/rtabmap/wiki/Robust-Graph-Optimization">this page</a>:</p>
+
+    <p><a href="http://www.youtube.com/watch?v=A8v70DZxLF8"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/robust_graph_optimization.jpg" alt="video" title="video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="august-2015">August 2015</h3>
+
+<ul>
+  <li>
+    <p><strong>Version 0.10.5</strong>: New example to export data to <a href="http://meshlab.sourceforge.net/">MeshLab</a> in order to add textures on a created mesh with low polygons, see <a href="https://github.com/introlab/rtabmap/wiki/Export-Raster-Layers-to-MeshLab">this page</a>:</p>
+
+    <p><a href="https://github.com/introlab/rtabmap/wiki/Export-Raster-Layers-to-MeshLab"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/Texture/texture_tutorial.jpeg" alt="Texture tutorial" width="400" /></a></p>
+  </li>
+</ul>
+
+<h3 id="october-2014">October 2014</h3>
+
+<ul>
+  <li>
+    <p>New example to speed up RTAB-Map’s odometry, see <a href="https://github.com/introlab/rtabmap/wiki/Change-parameters">this page</a>:</p>
+
+    <p><a href="http://www.youtube.com/watch?v=Bh8WZsU4YC8"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/speedup.jpeg" alt="video" title="video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="september-2014">September 2014</h3>
+
+<ul>
+  <li>
+    <p>At <strong>IROS 2014</strong> in Chicago, a team using RTAB-Map for SLAM <strong>won</strong> the Kinect navigation contest held during the conference. See their press release for more details: <a href="http://www.meetup.com/SV-ROS-users/pages/Winning_the_IROS2014_Microsoft_Connect_Challenge/">Winning the IROS2014 Microsoft Kinect Challenge</a>. I also added the Wiki page <a href="https://github.com/introlab/rtabmap/wiki/IROS-2014-Kinect-Challenge">IROS2014KinectChallenge</a> showing in details the RTAB-Map part used in their solution.</p>
+
+    <p><a href="http://www.youtube.com/watch?v=_qiLAWp7AqQ"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/iros2014.jpeg" alt="video" title="video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="august-2014">August 2014</h3>
+
+<ul>
+  <li>
+    <p>Here a comparison between reality and what can be shown in RVIZ (you can <a href="http://wiki.ros.org/rtabmap_ros#Robot_mapping_with_Find-Object">reproduce this demo here</a>):</p>
+
+    <p><a href="http://www.youtube.com/watch?v=o1GSQanY-Do"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/findobject.jpeg" alt="video" title="video" /></a></p>
+  </li>
+</ul>
+
+<h3 id="july-2014">July 2014</h3>
+
+<ul>
+  <li>
+    <p>Added <a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot">Setup on your robot</a> wiki page to know how to integrate RTAB-Map on your ROS robot. Multiple sensor configurations are shown but the optimal configuration is to have a 2D laser, a Kinect-like sensor and odometry.</p>
+
+    <p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSession/4.png" alt="AZIMUT3" align="left" width="300" /></p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Onboard mapping</th>
+          <th>Remote mapping</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Bring-up_your_robot"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/setupA.png" alt="" width="300" /></a></td>
+          <td><a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Remote_mapping"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/remoteMapping.png" alt="" width="300" /></a></td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ul>
+
+<h3 id="june-2014">June 2014</h3>
+
+<ul>
+  <li>
+    <p>I’m glad to announce that my paper submitted to <a href="http://www.iros2014.org/">IROS 2014</a> was accepted! <a href="https://introlab.3it.usherbrooke.ca/images/e/eb/Labbe14-IROS.pdf">This paper</a> explains in details how RGB-D mapping with RTAB-Map is done. Results shown in this paper can be reproduced by the <a href="https://github.com/introlab/rtabmap/wiki/Multi-session">Multi-session mapping</a> tutorial:</p>
+
+    <p><a href="https://github.com/introlab/rtabmap/wiki/Multi-session"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSession/3.png" alt="Multi-session mapping" width="600" /></a></p>
+  </li>
+</ul>
+
+<h2 id="videos">Videos</h2>
+
+<ul>
+  <li>
+    <p><strong>RGBD-SLAM</strong></p>
+
+    <p><a href="http://www.youtube.com/watch?v=Nm2ggyAW4rw"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/desktop.jpeg" alt="video" title="video" /></a></p>
+
+    <p><a href="http://www.youtube.com/watch?v=joV7VCvGrKM"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/globalonly.jpeg" alt="video" title="video" /></a></p>
+
+    <p><a href="http://www.youtube.com/watch?v=AMLwjo80WzI"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/onlinergbdslam.jpeg" alt="video" /></a></p>
+  </li>
+  <li>
+    <p><strong>Appearance-based loop closure detection</strong></p>
+
+    <p><a href="http://www.youtube.com/watch?v=CAk-QGMlQmI"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap.jpeg" alt="video" title="video" /></a></p>
+
+    <p><a href="http://www.youtube.com/watch?v=1dImRinTJSE"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/newcollegeomni.jpeg" alt="video" title="video" /></a></p>
+  </li>
+  <li>
+    <p>More loop closure detection videos <a href="http://introlab.3it.usherbrooke.ca/index.php/RTAB-Map">here</a>.</p>
+  </li>
+</ul>
+
+
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        
+        <p class="copyright">RTAB-Map maintained by <a href="https://github.com/introlab">introlab</a></p>
+        
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+  </body>
+</html>

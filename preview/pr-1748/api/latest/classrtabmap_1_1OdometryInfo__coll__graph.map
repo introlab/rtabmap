@@ -1,0 +1,9 @@
+<map id="rtabmap::OdometryInfo" name="rtabmap::OdometryInfo">
+<area shape="rect" id="Node000001" title="What one Odometry iteration produced, beyond the pose." alt="" coords="207,152,382,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1RegistrationInfo.html" title="Statistics and diagnostics returned by Registration." alt="" coords="5,5,195,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,37,281,150,277,154,125,41"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1Transform.html" title="Represents a 3D rigid body transformation (rotation + translation)." alt="" coords="219,5,370,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="297,45,297,152,292,152,292,45"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats." alt="" coords="394,5,545,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="472,45,465,88,456,110,442,130,414,149,383,160,381,155,412,144,438,126,452,108,460,86,467,44"/>
+</map>

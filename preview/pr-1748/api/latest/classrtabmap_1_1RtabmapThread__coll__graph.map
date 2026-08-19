@@ -1,0 +1,11 @@
+<map id="rtabmap::RtabmapThread" name="rtabmap::RtabmapThread">
+<area shape="rect" id="Node000001" title="Runs a Rtabmap instance in its own thread, driven by events." alt="" coords="60,152,249,177"/>
+<area shape="rect" id="Node000002" href="$classUThread.html" title=" " alt="" coords="29,79,139,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,112,145,150,141,154,103,116"/>
+<area shape="rect" id="Node000003" href="$classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="82,44,86,78,80,79,77,45"/>
+<area shape="rect" id="Node000004" href="$classUEventsHandler.html" title=" " alt="" coords="167,79,294,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="210,115,169,154,165,150,207,111"/>
+<area shape="rect" id="Node000005" href="$classUEventsSender.html" title=" " alt="" coords="174,5,295,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="236,45,234,79,229,78,231,44"/>
+</map>

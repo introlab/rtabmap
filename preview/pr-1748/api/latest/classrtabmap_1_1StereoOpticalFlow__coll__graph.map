@@ -1,0 +1,5 @@
+<map id="rtabmap::StereoOpticalFlow" name="rtabmap::StereoOpticalFlow">
+<area shape="rect" id="Node000001" title="Sparse stereo matching using optical flow." alt="" coords="5,79,209,104"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching." alt="" coords="44,5,171,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,44,110,79,105,79,105,44"/>
+</map>
