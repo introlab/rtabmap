@@ -8,6 +8,8 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 using namespace rtabmap;
 
@@ -922,10 +924,10 @@ void expectLinksNearEqual(
 	const auto idxB = index(b);
 	ASSERT_EQ(idxA.size(), idxB.size())
 			<< label << " unique (from,to) link pair count differs";
-	// Note: graph file formats (TORO / g2o) store edges generically and
-	// don't preserve rtabmap's Link::Type tag, so we only round-trip
-	// from / to / transform / infMatrix here. The loader assigns a
-	// placeholder type for ordinary edges.
+	// Note: TORO's text format stores edges generically and doesn't preserve
+	// rtabmap's Link::Type tag, so from / to / transform / infMatrix are all
+	// that round-trip there. g2o carries the type in a column of its own,
+	// which G2oRoundTripPreservesLinkTypes below checks.
 	//
 	// Landmark links in g2o are written as EDGE_SE3_TRACKXYZ (3D point
 	// observation): only the translation and the 3x3 translation block
@@ -1260,3 +1262,135 @@ INSTANTIATE_TEST_SUITE_P(
 					+ "_"
 					+ (std::get<2>(info.param) ? "rotPrior" : "posPrior");
 		});
+
+// -------------------------------------------------------------------------
+// The type of a link (a loop closure against an odometry link, and which kind
+// of loop closure) decides how the graph is traversed: Memory::getNeighborsId()
+// follows a global closure without spending any depth, skips a proximity one
+// and spends a depth on a neighbor. The g2o format defines no field for it, so
+// OptimizerG2O writes it as a column past the ones it defines, which its own
+// loader reads back and g2o's ignores.
+//
+// Also checks that a link handed over in both directions, which is how Memory
+// stores it, is written once: g2o reads two lines as two constraints and would
+// count the information of the link twice.
+// -------------------------------------------------------------------------
+TEST(GraphG2oTest, G2oRoundTripPreservesLinkTypes)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "g2o optimizer not built in";
+	}
+
+	const Link::Type types[] = {
+		Link::kNeighbor,
+		Link::kNeighborMerged,
+		Link::kGlobalClosure,
+		Link::kLocalSpaceClosure,
+		Link::kLocalTimeClosure,
+		Link::kUserClosure,
+	};
+	const size_t typeCount = sizeof(types)/sizeof(Link::Type);
+
+	std::map<int, Transform> poses;
+	for(size_t i=0; i<=typeCount; ++i)
+	{
+		poses.insert(std::make_pair((int)i+1, Transform((float)i, 0.0f, 0.0f, 0, 0, 0)));
+	}
+
+	const cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64F) * 100.0;
+	std::multimap<int, Link> links;
+	for(size_t i=0; i<typeCount; ++i)
+	{
+		const int from = (int)i+1, to = (int)i+2;
+		const Transform t = poses.at(from).inverse() * poses.at(to);
+		// Both directions, as Memory holds them: one link stored on each of the
+		// two nodes it connects.
+		links.insert(std::make_pair(from, Link(from, to, types[i], t, infMatrix)));
+		links.insert(std::make_pair(to, Link(to, from, types[i], t.inverse(), infMatrix)));
+	}
+
+	const std::string path = test::tempPath(
+			uFormat("rtabmap_graph_link_types_%d.g2o", test::getPid()));
+	UFile::erase(path);
+	ASSERT_TRUE(graph::exportPoses(path, 4 /*g2o*/, poses, links));
+	ASSERT_TRUE(UFile::exists(path));
+
+	// One line per link, not two, and each one carrying its type last.
+	std::ifstream file(path.c_str());
+	std::string line;
+	std::map<std::pair<int,int>, int> written;
+	while(std::getline(file, line))
+	{
+		if(line.compare(0, 5, "EDGE_") != 0)
+		{
+			continue;
+		}
+		std::istringstream in(line);
+		std::string tag;
+		int from = 0, to = 0;
+		in >> tag >> from >> to;
+		std::string last;
+		while(in >> last) {}
+		const std::pair<int,int> pair(std::min(from,to), std::max(from,to));
+		EXPECT_TRUE(written.insert(std::make_pair(pair, atoi(last.c_str()))).second)
+				<< "link " << from << "->" << to << " written more than once";
+	}
+	ASSERT_EQ(written.size(), typeCount);
+	for(size_t i=0; i<typeCount; ++i)
+	{
+		EXPECT_EQ(written.at(std::make_pair((int)i+1, (int)i+2)), (int)types[i])
+				<< "type column of link " << i+1 << "->" << i+2;
+	}
+
+	// And read back as the types they were.
+	std::map<int, Transform> posesOut;
+	std::multimap<int, Link> linksOut;
+	ASSERT_TRUE(graph::importPoses(path, 4 /*g2o*/, posesOut, &linksOut));
+	ASSERT_EQ(linksOut.size(), typeCount);
+	std::map<std::pair<int,int>, Link::Type> loaded;
+	for(std::multimap<int, Link>::const_iterator iter=linksOut.begin(); iter!=linksOut.end(); ++iter)
+	{
+		loaded.insert(std::make_pair(
+				std::make_pair(std::min(iter->second.from(), iter->second.to()),
+							   std::max(iter->second.from(), iter->second.to())),
+				iter->second.type()));
+	}
+	for(size_t i=0; i<typeCount; ++i)
+	{
+		const std::pair<int,int> pair((int)i+1, (int)i+2);
+		ASSERT_TRUE(loaded.find(pair) != loaded.end()) << "link " << i+1 << "->" << i+2 << " missing";
+		EXPECT_EQ(loaded.at(pair), types[i]) << "type of link " << i+1 << "->" << i+2;
+	}
+	UFile::erase(path);
+}
+
+// A file without the type column, which is every file g2o itself writes and
+// every one rtabmap wrote before, still loads: the type stays the one its tag
+// implies, as it did.
+TEST(GraphG2oTest, G2oWithoutTypeColumnStillLoads)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "g2o optimizer not built in";
+	}
+
+	const std::string path = test::tempPath(
+			uFormat("rtabmap_graph_no_type_column_%d.g2o", test::getPid()));
+	UFile::erase(path);
+	{
+		std::ofstream file(path.c_str());
+		file << "VERTEX_SE2 1 0 0 0\n";
+		file << "VERTEX_SE2 2 1 0 0\n";
+		file << "EDGE_SE2 1 2 1 0 0 100 0 0 100 0 100\n";
+	}
+
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> links;
+	ASSERT_TRUE(graph::importPoses(path, 4 /*g2o*/, poses, &links));
+	EXPECT_EQ(poses.size(), 2u);
+	ASSERT_EQ(links.size(), 1u);
+	EXPECT_EQ(links.begin()->second.from(), 1);
+	EXPECT_EQ(links.begin()->second.to(), 2);
+	UFile::erase(path);
+}

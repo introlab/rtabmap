@@ -122,11 +122,13 @@ IF(BUILD_PERF_TESTS)
 
 	# Comparison of the dense and the sparse prediction x posterior multiplication of
 	# BayesFilter (Bayes/SparsePrediction), against the size of the map, how connected
-	# its graph is and the depth of the prediction model:
+	# its graph is and the depth of the prediction model. Over synthetic graphs, and over
+	# the graph of a real map read from data/tests/large_reduced_graph.g2o, whose link
+	# types decide how much of the map a column of the prediction holds:
 	#   bin/test_bayesfilter_perf
-	#   bin/test_bayesfilter_perf --gtest_filter=-*LargeMap*
+	#   bin/test_bayesfilter_perf --gtest_filter=-*LargeMap*:-*RealMap*
 	# Its own executable: it spends its time benchmarking rather than asserting, and the
-	# largest map it builds allocates a gigabyte for the dense prediction matrix,
+	# largest maps it builds allocate a gigabyte for the dense prediction matrix,
 	# which in a unit test shard would look like a leak.
 	add_executable(test_bayesfilter_perf perf_bayesfilter.cpp)
 	target_link_libraries(test_bayesfilter_perf gtest_main rtabmap_core)

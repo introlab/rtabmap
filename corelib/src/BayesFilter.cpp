@@ -52,7 +52,8 @@ BayesFilter::BayesFilter(const ParametersMap & parameters) :
 	_totalPredictionLCValues(0.0f),
 	_predictionEpsilon(0.0f),
 	_sparsePrediction(Parameters::defaultBayesSparsePrediction()),
-	_predictionChanged(true)
+	_predictionChanged(true),
+	_sparsePredictionRejected(false)
 {
 	this->setPredictionLC(Parameters::defaultBayesPredictionLC());
 	this->parseParameters(parameters);
@@ -75,6 +76,7 @@ void BayesFilter::parseParameters(const ParametersMap & parameters)
 		// The sparse view is rebuilt on the next posterior if it was just enabled, and
 		// released if it was just disabled.
 		_predictionChanged = true;
+		_sparsePredictionRejected = false;
 		if(!_sparsePrediction)
 		{
 			this->clearSparsePrediction();
@@ -133,6 +135,7 @@ void BayesFilter::setPredictionLC(const std::string & prediction)
 	}
 	// A new model changes the values and the sparsity of the prediction matrix.
 	_predictionChanged = true;
+	_sparsePredictionRejected = false;
 }
 
 const std::vector<double> & BayesFilter::getPredictionLC() const
@@ -181,6 +184,7 @@ void BayesFilter::reset()
 	_prediction = cv::Mat();
 	this->clearSparsePrediction();
 	_predictionChanged = true;
+	_sparsePredictionRejected = false;
 	_neighborsIndex.clear();
 }
 
@@ -219,6 +223,9 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	// indexed by, taken once: there are as many of them as there are locations in the
 	// working memory, and walking the map to collect them is not free at that size.
 	const std::vector<int> ids = uKeys(likelihood);
+	// Whether they are the locations of the last iteration, which over a fixed graph they
+	// always are: the prediction and the posterior are then both kept as they are.
+	const bool sameIds = this->posteriorHasSameIds(ids);
 
 	// Recursive Bayes estimation...
 	// STEP 1 - Prediction : Prior*lastPosterior
@@ -227,21 +234,32 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	// allocated, when the graph is fixed: in localization mode there is no incremental
 	// update of the matrix to carry columns over, so nothing else needs it. While
 	// mapping, the matrix is built as before and the sparse form is taken from it.
+	if(!sameIds)
+	{
+		// The locations changed, so the prediction has to be built again, and whether it
+		// is worth keeping sparse is a question about the new one.
+		_predictionChanged = true;
+		_sparsePredictionRejected = false;
+	}
 	const bool buildSparseDirectly =
 			_sparsePrediction &&
+			!_sparsePredictionRejected &&
 			_totalPredictionLCValues >= 1 &&
 			!memory->isIncremental();
 	bool sparseBuilt = false;
 	if(buildSparseDirectly)
 	{
-		if(_predictionChanged || _sparsePredictionMatrix.rows() != (int)ids.size() ||
-			!this->posteriorHasSameIds(ids))
+		if(_predictionChanged)
 		{
 			sparseBuilt = this->generateSparsePrediction(memory, ids);
+			// Measured as too dense to be worth it: the matrix is built instead, and not
+			// measured again until the locations or the model change. Retrying on every
+			// iteration would cost more than the multiplication it is trying to save.
+			_sparsePredictionRejected = !sparseBuilt;
 		}
 		else
 		{
-			sparseBuilt = true;
+			sparseBuilt = _sparsePredictionMatrix.rows() > 0;
 		}
 		UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(),
 				(int)_sparsePredictionMatrix.rows(), (int)_sparsePredictionMatrix.cols());
@@ -252,12 +270,30 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 		UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), _prediction.rows, _prediction.cols);
 		//std::cout << "Prediction=" << _prediction << std::endl;
 
-		if(_sparsePrediction && _predictionChanged)
+		// Taking the sparse form from the matrix reads all of the matrix, which is the
+		// work of one dense multiplication: it pays for itself on the second
+		// multiplication of a prediction, not on the first. So it is left until the
+		// prediction is seen to outlast an iteration. A mapping session changes it on
+		// every location it adds and never pays for a form it would not multiply twice,
+		// while a session sitting on the same graph pays once and gains on every
+		// iteration after.
+		if(_sparsePrediction && !_sparsePredictionRejected && !_prediction.empty())
 		{
-			// Only when the matrix has changed: over a fixed graph this happens once.
-			this->updateSparsePredictionFromDense();
-			UDEBUG("STEP1-sparse prediction update time=%fs", timer.ticks());
+			if(_predictionChanged)
+			{
+				// A prediction of its own: whatever was built for the previous one is stale.
+				this->clearSparsePrediction();
+			}
+			else if(_sparsePredictionMatrix.rows() != _prediction.rows)
+			{
+				// The prediction of the last iteration, so it is being multiplied more than
+				// once and its sparse form is worth the read.
+				this->updateSparsePredictionFromDense();
+				_sparsePredictionRejected = _sparsePredictionMatrix.rows() == 0;
+				UDEBUG("STEP1-sparse prediction update time=%fs", timer.ticks());
+			}
 		}
+		_predictionChanged = false;
 	}
 
 	// Adjust the last posterior if some images were
@@ -551,6 +587,55 @@ bool BayesFilter::generateSparsePrediction(const Memory * memory, const std::vec
 	// A value costs 12 bytes as a triplet and 8 in the matrix, against the 4 of the
 	// dense one, so past a quarter filled the sparse form is not worth building.
 	const size_t maxValues = (size_t)size*(size_t)size/4;
+
+	// The neighborhood of a few locations, to know whether the prediction is worth
+	// keeping sparse before building all of it. A loop closure link costs no margin, so
+	// on a densely linked graph a column reaches most of the map and there is nothing
+	// sparse to keep; finding that out by building a quarter of it first would cost more
+	// than the multiplications it is trying to save.
+	{
+		const int samples = size < 64 ? size : 64;
+		size_t reached = 0;
+		int sampled = 0;
+		for(int s=0; s<samples; ++s)
+		{
+			const int i = (int)((double)s*(double)size/(double)samples);
+			if(ids[i] <= 0)
+			{
+				continue;
+			}
+			std::list<int> idsLoopMargin;
+			const std::map<int, int> neighbors = resolveNeighbors(
+					memory, ids[i], _predictionLC.size()-1, idToIndexMap, idsLoopMargin, 0);
+			for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+			{
+				if(idToIndexMap.find(iter->first) != idToIndexMap.end())
+				{
+					++reached;
+				}
+			}
+			++sampled;
+		}
+		if(sampled > 0)
+		{
+			const double perColumn = double(reached)/double(sampled);
+			UDEBUG("Sparse prediction: %.0f values per column over %d locations, estimated "
+				   "from %d of them", perColumn, size, sampled);
+			if(perColumn*(double)size > (double)maxValues)
+			{
+				UWARN("A column of the prediction holds %.0f of the %d locations, estimated "
+					  "from %d of them, which is too dense for %s to be worth it: a value "
+					  "costs 8 bytes kept sparse against the 4 of the matrix. Building the "
+					  "matrix instead. Every loop closure link widens a column, as one "
+					  "costs no depth in the graph search, and so does a longer %s.",
+					  perColumn, size, sampled,
+					  Parameters::kBayesSparsePrediction().c_str(),
+					  Parameters::kBayesPredictionLC().c_str());
+				return false;
+			}
+		}
+	}
+
 	std::vector<float> column(size, 0.0f);
 	std::vector<Eigen::Triplet<float> > triplets;
 

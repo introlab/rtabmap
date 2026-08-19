@@ -13,12 +13,15 @@
 // the numbers below compare two ways of computing the same thing.
 #include <gtest/gtest.h>
 #include <rtabmap/core/BayesFilter.h>
+#include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Memory.h>
+#include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <algorithm>
 #include <cmath>
@@ -150,6 +153,195 @@ private:
 	double buildTime_ = 0.0;
 };
 
+// A real map's graph, read from the g2o file it was exported to. What makes it worth
+// measuring against the synthetic graphs above is its link types: the file holds mostly
+// merged neighbor links, which cost a margin like an ordinary neighbor, and only a few
+// hundred closures that Memory::getNeighborsId() follows without spending one. How many
+// of those there are is what decides how much of the map a column of the prediction
+// holds, so a real graph's answer is not a synthetic one's.
+//
+// The graph is rebuilt in a Memory rather than optimized: Memory::update() creates a
+// signature per pose and links each to the previous one, so the links the file does not
+// have are removed and the ones it has are added with their own type.
+// A real map's graph, read from the g2o file it was exported to. What makes it worth
+// measuring against the synthetic graphs above is its link types: how many links
+// Memory::getNeighborsId() follows without spending a margin is what decides how much of
+// the map a column of the prediction holds, and a real graph's answer is not a synthetic
+// one's. A graph that went through the reduction holds mostly merged neighbor links,
+// which cost a margin like an ordinary neighbor; one that did not holds none.
+struct RealGraph
+{
+	std::vector<int> ids;                              // the locations, in the order they were created
+	std::map<int, Transform> poses;
+	// The links between two locations, as indices into ids, each on the later of the two:
+	// that is the one a mapping session adds them on.
+	std::vector<std::vector<std::pair<size_t, Link::Type> > > linksTo;
+	std::map<int, int> byType;
+	int skippedLinks = 0;
+	double loadTime = 0.0;
+};
+
+bool loadRealGraph(const std::string & path, RealGraph & graph)
+{
+	UTimer timer;
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> links;
+	if(!graph::importPoses(path, 4 /*g2o*/, poses, &links))
+	{
+		return false;
+	}
+	graph.loadTime = timer.ticks();
+	graph.poses = poses;
+
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		if(iter->first > 0)
+		{
+			graph.ids.push_back(iter->first);
+		}
+	}
+	std::sort(graph.ids.begin(), graph.ids.end());
+	std::map<int, size_t> indexOf;
+	for(size_t i=0; i<graph.ids.size(); ++i)
+	{
+		indexOf.insert(std::make_pair(graph.ids[i], i));
+	}
+
+	// One entry per pair of locations. Links on a single location (a prior, gravity) and
+	// landmark observations are left out: getNeighborsId() doesn't walk the first, and the
+	// second would need the landmark index of a memory that mapped them.
+	graph.linksTo.resize(graph.ids.size());
+	std::set<std::pair<size_t, size_t> > seen;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		const Link & link = iter->second;
+		if(link.from() == link.to() || link.from() < 0 || link.to() < 0)
+		{
+			++graph.skippedLinks;
+			continue;
+		}
+		const size_t a = indexOf.at(link.from()), b = indexOf.at(link.to());
+		if(!seen.insert(std::make_pair(std::min(a,b), std::max(a,b))).second)
+		{
+			continue;
+		}
+		graph.linksTo[std::max(a,b)].push_back(std::make_pair(std::min(a,b), link.type()));
+		++graph.byType[link.type()];
+	}
+	return true;
+}
+
+// Adds one location and the links the graph has between it and the ones already there.
+// Memory::update() links each new signature to the previous one as a kNeighbor, so that
+// one is dropped when the graph does not have it, or has it with another type.
+void addRealNode(
+		Memory * memory,
+		const RealGraph & graph,
+		size_t index,
+		std::vector<int> & newIds,
+		int * removedLinks = 0)
+{
+	static const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	static const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+	static const cv::Mat information = cv::Mat::eye(6, 6, CV_64FC1);
+
+	SensorData data(image);
+	UASSERT(memory->update(data, graph.poses.at(graph.ids[index]), covariance));
+	newIds.push_back(memory->getLastSignatureId());
+
+	bool previousLinked = false;
+	for(size_t i=0; i<graph.linksTo[index].size(); ++i)
+	{
+		const size_t other = graph.linksTo[index][i].first;
+		const Link::Type type = graph.linksTo[index][i].second;
+		if(other == index-1 && type == Link::kNeighbor)
+		{
+			previousLinked = true;   // update() already made this one
+			continue;
+		}
+		memory->addLink(Link(newIds[index], newIds[other], type,
+				Transform::getIdentity(), information));
+	}
+	if(index > 0 && !previousLinked)
+	{
+		// Either the graph has no link between these two, or it has one of another type
+		// which the loop above has just added.
+		memory->removeLink(newIds[index-1], newIds[index]);
+		if(removedLinks)
+		{
+			++(*removedLinks);
+		}
+	}
+}
+
+Memory * newRealMemory()
+{
+	ParametersMap params;
+	params.insert(ParametersPair(Parameters::kKpMaxFeatures(), "-1"));
+	params.insert(ParametersPair(Parameters::kMemSTMSize(), "1"));
+	params.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
+	params.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
+	return new Memory(params);
+}
+
+// What Rtabmap passes to the filter: the virtual place followed by the locations of the
+// working memory that are not in the short term memory.
+std::vector<int> bayesIdsOf(const Memory * memory)
+{
+	std::vector<int> ids;
+	ids.push_back(Memory::kIdVirtual);
+	const std::set<int> & stm = memory->getStMem();
+	for(std::map<int, double>::const_iterator iter=memory->getWorkingMem().begin();
+		iter!=memory->getWorkingMem().end();
+		++iter)
+	{
+		if(iter->first > 0 && stm.find(iter->first) == stm.end())
+		{
+			ids.push_back(iter->first);
+		}
+	}
+	return ids;
+}
+
+std::map<int, float> uniformLikelihoodOf(const std::vector<int> & ids)
+{
+	std::map<int, float> likelihood;
+	for(size_t i=0; i<ids.size(); ++i)
+	{
+		likelihood.insert(std::make_pair(ids[i], 1.0f));
+	}
+	return likelihood;
+}
+
+const char * linkTypeName(int type)
+{
+	switch(type)
+	{
+	case Link::kNeighbor:           return "kNeighbor";
+	case Link::kGlobalClosure:      return "kGlobalClosure";
+	case Link::kLocalSpaceClosure:  return "kLocalSpaceClosure";
+	case Link::kLocalTimeClosure:   return "kLocalTimeClosure";
+	case Link::kUserClosure:        return "kUserClosure";
+	case Link::kVirtualClosure:     return "kVirtualClosure";
+	case Link::kNeighborMerged:     return "kNeighborMerged";
+	case Link::kPosePrior:          return "kPosePrior";
+	case Link::kLandmark:           return "kLandmark";
+	case Link::kGravity:            return "kGravity";
+	default:                        return "other";
+	}
+}
+
+void printGraph(const std::string & path, const RealGraph & graph, int removedLinks)
+{
+	std::cout << "[          ] " << path << ": read in " << graph.loadTime << "s, "
+			  << graph.ids.size() << " locations, links:";
+	for(std::map<int,int>::const_iterator iter=graph.byType.begin(); iter!=graph.byType.end(); ++iter)
+	{
+		std::cout << " " << linkTypeName(iter->first) << "=" << iter->second;
+	}
+	std::cout << " (" << graph.skippedLinks << " on a single location or on a landmark not rebuilt, "
+			  << removedLinks << " gaps in the chain)" << std::endl;
+}
 struct Result
 {
 	double firstIteration = 0.0;   // includes generating the prediction, sparse or dense
@@ -158,19 +350,21 @@ struct Result
 	std::map<int, float> posterior;
 };
 
-Result run(const SyntheticMap & map, const char * predictionLC, bool sparse, int iterations)
+Result run(const Memory * memory,
+		const std::vector<int> & ids,
+		const std::map<int, float> & likelihood,
+		const char * predictionLC,
+		bool sparse,
+		int iterations)
 {
 	ParametersMap params;
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), predictionLC));
 	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), sparse?"true":"false"));
 	BayesFilter filter(params);
 
-	const std::vector<int> ids = map.bayesIds();
-	const std::map<int, float> likelihood = map.uniformLikelihood(ids);
-
 	Result result;
 	UTimer timer;
-	filter.computePosterior(map.memory(), likelihood);
+	filter.computePosterior(memory, likelihood);
 	result.firstIteration = timer.ticks();
 
 	// A few untimed iterations to let the caches and the processor clock settle before
@@ -180,7 +374,7 @@ Result run(const SyntheticMap & map, const char * predictionLC, bool sparse, int
 	// the slow one and leave the two posteriors nowhere near each other.
 	for(int i=0; i<3; ++i)
 	{
-		filter.computePosterior(map.memory(), likelihood);
+		filter.computePosterior(memory, likelihood);
 	}
 
 	// The fastest iteration rather than the mean or the median of them. Everything that
@@ -193,7 +387,7 @@ Result run(const SyntheticMap & map, const char * predictionLC, bool sparse, int
 	for(int i=1; i<iterations; ++i)
 	{
 		timer.restart();
-		filter.computePosterior(map.memory(), likelihood);
+		filter.computePosterior(memory, likelihood);
 		const double elapsed = timer.ticks();
 		if(best == 0.0 || elapsed < best)
 		{
@@ -237,11 +431,30 @@ void report(const char * name, const Result & result)
 			name, result.firstIteration*1000.0, result.steadyState*1000.0, result.memoryUsed/1048576.0);
 }
 
-void compare(const SyntheticMap & map, const char * predictionLC, int iterations)
+// sparseFirst measures the sparse mode before the dense one. It matters on a large map:
+// the dense mode allocates the prediction matrix, and running it first leaves the
+// allocator holding hundreds of megabytes, which the sparse measurement that follows then
+// pays for. Measuring the two in separate processes is the only way to have both clean;
+// within one, the cheaper mode is the one to protect.
+void compare(const Memory * memory,
+		const std::vector<int> & ids,
+		const std::map<int, float> & likelihood,
+		const char * predictionLC,
+		int iterations,
+		bool sparseFirst = false)
 {
-	const size_t size = map.bayesIds().size();
-	const Result dense = run(map, predictionLC, false, iterations);
-	const Result sparse = run(map, predictionLC, true, iterations);
+	const size_t size = ids.size();
+	Result dense, sparse;
+	if(sparseFirst)
+	{
+		sparse = run(memory, ids, likelihood, predictionLC, true, iterations);
+		dense = run(memory, ids, likelihood, predictionLC, false, iterations);
+	}
+	else
+	{
+		dense = run(memory, ids, likelihood, predictionLC, false, iterations);
+		sparse = run(memory, ids, likelihood, predictionLC, true, iterations);
+	}
 
 	report("dense", dense);
 	report("sparse", sparse);
@@ -285,7 +498,8 @@ TEST(BayesFilterPerfTest, DenseVsSparsePredictionOnGrowingMaps)
 				  << map.loopClosures() << " loop closures, graph built in " << map.buildTime()
 				  << "s, dense matrix = " << (size*size*sizeof(float))/1048576 << " MB" << std::endl;
 
-		compare(map, PREDICTION_DEFAULT, iterations);
+		const std::vector<int> ids = map.bayesIds();
+		compare(map.memory(), ids, map.uniformLikelihood(ids), PREDICTION_DEFAULT, iterations);
 	}
 }
 
@@ -313,10 +527,12 @@ TEST(BayesFilterPerfTest, SparsityAgainstGraphConnectivityAndModelDepth)
 		std::cout << "[          ] " << nodes << " nodes, " << connectivities[c].name
 				  << " (" << map.loopClosures() << " loop closures)" << std::endl;
 
+		const std::vector<int> ids = map.bayesIds();
+		const std::map<int, float> likelihood = map.uniformLikelihood(ids);
 		std::cout << "[          ]  18 values model (default, depth 17):" << std::endl;
-		compare(map, PREDICTION_DEFAULT, iterations);
+		compare(map.memory(), ids, likelihood, PREDICTION_DEFAULT, iterations);
 		std::cout << "[          ]   8 values model (depth 7, every value above 1e-4):" << std::endl;
-		compare(map, PREDICTION_TRUNCATED, iterations);
+		compare(map.memory(), ids, likelihood, PREDICTION_TRUNCATED, iterations);
 	}
 }
 
@@ -339,15 +555,20 @@ TEST(BayesFilterPerfTest, DenseVsSparsePredictionOnALargeMap)
 			  << map.loopClosures() << " loop closures, graph built in " << map.buildTime()
 			  << "s, dense matrix = " << (size*size*sizeof(float))/1048576 << " MB" << std::endl;
 
+	const std::vector<int> ids = map.bayesIds();
+	const std::map<int, float> likelihood = map.uniformLikelihood(ids);
 	std::cout << "[          ]  18 values model (default, depth 17):" << std::endl;
-	compare(map, PREDICTION_DEFAULT, iterations);
+	compare(map.memory(), ids, likelihood, PREDICTION_DEFAULT, iterations);
 	std::cout << "[          ]   8 values model (depth 7, every value above 1e-4):" << std::endl;
-	compare(map, PREDICTION_TRUNCATED, iterations);
+	compare(map.memory(), ids, likelihood, PREDICTION_TRUNCATED, iterations);
 }
 
-// While mapping, the graph changes on every node, so the matrix is kept for
-// updatePrediction() to carry its unchanged columns over and the sparse prediction is
-// taken from it rather than built instead of it. Same multiplication, no memory saved.
+// Mapping mode, over a graph that has stopped growing: the matrix is kept, because
+// updatePrediction() needs it to carry its unchanged columns over whenever the graph does
+// grow, and the sparse form is taken from it rather than built instead of it. It is worth
+// taking here because the prediction outlasts an iteration, which is what
+// DenseVsSparsePredictionWhileMappingARealSession does not have: there a location is added
+// on every iteration and the sparse form is never built at all.
 TEST(BayesFilterPerfTest, DenseVsSparsePredictionWhileMapping)
 {
 	const int nodes = 4000;
@@ -359,5 +580,143 @@ TEST(BayesFilterPerfTest, DenseVsSparsePredictionWhileMapping)
 			  << map.loopClosures() << " loop closures, dense matrix = "
 			  << (size*size*sizeof(float))/1048576 << " MB" << std::endl;
 
-	compare(map, PREDICTION_DEFAULT, iterations);
+	const std::vector<int> ids = map.bayesIds();
+	compare(map.memory(), ids, map.uniformLikelihood(ids), PREDICTION_DEFAULT, iterations);
+}
+
+// The graphs of real maps, against the synthetic ones above, in localization mode where
+// the graph is fixed. Two of them: one that went through the graph reduction, whose merged
+// neighbor links cost a margin like ordinary neighbors, and one that did not.
+//
+// Needs the same ~1 GB as the largest synthetic map for the dense prediction, and reads
+// the graphs from data/tests. Exclude with
+//   bin/test_bayesfilter_perf --gtest_filter=-*RealMap*
+TEST(BayesFilterPerfTest, DenseVsSparsePredictionOnRealMaps)
+{
+	const int iterations = 10;
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "g2o optimizer not built in, needed to read the graphs";
+	}
+
+	const char * files[] = {"large_reduced_graph.g2o", "large_mapping_session.g2o"};
+	const char * labels[] = {"graph reduction applied", "no graph reduction"};
+	for(size_t f=0; f<sizeof(files)/sizeof(const char *); ++f)
+	{
+		const std::string path = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/" + files[f];
+		if(!UFile::exists(path))
+		{
+			std::cout << "[          ] " << path << " not found, skipped" << std::endl;
+			continue;
+		}
+
+		RealGraph graph;
+		ASSERT_TRUE(loadRealGraph(path, graph)) << "could not read " << path;
+
+		Memory * memory = newRealMemory();
+		std::vector<int> newIds;
+		int removedLinks = 0;
+		UTimer timer;
+		for(size_t i=0; i<graph.ids.size(); ++i)
+		{
+			addRealNode(memory, graph, i, newIds, &removedLinks);
+		}
+		const double buildTime = timer.ticks();
+
+		ParametersMap localization;
+		localization.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
+		memory->parseParameters(localization);
+		ASSERT_FALSE(memory->isIncremental());
+
+		const std::vector<int> ids = bayesIdsOf(memory);
+		std::cout << "[          ] " << files[f] << " (" << labels[f] << ")" << std::endl;
+		printGraph(path, graph, removedLinks);
+		std::cout << "[          ] rebuilt in " << buildTime << "s, " << ids.size()
+				  << " locations (with the virtual place), dense matrix = "
+				  << (ids.size()*ids.size()*sizeof(float))/1048576 << " MB" << std::endl;
+
+		const std::map<int, float> likelihood = uniformLikelihoodOf(ids);
+		std::cout << "[          ]  18 values model (default, depth 17):" << std::endl;
+		compare(memory, ids, likelihood, PREDICTION_DEFAULT, iterations, /*sparseFirst=*/true);
+		std::cout << "[          ]   8 values model (depth 7, every value above 1e-4):" << std::endl;
+		compare(memory, ids, likelihood, PREDICTION_TRUNCATED, iterations, /*sparseFirst=*/true);
+		delete memory;
+	}
+}
+
+// A mapping session as it runs: a location added, then an iteration of the filter, over and
+// over. Every added location changes the prediction, so this is the case the sparse form
+// cannot amortize -- unlike localization, where it is built once and reused for the rest of
+// the session. What it costs to keep it up to date against what its multiplication saves is
+// what this measures.
+//
+// The session is replayed from its end: the locations before the window are added without
+// running the filter, so the per-location cost is measured at the size the map really
+// reaches rather than at the sizes it passes through.
+TEST(BayesFilterPerfTest, DenseVsSparsePredictionWhileMappingARealSession)
+{
+	const size_t window = 15;   // locations added one at a time, with an iteration each
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "g2o optimizer not built in, needed to read the graph";
+	}
+	const std::string path = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/large_mapping_session.g2o";
+	if(!UFile::exists(path))
+	{
+		GTEST_SKIP() << path << " not found";
+	}
+
+	RealGraph graph;
+	ASSERT_TRUE(loadRealGraph(path, graph)) << "could not read " << path;
+	ASSERT_GT(graph.ids.size(), window);
+	const size_t prepared = graph.ids.size() - window;
+
+	std::cout << "[          ] large_mapping_session.g2o, mapping mode: " << prepared
+			  << " locations already mapped, " << window
+			  << " more added one at a time with an iteration of the filter each" << std::endl;
+
+	std::map<int, float> lastPosterior[2];
+	for(int sparse=1; sparse>=0; --sparse)   // the sparse mode first, see compare()
+	{
+		Memory * memory = newRealMemory();
+		std::vector<int> newIds;
+		int removedLinks = 0;
+		for(size_t i=0; i<prepared; ++i)
+		{
+			addRealNode(memory, graph, i, newIds, &removedLinks);
+		}
+
+		ParametersMap params;
+		params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), sparse?"true":"false"));
+		BayesFilter filter(params);
+
+		// The first iteration generates the whole prediction, as it does at the start of a
+		// session; the ones after it are what a mapping session pays per location.
+		std::vector<int> ids = bayesIdsOf(memory);
+		UTimer timer;
+		filter.computePosterior(memory, uniformLikelihoodOf(ids));
+		const double first = timer.ticks();
+
+		double total = 0.0, best = 0.0, worst = 0.0;
+		for(size_t i=prepared; i<graph.ids.size(); ++i)
+		{
+			addRealNode(memory, graph, i, newIds, &removedLinks);
+			ids = bayesIdsOf(memory);
+			timer.restart();
+			filter.computePosterior(memory, uniformLikelihoodOf(ids));
+			const double elapsed = timer.ticks();
+			total += elapsed;
+			if(best == 0.0 || elapsed < best) best = elapsed;
+			if(elapsed > worst) worst = elapsed;
+		}
+		lastPosterior[sparse] = filter.getPosterior();
+
+		printf("[          ]   %-6s first iteration %8.1f ms, then per added location: "
+			   "fastest %8.1f ms, mean %8.1f ms, slowest %8.1f ms, filter memory %7.1f MB\n",
+				sparse?"sparse":"dense", first*1000.0, best*1000.0, total*1000.0/double(window),
+				worst*1000.0, filter.getMemoryUsed()/1048576.0);
+		delete memory;
+	}
+
+	EXPECT_LT(maxPosteriorDifference(lastPosterior[0], lastPosterior[1]), 1e-3);
 }

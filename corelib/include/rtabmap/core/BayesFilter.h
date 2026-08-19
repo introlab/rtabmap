@@ -266,7 +266,8 @@ private:
 	float _totalPredictionLCValues;               ///< Sum of all values in _predictionLC.
 	float _predictionEpsilon;                     ///< Minimum non-zero probability in the model.
 	bool _sparsePrediction;                       ///< Multiply the prediction sparsely (Bayes/SparsePrediction).
-	bool _predictionChanged;                      ///< True when _prediction was rebuilt, so the sparse view is stale.
+	bool _predictionChanged;                      ///< True when _prediction was rebuilt, so the sparse form is stale.
+	bool _sparsePredictionRejected;               ///< True when the current prediction was measured as too dense to keep sparse.
 	Eigen::SparseMatrix<float, Eigen::RowMajor> _sparsePredictionMatrix; ///< The prediction, sparse. Built instead of _prediction over a fixed graph.
 	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id.
 };

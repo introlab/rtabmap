@@ -1078,8 +1078,11 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionFallsBackWhenModelSumsBelowOne)
 	EXPECT_EQ(filterDense.getMemoryUsed(), filterSparse.getMemoryUsed());
 }
 
-// The sparse view holds only the non-zero values of the prediction matrix, so it is a
-// fraction of its size, and the reported memory reflects that it is an addition to it.
+// While the prediction matrix is being kept (mapping mode), its sparse form is only taken
+// from it once the prediction outlasts an iteration: reading the whole matrix to build the
+// form costs the work of one multiplication, so on a prediction that is multiplied once it
+// would never be repaid. The sparse form then holds only the non-zero values, so it is a
+// fraction of the matrix, and the reported memory reflects that it is an addition to it.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
 {
 	addChain(40);
@@ -1094,6 +1097,14 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
 
 	const std::vector<int> ids = getBayesIds();
 	const std::map<int, float> likelihood = uniformLikelihood(ids);
+	filterDense.computePosterior(memory_, likelihood);
+	filterSparse.computePosterior(memory_, likelihood);
+
+	// The first iteration built the matrix, and nothing else: as far as this iteration
+	// knows, the prediction is about to be replaced by the next one.
+	EXPECT_EQ(filterDense.getMemoryUsed(), filterSparse.getMemoryUsed());
+
+	// The second finds the same prediction, so its sparse form is worth building.
 	filterDense.computePosterior(memory_, likelihood);
 	filterSparse.computePosterior(memory_, likelihood);
 
