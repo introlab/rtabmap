@@ -20,6 +20,7 @@
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -151,8 +152,8 @@ private:
 
 struct Result
 {
-	double firstIteration = 0.0;   // includes generating the prediction matrix, and its sparse view
-	double steadyState = 0.0;      // mean of the following iterations, the matrix being unchanged
+	double firstIteration = 0.0;   // includes generating the prediction, sparse or dense
+	double steadyState = 0.0;      // fastest of the following iterations, the prediction being unchanged
 	unsigned long memoryUsed = 0;
 	std::map<int, float> posterior;
 };
@@ -172,14 +173,34 @@ Result run(const SyntheticMap & map, const char * predictionLC, bool sparse, int
 	filter.computePosterior(map.memory(), likelihood);
 	result.firstIteration = timer.ticks();
 
-	double total = 0.0;
+	// A few untimed iterations to let the caches and the processor clock settle before
+	// measuring. A fixed count, the same whatever the mode: the filter is recursive, so
+	// how many iterations it has run decides where its posterior is, and warming up for a
+	// fixed duration instead would run hundreds of them in the fast mode against one in
+	// the slow one and leave the two posteriors nowhere near each other.
+	for(int i=0; i<3; ++i)
+	{
+		filter.computePosterior(map.memory(), likelihood);
+	}
+
+	// The fastest iteration rather than the mean or the median of them. Everything that
+	// makes an iteration slower than its own best is the machine rather than the code
+	// being measured, and the dense multiplication reads the whole prediction matrix from
+	// memory, which makes it sensitive to whatever else is using that memory. The fastest
+	// is the one measurement of the run that is the least of it, so it is the one that
+	// compares between runs and between machines.
+	double best = 0.0;
 	for(int i=1; i<iterations; ++i)
 	{
 		timer.restart();
 		filter.computePosterior(map.memory(), likelihood);
-		total += timer.ticks();
+		const double elapsed = timer.ticks();
+		if(best == 0.0 || elapsed < best)
+		{
+			best = elapsed;
+		}
 	}
-	result.steadyState = iterations > 1 ? total/double(iterations-1) : result.firstIteration;
+	result.steadyState = best > 0.0 ? best : result.firstIteration;
 	result.memoryUsed = filter.getMemoryUsed();
 	result.posterior = filter.getPosterior();
 	return result;
@@ -212,7 +233,7 @@ double maxPosteriorDifference(const std::map<int, float> & a, const std::map<int
 
 void report(const char * name, const Result & result)
 {
-	printf("[          ]   %-7s first iteration %9.1f ms, steady state %8.2f ms, filter memory %7.1f MB\n",
+	printf("[          ]   %-7s first iteration %9.1f ms, fastest iteration %8.2f ms, filter memory %7.1f MB\n",
 			name, result.firstIteration*1000.0, result.steadyState*1000.0, result.memoryUsed/1048576.0);
 }
 
@@ -248,8 +269,8 @@ void compare(const SyntheticMap & map, const char * predictionLC, int iterations
 // graph actually puts in the matrix.
 TEST(BayesFilterPerfTest, DenseVsSparsePredictionOnGrowingMaps)
 {
-	// The steady state of the smaller maps is a fraction of a millisecond, so it is
-	// averaged over enough iterations that one hiccup doesn't carry the mean.
+	// The steady state of the smaller maps is a fraction of a millisecond, so enough
+	// iterations for the fastest of them to be a stable number.
 	const int iterations = 30;
 
 	for(size_t s=0; s<sizeof(MAP_SIZES)/sizeof(int); ++s)
