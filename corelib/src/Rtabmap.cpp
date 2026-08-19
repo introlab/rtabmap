@@ -1258,7 +1258,8 @@ bool Rtabmap::process(
 	std::map<int, float> adjustedLikelihood;
 	std::map<int, float> likelihood;
 	std::map<int, int> weights;
-	std::map<int, float> posterior;
+	const std::map<int, float> emptyPosterior;
+	const std::map<int, float> * posterior = &emptyPosterior;
 	std::list<std::pair<int, float> > reactivateHypotheses;
 
 	std::map<int, int> childCount;
@@ -2138,7 +2139,7 @@ bool Rtabmap::process(
 			ULOGGER_INFO("getting posterior...");
 
 			// Compute the posterior
-			posterior = _bayesFilter->computePosterior(_memory, likelihood);
+			posterior = &_bayesFilter->computePosterior(_memory, likelihood);
 			timePosteriorCalculation = timer.ticks();
 			ULOGGER_INFO("timePosteriorCalculation=%fs",timePosteriorCalculation);
 
@@ -2152,9 +2153,9 @@ bool Rtabmap::process(
 			// Select the highest hypothesis
 			//============================================================
 			ULOGGER_INFO("creating hypotheses...");
-			if(posterior.size())
+			if(posterior->size())
 			{
-				for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
+				for(std::map<int, float>::const_reverse_iterator iter = posterior->rbegin(); iter != posterior->rend(); ++iter)
 				{
 					if(iter->first > 0 && iter->second > _highestHypothesis.second)
 					{
@@ -2162,7 +2163,7 @@ bool Rtabmap::process(
 					}
 				}
 				// With the virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
-				_highestHypothesis.second = 1-posterior.begin()->second;
+				_highestHypothesis.second = 1-posterior->begin()->second;
 			}
 			timeHypothesesCreation = timer.ticks();
 			ULOGGER_INFO("Highest hypothesis=%d, value=%f, timeHypothesesCreation=%fs", _highestHypothesis.first, _highestHypothesis.second, timeHypothesesCreation);
@@ -2193,7 +2194,7 @@ bool Rtabmap::process(
 				if(_highestHypothesis.second >= loopThr)
 				{
 					rejectedLoopClosure = true;
-					if(posterior.size() <= 2 && loopThr>0.0f)
+					if(posterior->size() <= 2 && loopThr>0.0f)
 					{
 						// Ignore loop closure if there is only one loop closure hypothesis
 						UDEBUG("rejected hypothesis: single hypothesis");
@@ -4194,7 +4195,7 @@ bool Rtabmap::process(
 	}
 
 	// Posterior is empty if a bad signature is detected
-	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
+	float vpHypothesis = posterior->size()?posterior->at(Memory::kIdVirtual):0.0f;
 	int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
 
 	// prepare statistics
@@ -4411,7 +4412,7 @@ bool Rtabmap::process(
 				statistics_.setWeights(weights);
 				if(_publishPdf)
 				{
-					statistics_.setPosterior(posterior);
+					statistics_.setPosterior(*posterior);
 				}
 				if(_publishLikelihood)
 				{

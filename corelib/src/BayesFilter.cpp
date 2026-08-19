@@ -895,6 +895,12 @@ unsigned long BayesFilter::getMemoryUsed() const
 		memoryUsage += _prediction.total() * _prediction.elemSize();
 	}
 	memoryUsage += _predictionLC.size() * sizeof(double);
+	// The vectors an iteration works on, indexed the same way as the posterior.
+	memoryUsage += _posteriorIds.capacity() * sizeof(int);
+	memoryUsage += _posteriorValues.capacity() * sizeof(float);
+	memoryUsage += _likelihoodIds.capacity() * sizeof(int);
+	memoryUsage += _likelihoodValues.capacity() * sizeof(float);
+	memoryUsage += _priorValues.capacity() * sizeof(float);
 	memoryUsage += this->getSparsePredictionMemoryUsed();
 	memoryUsage += _neighborsIndex.size() * (sizeof(int)+sizeof(std::map<int, int>)+sizeof(std::map<int, std::map<int, int> >::iterator)) + sizeof(std::map<int, std::map<int, int> >);
 	for(std::map<int, std::map<int, int> >::const_iterator iter=_neighborsIndex.begin(); iter!=_neighborsIndex.end(); ++iter)
