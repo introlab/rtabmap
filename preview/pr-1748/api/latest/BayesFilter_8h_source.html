@@ -216,15 +216,16 @@ $(document).ready(function(){initNavTree('BayesFilter_8h_source.html',''); initR
 <div class="line"><a id="l00267" name="l00267"></a><span class="lineno">  267</span>  <span class="keywordtype">float</span> _predictionEpsilon;                     </div>
 <div class="line"><a id="l00268" name="l00268"></a><span class="lineno">  268</span>  <span class="keywordtype">bool</span> _sparsePrediction;                       </div>
 <div class="line"><a id="l00269" name="l00269"></a><span class="lineno">  269</span>  <span class="keywordtype">bool</span> _predictionChanged;                      </div>
-<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span>  Eigen::SparseMatrix&lt;float, Eigen::RowMajor&gt; _sparsePredictionMatrix; </div>
-<div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>  std::map&lt;int, std::map&lt;int, int&gt; &gt; _neighborsIndex; </div>
-<div class="line"><a id="l00272" name="l00272"></a><span class="lineno">  272</span>};</div>
+<div class="line"><a id="l00270" name="l00270"></a><span class="lineno">  270</span>  <span class="keywordtype">bool</span> _sparsePredictionRejected;               </div>
+<div class="line"><a id="l00271" name="l00271"></a><span class="lineno">  271</span>  Eigen::SparseMatrix&lt;float, Eigen::RowMajor&gt; _sparsePredictionMatrix; </div>
+<div class="line"><a id="l00272" name="l00272"></a><span class="lineno">  272</span>  std::map&lt;int, std::map&lt;int, int&gt; &gt; _neighborsIndex; </div>
+<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span>};</div>
 </div>
-<div class="line"><a id="l00273" name="l00273"></a><span class="lineno">  273</span> </div>
-<div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span>} <span class="comment">// namespace rtabmap</span></div>
+<div class="line"><a id="l00274" name="l00274"></a><span class="lineno">  274</span> </div>
+<div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span>} <span class="comment">// namespace rtabmap</span></div>
 </div>
-<div class="line"><a id="l00275" name="l00275"></a><span class="lineno">  275</span> </div>
-<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span><span class="preprocessor">#endif </span><span class="comment">/* BAYESFILTER_H_ */</span><span class="preprocessor"></span></div>
+<div class="line"><a id="l00276" name="l00276"></a><span class="lineno">  276</span> </div>
+<div class="line"><a id="l00277" name="l00277"></a><span class="lineno">  277</span><span class="preprocessor">#endif </span><span class="comment">/* BAYESFILTER_H_ */</span><span class="preprocessor"></span></div>
 <div class="ttc" id="aclassrtabmap_1_1BayesFilter_html"><div class="ttname"><a href="classrtabmap_1_1BayesFilter.html">rtabmap::BayesFilter</a></div><div class="ttdoc">Recursive Bayesian filter for loop-closure hypothesis estimation in RTAB-Map.</div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00074">BayesFilter.h:75</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1BayesFilter_html_a18a6d97fe3088a4a356a85358f641376"><div class="ttname"><a href="classrtabmap_1_1BayesFilter.html#a18a6d97fe3088a4a356a85358f641376">rtabmap::BayesFilter::getPredictionLCStr</a></div><div class="ttdeci">std::string getPredictionLCStr() const</div><div class="ttdoc">Returns the loop-closure prediction model as a space-separated string.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1BayesFilter_html_a1f479b2d242f05eef69532f454dc851f"><div class="ttname"><a href="classrtabmap_1_1BayesFilter.html#a1f479b2d242f05eef69532f454dc851f">rtabmap::BayesFilter::getVirtualPlacePrior</a></div><div class="ttdeci">float getVirtualPlacePrior() const</div><div class="ttdoc">Returns the virtual place prior threshold.</div><div class="ttdef"><b>Definition</b> <a href="BayesFilter_8h_source.html#l00134">BayesFilter.h:134</a></div></div>
