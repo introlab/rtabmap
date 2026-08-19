@@ -183,6 +183,17 @@ protected:
 		memory_ = 0;
 	}
 
+	// Turns the memory to localization mode, the graph built so far becoming fixed.
+	// Without a database driver the working memory is kept as it is, so this is a
+	// mapping session followed by a localization session over what it mapped.
+	void switchToLocalization()
+	{
+		ParametersMap params;
+		params.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
+		memory_->parseParameters(params);
+		ASSERT_FALSE(memory_->isIncremental());
+	}
+
 	void addChain(int count)
 	{
 		ASSERT_GT(count, 0);
@@ -989,4 +1000,270 @@ TEST_F(BayesFilterMemoryFixture, FullPredictionUpdateRegeneratesMatrix)
 
 	expectMatrixGrowsOnNewNode(true);
 	expectMatrixGrowsOnNewNode(false);
+}
+
+// Bayes/SparsePrediction only changes how the prediction matrix is multiplied with
+// the last posterior, so both modes must agree, including while the graph grows and
+// the matrix is rebuilt (the sparse view has to be rebuilt with it).
+TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModes)
+{
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	addChain(4);
+
+	for(int iter = 0; iter < 8; ++iter)
+	{
+		SensorData data(image_);
+		Transform pose(float(4 + iter), 0.0f, 0.0f, 0, 0, 0);
+		ASSERT_TRUE(memory_->update(data, pose, covariance_));
+
+		const std::vector<int> ids = getBayesIds();
+		std::map<int, float> likelihood = uniformLikelihood(ids);
+		// Favor one location so that the posterior isn't uniform, and zeroes some
+		// others out, which is the case where the sparse multiplication skips columns.
+		likelihood[ids[ids.size()/2]] = 4.0f;
+
+		filterDense.computePosterior(memory_, likelihood);
+		filterSparse.computePosterior(memory_, likelihood);
+
+		const std::map<int, float> & posteriorDense = filterDense.getPosterior();
+		const std::map<int, float> & posteriorSparse = filterSparse.getPosterior();
+		ASSERT_EQ(posteriorDense.size(), posteriorSparse.size());
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			EXPECT_NEAR(posteriorDense.at(ids[i]), posteriorSparse.at(ids[i]), 1e-5f)
+				<< "iter=" << iter << " id=" << ids[i];
+		}
+	}
+}
+
+// A model whose values sum to less than 1 has normalize() spread the difference over
+// every zero of a column, leaving the matrix dense. The sparse mode then falls back
+// to the dense multiplication, which must not change the posterior.
+TEST_F(BayesFilterMemoryFixture, SparsePredictionFallsBackWhenModelSumsBelowOne)
+{
+	addChain(5);
+
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionSumBelowOne));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	const std::vector<int> ids = getBayesIds();
+	std::map<int, float> likelihood = uniformLikelihood(ids);
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+	filterDense.computePosterior(memory_, likelihood);
+	filterSparse.computePosterior(memory_, likelihood);
+
+	ASSERT_EQ(filterDense.getPosterior().size(), filterSparse.getPosterior().size());
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		EXPECT_NEAR(filterDense.getPosterior().at(ids[i]),
+		            filterSparse.getPosterior().at(ids[i]), 1e-5f) << "id=" << ids[i];
+	}
+
+	// Falling back means the sparse view was left empty, so no extra memory is used.
+	EXPECT_EQ(filterDense.getMemoryUsed(), filterSparse.getMemoryUsed());
+}
+
+// The sparse view holds only the non-zero values of the prediction matrix, so it is a
+// fraction of its size, and the reported memory reflects that it is an addition to it.
+TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
+{
+	addChain(40);
+
+	ParametersMap params;
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+	BayesFilter filterDense(params);
+
+	params[Parameters::kBayesSparsePrediction()] = "true";
+	BayesFilter filterSparse(params);
+
+	const std::vector<int> ids = getBayesIds();
+	const std::map<int, float> likelihood = uniformLikelihood(ids);
+	filterDense.computePosterior(memory_, likelihood);
+	filterSparse.computePosterior(memory_, likelihood);
+
+	const unsigned long dense = filterDense.getMemoryUsed();
+	const unsigned long sparse = filterSparse.getMemoryUsed();
+	EXPECT_GT(sparse, dense);
+	// The matrix is ids x ids floats; a column of it only holds the neighbors within
+	// the depth of the model (3 here), so the view has to stay well under it.
+	EXPECT_LT(sparse - dense, ids.size()*ids.size()*sizeof(float));
+}
+
+// Where the sparse and dense multiplications have to agree exactly rather than within
+// the rounding of their sums: after an iteration whose likelihood is zero everywhere
+// but on one location, the posterior is 1 there and 0 elsewhere, so the next prior is
+// one column of the prediction matrix, each of its values the result of a single
+// product. Both must then return the very same floats, which is only true if the
+// sparse view holds the values of the matrix at the same rows and columns.
+TEST_F(BayesFilterMemoryFixture, SparsePredictionIsExactOnASingleColumn)
+{
+	addChain(30);
+
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	const std::vector<int> ids = getBayesIds();
+	ASSERT_GT(ids.size(), 4u);
+
+	// Every column of the matrix, so that a value at the wrong row or column cannot be
+	// missed, whichever one it is.
+	for(size_t selected = 0; selected < ids.size(); ++selected)
+	{
+		BayesFilter filterDense(paramsDense);
+		BayesFilter filterSparse(paramsSparse);
+
+		std::map<int, float> oneHot;
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			oneHot.insert(std::make_pair(ids[i], i == selected ? 1.0f : 0.0f));
+		}
+		filterDense.computePosterior(memory_, oneHot);
+		filterSparse.computePosterior(memory_, oneHot);
+		ASSERT_FLOAT_EQ(filterDense.getPosterior().at(ids[selected]), 1.0f) << "column=" << selected;
+
+		const std::map<int, float> uniform = uniformLikelihood(ids);
+		filterDense.computePosterior(memory_, uniform);
+		filterSparse.computePosterior(memory_, uniform);
+
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			EXPECT_FLOAT_EQ(filterDense.getPosterior().at(ids[i]),
+			                filterSparse.getPosterior().at(ids[i]))
+				<< "column=" << selected << " id=" << ids[i];
+		}
+	}
+}
+
+// In localization mode the prediction is built in its sparse form directly, the matrix
+// never being allocated, which is a second implementation of the same probabilities: it
+// has to give what the matrix gives. Compared over a fixed graph, on which the
+// prediction is generated once and kept.
+TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModesInLocalizationMode)
+{
+	addChain(30);
+	switchToLocalization();
+
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	const std::vector<int> ids = getBayesIds();
+	ASSERT_GT(ids.size(), 4u);
+
+	for(int iter = 0; iter < 8; ++iter)
+	{
+		std::map<int, float> likelihood = uniformLikelihood(ids);
+		// Favor a different location on each iteration, so the posterior moves.
+		likelihood[ids[1 + (size_t)iter % (ids.size()-1)]] = 4.0f;
+
+		filterDense.computePosterior(memory_, likelihood);
+		filterSparse.computePosterior(memory_, likelihood);
+
+		ASSERT_EQ(filterDense.getPosterior().size(), filterSparse.getPosterior().size());
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			EXPECT_NEAR(filterDense.getPosterior().at(ids[i]),
+			            filterSparse.getPosterior().at(ids[i]), 1e-5f)
+				<< "iter=" << iter << " id=" << ids[i];
+		}
+	}
+}
+
+// The same exactness check as SparsePredictionIsExactOnASingleColumn, but against the
+// prediction built directly in its sparse form: a posterior that is 1 on one location
+// and 0 elsewhere makes each value of the prior a single product, so the two builds have
+// to return the very same floats. This is what says that the sparse build puts the same
+// probabilities at the same rows and columns as the matrix does.
+TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeIsExactOnASingleColumn)
+{
+	addChain(30);
+	switchToLocalization();
+
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	const std::vector<int> ids = getBayesIds();
+	ASSERT_GT(ids.size(), 4u);
+
+	for(size_t selected = 0; selected < ids.size(); ++selected)
+	{
+		BayesFilter filterDense(paramsDense);
+		BayesFilter filterSparse(paramsSparse);
+
+		std::map<int, float> oneHot;
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			oneHot.insert(std::make_pair(ids[i], i == selected ? 1.0f : 0.0f));
+		}
+		filterDense.computePosterior(memory_, oneHot);
+		filterSparse.computePosterior(memory_, oneHot);
+
+		const std::map<int, float> uniform = uniformLikelihood(ids);
+		filterDense.computePosterior(memory_, uniform);
+		filterSparse.computePosterior(memory_, uniform);
+
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			EXPECT_FLOAT_EQ(filterDense.getPosterior().at(ids[i]),
+			                filterSparse.getPosterior().at(ids[i]))
+				<< "column=" << selected << " id=" << ids[i];
+		}
+	}
+}
+
+// What the sparse build is for: the prediction matrix, which is the size of the working
+// memory squared, is not allocated at all.
+TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeDoesNotAllocateTheMatrix)
+{
+	addChain(200);
+	switchToLocalization();
+
+	ParametersMap params;
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+	BayesFilter filterDense(params);
+
+	params[Parameters::kBayesSparsePrediction()] = "true";
+	BayesFilter filterSparse(params);
+
+	const std::vector<int> ids = getBayesIds();
+	const std::map<int, float> likelihood = uniformLikelihood(ids);
+	filterDense.computePosterior(memory_, likelihood);
+	filterSparse.computePosterior(memory_, likelihood);
+
+	const unsigned long matrix = ids.size()*ids.size()*sizeof(float);
+	EXPECT_GT(filterDense.getMemoryUsed(), matrix);
+	// Not the matrix, and not the neighborhood of every location either, which only the
+	// incremental update of the matrix needs.
+	EXPECT_LT(filterSparse.getMemoryUsed(), filterDense.getMemoryUsed()/4);
 }

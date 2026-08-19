@@ -1132,6 +1132,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_doubleSpinBox_vp->setObjectName(Parameters::kBayesVirtualPlacePriorThr().c_str());
 	_ui->lineEdit_bayes_predictionLC->setObjectName(Parameters::kBayesPredictionLC().c_str());
 	_ui->checkBox_bayes_fullPredictionUpdate->setObjectName(Parameters::kBayesFullPredictionUpdate().c_str());
+	_ui->checkBox_bayes_sparsePrediction->setObjectName(Parameters::kBayesSparsePrediction().c_str());
 	connect(_ui->lineEdit_bayes_predictionLC, SIGNAL(textChanged(const QString &)), this, SLOT(updatePredictionPlot()));
 
 	//Keypoint-based

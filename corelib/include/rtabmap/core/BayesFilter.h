@@ -31,8 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
+#include <Eigen/SparseCore>
 #include <list>
 #include <set>
+#include <vector>
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 
@@ -64,6 +66,7 @@ class Signature;
  * - @ref Parameters::kBayesPredictionLC() — transition probabilities per graph depth level.
  * - @ref Parameters::kBayesVirtualPlacePriorThr() — prior for the virtual place.
  * - @ref Parameters::kBayesFullPredictionUpdate() — regenerate the full prediction matrix each iteration.
+ * - @ref Parameters::kBayesSparsePrediction() — keep the prediction sparse and multiply it sparsely.
  *
  * @see Memory::getNeighborsId()
  * @see Rtabmap
@@ -163,6 +166,11 @@ public:
 
 private:
 	/**
+	 * @brief Whether the posterior is indexed by exactly @p ids, in that order.
+	 */
+	bool posteriorHasSameIds(const std::vector<int> & ids) const;
+
+	/**
 	 * @brief Incrementally updates the prediction matrix when ids are added or removed.
 	 */
 	cv::Mat updatePrediction(const cv::Mat & oldPrediction,
@@ -176,9 +184,78 @@ private:
 	void updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds);
 
 	/**
-	 * @brief Normalizes one row of the prediction matrix and applies the virtual place probability.
+	 * @brief Fills the column of the virtual place (the unvisited location hypothesis).
+	 *
+	 * @param column First value of the column.
+	 * @param stride Step between two values of the column (1 when it is contiguous, the
+	 *               width of the matrix when it is one of its columns).
+	 * @param size Number of values in the column.
 	 */
-	void normalize(cv::Mat & prediction, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const;
+	void fillVirtualPlaceColumn(float * column, size_t stride, int size) const;
+
+	/**
+	 * @brief Normalizes one column of the prediction and applies the virtual place probability.
+	 *
+	 * @param column First value of the column, see @ref fillVirtualPlaceColumn() for @p stride
+	 *               and @p size.
+	 * @param index Index of the location this column is for, so of its diagonal value.
+	 * @param addedProbabilitiesSum Sum of the values @ref addNeighborProb() put in it.
+	 * @param virtualPlaceUsed Whether the first location is the virtual place.
+	 */
+	void normalize(float * column, size_t stride, int size, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const;
+
+	/**
+	 * @brief Builds the prediction directly in its sparse form, without the matrix.
+	 *
+	 * One column at a time in a buffer of its own, so nothing of the size of the working
+	 * memory squared is ever allocated. Used when the graph is fixed (localization mode),
+	 * where no incremental matrix update needs the matrix to be kept.
+	 *
+	 * @param memory Working memory instance (must not be null).
+	 * @param ids Ordered list of signature ids, as in @ref generatePrediction().
+	 * @return False when the prediction would not be sparse, which the caller has to answer
+	 *         by building the dense matrix. Happens when the values of
+	 *         @ref Parameters::kBayesPredictionLC() sum to less than 1, as @ref normalize()
+	 *         then spreads the missing probability over every zero of a column.
+	 */
+	bool generateSparsePrediction(const Memory * memory, const std::vector<int> & ids);
+
+	/**
+	 * @brief Rebuilds the sparse prediction from the prediction matrix.
+	 *
+	 * Called only when the matrix has changed, and only when it is being kept anyway, which
+	 * is the case while mapping. Leaves the sparse form empty, which makes
+	 * @ref computePosterior() fall back to the dense multiplication, when the matrix is not
+	 * sparse (see @ref generateSparsePrediction()).
+	 */
+	void updateSparsePredictionFromDense();
+
+	/**
+	 * @brief Appends the non-zero values of a built column, and zeroes the buffer.
+	 */
+	void appendSparseColumn(std::vector<float> & column, int index,
+			std::vector<Eigen::Triplet<float> > & triplets) const;
+
+	/**
+	 * @brief Releases the sparse prediction and the memory it holds.
+	 */
+	void clearSparsePrediction();
+
+	/**
+	 * @brief Approximate footprint of the sparse prediction, in bytes.
+	 */
+	unsigned long getSparsePredictionMemoryUsed() const;
+
+	/**
+	 * @brief Computes prior = prediction x posterior from the sparse prediction.
+	 *
+	 * Mathematically identical to the dense multiplication, up to the order the products of a
+	 * row are summed in.
+	 *
+	 * @param posterior Column vector of the last posterior, as many rows as the prediction.
+	 * @param prior Output column vector, allocated by this method.
+	 */
+	void multiplySparsePrediction(const cv::Mat & posterior, cv::Mat & prior) const;
 
 private:
 	std::map<int, float> _posterior;              ///< Current posterior (signature id → probability).
@@ -188,6 +265,9 @@ private:
 	bool _fullPredictionUpdate;                   ///< If true, rebuild the full prediction matrix each time.
 	float _totalPredictionLCValues;               ///< Sum of all values in _predictionLC.
 	float _predictionEpsilon;                     ///< Minimum non-zero probability in the model.
+	bool _sparsePrediction;                       ///< Multiply the prediction sparsely (Bayes/SparsePrediction).
+	bool _predictionChanged;                      ///< True when _prediction was rebuilt, so the sparse view is stale.
+	Eigen::SparseMatrix<float, Eigen::RowMajor> _sparsePredictionMatrix; ///< The prediction, sparse. Built instead of _prediction over a fixed graph.
 	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id.
 };
 
