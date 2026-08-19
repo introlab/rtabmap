@@ -431,10 +431,14 @@ TEST(BayesFilterTest, GeneratePredictionVirtualPlaceOnly)
 	EXPECT_FLOAT_EQ(prediction.at<float>(0, 0), 1.0f);
 }
 
+// The prediction matrix is kept between iterations and returned as it is while the ids do
+// not change. Only the dense mode has a matrix at all: with the prediction kept sparse,
+// generatePrediction() has to build one to return, so there is nothing to keep.
 TEST(BayesFilterTest, GeneratePredictionCachedWhenIdsUnchanged)
 {
 	ParametersMap params;
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay90));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 	BayesFilter filter(params);
 
 	Memory memory;
@@ -1078,11 +1082,9 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionFallsBackWhenModelSumsBelowOne)
 	EXPECT_EQ(filterDense.getMemoryUsed(), filterSparse.getMemoryUsed());
 }
 
-// While the prediction matrix is being kept (mapping mode), its sparse form is only taken
-// from it once the prediction outlasts an iteration: reading the whole matrix to build the
-// form costs the work of one multiplication, so on a prediction that is multiplied once it
-// would never be repaid. The sparse form then holds only the non-zero values, so it is a
-// fraction of the matrix, and the reported memory reflects that it is an addition to it.
+// The sparse prediction holds only the non-zero values, so it is a fraction of what the
+// matrix would be. Against the dense filter, which holds the matrix and no sparse form,
+// this one holds the sparse form and no matrix, and comes out smaller.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
 {
 	addChain(40);
@@ -1100,20 +1102,16 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
 	filterDense.computePosterior(memory_, likelihood);
 	filterSparse.computePosterior(memory_, likelihood);
 
-	// The first iteration built the matrix, and nothing else: as far as this iteration
-	// knows, the prediction is about to be replaced by the next one.
-	EXPECT_EQ(filterDense.getMemoryUsed(), filterSparse.getMemoryUsed());
-
-	// The second finds the same prediction, so its sparse form is worth building.
-	filterDense.computePosterior(memory_, likelihood);
-	filterSparse.computePosterior(memory_, likelihood);
-
 	const unsigned long dense = filterDense.getMemoryUsed();
 	const unsigned long sparse = filterSparse.getMemoryUsed();
-	EXPECT_GT(sparse, dense);
-	// The matrix is ids x ids floats; a column of it only holds the neighbors within
-	// the depth of the model (3 here), so the view has to stay well under it.
-	EXPECT_LT(sparse - dense, ids.size()*ids.size()*sizeof(float));
+	// Both hold the neighborhood of every location, which a mapping session needs to carry
+	// the prediction over to the locations it adds, so what separates them is the matrix
+	// against the sparse form of it. The margin is thin at 40 locations: a column is a
+	// vector of its own so that it can be replaced one at a time, and the few values in a
+	// column of a map this small barely outweigh the vector holding them.
+	// SparsePredictionInLocalizationModeDoesNotAllocateTheMatrix has the same comparison
+	// where the map is large enough for the matrix to dominate.
+	EXPECT_LT(sparse, dense);
 }
 
 // Where the sparse and dense multiplications have to agree exactly rather than within
@@ -1277,4 +1275,35 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeDoesNotAlloca
 	// Not the matrix, and not the neighborhood of every location either, which only the
 	// incremental update of the matrix needs.
 	EXPECT_LT(filterSparse.getMemoryUsed(), filterDense.getMemoryUsed()/4);
+}
+
+// generatePrediction() hands over the prediction matrix, which only the dense mode has.
+// With the prediction kept sparse there is none, and it says so with an empty matrix rather
+// than building one: Rtabmap::dumpPrediction(), the one caller outside the filter, reports
+// that the matrix cannot be exported instead of spending the memory and the time that
+// keeping the prediction sparse is saving.
+TEST_F(BayesFilterMemoryFixture, GeneratePredictionIsEmptyWhileThePredictionIsKeptSparse)
+{
+	addChain(20);
+
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	const std::vector<int> ids = getBayesIds();
+	const std::map<int, float> likelihood = uniformLikelihood(ids);
+	filterDense.computePosterior(memory_, likelihood);
+	filterSparse.computePosterior(memory_, likelihood);
+
+	const cv::Mat predictionDense = filterDense.generatePrediction(memory_, ids);
+	ASSERT_EQ(predictionDense.rows, (int)ids.size());
+	ASSERT_EQ(predictionDense.cols, (int)ids.size());
+
+	EXPECT_TRUE(filterSparse.generatePrediction(memory_, ids).empty());
 }

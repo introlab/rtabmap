@@ -230,26 +230,35 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	// Recursive Bayes estimation...
 	// STEP 1 - Prediction : Prior*lastPosterior
 	//
-	// The prediction is built in its sparse form only, the matrix never being
-	// allocated, when the graph is fixed: in localization mode there is no incremental
-	// update of the matrix to carry columns over, so nothing else needs it. While
-	// mapping, the matrix is built as before and the sparse form is taken from it.
+	// The prediction is kept in its sparse form only, the matrix never being allocated:
+	// built once, then carried over to the locations of the next iteration. Over a fixed
+	// graph nothing changes and there is nothing to do; while mapping, the appended
+	// locations reach only a few of the columns and only those are built again. A location
+	// leaving the working memory shifts the index of every one after it, and is answered by
+	// building the prediction again, which is what the dense update does then as well.
 	if(!sameIds)
 	{
-		// The locations changed, so the prediction has to be built again, and whether it
-		// is worth keeping sparse is a question about the new one.
+		// The locations changed, so whether the prediction is worth keeping sparse is a
+		// question about the new one.
 		_predictionChanged = true;
 		_sparsePredictionRejected = false;
 	}
-	const bool buildSparseDirectly =
+	const bool keepSparse =
 			_sparsePrediction &&
 			!_sparsePredictionRejected &&
-			_totalPredictionLCValues >= 1 &&
-			!memory->isIncremental();
+			_totalPredictionLCValues >= 1;
 	bool sparseBuilt = false;
-	if(buildSparseDirectly)
+	if(keepSparse)
 	{
-		if(_predictionChanged)
+		if(!_predictionChanged && _sparsePredictionIds == ids)
+		{
+			sparseBuilt = true;
+		}
+		else if(this->updateSparsePrediction(memory, _sparsePredictionIds, ids))
+		{
+			sparseBuilt = true;
+		}
+		else
 		{
 			sparseBuilt = this->generateSparsePrediction(memory, ids);
 			// Measured as too dense to be worth it: the matrix is built instead, and not
@@ -257,43 +266,17 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 			// iteration would cost more than the multiplication it is trying to save.
 			_sparsePredictionRejected = !sparseBuilt;
 		}
-		else
-		{
-			sparseBuilt = _sparsePredictionMatrix.rows() > 0;
-		}
-		UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(),
-				(int)_sparsePredictionMatrix.rows(), (int)_sparsePredictionMatrix.cols());
+		_predictionChanged = false;
+		UDEBUG("STEP1-generate prior=%fs, columns=%d", timer.ticks(),
+				(int)_sparsePredictionColumns.size());
 	}
 	if(!sparseBuilt)
 	{
+		this->clearSparsePrediction();
 		_prediction = this->generatePrediction(memory, ids);
+		_predictionChanged = false;
 		UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), _prediction.rows, _prediction.cols);
 		//std::cout << "Prediction=" << _prediction << std::endl;
-
-		// Taking the sparse form from the matrix reads all of the matrix, which is the
-		// work of one dense multiplication: it pays for itself on the second
-		// multiplication of a prediction, not on the first. So it is left until the
-		// prediction is seen to outlast an iteration. A mapping session changes it on
-		// every location it adds and never pays for a form it would not multiply twice,
-		// while a session sitting on the same graph pays once and gains on every
-		// iteration after.
-		if(_sparsePrediction && !_sparsePredictionRejected && !_prediction.empty())
-		{
-			if(_predictionChanged)
-			{
-				// A prediction of its own: whatever was built for the previous one is stale.
-				this->clearSparsePrediction();
-			}
-			else if(_sparsePredictionMatrix.rows() != _prediction.rows)
-			{
-				// The prediction of the last iteration, so it is being multiplied more than
-				// once and its sparse form is worth the read.
-				this->updateSparsePredictionFromDense();
-				_sparsePredictionRejected = _sparsePredictionMatrix.rows() == 0;
-				UDEBUG("STEP1-sparse prediction update time=%fs", timer.ticks());
-			}
-		}
-		_predictionChanged = false;
 	}
 
 	// Adjust the last posterior if some images were
@@ -312,7 +295,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	// (m,m) X (m,1) = (m,1)
 	// The sparse form is empty when disabled, or when the prediction was found too
 	// dense for it to be worth it.
-	const bool sparse = _sparsePrediction && _sparsePredictionMatrix.rows() > 0;
+	const bool sparse = _sparsePrediction && !_sparsePredictionColumns.empty();
 	if(sparse)
 	{
 		this->multiplySparsePrediction(posterior, prior);
@@ -441,15 +424,17 @@ std::map<int, int> resolveNeighbors(
 
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
-	if(this->posteriorHasSameIds(ids))
+	if(!_sparsePredictionColumns.empty())
+	{
+		// The prediction is being kept sparse, so there is no matrix: building one to hand
+		// over would cost the memory and the time that not building it is saving.
+		return cv::Mat();
+	}
+	if(!_prediction.empty() && this->posteriorHasSameIds(ids))
 	{
 		return _prediction;
 	}
 	std::vector<int> oldIds = uKeys(_posterior);
-
-	// Both paths below return a newly built matrix, so the sparse view of the
-	// previous one no longer applies.
-	_predictionChanged = true;
 
 	if(!_fullPredictionUpdate && !_prediction.empty())
 	{
@@ -528,47 +513,114 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	return prediction;
 }
 
-// Appends the non zero values of a freshly built column to the triplets of the sparse
-// prediction, and leaves the buffer zeroed for the next one, which saves clearing the
-// whole of it every time.
-void BayesFilter::appendSparseColumn(
-		std::vector<float> & column,
-		int index,
-		std::vector<Eigen::Triplet<float> > & triplets) const
+// Takes the non zero values of a freshly built column into the prediction, and leaves the
+// buffer zeroed for the next one, which saves clearing the whole of it every time.
+// Takes the non zero values of a freshly built column into the prediction, and leaves the
+// buffer zeroed for the next one, which saves clearing the whole of it every time.
+//
+// The values of every column live in one array, so that the multiplication reads them the
+// way memory likes to be read. A column keeps the room it was given: rebuilt into fewer
+// values it stays where it is, rebuilt into more than it has room for it is put at the end
+// and the room it had is left behind, to be recovered by compactSparsePrediction(). Asking
+// for a little more than is needed, when the column is one being rebuilt, buys the room for
+// it to grow a few times in place.
+void BayesFilter::takeSparsePredictionColumn(std::vector<float> & column, int index, bool withRoomToGrow)
 {
+	size_t count = 0;
 	for(size_t row=0; row<column.size(); ++row)
 	{
 		if(column[row] != 0.0f)
 		{
-			triplets.push_back(Eigen::Triplet<float>((int)row, index, column[row]));
+			++count;
+		}
+	}
+
+	SparseColumn & slot = _sparsePredictionColumns[index];
+	_sparsePredictionUsed -= slot.size;
+	if(count > slot.capacity)
+	{
+		slot.offset = _sparsePredictionValues.size();
+		slot.capacity = withRoomToGrow ? count + count/8 + 4 : count;
+		_sparsePredictionValues.resize(slot.offset + slot.capacity);
+	}
+	slot.size = count;
+	_sparsePredictionUsed += count;
+
+	size_t i = slot.offset;
+	for(size_t row=0; row<column.size(); ++row)
+	{
+		if(column[row] != 0.0f)
+		{
+			_sparsePredictionValues[i++] = std::make_pair((int)row, column[row]);
 			column[row] = 0.0f;
 		}
 	}
 }
 
-// The prediction built directly in its sparse form, the matrix never being allocated.
+// Packs the columns back into the order they are multiplied in, giving each the room it
+// needs and no more. Called when the room left behind by rebuilt columns has grown to a
+// quarter of what is in use, and at the end of a full build, whose columns are not built in
+// the order of their index.
+void BayesFilter::compactSparsePrediction()
+{
+	std::vector<std::pair<int, float> > packed;
+	packed.reserve(_sparsePredictionUsed);
+	for(size_t i=0; i<_sparsePredictionColumns.size(); ++i)
+	{
+		SparseColumn & slot = _sparsePredictionColumns[i];
+		const size_t offset = packed.size();
+		packed.insert(packed.end(),
+				_sparsePredictionValues.begin()+slot.offset,
+				_sparsePredictionValues.begin()+slot.offset+slot.size);
+		slot.offset = offset;
+		slot.capacity = slot.size;
+	}
+	_sparsePredictionValues.swap(packed);
+}
+
+// The neighborhood of a location, from the cache the incremental update needs, adding it
+// there and to the neighborhoods of its own neighbors when it is not there yet.
+const std::map<int, int> & BayesFilter::cachedNeighbors(const Memory * memory, int id)
+{
+	std::map<int, std::map<int, int> >::const_iterator iter = _neighborsIndex.find(id);
+	if(iter == _neighborsIndex.end())
+	{
+		std::map<int, int> neighbors = memory->getNeighborsId(id, _predictionLC.size()-1, 0, false, false, true, true);
+		for(std::map<int, int>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+		{
+			std::map<int, std::map<int, int> >::iterator kter = _neighborsIndex.find(jter->first);
+			if(kter != _neighborsIndex.end())
+			{
+				uInsert(kter->second, std::make_pair(id, jter->second));
+			}
+		}
+		iter = _neighborsIndex.insert(std::make_pair(id, neighbors)).first;
+	}
+	return iter->second;
+}
+
+// The prediction built in its sparse form, the matrix never being allocated.
 //
-// A column of the prediction only holds the neighbors of one location within the depth
-// of the prediction model, so on a large map the matrix is mostly zeros, while holding
-// it costs the size of the working memory squared against the far smaller size of the
-// values in it. Each column is built in a buffer of its own instead, through the same
-// addNeighborProb() and normalize() as the dense build, and only its non zero values
-// are kept.
+// A column of the prediction only holds the neighbors of one location within the depth of
+// the prediction model, so on a large map the matrix is mostly zeros, while holding it
+// costs the size of the working memory squared against the far smaller size of the values
+// in it. Each column is built in a buffer of its own instead, through the same
+// addNeighborProb() and normalize() as the dense build, and only its non zero values are
+// kept. The columns are kept apart rather than in one array so that
+// updateSparsePrediction() can replace one of them.
 //
 // The columns are not built in the order of their index: a column is built for every
-// location at margin 0 of the one being expanded, so several are built at once. Eigen
-// takes them as triplets and orders them.
+// location at margin 0 of the one being expanded, so several are built at once.
 //
-// Returns false when the matrix would not be sparse, which the caller has to answer by
-// building the dense one. Only reachable through a model whose values sum to less than
-// 1, as normalize() then spreads the missing probability over every zero of a column.
+// Returns false when the prediction would not be sparse, which the caller has to answer by
+// building the dense matrix. Happens when the values of the model sum to less than 1, as
+// normalize() then spreads the missing probability over every zero of a column.
 bool BayesFilter::generateSparsePrediction(const Memory * memory, const std::vector<int> & ids)
 {
 	UASSERT(memory && _predictionLC.size() >= 2 && ids.size());
 
 	UTimer timer;
 	this->clearSparsePrediction();
-	_predictionChanged = false;
 
 	const int size = (int)ids.size();
 
@@ -584,15 +636,15 @@ bool BayesFilter::generateSparsePrediction(const Memory * memory, const std::vec
 		}
 	}
 
-	// A value costs 12 bytes as a triplet and 8 in the matrix, against the 4 of the
-	// dense one, so past a quarter filled the sparse form is not worth building.
+	// A value costs 8 bytes kept sparse against the 4 of the matrix, so past a quarter
+	// filled the sparse form is not worth building.
 	const size_t maxValues = (size_t)size*(size_t)size/4;
 
-	// The neighborhood of a few locations, to know whether the prediction is worth
-	// keeping sparse before building all of it. A loop closure link costs no margin, so
-	// on a densely linked graph a column reaches most of the map and there is nothing
-	// sparse to keep; finding that out by building a quarter of it first would cost more
-	// than the multiplications it is trying to save.
+	// The neighborhood of a few locations, to know whether the prediction is worth keeping
+	// sparse before building all of it. A loop closure link costs no margin, so on a
+	// densely linked graph a column reaches most of the map and there is nothing sparse to
+	// keep; finding that out by building a quarter of it first would cost more than the
+	// multiplications it is trying to save.
 	{
 		const int samples = size < 64 ? size : 64;
 		size_t reached = 0;
@@ -636,8 +688,14 @@ bool BayesFilter::generateSparsePrediction(const Memory * memory, const std::vec
 		}
 	}
 
+	// The neighborhood a column was built from is kept only when locations can be added,
+	// which is what updateSparsePrediction() needs it for. Over a fixed graph nothing is
+	// ever appended, and one neighborhood per location is as much memory again as the
+	// values of the prediction.
+	std::map<int, std::map<int, int> > * cache = memory->isIncremental() ? &_neighborsIndex : 0;
+
+	_sparsePredictionColumns.assign(size, SparseColumn());
 	std::vector<float> column(size, 0.0f);
-	std::vector<Eigen::Triplet<float> > triplets;
 
 	std::set<int> idsDone;
 	for(int i=0; i<size; ++i)
@@ -650,147 +708,189 @@ bool BayesFilter::generateSparsePrediction(const Memory * memory, const std::vec
 		if(ids[i] > 0)
 		{
 			std::list<int> idsLoopMargin;
-			// The neighborhoods are not kept in _neighborsIndex: it is there for the
-			// incremental updatePrediction(), which this build replaces, and it holds
-			// one neighborhood per location, as much memory again as the values here.
 			std::map<int, int> neighbors = resolveNeighbors(
-					memory, ids[i], _predictionLC.size()-1, idToIndexMap, idsLoopMargin, 0);
+					memory, ids[i], _predictionLC.size()-1, idToIndexMap, idsLoopMargin, cache);
 
 			// same neighbor tree for loop signatures (margin = 0)
 			for(std::list<int>::iterator iter=idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
 			{
+				if(cache)
+				{
+					uInsert(*cache, std::make_pair(*iter, neighbors));
+				}
 				const int index = idToIndexMap.at(*iter);
-				float sum = addNeighborProb(&column[0], 1, neighbors, _predictionLC, idToIndexMap);
-				idsDone.insert(*iter);
+				const float sum = addNeighborProb(&column[0], 1, neighbors, _predictionLC, idToIndexMap);
 				this->normalize(&column[0], 1, size, index, sum, ids[0]<0);
-				this->appendSparseColumn(column, index, triplets);
+				this->takeSparsePredictionColumn(column, index, false);
+				idsDone.insert(*iter);
 			}
 		}
 		else
 		{
 			this->fillVirtualPlaceColumn(&column[0], 1, size);
-			this->appendSparseColumn(column, i, triplets);
-		}
-
-		if(triplets.size() > maxValues)
-		{
-			UWARN("The prediction has more than %ld non zero values, which is too dense "
-				  "for %s to be worth it (%d of %d locations done). Building the matrix "
-				  "instead. The values of %s summing to less than 1 is what fills it.",
-				  (long)maxValues, Parameters::kBayesSparsePrediction().c_str(), i+1, size,
-				  Parameters::kBayesPredictionLC().c_str());
-			return false;
+			this->takeSparsePredictionColumn(column, i, false);
 		}
 	}
+	// The columns were not built in the order of their index, so they are packed into it.
+	this->compactSparsePrediction();
+	_sparsePredictionIds = ids;
 
-	_sparsePredictionMatrix.resize(size, size);
-	_sparsePredictionMatrix.setFromTriplets(triplets.begin(), triplets.end());
-
+	const size_t nnz = _sparsePredictionUsed;
 	UDEBUG("Sparse prediction: %ld/%ld values (%.2f%%), %ld MB against the %ld MB of the "
 		   "matrix, built in %fs",
-			(long)_sparsePredictionMatrix.nonZeros(), (long)size*size,
-			100.0*double(_sparsePredictionMatrix.nonZeros())/(double(size)*double(size)),
+			(long)nnz, (long)size*size, 100.0*double(nnz)/(double(size)*double(size)),
 			(long)(this->getSparsePredictionMemoryUsed()/1048576),
 			(long)((size_t)size*(size_t)size*sizeof(float)/1048576),
 			timer.ticks());
 	return true;
 }
 
-// The same sparse prediction, but taken from the matrix rather than built instead of
-// it. Used when the matrix is there anyway, which is the case while mapping: the
-// incremental updatePrediction() needs it to carry the unchanged columns over.
-void BayesFilter::updateSparsePredictionFromDense()
+// The same prediction after locations were appended, without building it again.
+//
+// Every location that was already there keeps its index, so the columns already built
+// still apply: only the ones the new locations reach have to be built again, and the
+// column of the virtual place, whose values are shared out over however many locations
+// there are. What a column holds does not otherwise depend on how many there are, the
+// model summing to 1 leaving normalize() nothing to spread over the others.
+//
+// Returns false when the locations are not the previous ones with more appended, which the
+// caller has to answer by building the prediction again: a location removed shifts the
+// index of every one after it, and the dense update has to recompute every column then too.
+bool BayesFilter::updateSparsePrediction(
+		const Memory * memory,
+		const std::vector<int> & oldIds,
+		const std::vector<int> & newIds)
 {
-	this->clearSparsePrediction();
-	_predictionChanged = false;
-
-	if(_prediction.empty())
+	if(_fullPredictionUpdate ||
+	   oldIds.empty() ||
+	   newIds.size() <= oldIds.size() ||
+	   _sparsePredictionColumns.size() != oldIds.size() ||
+	   memcmp(oldIds.data(), newIds.data(), oldIds.size()*sizeof(int)) != 0)
 	{
-		return;
-	}
-	UASSERT(_prediction.type() == CV_32FC1);
-	UASSERT(_prediction.isContinuous());
-
-	// normalize() spreads the probability that the model doesn't account for over every
-	// zero of a column, so with such a model there is no zero left to skip. The
-	// condition is the one used there, so that both agree on the matrix content.
-	if(_totalPredictionLCValues < 1)
-	{
-		UWARN("%s is enabled but the values of %s sum to %f < 1, so the missing "
-			  "probability is spread over all the other locations and the prediction "
-			  "matrix has no zeros to skip. Using the dense multiplication instead. "
-			  "Make the values sum to 1 to benefit from the sparse one.",
-			  Parameters::kBayesSparsePrediction().c_str(),
-			  Parameters::kBayesPredictionLC().c_str(),
-			  _totalPredictionLCValues);
-		return;
+		return false;
 	}
 
 	UTimer timer;
-	const int rows = _prediction.rows;
-	const int cols = _prediction.cols;
-	const float * data = (const float *)_prediction.data;
-	const size_t maxValues = (size_t)rows*(size_t)cols/4;
+	const int size = (int)newIds.size();
 
-	// Read in the order the matrix is stored in, a column of it being strided.
-	std::vector<Eigen::Triplet<float> > triplets;
-	for(int row=0; row<rows; ++row)
+	IdToIndexMap newIdToIndexMap;
+#if __cplusplus >= 201103L
+	newIdToIndexMap.reserve(newIds.size());
+#endif
+	for(int i=0; i<size; ++i)
 	{
-		const float * rowPtr = data + (size_t)row*cols;
-		for(int col=0; col<cols; ++col)
+		if(newIds[i]>0)
 		{
-			if(rowPtr[col] != 0.0f)
-			{
-				triplets.push_back(Eigen::Triplet<float>(row, col, rowPtr[col]));
-			}
-		}
-		if(triplets.size() > maxValues)
-		{
-			UWARN("The prediction matrix has more than %ld non zero values, which is too "
-				  "dense for %s to be worth it (%d of %d rows scanned). Using the dense "
-				  "multiplication instead.",
-				  (long)maxValues, Parameters::kBayesSparsePrediction().c_str(), row+1, rows);
-			return;
+			newIdToIndexMap[newIds[i]] = i;
 		}
 	}
 
-	_sparsePredictionMatrix.resize(rows, cols);
-	_sparsePredictionMatrix.setFromTriplets(triplets.begin(), triplets.end());
+	_sparsePredictionColumns.resize(size);   // the appended columns start out empty
+	std::vector<float> column(size, 0.0f);
 
-	UDEBUG("Sparse prediction: %ld/%ld values (%.2f%%), %ld MB on top of the %ld MB of "
-		   "the matrix, built in %fs",
-			(long)_sparsePredictionMatrix.nonZeros(), (long)rows*cols,
-			100.0*double(_sparsePredictionMatrix.nonZeros())/(double(rows)*double(cols)),
-			(long)(this->getSparsePredictionMemoryUsed()/1048576),
-			(long)(_prediction.total()*_prediction.elemSize()/1048576),
+	// The appended locations, and the ones that were already there whose neighborhood the
+	// appended ones are now part of.
+	std::set<int> idsToUpdate;
+	for(size_t i=oldIds.size(); i<newIds.size(); ++i)
+	{
+		if(newIds[i] <= 0)
+		{
+			continue;
+		}
+		const std::map<int, int> & neighbors = this->cachedNeighbors(memory, newIds[i]);
+		const float sum = addNeighborProb(&column[0], 1, neighbors, _predictionLC, newIdToIndexMap);
+		this->normalize(&column[0], 1, size, (int)i, sum, newIds[0]<0);
+		this->takeSparsePredictionColumn(column, (int)i, true);
+		for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+		{
+			const IdToIndexMap::const_iterator jter = newIdToIndexMap.find(iter->first);
+			if(jter != newIdToIndexMap.end() && (size_t)jter->second < oldIds.size())
+			{
+				idsToUpdate.insert(iter->first);
+			}
+		}
+	}
+
+	for(std::set<int>::const_iterator iter=idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
+	{
+		const std::map<int, std::map<int, int> >::const_iterator kter = _neighborsIndex.find(*iter);
+		UASSERT_MSG(kter != _neighborsIndex.end(),
+				uFormat("Did not find %d (current index size=%d)", *iter, (int)_neighborsIndex.size()).c_str());
+		const int index = newIdToIndexMap.at(*iter);
+		const float sum = addNeighborProb(&column[0], 1, kter->second, _predictionLC, newIdToIndexMap);
+		this->normalize(&column[0], 1, size, index, sum, newIds[0]<0);
+		this->takeSparsePredictionColumn(column, index, true);
+	}
+
+	// The virtual place shares what is left of its probability over the visited locations,
+	// so its column depends on how many of them there are.
+	if(newIds[0] < 0)
+	{
+		this->fillVirtualPlaceColumn(&column[0], 1, size);
+		this->takeSparsePredictionColumn(column, 0, true);
+	}
+
+	// The room left behind by the columns that outgrew their slot, once it is a quarter of
+	// what is in use.
+	const size_t waste = _sparsePredictionValues.size() - _sparsePredictionUsed;
+	const bool compacted = waste > _sparsePredictionUsed/4;
+	if(compacted)
+	{
+		this->compactSparsePrediction();
+	}
+	_sparsePredictionIds = newIds;
+
+	UDEBUG("Sparse prediction: %d locations appended, %d columns rebuilt of %d, %ld values, "
+		   "%ld left behind%s, updated in %fs",
+			(int)(newIds.size()-oldIds.size()), (int)idsToUpdate.size(), size,
+			(long)_sparsePredictionUsed, (long)waste, compacted?" (packed again)":"",
 			timer.ticks());
+	return true;
 }
 
 void BayesFilter::clearSparsePrediction()
 {
-	// Assigned rather than resized: resize(0,0) keeps the buffers it has allocated.
-	_sparsePredictionMatrix = Eigen::SparseMatrix<float, Eigen::RowMajor>();
+	_sparsePredictionColumns.clear();
+	_sparsePredictionValues.clear();
+	_sparsePredictionIds.clear();
+	_sparsePredictionUsed = 0;
 }
 
 unsigned long BayesFilter::getSparsePredictionMemoryUsed() const
 {
-	typedef Eigen::SparseMatrix<float, Eigen::RowMajor>::StorageIndex StorageIndex;
-	return _sparsePredictionMatrix.nonZeros() * (sizeof(float)+sizeof(StorageIndex))
-			+ (_sparsePredictionMatrix.outerSize()+1) * sizeof(StorageIndex);
+	return _sparsePredictionValues.capacity() * sizeof(std::pair<int, float>)
+			+ _sparsePredictionColumns.capacity() * sizeof(SparseColumn)
+			+ _sparsePredictionIds.capacity() * sizeof(int);
 }
 
 void BayesFilter::multiplySparsePrediction(const cv::Mat & posterior, cv::Mat & prior) const
 {
-	UASSERT(_sparsePredictionMatrix.rows() > 0);
+	const int size = (int)_sparsePredictionColumns.size();
+	UASSERT(size > 0);
 	UASSERT(posterior.cols == 1 && posterior.type() == CV_32FC1);
-	UASSERT_MSG(posterior.rows == (int)_sparsePredictionMatrix.cols(),
-			uFormat("posterior=%d prediction=%d", posterior.rows,
-					(int)_sparsePredictionMatrix.cols()).c_str());
+	UASSERT_MSG(posterior.rows == size,
+			uFormat("posterior=%d prediction=%d", posterior.rows, size).c_str());
 
-	prior = cv::Mat((int)_sparsePredictionMatrix.rows(), 1, CV_32FC1);
-	Eigen::Map<const Eigen::VectorXf> posteriorVector((const float *)posterior.data, posterior.rows);
-	Eigen::Map<Eigen::VectorXf> priorVector((float *)prior.data, prior.rows);
-	priorVector.noalias() = _sparsePredictionMatrix * posteriorVector;
+	prior = cv::Mat::zeros(size, 1, CV_32FC1);
+	const float * posteriorPtr = (const float *)posterior.data;
+	float * priorPtr = (float *)prior.data;
+
+	// The prior is the sum of the columns of the prediction weighted by the posterior.
+	// Going by column is the order the values are stored in, and lets a location the
+	// posterior has ruled out be skipped whole.
+	for(int col=0; col<size; ++col)
+	{
+		const float weight = posteriorPtr[col];
+		if(weight == 0.0f)
+		{
+			continue;
+		}
+		const SparseColumn & slot = _sparsePredictionColumns[col];
+		for(size_t i=slot.offset; i<slot.offset+slot.size; ++i)
+		{
+			priorPtr[_sparsePredictionValues[i].first] += _sparsePredictionValues[i].second * weight;
+		}
+	}
 }
 
 unsigned long BayesFilter::getMemoryUsed() const

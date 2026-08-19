@@ -31,9 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
-#include <Eigen/SparseCore>
 #include <list>
+#include <map>
 #include <set>
+#include <utility>
 #include <vector>
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
@@ -154,7 +155,9 @@ public:
 	 *
 	 * @param memory Working memory instance (must not be null).
 	 * @param ids Ordered list of signature ids (often includes @ref Memory::kIdVirtual as first element).
-	 * @return Square CV_32FC1 matrix of size ids.size() × ids.size().
+	 * @return Square CV_32FC1 matrix of size ids.size() × ids.size(), or an empty matrix when
+	 *         @ref Parameters::kBayesSparsePrediction() is enabled and the prediction is being
+	 *         kept in its sparse form, in which case no matrix exists to return.
 	 */
 	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids);
 
@@ -221,20 +224,42 @@ private:
 	bool generateSparsePrediction(const Memory * memory, const std::vector<int> & ids);
 
 	/**
-	 * @brief Rebuilds the sparse prediction from the prediction matrix.
+	 * @brief Carries the sparse prediction over to a longer list of ids, without rebuilding it.
 	 *
-	 * Called only when the matrix has changed, and only when it is being kept anyway, which
-	 * is the case while mapping. Leaves the sparse form empty, which makes
-	 * @ref computePosterior() fall back to the dense multiplication, when the matrix is not
-	 * sparse (see @ref generateSparsePrediction()).
+	 * Every id already there keeps its index when ids are only appended, so the columns
+	 * already built still apply and only the ones the appended ids reach are built again.
+	 *
+	 * @param memory Working memory instance (must not be null).
+	 * @param oldIds The ids the prediction was built for.
+	 * @param newIds The ids it should be indexed by.
+	 * @return False when @p newIds is not @p oldIds with more appended, which the caller has
+	 *         to answer by building the prediction again with @ref generateSparsePrediction():
+	 *         an id removed shifts the index of every one after it. Also false when
+	 *         @ref Parameters::kBayesFullPredictionUpdate() asks for a full rebuild.
 	 */
-	void updateSparsePredictionFromDense();
+	bool updateSparsePrediction(const Memory * memory,
+			const std::vector<int> & oldIds,
+			const std::vector<int> & newIds);
 
 	/**
-	 * @brief Appends the non-zero values of a built column, and zeroes the buffer.
+	 * @brief Takes the non-zero values of a built column into the prediction, and zeroes the buffer.
+	 *
+	 * @param column Buffer holding the column, zeroed on return.
+	 * @param index Index of the column in the prediction.
+	 * @param withRoomToGrow Gives the column slightly more room than its values need, so that
+	 *                       rebuilding it into a few more values does not have to move it.
 	 */
-	void appendSparseColumn(std::vector<float> & column, int index,
-			std::vector<Eigen::Triplet<float> > & triplets) const;
+	void takeSparsePredictionColumn(std::vector<float> & column, int index, bool withRoomToGrow);
+
+	/**
+	 * @brief Packs the columns into the order they are multiplied in, each with the room it needs.
+	 */
+	void compactSparsePrediction();
+
+	/**
+	 * @brief The neighborhood of an id from @ref _neighborsIndex, querying and caching it if absent.
+	 */
+	const std::map<int, int> & cachedNeighbors(const Memory * memory, int id);
 
 	/**
 	 * @brief Releases the sparse prediction and the memory it holds.
@@ -268,7 +293,19 @@ private:
 	bool _sparsePrediction;                       ///< Multiply the prediction sparsely (Bayes/SparsePrediction).
 	bool _predictionChanged;                      ///< True when _prediction was rebuilt, so the sparse form is stale.
 	bool _sparsePredictionRejected;               ///< True when the current prediction was measured as too dense to keep sparse.
-	Eigen::SparseMatrix<float, Eigen::RowMajor> _sparsePredictionMatrix; ///< The prediction, sparse. Built instead of _prediction over a fixed graph.
+	/// Where a column of the sparse prediction sits in _sparsePredictionValues, and how much
+	/// room it was given: a column rebuilt into more values than it has room for is moved to
+	/// the end, leaving its room behind until compactSparsePrediction() recovers it.
+	struct SparseColumn
+	{
+		size_t offset = 0;
+		size_t size = 0;
+		size_t capacity = 0;
+	};
+	std::vector<SparseColumn> _sparsePredictionColumns; ///< The columns of the sparse prediction, built instead of _prediction.
+	std::vector<std::pair<int, float> > _sparsePredictionValues; ///< The (row, value) of every non-zero, column by column.
+	size_t _sparsePredictionUsed = 0;             ///< How many of _sparsePredictionValues belong to a column.
+	std::vector<int> _sparsePredictionIds;        ///< The ids _sparsePredictionColumns is indexed by.
 	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id.
 };
 
