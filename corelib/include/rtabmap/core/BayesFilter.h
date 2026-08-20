@@ -44,6 +44,12 @@ namespace rtabmap {
 class Memory;
 class Signature;
 
+namespace bayes {
+class PredictionModel;
+class DensePrediction;
+class SparsePrediction;
+}
+
 /**
  * @class BayesFilter
  * @brief Recursive Bayesian filter for loop-closure hypothesis estimation in RTAB-Map.
@@ -140,7 +146,7 @@ public:
 	 * @brief Returns the virtual place prior threshold.
 	 * @return Value in [0, 1] used when building the virtual place row of the prediction matrix.
 	 */
-	float getVirtualPlacePrior() const {return _virtualPlacePrior;}
+	float getVirtualPlacePrior() const;
 
 	/**
 	 * @brief Returns the loop-closure prediction model as a vector of values.
@@ -182,116 +188,11 @@ private:
 	bool posteriorHasSameIds(const std::vector<int> & ids) const;
 
 	/**
-	 * @brief Incrementally updates the prediction matrix when ids are added or removed.
-	 */
-	cv::Mat updatePrediction(const cv::Mat & oldPrediction,
-			const Memory * memory,
-			const std::vector<int> & oldIds,
-			const std::vector<int> & newIds);
-
-	/**
 	 * @brief Realigns the posterior with the ids of the likelihood.
 	 *
-	 * Rebuilds @ref _posterior and the vectors indexed the same way, keeping the probability
-	 * of the locations that are in both. Called only when the ids differ.
+	 * Keeps the probability of the locations that are in both. Called only when the ids differ.
 	 */
 	void updatePosterior(const Memory * memory, const std::map<int, float> & likelihood);
-
-	/**
-	 * @brief Fills the column of the virtual place (the unvisited location hypothesis).
-	 *
-	 * @param column First value of the column.
-	 * @param stride Step between two values of the column (1 when it is contiguous, the
-	 *               width of the matrix when it is one of its columns).
-	 * @param size Number of values in the column.
-	 */
-	void fillVirtualPlaceColumn(float * column, size_t stride, int size) const;
-
-	/**
-	 * @brief Normalizes one column of the prediction and applies the virtual place probability.
-	 *
-	 * @param column First value of the column, see @ref fillVirtualPlaceColumn() for @p stride
-	 *               and @p size.
-	 * @param index Index of the location this column is for, so of its diagonal value.
-	 * @param addedProbabilitiesSum Sum of the values @ref addNeighborProb() put in it.
-	 * @param virtualPlaceUsed Whether the first location is the virtual place.
-	 */
-	void normalize(float * column, size_t stride, int size, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const;
-
-	/**
-	 * @brief Builds the prediction directly in its sparse form, without the matrix.
-	 *
-	 * One column at a time in a buffer of its own, so nothing of the size of the working
-	 * memory squared is ever allocated. Used when the graph is fixed (localization mode),
-	 * where no incremental matrix update needs the matrix to be kept.
-	 *
-	 * @param memory Working memory instance (must not be null).
-	 * @param ids Ordered list of signature ids, as in @ref generatePrediction().
-	 * @return False when the prediction would not be sparse, which the caller has to answer
-	 *         by building the dense matrix. Happens when the values of
-	 *         @ref Parameters::kBayesPredictionLC() sum to less than 1, as @ref normalize()
-	 *         then spreads the missing probability over every zero of a column.
-	 */
-	bool generateSparsePrediction(const Memory * memory, const std::vector<int> & ids);
-
-	/**
-	 * @brief Carries the sparse prediction over to a longer list of ids, without rebuilding it.
-	 *
-	 * Every id already there keeps its index when ids are only appended, so the columns
-	 * already built still apply and only the ones the appended ids reach are built again.
-	 *
-	 * @param memory Working memory instance (must not be null).
-	 * @param oldIds The ids the prediction was built for.
-	 * @param newIds The ids it should be indexed by.
-	 * @return False when @p newIds is not @p oldIds with more appended, which the caller has
-	 *         to answer by building the prediction again with @ref generateSparsePrediction():
-	 *         an id removed shifts the index of every one after it. Also false when
-	 *         @ref Parameters::kBayesFullPredictionUpdate() asks for a full rebuild.
-	 */
-	bool updateSparsePrediction(const Memory * memory,
-			const std::vector<int> & oldIds,
-			const std::vector<int> & newIds);
-
-	/**
-	 * @brief Takes the non-zero values of a built column into the prediction, and zeroes the buffer.
-	 *
-	 * @param column Buffer holding the column, zeroed on return.
-	 * @param index Index of the column in the prediction.
-	 * @param withRoomToGrow Gives the column slightly more room than its values need, so that
-	 *                       rebuilding it into a few more values does not have to move it.
-	 */
-	void takeSparsePredictionColumn(std::vector<float> & column, int index, bool withRoomToGrow);
-
-	/**
-	 * @brief Packs the columns into the order they are multiplied in, each with the room it needs.
-	 */
-	void compactSparsePrediction();
-
-	/**
-	 * @brief The neighborhood of an id from @ref _neighborsIndex, querying and caching it if absent.
-	 */
-	const std::map<int, int> & cachedNeighbors(const Memory * memory, int id);
-
-	/**
-	 * @brief Releases the sparse prediction and the memory it holds.
-	 */
-	void clearSparsePrediction();
-
-	/**
-	 * @brief Approximate footprint of the sparse prediction, in bytes.
-	 */
-	unsigned long getSparsePredictionMemoryUsed() const;
-
-	/**
-	 * @brief Computes prior = prediction x posterior from the sparse prediction.
-	 *
-	 * Mathematically identical to the dense multiplication, up to the order the products of a
-	 * row are summed in.
-	 *
-	 * @param posterior The last posterior, as many values as the prediction has columns.
-	 * @param prior Output, sized by this method.
-	 */
-	void multiplySparsePrediction(const std::vector<float> & posterior, std::vector<float> & prior) const;
 
 private:
 	std::vector<int> _posteriorIds;               ///< The locations the posterior is over, ascending by id.
@@ -299,29 +200,16 @@ private:
 	std::vector<int> _likelihoodIds;              ///< The ids of the likelihood of an iteration, in its order.
 	std::vector<float> _likelihoodValues;         ///< The likelihood of an iteration, in the same order.
 	std::vector<float> _priorValues;              ///< The prior of an iteration, in the same order.
-	cv::Mat _prediction;                          ///< Cached prediction/transition matrix.
-	float _virtualPlacePrior;                     ///< Prior for virtual place transitions.
-	std::vector<double> _predictionLC;            ///< Model `{Vp, Lc, l1, l2, ...}`.
-	bool _fullPredictionUpdate;                   ///< If true, rebuild the full prediction matrix each time.
-	float _totalPredictionLCValues;               ///< Sum of all values in _predictionLC.
-	float _predictionEpsilon;                     ///< Minimum non-zero probability in the model.
-	bool _sparsePrediction;                       ///< Multiply the prediction sparsely (Bayes/SparsePrediction).
-	bool _predictionChanged;                      ///< True when _prediction was rebuilt, so the sparse form is stale.
+
+	bayes::PredictionModel * _model;              ///< The `{Vp, Lc, l1, ...}` model and the column arithmetic of it.
+	bayes::DensePrediction * _dense;              ///< The prediction as a matrix, used when it is not kept sparse.
+	bayes::SparsePrediction * _sparse;            ///< The prediction as its values only, one column at a time.
+	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id, for the incremental updates.
+
+	bool _fullPredictionUpdate;                   ///< If true, rebuild the whole prediction each time.
+	bool _sparsePrediction;                       ///< Keep the prediction sparse (Bayes/SparsePrediction).
+	bool _predictionChanged;                      ///< True when the prediction has to be built again.
 	bool _sparsePredictionRejected;               ///< True when the current prediction was measured as too dense to keep sparse.
-	/// Where a column of the sparse prediction sits in _sparsePredictionValues, and how much
-	/// room it was given: a column rebuilt into more values than it has room for is moved to
-	/// the end, leaving its room behind until compactSparsePrediction() recovers it.
-	struct SparseColumn
-	{
-		size_t offset = 0;
-		size_t size = 0;
-		size_t capacity = 0;
-	};
-	std::vector<SparseColumn> _sparsePredictionColumns; ///< The columns of the sparse prediction, built instead of _prediction.
-	std::vector<std::pair<int, float> > _sparsePredictionValues; ///< The (row, value) of every non-zero, column by column.
-	size_t _sparsePredictionUsed = 0;             ///< How many of _sparsePredictionValues belong to a column.
-	std::vector<int> _sparsePredictionIds;        ///< The ids _sparsePredictionColumns is indexed by.
-	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id.
 };
 
 } // namespace rtabmap
