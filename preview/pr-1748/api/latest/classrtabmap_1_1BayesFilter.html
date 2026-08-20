@@ -118,9 +118,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a6d7d48b32c853f46eee9290d5c82cd28" id="r_a6d7d48b32c853f46eee9290d5c82cd28"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a6d7d48b32c853f46eee9290d5c82cd28">parseParameters</a> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters)</td></tr>
 <tr class="memdesc:a6d7d48b32c853f46eee9290d5c82cd28"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates internal settings from the parameter map.  <br /></td></tr>
 <tr class="separator:a6d7d48b32c853f46eee9290d5c82cd28"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7ab8bc28ec172a18a80001585161b238" id="r_a7ab8bc28ec172a18a80001585161b238"><td class="memItemLeft" align="right" valign="top">const std::map&lt; int, float &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a7ab8bc28ec172a18a80001585161b238">computePosterior</a> (const <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> *memory, const std::map&lt; int, float &gt; &amp;likelihood)</td></tr>
-<tr class="memdesc:a7ab8bc28ec172a18a80001585161b238"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs one Bayes filter iteration (prediction + update).  <br /></td></tr>
-<tr class="separator:a7ab8bc28ec172a18a80001585161b238"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa3ec78130d67d9cca8c2f11c31bc28d2" id="r_aa3ec78130d67d9cca8c2f11c31bc28d2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#aa3ec78130d67d9cca8c2f11c31bc28d2">computePosterior</a> (const <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> *memory, const std::map&lt; int, float &gt; &amp;likelihood)</td></tr>
+<tr class="memdesc:aa3ec78130d67d9cca8c2f11c31bc28d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs one Bayes filter iteration (prediction + update).  <br /></td></tr>
+<tr class="separator:aa3ec78130d67d9cca8c2f11c31bc28d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad415ee334d31eebc3685e61862f32573" id="r_ad415ee334d31eebc3685e61862f32573"><td class="memItemLeft" align="right" valign="top"><a id="ad415ee334d31eebc3685e61862f32573" name="ad415ee334d31eebc3685e61862f32573"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr>
 <tr class="memdesc:ad415ee334d31eebc3685e61862f32573"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears posterior, prediction matrix and cached neighbor indices. <br /></td></tr>
@@ -128,9 +128,12 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <tr class="memitem:a3255a54c1d2fc5b9a6db91fb38d591ae" id="r_a3255a54c1d2fc5b9a6db91fb38d591ae"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a3255a54c1d2fc5b9a6db91fb38d591ae">setPredictionLC</a> (const std::string &amp;prediction)</td></tr>
 <tr class="memdesc:a3255a54c1d2fc5b9a6db91fb38d591ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the loop-closure prediction model from a space-separated string.  <br /></td></tr>
 <tr class="separator:a3255a54c1d2fc5b9a6db91fb38d591ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aceaa52e62af32f176185305f5359ee79" id="r_aceaa52e62af32f176185305f5359ee79"><td class="memItemLeft" align="right" valign="top">const std::map&lt; int, float &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#aceaa52e62af32f176185305f5359ee79">getPosterior</a> () const</td></tr>
-<tr class="memdesc:aceaa52e62af32f176185305f5359ee79"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the current posterior probability map.  <br /></td></tr>
-<tr class="separator:aceaa52e62af32f176185305f5359ee79"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4b476a9fa8b1c67562be4134c936081c" id="r_a4b476a9fa8b1c67562be4134c936081c"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; int &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c">getPosteriorIds</a> () const</td></tr>
+<tr class="memdesc:a4b476a9fa8b1c67562be4134c936081c"><td class="mdescLeft">&#160;</td><td class="mdescRight">The locations the posterior is over, ascending by id.  <br /></td></tr>
+<tr class="separator:a4b476a9fa8b1c67562be4134c936081c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaebf1bee8c904dabdf1d8ea0f446c143" id="r_aaebf1bee8c904dabdf1d8ea0f446c143"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; float &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#aaebf1bee8c904dabdf1d8ea0f446c143">getPosteriorValues</a> () const</td></tr>
+<tr class="memdesc:aaebf1bee8c904dabdf1d8ea0f446c143"><td class="mdescLeft">&#160;</td><td class="mdescRight">The probability of each location of <a class="el" href="classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c">getPosteriorIds()</a>, in the same order.  <br /></td></tr>
+<tr class="separator:aaebf1bee8c904dabdf1d8ea0f446c143"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f479b2d242f05eef69532f454dc851f" id="r_a1f479b2d242f05eef69532f454dc851f"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a1f479b2d242f05eef69532f454dc851f">getVirtualPlacePrior</a> () const</td></tr>
 <tr class="memdesc:a1f479b2d242f05eef69532f454dc851f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the virtual place prior threshold.  <br /></td></tr>
 <tr class="separator:a1f479b2d242f05eef69532f454dc851f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -165,7 +168,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <dd>
 <a class="el" href="classrtabmap_1_1Rtabmap.html" title="Top-level RTAB-Map SLAM pipeline (mapping, localization and loop closure).">Rtabmap</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="BayesFilter_8h_source.html#l00074">74</a> of file <a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="BayesFilter_8h_source.html#l00081">81</a> of file <a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a2955edc4b79110b5bd1bd03f1616056e" name="a2955edc4b79110b5bd1bd03f1616056e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2955edc4b79110b5bd1bd03f1616056e">&#9670;&#160;</a></span>BayesFilter()</h2>
@@ -228,14 +231,14 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 
 </div>
 </div>
-<a id="a7ab8bc28ec172a18a80001585161b238" name="a7ab8bc28ec172a18a80001585161b238"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7ab8bc28ec172a18a80001585161b238">&#9670;&#160;</a></span>computePosterior()</h2>
+<a id="aa3ec78130d67d9cca8c2f11c31bc28d2" name="aa3ec78130d67d9cca8c2f11c31bc28d2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa3ec78130d67d9cca8c2f11c31bc28d2">&#9670;&#160;</a></span>computePosterior()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const std::map&lt; int, float &gt; &amp; rtabmap::BayesFilter::computePosterior </td>
+          <td class="memname">bool rtabmap::BayesFilter::computePosterior </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> *&#160;</td>
           <td class="paramname"><em>memory</em>, </td>
@@ -256,6 +259,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 
 <p>Runs one Bayes filter iteration (prediction + update). </p>
 <p>Given a likelihood map over signature ids, computes and stores the normalized posterior. The prediction matrix is generated or updated from <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> using the ids present in <code>likelihood</code>.</p>
+<p>Read the result with <a class="el" href="classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c">getPosteriorIds()</a> and <a class="el" href="classrtabmap_1_1BayesFilter.html#aaebf1bee8c904dabdf1d8ea0f446c143">getPosteriorValues()</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">memory</td><td>Working memory instance (must not be null). </td></tr>
@@ -263,7 +267,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Reference to the internal posterior map (id → probability). On error (null memory, empty likelihood, or invalid prediction model), returns the unchanged posterior. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>False on error (null memory, empty likelihood, or invalid prediction model), the posterior being left unchanged. </dd></dl>
 
 </div>
 </div>
@@ -299,8 +303,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 
 </div>
 </div>
-<a id="aceaa52e62af32f176185305f5359ee79" name="aceaa52e62af32f176185305f5359ee79"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aceaa52e62af32f176185305f5359ee79">&#9670;&#160;</a></span>getPosterior()</h2>
+<a id="a4b476a9fa8b1c67562be4134c936081c" name="a4b476a9fa8b1c67562be4134c936081c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4b476a9fa8b1c67562be4134c936081c">&#9670;&#160;</a></span>getPosteriorIds()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -309,7 +313,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">const std::map&lt; int, float &gt; &amp; rtabmap::BayesFilter::getPosterior </td>
+          <td class="memname">const std::vector&lt; int &gt; &amp; rtabmap::BayesFilter::getPosteriorIds </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -322,10 +326,39 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 </table>
 </div><div class="memdoc">
 
-<p>Returns the current posterior probability map. </p>
-<dl class="section return"><dt>Returns</dt><dd>Map of signature id to normalized posterior probability. This is the probability to be at the given location. </dd></dl>
+<p>The locations the posterior is over, ascending by id. </p>
+<p>The virtual place (<a class="el" href="classrtabmap_1_1Memory.html#a539ccf650a81905db46dd6d98112f603">Memory::kIdVirtual</a>) is the first of them when it is one. </p>
 
-<p class="definition">Definition at line <a class="el" href="BayesFilter_8h_source.html#l00128">128</a> of file <a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="BayesFilter_8h_source.html#l00138">138</a> of file <a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a>.</p>
+
+</div>
+</div>
+<a id="aaebf1bee8c904dabdf1d8ea0f446c143" name="aaebf1bee8c904dabdf1d8ea0f446c143"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaebf1bee8c904dabdf1d8ea0f446c143">&#9670;&#160;</a></span>getPosteriorValues()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::vector&lt; float &gt; &amp; rtabmap::BayesFilter::getPosteriorValues </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The probability of each location of <a class="el" href="classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c">getPosteriorIds()</a>, in the same order. </p>
+
+<p class="definition">Definition at line <a class="el" href="BayesFilter_8h_source.html#l00143">143</a> of file <a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a>.</p>
 
 </div>
 </div>
@@ -334,9 +367,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">float rtabmap::BayesFilter::getVirtualPlacePrior </td>
@@ -345,17 +375,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
           <td> const</td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
 
 <p>Returns the virtual place prior threshold. </p>
 <dl class="section return"><dt>Returns</dt><dd>Value in [0, 1] used when building the virtual place row of the prediction matrix. </dd></dl>
-
-<p class="definition">Definition at line <a class="el" href="BayesFilter_8h_source.html#l00134">134</a> of file <a class="el" href="BayesFilter_8h_source.html">BayesFilter.h</a>.</p>
 
 </div>
 </div>
@@ -434,7 +457,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Square CV_32FC1 matrix of size ids.size() × ids.size(). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Square CV_32FC1 matrix of size ids.size() × ids.size(), or an empty matrix when <a class="el" href="classrtabmap_1_1Parameters.html#ae8141b0f2cc33d7e47b8a5f4fc558bc1">Parameters::kBayesSparsePrediction()</a> is enabled and the prediction is being kept in its sparse form, in which case no matrix exists to return. </dd></dl>
 
 </div>
 </div>
