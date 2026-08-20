@@ -155,10 +155,8 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 	UTimer timer;
 	timer.start();
 
-	// One walk of the likelihood: its values into a vector of their own, and its ids
-	// against the ones the posterior is indexed by. Everything below then works on
-	// vectors, which at the size of the working memory is the difference between walking a
-	// tree of tens of thousands of nodes once and walking it half a dozen times.
+	// One walk of the likelihood: its values into a vector, and its ids against the ones the
+	// posterior is indexed by. Everything below then works on vectors.
 	_likelihoodIds.resize(likelihood.size());
 	_likelihoodValues.resize(likelihood.size());
 	bool sameIds = _posteriorIds.size() == likelihood.size();
@@ -268,8 +266,8 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 	//std::cout << "ResultingPrior=" << prior << std::endl;
 
 	// STEP 2 - Update : Multiply with observations (likelihood)
-	// The likelihood, the posterior and the prior are all indexed the same way, so this is
-	// three vectors walked side by side rather than a search through the posterior per id.
+	// The likelihood, the posterior and the prior are all indexed the same way, so the three
+	// are walked side by side.
 	float sum = 0;
 	for(size_t k=0; k<_posteriorValues.size(); ++k)
 	{
@@ -296,8 +294,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 {
 	if(!_sparse->empty())
 	{
-		// The prediction is being kept sparse, so there is no matrix: building one to hand
-		// over would cost the memory and the time that not building it is saving.
+		// The prediction is being kept sparse, so there is no matrix to return.
 		return cv::Mat();
 	}
 	if(!_dense->empty() && this->posteriorHasSameIds(ids))
@@ -337,6 +334,11 @@ void BayesFilter::updatePosterior(const Memory * memory, const std::map<int, flo
 	std::vector<float> values;
 	ids.reserve(likelihood.size());
 	values.reserve(likelihood.size());
+	// Both the likelihood and the posterior are ascending by id, so the two are merged in one
+	// walk, k only ever moving forward: for each location of the likelihood, advance the
+	// posterior up to it. A location in both keeps its probability, a location removed from
+	// the working memory is left behind, and a location that came back gets 0 (1 on the very
+	// first iteration, where the posterior starts uniform).
 	size_t k = 0;
 	for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter)
 	{

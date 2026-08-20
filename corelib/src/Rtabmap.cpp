@@ -2155,8 +2155,7 @@ bool Rtabmap::process(
 			const std::vector<float> & posteriorValues = _bayesFilter->getPosteriorValues();
 			if(posteriorIds.size())
 			{
-				// Highest id first, to keep the same one on equal probabilities as when this
-				// walked a map backwards.
+				// Highest id first, so the highest id wins on equal probabilities.
 				for(size_t i=posteriorIds.size(); i-- > 0;)
 				{
 					if(posteriorIds[i] > 0 && posteriorValues[i] > _highestHypothesis.second)

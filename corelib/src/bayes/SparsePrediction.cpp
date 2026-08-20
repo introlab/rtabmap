@@ -121,8 +121,8 @@ void SparsePrediction::compact()
 // costs the size of the working memory squared against the far smaller size of the values
 // in it. Each column is built in a buffer of its own instead, through the same
 // addNeighborProb() and normalize() as the dense build, and only its non zero values are
-// kept. The columns are kept apart rather than in one array so that
-// updateSparsePrediction() can replace one of them.
+// kept. Every column keeps the room it was given in values_, so that update() can rebuild
+// one of them without moving the others.
 //
 // The columns are not built in the order of their index: a column is built for every
 // location at margin 0 of the one being expanded, so several are built at once.
@@ -159,8 +159,7 @@ bool SparsePrediction::generate(const PredictionModel & model, const Memory * me
 	// The neighborhood of a few locations, to know whether the prediction is worth keeping
 	// sparse before building all of it. A loop closure link costs no margin, so on a
 	// densely linked graph a column reaches most of the map and there is nothing sparse to
-	// keep; finding that out by building a quarter of it first would cost more than the
-	// multiplications it is trying to save.
+	// keep.
 	{
 		const int samples = size < 64 ? size : 64;
 		size_t reached = 0;
