@@ -137,6 +137,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 <tr class="memitem:a1f479b2d242f05eef69532f454dc851f" id="r_a1f479b2d242f05eef69532f454dc851f"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a1f479b2d242f05eef69532f454dc851f">getVirtualPlacePrior</a> () const</td></tr>
 <tr class="memdesc:a1f479b2d242f05eef69532f454dc851f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the virtual place prior threshold.  <br /></td></tr>
 <tr class="separator:a1f479b2d242f05eef69532f454dc851f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8d65b71c1a2230fdefae41d90f73c0d5" id="r_a8d65b71c1a2230fdefae41d90f73c0d5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#a8d65b71c1a2230fdefae41d90f73c0d5">isPredictionSparse</a> () const</td></tr>
+<tr class="memdesc:a8d65b71c1a2230fdefae41d90f73c0d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the prediction is being kept in its sparse form rather than as a matrix.  <br /></td></tr>
+<tr class="separator:a8d65b71c1a2230fdefae41d90f73c0d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab13c8acecfbb4fcfff4e809e2b0a7538" id="r_ab13c8acecfbb4fcfff4e809e2b0a7538"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; double &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1BayesFilter.html#ab13c8acecfbb4fcfff4e809e2b0a7538">getPredictionLC</a> () const</td></tr>
 <tr class="memdesc:ab13c8acecfbb4fcfff4e809e2b0a7538"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the loop-closure prediction model as a vector of values.  <br /></td></tr>
 <tr class="separator:ab13c8acecfbb4fcfff4e809e2b0a7538"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -382,6 +385,26 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 
 </div>
 </div>
+<a id="a8d65b71c1a2230fdefae41d90f73c0d5" name="a8d65b71c1a2230fdefae41d90f73c0d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8d65b71c1a2230fdefae41d90f73c0d5">&#9670;&#160;</a></span>isPredictionSparse()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool rtabmap::BayesFilter::isPredictionSparse </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Whether the prediction is being kept in its sparse form rather than as a matrix. </p>
+<p>False when <a class="el" href="classrtabmap_1_1Parameters.html#ae8141b0f2cc33d7e47b8a5f4fc558bc1">Parameters::kBayesSparsePrediction()</a> is disabled, and while it is enabled over a prediction measured as too dense for the sparse form to be worth it. </p>
+
+</div>
+</div>
 <a id="ab13c8acecfbb4fcfff4e809e2b0a7538" name="ab13c8acecfbb4fcfff4e809e2b0a7538"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab13c8acecfbb4fcfff4e809e2b0a7538">&#9670;&#160;</a></span>getPredictionLC()</h2>
 
@@ -450,6 +473,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 
 <p>Builds or updates the prediction (transition) matrix for the given signature ids. </p>
 <p>Rows and columns correspond to <code>ids</code>. Neighbor links are queried from <a class="el" href="classrtabmap_1_1Memory.html">Memory</a> to fill transition probabilities according to <a class="el" href="classrtabmap_1_1BayesFilter.html#ab13c8acecfbb4fcfff4e809e2b0a7538">getPredictionLC()</a>. When <code>ids</code> match the current posterior keys, the cached matrix may be returned without recomputation.</p>
+<p>When the prediction is being kept sparse, the matrix is expanded from it rather than kept: it costs the memory that keeping the prediction sparse is saving, so ask for it to read, dump or compare the prediction, not on every iteration.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">memory</td><td>Working memory instance (must not be null). </td></tr>
@@ -457,7 +481,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Square CV_32FC1 matrix of size ids.size() × ids.size(), or an empty matrix when <a class="el" href="classrtabmap_1_1Parameters.html#ae8141b0f2cc33d7e47b8a5f4fc558bc1">Parameters::kBayesSparsePrediction()</a> is enabled and the prediction is being kept in its sparse form, in which case no matrix exists to return. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Square CV_32FC1 matrix of size ids.size() × ids.size(). </dd></dl>
 
 </div>
 </div>

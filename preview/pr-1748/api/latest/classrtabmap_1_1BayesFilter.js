@@ -8,6 +8,7 @@ var classrtabmap_1_1BayesFilter =
     [ "getPosteriorIds", "classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c", null ],
     [ "getPosteriorValues", "classrtabmap_1_1BayesFilter.html#aaebf1bee8c904dabdf1d8ea0f446c143", null ],
     [ "getVirtualPlacePrior", "classrtabmap_1_1BayesFilter.html#a1f479b2d242f05eef69532f454dc851f", null ],
+    [ "isPredictionSparse", "classrtabmap_1_1BayesFilter.html#a8d65b71c1a2230fdefae41d90f73c0d5", null ],
     [ "getPredictionLC", "classrtabmap_1_1BayesFilter.html#ab13c8acecfbb4fcfff4e809e2b0a7538", null ],
     [ "getPredictionLCStr", "classrtabmap_1_1BayesFilter.html#a18a6d97fe3088a4a356a85358f641376", null ],
     [ "generatePrediction", "classrtabmap_1_1BayesFilter.html#a489031236b91dbaba0ff192f90799cd4", null ],
