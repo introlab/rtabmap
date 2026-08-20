@@ -42,6 +42,25 @@ void SparsePrediction::clear()
 	used_ = 0;
 }
 
+cv::Mat SparsePrediction::toMatrix() const
+{
+	const int size = (int)columns_.size();
+	if(size == 0)
+	{
+		return cv::Mat();
+	}
+	cv::Mat matrix = cv::Mat::zeros(size, size, CV_32FC1);
+	for(int col=0; col<size; ++col)
+	{
+		const Column & slot = columns_[col];
+		for(size_t i=slot.offset; i<slot.offset+slot.size; ++i)
+		{
+			matrix.at<float>(values_[i].first, col) = values_[i].second;
+		}
+	}
+	return matrix;
+}
+
 unsigned long SparsePrediction::memoryUsed() const
 {
 	return values_.capacity() * sizeof(std::pair<int, float>)

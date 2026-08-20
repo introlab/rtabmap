@@ -149,6 +149,14 @@ public:
 	float getVirtualPlacePrior() const;
 
 	/**
+	 * @brief Whether the prediction is being kept in its sparse form rather than as a matrix.
+	 *
+	 * False when @ref Parameters::kBayesSparsePrediction() is disabled, and while it is enabled
+	 * over a prediction measured as too dense for the sparse form to be worth it.
+	 */
+	bool isPredictionSparse() const;
+
+	/**
 	 * @brief Returns the loop-closure prediction model as a vector of values.
 	 * @return Vector in the format `{Vp, Lc, l1, l2, l3, ...}`.
 	 */
@@ -167,11 +175,13 @@ public:
 	 * transition probabilities according to @ref getPredictionLC(). When @p ids match the
 	 * current posterior keys, the cached matrix may be returned without recomputation.
 	 *
+	 * When the prediction is being kept sparse, the matrix is expanded from it rather than
+	 * kept: it costs the memory that keeping the prediction sparse is saving, so ask for it to
+	 * read, dump or compare the prediction, not on every iteration.
+	 *
 	 * @param memory Working memory instance (must not be null).
 	 * @param ids Ordered list of signature ids (often includes @ref Memory::kIdVirtual as first element).
-	 * @return Square CV_32FC1 matrix of size ids.size() × ids.size(), or an empty matrix when
-	 *         @ref Parameters::kBayesSparsePrediction() is enabled and the prediction is being
-	 *         kept in its sparse form, in which case no matrix exists to return.
+	 * @return Square CV_32FC1 matrix of size ids.size() × ids.size().
 	 */
 	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids);
 

@@ -261,6 +261,8 @@ protected:
 		ParametersMap params;
 		params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
 		params.insert(ParametersPair(Parameters::kBayesFullPredictionUpdate(), fullPredictionUpdate ? "true" : "false"));
+		// The matrix is what this hands back, so the prediction is not kept sparse.
+		params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 		BayesFilter filter(params);
 
 		std::vector<int> ids = getBayesIds();
@@ -285,6 +287,40 @@ protected:
 };
 
 // Constructor Tests
+
+// Bayes/SparsePrediction changes how the prediction is held and multiplied, not what the
+// posterior is, so every test below that reads the posterior runs in both forms. The ones
+// that read the prediction matrix instead keep the dense form, which is the only one that
+// has a matrix.
+class BayesFilterModeTest : public ::testing::TestWithParam<bool>
+{
+protected:
+	ParametersMap modeParams(ParametersMap params = ParametersMap()) const
+	{
+		params[Parameters::kBayesSparsePrediction()] = GetParam() ? "true" : "false";
+		return params;
+	}
+};
+
+class BayesFilterMemoryModeFixture :
+		public BayesFilterMemoryFixture,
+		public ::testing::WithParamInterface<bool>
+{
+protected:
+	ParametersMap modeParams(ParametersMap params = ParametersMap()) const
+	{
+		params[Parameters::kBayesSparsePrediction()] = GetParam() ? "true" : "false";
+		return params;
+	}
+};
+
+static std::string predictionFormName(const ::testing::TestParamInfo<bool> & info)
+{
+	return info.param ? "Sparse" : "Dense";
+}
+
+INSTANTIATE_TEST_SUITE_P(PredictionForm, BayesFilterModeTest, ::testing::Bool(), predictionFormName);
+INSTANTIATE_TEST_SUITE_P(PredictionForm, BayesFilterMemoryModeFixture, ::testing::Bool(), predictionFormName);
 
 TEST(BayesFilterTest, DefaultConstructor)
 {
@@ -376,10 +412,10 @@ TEST(BayesFilterTest, GetPredictionLCStrRoundTrip)
 
 // reset Tests
 
-TEST(BayesFilterTest, Reset)
+TEST_P(BayesFilterModeTest, Reset)
 {
 	Memory memory;
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay90));
 	BayesFilter filter(params);
 
@@ -394,9 +430,9 @@ TEST(BayesFilterTest, Reset)
 
 // getMemoryUsed Tests
 
-TEST(BayesFilterTest, GetMemoryUsed)
+TEST_P(BayesFilterModeTest, GetMemoryUsed)
 {
-	BayesFilter filter;
+	BayesFilter filter(modeParams());
 	EXPECT_GE(filter.getMemoryUsed(), sizeof(BayesFilter));
 
 	Memory memory;
@@ -430,9 +466,11 @@ TEST(BayesFilterTest, ComputePosteriorEmptyLikelihood)
 
 // generatePrediction Tests (virtual place only, no graph)
 
-TEST(BayesFilterTest, GeneratePredictionVirtualPlaceOnly)
+// Nothing has been computed yet, so there is no sparse form to keep and the matrix is built
+// in both cases.
+TEST_P(BayesFilterModeTest, GeneratePredictionVirtualPlaceOnly)
 {
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesVirtualPlacePriorThr(), "0.9"));
 	BayesFilter filter(params);
 
@@ -468,9 +506,9 @@ TEST(BayesFilterTest, GeneratePredictionCachedWhenIdsUnchanged)
 	EXPECT_EQ(prediction1.data, prediction2.data);
 }
 
-TEST(BayesFilterTest, ComputePosteriorVirtualPlaceOnly)
+TEST_P(BayesFilterModeTest, ComputePosteriorVirtualPlaceOnly)
 {
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay90));
 	BayesFilter filter(params);
 
@@ -486,9 +524,9 @@ TEST(BayesFilterTest, ComputePosteriorVirtualPlaceOnly)
 	EXPECT_TRUE(approxEqual(posterior.begin()->second, 1.0f));
 }
 
-TEST(BayesFilterTest, ComputePosteriorNormalizesPosterior)
+TEST_P(BayesFilterModeTest, ComputePosteriorNormalizesPosterior)
 {
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay90));
 	BayesFilter filter(params);
 
@@ -503,9 +541,9 @@ TEST(BayesFilterTest, ComputePosteriorNormalizesPosterior)
 	EXPECT_TRUE(approxEqual(posterior.begin()->second, 1.0f));
 }
 
-TEST(BayesFilterTest, ComputePosteriorUpdatesWithNewLikelihood)
+TEST_P(BayesFilterModeTest, ComputePosteriorUpdatesWithNewLikelihood)
 {
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay90));
 	BayesFilter filter(params);
 
@@ -524,6 +562,10 @@ TEST(BayesFilterTest, ComputePosteriorUpdatesWithNewLikelihood)
 
 // Integration tests with real Memory graph
 
+// The columns of the prediction, read from the matrix. A map this small is never kept sparse,
+// a column of it reaching more than a quarter of the locations, so this is the dense form
+// whatever Bayes/SparsePrediction says; GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix
+// carries these values over to the sparse form on a map large enough to keep it.
 TEST_F(BayesFilterMemoryFixture, GeneratePredictionLinearChain)
 {
 	addChain(5);
@@ -534,6 +576,7 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionLinearChain)
 	ParametersMap params;
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
 	params.insert(ParametersPair(Parameters::kBayesVirtualPlacePriorThr(), "0.9"));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 	BayesFilter filter(params);
 
 	const std::vector<int> ids = getBayesIds();
@@ -592,17 +635,23 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionLinearChain)
 		(float)predictionLC[1]});
 }
 
-TEST_F(BayesFilterMemoryFixture, GeneratePredictionNormalizesWhenSumBelowOne)
+// A model whose values sum to less than 1 has normalize() spread the difference over every
+// zero of a column, so there is nothing sparse to keep and the matrix is the form used with
+// Bayes/SparsePrediction enabled as well as disabled. The columns below are its values.
+TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionNormalizesWhenSumBelowOne)
 {
 	addChain(4);
 
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionSumBelowOne));
 	BayesFilter filter(params);
 
 	const std::vector<int> ids = getBayesIds();
 	ASSERT_EQ(ids.size(), 4u); // virtual + 3 visited WM nodes (latest in STM)
 	ASSERT_EQ(ids[0], Memory::kIdVirtual);
+
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+	ASSERT_FALSE(filter.isPredictionSparse());
 
 	const std::vector<double> & predictionLC = filter.getPredictionLC();
 	ASSERT_EQ(predictionLC.size(), 2u);
@@ -647,29 +696,54 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionNormalizesWhenSumBelowOne)
 		(float)predictionLC[1] * scaleRatio});
 }
 
-TEST_F(BayesFilterMemoryFixture, GeneratePredictionCachedWithGraph)
+// The matrix is kept between iterations and handed over as it is while the ids do not change.
+// The sparse form is expanded into a matrix per call instead: it is the caller asking to read
+// the prediction that pays for it, not every iteration.
+TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionCachedWithGraph)
 {
-	addChain(4);
+	// Large enough for the sparse form to be worth keeping, so that both forms are exercised.
+	addChain(40);
 
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay70Neighbor20));
 	BayesFilter filter(params);
 
 	const std::vector<int> ids = getBayesIds();
 	std::map<int, float> likelihood = uniformLikelihood(ids);
-	filter.computePosterior(memory_, likelihood);
+	ASSERT_TRUE(filter.computePosterior(memory_, likelihood));
+	ASSERT_EQ(filter.isPredictionSparse(), GetParam());
 
 	cv::Mat prediction1 = filter.generatePrediction(memory_, ids);
 	cv::Mat prediction2 = filter.generatePrediction(memory_, ids);
-	ASSERT_FALSE(prediction1.empty());
-	EXPECT_EQ(prediction1.data, prediction2.data);
+	ASSERT_EQ(prediction1.rows, (int)ids.size());
+	ASSERT_EQ(prediction2.rows, (int)ids.size());
+	for(int col = 0; col < prediction1.cols; ++col)
+	{
+		for(int row = 0; row < prediction1.rows; ++row)
+		{
+			ASSERT_FLOAT_EQ(predictionAt(prediction1, row, col),
+			                predictionAt(prediction2, row, col))
+				<< "row=" << row << " col=" << col;
+		}
+	}
+	// The matrix is the one held, handed over as it is. The sparse form has none to hand over
+	// and is expanded into one per call: same values, another buffer. Handing over the same one
+	// would mean keeping the expansion, which is the allocation the sparse form is avoiding.
+	if(filter.isPredictionSparse())
+	{
+		EXPECT_NE(prediction1.data, prediction2.data);
+	}
+	else
+	{
+		EXPECT_EQ(prediction1.data, prediction2.data);
+	}
 }
 
-TEST_F(BayesFilterMemoryFixture, ComputePosteriorNormalizedWithGraph)
+TEST_P(BayesFilterMemoryModeFixture, ComputePosteriorNormalizedWithGraph)
 {
 	addChain(16);
 
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
 	BayesFilter filter(params);
 
@@ -709,11 +783,11 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorNormalizedWithGraph)
 	EXPECT_NEAR(sum, 1.0f, 1e-4f);
 }
 
-TEST_F(BayesFilterMemoryFixture, ComputePosteriorFavorsHighLikelihood)
+TEST_P(BayesFilterMemoryModeFixture, ComputePosteriorFavorsHighLikelihood)
 {
 	addChain(16);
 
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay70Neighbor20));
 	BayesFilter filter(params);
 
@@ -772,11 +846,11 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorFavorsHighLikelihood)
 	}
 }
 
-TEST_F(BayesFilterMemoryFixture, ComputePosteriorSequentialIterations)
+TEST_P(BayesFilterMemoryModeFixture, ComputePosteriorSequentialIterations)
 {
 	initMemory(5);
 
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
 	params.insert(ParametersPair(Parameters::kBayesFullPredictionUpdate(), "true"));
 	BayesFilter filter(params);
@@ -826,13 +900,13 @@ TEST_F(BayesFilterMemoryFixture, ComputePosteriorSequentialIterations)
 	}
 }
 
-TEST_F(BayesFilterMemoryFixture, ComputePosteriorSequentialIterationsWithLoopClosures)
+TEST_P(BayesFilterMemoryModeFixture, ComputePosteriorSequentialIterationsWithLoopClosures)
 {
 	// STM size 5: current signature stays in STM, so loop closures target older WM nodes
 	// (not the odometry neighbor link to the node added in the previous iteration).
 	initMemory(5);
 
-	ParametersMap params;
+	ParametersMap params = modeParams();
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
 	params.insert(ParametersPair(Parameters::kBayesFullPredictionUpdate(), "true"));
 	BayesFilter filter(params);
@@ -915,6 +989,8 @@ TEST_F(BayesFilterMemoryFixture, CompareFullPredictionUpdateModes)
 	ParametersMap paramsIncremental;
 	paramsIncremental.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
 	paramsIncremental.insert(ParametersPair(Parameters::kBayesFullPredictionUpdate(), "false"));
+	// Both modes are compared column by column, so the matrix has to be there to compare.
+	paramsIncremental.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 
 	ParametersMap paramsFull = paramsIncremental;
 	paramsFull[Parameters::kBayesFullPredictionUpdate()] = "true";
@@ -989,6 +1065,7 @@ TEST_F(BayesFilterMemoryFixture, FullPredictionUpdateRegeneratesMatrix)
 
 	ParametersMap params;
 	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay70Neighbor20));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 
 	auto expectMatrixGrowsOnNewNode = [&](bool fullPredictionUpdate) {
 		params[Parameters::kBayesFullPredictionUpdate()] = fullPredictionUpdate ? "true" : "false";
@@ -1332,8 +1409,8 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 				<< "iter=" << iter << " id=" << ids[i];
 		}
 	}
-	// Grown into the sparse form: there is no matrix left to hand over.
-	ASSERT_TRUE(filterSparse.generatePrediction(memory_, ids).empty());
+	// Grown into the sparse form, so the matrix of the first iterations is gone.
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
 
 	// Back to the matrix, which was last built 40 iterations and as many locations ago. It
 	// has to be built again rather than updated against locations it was never built for.
@@ -1351,6 +1428,7 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 	ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
 	ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
 
+	ASSERT_FALSE(filterSparse.isPredictionSparse());
 	const cv::Mat prediction = filterSparse.generatePrediction(memory_, ids);
 	ASSERT_EQ(prediction.rows, (int)ids.size());
 	ASSERT_EQ(prediction.cols, (int)ids.size());
@@ -1383,7 +1461,7 @@ TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecom
 		ids = getBayesIds();
 		ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
 	}
-	ASSERT_TRUE(filter.generatePrediction(memory_, ids).empty());
+	ASSERT_TRUE(filter.isPredictionSparse());
 
 	const cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
 	const size_t third = ids.size()/3;
@@ -1406,6 +1484,7 @@ TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecom
 
 	// The matrix is built for the locations of this iteration, not updated against the ones it
 	// was built for before the sparse form took over.
+	ASSERT_FALSE(filter.isPredictionSparse());
 	const cv::Mat prediction = filter.generatePrediction(memory_, fewerIds);
 	ASSERT_EQ(prediction.rows, (int)fewerIds.size());
 	ASSERT_EQ(prediction.cols, (int)fewerIds.size());
@@ -1421,14 +1500,14 @@ TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecom
 	EXPECT_NEAR(sum, 1.0f, 1e-4f);
 }
 
-// generatePrediction() hands over the prediction matrix, which only the dense mode has.
-// With the prediction kept sparse there is none, and it says so with an empty matrix rather
-// than building one: Rtabmap::dumpPrediction(), the one caller outside the filter, reports
-// that the matrix cannot be exported instead of spending the memory and the time that
-// keeping the prediction sparse is saving.
-TEST_F(BayesFilterMemoryFixture, GeneratePredictionIsEmptyWhileThePredictionIsKeptSparse)
+// generatePrediction() hands over the prediction whichever form it is held in, expanding the
+// sparse form into a matrix for the caller. Rtabmap::dumpPrediction() reads it that way, and
+// so does anyone comparing the two forms: they are built through the same column arithmetic,
+// so the matrices have to come out equal, value for value.
+TEST_F(BayesFilterMemoryFixture, GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix)
 {
-	addChain(20);
+	// Large enough for the sparse form to be worth keeping, so that it is the one answering.
+	addChain(40);
 
 	ParametersMap paramsDense;
 	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
@@ -1442,12 +1521,29 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionIsEmptyWhileThePredictionIsKe
 
 	const std::vector<int> ids = getBayesIds();
 	const std::map<int, float> likelihood = uniformLikelihood(ids);
-	filterDense.computePosterior(memory_, likelihood);
-	filterSparse.computePosterior(memory_, likelihood);
+	ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+	ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
+	ASSERT_FALSE(filterDense.isPredictionSparse());
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
 
 	const cv::Mat predictionDense = filterDense.generatePrediction(memory_, ids);
+	const cv::Mat predictionSparse = filterSparse.generatePrediction(memory_, ids);
 	ASSERT_EQ(predictionDense.rows, (int)ids.size());
 	ASSERT_EQ(predictionDense.cols, (int)ids.size());
+	ASSERT_EQ(predictionSparse.rows, predictionDense.rows);
+	ASSERT_EQ(predictionSparse.cols, predictionDense.cols);
 
-	EXPECT_TRUE(filterSparse.generatePrediction(memory_, ids).empty());
+	for(int col = 0; col < predictionDense.cols; ++col)
+	{
+		for(int row = 0; row < predictionDense.rows; ++row)
+		{
+			EXPECT_FLOAT_EQ(predictionAt(predictionSparse, row, col),
+			                predictionAt(predictionDense, row, col))
+				<< "row=" << row << " col=" << col;
+		}
+	}
+
+	// The expansion is handed over, not kept: the sparse form is still the one held.
+	EXPECT_TRUE(filterSparse.isPredictionSparse());
+	EXPECT_LT(filterSparse.getMemoryUsed(), filterDense.getMemoryUsed());
 }

@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "bayes/PredictionModel.h"
 
+#include <opencv2/core/core.hpp>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,14 @@ public:
 
 	/// prior = prediction x posterior.
 	void multiply(const std::vector<float> & posterior, std::vector<float> & prior) const;
+
+	/**
+	 * @brief The same prediction as a matrix, for the one caller that wants to look at it.
+	 *
+	 * The matrix costs what keeping the prediction sparse is saving, so this builds one to be
+	 * read, dumped or compared against DensePrediction, and does not keep it.
+	 */
+	cv::Mat toMatrix() const;
 
 	unsigned long memoryUsed() const;
 

@@ -114,6 +114,11 @@ float BayesFilter::getVirtualPlacePrior() const
 	return _model->virtualPlacePrior();
 }
 
+bool BayesFilter::isPredictionSparse() const
+{
+	return !_sparse->empty();
+}
+
 void BayesFilter::reset()
 {
 	_posteriorIds.clear();
@@ -294,10 +299,11 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
-	if(!_sparse->empty())
+	if(!_sparse->empty() && _sparse->ids() == ids)
 	{
-		// The prediction is being kept sparse, so there is no matrix to return.
-		return cv::Mat();
+		// Expanded from the sparse form, which holds the same prediction. The matrix costs
+		// what keeping it sparse is saving, so it is built to be read and not kept.
+		return _sparse->toMatrix();
 	}
 	if(!_dense->empty() && _dense->ids() == ids)
 	{

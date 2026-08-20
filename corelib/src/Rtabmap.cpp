@@ -5820,15 +5820,6 @@ void Rtabmap::dumpPrediction() const
 			}
 		}
 		cv::Mat prediction = _bayesFilter->generatePrediction(_memory, uListToVector(signaturesToCompare));
-		if(prediction.empty())
-		{
-			UERROR("The prediction matrix cannot be exported while %s is enabled: the "
-				   "prediction is kept in a sparse form and the matrix is never built. Set "
-				   "%s=false to export it.",
-				   Parameters::kBayesSparsePrediction().c_str(),
-				   Parameters::kBayesSparsePrediction().c_str());
-			return;
-		}
 
 		FILE* fout = 0;
 		std::string fileName = this->getWorkingDir() + "/DumpPrediction.txt";
