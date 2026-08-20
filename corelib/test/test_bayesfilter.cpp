@@ -1439,18 +1439,24 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 	}
 }
 
-// The same crossing, taken because the graph became densely linked rather than because the
-// parameter changed. A loop closure costs no depth in the graph search, so the locations it
-// joins share a column and the neighborhoods that go in it; enough of them and a column
-// reaches more than a quarter of the map, which is where the matrix costs less than the
-// values of the sparse form.
-TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecomesDense)
+// A location leaving the working memory, which memory management does on every iteration once
+// the map is larger than what it holds. The index of every location after it moves, so the
+// sparse form is laid out again -- but the columns whose contents did not change are carried
+// over rather than built again, and what comes out has to be the prediction the matrix holds,
+// value for value, and give the same posterior.
+TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsLeaveTheWorkingMemory)
 {
-	ParametersMap params;
-	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
-	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "true"));
-	BayesFilter filter(params);
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	// Grown past the size where the sparse form is worth keeping.
 	addChain(6);
 	std::vector<int> ids;
 	for(int iter = 0; iter < 40; ++iter)
@@ -1459,10 +1465,119 @@ TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecom
 		Transform pose(float(6 + iter), 0.0f, 0.0f, 0, 0, 0);
 		ASSERT_TRUE(memory_->update(data, pose, covariance_));
 		ids = getBayesIds();
-		ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+		const std::map<int, float> likelihood = uniformLikelihood(ids);
+		ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+		ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
 	}
-	ASSERT_TRUE(filter.isPredictionSparse());
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
+	ASSERT_FALSE(filterDense.isPredictionSparse());
 
+	// Locations leaving, one iteration after the other, from the middle of the ones held as
+	// well as from the oldest end: both move the index of the ones that stay.
+	std::vector<int> fewerIds = ids;
+	for(int iter = 0; iter < 5; ++iter)
+	{
+		fewerIds.erase(fewerIds.begin() + fewerIds.size()/2);
+		fewerIds.erase(fewerIds.begin() + 1);   // the oldest, the virtual place being first
+		const std::map<int, float> likelihood = uniformLikelihood(fewerIds);
+		ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+		ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
+
+		// Carried over, not built again from the graph and not given up on.
+		ASSERT_TRUE(filterSparse.isPredictionSparse()) << "iter=" << iter;
+
+		const cv::Mat predictionDense = filterDense.generatePrediction(memory_, fewerIds);
+		const cv::Mat predictionSparse = filterSparse.generatePrediction(memory_, fewerIds);
+		ASSERT_EQ(predictionDense.rows, (int)fewerIds.size()) << "iter=" << iter;
+		ASSERT_EQ(predictionSparse.rows, (int)fewerIds.size()) << "iter=" << iter;
+		for(int col = 0; col < predictionDense.cols; ++col)
+		{
+			for(int row = 0; row < predictionDense.rows; ++row)
+			{
+				ASSERT_NEAR(predictionAt(predictionSparse, row, col),
+				            predictionAt(predictionDense, row, col), 1e-6f)
+					<< "iter=" << iter << " row=" << row << " col=" << col;
+			}
+		}
+		for(size_t i = 0; i < fewerIds.size(); ++i)
+		{
+			ASSERT_NEAR(posteriorOf(filterDense).at(fewerIds[i]),
+			            posteriorOf(filterSparse).at(fewerIds[i]), 1e-5f)
+				<< "iter=" << iter << " id=" << fewerIds[i];
+		}
+	}
+}
+
+// A location coming back from long-term memory, which retrieval does when a hypothesis points
+// at one that left. Its id is smaller than the ones added since, so it comes back in the
+// middle of the locations held rather than at the end, and the columns after it move.
+TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenALocationComesBack)
+{
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	addChain(46);
+	const std::vector<int> allIds = getBayesIds();
+	ASSERT_GT(allIds.size(), 40u);
+
+	// The oldest locations held back, as long-term memory holds them.
+	std::vector<int> ids = allIds;
+	const std::vector<int> heldBack(ids.begin()+1, ids.begin()+6);
+	ids.erase(ids.begin()+1, ids.begin()+6);
+
+	std::map<int, float> likelihood = uniformLikelihood(ids);
+	ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+	ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
+
+	// Back they come, one per iteration, each one in the middle of the ones already there.
+	for(size_t i = 0; i < heldBack.size(); ++i)
+	{
+		ids.insert(ids.begin()+1+i, heldBack[i]);
+		likelihood = uniformLikelihood(ids);
+		ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+		ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
+		ASSERT_TRUE(filterSparse.isPredictionSparse()) << "back=" << heldBack[i];
+
+		const cv::Mat predictionDense = filterDense.generatePrediction(memory_, ids);
+		const cv::Mat predictionSparse = filterSparse.generatePrediction(memory_, ids);
+		ASSERT_EQ(predictionSparse.rows, (int)ids.size()) << "back=" << heldBack[i];
+		for(int col = 0; col < predictionDense.cols; ++col)
+		{
+			for(int row = 0; row < predictionDense.rows; ++row)
+			{
+				ASSERT_NEAR(predictionAt(predictionSparse, row, col),
+				            predictionAt(predictionDense, row, col), 1e-6f)
+					<< "back=" << heldBack[i] << " row=" << row << " col=" << col;
+			}
+		}
+		for(size_t k = 0; k < ids.size(); ++k)
+		{
+			ASSERT_NEAR(posteriorOf(filterDense).at(ids[k]),
+			            posteriorOf(filterSparse).at(ids[k]), 1e-5f)
+				<< "back=" << heldBack[i] << " id=" << ids[k];
+		}
+	}
+}
+
+// A graph linked densely enough that a column reaches more than a quarter of the map is not
+// kept sparse: a value costs 8 bytes against the 4 of a matrix cell, so past that point the
+// matrix is the cheaper of the two and is what the filter builds.
+TEST_F(BayesFilterMemoryFixture, PredictionIsNotKeptSparseOnADenselyLinkedGraph)
+{
+	addChain(40);
+	std::vector<int> ids = getBayesIds();
+
+	// Every location loop closed with the one a third of the map away, and a loop closure
+	// costs no depth in the graph search: the locations it joins share a column, and through
+	// them a column comes to reach most of the map.
 	const cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
 	const size_t third = ids.size()/3;
 	for(size_t i = 1; i < ids.size(); ++i)
@@ -1475,22 +1590,21 @@ TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecom
 		}
 	}
 
-	// A location leaving the working memory, which the sparse form cannot be carried over
-	// through: every location after it shifts index. So the prediction is built again, and it
-	// is on that build that the graph is measured as too dense to keep sparse.
-	std::vector<int> fewerIds = ids;
-	fewerIds.erase(fewerIds.begin() + fewerIds.size()/2);
-	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(fewerIds)));
+	ParametersMap params;
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "true"));
+	BayesFilter filter(params);
 
-	// The matrix is built for the locations of this iteration, not updated against the ones it
-	// was built for before the sparse form took over.
-	ASSERT_FALSE(filter.isPredictionSparse());
-	const cv::Mat prediction = filter.generatePrediction(memory_, fewerIds);
-	ASSERT_EQ(prediction.rows, (int)fewerIds.size());
-	ASSERT_EQ(prediction.cols, (int)fewerIds.size());
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+
+	// The matrix, and a posterior that is still a distribution over the locations.
+	EXPECT_FALSE(filter.isPredictionSparse());
+	const cv::Mat prediction = filter.generatePrediction(memory_, ids);
+	ASSERT_EQ(prediction.rows, (int)ids.size());
+	ASSERT_EQ(prediction.cols, (int)ids.size());
 
 	const std::map<int, float> & posterior = posteriorOf(filter);
-	ASSERT_EQ(posterior.size(), fewerIds.size());
+	ASSERT_EQ(posterior.size(), ids.size());
 	float sum = 0.0f;
 	for(std::map<int, float>::const_iterator iter=posterior.begin(); iter!=posterior.end(); ++iter)
 	{

@@ -273,6 +273,63 @@ bool SparsePrediction::generate(const PredictionModel & model, const Memory * me
 	return true;
 }
 
+// One column, from the neighborhood of the location it is for. Read from the cache, which
+// generate() filled and which the graph is only walked again for when a location came back
+// from long-term memory after its neighborhood was dropped.
+void SparsePrediction::buildColumn(const PredictionModel & model, const Memory * memory, int id,
+		int index, const std::vector<int> & ids, const IdToIndexMap & idToIndex,
+		std::vector<float> & buffer, NeighborsCache & cache)
+{
+	const std::map<int, int> & neighbors = cachedNeighbors(memory, id, model.depth(), cache);
+	const float sum = model.addNeighborProb(&buffer[0], 1, neighbors, idToIndex);
+	model.normalize(&buffer[0], 1, (int)ids.size(), index, sum, ids[0]<0);
+	this->takeColumn(buffer, index, true);
+}
+
+// Carries the prediction over to the locations of an iteration, which costs the columns whose
+// contents changed rather than a walk of the graph per column.
+//
+// Returns false when there is nothing to carry over, which the caller answers by calling
+// generate().
+bool SparsePrediction::update(const PredictionModel & model, const Memory * memory,
+		const std::vector<int> & newIds, NeighborsCache & cache)
+{
+	if(ids_.empty() || newIds.empty() || columns_.size() != ids_.size())
+	{
+		return false;
+	}
+
+	// Appended to, or changed in any other way: the first keeps every index, the second has
+	// to lay the columns out again.
+	const bool appendedTo =
+			newIds.size() > ids_.size() &&
+			memcmp(ids_.data(), newIds.data(), ids_.size()*sizeof(int)) == 0;
+	const bool updated = appendedTo
+			? this->updateAppended(model, memory, newIds, cache)
+			: this->updateRemapped(model, memory, newIds, cache);
+	if(!updated)
+	{
+		return false;
+	}
+
+	// Whether it is still worth keeping sparse, measured on the values themselves: past a
+	// quarter filled they cost more than the matrix, a value being 8 bytes against its 4.
+	// generate() has to estimate that from a sample of the graph before building anything,
+	// while here the count is already known.
+	const size_t maxValues = (size_t)newIds.size()*(size_t)newIds.size()/4;
+	if(used_ > maxValues)
+	{
+		UWARN("The prediction holds %ld values over %d locations, more than the quarter of "
+			  "them past which the matrix costs less, so it is not kept sparse. Every loop "
+			  "closure link widens a column, as one costs no depth in the graph search, and "
+			  "so does a longer %s.",
+			  (long)used_, (int)newIds.size(), Parameters::kBayesPredictionLC().c_str());
+		this->clear();
+		return false;
+	}
+	return true;
+}
+
 // The same prediction after locations were appended, without building it again.
 //
 // Every location that was already there keeps its index, so the columns already built
@@ -280,23 +337,11 @@ bool SparsePrediction::generate(const PredictionModel & model, const Memory * me
 // column of the virtual place, whose values are shared out over however many locations
 // there are. What a column holds does not otherwise depend on how many there are, the
 // model summing to 1 leaving normalize() nothing to spread over the others.
-//
-// Returns false when the locations are not the previous ones with more appended, which the
-// caller has to answer by building the prediction again: a location removed shifts the
-// index of every one after it, and the dense update has to recompute every column then too.
-bool SparsePrediction::update(const PredictionModel & model, const Memory * memory,
+bool SparsePrediction::updateAppended(const PredictionModel & model, const Memory * memory,
 		const std::vector<int> & newIds, NeighborsCache & cache)
 {
-	const std::vector<int> & oldIds = ids_;
-	if(oldIds.empty() ||
-	   newIds.size() <= oldIds.size() ||
-	   columns_.size() != oldIds.size() ||
-	   memcmp(oldIds.data(), newIds.data(), oldIds.size()*sizeof(int)) != 0)
-	{
-		return false;
-	}
-
 	UTimer timer;
+	const std::vector<int> & oldIds = ids_;
 	const int size = (int)newIds.size();
 
 	IdToIndexMap newIdToIndexMap;
@@ -339,13 +384,8 @@ bool SparsePrediction::update(const PredictionModel & model, const Memory * memo
 
 	for(std::set<int>::const_iterator iter=idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
 	{
-		const NeighborsCache::const_iterator kter = cache.find(*iter);
-		UASSERT_MSG(kter != cache.end(),
-				uFormat("Did not find %d (current index size=%d)", *iter, (int)cache.size()).c_str());
-		const int index = newIdToIndexMap.at(*iter);
-		const float sum = model.addNeighborProb(&column[0], 1, kter->second, newIdToIndexMap);
-		model.normalize(&column[0], 1, size, index, sum, newIds[0]<0);
-		this->takeColumn(column, index, true);
+		this->buildColumn(model, memory, *iter, newIdToIndexMap.at(*iter),
+				newIds, newIdToIndexMap, column, cache);
 	}
 
 	// The virtual place shares what is left of its probability over the visited locations,
@@ -364,11 +404,191 @@ bool SparsePrediction::update(const PredictionModel & model, const Memory * memo
 	{
 		this->compact();
 	}
+	const size_t appended = newIds.size()-oldIds.size();
 	ids_ = newIds;
 
 	UDEBUG("Sparse prediction: %d locations appended, %d columns rebuilt of %d, %ld values, "
 		   "%ld left behind%s, updated in %fs",
-			(int)(newIds.size()-oldIds.size()), (int)idsToUpdate.size(), size,
+			(int)appended, (int)idsToUpdate.size(), size,
+			(long)used_, (long)waste, compacted?" (packed again)":"",
+			timer.ticks());
+	return true;
+}
+
+// The same prediction after the locations changed in any other way than being appended to:
+// locations gone from the working memory as it is capped, locations back from long-term
+// memory in the middle of the ones already there, or both at once.
+//
+// The index of a location moves, so the columns are laid out again -- but a column is only
+// built again when what goes in it changed, which is when:
+//   * the location was not there before, so it has no column yet;
+//   * one of those is now part of its neighborhood, so it gains a value;
+//   * it shared its probability with a location that is gone, which normalize() now shares
+//     out over the ones that remain.
+// Every other column is the same values at another row, which is a copy. That is what
+// separates this from generate(): the graph is walked for the columns that changed, not for
+// every one of them.
+bool SparsePrediction::updateRemapped(const PredictionModel & model, const Memory * memory,
+		const std::vector<int> & newIds, NeighborsCache & cache)
+{
+	UTimer timer;
+	const std::vector<int> & oldIds = ids_;
+	const int size = (int)newIds.size();
+
+	// The virtual place appearing or disappearing changes every column, normalize() holding
+	// back its probability on all of them, so there would be nothing to carry over.
+	if((oldIds[0] < 0) != (newIds[0] < 0))
+	{
+		return false;
+	}
+
+	IdToIndexMap newIdToIndexMap;
+	IdToIndexMap oldIdToIndexMap;
+#if __cplusplus >= 201103L
+	newIdToIndexMap.reserve(newIds.size());
+	oldIdToIndexMap.reserve(oldIds.size());
+#endif
+	for(int i=0; i<size; ++i)
+	{
+		if(newIds[i]>0)
+		{
+			newIdToIndexMap[newIds[i]] = i;
+		}
+	}
+	for(size_t i=0; i<oldIds.size(); ++i)
+	{
+		if(oldIds[i]>0)
+		{
+			oldIdToIndexMap[oldIds[i]] = (int)i;
+		}
+	}
+
+	// Where each location went, and which ones are gone. The virtual place is the first of
+	// both, so it does not move.
+	std::vector<int> oldToNew(oldIds.size(), -1);
+	size_t removed = 0;
+	for(size_t i=0; i<oldIds.size(); ++i)
+	{
+		if(oldIds[i] <= 0)
+		{
+			oldToNew[i] = 0;
+			continue;
+		}
+		const IdToIndexMap::const_iterator iter = newIdToIndexMap.find(oldIds[i]);
+		if(iter == newIdToIndexMap.end())
+		{
+			// Its neighborhood is no longer ours to keep, as the dense update does too.
+			cache.erase(oldIds[i]);
+			++removed;
+		}
+		else
+		{
+			oldToNew[i] = iter->second;
+		}
+	}
+
+	// The locations that were not there before, and the ones whose neighborhood they are
+	// part of.
+	std::set<int> idsToBuild;
+	for(int i=0; i<size; ++i)
+	{
+		if(newIds[i] <= 0 || oldIdToIndexMap.find(newIds[i]) != oldIdToIndexMap.end())
+		{
+			continue;
+		}
+		idsToBuild.insert(newIds[i]);
+		const std::map<int, int> & neighbors = cachedNeighbors(memory, newIds[i], model.depth(), cache);
+		for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+		{
+			if(iter->first > 0 &&
+			   newIdToIndexMap.find(iter->first) != newIdToIndexMap.end() &&
+			   oldIdToIndexMap.find(iter->first) != oldIdToIndexMap.end())
+			{
+				idsToBuild.insert(iter->first);
+			}
+		}
+	}
+
+	// And the ones holding a value on a row that is gone.
+	if(removed)
+	{
+		for(size_t i=0; i<oldIds.size(); ++i)
+		{
+			if(oldIds[i] <= 0 || oldToNew[i] < 0 ||
+			   idsToBuild.find(oldIds[i]) != idsToBuild.end())
+			{
+				continue;
+			}
+			const Column & slot = columns_[i];
+			for(size_t v=slot.offset; v<slot.offset+slot.size; ++v)
+			{
+				if(oldToNew[values_[v].first] < 0)
+				{
+					idsToBuild.insert(oldIds[i]);
+					break;
+				}
+			}
+		}
+	}
+
+	// The columns that are carried over, at their new index and packed as they go: the room
+	// left behind by the ones that are gone or built again is not carried with them.
+	std::vector<Column> keptColumns(size);
+	std::vector<std::pair<int, float> > keptValues;
+	keptValues.reserve(used_);
+	size_t keptUsed = 0;
+	size_t carried = 0;
+	for(size_t i=0; i<oldIds.size(); ++i)
+	{
+		const int index = oldToNew[i];
+		if(index < 0 || oldIds[i] <= 0 || idsToBuild.find(oldIds[i]) != idsToBuild.end())
+		{
+			continue;
+		}
+		const Column & slot = columns_[i];
+		Column & kept = keptColumns[index];
+		kept.offset = keptValues.size();
+		kept.size = slot.size;
+		kept.capacity = slot.size;
+		for(size_t v=slot.offset; v<slot.offset+slot.size; ++v)
+		{
+			// The rows of a column are ascending, and so are both id vectors, so a remapped
+			// row stays after the one before it.
+			keptValues.push_back(std::make_pair(oldToNew[values_[v].first], values_[v].second));
+		}
+		keptUsed += slot.size;
+		++carried;
+	}
+	columns_.swap(keptColumns);
+	values_.swap(keptValues);
+	used_ = keptUsed;
+
+	std::vector<float> column(size, 0.0f);
+	for(std::set<int>::const_iterator iter=idsToBuild.begin(); iter!=idsToBuild.end(); ++iter)
+	{
+		this->buildColumn(model, memory, *iter, newIdToIndexMap.at(*iter),
+				newIds, newIdToIndexMap, column, cache);
+	}
+
+	// The virtual place shares what is left of its probability over the visited locations,
+	// so its column depends on how many of them there are.
+	if(newIds[0] < 0)
+	{
+		model.fillVirtualPlaceColumn(&column[0], 1, size);
+		this->takeColumn(column, 0, true);
+	}
+
+	const size_t waste = values_.size() - used_;
+	const bool compacted = waste > used_/4;
+	if(compacted)
+	{
+		this->compact();
+	}
+	ids_ = newIds;
+
+	UDEBUG("Sparse prediction: %d locations removed, %d columns carried over and %d built "
+		   "again of %d, %ld values, %ld left behind%s, updated in %fs",
+			(int)removed, (int)carried, (int)idsToBuild.size(), size,
 			(long)used_, (long)waste, compacted?" (packed again)":"",
 			timer.ticks());
 	return true;

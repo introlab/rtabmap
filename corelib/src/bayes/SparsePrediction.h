@@ -72,15 +72,16 @@ public:
 			const std::vector<int> & ids, NeighborsCache * cache);
 
 	/**
-	 * @brief Carries it over to @p ids without building it again.
+	 * @brief Carries it over to @p ids without walking the graph again.
 	 *
-	 * Every location already there keeps its index when locations are only appended, so the
-	 * columns already built still apply and only the ones the appended locations reach are
-	 * built again.
+	 * Only the columns whose contents changed are built again, from the neighborhoods of
+	 * @p cache: the ones of the locations that were not there before, of their neighbors, and
+	 * of the locations that shared their probability with one that is gone. Every other column
+	 * is carried over, at another index when locations were removed.
 	 *
-	 * @return False when @p ids is not the ids() it was built for with more appended, which the
-	 *         caller has to answer by calling generate(): a location removed shifts the index of
-	 *         every one after it.
+	 * @return False when there is nothing to carry over: no prediction yet, the virtual place
+	 *         appearing or disappearing, or the result measured as too dense to keep sparse.
+	 *         The caller answers by calling generate(), which is also what fills @p cache.
 	 */
 	bool update(const PredictionModel & model, const Memory * memory,
 			const std::vector<int> & ids, NeighborsCache & cache);
@@ -108,6 +109,21 @@ private:
 		size_t size = 0;
 		size_t capacity = 0;
 	};
+
+	/// update() when @p ids is the ids() it was built for with more appended: every location
+	/// keeps its index, so the columns are updated where they are.
+	bool updateAppended(const PredictionModel & model, const Memory * memory,
+			const std::vector<int> & ids, NeighborsCache & cache);
+
+	/// update() when locations were removed, or came back in the middle of the ones already
+	/// there: the index of a location moves, so the columns are laid out again.
+	bool updateRemapped(const PredictionModel & model, const Memory * memory,
+			const std::vector<int> & ids, NeighborsCache & cache);
+
+	/// Builds one column, from the neighborhood of the location it is for.
+	void buildColumn(const PredictionModel & model, const Memory * memory, int id, int index,
+			const std::vector<int> & ids, const IdToIndexMap & idToIndex,
+			std::vector<float> & buffer, NeighborsCache & cache);
 
 	void takeColumn(std::vector<float> & column, int index, bool withRoomToGrow);
 	void compact();
