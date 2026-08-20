@@ -835,6 +835,34 @@ int countConnectedComponents(
 	return (int)roots.size();
 }
 
+// What replaying a database asks for on top of the parameters it was recorded with.
+//
+// The dictionary is the one the database holds, fixed: a dictionary built as the replay goes
+// feeds back on itself, the words a frame is quantized against depending on the ones the
+// frames before it created, and a run then lands somewhere slightly different from the last.
+// Handing it the vocabulary of the recorded session up front takes that out, and is also
+// faster than building it again. The visual matching is exact for the same reason.
+//
+// Kp/NNStrategy is left as it is, approximate: the exact search is over the whole dictionary,
+// 141k SIFT descriptors of 128 dimensions each, where a kd-tree is little better than
+// comparing them all. Measured at over ten minutes against the twenty seconds of the
+// approximate search, fixed dictionary or not.
+ParametersMap replayParams(const ParametersMap & recordedWith, const std::string & srcPath)
+{
+	ParametersMap params = recordedWith;
+	// The nodes of the database are already the ones its detection rate kept, so every frame
+	// the reader hands over is processed.
+	uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
+	// The features stored with each node rather than extracted again: this database keeps no
+	// images to extract them from.
+	uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+	uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+	uInsert(params, ParametersPair(Parameters::kKpIncrementalDictionary(), "false"));
+	uInsert(params, ParametersPair(Parameters::kKpDictionaryPath(), srcPath));
+	uInsert(params, ParametersPair(Parameters::kVisCorNNType(), "8"));   // FLANN kd-tree single
+	return params;
+}
+
 // The optimized graph a database holds, which is what its own mapping session
 // converged to and what a replay of it is compared against, together with the
 // parameters it was recorded with, which the replay is run with.
@@ -2140,16 +2168,9 @@ TEST_F(RtabmapIntegrationFixture, Multisession3It)
 		const std::string label = sparsePrediction ? "sparse" : "dense";
 		SCOPED_TRACE(label);
 
-		// The parameters the database was recorded with, and on top of them
-		// what replaying instead of recording needs.
-		ParametersMap params = dbParams;
+		ParametersMap params = replayParams(dbParams, srcPath);
 		uInsert(params, ParametersPair(Parameters::kBayesSparsePrediction(),
 				sparsePrediction ? "true" : "false"));
-		// The nodes of the database are already the ones its detection rate
-		// kept, so every frame the reader hands over is processed.
-		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
-		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
-		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
 
 		const std::string workDb = test::tempPath(uFormat(
 				"rtabmap_integration_Multisession3It_%s.db", label.c_str()));
@@ -2191,32 +2212,34 @@ TEST_F(RtabmapIntegrationFixture, Multisession3It)
 		EXPECT_EQ(result.finalGlobalGraphSize, (int)goldenPoses.size()) << label;
 
 		// The same frames, the same parameters and the same features, so the
-		// trajectory comes out on top of the one the database holds: 7-18 cm
-		// and under 1.2 deg over five runs, dense and sparse alike.
+		// trajectory comes out on top of the one the database holds: 7-15 cm
+		// and under 1.1 deg over six runs, dense and sparse alike.
 		//
-		// The replay is not the same twice, whichever form the prediction is
-		// held in: the visual word search is over randomized kd-trees, so a
-		// hypothesis sitting on the loop closure threshold falls either side
-		// of it from one run to the next, and one loop closure more or less
-		// pulls the graph. The bands are what that spread asks for, not what
-		// a single run would allow.
-		EXPECT_LT(tRmse, 0.5f) << label << " trajectory drifted from the reference";
-		EXPECT_LT(rRmse, 3.0f) << label << " orientation drifted from the reference";
+		// The replay is still not the same twice, even over a fixed dictionary
+		// and an exact visual matching: the registration verifying a loop
+		// closure accepts or rejects a hypothesis sitting on its threshold
+		// from one run to the next, and one loop closure more or less pulls
+		// the graph. The bands are what that spread asks for, not what a
+		// single run would allow.
+		EXPECT_LT(tRmse, 0.3f) << label << " trajectory drifted from the reference";
+		EXPECT_LT(rRmse, 2.0f) << label << " orientation drifted from the reference";
 
 		// The reference graph holds 285 global loop closures; the replay finds
-		// 284-293 of them over five runs.
-		EXPECT_GT(result.loopClosuresAccepted, 240) << label << " found too few loop closures";
-		EXPECT_LT(result.loopClosuresAccepted, 340) << label << " found more loop closures than the reference";
+		// 282-288 of them over six runs.
+		EXPECT_GT(result.loopClosuresAccepted, 265) << label << " found too few loop closures";
+		EXPECT_LT(result.loopClosuresAccepted, 305) << label << " found more loop closures than the reference";
 	}
 }
 
 // ---------------------------------------------------------------------------
 // The same replay under memory management: Rtabmap/MemoryThr caps the working
 // memory, so the oldest nodes are transferred to long-term memory as the map
-// grows and only a window of it is ever held, a loop closure hypothesis on a
-// node that left bringing it back. The global optimized graph still covers
-// every node, so it is compared against the same reference, and the loop
-// closures found from a limited working memory are fewer.
+// grows and only a window of it is ever held. What comes back is what the
+// likelihood points at, the local retrieval being off, so this is the loop
+// closure hypotheses of the Bayes filter driving the whole window. The global
+// optimized graph still covers every node, so it is compared against the same
+// reference, and the loop closures found from a limited working memory are
+// fewer.
 // ---------------------------------------------------------------------------
 TEST_F(RtabmapIntegrationFixture, Multisession3ItMemoryThr)
 {
@@ -2228,22 +2251,75 @@ TEST_F(RtabmapIntegrationFixture, Multisession3ItMemoryThr)
 	ASSERT_TRUE(loadDatabaseGraphAndParameters(srcPath, goldenPoses, dbParams))
 			<< "No optimized graph in " << srcPath;
 
-	for(const bool sparsePrediction : {false, true})
+	struct Variant
 	{
-		const std::string label = sparsePrediction ? "sparse" : "dense";
-		SCOPED_TRACE(label);
+		// "" leaves Bayes/SparsePrediction at its default, which is the sparse form.
+		std::string sparsePrediction;
+		// "" leaves the retrieval parameter at its default, which is 2 locations.
+		std::string maxLocalRetrieved;
+		std::string maxRetrieved;
+		int minLoops;
+		int maxLoops;
+		int minLocalGraph;
+		int maxLocalGraph;
+		float maxTransRmse;   // meters
+		float maxRotRmse;     // degrees
+		std::string label;
+	};
+	// The first two are the same run over both forms of the prediction, with what comes back
+	// from long-term memory driven by the likelihood alone, and they share their expectations:
+	// the form the prediction is held in must not change what the session does. The last three
+	// hold the form at its default and take the retrieval apart: nothing coming back at all,
+	// the local retrieval on its own, and both of them together, which is what a session runs
+	// with out of the box.
+	//
+	// The bands come from six runs of each, which is what it takes to see the spread: the
+	// registration verifying a loop closure accepts or rejects a hypothesis sitting on its
+	// threshold from one run to the next, and one loop closure more or less pulls the graph.
+	// Observed:
+	//
+	//   variant                loops     working memory   trans rmse    rot rmse
+	//   sparse                 253-267   275-289          0.16-0.48 m   1.1-2.3 deg
+	//   dense                  247-273   271-282          0.13-0.48 m   0.9-2.4 deg
+	//   no-retrieval           197-205   277-280          0.39-0.53 m   2.2-2.7 deg
+	//   local-retrieval-only   227-236   287-292          0.40-0.51 m   2.1-2.5 deg
+	//   both-retrieval         245-269   278-289          0.12-0.39 m   1.1-2.0 deg
+	//
+	// The posterior time each run prints is left unasserted: it is what these variants are
+	// measured for, but it is also what a loaded runner moves most.
+	const std::vector<Variant> variants = {
+		{"true",  "0", "",  230, 290, 255, 310, 0.8f, 3.5f, "sparse"              },
+		{"false", "0", "",  230, 290, 255, 310, 0.8f, 3.5f, "dense"               },
+		{"",      "0", "0", 175, 225, 255, 305, 0.8f, 3.5f, "no-retrieval"        },
+		{"",      "2", "0", 205, 260, 265, 320, 0.8f, 3.5f, "local-retrieval-only"},
+		{"",      "2", "2", 215, 300, 255, 315, 0.8f, 3.5f, "both-retrieval"      },
+	};
 
-		ParametersMap params = dbParams;
-		uInsert(params, ParametersPair(Parameters::kBayesSparsePrediction(),
-				sparsePrediction ? "true" : "false"));
-		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
-		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
-		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+	// Loop closures per variant, for the ordering between them.
+	std::map<std::string, int> loopsPerVariant;
+
+	for(const Variant & v : variants)
+	{
+		SCOPED_TRACE(v.label);
+
+		ParametersMap params = replayParams(dbParams, srcPath);
 		uInsert(params, ParametersPair(Parameters::kRtabmapMemoryThr(), "300"));
+		if(!v.sparsePrediction.empty())
+		{
+			uInsert(params, ParametersPair(Parameters::kBayesSparsePrediction(), v.sparsePrediction));
+		}
+		if(!v.maxLocalRetrieved.empty())
+		{
+			uInsert(params, ParametersPair(Parameters::kRGBDMaxLocalRetrieved(), v.maxLocalRetrieved));
+		}
+		if(!v.maxRetrieved.empty())
+		{
+			uInsert(params, ParametersPair(Parameters::kRtabmapMaxRetrieved(), v.maxRetrieved));
+		}
 
 		const std::string workDb = test::tempPath(uFormat(
-				"rtabmap_integration_Multisession3ItMemoryThr_%s.db", label.c_str()));
-		std::cerr << "Working DB for " << label << ": " << workDb << "\n";
+				"rtabmap_integration_Multisession3ItMemoryThr_%s.db", v.label.c_str()));
+		std::cerr << "Working DB for " << v.label << ": " << workDb << "\n";
 
 		int sessions = 1;
 		const ReplayResult result = replayDatabaseWithStoredOdom(
@@ -2255,8 +2331,8 @@ TEST_F(RtabmapIntegrationFixture, Multisession3ItMemoryThr)
 				/*triggerNewMapOnSessionStart=*/true,
 				&sessions);
 
-		ASSERT_GT(result.framesProcessed, 0) << label << " produced no frames";
-		ASSERT_GT(result.finalGlobalGraphSize, 0) << label << " produced an empty graph";
+		ASSERT_GT(result.framesProcessed, 0) << v.label << " produced no frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0) << v.label << " produced an empty graph";
 
 		const int components = countConnectedComponents(
 				result.finalGlobalPoses, result.finalGlobalLinks);
@@ -2267,7 +2343,7 @@ TEST_F(RtabmapIntegrationFixture, Multisession3ItMemoryThr)
 				tRmse, tMean, tMed, tStd, tMin, tMax,
 				rRmse, rMean, rMed, rStd, rMin, rMax,
 				/*align2D=*/false);
-		std::cerr << "[" << label << "] sessions=" << sessions
+		std::cerr << "[" << v.label << "] sessions=" << sessions
 				  << " nodes=" << result.finalGlobalGraphSize
 				  << " components=" << components
 				  << " localGraph=" << result.finalLocalGraphSize
@@ -2280,35 +2356,46 @@ TEST_F(RtabmapIntegrationFixture, Multisession3ItMemoryThr)
 				  << "ms min=" << result.posteriorMsMin
 				  << "ms max=" << result.posteriorMsMax << "ms\n";
 
-		// Nothing is lost: the nodes leave the working memory for long-term
-		// memory, and the global graph still covers every one of them, in one
-		// piece.
-		EXPECT_EQ(sessions, 3) << label;
-		EXPECT_EQ(result.finalGlobalGraphSize, (int)goldenPoses.size()) << label;
-		EXPECT_EQ(components, 1) << label << " graph came out in pieces";
+		// Nothing is lost whatever comes back: the nodes leave the working memory for
+		// long-term memory, and the global graph still covers every one of them, in one
+		// piece. The three sessions of this database are three passes over the same
+		// trajectory, and 300 nodes of working memory is wide enough to still hold the end
+		// of one session while the next starts over the same place, so the link across the
+		// boundary is found even when nothing comes back at all.
+		EXPECT_EQ(sessions, 3) << v.label;
+		EXPECT_EQ(result.finalGlobalGraphSize, (int)goldenPoses.size()) << v.label;
+		EXPECT_EQ(components, 1) << v.label << " graph came out in pieces";
 
-		// The working memory is the part that is capped, and it stays there:
-		// observed at 247-270 of the 935 nodes. Anything near 935 would mean
-		// the cap never took effect and the test is no longer about memory
-		// management.
-		EXPECT_LT(result.finalLocalGraphSize, 400)
-				<< label << " working memory was not capped";
+		// The working memory is the part that is capped, and it stays there, whatever comes
+		// back into it. Anything near 935 would mean the cap never took effect and the test
+		// is no longer about memory management.
+		EXPECT_GT(result.finalLocalGraphSize, v.minLocalGraph) << v.label;
+		EXPECT_LT(result.finalLocalGraphSize, v.maxLocalGraph)
+				<< v.label << " working memory was not capped";
 
-		// Loop closures are only found against what the working memory holds,
-		// retrieval bringing back what a hypothesis points at, so somewhat
-		// fewer than the 284-293 of the uncapped replay: 259-284 over several
-		// runs.
-		EXPECT_GT(result.loopClosuresAccepted, 200) << label << " found too few loop closures";
+		// Loop closures are only found against what the working memory holds, so what comes
+		// back into it is what they are found on.
+		EXPECT_GT(result.loopClosuresAccepted, v.minLoops) << v.label << " found too few loop closures";
+		EXPECT_LT(result.loopClosuresAccepted, v.maxLoops) << v.label << " found more loop closures than expected";
 
-		// The trajectory holds up on the strength of those, at 0.10-0.52 m and
-		// 1.0-2.4 deg over several runs against the 7-18 cm of the uncapped
-		// replay. A loop closure that is not found leaves a stretch of the map
-		// on odometry alone, and this database drifts about half a meter over
-		// such a stretch, so which loop closures a run happens to find moves
-		// the result far more than it does without the cap.
-		EXPECT_LT(tRmse, 1.5f) << label << " trajectory drifted from the reference";
-		EXPECT_LT(rRmse, 6.0f) << label << " orientation drifted from the reference";
+		// And the trajectory holds up on the strength of those.
+		EXPECT_LT(tRmse, v.maxTransRmse) << v.label << " trajectory drifted from the reference";
+		EXPECT_LT(rRmse, v.maxRotRmse) << v.label << " orientation drifted from the reference";
+
+		loopsPerVariant[v.label] = result.loopClosuresAccepted;
 	}
+
+	// What comes back is what the loop closures are found on, so the settings of it stand in
+	// this order, whatever a run does inside its band: nothing coming back finds the fewest,
+	// the local retrieval around the current pose finds more, and bringing back what the
+	// likelihood points at -- on its own or together with the local retrieval -- finds the
+	// most.
+	ASSERT_EQ(loopsPerVariant.size(), 5u);
+	EXPECT_GT(loopsPerVariant.at("local-retrieval-only"), loopsPerVariant.at("no-retrieval"));
+	EXPECT_GT(loopsPerVariant.at("both-retrieval"), loopsPerVariant.at("no-retrieval"));
+	EXPECT_GT(loopsPerVariant.at("both-retrieval"), loopsPerVariant.at("local-retrieval-only"));
+	EXPECT_GT(loopsPerVariant.at("sparse"), loopsPerVariant.at("no-retrieval"));
+	EXPECT_GT(loopsPerVariant.at("dense"), loopsPerVariant.at("no-retrieval"));
 }
 
 TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
