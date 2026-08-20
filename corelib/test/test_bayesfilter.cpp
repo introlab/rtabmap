@@ -1291,6 +1291,136 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeDoesNotAlloca
 	EXPECT_LT(filterSparse.getMemoryUsed(), filterDense.getMemoryUsed()/4);
 }
 
+// The sparse form is only kept while the prediction is sparse enough to be worth it, so one
+// session can use both forms: a map too small for the sparse form to pay off starts on the
+// matrix and grows into the sparse form. The matrix cannot be carried over across the
+// iterations the sparse form gave the prediction, the locations having moved on meanwhile, so
+// coming back to it has to build it again.
+TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
+{
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	// A column of this model reaches 3 locations on each side, which is more than a quarter of
+	// a small map and less than a quarter of a larger one: the session starts on the matrix
+	// and crosses over to the sparse form as it grows.
+	addChain(6);
+	std::vector<int> ids;
+	for(int iter = 0; iter < 40; ++iter)
+	{
+		SensorData data(image_);
+		Transform pose(float(6 + iter), 0.0f, 0.0f, 0, 0, 0);
+		ASSERT_TRUE(memory_->update(data, pose, covariance_));
+
+		ids = getBayesIds();
+		std::map<int, float> likelihood = uniformLikelihood(ids);
+		likelihood[ids[ids.size()/2]] = 4.0f;
+
+		ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+		ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			ASSERT_NEAR(posteriorOf(filterDense).at(ids[i]),
+			            posteriorOf(filterSparse).at(ids[i]), 1e-5f)
+				<< "iter=" << iter << " id=" << ids[i];
+		}
+	}
+	// Grown into the sparse form: there is no matrix left to hand over.
+	ASSERT_TRUE(filterSparse.generatePrediction(memory_, ids).empty());
+
+	// Back to the matrix, which was last built 40 iterations and as many locations ago. It
+	// has to be built again rather than updated against locations it was never built for.
+	ParametersMap disableSparse;
+	disableSparse.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+	filterSparse.parseParameters(disableSparse);
+
+	SensorData data(image_);
+	Transform pose(46.0f, 0.0f, 0.0f, 0, 0, 0);
+	ASSERT_TRUE(memory_->update(data, pose, covariance_));
+
+	ids = getBayesIds();
+	std::map<int, float> likelihood = uniformLikelihood(ids);
+	likelihood[ids[ids.size()/2]] = 4.0f;
+	ASSERT_TRUE(filterDense.computePosterior(memory_, likelihood));
+	ASSERT_TRUE(filterSparse.computePosterior(memory_, likelihood));
+
+	const cv::Mat prediction = filterSparse.generatePrediction(memory_, ids);
+	ASSERT_EQ(prediction.rows, (int)ids.size());
+	ASSERT_EQ(prediction.cols, (int)ids.size());
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		EXPECT_NEAR(posteriorOf(filterDense).at(ids[i]),
+		            posteriorOf(filterSparse).at(ids[i]), 1e-5f) << "id=" << ids[i];
+	}
+}
+
+// The same crossing, taken because the graph became densely linked rather than because the
+// parameter changed. A loop closure costs no depth in the graph search, so the locations it
+// joins share a column and the neighborhoods that go in it; enough of them and a column
+// reaches more than a quarter of the map, which is where the matrix costs less than the
+// values of the sparse form.
+TEST_F(BayesFilterMemoryFixture, PredictionFallsBackToTheMatrixWhenTheGraphBecomesDense)
+{
+	ParametersMap params;
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "true"));
+	BayesFilter filter(params);
+
+	addChain(6);
+	std::vector<int> ids;
+	for(int iter = 0; iter < 40; ++iter)
+	{
+		SensorData data(image_);
+		Transform pose(float(6 + iter), 0.0f, 0.0f, 0, 0, 0);
+		ASSERT_TRUE(memory_->update(data, pose, covariance_));
+		ids = getBayesIds();
+		ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+	}
+	ASSERT_TRUE(filter.generatePrediction(memory_, ids).empty());
+
+	const cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
+	const size_t third = ids.size()/3;
+	for(size_t i = 1; i < ids.size(); ++i)
+	{
+		const int to = ids[(i+third)%ids.size()];
+		if(ids[i] > 0 && to > 0 && ids[i] != to)
+		{
+			ASSERT_TRUE(memory_->addLink(Link(ids[i], to, Link::kGlobalClosure,
+					Transform::getIdentity(), infMatrix)));
+		}
+	}
+
+	// A location leaving the working memory, which the sparse form cannot be carried over
+	// through: every location after it shifts index. So the prediction is built again, and it
+	// is on that build that the graph is measured as too dense to keep sparse.
+	std::vector<int> fewerIds = ids;
+	fewerIds.erase(fewerIds.begin() + fewerIds.size()/2);
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(fewerIds)));
+
+	// The matrix is built for the locations of this iteration, not updated against the ones it
+	// was built for before the sparse form took over.
+	const cv::Mat prediction = filter.generatePrediction(memory_, fewerIds);
+	ASSERT_EQ(prediction.rows, (int)fewerIds.size());
+	ASSERT_EQ(prediction.cols, (int)fewerIds.size());
+
+	const std::map<int, float> & posterior = posteriorOf(filter);
+	ASSERT_EQ(posterior.size(), fewerIds.size());
+	float sum = 0.0f;
+	for(std::map<int, float>::const_iterator iter=posterior.begin(); iter!=posterior.end(); ++iter)
+	{
+		EXPECT_GE(iter->second, 0.0f) << "id=" << iter->first;
+		sum += iter->second;
+	}
+	EXPECT_NEAR(sum, 1.0f, 1e-4f);
+}
+
 // generatePrediction() hands over the prediction matrix, which only the dense mode has.
 // With the prediction kept sparse there is none, and it says so with an empty matrix rather
 // than building one: Rtabmap::dumpPrediction(), the one caller outside the filter, reports

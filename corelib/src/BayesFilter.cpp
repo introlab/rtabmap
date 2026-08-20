@@ -114,11 +114,6 @@ float BayesFilter::getVirtualPlacePrior() const
 	return _model->virtualPlacePrior();
 }
 
-bool BayesFilter::posteriorHasSameIds(const std::vector<int> & ids) const
-{
-	return _posteriorIds == ids;
-}
-
 void BayesFilter::reset()
 {
 	_posteriorIds.clear();
@@ -219,16 +214,23 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 		}
 		UDEBUG("STEP1-generate prior=%fs, values=%d", timer.ticks(), (int)_sparse->values());
 	}
-	if(!sparseBuilt)
+	if(sparseBuilt)
+	{
+		// The matrix is released as soon as the sparse form takes over. It is built for the
+		// locations of the iteration it was built on, and the locations move on while the
+		// sparse form is the one being used, so it can neither be multiplied nor carried over
+		// once the sparse form gives the prediction back. A fallback to the matrix builds it
+		// again.
+		_dense->clear();
+	}
+	else
 	{
 		_sparse->clear();
 		if(_predictionChanged || _dense->empty())
 		{
 			// Only when it has to be: over a fixed graph the matrix of the last iteration is
-			// the one this iteration wants. _posteriorIds is still the locations it was built
-			// for, the posterior being realigned below.
-			_dense->set(_dense->generate(*_model, memory, _posteriorIds, ids,
-					_fullPredictionUpdate, &_neighborsIndex));
+			// the one this iteration wants.
+			_dense->generate(*_model, memory, ids, _fullPredictionUpdate, &_neighborsIndex);
 		}
 		UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(),
 				_dense->matrix().rows, _dense->matrix().cols);
@@ -297,13 +299,12 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 		// The prediction is being kept sparse, so there is no matrix to return.
 		return cv::Mat();
 	}
-	if(!_dense->empty() && this->posteriorHasSameIds(ids))
+	if(!_dense->empty() && _dense->ids() == ids)
 	{
 		return _dense->matrix();
 	}
 	UASSERT(memory && _model->valid() && ids.size());
-	// The ids the matrix was built for, which the posterior is still indexed by.
-	return _dense->generate(*_model, memory, _posteriorIds, ids, _fullPredictionUpdate, &_neighborsIndex);
+	return _dense->generate(*_model, memory, ids, _fullPredictionUpdate, &_neighborsIndex);
 }
 
 unsigned long BayesFilter::getMemoryUsed() const

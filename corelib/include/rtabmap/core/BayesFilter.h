@@ -183,11 +183,6 @@ public:
 
 private:
 	/**
-	 * @brief Whether the posterior is indexed by exactly @p ids, in that order.
-	 */
-	bool posteriorHasSameIds(const std::vector<int> & ids) const;
-
-	/**
 	 * @brief Realigns the posterior with the ids of the likelihood.
 	 *
 	 * Keeps the probability of the locations that are in both. Called only when the ids differ.

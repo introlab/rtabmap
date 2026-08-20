@@ -51,22 +51,23 @@ class DensePrediction
 public:
 	bool empty() const {return matrix_.empty();}
 	const cv::Mat & matrix() const {return matrix_;}
-	void set(const cv::Mat & matrix) {matrix_ = matrix;}
-	void clear() {matrix_ = cv::Mat();}
+
+	/// The locations the matrix is built for, which the incremental update carries over.
+	const std::vector<int> & ids() const {return ids_;}
+
+	void clear() {matrix_ = cv::Mat(); ids_.clear();}
 
 	/**
-	 * @brief Builds the matrix for @p ids, without keeping it.
+	 * @brief Builds the matrix for @p ids and keeps it, along with the ids it is built for.
 	 *
-	 * The caller may only want to look at it, so what is returned is what set() takes.
+	 * The matrix already there is carried over when it is built for locations @p ids only
+	 * appends to; otherwise every column is built again.
 	 *
-	 * @param previousIds The ids the kept matrix was built for, which the incremental update
-	 *        carries over.
-	 * @param fullUpdate Rebuilds every column rather than carrying the kept matrix over.
+	 * @param fullUpdate Rebuilds every column rather than carrying the matrix over.
 	 * @param cache Filled with the neighborhoods, for a later incremental update.
 	 */
-	cv::Mat generate(const PredictionModel & model, const Memory * memory,
-			const std::vector<int> & previousIds, const std::vector<int> & ids,
-			bool fullUpdate, NeighborsCache * cache) const;
+	const cv::Mat & generate(const PredictionModel & model, const Memory * memory,
+			const std::vector<int> & ids, bool fullUpdate, NeighborsCache * cache);
 
 	/// prior = prediction x posterior.
 	void multiply(const std::vector<float> & posterior, std::vector<float> & prior) const;
@@ -81,6 +82,7 @@ private:
 			NeighborsCache * cache) const;
 
 	cv::Mat matrix_;
+	std::vector<int> ids_;
 };
 
 } // namespace bayes

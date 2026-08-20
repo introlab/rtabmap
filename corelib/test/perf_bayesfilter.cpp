@@ -46,7 +46,7 @@ static const int MAP_SIZES[] = {1000, 4000, 8000};
 // slightly more than 1: below 1, normalize() spreads what is missing over every zero
 // of a column and the matrix is no longer sparse at all.
 static const char PREDICTION_DEFAULT[] =
-		"0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 "
+		"0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1e-06 4.8e-08 "
 		"1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23";
 static const char PREDICTION_TRUNCATED[] =
 		"0.1 0.36003 0.30 0.16 0.062 0.0151 0.00255 0.000324";

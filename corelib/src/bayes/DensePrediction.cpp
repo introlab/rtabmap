@@ -38,15 +38,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 namespace bayes {
 
-cv::Mat DensePrediction::generate(const PredictionModel & model, const Memory * memory,
-		const std::vector<int> & previousIds, const std::vector<int> & ids,
-		bool fullUpdate, NeighborsCache * cache) const
+const cv::Mat & DensePrediction::generate(const PredictionModel & model, const Memory * memory,
+		const std::vector<int> & ids, bool fullUpdate, NeighborsCache * cache)
 {
-	if(!fullUpdate && !matrix_.empty())
+	// The update carries the matrix already there over, so it can only be done against the
+	// locations that matrix is built for. There is none to carry over when the sparse form has
+	// been used since, or when the model changed, and every column is built again.
+	if(!fullUpdate && !matrix_.empty() && ids_.size() == (size_t)matrix_.cols)
 	{
-		return this->update(model, memory, previousIds, ids, cache);
+		matrix_ = this->update(model, memory, ids_, ids, cache);
 	}
-	return this->generateFull(model, memory, ids, fullUpdate?0:cache);
+	else
+	{
+		matrix_ = this->generateFull(model, memory, ids, fullUpdate?0:cache);
+	}
+	ids_ = ids;
+	return matrix_;
 }
 
 void DensePrediction::multiply(const std::vector<float> & posterior, std::vector<float> & prior) const
@@ -66,7 +73,12 @@ void DensePrediction::multiply(const std::vector<float> & posterior, std::vector
 
 unsigned long DensePrediction::memoryUsed() const
 {
-	return matrix_.empty() ? 0 : (unsigned long)(matrix_.total() * matrix_.elemSize());
+	unsigned long memory = ids_.capacity() * sizeof(int);
+	if(!matrix_.empty())
+	{
+		memory += (unsigned long)(matrix_.total() * matrix_.elemSize());
+	}
+	return memory;
 }
 
 // The matrix built column by column, every column from the neighborhood of one location.
