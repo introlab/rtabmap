@@ -14,6 +14,7 @@
 // pass.
 
 #include <gtest/gtest.h>
+#include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/Features2d.h>
 #include <rtabmap/core/camera/CameraImages.h>
@@ -94,6 +95,7 @@ struct ReplayResult
 	int finalGlobalGraphSize = 0;  // poses returned by Rtabmap::getGraph(global=true)
 	std::map<int, Transform> finalLocalPoses;   // optimized, global=false
 	std::map<int, Transform> finalGlobalPoses;  // optimized, global=true
+	std::multimap<int, Link> finalGlobalLinks;  // constraints of the global graph
 	// Occupancy-grid cell counts after assembling the global grid from per-
 	// node local maps (only populated when RGBD/CreateOccupancyGrid=true).
 	int gridEmptyCells = 0;
@@ -110,6 +112,16 @@ struct ReplayResult
 	// Wall-clock seconds spent inside Odometry::process across all
 	// frames; divide by framesRead to get per-frame average.
 	double odomTotalSeconds = 0.0;
+	// Timing/Posterior_computation (ms) over the frames that reported it,
+	// which is the prediction and the multiplication of the Bayes filter.
+	double posteriorMsSum = 0.0;
+	float posteriorMsMin = -1.0f;
+	float posteriorMsMax = 0.0f;
+	int posteriorSamples = 0;
+	float posteriorMsAvg() const
+	{
+		return posteriorSamples > 0 ? (float)(posteriorMsSum/(double)posteriorSamples) : -1.0f;
+	}
 };
 
 // Synchronous replay: DBReader -> Odometry::process -> Rtabmap::process.
@@ -415,8 +427,7 @@ ReplayResult replayDatabase(
 		rtabmap.getGraph(result.finalLocalPoses, constraints,
 				/*optimized=*/true, /*global=*/false);
 		result.finalLocalGraphSize = (int)result.finalLocalPoses.size();
-		constraints.clear();
-		rtabmap.getGraph(result.finalGlobalPoses, constraints,
+		rtabmap.getGraph(result.finalGlobalPoses, result.finalGlobalLinks,
 				/*optimized=*/true, /*global=*/true);
 		result.finalGlobalGraphSize = (int)result.finalGlobalPoses.size();
 	}
@@ -550,7 +561,15 @@ ReplayResult replayDatabaseWithStoredOdom(
 		// When >0, points beyond this range (in meters) are dropped from
 		// the LaserScan of each SensorData after dbReader.takeData(),
 		// simulating a lidar with a tighter max range.
-		float scanMaxRange = 0.0f)
+		float scanMaxRange = 0.0f,
+		// Starts a new map on every frame whose stored odom covariance is
+		// the 9999 of a session start, which is how rtabmap-reprocess
+		// replays a database holding more than one session. Off by default:
+		// a test that wants its own boundaries uses the frame above.
+		bool triggerNewMapOnSessionStart = false,
+		// Filled with the number of sessions the replay ran, meaning one
+		// plus the boundaries it triggered on.
+		int * sessionsReplayed = 0)
 {
 	ReplayResult result;
 
@@ -656,6 +675,22 @@ ReplayResult replayDatabaseWithStoredOdom(
 			continue;
 		}
 
+		// Session boundary: the stored odom covariance of the first frame of
+		// a session is the 9999 that says the pose does not continue the
+		// previous one. The new map is started before that frame is
+		// processed, so it is the first of the new session rather than the
+		// last of the one before. Same as rtabmap-reprocess.
+		if(triggerNewMapOnSessionStart
+				&& result.framesProcessed > 0
+				&& info.odomCovariance.at<double>(0, 0) >= 9999.0)
+		{
+			rtabmap.triggerNewMap();
+			if(sessionsReplayed)
+			{
+				++*sessionsReplayed;
+			}
+		}
+
 		SensorData rtabmapData = data;
 		if(throttle)
 		{
@@ -705,6 +740,17 @@ ReplayResult replayDatabaseWithStoredOdom(
 		{
 			result.translationalRmseFinal = rmseIt->second;
 		}
+		const auto postIt = stats.data().find(Statistics::kTimingPosterior_computation());
+		if(postIt != stats.data().end())
+		{
+			result.posteriorMsSum += postIt->second;
+			result.posteriorMsMax = std::max(result.posteriorMsMax, postIt->second);
+			if(result.posteriorMsMin < 0.0f || postIt->second < result.posteriorMsMin)
+			{
+				result.posteriorMsMin = postIt->second;
+			}
+			++result.posteriorSamples;
+		}
 		data = dbReader.takeData(&info);
 		applyScanRangeFilter(data);
 	}
@@ -714,8 +760,7 @@ ReplayResult replayDatabaseWithStoredOdom(
 		rtabmap.getGraph(result.finalLocalPoses, constraints,
 				/*optimized=*/true, /*global=*/false);
 		result.finalLocalGraphSize = (int)result.finalLocalPoses.size();
-		constraints.clear();
-		rtabmap.getGraph(result.finalGlobalPoses, constraints,
+		rtabmap.getGraph(result.finalGlobalPoses, result.finalGlobalLinks,
 				/*optimized=*/true, /*global=*/true);
 		result.finalGlobalGraphSize = (int)result.finalGlobalPoses.size();
 	}
@@ -733,10 +778,82 @@ ReplayResult replayDatabaseWithStoredOdom(
 			<< " localGraph=" << result.finalLocalGraphSize
 			<< " globalGraph=" << result.finalGlobalGraphSize
 			<< " rmse=" << result.translationalRmseFinal << "m"
+			<< " posterior(avg/min/max)=" << result.posteriorMsAvg()
+			<< "/" << result.posteriorMsMin << "/" << result.posteriorMsMax << "ms"
 			<< " wall=" << result.replayWallSeconds << "s"
 			<< std::endl;
 
 	return result;
+}
+
+// Where a node sits in the union-find of countConnectedComponents(), the path
+// to it halved on the way up.
+int graphComponentRoot(std::map<int, int> & parent, int id)
+{
+	while(parent.at(id) != id)
+	{
+		const int up = parent.at(id);
+		parent.at(id) = parent.at(up);
+		id = up;
+	}
+	return id;
+}
+
+// How many pieces a graph is in: the nodes linked to each other, directly or
+// through others, are one of them. Two sessions that never closed a loop with
+// each other are two.
+int countConnectedComponents(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links)
+{
+	std::map<int, int> parent;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		parent.insert(std::make_pair(iter->first, iter->first));
+	}
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		// A link to a landmark, or to a node the graph does not hold, joins
+		// nothing here.
+		if(parent.find(iter->second.from()) == parent.end() ||
+		   parent.find(iter->second.to()) == parent.end())
+		{
+			continue;
+		}
+		const int a = graphComponentRoot(parent, iter->second.from());
+		const int b = graphComponentRoot(parent, iter->second.to());
+		if(a != b)
+		{
+			parent.at(a) = b;
+		}
+	}
+	std::set<int> roots;
+	for(std::map<int, int>::const_iterator iter=parent.begin(); iter!=parent.end(); ++iter)
+	{
+		roots.insert(graphComponentRoot(parent, iter->first));
+	}
+	return (int)roots.size();
+}
+
+// The optimized graph a database holds, which is what its own mapping session
+// converged to and what a replay of it is compared against, together with the
+// parameters it was recorded with, which the replay is run with.
+bool loadDatabaseGraphAndParameters(
+		const std::string & path,
+		std::map<int, Transform> & optimizedPoses,
+		ParametersMap & parameters)
+{
+	DBDriver * driver = DBDriver::create();
+	if(!driver->openConnection(path))
+	{
+		delete driver;
+		return false;
+	}
+	optimizedPoses = driver->loadOptimizedPoses();
+	parameters = driver->getLastParameters();
+	driver->closeConnection(false);
+	delete driver;
+	return !optimizedPoses.empty();
 }
 
 ParametersMap baseRtabmapParams()
@@ -1990,16 +2107,210 @@ TEST_F(RtabmapIntegrationFixture, Loop3ItGps)
 	}
 }
 
+
 // ---------------------------------------------------------------------------
-// Appearance-only loop closure on the 84-image `data/samples` set with the
-// shipped `data/samples_GT.bmp` ground truth. Measures recall at 100%
-// precision (the rtabmap "max recall while no false positive has appeared
-// yet" metric — same definition as the legacy MATLAB getPrecisionRecall.m
-// script) for every Features2D detector strategy that is available in this
-// build. Detector strategies for which Feature2D::create() silently
-// substitutes a different backend (e.g. SURF -> SIFT without nonfree,
-// SuperPointTorch -> GFTT/ORB without RTABMAP_TORCH) are skipped.
+// Multi-session 2D lidar + SIFT (3 sessions, 935 nodes, ~270 m).
+//
+// The optimized graph the database already holds is the reference: it is what
+// the session that recorded it converged to, so replaying the same frames with
+// the same parameters has to land on the same trajectory and find about as many
+// loop closures. The database keeps no images, so the replay reuses the
+// features stored with each node (Mem/UseOdomFeatures) rather than extracting
+// any, and the scans it does keep are what the ICP registration verifies loop
+// closures with.
+//
+// Each run is done with the prediction of the Bayes filter held both as a
+// matrix and in its sparse form: the two are the same probabilities, so a real
+// session over a real graph has to come out the same either way.
 // ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, Multisession3It)
+{
+	const std::string srcPath = testDataPath("multisession_3it.db");
+	SKIP_IF_MISSING(srcPath);
+
+	std::map<int, Transform> goldenPoses;
+	ParametersMap dbParams;
+	ASSERT_TRUE(loadDatabaseGraphAndParameters(srcPath, goldenPoses, dbParams))
+			<< "No optimized graph in " << srcPath;
+	std::cerr << "[          ] Reference graph: " << goldenPoses.size()
+			  << " poses, recorded with " << dbParams.size() << " parameters\n";
+
+	for(const bool sparsePrediction : {false, true})
+	{
+		const std::string label = sparsePrediction ? "sparse" : "dense";
+		SCOPED_TRACE(label);
+
+		// The parameters the database was recorded with, and on top of them
+		// what replaying instead of recording needs.
+		ParametersMap params = dbParams;
+		uInsert(params, ParametersPair(Parameters::kBayesSparsePrediction(),
+				sparsePrediction ? "true" : "false"));
+		// The nodes of the database are already the ones its detection rate
+		// kept, so every frame the reader hands over is processed.
+		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
+		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+
+		const std::string workDb = test::tempPath(uFormat(
+				"rtabmap_integration_Multisession3It_%s.db", label.c_str()));
+		std::cerr << "Working DB for " << label << ": " << workDb << "\n";
+
+		int sessions = 1;
+		const ReplayResult result = replayDatabaseWithStoredOdom(
+				srcPath, workDb, params,
+				/*triggerNewMapAfterFrame=*/-1,
+				/*overrideOdomAngularVariance=*/-1.0,
+				/*overrideOdomLinearVariance=*/-1.0,
+				/*scanMaxRange=*/0.0f,
+				/*triggerNewMapOnSessionStart=*/true,
+				&sessions);
+
+		ASSERT_GT(result.framesProcessed, 0) << label << " produced no frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0) << label << " produced an empty graph";
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << label << "] sessions=" << sessions
+				  << " nodes=" << result.finalGlobalGraphSize
+				  << " loops=" << result.loopClosuresAccepted
+				  << " rejected=" << result.loopClosuresRejected
+				  << " proximity=" << result.proximityDetections
+				  << " trans rmse=" << tRmse << "m max=" << tMax << "m"
+				  << " rot rmse=" << rRmse << "deg max=" << rMax << "deg"
+				  << " posterior avg=" << result.posteriorMsAvg()
+				  << "ms min=" << result.posteriorMsMin
+				  << "ms max=" << result.posteriorMsMax << "ms\n";
+
+		// Every frame of the database is a node it kept, so the replay makes
+		// the same number of them, in the same three sessions.
+		EXPECT_EQ(sessions, 3) << label;
+		EXPECT_EQ(result.finalGlobalGraphSize, (int)goldenPoses.size()) << label;
+
+		// The same frames, the same parameters and the same features, so the
+		// trajectory comes out on top of the one the database holds: 7-18 cm
+		// and under 1.2 deg over five runs, dense and sparse alike.
+		//
+		// The replay is not the same twice, whichever form the prediction is
+		// held in: the visual word search is over randomized kd-trees, so a
+		// hypothesis sitting on the loop closure threshold falls either side
+		// of it from one run to the next, and one loop closure more or less
+		// pulls the graph. The bands are what that spread asks for, not what
+		// a single run would allow.
+		EXPECT_LT(tRmse, 0.5f) << label << " trajectory drifted from the reference";
+		EXPECT_LT(rRmse, 3.0f) << label << " orientation drifted from the reference";
+
+		// The reference graph holds 285 global loop closures; the replay finds
+		// 284-293 of them over five runs.
+		EXPECT_GT(result.loopClosuresAccepted, 240) << label << " found too few loop closures";
+		EXPECT_LT(result.loopClosuresAccepted, 340) << label << " found more loop closures than the reference";
+	}
+}
+
+// ---------------------------------------------------------------------------
+// The same replay under memory management: Rtabmap/MemoryThr caps the working
+// memory, so the oldest nodes are transferred to long-term memory as the map
+// grows and only a window of it is ever held, a loop closure hypothesis on a
+// node that left bringing it back. The global optimized graph still covers
+// every node, so it is compared against the same reference, and the loop
+// closures found from a limited working memory are fewer.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, Multisession3ItMemoryThr)
+{
+	const std::string srcPath = testDataPath("multisession_3it.db");
+	SKIP_IF_MISSING(srcPath);
+
+	std::map<int, Transform> goldenPoses;
+	ParametersMap dbParams;
+	ASSERT_TRUE(loadDatabaseGraphAndParameters(srcPath, goldenPoses, dbParams))
+			<< "No optimized graph in " << srcPath;
+
+	for(const bool sparsePrediction : {false, true})
+	{
+		const std::string label = sparsePrediction ? "sparse" : "dense";
+		SCOPED_TRACE(label);
+
+		ParametersMap params = dbParams;
+		uInsert(params, ParametersPair(Parameters::kBayesSparsePrediction(),
+				sparsePrediction ? "true" : "false"));
+		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
+		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+		uInsert(params, ParametersPair(Parameters::kRtabmapMemoryThr(), "300"));
+
+		const std::string workDb = test::tempPath(uFormat(
+				"rtabmap_integration_Multisession3ItMemoryThr_%s.db", label.c_str()));
+		std::cerr << "Working DB for " << label << ": " << workDb << "\n";
+
+		int sessions = 1;
+		const ReplayResult result = replayDatabaseWithStoredOdom(
+				srcPath, workDb, params,
+				/*triggerNewMapAfterFrame=*/-1,
+				/*overrideOdomAngularVariance=*/-1.0,
+				/*overrideOdomLinearVariance=*/-1.0,
+				/*scanMaxRange=*/0.0f,
+				/*triggerNewMapOnSessionStart=*/true,
+				&sessions);
+
+		ASSERT_GT(result.framesProcessed, 0) << label << " produced no frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0) << label << " produced an empty graph";
+
+		const int components = countConnectedComponents(
+				result.finalGlobalPoses, result.finalGlobalLinks);
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << label << "] sessions=" << sessions
+				  << " nodes=" << result.finalGlobalGraphSize
+				  << " components=" << components
+				  << " localGraph=" << result.finalLocalGraphSize
+				  << " loops=" << result.loopClosuresAccepted
+				  << " rejected=" << result.loopClosuresRejected
+				  << " proximity=" << result.proximityDetections
+				  << " trans rmse=" << tRmse << "m max=" << tMax << "m"
+				  << " rot rmse=" << rRmse << "deg max=" << rMax << "deg"
+				  << " posterior avg=" << result.posteriorMsAvg()
+				  << "ms min=" << result.posteriorMsMin
+				  << "ms max=" << result.posteriorMsMax << "ms\n";
+
+		// Nothing is lost: the nodes leave the working memory for long-term
+		// memory, and the global graph still covers every one of them, in one
+		// piece.
+		EXPECT_EQ(sessions, 3) << label;
+		EXPECT_EQ(result.finalGlobalGraphSize, (int)goldenPoses.size()) << label;
+		EXPECT_EQ(components, 1) << label << " graph came out in pieces";
+
+		// The working memory is the part that is capped, and it stays there:
+		// observed at 247-270 of the 935 nodes. Anything near 935 would mean
+		// the cap never took effect and the test is no longer about memory
+		// management.
+		EXPECT_LT(result.finalLocalGraphSize, 400)
+				<< label << " working memory was not capped";
+
+		// Loop closures are only found against what the working memory holds,
+		// retrieval bringing back what a hypothesis points at, so somewhat
+		// fewer than the 284-293 of the uncapped replay: 259-284 over several
+		// runs.
+		EXPECT_GT(result.loopClosuresAccepted, 200) << label << " found too few loop closures";
+
+		// The trajectory holds up on the strength of those, at 0.10-0.52 m and
+		// 1.0-2.4 deg over several runs against the 7-18 cm of the uncapped
+		// replay. A loop closure that is not found leaves a stretch of the map
+		// on odometry alone, and this database drifts about half a meter over
+		// such a stretch, so which loop closures a run happens to find moves
+		// the result far more than it does without the cap.
+		EXPECT_LT(tRmse, 1.5f) << label << " trajectory drifted from the reference";
+		EXPECT_LT(rRmse, 6.0f) << label << " orientation drifted from the reference";
+	}
+}
+
 TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 {
 	const std::string samplesDir = std::string(RTABMAP_TEST_DATA_ROOT) + "/samples";
