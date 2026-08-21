@@ -289,9 +289,7 @@ protected:
 // Constructor Tests
 
 // Bayes/SparsePrediction changes how the prediction is held and multiplied, not what the
-// posterior is, so every test below that reads the posterior runs in both forms. The ones
-// that read the prediction matrix instead keep the dense form, which is the only one that
-// has a matrix.
+// posterior is, so every test that reads the posterior runs in both forms.
 class BayesFilterModeTest : public ::testing::TestWithParam<bool>
 {
 protected:
@@ -466,8 +464,7 @@ TEST(BayesFilterTest, ComputePosteriorEmptyLikelihood)
 
 // generatePrediction Tests (virtual place only, no graph)
 
-// Nothing has been computed yet, so there is no sparse form to keep and the matrix is built
-// in both cases.
+// Nothing computed yet, so there is no sparse form and the matrix is built in both cases.
 TEST_P(BayesFilterModeTest, GeneratePredictionVirtualPlaceOnly)
 {
 	ParametersMap params = modeParams();
@@ -483,9 +480,8 @@ TEST_P(BayesFilterModeTest, GeneratePredictionVirtualPlaceOnly)
 	EXPECT_FLOAT_EQ(prediction.at<float>(0, 0), 1.0f);
 }
 
-// The prediction matrix is kept between iterations and returned as it is while the ids do
-// not change. Only the dense mode has a matrix at all: with the prediction kept sparse,
-// generatePrediction() has to build one to return, so there is nothing to keep.
+// The matrix is kept between iterations and returned as it is while the ids do not change.
+// The sparse form has none to keep: generatePrediction() expands one per call.
 TEST(BayesFilterTest, GeneratePredictionCachedWhenIdsUnchanged)
 {
 	ParametersMap params;
@@ -563,9 +559,9 @@ TEST_P(BayesFilterModeTest, ComputePosteriorUpdatesWithNewLikelihood)
 // Integration tests with real Memory graph
 
 // The columns of the prediction, read from the matrix. A map this small is never kept sparse,
-// a column of it reaching more than a quarter of the locations, so this is the dense form
-// whatever Bayes/SparsePrediction says; GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix
-// carries these values over to the sparse form on a map large enough to keep it.
+// a column reaching more than a quarter of the locations, so this is the dense form whatever
+// Bayes/SparsePrediction says; GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix carries
+// these values over to the sparse form on a map large enough to keep it.
 TEST_F(BayesFilterMemoryFixture, GeneratePredictionLinearChain)
 {
 	addChain(5);
@@ -635,9 +631,8 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionLinearChain)
 		(float)predictionLC[1]});
 }
 
-// A model whose values sum to less than 1 has normalize() spread the difference over every
-// zero of a column, so there is nothing sparse to keep and the matrix is the form used with
-// Bayes/SparsePrediction enabled as well as disabled. The columns below are its values.
+// A model summing to less than 1 has normalize() spread the difference over every zero of a
+// column, so nothing is sparse to keep and the matrix is used either way.
 TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionNormalizesWhenSumBelowOne)
 {
 	addChain(4);
@@ -696,9 +691,8 @@ TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionNormalizesWhenSumBelowOne
 		(float)predictionLC[1] * scaleRatio});
 }
 
-// The matrix is kept between iterations and handed over as it is while the ids do not change.
-// The sparse form is expanded into a matrix per call instead: it is the caller asking to read
-// the prediction that pays for it, not every iteration.
+// The matrix is handed over as it is while the ids do not change; the sparse form is expanded
+// per call, so the caller reading the prediction pays for it, not every iteration.
 TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionCachedWithGraph)
 {
 	// Large enough for the sparse form to be worth keeping, so that both forms are exercised.
@@ -1097,9 +1091,7 @@ TEST_F(BayesFilterMemoryFixture, FullPredictionUpdateRegeneratesMatrix)
 	expectMatrixGrowsOnNewNode(false);
 }
 
-// Bayes/SparsePrediction only changes how the prediction matrix is multiplied with
-// the last posterior, so both modes must agree, including while the graph grows and
-// the matrix is rebuilt (the sparse view has to be rebuilt with it).
+// Both forms must agree, including while the graph grows and the prediction is rebuilt.
 TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModes)
 {
 	ParametersMap paramsDense;
@@ -1140,9 +1132,8 @@ TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModes)
 	}
 }
 
-// A model whose values sum to less than 1 has normalize() spread the difference over
-// every zero of a column, leaving the matrix dense. The sparse mode then falls back
-// to the dense multiplication, which must not change the posterior.
+// A model summing to less than 1 leaves the matrix dense, so the sparse mode falls back to
+// the dense multiplication, which must not change the posterior.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionFallsBackWhenModelSumsBelowOne)
 {
 	addChain(5);
@@ -1173,9 +1164,7 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionFallsBackWhenModelSumsBelowOne)
 	EXPECT_EQ(filterDense.getMemoryUsed(), filterSparse.getMemoryUsed());
 }
 
-// The sparse prediction holds only the non-zero values, so it is a fraction of what the
-// matrix would be. Against the dense filter, which holds the matrix and no sparse form,
-// this one holds the sparse form and no matrix, and comes out smaller.
+// The sparse form holds only the non-zero values, so it comes out smaller than the matrix.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
 {
 	addChain(40);
@@ -1205,12 +1194,10 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionMemoryUsed)
 	EXPECT_LT(sparse, dense);
 }
 
-// Where the sparse and dense multiplications have to agree exactly rather than within
-// the rounding of their sums: after an iteration whose likelihood is zero everywhere
-// but on one location, the posterior is 1 there and 0 elsewhere, so the next prior is
-// one column of the prediction matrix, each of its values the result of a single
-// product. Both must then return the very same floats, which is only true if the
-// sparse view holds the values of the matrix at the same rows and columns.
+// Where the two multiplications have to agree exactly rather than within the rounding of
+// their sums: a posterior of 1 on one location and 0 elsewhere makes the prior one column of
+// the prediction, each value a single product. The same floats then, which only holds if the
+// sparse form has the values of the matrix at the same rows and columns.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionIsExactOnASingleColumn)
 {
 	addChain(30);
@@ -1254,10 +1241,8 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionIsExactOnASingleColumn)
 	}
 }
 
-// In localization mode the prediction is built in its sparse form directly, the matrix
-// never being allocated, which is a second implementation of the same probabilities: it
-// has to give what the matrix gives. Compared over a fixed graph, on which the
-// prediction is generated once and kept.
+// In localization mode the sparse form is built directly, the matrix never allocated. It is a
+// second implementation of the same probabilities, compared here over a fixed graph.
 TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModesInLocalizationMode)
 {
 	addChain(30);
@@ -1295,11 +1280,9 @@ TEST_F(BayesFilterMemoryFixture, CompareSparsePredictionModesInLocalizationMode)
 	}
 }
 
-// The same exactness check as SparsePredictionIsExactOnASingleColumn, but against the
-// prediction built directly in its sparse form: a posterior that is 1 on one location
-// and 0 elsewhere makes each value of the prior a single product, so the two builds have
-// to return the very same floats. This is what says that the sparse build puts the same
-// probabilities at the same rows and columns as the matrix does.
+// SparsePredictionIsExactOnASingleColumn against the prediction built directly in its sparse
+// form: the same floats, which says that build puts the same probabilities at the same rows
+// and columns as the matrix.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeIsExactOnASingleColumn)
 {
 	addChain(30);
@@ -1341,8 +1324,8 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeIsExactOnASin
 	}
 }
 
-// What the sparse build is for: the prediction matrix, which is the size of the working
-// memory squared, is not allocated at all.
+// What the sparse build is for: the matrix, the size of the working memory squared, is never
+// allocated.
 TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeDoesNotAllocateTheMatrix)
 {
 	addChain(200);
@@ -1368,11 +1351,10 @@ TEST_F(BayesFilterMemoryFixture, SparsePredictionInLocalizationModeDoesNotAlloca
 	EXPECT_LT(filterSparse.getMemoryUsed(), filterDense.getMemoryUsed()/4);
 }
 
-// The sparse form is only kept while the prediction is sparse enough to be worth it, so one
-// session can use both forms: a map too small for the sparse form to pay off starts on the
-// matrix and grows into the sparse form. The matrix cannot be carried over across the
-// iterations the sparse form gave the prediction, the locations having moved on meanwhile, so
-// coming back to it has to build it again.
+// One session can use both forms: a map too small for the sparse form to pay off starts on
+// the matrix and grows into the sparse form. The matrix cannot be carried over across the
+// iterations the sparse form gave the prediction, the locations having moved on, so coming
+// back to it has to build it again.
 TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 {
 	ParametersMap paramsDense;
@@ -1385,9 +1367,9 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 	BayesFilter filterDense(paramsDense);
 	BayesFilter filterSparse(paramsSparse);
 
-	// A column of this model reaches 3 locations on each side, which is more than a quarter of
-	// a small map and less than a quarter of a larger one: the session starts on the matrix
-	// and crosses over to the sparse form as it grows.
+	// A column of this model reaches 3 locations on each side: more than a quarter of a small
+	// map, less of a larger one, so the session starts on the matrix and grows into the
+	// sparse form.
 	addChain(6);
 	std::vector<int> ids;
 	for(int iter = 0; iter < 40; ++iter)
@@ -1412,8 +1394,8 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 	// Grown into the sparse form, so the matrix of the first iterations is gone.
 	ASSERT_TRUE(filterSparse.isPredictionSparse());
 
-	// Back to the matrix, which was last built 40 iterations and as many locations ago. It
-	// has to be built again rather than updated against locations it was never built for.
+	// Back to the matrix, last built 40 iterations and as many locations ago: built again
+	// rather than updated against locations it was never built for.
 	ParametersMap disableSparse;
 	disableSparse.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
 	filterSparse.parseParameters(disableSparse);
@@ -1439,11 +1421,10 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 	}
 }
 
-// A location leaving the working memory, which memory management does on every iteration once
-// the map is larger than what it holds. The index of every location after it moves, so the
-// sparse form is laid out again -- but the columns whose contents did not change are carried
-// over rather than built again, and what comes out has to be the prediction the matrix holds,
-// value for value, and give the same posterior.
+// A location leaving the working memory, as memory management does on every iteration once the
+// map outgrows it. The index of every location after it moves, so the sparse form is laid out
+// again -- carrying over the columns whose contents did not change -- and what comes out has
+// to be the matrix value for value, with the same posterior.
 TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsLeaveTheWorkingMemory)
 {
 	ParametersMap paramsDense;
@@ -1472,8 +1453,8 @@ TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsLeaveTheWorki
 	ASSERT_TRUE(filterSparse.isPredictionSparse());
 	ASSERT_FALSE(filterDense.isPredictionSparse());
 
-	// Locations leaving, one iteration after the other, from the middle of the ones held as
-	// well as from the oldest end: both move the index of the ones that stay.
+	// Locations leaving from the middle of the ones held and from the oldest end: both move the
+	// index of the ones that stay.
 	std::vector<int> fewerIds = ids;
 	for(int iter = 0; iter < 5; ++iter)
 	{
@@ -1508,9 +1489,9 @@ TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsLeaveTheWorki
 	}
 }
 
-// A location coming back from long-term memory, which retrieval does when a hypothesis points
-// at one that left. Its id is smaller than the ones added since, so it comes back in the
-// middle of the locations held rather than at the end, and the columns after it move.
+// A location coming back from long-term memory, as retrieval does when a hypothesis points at
+// one that left. Its id being smaller than the ones added since, it comes back in the middle
+// of the locations held rather than at the end, and the columns after it move.
 TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenALocationComesBack)
 {
 	ParametersMap paramsDense;
@@ -1568,16 +1549,16 @@ TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenALocationComesBack)
 }
 
 // A graph linked densely enough that a column reaches more than a quarter of the map is not
-// kept sparse: a value costs 8 bytes against the 4 of a matrix cell, so past that point the
-// matrix is the cheaper of the two and is what the filter builds.
+// kept sparse: a value costs 8 bytes against the 4 of a matrix cell, so the matrix is cheaper
+// past that point.
 TEST_F(BayesFilterMemoryFixture, PredictionIsNotKeptSparseOnADenselyLinkedGraph)
 {
 	addChain(40);
 	std::vector<int> ids = getBayesIds();
 
-	// Every location loop closed with the one a third of the map away, and a loop closure
-	// costs no depth in the graph search: the locations it joins share a column, and through
-	// them a column comes to reach most of the map.
+	// Every location loop closed with the one a third of the map away. A loop closure costs no
+	// depth in the graph search, so the locations it joins share a column and through them a
+	// column comes to reach most of the map.
 	const cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
 	const size_t third = ids.size()/3;
 	for(size_t i = 1; i < ids.size(); ++i)
@@ -1614,10 +1595,9 @@ TEST_F(BayesFilterMemoryFixture, PredictionIsNotKeptSparseOnADenselyLinkedGraph)
 	EXPECT_NEAR(sum, 1.0f, 1e-4f);
 }
 
-// generatePrediction() hands over the prediction whichever form it is held in, expanding the
-// sparse form into a matrix for the caller. Rtabmap::dumpPrediction() reads it that way, and
-// so does anyone comparing the two forms: they are built through the same column arithmetic,
-// so the matrices have to come out equal, value for value.
+// generatePrediction() hands over the prediction whichever form holds it, expanding the sparse
+// one for the caller -- how Rtabmap::dumpPrediction() reads it. Both go through the same column
+// arithmetic, so the matrices have to come out equal value for value.
 TEST_F(BayesFilterMemoryFixture, GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix)
 {
 	// Large enough for the sparse form to be worth keeping, so that it is the one answering.
