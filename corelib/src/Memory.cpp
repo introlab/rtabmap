@@ -3567,7 +3567,7 @@ Transform Memory::computeTransform(
 					const Signature * s = this->getSignature(id);
 					if(s)
 					{
-						if(s->getWordsKpts().empty() && s->getWords3().empty() && s->getWordsDescriptors().empty()) {
+						if(s->getWordsKpts().empty() || s->getWords3().empty() || s->getWordsDescriptors().empty()) {
 							UDEBUG("Signature %d doesn't have features set. Cannot be added in the local feature map.", s->id());
 							continue;
 						}
