@@ -3542,6 +3542,37 @@ Transform Memory::computeTransform(
 			std::vector<cv::KeyPoint> wordsMap;
 			cv::Mat wordsDescriptorsMap;
 
+			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				Signature * s = this->_getSignature(iter->first);
+				if(s && !s->getWords().empty() && s->getWordsKpts().empty())
+				{
+					UDEBUG("Loading local visual features for neighbor signature %d", s->id());
+					std::multimap<int, int> words;
+					std::vector<cv::KeyPoint> keypoints;
+					std::vector<cv::Point3f> points;
+					cv::Mat descriptors;
+					UTimer timer;
+					_dbDriver->getLocalFeatures(s->id(), words, keypoints, points, descriptors);
+					if(!words.empty() && !keypoints.empty())
+					{
+						UASSERT(words.size() == s->getWords().size());
+						std::map<int, int> wordsChanged = s->getWordsChanged();
+						bool wasEnabled = s->isEnabled();
+						s->setWords(words, keypoints, points, descriptors);
+						for(const auto & iter : wordsChanged) {
+							s->changeWordsRef(iter.first, iter.second);
+						}
+						s->setEnabled(wasEnabled);
+						UDEBUG("Loaded %ld local visual features for neighbor signature %d! (in %f s)", words.size(), s->id(), timer.ticks());
+					}
+					else
+					{
+						UDEBUG("Failed to load local visual features for neighbor signature %d.", s->id());
+					}
+				}
+			}
+
 			if(!fromS.getWords3().empty())
 			{
 				const std::map<int, int> & wordsFrom = uMultimapToMapUnique(fromS.getWords());
