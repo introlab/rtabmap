@@ -3507,7 +3507,8 @@ Transform Memory::computeTransform(
 			tmpTo.setWordsDescriptors(cv::Mat());
 		}
 
-		bool isNeighborRefining = fromS.getLinks().find(toS.id()) != fromS.getLinks().end() && fromS.getLinks().find(toS.id())->second.type() == Link::kNeighbor;
+		std::multimap<int, Link> links = getNeighborLinks(fromS.id(), false); // assemble only neighbors for the local feature map
+		links.erase(toS.id());
 
 		if(guess.isNull() && !_registrationPipeline->isImageRequired())
 		{
@@ -3520,7 +3521,7 @@ Transform Memory::computeTransform(
 				transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 			}
 		}
-		else if(!isNeighborRefining &&
+		else if(!fromS.hasLink(toS.id(), Link::kNeighbor) &&
 				_localBundleOnLoopClosure &&
 				_registrationPipeline->isImageRequired() &&
 			   !_registrationPipeline->isScanRequired() &&
@@ -3533,14 +3534,14 @@ Transform Memory::computeTransform(
 			   !tmpFrom.getWords().empty() &&
 			   !tmpFrom.getWordsKpts().empty() &&
 			   !tmpFrom.getWords3().empty() &&
-			   fromS.hasLink(0, Link::kNeighbor)) // If doesn't have neighbors, skip bundle
+			   !links.empty() && // If doesn't have neighbors, skip bundle
+			   _dbDriver)
 		{
 			std::multimap<int, int> words;
 			std::vector<cv::Point3f> words3DMap;
 			std::vector<cv::KeyPoint> wordsMap;
 			cv::Mat wordsDescriptorsMap;
 
-			const std::multimap<int, Link> & links = fromS.getLinks();
 			if(!fromS.getWords3().empty())
 			{
 				const std::map<int, int> & wordsFrom = uMultimapToMapUnique(fromS.getWords());
@@ -3561,29 +3562,25 @@ Transform Memory::computeTransform(
 
 			for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				int id = iter->first;
-				if(id != fromS.id() && iter->second.type() == Link::kNeighbor) // assemble only neighbors for the local feature map
+				const Signature * s = this->getSignature(iter->first);
+				if(s)
 				{
-					const Signature * s = this->getSignature(id);
-					if(s)
+					if(s->getWordsKpts().empty() || s->getWords3().empty() || s->getWordsDescriptors().empty()) {
+						UDEBUG("Signature %d doesn't have features set. Cannot be added in the local feature map.", s->id());
+						continue;
+					}
+					const std::map<int, int> & wordsTo = uMultimapToMapUnique(s->getWords());
+					for(std::map<int, int>::const_iterator jter=wordsTo.begin(); jter!=wordsTo.end(); ++jter)
 					{
-						if(s->getWordsKpts().empty() || s->getWords3().empty() || s->getWordsDescriptors().empty()) {
-							UDEBUG("Signature %d doesn't have features set. Cannot be added in the local feature map.", s->id());
-							continue;
-						}
-						const std::map<int, int> & wordsTo = uMultimapToMapUnique(s->getWords());
-						for(std::map<int, int>::const_iterator jter=wordsTo.begin(); jter!=wordsTo.end(); ++jter)
+						const cv::Point3f & pt = s->getWords3()[jter->second];
+						if( jter->first > 0 &&
+							util3d::isFinite(pt) &&
+							words.find(jter->first) == words.end())
 						{
-							const cv::Point3f & pt = s->getWords3()[jter->second];
-							if( jter->first > 0 &&
-								util3d::isFinite(pt) &&
-								words.find(jter->first) == words.end())
-							{
-								words.insert(words.end(), std::make_pair(jter->first, words.size()));
-								words3DMap.push_back(util3d::transformPoint(pt, iter->second.transform()));
-								wordsMap.push_back(s->getWordsKpts()[jter->second]);
-								wordsDescriptorsMap.push_back(s->getWordsDescriptors().row(jter->second));
-							}
+							words.insert(words.end(), std::make_pair(jter->first, words.size()));
+							words3DMap.push_back(util3d::transformPoint(pt, iter->second.transform()));
+							wordsMap.push_back(s->getWordsKpts()[jter->second]);
+							wordsDescriptorsMap.push_back(s->getWordsDescriptors().row(jter->second));
 						}
 					}
 				}
@@ -3607,8 +3604,6 @@ Transform Memory::computeTransform(
 				std::map<int, std::vector<CameraModel> > bundleModels;
 				std::map<int, std::map<int, FeatureBA> > wordReferences;
 
-				std::multimap<int, Link> links = fromS.getLinks();
-				links = graph::filterLinks(links, Link::kNeighbor, true); // assemble only neighbors for the local feature map
 				links.insert(std::make_pair(toS.id(), Link(fromS.id(), toS.id(), Link::kGlobalClosure, transform, info->covariance.inv())));
 				links.insert(std::make_pair(fromS.id(), Link()));
 
