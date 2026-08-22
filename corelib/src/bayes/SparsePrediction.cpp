@@ -34,6 +34,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 namespace bayes {
 
+// Below this many locations the prediction is kept sparse whatever its columns hold: how
+// dense a map this small is tells nothing about the one it grows into, while both forms of
+// it are small enough that the difference does not matter.
+static const int kMinSizeToCheckDensity = 200;
+
 void SparsePrediction::clear()
 {
 	columns_.clear();
@@ -169,15 +174,18 @@ bool SparsePrediction::generate(const PredictionModel & model, const Memory * me
 		}
 	}
 
-	// A value costs 8 bytes kept sparse against the 4 of the matrix, so past a quarter
-	// filled the sparse form is not worth building.
-	const size_t maxValues = (size_t)size*(size_t)size/4;
-
 	// The neighborhood of a few locations, to know whether the prediction is worth keeping
 	// sparse before building all of it. A loop closure link costs no margin, so on a
 	// densely linked graph a column reaches most of the map and there is nothing sparse to
-	// keep.
+	// keep. Not measured on a small map, where a column reaching most of it is both
+	// expected, the whole graph being within the depth of the model, and cheap: at
+	// kMinSizeToCheckDensity locations a full sparse form costs 320 kB against the 160 kB
+	// of the matrix.
+	if(size >= kMinSizeToCheckDensity)
 	{
+		// A value costs 8 bytes kept sparse against the 4 of the matrix, so past a quarter
+		// filled the sparse form is not worth building.
+		const size_t maxValues = (size_t)size*(size_t)size/4;
 		const int samples = size < 64 ? size : 64;
 		size_t reached = 0;
 		int sampled = 0;
@@ -313,9 +321,9 @@ bool SparsePrediction::update(const PredictionModel & model, const Memory * memo
 	// Whether it is still worth keeping sparse, measured on the values themselves: past a
 	// quarter filled they cost more than the matrix, a value being 8 bytes against its 4.
 	// generate() has to estimate that from a sample of the graph before building anything,
-	// while here the count is already known.
+	// while here the count is already known. Left alone on a small map, as in generate().
 	const size_t maxValues = (size_t)newIds.size()*(size_t)newIds.size()/4;
-	if(used_ > maxValues)
+	if(newIds.size() >= (size_t)kMinSizeToCheckDensity && used_ > maxValues)
 	{
 		UWARN("The prediction holds %ld values over %d locations, more than the quarter of "
 			  "them past which the matrix costs less, so it is not kept sparse. Every loop "
