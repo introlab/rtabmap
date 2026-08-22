@@ -125,4 +125,31 @@ jobs:
         PYTHONNOUSERSITE: 1
       run: |
         source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{ matrix.ros_prefix }}"
+        # Keep a core file per crashing test. A test that aborts (glibc heap
+        # error, failed assert, segfault) otherwise leaves nothing in the log
+        # but the message, with no stack to say where it came from, and the
+        # crash may not reproduce on another distro. The step below turns
+        # whatever lands here into a backtrace.
+        ulimit -c unlimited
+        sudo sysctl -w kernel.core_pattern="${{github.workspace}}/build/core.%e.%p" > /dev/null
         ctest -C ${{env.BUILD_TYPE}} -V -LE performance
+
+    - name: Backtrace of crashed tests
+      if: failure()
+      working-directory: ${{github.workspace}}/build
+      run: |
+        shopt -s nullglob
+        cores=(core.*)
+        if [ ${#cores[@]} -eq 0 ]; then
+          echo "No core file: the failure was an assertion or a wrong value, not a crash."
+          exit 0
+        fi
+        sudo apt-get -y install gdb
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{ matrix.ros_prefix }}"
+        for core in "${cores[@]}"; do
+          exe="${core#core.}"
+          exe="bin/${exe%.*}"
+          echo "::group::$core ($exe)"
+          gdb -batch -ex "thread apply all bt" "$exe" "$core" || true
+          echo "::endgroup::"
+        done
