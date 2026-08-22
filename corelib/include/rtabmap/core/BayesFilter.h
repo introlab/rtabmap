@@ -151,8 +151,8 @@ public:
 	/**
 	 * @brief Whether the prediction is being kept in its sparse form rather than as a matrix.
 	 *
-	 * False when @ref Parameters::kBayesSparsePrediction() is disabled, and while it is enabled
-	 * over a prediction measured as too dense for the sparse form to be worth it.
+	 * False when @ref Parameters::kBayesSparsePrediction() is disabled, and over a model whose
+	 * values sum to less than 1, which leaves no zero in a column to keep out of the values.
 	 */
 	bool isPredictionSparse() const;
 
@@ -199,6 +199,14 @@ private:
 	 */
 	void updatePosterior(const Memory * memory, const std::map<int, float> & likelihood);
 
+	/**
+	 * @brief Settles whether the prediction is kept sparse, from the parameter and the model.
+	 *
+	 * Called when either of the two changes rather than on every iteration, and releases the
+	 * sparse form when the answer is no.
+	 */
+	void updateKeepSparse();
+
 private:
 	std::vector<int> _posteriorIds;               ///< The locations the posterior is over, ascending by id.
 	std::vector<float> _posteriorValues;          ///< The probability of each of them, in the same order.
@@ -213,8 +221,8 @@ private:
 
 	bool _fullPredictionUpdate;                   ///< If true, rebuild the whole prediction each time.
 	bool _sparsePrediction;                       ///< Keep the prediction sparse (Bayes/SparsePrediction).
+	bool _keepSparse;                             ///< Whether it is being kept sparse: the parameter, over a model that leaves nothing sparse to keep.
 	bool _predictionChanged;                      ///< True when the prediction has to be built again.
-	bool _sparsePredictionRejected;               ///< True when the current prediction was measured as too dense to keep sparse.
 };
 
 } // namespace rtabmap

@@ -34,11 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 namespace bayes {
 
-// Below this many locations the prediction is kept sparse whatever its columns hold: how
-// dense a map this small is tells nothing about the one it grows into, while both forms of
-// it are small enough that the difference does not matter.
-static const int kMinSizeToCheckDensity = 200;
-
 void SparsePrediction::clear()
 {
 	columns_.clear();
@@ -149,10 +144,12 @@ void SparsePrediction::compact()
 // The columns are not built in the order of their index: a column is built for every
 // location at margin 0 of the one being expanded, so several are built at once.
 //
-// Returns false when the prediction would not be sparse, which the caller has to answer by
-// building the dense matrix. Happens when the values of the model sum to less than 1, as
-// normalize() then spreads the missing probability over every zero of a column.
-bool SparsePrediction::generate(const PredictionModel & model, const Memory * memory,
+// Always built, whatever its columns come to hold: the caller asked for the prediction sparse
+// and gets it sparse, so that what it measures is the sparse form and not a fallback. The one
+// prediction with nothing sparse to keep, of a model whose values sum to less than 1,
+// normalize() spreading the difference over every zero of a column, never reaches here: the
+// caller answers that one with the matrix without asking.
+void SparsePrediction::generate(const PredictionModel & model, const Memory * memory,
 		const std::vector<int> & ids, NeighborsCache * cache)
 {
 	UASSERT(memory && model.valid() && ids.size());
@@ -171,60 +168,6 @@ bool SparsePrediction::generate(const PredictionModel & model, const Memory * me
 		if(ids[i]>0)
 		{
 			idToIndexMap[ids[i]] = i;
-		}
-	}
-
-	// The neighborhood of a few locations, to know whether the prediction is worth keeping
-	// sparse before building all of it. A loop closure link costs no margin, so on a
-	// densely linked graph a column reaches most of the map and there is nothing sparse to
-	// keep. Not measured on a small map, where a column reaching most of it is both
-	// expected, the whole graph being within the depth of the model, and cheap: at
-	// kMinSizeToCheckDensity locations a full sparse form costs 320 kB against the 160 kB
-	// of the matrix.
-	if(size >= kMinSizeToCheckDensity)
-	{
-		// A value costs 8 bytes kept sparse against the 4 of the matrix, so past a quarter
-		// filled the sparse form is not worth building.
-		const size_t maxValues = (size_t)size*(size_t)size/4;
-		const int samples = size < 64 ? size : 64;
-		size_t reached = 0;
-		int sampled = 0;
-		for(int s=0; s<samples; ++s)
-		{
-			const int i = (int)((double)s*(double)size/(double)samples);
-			if(ids[i] <= 0)
-			{
-				continue;
-			}
-			std::list<int> idsLoopMargin;
-			const std::map<int, int> neighbors = resolveNeighbors(
-					memory, ids[i], model.depth(), idToIndexMap, idsLoopMargin, 0);
-			for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-			{
-				if(idToIndexMap.find(iter->first) != idToIndexMap.end())
-				{
-					++reached;
-				}
-			}
-			++sampled;
-		}
-		if(sampled > 0)
-		{
-			const double perColumn = double(reached)/double(sampled);
-			UDEBUG("Sparse prediction: %.0f values per column over %d locations, estimated "
-				   "from %d of them", perColumn, size, sampled);
-			if(perColumn*(double)size > (double)maxValues)
-			{
-				UWARN("A column of the prediction holds %.0f of the %d locations, estimated "
-					  "from %d of them, which is too dense for %s to be worth it: a value "
-					  "costs 8 bytes kept sparse against the 4 of the matrix. Building the "
-					  "matrix instead. Every loop closure link widens a column, as one "
-					  "costs no depth in the graph search, and so does a longer %s.",
-					  perColumn, size, sampled,
-					  Parameters::kBayesSparsePrediction().c_str(),
-					  Parameters::kBayesPredictionLC().c_str());
-				return false;
-			}
 		}
 	}
 
@@ -276,7 +219,6 @@ bool SparsePrediction::generate(const PredictionModel & model, const Memory * me
 			(long)(this->memoryUsed()/1048576),
 			(long)((size_t)size*(size_t)size*sizeof(float)/1048576),
 			timer.ticks());
-	return true;
 }
 
 // One column, from the neighborhood of the location it is for. Read from the cache, which
@@ -310,30 +252,9 @@ bool SparsePrediction::update(const PredictionModel & model, const Memory * memo
 	const bool appendedTo =
 			newIds.size() > ids_.size() &&
 			memcmp(ids_.data(), newIds.data(), ids_.size()*sizeof(int)) == 0;
-	const bool updated = appendedTo
+	return appendedTo
 			? this->updateAppended(model, memory, newIds, cache)
 			: this->updateRemapped(model, memory, newIds, cache);
-	if(!updated)
-	{
-		return false;
-	}
-
-	// Whether it is still worth keeping sparse, measured on the values themselves: past a
-	// quarter filled they cost more than the matrix, a value being 8 bytes against its 4.
-	// generate() has to estimate that from a sample of the graph before building anything,
-	// while here the count is already known. Left alone on a small map, as in generate().
-	const size_t maxValues = (size_t)newIds.size()*(size_t)newIds.size()/4;
-	if(newIds.size() >= (size_t)kMinSizeToCheckDensity && used_ > maxValues)
-	{
-		UWARN("The prediction holds %ld values over %d locations, more than the quarter of "
-			  "them past which the matrix costs less, so it is not kept sparse. Every loop "
-			  "closure link widens a column, as one costs no depth in the graph search, and "
-			  "so does a longer %s.",
-			  (long)used_, (int)newIds.size(), Parameters::kBayesPredictionLC().c_str());
-		this->clear();
-		return false;
-	}
-	return true;
 }
 
 // The same prediction after locations were appended, without building it again.

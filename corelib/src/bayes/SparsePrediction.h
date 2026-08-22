@@ -62,13 +62,15 @@ public:
 	void clear();
 
 	/**
-	 * @brief Builds it for @p ids.
+	 * @brief Builds it for @p ids, whatever its columns come to hold.
+	 *
+	 * The prediction of a model that leaves probability to spread has no zero left in a column
+	 * and nothing sparse to keep, which the caller answers with the matrix rather than asking
+	 * for this. Nothing else falls back to one.
+	 *
 	 * @param cache Filled with the neighborhoods when not null, which update() needs.
-	 * @return False when the prediction would not be sparse, which the caller has to answer by
-	 *         building the matrix: a model that leaves probability to spread fills every zero
-	 *         of a column, and a densely linked graph reaches most of the map from every one.
 	 */
-	bool generate(const PredictionModel & model, const Memory * memory,
+	void generate(const PredictionModel & model, const Memory * memory,
 			const std::vector<int> & ids, NeighborsCache * cache);
 
 	/**
@@ -79,9 +81,9 @@ public:
 	 * of the locations that shared their probability with one that is gone. Every other column
 	 * is carried over, at another index when locations were removed.
 	 *
-	 * @return False when there is nothing to carry over: no prediction yet, the virtual place
-	 *         appearing or disappearing, or the result measured as too dense to keep sparse.
-	 *         The caller answers by calling generate(), which is also what fills @p cache.
+	 * @return False when there is nothing to carry over: no prediction yet, or the virtual place
+	 *         appearing or disappearing. The caller answers by calling generate(), which is also
+	 *         what fills @p cache.
 	 */
 	bool update(const PredictionModel & model, const Memory * memory,
 			const std::vector<int> & ids, NeighborsCache & cache);

@@ -558,10 +558,9 @@ TEST_P(BayesFilterModeTest, ComputePosteriorUpdatesWithNewLikelihood)
 
 // Integration tests with real Memory graph
 
-// The columns of the prediction, read from the matrix. A map this small is never kept sparse,
-// a column reaching more than a quarter of the locations, so this is the dense form whatever
-// Bayes/SparsePrediction says; GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix carries
-// these values over to the sparse form on a map large enough to keep it.
+// The columns of the prediction, read from the matrix of a filter that asks for one;
+// GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix carries these values over to the
+// sparse form, which holds the same ones.
 TEST_F(BayesFilterMemoryFixture, GeneratePredictionLinearChain)
 {
 	addChain(5);
@@ -695,7 +694,7 @@ TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionNormalizesWhenSumBelowOne
 // per call, so the caller reading the prediction pays for it, not every iteration.
 TEST_P(BayesFilterMemoryModeFixture, GeneratePredictionCachedWithGraph)
 {
-	// Large enough for the sparse form to be worth keeping, so that both forms are exercised.
+	// Large enough for the two forms to differ in more than one column.
 	addChain(40);
 
 	ParametersMap params = modeParams();
@@ -1367,9 +1366,8 @@ TEST_F(BayesFilterMemoryFixture, PredictionCrossesFromSparseBackToTheMatrix)
 	BayesFilter filterDense(paramsDense);
 	BayesFilter filterSparse(paramsSparse);
 
-	// A column of this model reaches 3 locations on each side: more than a quarter of a small
-	// map, less of a larger one, so the session starts on the matrix and grows into the
-	// sparse form.
+	// A column of this model reaches 3 locations on each side, so the map grows well past what
+	// a column holds and the sparse form is carried over iteration after iteration.
 	addChain(6);
 	std::vector<int> ids;
 	for(int iter = 0; iter < 40; ++iter)
@@ -1437,7 +1435,7 @@ TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsLeaveTheWorki
 	BayesFilter filterDense(paramsDense);
 	BayesFilter filterSparse(paramsSparse);
 
-	// Grown past the size where the sparse form is worth keeping.
+	// Grown location by location, the sparse form carried over each time.
 	addChain(6);
 	std::vector<int> ids;
 	for(int iter = 0; iter < 40; ++iter)
@@ -1548,59 +1546,12 @@ TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenALocationComesBack)
 	}
 }
 
-// A graph linked densely enough that a column reaches more than a quarter of the map is not
-// kept sparse: a value costs 8 bytes against the 4 of a matrix cell, so the matrix is cheaper
-// past that point.
-TEST_F(BayesFilterMemoryFixture, PredictionIsNotKeptSparseOnADenselyLinkedGraph)
-{
-	addChain(40);
-	std::vector<int> ids = getBayesIds();
-
-	// Every location loop closed with the one a third of the map away. A loop closure costs no
-	// depth in the graph search, so the locations it joins share a column and through them a
-	// column comes to reach most of the map.
-	const cv::Mat infMatrix = cv::Mat::eye(6, 6, CV_64FC1);
-	const size_t third = ids.size()/3;
-	for(size_t i = 1; i < ids.size(); ++i)
-	{
-		const int to = ids[(i+third)%ids.size()];
-		if(ids[i] > 0 && to > 0 && ids[i] != to)
-		{
-			ASSERT_TRUE(memory_->addLink(Link(ids[i], to, Link::kGlobalClosure,
-					Transform::getIdentity(), infMatrix)));
-		}
-	}
-
-	ParametersMap params;
-	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
-	params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "true"));
-	BayesFilter filter(params);
-
-	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
-
-	// The matrix, and a posterior that is still a distribution over the locations.
-	EXPECT_FALSE(filter.isPredictionSparse());
-	const cv::Mat prediction = filter.generatePrediction(memory_, ids);
-	ASSERT_EQ(prediction.rows, (int)ids.size());
-	ASSERT_EQ(prediction.cols, (int)ids.size());
-
-	const std::map<int, float> & posterior = posteriorOf(filter);
-	ASSERT_EQ(posterior.size(), ids.size());
-	float sum = 0.0f;
-	for(std::map<int, float>::const_iterator iter=posterior.begin(); iter!=posterior.end(); ++iter)
-	{
-		EXPECT_GE(iter->second, 0.0f) << "id=" << iter->first;
-		sum += iter->second;
-	}
-	EXPECT_NEAR(sum, 1.0f, 1e-4f);
-}
-
 // generatePrediction() hands over the prediction whichever form holds it, expanding the sparse
 // one for the caller -- how Rtabmap::dumpPrediction() reads it. Both go through the same column
 // arithmetic, so the matrices have to come out equal value for value.
 TEST_F(BayesFilterMemoryFixture, GeneratePredictionExpandsTheSparseFormIntoTheSameMatrix)
 {
-	// Large enough for the sparse form to be worth keeping, so that it is the one answering.
+	// Large enough for the two forms to differ in more than one column.
 	addChain(40);
 
 	ParametersMap paramsDense;

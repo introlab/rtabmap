@@ -45,8 +45,8 @@ BayesFilter::BayesFilter(const ParametersMap & parameters) :
 	_sparse(new bayes::SparsePrediction()),
 	_fullPredictionUpdate(Parameters::defaultBayesFullPredictionUpdate()),
 	_sparsePrediction(Parameters::defaultBayesSparsePrediction()),
-	_predictionChanged(true),
-	_sparsePredictionRejected(false)
+	_keepSparse(false),
+	_predictionChanged(true)
 {
 	_model->setVirtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr());
 	this->setPredictionLC(Parameters::defaultBayesPredictionLC());
@@ -79,11 +79,7 @@ void BayesFilter::parseParameters(const ParametersMap & parameters)
 		// The sparse view is rebuilt on the next posterior if it was just enabled, and
 		// released if it was just disabled.
 		_predictionChanged = true;
-		_sparsePredictionRejected = false;
-		if(!_sparsePrediction)
-		{
-			_sparse->clear();
-		}
+		this->updateKeepSparse();
 	}
 }
 
@@ -92,9 +88,31 @@ void BayesFilter::setPredictionLC(const std::string & prediction)
 {
 	if(_model->set(prediction))
 	{
-		// A new model changes the values and the sparsity of the prediction.
+		// A new model changes the values of the prediction, and whether any of it is worth
+		// keeping sparse.
 		_predictionChanged = true;
-		_sparsePredictionRejected = false;
+		this->updateKeepSparse();
+	}
+}
+
+// Asked for by the parameter, and possible only over a model whose values sum to 1: below that,
+// normalize() spreads the difference over every zero of a column and there is nothing sparse
+// left to keep. Nothing else gives the sparse form up, however densely the graph is linked, so
+// that what the parameter measures is the sparse form and not a fallback to the matrix.
+void BayesFilter::updateKeepSparse()
+{
+	_keepSparse = _sparsePrediction && !_model->spreadsOverAllLocations();
+	if(_sparsePrediction && !_keepSparse)
+	{
+		UWARN("%s is enabled but the values of %s sum to %f, less than 1: the difference is "
+			  "spread over every location, which leaves no zero in a column for the sparse form "
+			  "to keep out, so the prediction is held as a matrix instead.",
+			  Parameters::kBayesSparsePrediction().c_str(),
+			  Parameters::kBayesPredictionLC().c_str(), _model->total());
+	}
+	if(!_keepSparse)
+	{
+		_sparse->clear();
 	}
 }
 
@@ -126,7 +144,6 @@ void BayesFilter::reset()
 	_dense->clear();
 	_sparse->clear();
 	_predictionChanged = true;
-	_sparsePredictionRejected = false;
 	_neighborsIndex.clear();
 }
 
@@ -185,42 +202,24 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 	// building the prediction again, which is what the dense update does then as well.
 	if(!sameIds)
 	{
-		// The locations changed, so whether the prediction is worth keeping sparse is a
-		// question about the new one.
 		_predictionChanged = true;
-		_sparsePredictionRejected = false;
 	}
-	const bool keepSparse =
-			_sparsePrediction &&
-			!_sparsePredictionRejected &&
-			!_model->spreadsOverAllLocations();
-	bool sparseBuilt = false;
-	if(keepSparse)
+	if(_keepSparse)
 	{
-		if(!_predictionChanged && _sparse->ids() == ids)
-		{
-			sparseBuilt = true;
-		}
-		else if(!_fullPredictionUpdate && _sparse->update(*_model, memory, ids, _neighborsIndex))
-		{
-			sparseBuilt = true;
-		}
-		else
+		// Nothing to do at all when neither the prediction nor the locations changed.
+		if(_predictionChanged || _sparse->ids() != ids)
 		{
 			// The neighborhoods are kept only when locations can be added, which is what the
-			// update above needs them for: over a fixed graph one per location is as much
-			// memory again as the values of the prediction.
-			sparseBuilt = _sparse->generate(*_model, memory, ids,
-					memory->isIncremental() ? &_neighborsIndex : 0);
-			// Measured as too dense to be worth it: the matrix is built instead, and not
-			// measured again until the locations or the model change. Retrying on every
-			// iteration would cost more than the multiplication it is trying to save.
-			_sparsePredictionRejected = !sparseBuilt;
+			// update needs them for: over a fixed graph one per location is as much memory
+			// again as the values of the prediction.
+			if(_fullPredictionUpdate || !_sparse->update(*_model, memory, ids, _neighborsIndex))
+			{
+				_sparse->generate(*_model, memory, ids,
+						memory->isIncremental() ? &_neighborsIndex : 0);
+			}
 		}
 		UDEBUG("STEP1-generate prior=%fs, values=%d", timer.ticks(), (int)_sparse->values());
-	}
-	if(sparseBuilt)
-	{
+
 		// The matrix is released as soon as the sparse form takes over. It is built for the
 		// locations of the iteration it was built on, and the locations move on while the
 		// sparse form is the one being used, so it can neither be multiplied nor carried over
@@ -241,8 +240,8 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 				_dense->matrix().rows, _dense->matrix().cols);
 		//std::cout << "Prediction=" << _dense->matrix() << std::endl;
 	}
-	// Cleared once, after whichever of the two built it: a sparse build that was measured as
-	// not worth it leaves the matrix to be built below, which needs to know it changed.
+	// Cleared once, after whichever of the two built it: the sparse form, or the matrix when
+	// the prediction is not kept sparse.
 	_predictionChanged = false;
 
 	// Adjust the last posterior if some images were
@@ -257,9 +256,8 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 
 	// Multiply prediction matrix with the last posterior
 	// (m,m) X (m,1) = (m,1)
-	// The sparse form is empty when disabled, or when the prediction was found too
-	// dense for it to be worth it.
-	const bool sparse = _sparsePrediction && !_sparse->empty();
+	// Held sparse, or as the matrix when updateKeepSparse() gave the sparse form up.
+	const bool sparse = !_sparse->empty();
 	if(sparse)
 	{
 		_sparse->multiply(_posteriorValues, _priorValues);
