@@ -70,13 +70,11 @@ unsigned long SparsePrediction::memoryUsed() const
 
 // Takes the non zero values of a freshly built column into the prediction, and leaves the
 // buffer zeroed for the next one, which saves clearing the whole of it every time.
-// Takes the non zero values of a freshly built column into the prediction, and leaves the
-// buffer zeroed for the next one, which saves clearing the whole of it every time.
 //
 // The values of every column live in one array, so that the multiplication reads them the
 // way memory likes to be read. A column keeps the room it was given: rebuilt into fewer
 // values it stays where it is, rebuilt into more than it has room for it is put at the end
-// and the room it had is left behind, to be recovered by compactSparsePrediction(). Asking
+// and the room it had is left behind, to be recovered by compact(). Asking
 // for a little more than is needed, when the column is one being rebuilt, buys the room for
 // it to grow a few times in place.
 void SparsePrediction::takeColumn(std::vector<float> & column, int index, bool withRoomToGrow)
