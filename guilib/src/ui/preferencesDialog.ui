@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1365</y>
+            <y>0</y>
             <width>684</width>
-            <height>5343</height>
+            <height>5315</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,0">
@@ -12661,7 +12661,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       <item row="1" column="1">
                        <widget class="QLabel" name="label_bayes_sparsePrediction">
                         <property name="text">
-                         <string>Keep the prediction in a sparse form and multiply it sparsely. A column of the prediction only holds the neighbors of one location within the depth of the prediction of loop closures above, so on a large map the matrix is mostly zeros and the dense multiplication spends all of its time reading them. In localization mode the sparse form is built directly and the matrix, which costs the size of the working memory squared, is not allocated at all. Ignored when the values above sum to less than 1, as the missing probability is then spread over every zero of each column and the prediction is no longer sparse.</string>
+                         <string>Sparse prediction. Use a sparse representation of the prediction instead of a dense matrix, which significantly reduces memory usage and processing time on large maps. Ignored when the values above sum to less than 1, as the prediction is then not sparse.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
