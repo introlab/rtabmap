@@ -184,9 +184,13 @@ void PredictionModel::normalize(float * column, size_t stride, int size, unsigne
 	//	ULOGGER_DEBUG("test col=%d = %f", i, prediction.data.fl[i + j*cols]);
 	//}
 
+	// Left out of the coverage report: no input gets here. Whatever the column held, the
+	// scaling above leaves addedProbabilitiesSum at maxNorm, which is 1 without the virtual
+	// place and 1 minus its probability with it -- and that probability is then added back.
+	// It is kept as a canary for whoever changes the arithmetic above.
 	if(addedProbabilitiesSum<0.99 || addedProbabilitiesSum > 1.01)
 	{
-		UWARN("Prediction is not normalized sum=%f", addedProbabilitiesSum);
+		UWARN("Prediction is not normalized sum=%f", addedProbabilitiesSum); // LCOV_EXCL_LINE
 	}
 }
 
