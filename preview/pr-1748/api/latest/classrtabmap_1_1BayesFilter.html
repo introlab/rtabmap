@@ -401,7 +401,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>reset</b> ()</td></tr
 </div><div class="memdoc">
 
 <p>Whether the prediction is being kept in its sparse form rather than as a matrix. </p>
-<p>False when <a class="el" href="classrtabmap_1_1Parameters.html#ae8141b0f2cc33d7e47b8a5f4fc558bc1">Parameters::kBayesSparsePrediction()</a> is disabled, and while it is enabled over a prediction measured as too dense for the sparse form to be worth it. </p>
+<p>False when <a class="el" href="classrtabmap_1_1Parameters.html#ae8141b0f2cc33d7e47b8a5f4fc558bc1">Parameters::kBayesSparsePrediction()</a> is disabled, and over a model whose values sum to less than 1, which leaves no zero in a column to keep out of the values. </p>
 
 </div>
 </div>
