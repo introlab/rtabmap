@@ -45,10 +45,6 @@ void SparsePrediction::clear()
 cv::Mat SparsePrediction::toMatrix() const
 {
 	const int size = (int)columns_.size();
-	if(size == 0)
-	{
-		return cv::Mat();
-	}
 	cv::Mat matrix = cv::Mat::zeros(size, size, CV_32FC1);
 	for(int col=0; col<size; ++col)
 	{
@@ -291,10 +287,9 @@ bool SparsePrediction::updateAppended(const PredictionModel & model, const Memor
 	std::set<int> idsToUpdate;
 	for(size_t i=oldIds.size(); i<newIds.size(); ++i)
 	{
-		if(newIds[i] <= 0)
-		{
-			continue;
-		}
+		// Every appended location is a visited one: the virtual place is the first of them
+		// and an append keeps the index of everything that was already there.
+		UASSERT(newIds[i] > 0);
 		const std::map<int, int> & neighbors = cachedNeighbors(memory, newIds[i], model.depth(), cache);
 		const float sum = model.addNeighborProb(&column[0], 1, neighbors, newIdToIndexMap);
 		model.normalize(&column[0], 1, size, (int)i, sum, newIds[0]<0);

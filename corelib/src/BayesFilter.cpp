@@ -163,11 +163,7 @@ bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, fl
 		return false;
 	}
 
-	if(!_model->valid())
-	{
-		ULOGGER_ERROR("Prediction is not valid!");
-		return false;
-	}
+	UASSERT(_model->valid());
 
 	UTimer timer;
 	timer.start();

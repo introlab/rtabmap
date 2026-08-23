@@ -6,6 +6,8 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/utilite/UException.h>
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <string>
@@ -1768,4 +1770,31 @@ TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsAreSwappedInO
 				<< "iter=" << iter << " id=" << ids[i];
 		}
 	}
+}
+
+// The locations handed over have to be the ones outside the short-term memory, which is what
+// Rtabmap gives the filter. A location still in it has no neighborhood to build a column
+// from -- resolveNeighbors() drops every neighbor in the short-term memory, its own entry at
+// margin 0 included -- so there would be no prediction of where the robot moves to from it.
+TEST_F(BayesFilterMemoryFixture, GeneratePredictionRejectsALocationInShortTermMemory)
+{
+	initMemory(3);
+	addChain(6);
+
+	ParametersMap params;
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	BayesFilter filter(params);
+
+	std::vector<int> ids = getBayesIds();
+	ASSERT_GT(ids.size(), 1u);
+
+	// The newest location, which the short-term memory still holds, is none of them.
+	const std::set<int> & stm = memory_->getStMem();
+	ASSERT_FALSE(stm.empty());
+	const int idInStm = *stm.rbegin();
+	ASSERT_TRUE(std::find(ids.begin(), ids.end(), idInStm) == ids.end());
+	EXPECT_GT(idInStm, ids.back()); // ascending by id, so it goes last
+
+	ids.push_back(idInStm);
+	EXPECT_THROW(filter.generatePrediction(memory_, ids), UException);
 }
