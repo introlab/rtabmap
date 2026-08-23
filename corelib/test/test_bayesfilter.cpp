@@ -1592,3 +1592,180 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionExpandsTheSparseFormIntoTheSa
 	EXPECT_TRUE(filterSparse.isPredictionSparse());
 	EXPECT_LT(filterSparse.getMemoryUsed(), filterDense.getMemoryUsed());
 }
+
+// The column of the virtual place without a prior for moving to a new place
+// (Bayes/VirtualPlacePriorThr=0): its probability is split equally over every location, its
+// own row included, instead of being held back on the first one.
+TEST_P(BayesFilterMemoryModeFixture, VirtualPlaceColumnIsUniformWithoutAPrior)
+{
+	addChain(10);
+
+	ParametersMap params = modeParams();
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	params.insert(ParametersPair(Parameters::kBayesVirtualPlacePriorThr(), "0"));
+	BayesFilter filter(params);
+	EXPECT_FLOAT_EQ(filter.getVirtualPlacePrior(), 0.0f);
+
+	const std::vector<int> ids = getBayesIds();
+	ASSERT_GT(ids.size(), 2u);
+	ASSERT_EQ(ids[0], Memory::kIdVirtual);
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+
+	const cv::Mat prediction = filter.generatePrediction(memory_, ids);
+	ASSERT_EQ(prediction.cols, (int)ids.size());
+	expectPredictionColumn(prediction, 0, std::vector<float>(ids.size(), 1.0f/float(ids.size())));
+
+	// With nothing but the virtual place left, its column is all there is: all of the
+	// probability is its own, whether a prior held any of it back or not.
+	const std::vector<int> virtualOnly(1, Memory::kIdVirtual);
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(virtualOnly)));
+	const cv::Mat single = filter.generatePrediction(memory_, virtualOnly);
+	ASSERT_EQ(single.cols, 1);
+	EXPECT_FLOAT_EQ(predictionAt(single, 0, 0), 1.0f);
+}
+
+// The working memory holding nothing but the virtual place, on an iteration that carries the
+// prediction over rather than building it: the one column there is holds all of the
+// probability, there being no visited location to share any of it with.
+TEST_P(BayesFilterMemoryModeFixture, OnlyTheVirtualPlaceLeftOnAnUpdate)
+{
+	addChain(10);
+
+	ParametersMap params = modeParams();
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	BayesFilter filter(params);
+
+	const std::vector<int> ids = getBayesIds();
+	ASSERT_GT(ids.size(), 2u);
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+
+	// Every visited location gone, which leaves the hypothesis of a new place on its own.
+	const std::vector<int> virtualOnly(1, Memory::kIdVirtual);
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(virtualOnly)));
+
+	const std::map<int, float> posterior = posteriorOf(filter);
+	ASSERT_EQ(posterior.size(), 1u);
+	EXPECT_NEAR(posterior.at(Memory::kIdVirtual), 1.0f, 1e-5f);
+
+	const cv::Mat prediction = filter.generatePrediction(memory_, virtualOnly);
+	ASSERT_EQ(prediction.rows, 1);
+	ASSERT_EQ(prediction.cols, 1);
+	EXPECT_FLOAT_EQ(predictionAt(prediction, 0, 0), 1.0f);
+}
+
+// Locations that no longer hold the virtual place. Nothing of a prediction built with it can
+// be carried over to one without it: normalize() holds its probability back on every column,
+// so every column differs. It is built again instead, and what comes out is the prediction of
+// those locations from the graph.
+//
+// Memory keeps the virtual place in the working memory whether it is mapping or localizing,
+// so Rtabmap hands it over on every iteration and this is a guard rather than something the
+// pipeline does; the filter is driven through its own interface to reach it.
+TEST_F(BayesFilterMemoryFixture, PredictionRebuiltWithoutTheVirtualPlace)
+{
+	ParametersMap paramsSparse;
+	paramsSparse.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsSparse.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "true"));
+
+	BayesFilter filterSparse(paramsSparse);
+
+	addChain(20);
+	const std::vector<int> withVirtualPlace = getBayesIds();
+	ASSERT_EQ(withVirtualPlace[0], Memory::kIdVirtual);
+	ASSERT_TRUE(filterSparse.computePosterior(memory_, uniformLikelihood(withVirtualPlace)));
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
+
+	// The visited locations only, which is neither the same set nor an addition to it.
+	const std::vector<int> visitedOnly = getBayesIds(false);
+	ASSERT_EQ(visitedOnly.size(), withVirtualPlace.size()-1);
+	ASSERT_TRUE(filterSparse.computePosterior(memory_, uniformLikelihood(visitedOnly)));
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
+
+	// Against a filter that built the prediction for those locations from the graph, having
+	// none to carry over.
+	ParametersMap paramsDense = paramsSparse;
+	paramsDense[Parameters::kBayesSparsePrediction()] = "false";
+	BayesFilter filterDense(paramsDense);
+	ASSERT_TRUE(filterDense.computePosterior(memory_, uniformLikelihood(visitedOnly)));
+
+	const cv::Mat predictionSparse = filterSparse.generatePrediction(memory_, visitedOnly);
+	const cv::Mat predictionDense = filterDense.generatePrediction(memory_, visitedOnly);
+	ASSERT_EQ(predictionSparse.cols, (int)visitedOnly.size());
+	ASSERT_EQ(predictionDense.cols, (int)visitedOnly.size());
+	for(int col = 0; col < predictionDense.cols; ++col)
+	{
+		for(int row = 0; row < predictionDense.rows; ++row)
+		{
+			ASSERT_NEAR(predictionAt(predictionSparse, row, col),
+			            predictionAt(predictionDense, row, col), 1e-6f)
+				<< "row=" << row << " col=" << col;
+		}
+	}
+}
+
+// Locations coming back from long-term memory while as many leave the working memory, in one
+// iteration: as many locations as the iteration before, but not the same ones. Holding as
+// many is not holding the same ones, so the prediction cannot be taken as the one already
+// there, and the columns are laid out again -- packed as they go, the room left behind by the
+// ones built again not carried with them.
+TEST_F(BayesFilterMemoryFixture, PredictionCarriesOverWhenLocationsAreSwappedInOneIteration)
+{
+	ParametersMap paramsDense;
+	paramsDense.insert(ParametersPair(Parameters::kBayesPredictionLC(), kPredictionNewPlace10Stay50Neighbor25_15));
+	paramsDense.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "false"));
+
+	ParametersMap paramsSparse = paramsDense;
+	paramsSparse[Parameters::kBayesSparsePrediction()] = "true";
+
+	BayesFilter filterDense(paramsDense);
+	BayesFilter filterSparse(paramsSparse);
+
+	addChain(46);
+	const std::vector<int> allIds = getBayesIds();
+	ASSERT_GT(allIds.size(), 40u);
+
+	// The oldest locations held back, as long-term memory holds them.
+	std::vector<int> ids = allIds;
+	const std::vector<int> heldBack(ids.begin()+1, ids.begin()+11);
+	ids.erase(ids.begin()+1, ids.begin()+11);
+	const size_t count = ids.size();
+
+	ASSERT_TRUE(filterDense.computePosterior(memory_, uniformLikelihood(ids)));
+	ASSERT_TRUE(filterSparse.computePosterior(memory_, uniformLikelihood(ids)));
+	ASSERT_TRUE(filterSparse.isPredictionSparse());
+
+	// Five of them back at a time while five of the newest leave.
+	const size_t batch = 5;
+	for(size_t iter = 0; iter*batch < heldBack.size(); ++iter)
+	{
+		for(size_t i = 0; i < batch; ++i)
+		{
+			ids.insert(ids.begin()+1+iter*batch+i, heldBack[iter*batch+i]);
+			ids.pop_back();
+		}
+		ASSERT_EQ(ids.size(), count) << "iter=" << iter;
+
+		ASSERT_TRUE(filterDense.computePosterior(memory_, uniformLikelihood(ids)));
+		ASSERT_TRUE(filterSparse.computePosterior(memory_, uniformLikelihood(ids)));
+		ASSERT_TRUE(filterSparse.isPredictionSparse()) << "iter=" << iter;
+
+		const cv::Mat predictionDense = filterDense.generatePrediction(memory_, ids);
+		const cv::Mat predictionSparse = filterSparse.generatePrediction(memory_, ids);
+		ASSERT_EQ(predictionSparse.cols, (int)ids.size()) << "iter=" << iter;
+		for(int col = 0; col < predictionDense.cols; ++col)
+		{
+			for(int row = 0; row < predictionDense.rows; ++row)
+			{
+				ASSERT_NEAR(predictionAt(predictionSparse, row, col),
+				            predictionAt(predictionDense, row, col), 1e-6f)
+					<< "iter=" << iter << " row=" << row << " col=" << col;
+			}
+		}
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			ASSERT_NEAR(posteriorOf(filterDense).at(ids[i]),
+			            posteriorOf(filterSparse).at(ids[i]), 1e-5f)
+				<< "iter=" << iter << " id=" << ids[i];
+		}
+	}
+}
