@@ -148,6 +148,26 @@ public:
 			cv::Mat & emptyCells,
 			cv::Point3f & viewPointInOut) const;
 
+private:
+	/**
+	 * @brief Radius filters the points closer than @p maxRange, keeping the farther
+	 *        points as-is (in case we want to ray trace empty space beyond max range).
+	 * @param cloud Input cloud.
+	 * @param indices Subset of @p cloud to filter. Asserted to be non-null and non-empty
+	 *                (@ref util3d::radiusFiltering() would filter the whole cloud otherwise).
+	 * @param maxRange Range (m) above which points are not filtered. 0 means no limit.
+	 * @param radiusSearch Radius (m) used for the noise filtering.
+	 * @param minNeighborsInRadius Minimum neighbors required inside @p radiusSearch.
+	 * @return Indices of the points that passed the filtering, plus those beyond @p maxRange.
+	 */
+	template<typename PointT>
+	static pcl::IndicesPtr noiseFilteringWithMaxRange(
+			const typename pcl::PointCloud<PointT>::Ptr & cloud,
+			const pcl::IndicesPtr & indices,
+			float maxRange,
+			float radiusSearch,
+			int minNeighborsInRadius);
+
 protected:
 	ParametersMap parameters_;
 

@@ -6,10 +6,14 @@
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/utilite/UException.h>
+#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
 #include <algorithm>
+#include <iostream>
+#include <set>
 #include <cmath>
 #include <limits>
 
@@ -306,6 +310,161 @@ static pcl::PointCloud<pcl::PointXYZ>::Ptr floorWithNoiseOutlierCloud(size_t & f
 	const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = floorWallCloud(floorPointsOut, wallPoints);
 	cloud->push_back(pcl::PointXYZ(5.f, 5.f, 0.f));
 	return cloud;
+}
+
+struct SegmentCloudIndices
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud; // before segmentation
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;      // segmented cloud the indices refer to
+	pcl::IndicesPtr ground;
+	pcl::IndicesPtr obstacles;
+	pcl::IndicesPtr flatObstacles;
+};
+
+// Same as runSegmentCloud() but keeps the output indices (and both the input cloud and the
+// segmented cloud they refer to) so that the classification of each point can be checked.
+static SegmentCloudIndices runSegmentCloudIndices(
+		const ParametersMap & params,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const cv::Point3f & viewPoint)
+{
+	const LocalGridMaker maker(params);
+	const pcl::IndicesPtr indices(new std::vector<int>);
+	SegmentCloudIndices result;
+	result.inputCloud = cloud;
+	result.cloud = maker.segmentCloud<pcl::PointXYZ>(
+			cloud,
+			indices,
+			Transform::getIdentity(),
+			viewPoint,
+			result.ground,
+			result.obstacles,
+			&result.flatObstacles);
+	return result;
+}
+
+// Colors used by saveSegmentationForVisualValidation().
+static const unsigned char kInputColor[3] = {255, 255, 255};       // white
+static const unsigned char kGroundColor[3] = {0, 255, 0};          // green
+static const unsigned char kObstacleColor[3] = {255, 0, 0};        // red
+static const unsigned char kFlatObstacleColor[3] = {255, 165, 0};  // orange
+static const unsigned char kUnclassifiedColor[3] = {160, 160, 160};// gray
+
+static void paintIndices(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const unsigned char color[3])
+{
+	if(!indices.get())
+	{
+		return;
+	}
+	for(size_t i = 0; i < indices->size(); ++i)
+	{
+		pcl::PointXYZRGB & pt = cloud->at(indices->at(i));
+		pt.r = color[0];
+		pt.g = color[1];
+		pt.b = color[2];
+	}
+}
+
+// Colored copy of a cloud, all points with the same color.
+static pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorizeCloud(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const unsigned char color[3])
+{
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr out(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::copyPointCloud(*cloud, *out);
+	pcl::IndicesPtr indices(new std::vector<int>(out->size()));
+	for(size_t i = 0; i < indices->size(); ++i)
+	{
+		indices->at(i) = i;
+	}
+	paintIndices(out, indices, color);
+	return out;
+}
+
+// Dumps two clouds for visual validation: <name>_input.pcd, the cloud before segmentation
+// in white, and <name>_segmented.pcd, the cloud returned by segmentCloud() colored with
+// ground in green, obstacles in red, flat obstacles in orange and unclassified points in
+// gray.
+//
+// Disabled unless RTABMAP_TEST_SAVE_PCD is set, either to an output directory or to "1"
+// for "./test_localgridmaker_pcd", e.g.:
+//   RTABMAP_TEST_SAVE_PCD=1 ./bin/test_corelib --gtest_filter='LocalGridMakerTest.*RangeMax*'
+// then, from that directory:
+//   pcl_viewer -ps 5 <name>_segmented.pcd
+static void saveSegmentationForVisualValidation(
+		const std::string & name,
+		const SegmentCloudIndices & result)
+{
+	const char * env = std::getenv("RTABMAP_TEST_SAVE_PCD");
+	if(!env || !env[0] || !result.cloud.get() || result.cloud->empty())
+	{
+		return;
+	}
+	std::string dir = env;
+	if(dir == "1" || dir == "true" || dir == "on")
+	{
+		dir = "test_localgridmaker_pcd";
+	}
+	UDirectory::makeDir(dir);
+	const std::string prefix = dir + "/" + name;
+
+	if(result.inputCloud.get() && result.inputCloud->size())
+	{
+		pcl::io::savePCDFile(prefix + "_input.pcd", *colorizeCloud(result.inputCloud, kInputColor));
+	}
+
+	// Flat obstacles painted last: they are a subset of the obstacles.
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored = colorizeCloud(result.cloud, kUnclassifiedColor);
+	paintIndices(colored, result.ground, kGroundColor);
+	paintIndices(colored, result.obstacles, kObstacleColor);
+	paintIndices(colored, result.flatObstacles, kFlatObstacleColor);
+	pcl::io::savePCDFile(prefix + "_segmented.pcd", *colored);
+
+	std::cout << "[ SAVED    ] " << prefix << "_{input,segmented}.pcd" << std::endl;
+}
+
+static bool hasUniqueIndices(const pcl::IndicesPtr & indices)
+{
+	std::vector<int> sorted = *indices;
+	std::sort(sorted.begin(), sorted.end());
+	return std::unique(sorted.begin(), sorted.end()) == sorted.end();
+}
+
+static bool areDisjoint(const pcl::IndicesPtr & a, const pcl::IndicesPtr & b)
+{
+	const std::set<int> setA(a->begin(), a->end());
+	for(size_t i = 0; i < b->size(); ++i)
+	{
+		if(setA.find(b->at(i)) != setA.end())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+// Adds a dense block of points, all beyond 3 m from the origin.
+static size_t addFarBlock(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float x,
+		float y,
+		float z,
+		int pointsPerSide,
+		float step)
+{
+	size_t points = 0;
+	for(int i = 0; i < pointsPerSide; ++i)
+	{
+		for(int j = 0; j < pointsPerSide; ++j)
+		{
+			cloud->push_back(pcl::PointXYZ(x + step * i, y, z + step * j));
+			++points;
+		}
+	}
+	return points;
 }
 
 struct SegmentCloudResult
@@ -980,6 +1139,308 @@ TEST(LocalGridMakerTest, SegmentCloudRangeMaxPreservesFarPointsDuringNoiseFilter
 	// Far outlier kept because it is beyond rangeMax (not noise-filtered).
 	EXPECT_EQ(result.groundCount, floorPoints + 1u);
 	EXPECT_GT(result.obstacleCount, 0u);
+}
+
+// Regression tests: when all points of a category are beyond Grid/RangeMax, the "close"
+// subset handed to util3d::radiusFiltering() is empty, which means "filter the whole
+// cloud" for that function. Each category must then keep only its own far points.
+TEST(LocalGridMakerTest, SegmentCloudRangeMaxAllObstaclesFarKeepsClassification)
+{
+	ParametersMap params = gridParamsForPassthroughSegmentation();
+	params.insert(ParametersPair(Parameters::kGridMaxGroundHeight(), "0.05"));
+	params.insert(ParametersPair(Parameters::kGridMaxObstacleHeight(), "5.0"));
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringRadius(), "0.1"));
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringMinNeighbors(), "3"));
+	params.insert(ParametersPair(Parameters::kGridRangeMax(), "3.0"));
+
+	// Ground closer than rangeMax, all obstacles beyond it, plus an isolated obstacle point
+	// beyond rangeMax (kept) and an isolated ground point closer than rangeMax (removed by
+	// the noise filtering).
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = planeGrid(0.f, 10, 0.05f);
+	const size_t groundPoints = cloud->size();
+	const size_t obstaclePoints = addFarBlock(cloud, 4.f, 0.f, 0.2f, 5, 0.05f) + 1u;
+	cloud->push_back(pcl::PointXYZ(6.f, 0.f, 0.4f));
+	cloud->push_back(pcl::PointXYZ(1.f, 1.f, 0.f));
+
+	const SegmentCloudIndices result = runSegmentCloudIndices(params, cloud, cv::Point3f(0.25f, 0.25f, 2.f));
+	saveSegmentationForVisualValidation("SegmentCloudRangeMaxAllObstaclesFar", result);
+
+	ASSERT_TRUE(result.ground.get());
+	ASSERT_TRUE(result.obstacles.get());
+	EXPECT_TRUE(hasUniqueIndices(result.obstacles));
+	EXPECT_TRUE(areDisjoint(result.ground, result.obstacles));
+	// All far obstacles kept as-is (isolated one included), without any ground point.
+	EXPECT_EQ(result.obstacles->size(), obstaclePoints);
+	for(size_t i = 0; i < result.obstacles->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.obstacles->at(i));
+		EXPECT_GE(pt.x, 4.f);
+		EXPECT_GE(pt.z, 0.2f);
+	}
+	// Isolated ground point closer than rangeMax removed by the noise filtering.
+	EXPECT_EQ(result.ground->size(), groundPoints);
+	for(size_t i = 0; i < result.ground->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.ground->at(i));
+		EXPECT_LE(pt.x, 0.5f);
+		EXPECT_FLOAT_EQ(pt.z, 0.f);
+	}
+}
+
+TEST(LocalGridMakerTest, SegmentCloudRangeMaxAllGroundFarKeepsClassification)
+{
+	ParametersMap params = gridParamsForPassthroughSegmentation();
+	params.insert(ParametersPair(Parameters::kGridMaxGroundHeight(), "0.05"));
+	params.insert(ParametersPair(Parameters::kGridMaxObstacleHeight(), "5.0"));
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringRadius(), "0.1"));
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringMinNeighbors(), "3"));
+	params.insert(ParametersPair(Parameters::kGridRangeMax(), "3.0"));
+
+	// All ground beyond rangeMax, obstacles closer than it.
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	size_t groundPoints = 0;
+	for(int i = 0; i < 10; ++i)
+	{
+		for(int j = 0; j < 10; ++j)
+		{
+			cloud->push_back(pcl::PointXYZ(4.f + 0.05f * i, 0.05f * j, 0.f));
+			++groundPoints;
+		}
+	}
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr obstacles = planeGrid(0.5f, 10, 0.05f);
+	const size_t obstaclePoints = obstacles->size();
+	cloud->insert(cloud->end(), obstacles->begin(), obstacles->end());
+	// Isolated ground point beyond rangeMax (kept) and isolated obstacle point closer than
+	// rangeMax (removed by the noise filtering).
+	cloud->push_back(pcl::PointXYZ(6.f, 0.f, 0.f));
+	cloud->push_back(pcl::PointXYZ(1.f, 1.f, 0.6f));
+
+	const SegmentCloudIndices result = runSegmentCloudIndices(params, cloud, cv::Point3f(0.25f, 0.25f, 2.f));
+	saveSegmentationForVisualValidation("SegmentCloudRangeMaxAllGroundFar", result);
+
+	ASSERT_TRUE(result.ground.get());
+	ASSERT_TRUE(result.obstacles.get());
+	EXPECT_TRUE(hasUniqueIndices(result.ground));
+	EXPECT_TRUE(areDisjoint(result.ground, result.obstacles));
+	// All far ground points kept as-is (isolated one included), without any obstacle point.
+	EXPECT_EQ(result.ground->size(), groundPoints + 1u);
+	for(size_t i = 0; i < result.ground->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.ground->at(i));
+		EXPECT_GE(pt.x, 4.f);
+		EXPECT_FLOAT_EQ(pt.z, 0.f);
+	}
+	// Isolated obstacle point closer than rangeMax removed by the noise filtering.
+	EXPECT_EQ(result.obstacles->size(), obstaclePoints);
+	for(size_t i = 0; i < result.obstacles->size(); ++i)
+	{
+		EXPECT_FLOAT_EQ(result.cloud->at(result.obstacles->at(i)).z, 0.5f);
+	}
+}
+
+TEST(LocalGridMakerTest, SegmentCloudRangeMaxAllFlatObstaclesFarKeepsClassification)
+{
+	ParametersMap params = gridParamsForNormalSegmentation(0.f, true);
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringRadius(), "0.1"));
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringMinNeighbors(), "3"));
+	params.insert(ParametersPair(Parameters::kGridRangeMax(), "3.0"));
+
+	// Ground closer than rangeMax, flat obstacle (raised horizontal surface) beyond it, plus
+	// an isolated ground point closer than rangeMax that the noise filtering must remove.
+	// The flat obstacle is sampled at 0.12 m, coarser than the noise filtering radius, and an
+	// isolated flat obstacle point is added farther away (its own cluster, at the same height
+	// so that its normal stays up): noise filtering would remove all those points if it was
+	// applied beyond rangeMax.
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = planeGrid(0.f, 10, 0.05f);
+	const size_t groundPoints = cloud->size();
+	cloud->push_back(pcl::PointXYZ(1.f, 1.f, 0.f));
+	const float flatObstacleZ = 0.25f;
+	size_t flatObstaclePoints = 0;
+	for(int i = 0; i < 6; ++i)
+	{
+		for(int j = 0; j < 6; ++j)
+		{
+			cloud->push_back(pcl::PointXYZ(4.f + 0.12f * i, 0.12f * j, flatObstacleZ));
+			++flatObstaclePoints;
+		}
+	}
+	cloud->push_back(pcl::PointXYZ(6.f, 0.f, flatObstacleZ));
+	++flatObstaclePoints;
+
+	const SegmentCloudIndices result = runSegmentCloudIndices(params, cloud, cv::Point3f(0.25f, 0.25f, 2.f));
+	saveSegmentationForVisualValidation("SegmentCloudRangeMaxAllFlatObstaclesFar", result);
+
+	ASSERT_TRUE(result.ground.get());
+	ASSERT_TRUE(result.flatObstacles.get());
+	EXPECT_TRUE(hasUniqueIndices(result.flatObstacles));
+	EXPECT_TRUE(areDisjoint(result.ground, result.flatObstacles));
+	// All far flat obstacles kept as-is (isolated one included), without any ground point.
+	// Flat obstacles are also reported as obstacles (NormalSegmentationFlatObstaclesDetected).
+	EXPECT_EQ(result.flatObstacles->size(), flatObstaclePoints);
+	EXPECT_EQ(result.obstacles->size(), flatObstaclePoints);
+	for(size_t i = 0; i < result.flatObstacles->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.flatObstacles->at(i));
+		EXPECT_GE(pt.x, 4.f);
+		EXPECT_FLOAT_EQ(pt.z, flatObstacleZ);
+	}
+	// Isolated ground point closer than rangeMax removed by the noise filtering.
+	EXPECT_EQ(result.ground->size(), groundPoints);
+	for(size_t i = 0; i < result.ground->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.ground->at(i));
+		EXPECT_LE(pt.x, 0.5f);
+		EXPECT_FLOAT_EQ(pt.z, 0.f);
+	}
+}
+
+// Single scene exercising the Grid/RangeMax + noise filtering interaction, with normals
+// segmentation and flat obstacle detection (x right, z up, | = rangeMax at 3 m):
+//
+//   z                                                 flat obstacles (0.12 m sampling)
+//  1.2 |                    o isolated obstacle           . . . . . .      . isolated
+//      |                    |                                                 (x=7)
+// 0.45 |                    # wall (y=4, x=0..0.45)     x=5.0..5.6, z=0.25
+//    0 |####  . isolated ground (x=1)      |
+//      +----------------------------------------------------------------------> x, y
+//       0    1                             3
+//
+// The near ground has an isolated point that the noise filtering must remove, while the
+// obstacles and the flat obstacles are entirely beyond rangeMax: their "close" subset is
+// empty, which means "filter the whole cloud" for util3d::radiusFiltering(). Both the
+// isolated far points and the flat obstacles, sampled coarser than the noise filtering
+// radius, would disappear if the filtering was applied to them.
+static pcl::PointCloud<pcl::PointXYZ>::Ptr rangeMaxSceneCloud(
+		size_t & groundPointsOut,
+		size_t & obstaclePointsOut,
+		size_t & flatObstaclePointsOut)
+{
+	// Near dense floor (ground) and an isolated ground point, both closer than rangeMax. The
+	// floor starts at 0.1 m so that no point sits on the origin, where it would be closer
+	// than any range max.
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	size_t groundPoints = 0;
+	for(int i = 0; i < 10; ++i)
+	{
+		for(int j = 0; j < 10; ++j)
+		{
+			cloud->push_back(pcl::PointXYZ(0.1f + 0.05f * i, 0.1f + 0.05f * j, 0.f));
+			++groundPoints;
+		}
+	}
+	groundPointsOut = groundPoints;
+	cloud->push_back(pcl::PointXYZ(1.f, 1.f, 0.f));
+
+	// Far vertical wall (obstacles) and an isolated point above it, in the same plane so
+	// that its normal stays horizontal.
+	size_t obstaclePoints = 0;
+	for(int i = 0; i < 10; ++i)
+	{
+		for(int k = 0; k < 10; ++k)
+		{
+			cloud->push_back(pcl::PointXYZ(0.05f * i, 4.f, 0.05f * k));
+			++obstaclePoints;
+		}
+	}
+	cloud->push_back(pcl::PointXYZ(0.2f, 4.f, 1.2f));
+	++obstaclePoints;
+
+	// Far raised horizontal surface (flat obstacles) sampled at 0.12 m, coarser than the
+	// noise filtering radius but finer than the cluster radius, and an isolated point at the
+	// same height so that its normal stays up.
+	size_t flatObstaclePoints = 0;
+	for(int i = 0; i < 6; ++i)
+	{
+		for(int j = 0; j < 6; ++j)
+		{
+			cloud->push_back(pcl::PointXYZ(5.f + 0.12f * i, 0.12f * j, 0.25f));
+			++flatObstaclePoints;
+		}
+	}
+	cloud->push_back(pcl::PointXYZ(7.f, 0.f, 0.25f));
+	++flatObstaclePoints;
+
+	// Flat obstacles are also reported as obstacles (NormalSegmentationFlatObstaclesDetected).
+	obstaclePointsOut = obstaclePoints + flatObstaclePoints;
+	flatObstaclePointsOut = flatObstaclePoints;
+	return cloud;
+}
+
+static float rangeFromOrigin(const pcl::PointXYZ & pt)
+{
+	return std::sqrt(pt.x * pt.x + pt.y * pt.y + pt.z * pt.z);
+}
+
+TEST(LocalGridMakerTest, SegmentCloudRangeMaxNoiseFilteringKeepsClassification)
+{
+	ParametersMap params = gridParamsForNormalSegmentation(0.f, true);
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringRadius(), "0.1"));
+	params.insert(ParametersPair(Parameters::kGridNoiseFilteringMinNeighbors(), "3"));
+	params.insert(ParametersPair(Parameters::kGridRangeMax(), "3.0"));
+
+	size_t groundPoints = 0;
+	size_t obstaclePoints = 0;
+	size_t flatObstaclePoints = 0;
+	const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rangeMaxSceneCloud(
+			groundPoints,
+			obstaclePoints,
+			flatObstaclePoints);
+
+	const SegmentCloudIndices result = runSegmentCloudIndices(params, cloud, cv::Point3f(0.25f, 0.25f, 2.f));
+	saveSegmentationForVisualValidation("SegmentCloudRangeMaxNoiseFiltering", result);
+
+	ASSERT_TRUE(result.ground.get());
+	ASSERT_TRUE(result.obstacles.get());
+	ASSERT_TRUE(result.flatObstacles.get());
+	EXPECT_TRUE(hasUniqueIndices(result.ground));
+	EXPECT_TRUE(hasUniqueIndices(result.obstacles));
+	EXPECT_TRUE(hasUniqueIndices(result.flatObstacles));
+	EXPECT_TRUE(areDisjoint(result.ground, result.obstacles));
+	EXPECT_TRUE(areDisjoint(result.ground, result.flatObstacles));
+
+	// Isolated ground point closer than rangeMax removed by the noise filtering.
+	EXPECT_EQ(result.ground->size(), groundPoints);
+	for(size_t i = 0; i < result.ground->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.ground->at(i));
+		EXPECT_LE(rangeFromOrigin(pt), 3.f);
+		EXPECT_LE(pt.x, 0.6f);
+		EXPECT_FLOAT_EQ(pt.z, 0.f);
+	}
+	// All far obstacles kept as-is (isolated one included), without any ground point.
+	EXPECT_EQ(result.obstacles->size(), obstaclePoints);
+	for(size_t i = 0; i < result.obstacles->size(); ++i)
+	{
+		EXPECT_GT(rangeFromOrigin(result.cloud->at(result.obstacles->at(i))), 3.f);
+	}
+	// Same for the flat obstacles, all beyond rangeMax too.
+	EXPECT_EQ(result.flatObstacles->size(), flatObstaclePoints);
+	for(size_t i = 0; i < result.flatObstacles->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = result.cloud->at(result.flatObstacles->at(i));
+		EXPECT_GT(rangeFromOrigin(pt), 3.f);
+		EXPECT_FLOAT_EQ(pt.z, 0.25f);
+	}
+
+	// Same scene with a rangeMax closer than the closest point: the three categories are then
+	// all entirely beyond it, so the segmentation must be the same as without noise filtering.
+	ParametersMap allFarParams = params;
+	allFarParams[Parameters::kGridRangeMax()] = "0.1";
+	ParametersMap referenceParams = allFarParams;
+	referenceParams[Parameters::kGridNoiseFilteringRadius()] = "0.0";
+
+	const SegmentCloudIndices allFar = runSegmentCloudIndices(allFarParams, cloud, cv::Point3f(0.25f, 0.25f, 2.f));
+	const SegmentCloudIndices reference = runSegmentCloudIndices(referenceParams, cloud, cv::Point3f(0.25f, 0.25f, 2.f));
+	saveSegmentationForVisualValidation("SegmentCloudRangeMaxNoiseFilteringAllFar", allFar);
+
+	ASSERT_TRUE(reference.ground.get() && reference.obstacles.get() && reference.flatObstacles.get());
+	EXPECT_EQ(allFar.ground->size(), reference.ground->size());
+	EXPECT_EQ(allFar.obstacles->size(), reference.obstacles->size());
+	EXPECT_EQ(allFar.flatObstacles->size(), reference.flatObstacles->size());
+	// Isolated ground point now beyond rangeMax, so it is kept as well.
+	EXPECT_EQ(allFar.ground->size(), groundPoints + 1u);
+	EXPECT_EQ(allFar.obstacles->size(), obstaclePoints);
+	EXPECT_EQ(allFar.flatObstacles->size(), flatObstaclePoints);
 }
 
 // Grid/3D + Grid/RayTracing + OctoMap (2D ray tracing: Util3dMappingTest).

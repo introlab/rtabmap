@@ -29,10 +29,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CORELIB_INCLUDE_RTABMAP_CORE_IMPL_LOCALMAP_HPP_
 
 #include <rtabmap/core/util3d_mapping.h>
+#include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
+
+template<typename PointT>
+pcl::IndicesPtr LocalGridMaker::noiseFilteringWithMaxRange(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float maxRange,
+		float radiusSearch,
+		int minNeighborsInRadius)
+{
+	// util3d::radiusFiltering() would filter the whole cloud if the indices are empty
+	UASSERT(indices.get() && !indices->empty());
+	pcl::IndicesPtr closeIndices = indices;
+	pcl::IndicesPtr farIndices;
+	if(maxRange != 0.0f)
+	{
+		// Don't filter points farther than maximum range, in case we want to ray trace empty space
+		util3d::rangeSplitFiltering(cloud, indices, maxRange, closeIndices, farIndices);
+	}
+	if(closeIndices->size())
+	{
+		// Note: radiusFiltering() would filter the whole cloud if indices are empty
+		closeIndices = util3d::radiusFiltering(cloud, closeIndices, radiusSearch, minNeighborsInRadius);
+	}
+	if(farIndices.get())
+	{
+		closeIndices = util3d::concatenate(closeIndices, farIndices);
+	}
+	return closeIndices;
+}
 
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
@@ -187,51 +217,15 @@ typename pcl::PointCloud<PointT>::Ptr LocalGridMaker::segmentCloud(
 					noiseFilteringMinNeighbors_);
 			if(groundIndices->size())
 			{
-				pcl::IndicesPtr farIndices;
-				if(rangeMax_!=0)
-				{
-					// Don't filter points farther than maximum range, in case we want to ray trace empty space
-					pcl::IndicesPtr closeIndices;
-					rtabmap::util3d::rangeSplitFiltering(cloud, groundIndices, rangeMax_, closeIndices, farIndices);
-					groundIndices = closeIndices;
-				}
-				groundIndices = rtabmap::util3d::radiusFiltering(cloud, groundIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
-				if(farIndices.get())
-				{
-					groundIndices = rtabmap::util3d::concatenate(groundIndices, farIndices);
-				}
+				groundIndices = noiseFilteringWithMaxRange<PointT>(cloud, groundIndices, rangeMax_, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
 			}
 			if(obstaclesIndices->size())
 			{
-				pcl::IndicesPtr farIndices;
-				if(rangeMax_!=0)
-				{
-					// Don't filter points farther than maximum range, in case we want to ray trace empty space
-					pcl::IndicesPtr closeIndices;
-					rtabmap::util3d::rangeSplitFiltering(cloud, obstaclesIndices, rangeMax_, closeIndices, farIndices);
-					obstaclesIndices = closeIndices;
-				}
-				obstaclesIndices = rtabmap::util3d::radiusFiltering(cloud, obstaclesIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
-				if(farIndices.get())
-				{
-					obstaclesIndices = rtabmap::util3d::concatenate(obstaclesIndices, farIndices);
-				}
+				obstaclesIndices = noiseFilteringWithMaxRange<PointT>(cloud, obstaclesIndices, rangeMax_, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
 			}
 			if(flatObstacles && (*flatObstacles)->size())
 			{
-				pcl::IndicesPtr farIndices;
-				if(rangeMax_!=0)
-				{
-					// Don't filter points farther than maximum range, in case we want to ray trace empty space
-					pcl::IndicesPtr closeIndices;
-					rtabmap::util3d::rangeSplitFiltering(cloud, *flatObstacles, rangeMax_, closeIndices, farIndices);
-					*flatObstacles = closeIndices;
-				}
-				*flatObstacles = rtabmap::util3d::radiusFiltering(cloud, *flatObstacles, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
-				if(farIndices.get())
-				{
-					*flatObstacles = rtabmap::util3d::concatenate(*flatObstacles, farIndices);
-				}
+				*flatObstacles = noiseFilteringWithMaxRange<PointT>(cloud, *flatObstacles, rangeMax_, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
 			}
 			UDEBUG("Radius filtering end (%ld ground %ld obstacles)",
 					groundIndices->size(),
