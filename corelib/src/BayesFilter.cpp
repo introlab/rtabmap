@@ -24,33 +24,40 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include "rtabmap/core/BayesFilter.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Parameters.h"
-#include <iostream>
+
+#include "bayes/DensePrediction.h"
+#include "bayes/PredictionModel.h"
+#include "bayes/SparsePrediction.h"
+
 #include <set>
-#if __cplusplus >= 201103L
-#include <unordered_map>
-#include <unordered_set>
-#endif
 
 #include "rtabmap/utilite/UtiLite.h"
 
 namespace rtabmap {
 
 BayesFilter::BayesFilter(const ParametersMap & parameters) :
-	_virtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr()),
+	_model(new bayes::PredictionModel()),
+	_dense(new bayes::DensePrediction()),
+	_sparse(new bayes::SparsePrediction()),
 	_fullPredictionUpdate(Parameters::defaultBayesFullPredictionUpdate()),
-	_totalPredictionLCValues(0.0f),
-	_predictionEpsilon(0.0f)
+	_sparsePrediction(Parameters::defaultBayesSparsePrediction()),
+	_keepSparse(false),
+	_predictionChanged(true)
 {
+	_model->setVirtualPlacePrior(Parameters::defaultBayesVirtualPlacePriorThr());
 	this->setPredictionLC(Parameters::defaultBayesPredictionLC());
 	this->parseParameters(parameters);
 }
 
-BayesFilter::~BayesFilter() {
+BayesFilter::~BayesFilter()
+{
+	delete _model;
+	delete _dense;
+	delete _sparse;
 }
 
 void BayesFilter::parseParameters(const ParametersMap & parameters)
@@ -60,371 +67,258 @@ void BayesFilter::parseParameters(const ParametersMap & parameters)
 	{
 		this->setPredictionLC((*iter).second);
 	}
-	Parameters::parse(parameters, Parameters::kBayesVirtualPlacePriorThr(), _virtualPlacePrior);
+	float virtualPlacePrior = _model->virtualPlacePrior();
+	if(Parameters::parse(parameters, Parameters::kBayesVirtualPlacePriorThr(), virtualPlacePrior))
+	{
+		UASSERT(virtualPlacePrior >= 0 && virtualPlacePrior <= 1.0f);
+		_model->setVirtualPlacePrior(virtualPlacePrior);
+	}
 	Parameters::parse(parameters, Parameters::kBayesFullPredictionUpdate(), _fullPredictionUpdate);
-
-	UASSERT(_virtualPlacePrior >= 0 && _virtualPlacePrior <= 1.0f);
+	if(Parameters::parse(parameters, Parameters::kBayesSparsePrediction(), _sparsePrediction))
+	{
+		// The sparse view is rebuilt on the next posterior if it was just enabled, and
+		// released if it was just disabled.
+		_predictionChanged = true;
+		this->updateKeepSparse();
+	}
 }
 
 // format = {Virtual place, Loop closure, level1, level2, l3, l4...}
 void BayesFilter::setPredictionLC(const std::string & prediction)
 {
-	std::list<std::string> strValues = uSplit(prediction, ' ');
-	if(strValues.size() < 2)
+	if(_model->set(prediction))
 	{
-		UERROR("The number of values < 2 (prediction=\"%s\")", prediction.c_str());
+		// A new model changes the values of the prediction, and whether any of it is worth
+		// keeping sparse.
+		_predictionChanged = true;
+		this->updateKeepSparse();
 	}
-	else
-	{
-		std::vector<double> tmpValues(strValues.size());
-		int i=0;
-		bool valid = true;
-		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
-		{
-			tmpValues[i] = uStr2Float((*iter).c_str());
-			//UINFO("%d=%e", i, tmpValues[i]);
-			if(tmpValues[i] < 0.0 || tmpValues[i]>1.0)
-			{
-				valid = false;
-				break;
-			}
-			++i;
-		}
+}
 
-		if(!valid)
-		{
-			UERROR("The prediction is not valid (values must be between >0 && <=1) prediction=\"%s\"", prediction.c_str());
-		}
-		else
-		{
-			_predictionLC = tmpValues;
-		}
-	}
-	_totalPredictionLCValues = 0.0f;
-	for(unsigned int j=0; j<_predictionLC.size(); ++j)
+// Asked for by the parameter, and possible only over a model whose values sum to 1: below that,
+// normalize() spreads the difference over every zero of a column and there is nothing sparse
+// left to keep. Nothing else gives the sparse form up, however densely the graph is linked, so
+// that what the parameter measures is the sparse form and not a fallback to the matrix.
+void BayesFilter::updateKeepSparse()
+{
+	_keepSparse = _sparsePrediction && !_model->spreadsOverAllLocations();
+	if(_sparsePrediction && !_keepSparse)
 	{
-		_totalPredictionLCValues += _predictionLC[j];
-		if(j==0 || _predictionLC[j] < _predictionEpsilon)
-		{
-			_predictionEpsilon = _predictionLC[j];
-		}
+		UWARN("%s is enabled but the values of %s sum to %f, less than 1: the difference is "
+			  "spread over every location, which leaves no zero in a column for the sparse form "
+			  "to keep out, so the prediction is held as a matrix instead.",
+			  Parameters::kBayesSparsePrediction().c_str(),
+			  Parameters::kBayesPredictionLC().c_str(), _model->total());
 	}
-	if(!_predictionLC.empty())
+	if(!_keepSparse)
 	{
-		UDEBUG("predictionEpsilon = %f", _predictionEpsilon);
+		_sparse->clear();
 	}
 }
 
 const std::vector<double> & BayesFilter::getPredictionLC() const
 {
 	// {Vp, Lc, l1, l2, l3, l4...}
-	return _predictionLC;
+	return _model->values();
 }
 
 std::string BayesFilter::getPredictionLCStr() const
 {
-	std::string values;
-	for(unsigned int i=0; i<_predictionLC.size(); ++i)
-	{
-		values.append(uNumber2Str(_predictionLC[i]));
-		if(i+1 < _predictionLC.size())
-		{
-			values.append(" ");
-		}
-	}
-	return values;
+	return _model->str();
+}
+
+float BayesFilter::getVirtualPlacePrior() const
+{
+	return _model->virtualPlacePrior();
+}
+
+bool BayesFilter::isPredictionSparse() const
+{
+	return !_sparse->empty();
 }
 
 void BayesFilter::reset()
 {
-	_posterior.clear();
-	_prediction = cv::Mat();
+	_posteriorIds.clear();
+	_posteriorValues.clear();
+	_dense->clear();
+	_sparse->clear();
+	_predictionChanged = true;
 	_neighborsIndex.clear();
 }
 
-const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory, const std::map<int, float> & likelihood)
+bool BayesFilter::computePosterior(const Memory * memory, const std::map<int, float> & likelihood)
 {
 	ULOGGER_DEBUG("");
 
 	if(!memory)
 	{
 		ULOGGER_ERROR("Memory is Null!");
-		return _posterior;
+		return false;
 	}
 
 	if(!likelihood.size())
 	{
 		ULOGGER_ERROR("likelihood is empty!");
-		return _posterior;
+		return false;
 	}
 
-	if(_predictionLC.size() < 2)
-	{
-		ULOGGER_ERROR("Prediction is not valid!");
-		return _posterior;
-	}
+	UASSERT(_model->valid());
 
 	UTimer timer;
 	timer.start();
 
-	cv::Mat prior;
-	cv::Mat posterior;
+	// One walk of the likelihood: its values into a vector, and its ids against the ones the
+	// posterior is indexed by. Everything below then works on vectors.
+	_likelihoodIds.resize(likelihood.size());
+	_likelihoodValues.resize(likelihood.size());
+	bool sameIds = _posteriorIds.size() == likelihood.size();
+	{
+		size_t k = 0;
+		for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter, ++k)
+		{
+			_likelihoodIds[k] = iter->first;
+			_likelihoodValues[k] = iter->second;
+			if(sameIds && _posteriorIds[k] != iter->first)
+			{
+				sameIds = false;
+			}
+		}
+	}
+	const std::vector<int> & ids = _likelihoodIds;
 
-	float sum = 0;
-	int j=0;
 	// Recursive Bayes estimation...
 	// STEP 1 - Prediction : Prior*lastPosterior
-	_prediction = this->generatePrediction(memory, uKeys(likelihood));
+	//
+	// The prediction is kept in its sparse form only, the matrix never being allocated:
+	// built once, then carried over to the locations of the next iteration. Over a fixed
+	// graph nothing changes and there is nothing to do; while mapping, the appended
+	// locations reach only a few of the columns and only those are built again. A location
+	// leaving the working memory shifts the index of every one after it, and is answered by
+	// building the prediction again, which is what the dense update does then as well.
+	if(!sameIds)
+	{
+		_predictionChanged = true;
+	}
+	if(_keepSparse)
+	{
+		// Nothing to do at all when neither the prediction nor the locations changed.
+		if(_predictionChanged || _sparse->ids() != ids)
+		{
+			// The neighborhoods are kept only when locations can be added, which is what the
+			// update needs them for: over a fixed graph one per location is as much memory
+			// again as the values of the prediction.
+			if(_fullPredictionUpdate || !_sparse->update(*_model, memory, ids, _neighborsIndex))
+			{
+				_sparse->generate(*_model, memory, ids,
+						memory->isIncremental() ? &_neighborsIndex : 0);
+			}
+		}
+		UDEBUG("STEP1-generate prior=%fs, values=%d", timer.ticks(), (int)_sparse->values());
 
-	UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(), _prediction.rows, _prediction.cols);
-	//std::cout << "Prediction=" << _prediction << std::endl;
+		// The matrix is released as soon as the sparse form takes over. It is built for the
+		// locations of the iteration it was built on, and the locations move on while the
+		// sparse form is the one being used, so it can neither be multiplied nor carried over
+		// once the sparse form gives the prediction back. A fallback to the matrix builds it
+		// again.
+		_dense->clear();
+	}
+	else
+	{
+		_sparse->clear();
+		if(_predictionChanged || _dense->empty())
+		{
+			// Only when it has to be: over a fixed graph the matrix of the last iteration is
+			// the one this iteration wants.
+			_dense->generate(*_model, memory, ids, _fullPredictionUpdate, &_neighborsIndex);
+		}
+		UDEBUG("STEP1-generate prior=%fs, rows=%d, cols=%d", timer.ticks(),
+				_dense->matrix().rows, _dense->matrix().cols);
+		//std::cout << "Prediction=" << _dense->matrix() << std::endl;
+	}
+	// Cleared once, after whichever of the two built it: the sparse form, or the matrix when
+	// the prediction is not kept sparse.
+	_predictionChanged = false;
 
 	// Adjust the last posterior if some images were
-	// reactivated or removed from the working memory
-	posterior = cv::Mat(likelihood.size(), 1, CV_32FC1);
-	this->updatePosterior(memory, uKeys(likelihood));
-	j=0;
-	for(std::map<int, float>::const_iterator i=_posterior.begin(); i!= _posterior.end(); ++i)
+	// reactivated or removed from the working memory. After the prediction, which is built
+	// against the ids the posterior still holds from the last iteration.
+	if(!sameIds)
 	{
-		((float*)posterior.data)[j++] = (*i).second;
+		this->updatePosterior(memory, likelihood);
 	}
-	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior rows=%d, _posterior size=%d", timer.ticks(), posterior.rows, (int)_posterior.size());
-	//std::cout << "LastPosterior=" << posterior << std::endl;
+	UASSERT(_posteriorValues.size() == likelihood.size());
+	ULOGGER_DEBUG("STEP1-update posterior=%fs, posterior size=%d", timer.ticks(), (int)_posteriorValues.size());
 
 	// Multiply prediction matrix with the last posterior
 	// (m,m) X (m,1) = (m,1)
-	prior = _prediction * posterior;
-	ULOGGER_DEBUG("STEP1-matrix mult time=%fs", timer.ticks());
+	// Held sparse, or as the matrix when updateKeepSparse() gave the sparse form up.
+	const bool sparse = !_sparse->empty();
+	if(sparse)
+	{
+		_sparse->multiply(_posteriorValues, _priorValues);
+	}
+	else
+	{
+		_dense->multiply(_posteriorValues, _priorValues);
+	}
+	const float * priorPtr = &_priorValues[0];
+	ULOGGER_DEBUG("STEP1-matrix mult time=%fs (sparse=%d)", timer.ticks(), sparse?1:0);
 	//std::cout << "ResultingPrior=" << prior << std::endl;
 
-	ULOGGER_DEBUG("STEP1-matrix mult time=%fs", timer.ticks());
-	std::vector<float> likelihoodValues = uValues(likelihood);
-	//std::cout << "Likelihood=" << cv::Mat(likelihoodValues) << std::endl;
-
 	// STEP 2 - Update : Multiply with observations (likelihood)
-	j=0;
-	for(std::map<int, float>::const_iterator i=likelihood.begin(); i!= likelihood.end(); ++i)
+	// The likelihood, the posterior and the prior are all indexed the same way, so the three
+	// are walked side by side.
+	float sum = 0;
+	for(size_t k=0; k<_posteriorValues.size(); ++k)
 	{
-		std::map<int, float>::iterator p =_posterior.find((*i).first);
-		if(p!= _posterior.end())
-		{
-			(*p).second = (*i).second * ((float*)prior.data)[j++];
-			sum+=(*p).second;
-		}
-		else
-		{
-			ULOGGER_ERROR("Problem1! can't find id=%d", (*i).first);
-		}
+		_posteriorValues[k] = _likelihoodValues[k] * priorPtr[k];
+		sum += _posteriorValues[k];
 	}
 	ULOGGER_DEBUG("STEP2-likelihood time=%fs", timer.ticks());
-	//std::cout << "Posterior (before normalization)=" << _posterior << std::endl;
 
 	// Normalize
 	ULOGGER_DEBUG("sum=%f", sum);
 	if(sum != 0)
 	{
-		for(std::map<int, float>::iterator i=_posterior.begin(); i!= _posterior.end(); ++i)
+		for(size_t k=0; k<_posteriorValues.size(); ++k)
 		{
-			(*i).second /= sum;
+			_posteriorValues[k] /= sum;
 		}
 	}
+
 	ULOGGER_DEBUG("normalize time=%fs", timer.ticks());
-	//std::cout << "Posterior=" << _posterior << std::endl;
-
-	return _posterior;
-}
-
-float addNeighborProb(cv::Mat & prediction,
-			unsigned int col,
-			const std::map<int, int> & neighbors,
-			const std::vector<double> & predictionLC,
-#if __cplusplus >= 201103L
-			const std::unordered_map<int, int> & idToIndex
-#else
-			const std::map<int, int> & idToIndex
-#endif
-			)
-{
-	UASSERT(col < (unsigned int)prediction.cols &&
-			col < (unsigned int)prediction.rows);
-
-	float sum=0.0f;
-	float * dataPtr = (float*)prediction.data;
-	for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-	{
-		if(iter->first>=0)
-		{
-#if __cplusplus >= 201103L
-			std::unordered_map<int, int>::const_iterator jter = idToIndex.find(iter->first);
-#else
-			std::map<int, int>::const_iterator jter = idToIndex.find(iter->first);
-#endif
-			if(jter != idToIndex.end())
-			{
-				UASSERT((iter->second+1) < (int)predictionLC.size());
-				sum += dataPtr[col + jter->second*prediction.cols] = predictionLC[iter->second+1];
-			}
-		}
-	}
-	return sum;
+	return true;
 }
 
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
-	std::vector<int> oldIds = uKeys(_posterior);
-	if(oldIds.size() == ids.size() &&
-		memcmp(oldIds.data(), ids.data(), oldIds.size()*sizeof(int)) == 0)
+	if(!_sparse->empty() && _sparse->ids() == ids)
 	{
-		return _prediction;
+		// Expanded from the sparse form, which holds the same prediction. The matrix costs
+		// what keeping it sparse is saving, so it is built to be read and not kept.
+		return _sparse->toMatrix();
 	}
-
-	if(!_fullPredictionUpdate && !_prediction.empty())
+	if(!_dense->empty() && _dense->ids() == ids)
 	{
-		return updatePrediction(_prediction, memory, oldIds, ids);
+		return _dense->matrix();
 	}
-	UDEBUG("");
-
-	UASSERT(memory &&
-		   _predictionLC.size() >= 2 &&
-		   ids.size());
-
-	UTimer timer;
-	timer.start();
-	UTimer timerGlobal;
-	timerGlobal.start();
-
-#if __cplusplus >= 201103L
-	std::unordered_map<int,int> idToIndexMap;
-	idToIndexMap.reserve(ids.size());
-#else
-	std::map<int,int> idToIndexMap;
-#endif
-	for(unsigned int i=0; i<ids.size(); ++i)
-	{
-		if(ids[i]>0)
-		{
-			idToIndexMap[ids[i]] = i;
-		}
-	}
-
-
-	//int rows = prediction.rows;
-	cv::Mat prediction = cv::Mat::zeros(ids.size(), ids.size(), CV_32FC1);
-	int cols = prediction.cols;
-
-	// Each prior is a column vector
-	UDEBUG("_predictionLC.size()=%d",(int)_predictionLC.size());
-	std::set<int> idsDone;
-
-	for(unsigned int i=0; i<ids.size(); ++i)
-	{
-		if(idsDone.find(ids[i]) == idsDone.end())
-		{
-			if(ids[i] > 0)
-			{
-				// Set high values (gaussians curves) to loop closure neighbors
-
-				// ADD prob for each neighbors
-				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0, false, false, true, true);
-
-				if(!_fullPredictionUpdate)
-				{
-					uInsert(_neighborsIndex, std::make_pair(ids[i], neighbors));
-				}
-
-				std::list<int> idsLoopMargin;
-				//filter neighbors in STM
-				for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
-				{
-					if(memory->isInSTM(iter->first))
-					{
-						neighbors.erase(iter++);
-					}
-					else
-					{
-						if(iter->second == 0 && idToIndexMap.find(iter->first)!=idToIndexMap.end())
-						{
-							idsLoopMargin.push_back(iter->first);
-						}
-						++iter;
-					}
-				}
-
-				// should at least have 1 id in idsMarginLoop
-				if(idsLoopMargin.size() == 0)
-				{
-					UFATAL("No 0 margin neighbor for signature %d !?!?", ids[i]);
-				}
-
-				// same neighbor tree for loop signatures (margin = 0)
-				for(std::list<int>::iterator iter = idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
-				{
-					if(!_fullPredictionUpdate)
-					{
-						uInsert(_neighborsIndex, std::make_pair(*iter, neighbors));
-					}
-
-					float sum = 0.0f; // sum values added
-					int index = idToIndexMap.at(*iter);
-					sum += addNeighborProb(prediction, index, neighbors, _predictionLC, idToIndexMap);
-					idsDone.insert(*iter);
-					this->normalize(prediction, index, sum, ids[0]<0);
-				}
-			}
-			else
-			{
-				// Set the virtual place prior
-				if(_virtualPlacePrior > 0)
-				{
-					if(cols>1) // The first must be the virtual place
-					{
-						((float*)prediction.data)[i] = _virtualPlacePrior;
-						float val = (1.0-_virtualPlacePrior)/(cols-1);
-						for(int j=1; j<cols; j++)
-						{
-							((float*)prediction.data)[i + j*cols] = val;
-						}
-					}
-					else if(cols>0)
-					{
-						((float*)prediction.data)[i] = 1;
-					}
-				}
-				else
-				{
-					// Only for some tests...
-					// when _virtualPlacePrior=0, set all priors to the same value
-					if(cols>1)
-					{
-						float val = 1.0/cols;
-						for(int j=0; j<cols; j++)
-						{
-							((float*)prediction.data)[i + j*cols] = val;
-						}
-					}
-					else if(cols>0)
-					{
-						((float*)prediction.data)[i] = 1;
-					}
-				}
-			}
-		}
-	}
-
-	ULOGGER_DEBUG("time = %fs", timerGlobal.ticks());
-
-	return prediction;
+	UASSERT(memory && _model->valid() && ids.size());
+	return _dense->generate(*_model, memory, ids, _fullPredictionUpdate, &_neighborsIndex);
 }
 
 unsigned long BayesFilter::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(BayesFilter);
-	memoryUsage += _posterior.size() * (sizeof(float)+sizeof(int)+sizeof(std::map<int, float>::iterator)) + sizeof(std::map<int, float>);
-	if(!_prediction.empty())
-	{
-		memoryUsage += _prediction.total() * _prediction.elemSize();
-	}
-	memoryUsage += _predictionLC.size() * sizeof(double);
+	memoryUsage += _dense->memoryUsed();
+	memoryUsage += _sparse->memoryUsed();
+	memoryUsage += _model->memoryUsed();
+	// The vectors an iteration works on, indexed the same way as the posterior.
+	memoryUsage += _posteriorIds.capacity() * sizeof(int);
+	memoryUsage += _posteriorValues.capacity() * sizeof(float);
+	memoryUsage += _likelihoodIds.capacity() * sizeof(int);
+	memoryUsage += _likelihoodValues.capacity() * sizeof(float);
+	memoryUsage += _priorValues.capacity() * sizeof(float);
 	memoryUsage += _neighborsIndex.size() * (sizeof(int)+sizeof(std::map<int, int>)+sizeof(std::map<int, std::map<int, int> >::iterator)) + sizeof(std::map<int, std::map<int, int> >);
 	for(std::map<int, std::map<int, int> >::const_iterator iter=_neighborsIndex.begin(); iter!=_neighborsIndex.end(); ++iter)
 	{
@@ -433,308 +327,36 @@ unsigned long BayesFilter::getMemoryUsed() const
 	return memoryUsage;
 }
 
-void BayesFilter::normalize(cv::Mat & prediction, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const
-{
-	UASSERT(index < (unsigned int)prediction.rows && index < (unsigned int)prediction.cols);
-
-	int cols = prediction.cols;
-	// ADD values of not found neighbors to loop closure
-	if(addedProbabilitiesSum < _totalPredictionLCValues-_predictionLC[0])
-	{
-		float delta = _totalPredictionLCValues-_predictionLC[0]-addedProbabilitiesSum;
-		((float*)prediction.data)[index + index*cols] += delta;
-		addedProbabilitiesSum+=delta;
-	}
-
-	float allOtherPlacesValue = 0;
-	if(_totalPredictionLCValues < 1)
-	{
-		allOtherPlacesValue = 1.0f - _totalPredictionLCValues;
-	}
-
-	// Set all loop events to small values according to the model
-	if(allOtherPlacesValue > 0 && cols>1)
-	{
-		float value = allOtherPlacesValue / float(cols - 1);
-		for(int j=virtualPlaceUsed?1:0; j<cols; ++j)
-		{
-			if(((float*)prediction.data)[index + j*cols] == 0)
-			{
-				((float*)prediction.data)[index + j*cols] = value;
-				addedProbabilitiesSum += ((float*)prediction.data)[index + j*cols];
-			}
-		}
-	}
-
-	//normalize this row
-	float maxNorm = 1 - (virtualPlaceUsed?_predictionLC[0]:0); // 1 - virtual place probability
-	if(addedProbabilitiesSum<maxNorm-0.0001 || addedProbabilitiesSum>maxNorm+0.0001)
-	{
-		for(int j=virtualPlaceUsed?1:0; j<cols; ++j)
-		{
-			((float*)prediction.data)[index + j*cols] *= maxNorm / addedProbabilitiesSum;
-			if(((float*)prediction.data)[index + j*cols] < _predictionEpsilon)
-			{
-				((float*)prediction.data)[index + j*cols] = 0.0f;
-			}
-		}
-		addedProbabilitiesSum = maxNorm;
-	}
-
-	// ADD virtual place prob
-	if(virtualPlaceUsed)
-	{
-		((float*)prediction.data)[index] = _predictionLC[0];
-		addedProbabilitiesSum += ((float*)prediction.data)[index];
-	}
-
-	//debug
-	//for(int j=0; j<cols; ++j)
-	//{
-	//	ULOGGER_DEBUG("test col=%d = %f", i, prediction.data.fl[i + j*cols]);
-	//}
-
-	if(addedProbabilitiesSum<0.99 || addedProbabilitiesSum > 1.01)
-	{
-		UWARN("Prediction is not normalized sum=%f", addedProbabilitiesSum);
-	}
-}
-
-cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
-		const Memory * memory,
-		const std::vector<int> & oldIds,
-		const std::vector<int> & newIds)
-{
-	UTimer timer;
-	UDEBUG("");
-
-	UASSERT(memory &&
-		oldIds.size() &&
-		newIds.size() &&
-		oldIds.size() == (unsigned int)oldPrediction.cols &&
-		oldIds.size() == (unsigned int)oldPrediction.rows);
-
-	cv::Mat prediction = cv::Mat::zeros(newIds.size(), newIds.size(), CV_32FC1);
-	UDEBUG("time creating prediction = %fs", timer.restart());
-
-	// Create id to index maps
-#if __cplusplus >= 201103L
-	std::unordered_set<int> oldIdsSet(oldIds.begin(), oldIds.end());
-#else
-	std::set<int> oldIdsSet(oldIds.begin(), oldIds.end());
-#endif
-	UDEBUG("time creating old ids set = %fs", timer.restart());
-
-#if __cplusplus >= 201103L
-	std::unordered_map<int,int> newIdToIndexMap;
-	newIdToIndexMap.reserve(newIds.size());
-#else
-	std::map<int,int> newIdToIndexMap;
-#endif
-	for(unsigned int i=0; i<newIds.size(); ++i)
-	{
-		if(newIds[i]>0)
-		{
-			newIdToIndexMap[newIds[i]] = i;
-		}
-	}
-
-	UDEBUG("time creating id-index vector (size=%d oldIds.back()=%d newIds.back()=%d) = %fs", (int)newIdToIndexMap.size(), oldIds.back(), newIds.back(), timer.restart());
-
-	//Get removed ids
-	std::set<int> removedIds;
-	for(unsigned int i=0; i<oldIds.size(); ++i)
-	{
-		if(oldIds[i] > 0 && newIdToIndexMap.find(oldIds[i]) == newIdToIndexMap.end())
-		{
-			removedIds.insert(removedIds.end(), oldIds[i]);
-			_neighborsIndex.erase(oldIds[i]);
-			UDEBUG("removed id=%d at oldIndex=%d", oldIds[i], i);
-		}
-	}
-	UDEBUG("time getting removed ids = %fs", timer.restart());
-
-	bool oldAllCopied = false;
-	if(removedIds.empty() &&
-		newIds.size() > oldIds.size() &&
-		memcmp(oldIds.data(), newIds.data(), oldIds.size()*sizeof(int)) == 0)
-	{
-		oldPrediction.copyTo(cv::Mat(prediction, cv::Range(0, oldPrediction.rows), cv::Range(0, oldPrediction.cols)));
-		oldAllCopied = true;
-		UDEBUG("Copied all old prediction: = %fs", timer.ticks());
-	}
-
-	int added = 0;
-	// get ids to update
-	std::set<int> idsToUpdate;
-	for(unsigned int i=0; i<oldIds.size() || i<newIds.size(); ++i)
-	{
-		if(i<oldIds.size())
-		{
-			if(removedIds.find(oldIds[i]) != removedIds.end())
-			{
-				unsigned int cols = oldPrediction.cols;
-				int count = 0;
-				for(unsigned int j=0; j<cols; ++j)
-				{
-					if(j!=i && removedIds.find(oldIds[j]) == removedIds.end())
-					{
-						//UDEBUG("to update id=%d from id=%d removed (value=%f)", oldIds[j], oldIds[i], ((const float *)oldPrediction.data)[i + j*cols]);
-						idsToUpdate.insert(oldIds[j]);
-						++count;
-					}
-				}
-				UDEBUG("From removed id %d, %d neighbors to update.", oldIds[i], count);
-			}
-		}
-		if(i<newIds.size() && oldIdsSet.find(newIds[i]) == oldIdsSet.end())
-		{
-			if(_neighborsIndex.find(newIds[i]) == _neighborsIndex.end())
-			{
-				std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true, true);
-
-				for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-				{
-					std::map<int, std::map<int, int> >::iterator jter = _neighborsIndex.find(iter->first);
-					if(jter != _neighborsIndex.end())
-					{
-						uInsert(jter->second, std::make_pair(newIds[i], iter->second));
-					}
-				}
-				_neighborsIndex.insert(std::make_pair(newIds[i], neighbors));
-			}
-			const std::map<int, int> & neighbors = _neighborsIndex.at(newIds[i]);
-			//std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true, true);
-
-			float sum = addNeighborProb(prediction, i, neighbors, _predictionLC, newIdToIndexMap);
-			this->normalize(prediction, i, sum, newIds[0]<0);
-
-			++added;
-			int count = 0;
-			for(std::map<int,int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-			{
-				if(oldIdsSet.find(iter->first)!=oldIdsSet.end() &&
-				   removedIds.find(iter->first) == removedIds.end())
-				{
-					idsToUpdate.insert(iter->first);
-					++count;
-				}
-			}
-			UDEBUG("From added id %d, %d neighbors to update.", newIds[i], count);
-		}
-	}
-	UDEBUG("time getting %d ids to update = %fs", (int)idsToUpdate.size(), timer.restart());
-
-	UTimer t1;
-	double e0=0,e1=0, e2=0, e3=0, e4=0;
-	// update modified/added ids
-	int modified = 0;
-	for(std::set<int>::iterator iter = idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
-	{
-		int id = *iter;
-		if(id > 0)
-		{
-			int index = newIdToIndexMap.at(id);
-
-			e0 = t1.ticks();
-			std::map<int, std::map<int, int> >::iterator kter = _neighborsIndex.find(id);
-			UASSERT_MSG(kter != _neighborsIndex.end(), uFormat("Did not find %d (current index size=%d)", id, (int)_neighborsIndex.size()).c_str());
-			const std::map<int, int> & neighbors = kter->second;
-			//std::map<int, int> neighbors = memory->getNeighborsId(id, _predictionLC.size()-1, 0, false, false, true, true);
-			e1+=t1.ticks();
-
-			float sum = addNeighborProb(prediction, index, neighbors, _predictionLC, newIdToIndexMap);
-			e3+=t1.ticks();
-
-			this->normalize(prediction, index, sum, newIds[0]<0);
-			++modified;
-			e4+=t1.ticks();
-		}
-	}
-	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", (int)idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
-
-	int copied = 0;
-	if(!oldAllCopied)
-	{
-		//UDEBUG("oldIds.size()=%d, oldPrediction.cols=%d, oldPrediction.rows=%d", oldIds.size(), oldPrediction.cols, oldPrediction.rows);
-		//UDEBUG("newIdToIndexMap.size()=%d, prediction.cols=%d, prediction.rows=%d", newIdToIndexMap.size(), prediction.cols, prediction.rows);
-		// copy not changed probabilities
-		for(unsigned int i=0; i<oldIds.size(); ++i)
-		{
-			if(oldIds[i]>0 && removedIds.find(oldIds[i]) == removedIds.end() && idsToUpdate.find(oldIds[i]) == idsToUpdate.end())
-			{
-				for(int j=0; j<oldPrediction.cols; ++j)
-				{
-					if(oldIds[j]>0 && removedIds.find(oldIds[j]) == removedIds.end())
-					{
-						//UDEBUG("i=%d, j=%d", i, j);
-						//UDEBUG("oldIds[i]=%d, oldIds[j]=%d", oldIds[i], oldIds[j]);
-						//UDEBUG("newIdToIndexMap.at(oldIds[i])=%d", newIdToIndexMap.at(oldIds[i]));
-						//UDEBUG("newIdToIndexMap.at(oldIds[j])=%d", newIdToIndexMap.at(oldIds[j]));
-						float v = ((const float *)oldPrediction.data)[i + j*oldPrediction.cols];
-						int ii = newIdToIndexMap.at(oldIds[i]);
-						int jj = newIdToIndexMap.at(oldIds[j]);
-						((float *)prediction.data)[ii + jj*prediction.cols] = v;
-						//if(ii != jj)
-						//{
-						//	((float *)prediction.data)[jj + ii*prediction.cols] = v;
-						//}
-					}
-				}
-				++copied;
-			}
-		}
-		UDEBUG("time copying = %fs", timer.restart());
-	}
-
-	//update virtual place
-	if(newIds[0] < 0)
-	{
-		if(prediction.cols>1) // The first must be the virtual place
-		{
-			((float*)prediction.data)[0] = _virtualPlacePrior;
-			float val = (1.0-_virtualPlacePrior)/(prediction.cols-1);
-			for(int j=1; j<prediction.cols; j++)
-			{
-				((float*)prediction.data)[j*prediction.cols] = val;
-				((float*)prediction.data)[j] = _predictionLC[0];
-			}
-		}
-		else if(prediction.cols>0)
-		{
-			((float*)prediction.data)[0] = 1;
-		}
-	}
-	UDEBUG("time updating virtual place = %fs", timer.restart());
-
-	UDEBUG("Modified=%d, Added=%d, Copied=%d", modified, added, copied);
-	return prediction;
-}
-
-void BayesFilter::updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds)
+void BayesFilter::updatePosterior(const Memory * memory, const std::map<int, float> & likelihood)
 {
 	ULOGGER_DEBUG("");
-	std::map<int, float> newPosterior;
-	for(std::vector<int>::const_iterator i=likelihoodIds.begin(); i != likelihoodIds.end(); ++i)
+	const bool wasEmpty = _posteriorIds.empty();
+	std::vector<int> ids;
+	std::vector<float> values;
+	ids.reserve(likelihood.size());
+	values.reserve(likelihood.size());
+	// Both the likelihood and the posterior are ascending by id, so the two are merged in one
+	// walk, k only ever moving forward: for each location of the likelihood, advance the
+	// posterior up to it. A location in both keeps its probability, a location removed from
+	// the working memory is left behind, and a location that came back gets 0 (1 on the very
+	// first iteration, where the posterior starts uniform).
+	size_t k = 0;
+	for(std::map<int, float>::const_iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter)
 	{
-		std::map<int, float>::iterator post = _posterior.find(*i);
-		if(post == _posterior.end())
+		while(k < _posteriorIds.size() && _posteriorIds[k] < iter->first)
 		{
-			if(_posterior.size() == 0)
-			{
-				newPosterior.insert(std::pair<int, float>(*i, 1));
-			}
-			else
-			{
-				newPosterior.insert(std::pair<int, float>(*i, 0));
-			}
+			++k;
 		}
-		else
+		float value = wasEmpty ? 1.0f : 0.0f;
+		if(k < _posteriorIds.size() && _posteriorIds[k] == iter->first)
 		{
-			newPosterior.insert(std::pair<int, float>((*post).first, (*post).second));
+			value = _posteriorValues[k];
 		}
+		ids.push_back(iter->first);
+		values.push_back(value);
 	}
-	_posterior = newPosterior;
+	_posteriorIds.swap(ids);
+	_posteriorValues.swap(values);
 }
 
 } // namespace rtabmap

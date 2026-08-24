@@ -55,8 +55,13 @@ jobs:
       if: steps.cache-testdata.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        # The ROS images are slim; fetch_test_data.sh needs curl.
+        # The ROS images are slim; fetch_test_data.sh needs curl, and 7-Zip for
+        # the assets that come as an archive. The package holding it is
+        # p7zip-full up to Ubuntu 24.04 and 7zip on the newer ones.
         command -v curl >/dev/null || (apt-get update && apt-get install -y --no-install-recommends curl)
+        command -v 7z >/dev/null || command -v 7zz >/dev/null || (apt-get update && \
+          (apt-get install -y --no-install-recommends p7zip-full || \
+           apt-get install -y --no-install-recommends 7zip))
         bash scripts/fetch_test_data.sh
 
     # `${{ github.workspace }}` is expanded by the runner on the *host*

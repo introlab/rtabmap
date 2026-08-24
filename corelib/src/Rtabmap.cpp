@@ -1258,7 +1258,6 @@ bool Rtabmap::process(
 	std::map<int, float> adjustedLikelihood;
 	std::map<int, float> likelihood;
 	std::map<int, int> weights;
-	std::map<int, float> posterior;
 	std::list<std::pair<int, float> > reactivateHypotheses;
 
 	std::map<int, int> childCount;
@@ -2138,7 +2137,7 @@ bool Rtabmap::process(
 			ULOGGER_INFO("getting posterior...");
 
 			// Compute the posterior
-			posterior = _bayesFilter->computePosterior(_memory, likelihood);
+			_bayesFilter->computePosterior(_memory, likelihood);
 			timePosteriorCalculation = timer.ticks();
 			ULOGGER_INFO("timePosteriorCalculation=%fs",timePosteriorCalculation);
 
@@ -2152,17 +2151,20 @@ bool Rtabmap::process(
 			// Select the highest hypothesis
 			//============================================================
 			ULOGGER_INFO("creating hypotheses...");
-			if(posterior.size())
+			const std::vector<int> & posteriorIds = _bayesFilter->getPosteriorIds();
+			const std::vector<float> & posteriorValues = _bayesFilter->getPosteriorValues();
+			if(posteriorIds.size())
 			{
-				for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
+				// Highest id first, so the highest id wins on equal probabilities.
+				for(size_t i=posteriorIds.size(); i-- > 0;)
 				{
-					if(iter->first > 0 && iter->second > _highestHypothesis.second)
+					if(posteriorIds[i] > 0 && posteriorValues[i] > _highestHypothesis.second)
 					{
-						_highestHypothesis = *iter;
+						_highestHypothesis = std::make_pair(posteriorIds[i], posteriorValues[i]);
 					}
 				}
 				// With the virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
-				_highestHypothesis.second = 1-posterior.begin()->second;
+				_highestHypothesis.second = 1-posteriorValues[0];
 			}
 			timeHypothesesCreation = timer.ticks();
 			ULOGGER_INFO("Highest hypothesis=%d, value=%f, timeHypothesesCreation=%fs", _highestHypothesis.first, _highestHypothesis.second, timeHypothesesCreation);
@@ -2193,7 +2195,7 @@ bool Rtabmap::process(
 				if(_highestHypothesis.second >= loopThr)
 				{
 					rejectedLoopClosure = true;
-					if(posterior.size() <= 2 && loopThr>0.0f)
+					if(_bayesFilter->getPosteriorIds().size() <= 2 && loopThr>0.0f)
 					{
 						// Ignore loop closure if there is only one loop closure hypothesis
 						UDEBUG("rejected hypothesis: single hypothesis");
@@ -4194,7 +4196,9 @@ bool Rtabmap::process(
 	}
 
 	// Posterior is empty if a bad signature is detected
-	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
+	// The virtual place is the first location of the posterior when it is one of them.
+	const std::vector<int> & vpIds = _bayesFilter->getPosteriorIds();
+	float vpHypothesis = (vpIds.size() && vpIds[0]==Memory::kIdVirtual)?_bayesFilter->getPosteriorValues()[0]:0.0f;
 	int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
 
 	// prepare statistics
@@ -4411,6 +4415,13 @@ bool Rtabmap::process(
 				statistics_.setWeights(weights);
 				if(_publishPdf)
 				{
+					const std::vector<int> & ids = _bayesFilter->getPosteriorIds();
+					const std::vector<float> & values = _bayesFilter->getPosteriorValues();
+					std::map<int, float> posterior;
+					for(size_t i=0; i<ids.size(); ++i)
+					{
+						posterior.insert(posterior.end(), std::make_pair(ids[i], values[i]));
+					}
 					statistics_.setPosterior(posterior);
 				}
 				if(_publishLikelihood)

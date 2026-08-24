@@ -2242,6 +2242,27 @@ bool OptimizerG2O::loadGraph(
 	std::vector<VertexEntry> verticesList;
 	std::vector<EdgeEntry> edgesList;
 
+	// The type of a link, which saveGraph() appends as a column past the fields the
+	// format defines: g2o's own loader reads the fields it knows and ignores what
+	// follows, so the column travels with the file without breaking it. A file written
+	// by anything else has no such column, and the type stays the one its tag implies.
+	// This is the only place the type of an edge can come from: the format has no field
+	// for it, so a loop closure and an odometry link are otherwise the same EDGE_SE2.
+	const auto readType = [](const std::vector<std::string> & v, size_t definedSize, Link::Type fallback)
+	{
+		if(v.size() > definedSize)
+		{
+			const int type = atoi(v[definedSize].c_str());
+			if(type >= 0 && type < Link::kEnd)
+			{
+				return (Link::Type)type;
+			}
+			UWARN("Ignoring link type \"%s\", not one of the %d types.",
+					v[definedSize].c_str(), (int)Link::kEnd);
+		}
+		return fallback;
+	};
+
 	char line[2048];
 	while(fgets(line, 2048, file) != NULL)
 	{
@@ -2301,7 +2322,7 @@ bool OptimizerG2O::loadGraph(
 			e.definitelyLandmark = true;
 			verticesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE2" && v.size() == 12)
+		else if(tag == "EDGE_SE2" && v.size() >= 12)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2314,12 +2335,13 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[9]);
 			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[10]);
 			e.info.at<double>(5, 5) = uStr2Double(v[11]);
-			e.type = Link::kUndef; // disambiguated after we know landmarkOffset
+			// kUndef is disambiguated after we know landmarkOffset
+			e.type = readType(v, 12, Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE2_XY" && v.size() == 8)
+		else if(tag == "EDGE_SE2_XY" && v.size() >= 8)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2329,12 +2351,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(0, 0) = uStr2Double(v[5]);
 			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
 			e.info.at<double>(1, 1) = uStr2Double(v[7]);
-			e.type = Link::kLandmark;
+			e.type = readType(v, 8, Link::kLandmark);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = true;
 			edgesList.push_back(e);
 		}
-		else if((tag == "EDGE_SE3:QUAT" || tag == "EDGE_SE3") && v.size() == 31)
+		else if((tag == "EDGE_SE3:QUAT" || tag == "EDGE_SE3") && v.size() >= 31)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2353,12 +2375,12 @@ bool OptimizerG2O::loadGraph(
 			}
 			// EDGE_SE3 (no :QUAT) is the landmark variant emitted by saveGraph
 			bool landmarkTag = (tag == "EDGE_SE3");
-			e.type = landmarkTag ? Link::kLandmark : Link::kUndef;
+			e.type = readType(v, 31, landmarkTag ? Link::kLandmark : Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = landmarkTag;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE3_TRACKXYZ" && v.size() == 13)
+		else if(tag == "EDGE_SE3_TRACKXYZ" && v.size() >= 13)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2372,12 +2394,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[10]);
 			e.info.at<double>(1, 2) = e.info.at<double>(2, 1) = uStr2Double(v[11]);
 			e.info.at<double>(2, 2) = uStr2Double(v[12]);
-			e.type = Link::kLandmark;
+			e.type = readType(v, 13, Link::kLandmark);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = true;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_PRIOR_SE2" && v.size() == 11)
+		else if(tag == "EDGE_PRIOR_SE2" && v.size() >= 11)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2390,12 +2412,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[8]);
 			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[9]);
 			e.info.at<double>(5, 5) = uStr2Double(v[10]);
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 11, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_PRIOR_SE2_XY" && v.size() == 7)
+		else if(tag == "EDGE_PRIOR_SE2_XY" && v.size() >= 7)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2407,12 +2429,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[6]);
 			// no orientation info on this prior
 			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 7, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE3_PRIOR" && v.size() == 31)
+		else if(tag == "EDGE_SE3_PRIOR" && v.size() >= 31)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2430,12 +2452,12 @@ bool OptimizerG2O::loadGraph(
 					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
 				}
 			}
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 31, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_POINTXYZ_PRIOR" && v.size() == 11)
+		else if(tag == "EDGE_POINTXYZ_PRIOR" && v.size() >= 11)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2450,12 +2472,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(2, 2) = uStr2Double(v[10]);
 			// no orientation info on this prior
 			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 11, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE2_SWITCHABLE" && v.size() == 13)
+		else if(tag == "EDGE_SE2_SWITCHABLE" && v.size() >= 13)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2469,12 +2491,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[10]);
 			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[11]);
 			e.info.at<double>(5, 5) = uStr2Double(v[12]);
-			e.type = Link::kUndef;
+			e.type = readType(v, 13, Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE3_SWITCHABLE" && v.size() == 32)
+		else if(tag == "EDGE_SE3_SWITCHABLE" && v.size() >= 32)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2492,7 +2514,7 @@ bool OptimizerG2O::loadGraph(
 					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
 				}
 			}
-			e.type = Link::kUndef;
+			e.type = readType(v, 32, Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
@@ -2743,8 +2765,35 @@ bool OptimizerG2O::saveGraph(
 		}
 
 		int virtualVertexId = landmarkOffset - (poses.size()&&poses.rbegin()->first<0?poses.rbegin()->first:0);
+
+		// A link is stored on both of the nodes it connects, so a caller iterating them
+		// hands us each one twice, once per direction. g2o has no notion of a reverse
+		// edge: it would read the two lines as two independent constraints and count the
+		// information of every link twice. Only the first direction of a pair is written,
+		// which is also half the file. Links on a single node (a prior, gravity) are not
+		// pairs and are left alone.
+		std::set<std::pair<int, int> > writtenPairs;
+
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
+			if(iter->second.from() != iter->second.to())
+			{
+				const std::pair<int, int> pair(
+						std::min(iter->second.from(), iter->second.to()),
+						std::max(iter->second.from(), iter->second.to()));
+				if(!writtenPairs.insert(pair).second)
+				{
+					continue;
+				}
+			}
+
+			// The type of the link, as a column past the fields the format defines. g2o's
+			// own loader reads the fields it knows and ignores what follows, so this
+			// travels with the file without breaking it, and loadGraph() reads it back.
+			// Without it the type is lost on export, and the type is what tells a loop
+			// closure from an odometry link.
+			const std::string typeSuffix = uFormat(" %d", (int)iter->second.type());
+
 			if (iter->second.type() == Link::kLandmark)
 			{
 				if (this->landmarksIgnored())
@@ -2760,7 +2809,7 @@ bool OptimizerG2O::saveGraph(
 					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f%s\n",
 								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 								iter->second.transform().x(),
@@ -2771,19 +2820,21 @@ bool OptimizerG2O::saveGraph(
 								iter->second.infMatrix().at<double>(0, 5),
 								iter->second.infMatrix().at<double>(1, 1),
 								iter->second.infMatrix().at<double>(1, 5),
-								iter->second.infMatrix().at<double>(5, 5));
+								iter->second.infMatrix().at<double>(5, 5),
+								typeSuffix.c_str());
 					}
 					else
 					{
 						// EDGE_SE2_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
-						fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f%s\n",
 							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 							iter->second.transform().x(),
 							iter->second.transform().y(),
 							iter->second.infMatrix().at<double>(0, 0),
 							iter->second.infMatrix().at<double>(0, 1),
-							iter->second.infMatrix().at<double>(1, 1));
+							iter->second.infMatrix().at<double>(1, 1),
+							typeSuffix.c_str());
 					}
 				}
 				else
@@ -2792,7 +2843,7 @@ bool OptimizerG2O::saveGraph(
 					{
 						// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 						Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-						fprintf(file, "EDGE_SE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f%s\n",
 								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 								iter->second.transform().x(),
@@ -2822,12 +2873,13 @@ bool OptimizerG2O::saveGraph(
 								iter->second.infMatrix().at<double>(3, 5),
 								iter->second.infMatrix().at<double>(4, 4),
 								iter->second.infMatrix().at<double>(4, 5),
-								iter->second.infMatrix().at<double>(5, 5));
+								iter->second.infMatrix().at<double>(5, 5),
+								typeSuffix.c_str());
 					}
 					else
 					{
 						// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-						fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f%s\n",
 							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 							PARAM_OFFSET,
@@ -2839,7 +2891,8 @@ bool OptimizerG2O::saveGraph(
 							iter->second.infMatrix().at<double>(0, 2),
 							iter->second.infMatrix().at<double>(1, 1),
 							iter->second.infMatrix().at<double>(1, 2),
-							iter->second.infMatrix().at<double>(2, 2));
+							iter->second.infMatrix().at<double>(2, 2),
+							typeSuffix.c_str());
 					}
 				}
 				continue;
@@ -2911,7 +2964,7 @@ bool OptimizerG2O::saveGraph(
 				{
 					// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
 					// EDGE_SE2_PRIOR observed_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2924,13 +2977,14 @@ bool OptimizerG2O::saveGraph(
         					iter->second.infMatrix().at<double>(0, 5),
         					iter->second.infMatrix().at<double>(1, 1),
         					iter->second.infMatrix().at<double>(1, 5),
-        					iter->second.infMatrix().at<double>(5, 5));
+        					iter->second.infMatrix().at<double>(5, 5),
+        					typeSuffix.c_str());
 				}
 				else
 				{
 					// EDGE_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
 					// EDGE_POINTXY_PRIOR x y inf_11 inf_12 inf_22
-					fprintf(file, "%s %d%s%s %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2939,7 +2993,8 @@ bool OptimizerG2O::saveGraph(
         					iter->second.transform().y(),
         					iter->second.infMatrix().at<double>(0, 0),
         					iter->second.infMatrix().at<double>(0, 1),
-        					iter->second.infMatrix().at<double>(1, 1));
+        					iter->second.infMatrix().at<double>(1, 1),
+        					typeSuffix.c_str());
 				}
 			}
 			else
@@ -2949,7 +3004,7 @@ bool OptimizerG2O::saveGraph(
 					// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 					// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 					Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2981,13 +3036,14 @@ bool OptimizerG2O::saveGraph(
         					iter->second.infMatrix().at<double>(3, 5),
         					iter->second.infMatrix().at<double>(4, 4),
         					iter->second.infMatrix().at<double>(4, 5),
-        					iter->second.infMatrix().at<double>(5, 5));
+        					iter->second.infMatrix().at<double>(5, 5),
+        					typeSuffix.c_str());
 				}
 				else
 				{
 					// EDGE_XYZ observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_13 inf_22 .. inf_33
 					// EDGE_POINTXYZ_PRIOR observed_vertex_id x y z inf_11 inf_12 .. inf_13 inf_22 .. inf_33
-					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -3000,7 +3056,8 @@ bool OptimizerG2O::saveGraph(
         					iter->second.infMatrix().at<double>(0, 2),
         					iter->second.infMatrix().at<double>(1, 1),
         					iter->second.infMatrix().at<double>(1, 2),
-        					iter->second.infMatrix().at<double>(2, 2));
+        					iter->second.infMatrix().at<double>(2, 2),
+        					typeSuffix.c_str());
 				}
 			}
 		}

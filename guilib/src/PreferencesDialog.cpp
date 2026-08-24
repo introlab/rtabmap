@@ -1132,6 +1132,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_doubleSpinBox_vp->setObjectName(Parameters::kBayesVirtualPlacePriorThr().c_str());
 	_ui->lineEdit_bayes_predictionLC->setObjectName(Parameters::kBayesPredictionLC().c_str());
 	_ui->checkBox_bayes_fullPredictionUpdate->setObjectName(Parameters::kBayesFullPredictionUpdate().c_str());
+	_ui->checkBox_bayes_sparsePrediction->setObjectName(Parameters::kBayesSparsePrediction().c_str());
 	connect(_ui->lineEdit_bayes_predictionLC, SIGNAL(textChanged(const QString &)), this, SLOT(updatePredictionPlot()));
 
 	//Keypoint-based
@@ -5601,7 +5602,11 @@ void PreferencesDialog::updatePredictionPlot()
 	QVector<qreal> dataX((values.size()-2)*2 + 1);
 	QVector<qreal> dataY((values.size()-2)*2 + 1);
 	double value;
-	double sum = 0;
+	// Summed as PredictionModel does it, into a float: that is the sum the filter decides on,
+	// and under 1 of it is what has normalize() spread the difference over every other
+	// location. A double would land a few 1e-8 from a float on a list like the default one,
+	// and say 1 where the filter says otherwise.
+	float sum = 0.0f;
 	int lvl = 1;
 	bool ok = false;
 	bool error = false;
@@ -5639,7 +5644,7 @@ void PreferencesDialog::updatePredictionPlot()
 	{
 		_ui->label_prediction_sum->setText(QString("<font color=#FF0000>") + _ui->label_prediction_sum->text() + "</font>");
 	}
-	else if(sum == 1.0)
+	else if(sum == 1.0f)
 	{
 		_ui->label_prediction_sum->setText(QString("<font color=#00FF00>") + _ui->label_prediction_sum->text() + "</font>");
 	}

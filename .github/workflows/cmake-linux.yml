@@ -28,22 +28,43 @@ jobs:
       matrix:
         build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv, ubuntu-26.04]
         include:
+        # GTSAM is in no Ubuntu release, and libg2o-dev only appears in the
+        # archive from noble on (jammy has no g2o at all).
+        #
+        # 26.04 builds GTSAM itself (gtsam_ref) rather than taking it from the
+        # ROS repo: that runner is on Ubuntu's amd64v3 variant, so rtabmap and
+        # the archive libraries are AVX builds where Eigen aligns to 32, while
+        # the ROS binary is plain x86-64 where it aligns to 16 and uses plain
+        # malloc/free. Allocating on one side and freeing on the other gives
+        # "double free or corruption (out)". Forcing EIGEN_MAX_ALIGN_BYTES=16
+        # on rtabmap would only move the mismatch onto PCL, g2o and Ceres.
         - build_name: ubuntu-22.04
           os: ubuntu-22.04
           extra_deps: "libunwind-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
+          ros_deps: "ros-humble-libg2o ros-humble-gtsam"
+          ros_prefix: "/opt/ros/humble"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON"
         - build_name: ubuntu-24.04
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON"
+          ros_deps: "ros-jazzy-gtsam"
+          ros_prefix: "/opt/ros/jazzy"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON"
         - build_name: ubuntu-24.04-with-opengv
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_OPENGV=ON"
+          ros_deps: "ros-jazzy-gtsam"
+          ros_prefix: "/opt/ros/jazzy"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DBUILD_OPENGV=ON"
         - build_name: ubuntu-26.04
           os: ubuntu-26.04
-          extra_deps: "libg2o-dev libceres-dev"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DBUILD_OPENGV=ON"
+          # libboost-all-dev for the GTSAM build
+          extra_deps: "libg2o-dev libceres-dev libboost-all-dev"
+          ros_deps: ""
+          ros_prefix: ""
+          # The tag ros-lyrical-gtsam 4.3.0 is built from
+          gtsam_ref: "4.3a0-ros"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DBUILD_OPENGV=ON"
 
     steps:
     - uses: actions/checkout@v4
@@ -67,7 +88,61 @@ jobs:
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev ${{ matrix.extra_deps }}
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev curl gnupg lsb-release ${{ matrix.extra_deps }}
+
+    - name: Install Graph Optimizers From The ROS Repo
+      if: matrix.ros_deps != ''
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+          -o /usr/share/keyrings/ros-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" \
+          | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+        sudo apt-get update
+        sudo apt-get -y install ${{ matrix.ros_deps }}
+
+    # The compiler's x86-64 baseline, for the cache key: it decides Eigen's
+    # alignment, so a GTSAM built under one must not be restored under the
+    # other. v3 packages still declare Architecture: amd64, so dpkg cannot tell.
+    - name: Toolchain baseline
+      if: matrix.gtsam_ref != ''
+      id: toolchain
+      run: |
+        avx=$(echo | gcc -dM -E -x c++ - | grep -c __AVX__ || true)
+        echo "gcc $(gcc -dumpversion), __AVX__=$avx"
+        echo "id=gcc$(gcc -dumpversion)-avx${avx}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore GTSAM
+      if: matrix.gtsam_ref != ''
+      id: cache-gtsam
+      uses: actions/cache@v4
+      with:
+        path: ${{github.workspace}}/gtsam-install
+        key: gtsam-${{ matrix.gtsam_ref }}-${{ matrix.os }}-${{ steps.toolchain.outputs.id }}
+
+    - name: Build GTSAM
+      if: matrix.gtsam_ref != '' && steps.cache-gtsam.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 --branch ${{ matrix.gtsam_ref }} https://github.com/borglab/gtsam.git ${{runner.temp}}/gtsam-src
+        # Tag-specific fixes, named after the tag.
+        patch_file="${{github.workspace}}/patches/gtsam_$(echo '${{ matrix.gtsam_ref }}' | tr '.' '_').patch"
+        if [ -f "$patch_file" ]; then
+          echo "Applying $patch_file"
+          git -C ${{runner.temp}}/gtsam-src apply "$patch_file"
+        fi
+        cmake -S ${{runner.temp}}/gtsam-src -B ${{runner.temp}}/gtsam-build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/gtsam-install \
+          -DGTSAM_USE_SYSTEM_EIGEN=ON \
+          -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
+          -DGTSAM_BUILD_WITH_WERROR=OFF \
+          -DGTSAM_BUILD_TESTS=OFF \
+          -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+          -DGTSAM_BUILD_UNSTABLE=OFF \
+          -DGTSAM_BUILD_PYTHON=OFF \
+          -DBUILD_SHARED_LIBS=ON
+        cmake --build ${{runner.temp}}/gtsam-build --target install -j $(nproc)
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -81,7 +156,12 @@ jobs:
 
     - name: Configure CMake
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DPython3_EXECUTABLE=$(which python3) -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) ${{ matrix.extra_cmake_def }}
+        # Both prefixes when a job has both.
+        prefix_path="${{ matrix.ros_prefix }}"
+        if [ -d "${{github.workspace}}/gtsam-install" ]; then
+          prefix_path="${prefix_path:+$prefix_path;}${{github.workspace}}/gtsam-install"
+        fi
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_PREFIX_PATH="$prefix_path" -DPython3_EXECUTABLE=$(which python3) -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) ${{ matrix.extra_cmake_def }}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
@@ -89,6 +169,8 @@ jobs:
     - name: Info
       working-directory: ${{github.workspace}}/build/bin
       run: |
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{ matrix.ros_prefix }}"
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{github.workspace}}/gtsam-install"
         ./rtabmap-console --version
 
     - name: Test
@@ -101,4 +183,32 @@ jobs:
       env:
         PYTHONNOUSERSITE: 1
       run: |
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{ matrix.ros_prefix }}"
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{github.workspace}}/gtsam-install"
+        # Keep a core file per crashing test, for the backtrace step below: an
+        # abort otherwise leaves only its message, and may not reproduce
+        # elsewhere.
+        ulimit -c unlimited
+        sudo sysctl -w kernel.core_pattern="${{github.workspace}}/build/core.%e.%p" > /dev/null
         ctest -C ${{env.BUILD_TYPE}} -V -LE performance
+
+    - name: Backtrace of crashed tests
+      if: failure()
+      working-directory: ${{github.workspace}}/build
+      run: |
+        shopt -s nullglob
+        cores=(core.*)
+        if [ ${#cores[@]} -eq 0 ]; then
+          echo "No core file: the failure was an assertion or a wrong value, not a crash."
+          exit 0
+        fi
+        sudo apt-get -y install gdb
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{ matrix.ros_prefix }}"
+        source ${{github.workspace}}/.github/scripts/ros-deps-env.sh "${{github.workspace}}/gtsam-install"
+        for core in "${cores[@]}"; do
+          exe="${core#core.}"
+          exe="bin/${exe%.*}"
+          echo "::group::$core ($exe)"
+          gdb -batch -ex "thread apply all bt" "$exe" "$core" || true
+          echo "::endgroup::"
+        done

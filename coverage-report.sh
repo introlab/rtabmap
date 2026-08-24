@@ -124,10 +124,15 @@ echo "Running tests..."
 )
 
 echo "Capturing coverage..."
+# The whole of corelib/utilite, test objects included, not just their src/. An inline
+# function defined in a header is emitted in whichever translation unit wins comdat
+# folding, which is often a test one, and its counters then live in that unit's .gcda:
+# capturing only src/ reports such a function as uncovered however often it is called.
+# The test sources themselves are dropped below, after the counters are read.
 lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
 	--capture \
-	--directory "$BUILD_DIR/corelib/src" \
-	--directory "$BUILD_DIR/utilite/src" \
+	--directory "$BUILD_DIR/corelib" \
+	--directory "$BUILD_DIR/utilite" \
 	--output-file "$INFO_FILE"
 
 echo "Filtering coverage data (repo sources only)..."
@@ -144,6 +149,7 @@ lcov "${LCOV_IGNORE[@]}" --remove "$INFO_FILE" \
 	'*/rtflann/*' \
 	'*/corelib/test/*' \
 	'*/utilite/test/*' \
+	'*/_deps/*' \
 	--output-file "$INFO_FILE"
 
 echo "Generating HTML..."

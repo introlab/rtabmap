@@ -32,7 +32,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/core/core.hpp>
 #include <list>
+#include <map>
 #include <set>
+#include <utility>
+#include <vector>
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 
@@ -40,6 +43,12 @@ namespace rtabmap {
 
 class Memory;
 class Signature;
+
+namespace bayes {
+class PredictionModel;
+class DensePrediction;
+class SparsePrediction;
+}
 
 /**
  * @class BayesFilter
@@ -64,6 +73,7 @@ class Signature;
  * - @ref Parameters::kBayesPredictionLC() — transition probabilities per graph depth level.
  * - @ref Parameters::kBayesVirtualPlacePriorThr() — prior for the virtual place.
  * - @ref Parameters::kBayesFullPredictionUpdate() — regenerate the full prediction matrix each iteration.
+ * - @ref Parameters::kBayesSparsePrediction() — keep the prediction sparse and multiply it sparsely.
  *
  * @see Memory::getNeighborsId()
  * @see Rtabmap
@@ -91,12 +101,14 @@ public:
 	 * The prediction matrix is generated or updated from @ref Memory using the ids present
 	 * in @p likelihood.
 	 *
+	 * Read the result with @ref getPosteriorIds() and @ref getPosteriorValues().
+	 *
 	 * @param memory Working memory instance (must not be null).
 	 * @param likelihood Observation likelihood per signature id (must not be empty).
-	 * @return Reference to the internal posterior map (id → probability). On error (null
-	 *         memory, empty likelihood, or invalid prediction model), returns the unchanged posterior.
+	 * @return False on error (null memory, empty likelihood, or invalid prediction model),
+	 *         the posterior being left unchanged.
 	 */
-	const std::map<int, float> & computePosterior(const Memory * memory, const std::map<int, float> & likelihood);
+	bool computePosterior(const Memory * memory, const std::map<int, float> & likelihood);
 
 	/**
 	 * @brief Clears posterior, prediction matrix and cached neighbor indices.
@@ -119,16 +131,30 @@ public:
 	void setPredictionLC(const std::string & prediction);
 
 	/**
-	 * @brief Returns the current posterior probability map.
-	 * @return Map of signature id to normalized posterior probability. This is the probability to be at the given location.
+	 * @brief The locations the posterior is over, ascending by id.
+	 *
+	 * The virtual place (@ref Memory::kIdVirtual) is the first of them when it is one.
 	 */
-	const std::map<int, float> & getPosterior() const {return _posterior;}
+	const std::vector<int> & getPosteriorIds() const {return _posteriorIds;}
+
+	/**
+	 * @brief The probability of each location of @ref getPosteriorIds(), in the same order.
+	 */
+	const std::vector<float> & getPosteriorValues() const {return _posteriorValues;}
 
 	/**
 	 * @brief Returns the virtual place prior threshold.
 	 * @return Value in [0, 1] used when building the virtual place row of the prediction matrix.
 	 */
-	float getVirtualPlacePrior() const {return _virtualPlacePrior;}
+	float getVirtualPlacePrior() const;
+
+	/**
+	 * @brief Whether the prediction is being kept in its sparse form rather than as a matrix.
+	 *
+	 * False when @ref Parameters::kBayesSparsePrediction() is disabled, and over a model whose
+	 * values sum to less than 1, which leaves no zero in a column to keep out of the values.
+	 */
+	bool isPredictionSparse() const;
 
 	/**
 	 * @brief Returns the loop-closure prediction model as a vector of values.
@@ -149,6 +175,10 @@ public:
 	 * transition probabilities according to @ref getPredictionLC(). When @p ids match the
 	 * current posterior keys, the cached matrix may be returned without recomputation.
 	 *
+	 * When the prediction is being kept sparse, the matrix is expanded from it rather than
+	 * kept: it costs the memory that keeping the prediction sparse is saving, so ask for it to
+	 * read, dump or compare the prediction, not on every iteration.
+	 *
 	 * @param memory Working memory instance (must not be null).
 	 * @param ids Ordered list of signature ids (often includes @ref Memory::kIdVirtual as first element).
 	 * @return Square CV_32FC1 matrix of size ids.size() × ids.size().
@@ -163,32 +193,36 @@ public:
 
 private:
 	/**
-	 * @brief Incrementally updates the prediction matrix when ids are added or removed.
+	 * @brief Realigns the posterior with the ids of the likelihood.
+	 *
+	 * Keeps the probability of the locations that are in both. Called only when the ids differ.
 	 */
-	cv::Mat updatePrediction(const cv::Mat & oldPrediction,
-			const Memory * memory,
-			const std::vector<int> & oldIds,
-			const std::vector<int> & newIds);
+	void updatePosterior(const Memory * memory, const std::map<int, float> & likelihood);
 
 	/**
-	 * @brief Realigns the posterior map with the current set of likelihood ids.
+	 * @brief Settles whether the prediction is kept sparse, from the parameter and the model.
+	 *
+	 * Called when either of the two changes rather than on every iteration, and releases the
+	 * sparse form when the answer is no.
 	 */
-	void updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds);
-
-	/**
-	 * @brief Normalizes one row of the prediction matrix and applies the virtual place probability.
-	 */
-	void normalize(cv::Mat & prediction, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const;
+	void updateKeepSparse();
 
 private:
-	std::map<int, float> _posterior;              ///< Current posterior (signature id → probability).
-	cv::Mat _prediction;                          ///< Cached prediction/transition matrix.
-	float _virtualPlacePrior;                     ///< Prior for virtual place transitions.
-	std::vector<double> _predictionLC;            ///< Model `{Vp, Lc, l1, l2, ...}`.
-	bool _fullPredictionUpdate;                   ///< If true, rebuild the full prediction matrix each time.
-	float _totalPredictionLCValues;               ///< Sum of all values in _predictionLC.
-	float _predictionEpsilon;                     ///< Minimum non-zero probability in the model.
-	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id.
+	std::vector<int> _posteriorIds;               ///< The locations the posterior is over, ascending by id.
+	std::vector<float> _posteriorValues;          ///< The probability of each of them, in the same order.
+	std::vector<int> _likelihoodIds;              ///< The ids of the likelihood of an iteration, in its order.
+	std::vector<float> _likelihoodValues;         ///< The likelihood of an iteration, in the same order.
+	std::vector<float> _priorValues;              ///< The prior of an iteration, in the same order.
+
+	bayes::PredictionModel * _model;              ///< The `{Vp, Lc, l1, ...}` model and the column arithmetic of it.
+	bayes::DensePrediction * _dense;              ///< The prediction as a matrix, used when it is not kept sparse.
+	bayes::SparsePrediction * _sparse;            ///< The prediction as its values only, one column at a time.
+	std::map<int, std::map<int, int> > _neighborsIndex; ///< Cached neighbor margins per signature id, for the incremental updates.
+
+	bool _fullPredictionUpdate;                   ///< If true, rebuild the whole prediction each time.
+	bool _sparsePrediction;                       ///< Keep the prediction sparse (Bayes/SparsePrediction).
+	bool _keepSparse;                             ///< Whether it is being kept sparse: the parameter, over a model that leaves nothing sparse to keep.
+	bool _predictionChanged;                      ///< True when the prediction has to be built again.
 };
 
 } // namespace rtabmap
