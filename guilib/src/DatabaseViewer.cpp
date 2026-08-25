@@ -4435,13 +4435,6 @@ void DatabaseViewer::detectMoreLoopClosures()
 
 	std::map<int, Transform> optimizedPoses = graphes_.back();
 
-	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
-	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
-	progressDialog->setMaximumSteps(1);
-	progressDialog->setCancelButtonVisible(true);
-	progressDialog->setMinimumWidth(800);
-	progressDialog->show();
-
 	const ParametersMap & parameters = ui_->parameters_toolbox->getParameters();
 	bool loopCovLimited = Parameters::defaultRGBDLoopCovLimited();
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), loopCovLimited);
@@ -4470,6 +4463,13 @@ void DatabaseViewer::detectMoreLoopClosures()
 			tr("Intra and inter session parameters are disabled! Enable one or both. You can also select specific nodes of the current component instead."));
 		return;
 	}
+
+	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+	progressDialog->setMaximumSteps(1);
+	progressDialog->setCancelButtonVisible(true);
+	progressDialog->setMinimumWidth(800);
+	progressDialog->show();
 
 	std::shared_ptr<Registration> reg(Registration::create(ui_->parameters_toolbox->getParameters()));
 
