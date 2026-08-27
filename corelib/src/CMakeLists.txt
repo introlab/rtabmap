@@ -47,6 +47,9 @@ SET(SRC_FILES
     VisualWord.cpp
     VWDictionary.cpp
     BayesFilter.cpp
+    bayes/PredictionModel.cpp
+    bayes/DensePrediction.cpp
+    bayes/SparsePrediction.cpp
     Parameters.cpp
     Signature.cpp
     Features2d.cpp

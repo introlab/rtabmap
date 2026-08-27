@@ -140,10 +140,16 @@ jobs:
           fi
           LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch,unused)
 
+          # The whole of corelib/utilite, test objects included, not just their src/.
+          # An inline function defined in a header is emitted in whichever
+          # translation unit wins comdat folding, which is often a test one, and
+          # its counters then live in that unit's .gcda: capturing only src/
+          # reports such a function as uncovered however often it is called. The
+          # test sources themselves are dropped below, after the counters are read.
           lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
             --capture \
-            --directory ${{ github.workspace }}/build/corelib/src \
-            --directory ${{ github.workspace }}/build/utilite/src \
+            --directory ${{ github.workspace }}/build/corelib \
+            --directory ${{ github.workspace }}/build/utilite \
             --output-file lcov.info
 
           lcov "${LCOV_IGNORE[@]}" --extract lcov.info \
@@ -161,6 +167,7 @@ jobs:
             '*/rtflann/*' \
             '*/corelib/test/*' \
             '*/utilite/test/*' \
+            '*/_deps/*' \
             --output-file lcov.info
 
           lcov --summary lcov.info
