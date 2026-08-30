@@ -24,6 +24,7 @@ var namespacertabmap_1_1graph =
     [ "radiusPosesClustering", "namespacertabmap_1_1graph.html#acaf3e4ffcfc830747c3c3cb02a8ea155", null ],
     [ "reduceGraph", "namespacertabmap_1_1graph.html#aabda884597e6b8df053d04ee56cfaf6f", null ],
     [ "computePath", "namespacertabmap_1_1graph.html#a5ec6c3883f73181d9458c5905c0aa0ea", null ],
+    [ "computePathDepths", "namespacertabmap_1_1graph.html#a8acc34fed4cb4e452e8e14d05dafc578", null ],
     [ "computePath", "namespacertabmap_1_1graph.html#ae21d02d613df461d6163f9d9a3db7ad2", null ],
     [ "computePath", "namespacertabmap_1_1graph.html#a1ec6b9506985624f31fb2091219cb142", null ],
     [ "findNearestNode", "namespacertabmap_1_1graph.html#a3d6e74a018b07cd52151e3e168f6384c", null ],

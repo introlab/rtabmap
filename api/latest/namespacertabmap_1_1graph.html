@@ -179,6 +179,9 @@ Functions</h2></td></tr>
 <tr class="memitem:a5ec6c3883f73181d9458c5905c0aa0ea" id="r_a5ec6c3883f73181d9458c5905c0aa0ea"><td class="memItemLeft" align="right" valign="top">std::list&lt; std::pair&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1graph.html#a5ec6c3883f73181d9458c5905c0aa0ea">computePath</a> (const std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">rtabmap::Transform</a> &gt; &amp;poses, const std::multimap&lt; int, int &gt; &amp;links, int from, int to, bool updateNewCosts=false)</td></tr>
 <tr class="memdesc:a5ec6c3883f73181d9458c5905c0aa0ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">A* shortest path on a pose graph with Euclidean edge costs.  <br /></td></tr>
 <tr class="separator:a5ec6c3883f73181d9458c5905c0aa0ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8acc34fed4cb4e452e8e14d05dafc578" id="r_a8acc34fed4cb4e452e8e14d05dafc578"><td class="memItemLeft" align="right" valign="top">std::map&lt; int, int &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1graph.html#a8acc34fed4cb4e452e8e14d05dafc578">computePathDepths</a> (const std::multimap&lt; int, int &gt; &amp;links, int from, int maxDepth=0)</td></tr>
+<tr class="memdesc:a8acc34fed4cb4e452e8e14d05dafc578"><td class="mdescLeft">&#160;</td><td class="mdescRight">Single-source graph depth via BFS.  <br /></td></tr>
+<tr class="separator:a8acc34fed4cb4e452e8e14d05dafc578"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae21d02d613df461d6163f9d9a3db7ad2" id="r_ae21d02d613df461d6163f9d9a3db7ad2"><td class="memItemLeft" align="right" valign="top">std::list&lt; int &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1graph.html#ae21d02d613df461d6163f9d9a3db7ad2">computePath</a> (const std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, int from, int to, bool updateNewCosts=false, bool useSameCostForAllLinks=false)</td></tr>
 <tr class="memdesc:ae21d02d613df461d6163f9d9a3db7ad2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dijkstra shortest path on link constraints.  <br /></td></tr>
 <tr class="separator:ae21d02d613df461d6163f9d9a3db7ad2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1480,6 +1483,53 @@ std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform<
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Ordered path from <code>from</code> to <code>to</code> (inclusive) with poses; empty if unreachable. </dd></dl>
+
+</div>
+</div>
+<a id="a8acc34fed4cb4e452e8e14d05dafc578" name="a8acc34fed4cb4e452e8e14d05dafc578"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8acc34fed4cb4e452e8e14d05dafc578">&#9670;&#160;</a></span>computePathDepths()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::map&lt; int, int &gt; RTABMAP_CORE_EXPORT rtabmap::graph::computePathDepths </td>
+          <td>(</td>
+          <td class="paramtype">const std::multimap&lt; int, int &gt; &amp;&#160;</td>
+          <td class="paramname"><em>links</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>from</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>maxDepth</em> = <code>0</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Single-source graph depth via BFS. </p>
+<p>Runs one breadth-first search from <code>from</code> and returns, for every reached node, its depth from <code>from</code> (i.e., the number of links on the shortest path, <code>from</code> itself having depth 0).</p>
+<dl class="section note"><dt>Note</dt><dd>The depth is a number of hops, not a distance: it counts links, and the poses of the nodes play no part in it. The path it stands for is thus not the one <a class="el" href="namespacertabmap_1_1graph.html#a5ec6c3883f73181d9458c5905c0aa0ea">computePath()</a> returns, which minimizes the Euclidean length instead and can walk more links to save meters.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">links</td><td>Directed edges (<code>from</code> → <code>to</code>) keyed by source id. </td></tr>
+    <tr><td class="paramname">from</td><td>Start node id. </td></tr>
+    <tr><td class="paramname">maxDepth</td><td>If &gt; 0, only nodes with depth ≤ this value are returned (the frontier is not expanded further); <code>0</code> explores the whole component. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Node id → depth mapping. </dd></dl>
 
 </div>
 </div>
