@@ -689,16 +689,42 @@ IF(grid_map_core_FOUND)
             ${LIBRARIES}
             grid_map_core::grid_map_core
         )
+        # ${grid_map_core_INCLUDE_DIRS} is only ${EIGEN3_INCLUDE_DIR} on an
+        # ament install; the path to grid_map's own headers lives solely on
+        # the imported target.
+        GET_TARGET_PROPERTY(grid_map_core_PUBLIC_INCLUDE_DIRS
+                            grid_map_core::grid_map_core
+                            INTERFACE_INCLUDE_DIRECTORIES)
     ELSE()
-        SET(INCLUDE_DIRS
-            ${INCLUDE_DIRS}
-            ${grid_map_core_INCLUDE_DIRS}
-        )
+        SET(grid_map_core_PUBLIC_INCLUDE_DIRS ${grid_map_core_INCLUDE_DIRS})
         SET(LIBRARIES
             ${LIBRARIES}
             ${grid_map_core_LIBRARIES}
         )
     ENDIF()
+
+    # grid_map_core links PRIVATE (only global_map/GridMap.cpp includes it),
+    # but its Eigen plugins aren't private: FIND_PACKAGE(grid_map_core) injects
+    # -DEIGEN_FUNCTORS_PLUGIN / -DEIGEN_DENSEBASE_PLUGIN with a directory-scope
+    # ADD_DEFINITIONS, adding members to Eigen::MatrixBase and DenseBase in
+    # every translation unit. grid_map never pairs those with the include
+    # directory holding the headers they name (still true on master), so any
+    # target inheriting them without linking grid_map_core -- corelib/test, for
+    # one -- fails on its first Eigen include.
+    #
+    # Keep the two halves together on the public interface: everything here
+    # reaches Eigen through rtabmap_core, and installed consumers then get an
+    # Eigen matching the one rtabmap_core was built with.
+    SET(PUBLIC_INCLUDE_DIRS
+        ${PUBLIC_INCLUDE_DIRS}
+        ${grid_map_core_PUBLIC_INCLUDE_DIRS}
+    )
+    SET(PUBLIC_DEFINITIONS
+        ${PUBLIC_DEFINITIONS}
+        "EIGEN_FUNCTORS_PLUGIN=\"${EIGEN_FUNCTORS_PLUGIN_PATH}\""
+        "EIGEN_DENSEBASE_PLUGIN=\"${EIGEN_DENSEBASE_PLUGIN_PATH}\""
+    )
+
 	SET(SRC_FILES
     	${SRC_FILES}
 		global_map/GridMap.cpp
@@ -897,6 +923,12 @@ target_include_directories(rtabmap_core PUBLIC
 target_include_directories(rtabmap_core SYSTEM PUBLIC
   "$<BUILD_INTERFACE:${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
   "$<INSTALL_INTERFACE:${PUBLIC_INCLUDE_DIRS}>")
+
+# Definitions that change how a dependency's headers compile, so consumers of
+# rtabmap_core's headers have to see them too (see grid_map_core above).
+IF(PUBLIC_DEFINITIONS)
+  target_compile_definitions(rtabmap_core PUBLIC ${PUBLIC_DEFINITIONS})
+ENDIF()
 
 # GCC 12 false positives from PCL/Eigen template instantiations (SSE codepath
 # unaligned-loads 16 bytes from a 3-element Eigen vector). Eigen knows the
