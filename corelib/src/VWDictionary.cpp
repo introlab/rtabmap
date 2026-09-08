@@ -101,6 +101,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
 	_incrementalFlann(Parameters::defaultKpIncrementalFlann()),
 	_rebalancingFactor(Parameters::defaultKpFlannRebalancingFactor()),
+	_flannThreads(Parameters::defaultKpFlannThreads()),
 	_byteToFloat(Parameters::defaultKpByteToFloat()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
 	_newDictionaryPath(Parameters::defaultKpDictionaryPath()),
@@ -130,6 +131,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpSerializeWithChecksum(), _serializeWithChecksum);
 	Parameters::parse(parameters, Parameters::kKpIncrementalFlann(), _incrementalFlann);
 	Parameters::parse(parameters, Parameters::kKpFlannRebalancingFactor(), _rebalancingFactor);
+	Parameters::parse(parameters, Parameters::kKpFlannThreads(), _flannThreads);
 	bool byteToFloat = _byteToFloat;
 	Parameters::parse(parameters, Parameters::kKpByteToFloat(), _byteToFloat);
 
@@ -1074,7 +1076,7 @@ std::list<int> VWDictionary::addNewWords(
 
 		if(isFlannStrategy(_strategy))
 		{
-			_flannIndex->knnSearch(descriptors, results, dists, k, KNN_CHECKS, 0.0f, true, 0);
+			_flannIndex->knnSearch(descriptors, results, dists, k, KNN_CHECKS, 0.0f, true, _flannThreads);
 		}
 		else if(_strategy == kNNBruteForce)
 		{
@@ -1396,7 +1398,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 
 			if(isFlannStrategy(_strategy))
 			{
-				_flannIndex->knnSearch(query, results, dists, k, KNN_CHECKS, 0.0f, true, 0);
+				_flannIndex->knnSearch(query, results, dists, k, KNN_CHECKS, 0.0f, true, _flannThreads);
 			}
 			else if(_strategy == kNNBruteForce)
 			{
