@@ -11,6 +11,10 @@
 // version can be compared to what it replaces.
 #include "FlannIndexBackends.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 // The times are reported rather than asserted on: which backend is the fastest
 // depends on the machine. They are here so that a change of backend, of
 // parameters or of nanoflann version can be compared to what it replaces.
@@ -318,7 +322,7 @@ cv::Mat groundTruth(const cv::Mat & data, const cv::Mat & queries)
 void compareGrownAndFreshlyBuilt(int finalCount, int seeds, int queryCount, const std::vector<int> & growths)
 {
 	std::cout << "[          ] " << DIM << "D float descriptors, " << finalCount
-			  << " indexed, " << queryCount << " queries, knn=" << KNN
+			  << " indexed, " << queryCountFlannIndex << " queries, knn=" << KNN
 			  << ", averaged over " << seeds << " seed" << (seeds>1?"s":"") << std::endl;
 
 	std::map<int, Average> grown; // growth factor -> average
@@ -517,16 +521,31 @@ TEST(FlannIndexPerfTest, RegistrationGuessMatching)
 
 	// A factor of 1 for the rtflann rows keeps their per-point bookkeeping out
 	// of the measurement, and picks the nanoflann tree that is built once.
-	const Backend backends[] = {
-		{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
+	std::vector<Backend> backends = {
+		{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 1},
+		{"cv        BFMatcher threaded        ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 0},
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE, 1.0f},
 		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f},
 		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
 		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
 
+#ifdef _OPENMP
+	// rtflann threads a radius search over its batch of queries the same way it
+	// threads a kNN one, so the two trees come back with one thread per core.
+	// The tree is still built on one core, and here it is rebuilt every frame,
+	// which caps what threading can take off the total: the times say how much
+	// of a frame is the search rather than the build.
+	backends.push_back({"rtflann   kd-tree (4 rand.) threaded", FlannIndex::FLANN_INDEX_KDTREE,        1.0f, false, 0});
+	backends.push_back({"rtflann   kd-tree single threaded   ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f, false, 0});
+#endif
+
 	std::cout << "[          ] " << keypoints << " keypoints indexed and as many looked up in a "
 			  << radius << " px radius, per frame" << std::endl;
+#ifdef _OPENMP
+	std::cout << "[          ] the threaded rows search with " << omp_get_max_threads()
+			  << " threads, the others with one" << std::endl;
+#endif
 
 	for(const Backend & backend: backends)
 	{
@@ -538,7 +557,7 @@ TEST(FlannIndexPerfTest, RegistrationGuessMatching)
 		{
 			FlannIndex index;
 			index.buildIndex(backend.algorithm, points, false, backend.rebalancingFactor);
-			index.radiusSearch(projected, indices, dists, radius, 0, 32, 0.0f, false);
+			index.radiusSearch(projected, indices, dists, radius, 0, 32, 0.0f, false, backend.cores);
 		}
 		const double perFrame = timer.ticks()/double(frames);
 
@@ -571,14 +590,30 @@ void compareDictionaryMatching(int indexedCount, int queriedCount)
 	// built once, so it is neither kept ready to be added to nor rebuilt. The
 	// incremental nanoflann tree is kept in the comparison to show what asking
 	// for one costs here.
-	const Backend backends[] = {
+	std::vector<Backend> backends = {
 		{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f},
-		{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
+		{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 1},
+		{"cv        BFMatcher threaded        ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 0},
 		{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE, 1.0f},
 		{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f},
 		{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
 		{"nanoflann kd-tree single incremental", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 2.0f},
 	};
+
+#ifdef _OPENMP
+	// The same two rtflann trees searched with Kp/FlannThreads=0, one thread per
+	// core: rtflann is the only backend here threading a batch of queries, over
+	// an OpenMP loop. Only the search half of the times can improve, the trees
+	// are still built on one core. Queries are independent of each other, so
+	// threading doesn't change what is found: the exact tree holds its recall to
+	// the digit. The randomized one moves by a tenth of a percent from one run to
+	// the next whether threaded or not, it randomizes its splits on every build.
+	backends.push_back({"rtflann   kd-tree (4 rand.) threaded", FlannIndex::FLANN_INDEX_KDTREE,        1.0f, false, 0});
+	backends.push_back({"rtflann   kd-tree single threaded   ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE, 1.0f, false, 0});
+
+	std::cout << "[          ] the threaded rows search with " << omp_get_max_threads()
+			  << " threads, the others with one" << std::endl;
+#endif
 
 	for(int dim: {32, 64, 128, 256})
 	{
@@ -599,7 +634,7 @@ void compareDictionaryMatching(int indexedCount, int queriedCount)
 			{
 				FlannIndex index;
 				index.buildIndex(backend.algorithm, from, false, backend.rebalancingFactor);
-				index.knnSearch(to, indices, dists, KNN);
+				index.knnSearch(to, indices, dists, KNN, 32, 0.0f, true, backend.cores);
 			}
 			const double perFrame = timer.ticks()/double(frames);
 
