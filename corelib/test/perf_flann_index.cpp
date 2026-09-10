@@ -322,7 +322,7 @@ cv::Mat groundTruth(const cv::Mat & data, const cv::Mat & queries)
 void compareGrownAndFreshlyBuilt(int finalCount, int seeds, int queryCount, const std::vector<int> & growths)
 {
 	std::cout << "[          ] " << DIM << "D float descriptors, " << finalCount
-			  << " indexed, " << queryCountFlannIndex << " queries, knn=" << KNN
+			  << " indexed, " << queryCount << " queries, knn=" << KNN
 			  << ", averaged over " << seeds << " seed" << (seeds>1?"s":"") << std::endl;
 
 	std::map<int, Average> grown; // growth factor -> average
