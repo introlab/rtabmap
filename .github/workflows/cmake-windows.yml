@@ -109,8 +109,11 @@ jobs:
         $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
         if (-not (Test-Path $vswhere)) { Write-Host "vswhere not found, skipping"; exit 0 }
         $vsPath = & $vswhere -latest -property installationPath
+        # Sorted descending so this is the newest toolset, the one that built
+        # the binaries, rather than whichever side-by-side version sorts first.
         $dumpbin = Get-ChildItem "$vsPath\VC\Tools\MSVC" -Filter 'dumpbin.exe' -Recurse -ErrorAction SilentlyContinue |
-                   Where-Object { $_.FullName -like '*\Hostx64\x64\*' } | Select-Object -First 1
+                   Where-Object { $_.FullName -like '*\Hostx64\x64\*' } |
+                   Sort-Object FullName -Descending | Select-Object -First 1
         if (-not $dumpbin) { Write-Host "dumpbin not found under $vsPath, skipping"; exit 0 }
         Write-Host "dumpbin : $($dumpbin.FullName)"
         Write-Host "bin dir : $((Get-Location).Path) ($((Get-ChildItem -Filter '*.dll').Count) DLLs)"
@@ -122,20 +125,49 @@ jobs:
         $searchDirs = @((Get-Location).Path, "$env:SystemRoot\System32") +
                       ($env:PATH -split ';' | Where-Object { $_ -and (Test-Path $_) })
 
+        # Load-time and delay-load imports have to be told apart: only a
+        # missing load-time import kills the process with 0xc0000135. A missing
+        # delay-load one is resolved on first call, or never, so it is normal
+        # for the Windows security stack (HvsiFileTrust, wpaxholder) to show up
+        # there on a runner. dumpbin prints them in two sections.
         function Get-Imports($file) {
-          & $dumpbin.FullName /dependents $file 2>$null |
-            Select-String -Pattern '^\s+(\S+\.dll)\s*$' |
-            ForEach-Object { $_.Matches[0].Groups[1].Value }
+          $load = @(); $delay = @(); $mode = $null
+          foreach ($line in (& $dumpbin.FullName /dependents $file 2>$null)) {
+            if     ($line -match 'following delay load dependencies') { $mode = 'delay'; continue }
+            elseif ($line -match 'following dependencies')            { $mode = 'load';  continue }
+            elseif ($line -match '^\s*Summary')                       { $mode = $null;  continue }
+            if ($mode -and $line -match '^\s+(\S+\.dll)\s*$') {
+              if ($mode -eq 'load') { $load += $Matches[1] } else { $delay += $Matches[1] }
+            }
+          }
+          [pscustomobject]@{ Load = $load; Delay = $delay }
         }
 
-        function Walk($file, $seen, $missing) {
-          foreach ($dll in Get-Imports $file) {
-            $key = $dll.ToLower()
-            if (-not $seen.Add($key)) { continue }
-            if ($key -like 'api-ms-*' -or $key -like 'ext-ms-*') { continue }
-            $hit = $searchDirs | ForEach-Object { Join-Path $_ $dll } |
-                   Where-Object { Test-Path $_ } | Select-Object -First 1
-            if ($hit) { Walk $hit $seen $missing } else { [void]$missing.Add($dll) }
+        function Test-Resolvable($dll) {
+          $key = $dll.ToLower()
+          if ($key -like 'api-ms-*' -or $key -like 'ext-ms-*') { return $true }
+          [bool]($searchDirs | ForEach-Object { Join-Path $_ $dll } |
+                 Where-Object { Test-Path $_ } | Select-Object -First 1)
+        }
+
+        function Resolve-Dll($dll) {
+          $searchDirs | ForEach-Object { Join-Path $_ $dll } |
+            Where-Object { Test-Path $_ } | Select-Object -First 1
+        }
+
+        # Recurses through load-time imports only, which is the graph the
+        # loader must satisfy before main() runs. Delay-load imports of each
+        # visited binary are checked but not followed.
+        function Walk($file, $seen, $missing, $missingDelay) {
+          $imports = Get-Imports $file
+          foreach ($dll in $imports.Delay) {
+            if (-not (Test-Resolvable $dll)) { [void]$missingDelay.Add($dll) }
+          }
+          foreach ($dll in $imports.Load) {
+            if (-not $seen.Add($dll.ToLower())) { continue }
+            if ($dll.ToLower() -like 'api-ms-*' -or $dll.ToLower() -like 'ext-ms-*') { continue }
+            $hit = Resolve-Dll $dll
+            if ($hit) { Walk $hit $seen $missing $missingDelay } else { [void]$missing.Add($dll) }
           }
         }
 
@@ -144,17 +176,20 @@ jobs:
         # broken" from "the dependency bundle is incomplete".
         foreach ($exe in @('test_ulogger.exe', 'test_corelib.exe', 'rtabmap-console.exe')) {
           if (-not (Test-Path $exe)) { Write-Host "--- $exe : not built"; continue }
-          $seen    = [System.Collections.Generic.HashSet[string]]::new()
-          $missing = [System.Collections.Generic.HashSet[string]]::new()
-          Walk (Resolve-Path $exe).Path $seen $missing
+          $seen         = [System.Collections.Generic.HashSet[string]]::new()
+          $missing      = [System.Collections.Generic.HashSet[string]]::new()
+          $missingDelay = [System.Collections.Generic.HashSet[string]]::new()
+          Walk (Resolve-Path $exe).Path $seen $missing $missingDelay
           if ($missing.Count) {
-            Write-Host "--- $exe : $($missing.Count) of $($seen.Count) imports MISSING"
+            Write-Host "--- $exe : $($missing.Count) of $($seen.Count) LOAD-TIME imports MISSING (these fail the loader)"
             $missing | Sort-Object | ForEach-Object { Write-Host "        $_" }
           } else {
-            Write-Host "--- $exe : all $($seen.Count) imports resolve"
+            Write-Host "--- $exe : all $($seen.Count) load-time imports resolve"
+          }
+          if ($missingDelay.Count) {
+            Write-Host "      (delay-load, resolved on first call, not a loader failure: $(($missingDelay | Sort-Object) -join ', '))"
           }
         }
-
     - name: Test
       # Not run on the CUDA build, which is a build+package job only.
       #
