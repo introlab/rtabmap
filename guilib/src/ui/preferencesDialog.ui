@@ -12185,6 +12185,35 @@ When set to false, no new words are added to dictionary, so no more updates are 
                          </property>
                         </widget>
                        </item>
+                       <item row="12" column="0">
+                        <widget class="QSpinBox" name="spinBox_kp_flannThreads">
+                         <property name="specialValueText">
+                          <string>Auto</string>
+                         </property>
+                         <property name="minimum">
+                          <number>0</number>
+                         </property>
+                         <property name="maximum">
+                          <number>128</number>
+                         </property>
+                         <property name="value">
+                          <number>1</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="2">
+                        <widget class="QLabel" name="label_kp_flannThreads">
+                         <property name="text">
+                          <string>Number of threads used for FLANN kNN search of the batched queries (Auto=one per core, 1=single-threaded search).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
                      </widget>
                     </item>

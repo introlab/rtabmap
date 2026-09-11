@@ -53,6 +53,48 @@ jobs:
       shell: bash
       run: bash scripts/fetch_test_data.sh
 
+    - name: Install VC++ 2012 runtime
+      # The Kinect for Windows SDK 2.0 (WITH_K4W2=ON) is a VS2012 build, so
+      # Kinect20.dll needs MSVCR110.dll and MSVCP110.dll, and it reaches
+      # rtabmap_core as a load-time import. bundle_windows_deps.bat stages only
+      # Kinect20.dll itself into the vcpkg export, not the runtime it was built
+      # against, and the windows-2022 image lists no VC++ 2012 runtime (only
+      # 2013 and 2022). When nothing else on the machine happens to supply them,
+      # every executable linking rtabmap_core dies in the loader with 0xc0000135
+      # (STATUS_DLL_NOT_FOUND) before reaching main(), while the utilite tests,
+      # which link nothing but psapi, keep passing.
+      #
+      # The durable fix is to stage the two DLLs beside Kinect20.dll in the
+      # bundle, which would cover the shipped package too; that needs the bundle
+      # rebuilt and the cache key bumped, so install them here for now.
+      #
+      # Not pinned to one matrix leg: both build the package, and a package with
+      # Kinect support carries the same requirement.
+      shell: pwsh
+      run: |
+        $need = @('msvcr110.dll', 'msvcp110.dll')
+        function Get-Missing {
+          $need | Where-Object { -not (Test-Path (Join-Path "$env:SystemRoot\System32" $_)) }
+        }
+
+        if (-not (Get-Missing)) {
+          Write-Host "VC++ 2012 runtime already present in System32, nothing to do"
+          exit 0
+        }
+
+        Write-Host "Missing before install: $((Get-Missing) -join ', ')"
+        choco install -y vcredist2012 --no-progress
+        Write-Host "choco exit code: $LASTEXITCODE"
+
+        $still = Get-Missing
+        if ($still) {
+          # Warn rather than fail: the dependency dump in the next step reports
+          # the whole picture, which is more useful than stopping here.
+          Write-Host "::warning::Still missing from System32 after vcredist2012: $($still -join ', ')"
+        } else {
+          Write-Host "VC++ 2012 runtime installed: $($need -join ', ')"
+        }
+
     - name: Install Windows Dependencies
       if: matrix.build_name == 'windows-2022'
       uses: ./.github/actions/install-windows-deps
@@ -92,6 +134,105 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ALL_BUILD
 
+    - name: Diagnose loader dependencies
+      # ctest reports a loader failure as nothing but "Exit code 0xc0000135"
+      # (STATUS_DLL_NOT_FOUND): the process dies before main(), so gtest prints
+      # no output and the log never names the DLL that was not found. This walks
+      # the import tree of the executables ctest is about to run and reports the
+      # ones that do not resolve against the search path those processes see.
+      #
+      # Runs before Test, and keeps going on failure, so the report is in the log
+      # whether or not ctest then fails. Diagnostic only: it asserts nothing.
+      if: matrix.build_name != 'windows-2022-cuda'
+      continue-on-error: true
+      shell: pwsh
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        if (-not (Test-Path $vswhere)) { Write-Host "vswhere not found, skipping"; exit 0 }
+        $vsPath = & $vswhere -latest -property installationPath
+        # Sorted descending so this is the newest toolset, the one that built
+        # the binaries, rather than whichever side-by-side version sorts first.
+        $dumpbin = Get-ChildItem "$vsPath\VC\Tools\MSVC" -Filter 'dumpbin.exe' -Recurse -ErrorAction SilentlyContinue |
+                   Where-Object { $_.FullName -like '*\Hostx64\x64\*' } |
+                   Sort-Object FullName -Descending | Select-Object -First 1
+        if (-not $dumpbin) { Write-Host "dumpbin not found under $vsPath, skipping"; exit 0 }
+        Write-Host "dumpbin : $($dumpbin.FullName)"
+        Write-Host "bin dir : $((Get-Location).Path) ($((Get-ChildItem -Filter '*.dll').Count) DLLs)"
+
+        # The loader looks in the executable's own directory first, then
+        # System32, then PATH. api-ms-win-* / ext-ms-* are virtual API sets
+        # resolved by the loader with no file on disk, so they never count as
+        # missing.
+        $searchDirs = @((Get-Location).Path, "$env:SystemRoot\System32") +
+                      ($env:PATH -split ';' | Where-Object { $_ -and (Test-Path $_) })
+
+        # Load-time and delay-load imports have to be told apart: only a
+        # missing load-time import kills the process with 0xc0000135. A missing
+        # delay-load one is resolved on first call, or never, so it is normal
+        # for the Windows security stack (HvsiFileTrust, wpaxholder) to show up
+        # there on a runner. dumpbin prints them in two sections.
+        function Get-Imports($file) {
+          $load = @(); $delay = @(); $mode = $null
+          foreach ($line in (& $dumpbin.FullName /dependents $file 2>$null)) {
+            if     ($line -match 'following delay load dependencies') { $mode = 'delay'; continue }
+            elseif ($line -match 'following dependencies')            { $mode = 'load';  continue }
+            elseif ($line -match '^\s*Summary')                       { $mode = $null;  continue }
+            if ($mode -and $line -match '^\s+(\S+\.dll)\s*$') {
+              if ($mode -eq 'load') { $load += $Matches[1] } else { $delay += $Matches[1] }
+            }
+          }
+          [pscustomobject]@{ Load = $load; Delay = $delay }
+        }
+
+        function Test-Resolvable($dll) {
+          $key = $dll.ToLower()
+          if ($key -like 'api-ms-*' -or $key -like 'ext-ms-*') { return $true }
+          [bool]($searchDirs | ForEach-Object { Join-Path $_ $dll } |
+                 Where-Object { Test-Path $_ } | Select-Object -First 1)
+        }
+
+        function Resolve-Dll($dll) {
+          $searchDirs | ForEach-Object { Join-Path $_ $dll } |
+            Where-Object { Test-Path $_ } | Select-Object -First 1
+        }
+
+        # Recurses through load-time imports only, which is the graph the
+        # loader must satisfy before main() runs. Delay-load imports of each
+        # visited binary are checked but not followed.
+        function Walk($file, $seen, $missing, $missingDelay) {
+          $imports = Get-Imports $file
+          foreach ($dll in $imports.Delay) {
+            if (-not (Test-Resolvable $dll)) { [void]$missingDelay.Add($dll) }
+          }
+          foreach ($dll in $imports.Load) {
+            if (-not $seen.Add($dll.ToLower())) { continue }
+            if ($dll.ToLower() -like 'api-ms-*' -or $dll.ToLower() -like 'ext-ms-*') { continue }
+            $hit = Resolve-Dll $dll
+            if ($hit) { Walk $hit $seen $missing $missingDelay }
+            else      { [void]$missing.Add("$dll  <- imported by $(Split-Path $file -Leaf)") }
+          }
+        }
+
+        # test_ulogger passes today and rtabmap_core is what every failing test
+        # has in common, so the three together separate "this executable is
+        # broken" from "the dependency bundle is incomplete".
+        foreach ($exe in @('test_ulogger.exe', 'test_corelib.exe', 'rtabmap-console.exe')) {
+          if (-not (Test-Path $exe)) { Write-Host "--- $exe : not built"; continue }
+          $seen         = [System.Collections.Generic.HashSet[string]]::new()
+          $missing      = [System.Collections.Generic.HashSet[string]]::new()
+          $missingDelay = [System.Collections.Generic.HashSet[string]]::new()
+          Walk (Resolve-Path $exe).Path $seen $missing $missingDelay
+          if ($missing.Count) {
+            Write-Host "--- $exe : $($missing.Count) of $($seen.Count) LOAD-TIME imports MISSING (these fail the loader)"
+            $missing | Sort-Object | ForEach-Object { Write-Host "        $_" }
+          } else {
+            Write-Host "--- $exe : all $($seen.Count) load-time imports resolve"
+          }
+          if ($missingDelay.Count) {
+            Write-Host "      (delay-load, resolved on first call, not a loader failure: $(($missingDelay | Sort-Object) -join ', '))"
+          }
+        }
     - name: Test
       # Not run on the CUDA build, which is a build+package job only.
       #
