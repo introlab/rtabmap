@@ -55,12 +55,18 @@ jobs:
 
     - name: Install VC++ 2012 runtime
       # The Kinect for Windows SDK 2.0 (WITH_K4W2=ON) is a VS2012 build, so
-      # Kinect20.dll -- a load-time import of rtabmap_core -- needs MSVCR110.dll
-      # and MSVCP110.dll. Those ship in the VC++ 2012 redistributable, which the
-      # windows-2022 image used to carry and no longer does. Without them every
-      # executable linking rtabmap_core dies in the loader with 0xc0000135
-      # (STATUS_DLL_NOT_FOUND) before reaching main(), so the whole corelib test
-      # suite fails while the utilite tests, which link nothing but psapi, pass.
+      # Kinect20.dll needs MSVCR110.dll and MSVCP110.dll, and it reaches
+      # rtabmap_core as a load-time import. bundle_windows_deps.bat stages only
+      # Kinect20.dll itself into the vcpkg export, not the runtime it was built
+      # against, and the windows-2022 image lists no VC++ 2012 runtime (only
+      # 2013 and 2022). When nothing else on the machine happens to supply them,
+      # every executable linking rtabmap_core dies in the loader with 0xc0000135
+      # (STATUS_DLL_NOT_FOUND) before reaching main(), while the utilite tests,
+      # which link nothing but psapi, keep passing.
+      #
+      # The durable fix is to stage the two DLLs beside Kinect20.dll in the
+      # bundle, which would cover the shipped package too; that needs the bundle
+      # rebuilt and the cache key bumped, so install them here for now.
       #
       # Not pinned to one matrix leg: both build the package, and a package with
       # Kinect support carries the same requirement.
