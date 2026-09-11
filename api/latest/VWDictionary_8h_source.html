@@ -306,42 +306,44 @@ $(document).ready(function(){initNavTree('VWDictionary_8h_source.html',''); init
 <div class="line"><a id="l00492" name="l00492"></a><span class="lineno">  492</span>  </div>
 <div class="line"><a id="l00496" name="l00496"></a><span class="lineno">  496</span>  <span class="keywordtype">float</span> _rebalancingFactor;</div>
 <div class="line"><a id="l00497" name="l00497"></a><span class="lineno">  497</span>  </div>
-<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>  <span class="keywordtype">bool</span> _byteToFloat;</div>
+<div class="line"><a id="l00501" name="l00501"></a><span class="lineno">  501</span>  <span class="keywordtype">int</span> _flannThreads;</div>
 <div class="line"><a id="l00502" name="l00502"></a><span class="lineno">  502</span>  </div>
-<div class="line"><a id="l00509" name="l00509"></a><span class="lineno">  509</span>  <span class="keywordtype">float</span> _nndrRatio;</div>
-<div class="line"><a id="l00510" name="l00510"></a><span class="lineno">  510</span>  </div>
-<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>  std::string _dictionaryPath; <span class="comment">// a pre-computed dictionary (.txt or .db)</span></div>
+<div class="line"><a id="l00506" name="l00506"></a><span class="lineno">  506</span>  <span class="keywordtype">bool</span> _byteToFloat;</div>
+<div class="line"><a id="l00507" name="l00507"></a><span class="lineno">  507</span>  </div>
+<div class="line"><a id="l00514" name="l00514"></a><span class="lineno">  514</span>  <span class="keywordtype">float</span> _nndrRatio;</div>
 <div class="line"><a id="l00515" name="l00515"></a><span class="lineno">  515</span>  </div>
-<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>  std::string _newDictionaryPath; <span class="comment">// a pre-computed dictionary (.txt or .db)</span></div>
+<div class="line"><a id="l00519" name="l00519"></a><span class="lineno">  519</span>  std::string _dictionaryPath; <span class="comment">// a pre-computed dictionary (.txt or .db)</span></div>
 <div class="line"><a id="l00520" name="l00520"></a><span class="lineno">  520</span>  </div>
-<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>  <span class="keywordtype">bool</span> _newWordsComparedTogether;</div>
+<div class="line"><a id="l00524" name="l00524"></a><span class="lineno">  524</span>  std::string _newDictionaryPath; <span class="comment">// a pre-computed dictionary (.txt or .db)</span></div>
 <div class="line"><a id="l00525" name="l00525"></a><span class="lineno">  525</span>  </div>
-<div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span>  <span class="keywordtype">bool</span> _serializeWithChecksum;</div>
+<div class="line"><a id="l00529" name="l00529"></a><span class="lineno">  529</span>  <span class="keywordtype">bool</span> _newWordsComparedTogether;</div>
 <div class="line"><a id="l00530" name="l00530"></a><span class="lineno">  530</span>  </div>
-<div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span>  <span class="keywordtype">int</span> _lastWordId;</div>
+<div class="line"><a id="l00534" name="l00534"></a><span class="lineno">  534</span>  <span class="keywordtype">bool</span> _serializeWithChecksum;</div>
 <div class="line"><a id="l00535" name="l00535"></a><span class="lineno">  535</span>  </div>
-<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="keywordtype">bool</span> useDistanceL1_;</div>
+<div class="line"><a id="l00539" name="l00539"></a><span class="lineno">  539</span>  <span class="keywordtype">int</span> _lastWordId;</div>
 <div class="line"><a id="l00540" name="l00540"></a><span class="lineno">  540</span>  </div>
-<div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span>  <a class="code hl_class" href="classrtabmap_1_1FlannIndex.html">FlannIndex</a> * _flannIndex;</div>
+<div class="line"><a id="l00544" name="l00544"></a><span class="lineno">  544</span>  <span class="keywordtype">bool</span> useDistanceL1_;</div>
 <div class="line"><a id="l00545" name="l00545"></a><span class="lineno">  545</span>  </div>
-<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span>  cv::Mat _dataTree;</div>
+<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span>  <a class="code hl_class" href="classrtabmap_1_1FlannIndex.html">FlannIndex</a> * _flannIndex;</div>
 <div class="line"><a id="l00550" name="l00550"></a><span class="lineno">  550</span>  </div>
-<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span>  <span class="keywordtype">bool</span> _modified;</div>
+<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span>  cv::Mat _dataTree;</div>
 <div class="line"><a id="l00555" name="l00555"></a><span class="lineno">  555</span>  </div>
-<div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span>  <a class="code hl_enumeration" href="classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655">NNStrategy</a> _strategy;</div>
+<div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span>  <span class="keywordtype">bool</span> _modified;</div>
 <div class="line"><a id="l00560" name="l00560"></a><span class="lineno">  560</span>  </div>
-<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span>  std::map&lt;int ,int&gt; _mapIndexId;</div>
+<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span>  <a class="code hl_enumeration" href="classrtabmap_1_1VWDictionary.html#a9466840dd5ad3dc914543a97421c3655">NNStrategy</a> _strategy;</div>
 <div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span>  </div>
-<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>  std::map&lt;int ,int&gt; _mapIdIndex;</div>
+<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>  std::map&lt;int ,int&gt; _mapIndexId;</div>
 <div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>  </div>
-<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>  std::map&lt;int, VisualWord*&gt; _unusedWords; <span class="comment">//&lt;id,VisualWord*&gt;</span></div>
-<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>  std::set&lt;int&gt; _notIndexedWords;</div>
-<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>  </div>
-<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>  std::set&lt;int&gt; _removedIndexedWords;</div>
-<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>};</div>
+<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>  std::map&lt;int ,int&gt; _mapIdIndex;</div>
+<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>  </div>
+<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>  std::map&lt;int, VisualWord*&gt; _unusedWords; <span class="comment">//&lt;id,VisualWord*&gt;</span></div>
+<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>  std::set&lt;int&gt; _notIndexedWords;</div>
+<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>  </div>
+<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>  std::set&lt;int&gt; _removedIndexedWords;</div>
+<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>};</div>
 </div>
-<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span> </div>
-<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span>} <span class="comment">// namespace rtabmap</span></div>
+<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span> </div>
+<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>} <span class="comment">// namespace rtabmap</span></div>
 <div class="ttc" id="aclassrtabmap_1_1FlannIndex_html"><div class="ttname"><a href="classrtabmap_1_1FlannIndex.html">rtabmap::FlannIndex</a></div><div class="ttdoc">Nearest neighbor index over a set of features.</div><div class="ttdef"><b>Definition</b> <a href="FlannIndex_8h_source.html#l00055">FlannIndex.h:56</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1VWDictionary_html"><div class="ttname"><a href="classrtabmap_1_1VWDictionary.html">rtabmap::VWDictionary</a></div><div class="ttdoc">Manages a dictionary of visual words for visual place recognition and loop closure detection.</div><div class="ttdef"><b>Definition</b> <a href="VWDictionary_8h_source.html#l00065">VWDictionary.h:66</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1VWDictionary_html_a085d69ef577600000f397bd63abeaf69"><div class="ttname"><a href="classrtabmap_1_1VWDictionary.html#a085d69ef577600000f397bd63abeaf69">rtabmap::VWDictionary::getNextId</a></div><div class="ttdeci">int getNextId()</div><div class="ttdoc">Get the next available visual word ID.</div></div>

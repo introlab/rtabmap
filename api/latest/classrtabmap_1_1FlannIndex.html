@@ -160,12 +160,12 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadIndex</b> (const 
 <tr class="memitem:a7d78d049ac4afb9f90fc0705506a6ce0" id="r_a7d78d049ac4afb9f90fc0705506a6ce0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1FlannIndex.html#a7d78d049ac4afb9f90fc0705506a6ce0">removePoint</a> (unsigned int index)</td></tr>
 <tr class="memdesc:a7d78d049ac4afb9f90fc0705506a6ce0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Remove an indexed feature, by the index <a class="el" href="classrtabmap_1_1FlannIndex.html#a8bd8312e92376d6bf2885907f5d93c68" title="Add features to the index.">addPoints()</a> gave for it.  <br /></td></tr>
 <tr class="separator:a7d78d049ac4afb9f90fc0705506a6ce0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:accf263b21aaacf3d00e6e73ccef5cc75" id="r_accf263b21aaacf3d00e6e73ccef5cc75"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1FlannIndex.html#accf263b21aaacf3d00e6e73ccef5cc75">knnSearch</a> (const cv::Mat &amp;query, cv::Mat &amp;indices, cv::Mat &amp;dists, int knn, int checks=32, float eps=0.0, bool sorted=true) const</td></tr>
-<tr class="memdesc:accf263b21aaacf3d00e6e73ccef5cc75"><td class="mdescLeft">&#160;</td><td class="mdescRight">Search the k nearest neighbors of each query.  <br /></td></tr>
-<tr class="separator:accf263b21aaacf3d00e6e73ccef5cc75"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a37bb608ab9ae1e7db35c2681a0c17eb5" id="r_a37bb608ab9ae1e7db35c2681a0c17eb5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1FlannIndex.html#a37bb608ab9ae1e7db35c2681a0c17eb5">radiusSearch</a> (const cv::Mat &amp;query, std::vector&lt; std::vector&lt; size_t &gt; &gt; &amp;indices, std::vector&lt; std::vector&lt; float &gt; &gt; &amp;dists, float radius, int maxNeighbors=0, int checks=32, float eps=0.0, bool sorted=true) const</td></tr>
-<tr class="memdesc:a37bb608ab9ae1e7db35c2681a0c17eb5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Search the neighbors of each query within a radius.  <br /></td></tr>
-<tr class="separator:a37bb608ab9ae1e7db35c2681a0c17eb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee58e859aa067646b4c6ffd63b593928" id="r_aee58e859aa067646b4c6ffd63b593928"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1FlannIndex.html#aee58e859aa067646b4c6ffd63b593928">knnSearch</a> (const cv::Mat &amp;query, cv::Mat &amp;indices, cv::Mat &amp;dists, int knn, int checks=32, float eps=0.0, bool sorted=true, int cores=1) const</td></tr>
+<tr class="memdesc:aee58e859aa067646b4c6ffd63b593928"><td class="mdescLeft">&#160;</td><td class="mdescRight">Search the k nearest neighbors of each query.  <br /></td></tr>
+<tr class="separator:aee58e859aa067646b4c6ffd63b593928"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a28052e827934cfbc6a9ce14f8b5714df" id="r_a28052e827934cfbc6a9ce14f8b5714df"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1FlannIndex.html#a28052e827934cfbc6a9ce14f8b5714df">radiusSearch</a> (const cv::Mat &amp;query, std::vector&lt; std::vector&lt; size_t &gt; &gt; &amp;indices, std::vector&lt; std::vector&lt; float &gt; &gt; &amp;dists, float radius, int maxNeighbors=0, int checks=32, float eps=0.0, bool sorted=true, int cores=1) const</td></tr>
+<tr class="memdesc:a28052e827934cfbc6a9ce14f8b5714df"><td class="mdescLeft">&#160;</td><td class="mdescRight">Search the neighbors of each query within a radius.  <br /></td></tr>
+<tr class="separator:a28052e827934cfbc6a9ce14f8b5714df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Nearest neighbor index over a set of features. </p>
@@ -510,8 +510,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadIndex</b> (const 
 
 </div>
 </div>
-<a id="accf263b21aaacf3d00e6e73ccef5cc75" name="accf263b21aaacf3d00e6e73ccef5cc75"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#accf263b21aaacf3d00e6e73ccef5cc75">&#9670;&#160;</a></span>knnSearch()</h2>
+<a id="aee58e859aa067646b4c6ffd63b593928" name="aee58e859aa067646b4c6ffd63b593928"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee58e859aa067646b4c6ffd63b593928">&#9670;&#160;</a></span>knnSearch()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -556,7 +556,13 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadIndex</b> (const 
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>sorted</em> = <code>true</code>&#160;</td>
+          <td class="paramname"><em>sorted</em> = <code>true</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>cores</em> = <code>1</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -576,14 +582,15 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadIndex</b> (const 
     <tr><td class="paramname">checks</td><td>Number of leaves an approximate search visits, the exact structures ignoring it </td></tr>
     <tr><td class="paramname">eps</td><td>Search for eps-approximate neighbors </td></tr>
     <tr><td class="paramname">sorted</td><td>Give the neighbors back by increasing distance </td></tr>
+    <tr><td class="paramname">cores</td><td>Threads for the batch search (0 = all available) </td></tr>
   </table>
   </dd>
 </dl>
 
 </div>
 </div>
-<a id="a37bb608ab9ae1e7db35c2681a0c17eb5" name="a37bb608ab9ae1e7db35c2681a0c17eb5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a37bb608ab9ae1e7db35c2681a0c17eb5">&#9670;&#160;</a></span>radiusSearch()</h2>
+<a id="a28052e827934cfbc6a9ce14f8b5714df" name="a28052e827934cfbc6a9ce14f8b5714df"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a28052e827934cfbc6a9ce14f8b5714df">&#9670;&#160;</a></span>radiusSearch()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -634,7 +641,13 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadIndex</b> (const 
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>sorted</em> = <code>true</code>&#160;</td>
+          <td class="paramname"><em>sorted</em> = <code>true</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>cores</em> = <code>1</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -655,6 +668,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadIndex</b> (const 
     <tr><td class="paramname">checks</td><td>Number of leaves an approximate search visits, the exact structures ignoring it </td></tr>
     <tr><td class="paramname">eps</td><td>Search for eps-approximate neighbors </td></tr>
     <tr><td class="paramname">sorted</td><td>Give the neighbors back by increasing distance </td></tr>
+    <tr><td class="paramname">cores</td><td>Threads for the batch search (0 = all available) </td></tr>
   </table>
   </dd>
 </dl>

@@ -19,6 +19,6 @@ var classrtabmap_1_1FlannIndex =
     [ "featuresDim", "classrtabmap_1_1FlannIndex.html#a8191e3ba9cc7a5361443430171691df3", null ],
     [ "addPoints", "classrtabmap_1_1FlannIndex.html#a8bd8312e92376d6bf2885907f5d93c68", null ],
     [ "removePoint", "classrtabmap_1_1FlannIndex.html#a7d78d049ac4afb9f90fc0705506a6ce0", null ],
-    [ "knnSearch", "classrtabmap_1_1FlannIndex.html#accf263b21aaacf3d00e6e73ccef5cc75", null ],
-    [ "radiusSearch", "classrtabmap_1_1FlannIndex.html#a37bb608ab9ae1e7db35c2681a0c17eb5", null ]
+    [ "knnSearch", "classrtabmap_1_1FlannIndex.html#aee58e859aa067646b4c6ffd63b593928", null ],
+    [ "radiusSearch", "classrtabmap_1_1FlannIndex.html#a28052e827934cfbc6a9ce14f8b5714df", null ]
 ];
