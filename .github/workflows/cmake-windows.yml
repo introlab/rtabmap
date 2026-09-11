@@ -92,6 +92,69 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ALL_BUILD
 
+    - name: Diagnose loader dependencies
+      # ctest reports a loader failure as nothing but "Exit code 0xc0000135"
+      # (STATUS_DLL_NOT_FOUND): the process dies before main(), so gtest prints
+      # no output and the log never names the DLL that was not found. This walks
+      # the import tree of the executables ctest is about to run and reports the
+      # ones that do not resolve against the search path those processes see.
+      #
+      # Runs before Test, and keeps going on failure, so the report is in the log
+      # whether or not ctest then fails. Diagnostic only: it asserts nothing.
+      if: matrix.build_name != 'windows-2022-cuda'
+      continue-on-error: true
+      shell: pwsh
+      working-directory: ${{github.workspace}}/build/bin
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        if (-not (Test-Path $vswhere)) { Write-Host "vswhere not found, skipping"; exit 0 }
+        $vsPath = & $vswhere -latest -property installationPath
+        $dumpbin = Get-ChildItem "$vsPath\VC\Tools\MSVC" -Filter 'dumpbin.exe' -Recurse -ErrorAction SilentlyContinue |
+                   Where-Object { $_.FullName -like '*\Hostx64\x64\*' } | Select-Object -First 1
+        if (-not $dumpbin) { Write-Host "dumpbin not found under $vsPath, skipping"; exit 0 }
+        Write-Host "dumpbin : $($dumpbin.FullName)"
+        Write-Host "bin dir : $((Get-Location).Path) ($((Get-ChildItem -Filter '*.dll').Count) DLLs)"
+
+        # The loader looks in the executable's own directory first, then
+        # System32, then PATH. api-ms-win-* / ext-ms-* are virtual API sets
+        # resolved by the loader with no file on disk, so they never count as
+        # missing.
+        $searchDirs = @((Get-Location).Path, "$env:SystemRoot\System32") +
+                      ($env:PATH -split ';' | Where-Object { $_ -and (Test-Path $_) })
+
+        function Get-Imports($file) {
+          & $dumpbin.FullName /dependents $file 2>$null |
+            Select-String -Pattern '^\s+(\S+\.dll)\s*$' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value }
+        }
+
+        function Walk($file, $seen, $missing) {
+          foreach ($dll in Get-Imports $file) {
+            $key = $dll.ToLower()
+            if (-not $seen.Add($key)) { continue }
+            if ($key -like 'api-ms-*' -or $key -like 'ext-ms-*') { continue }
+            $hit = $searchDirs | ForEach-Object { Join-Path $_ $dll } |
+                   Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($hit) { Walk $hit $seen $missing } else { [void]$missing.Add($dll) }
+          }
+        }
+
+        # test_ulogger passes today and rtabmap_core is what every failing test
+        # has in common, so the three together separate "this executable is
+        # broken" from "the dependency bundle is incomplete".
+        foreach ($exe in @('test_ulogger.exe', 'test_corelib.exe', 'rtabmap-console.exe')) {
+          if (-not (Test-Path $exe)) { Write-Host "--- $exe : not built"; continue }
+          $seen    = [System.Collections.Generic.HashSet[string]]::new()
+          $missing = [System.Collections.Generic.HashSet[string]]::new()
+          Walk (Resolve-Path $exe).Path $seen $missing
+          if ($missing.Count) {
+            Write-Host "--- $exe : $($missing.Count) of $($seen.Count) imports MISSING"
+            $missing | Sort-Object | ForEach-Object { Write-Host "        $_" }
+          } else {
+            Write-Host "--- $exe : all $($seen.Count) imports resolve"
+          }
+        }
+
     - name: Test
       # Not run on the CUDA build, which is a build+package job only.
       #
