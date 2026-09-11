@@ -53,6 +53,42 @@ jobs:
       shell: bash
       run: bash scripts/fetch_test_data.sh
 
+    - name: Install VC++ 2012 runtime
+      # The Kinect for Windows SDK 2.0 (WITH_K4W2=ON) is a VS2012 build, so
+      # Kinect20.dll -- a load-time import of rtabmap_core -- needs MSVCR110.dll
+      # and MSVCP110.dll. Those ship in the VC++ 2012 redistributable, which the
+      # windows-2022 image used to carry and no longer does. Without them every
+      # executable linking rtabmap_core dies in the loader with 0xc0000135
+      # (STATUS_DLL_NOT_FOUND) before reaching main(), so the whole corelib test
+      # suite fails while the utilite tests, which link nothing but psapi, pass.
+      #
+      # Not pinned to one matrix leg: both build the package, and a package with
+      # Kinect support carries the same requirement.
+      shell: pwsh
+      run: |
+        $need = @('msvcr110.dll', 'msvcp110.dll')
+        function Get-Missing {
+          $need | Where-Object { -not (Test-Path (Join-Path "$env:SystemRoot\System32" $_)) }
+        }
+
+        if (-not (Get-Missing)) {
+          Write-Host "VC++ 2012 runtime already present in System32, nothing to do"
+          exit 0
+        }
+
+        Write-Host "Missing before install: $((Get-Missing) -join ', ')"
+        choco install -y vcredist2012 --no-progress
+        Write-Host "choco exit code: $LASTEXITCODE"
+
+        $still = Get-Missing
+        if ($still) {
+          # Warn rather than fail: the dependency dump in the next step reports
+          # the whole picture, which is more useful than stopping here.
+          Write-Host "::warning::Still missing from System32 after vcredist2012: $($still -join ', ')"
+        } else {
+          Write-Host "VC++ 2012 runtime installed: $($need -join ', ')"
+        }
+
     - name: Install Windows Dependencies
       if: matrix.build_name == 'windows-2022'
       uses: ./.github/actions/install-windows-deps
@@ -167,7 +203,8 @@ jobs:
             if (-not $seen.Add($dll.ToLower())) { continue }
             if ($dll.ToLower() -like 'api-ms-*' -or $dll.ToLower() -like 'ext-ms-*') { continue }
             $hit = Resolve-Dll $dll
-            if ($hit) { Walk $hit $seen $missing $missingDelay } else { [void]$missing.Add($dll) }
+            if ($hit) { Walk $hit $seen $missing $missingDelay }
+            else      { [void]$missing.Add("$dll  <- imported by $(Split-Path $file -Leaf)") }
           }
         }
 
