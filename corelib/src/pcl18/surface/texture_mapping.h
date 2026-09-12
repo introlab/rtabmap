@@ -368,7 +368,8 @@ namespace pcl
                                       const pcl::texture_mapping::CameraVector &cameras,
 									  const rtabmap::ProgressState * callback = 0,
 									  std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0,
-									  bool distanceToCamPolicy = false);
+									  bool distanceToCamPolicy = false,
+									  int numThreads = 1); // number of threads used to compute the visible faces of the cameras (1=sequential)
 
     protected:
       /** \brief mesh scale control. */

@@ -36,8 +36,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtflann/flann.hpp"
 #include "nanoflann/NanoFlannIndex.h"
 #include <boost/crc.hpp>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace rtabmap {
+
+namespace {
+// A count of 0 means one thread per core, as Kp/FlannThreads spells it.
+// rtflann would reach the same place by leaving num_threads(0) to OpenMP, but
+// only where it is compiled with it: resolving the count here makes 0 mean the
+// same thing in both builds, and keeps a negative count from reaching
+// num_threads(), where it wraps around to an unsigned and asks the runtime for
+// billions of threads.
+int resolveCores(int cores)
+{
+	if(cores > 0)
+	{
+		return cores;
+	}
+#ifdef _OPENMP
+	return omp_get_max_threads();
+#else
+	return 1;
+#endif
+}
+}
 
 FlannIndex::FlannIndex():
 		index_(0),
@@ -910,7 +934,8 @@ void FlannIndex::knnSearch(
 		int knn,
 		int checks,
 		float eps,
-		bool sorted) const
+		bool sorted,
+		int cores) const
 {
 	if(nanoIndex_)
 	{
@@ -930,6 +955,7 @@ void FlannIndex::knnSearch(
 	rtflann::Matrix<size_t> indicesF((size_t*)indicesBuffer.data(), query.rows, knn);
 
 	rtflann::SearchParams params = rtflann::SearchParams(checks, eps, sorted);
+	params.cores = resolveCores(cores);
 
 	if(featuresType_ == CV_8UC1)
 	{
@@ -974,11 +1000,12 @@ void FlannIndex::radiusSearch(
 		int maxNeighbors,
 		int checks,
 		float eps,
-		bool sorted) const
+		bool sorted,
+		int cores) const
 {
 	if(nanoIndex_)
 	{
-		// "checks" doesn't apply
+		// "checks" and "cores" don't apply, it searches on one core
 		nanoIndex_->radiusSearch(query, indices, dists, radius, maxNeighbors, eps, sorted);
 		return;
 	}
@@ -990,6 +1017,7 @@ void FlannIndex::radiusSearch(
 
 	rtflann::SearchParams params = rtflann::SearchParams(checks, eps, sorted);
 	params.max_neighbors = maxNeighbors<=0?-1:maxNeighbors; // -1 is all in radius
+	params.cores = resolveCores(cores);
 
 	if(featuresType_ == CV_8UC1)
 	{

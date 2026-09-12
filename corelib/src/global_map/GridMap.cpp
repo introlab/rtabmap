@@ -237,6 +237,11 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 	if(!cache().empty())
 	{
 		UDEBUG("Updating from cache");
+		int not3DCount = 0;
+		int not3DFirstId = 0;
+		int not3DGroundType = 0;
+		int not3DObstaclesType = 0;
+		int not3DEmptyType = 0;
 		for(std::list<std::pair<int, Transform> >::const_iterator iter = newPoses.begin(); iter!=newPoses.end(); ++iter)
 		{
 			if(uContains(cache(), iter->first))
@@ -245,8 +250,13 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 
 				if(!localGrid.is3D())
 				{
-					UWARN("It seems the local occupancy grids are not 3d, cannot update GridMap! (ground type=%d, obstacles type=%d, empty type=%d)",
-							localGrid.groundCells.type(), localGrid.obstacleCells.type(), localGrid.emptyCells.type());
+					if(++not3DCount == 1)
+					{
+						not3DFirstId = iter->first;
+						not3DGroundType = localGrid.groundCells.type();
+						not3DObstaclesType = localGrid.obstacleCells.type();
+						not3DEmptyType = localGrid.emptyCells.type();
+					}
 					continue;
 				}
 
@@ -338,6 +348,12 @@ void GridMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 				}
 				uInsert(occupiedLocalMaps, std::make_pair(iter->first, occupied));
 			}
+		}
+		if(not3DCount)
+		{
+			UWARN("It seems the local occupancy grids are not 3d, cannot update GridMap! "
+					"(%d local grid(s) ignored, first one (id=%d) had ground type=%d, obstacles type=%d, empty type=%d)",
+					not3DCount, not3DFirstId, not3DGroundType, not3DObstaclesType, not3DEmptyType);
 		}
 	}
 

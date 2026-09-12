@@ -28,12 +28,21 @@ struct Backend
 	float rebalancingFactor = 2.0f;
 	// Not a FlannIndex at all: cv::BFMatcher, what the brute force strategies of
 	// VWDictionary and RegistrationVis use. Kept in the comparisons as the
-	// baseline every index has to beat. OpenCV threads its search where the
-	// indexes here search on one core, so it comes in two flavours: as the
-	// application gets it, and held to one core to compare the work done rather
-	// than the time it takes on an idle machine.
+	// baseline every index has to beat.
 	bool bruteForce = false;
-	bool singleCore = false;
+	// Threads the batch of queries is searched with, as Kp/FlannThreads sets it
+	// on VWDictionary: 1 to search on one core, 0 for one per core. It says the
+	// same thing on both sides of bruteForce, which is what makes the rows
+	// comparable: cv::BFMatcher threads its search too, so it appears in the
+	// same two flavours as the rtflann trees. A row named "threaded" is the one
+	// per core one, a row named without it searches on a single core, so that
+	// the tables compare the work done rather than the time it takes on an idle
+	// machine.
+	//
+	// Of the indexes only the rtflann ones read it, they are the ones searching
+	// a batch under an OpenMP loop; FlannIndex ignores it for the nanoflann
+	// ones, which always search on one core.
+	int cores = 1;
 };
 
 // Every algorithm that indexes float features. The exhaustive search comes
@@ -41,9 +50,8 @@ struct Backend
 // found and for the time taken.
 const Backend FLOAT_BACKENDS[] = {
 	{"linear    exhaustive                ", FlannIndex::FLANN_INDEX_LINEAR},
-	// No single core row for the float features: OpenCV doesn't thread that
-	// match at these sizes, it measures the same thing as the one above.
-	{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
+	{"cv        BFMatcher                 ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 1},
+	{"cv        BFMatcher threaded        ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 0},
 	{"rtflann   kd-tree (4 randomized)    ", FlannIndex::FLANN_INDEX_KDTREE},
 	{"rtflann   kd-tree single            ", FlannIndex::FLANN_INDEX_KDTREE_SINGLE},
 	{"nanoflann kd-tree single            ", FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE, 1.0f},
@@ -64,8 +72,8 @@ const Backend EXACT_BACKENDS[] = {
 // LSH is for.
 const Backend BINARY_BACKENDS[] = {
 	{"linear    exhaustive (hamming)      ", FlannIndex::FLANN_INDEX_LINEAR},
-	{"cv        BFMatcher (hamming)       ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true},
-	{"cv        BFMatcher (hamming,1 core)", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, true},
+	{"cv        BFMatcher hamming         ", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 1},
+	{"cv        BFMatcher hamming threaded", FlannIndex::FLANN_INDEX_LINEAR, 1.0f, true, 0},
 	{"rtflann   LSH                       ", FlannIndex::FLANN_INDEX_LSH},
 };
 
@@ -188,11 +196,12 @@ inline Result run(
 
 	if(backend.bruteForce)
 	{
-		// cv::setNumThreads() is global, put it back before leaving.
+		// cv::setNumThreads() is global, put it back before leaving. Left alone
+		// for cores=0: OpenCV's own default is already one thread per core.
 		const int threads = cv::getNumThreads();
-		if(backend.singleCore)
+		if(backend.cores > 0)
 		{
-			cv::setNumThreads(1);
+			cv::setNumThreads(backend.cores);
 		}
 
 		UTimer timer;
@@ -221,10 +230,7 @@ inline Result run(
 			result.radiusTime = timer.ticks();
 		}
 		result.memory = 0; // it indexes nothing
-		if(backend.singleCore)
-		{
-			cv::setNumThreads(threads);
-		}
+		cv::setNumThreads(threads);
 		return result;
 	}
 
@@ -233,7 +239,7 @@ inline Result run(
 	index.buildIndex(backend.algorithm, data, false, rebalancingFactor);
 	result.buildTime = timer.ticks();
 
-	index.knnSearch(queries, result.indices, dists, knn);
+	index.knnSearch(queries, result.indices, dists, knn, 32, 0.0f, true, backend.cores);
 	result.knnTime = timer.ticks();
 
 	if(radius > 0.0f)

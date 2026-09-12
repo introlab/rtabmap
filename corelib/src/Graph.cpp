@@ -1904,6 +1904,39 @@ std::list<std::pair<int, Transform> > computePath(
 	return path;
 }
 
+std::map<int, int> computePathDepths(
+			const std::multimap<int, int> & links,
+			int from,
+			int maxDepth)
+{
+	std::map<int, int> pathDepths;
+	pathDepths.insert(std::make_pair(from, 0));
+	std::list<int> frontier;
+	frontier.push_back(from);
+	while(!frontier.empty())
+	{
+		int currentId = frontier.front();
+		frontier.pop_front();
+		int currentDepth = pathDepths.at(currentId);
+		if(maxDepth > 0 && currentDepth >= maxDepth)
+		{
+			continue;
+		}
+		for(std::multimap<int, int>::const_iterator iter = links.find(currentId);
+			iter!=links.end() && iter->first == currentId;
+			++iter)
+		{
+			int nextId = iter->second;
+			if(pathDepths.find(nextId) == pathDepths.end())
+			{
+				pathDepths.insert(std::make_pair(nextId, currentDepth+1));
+				frontier.push_back(nextId);
+			}
+		}
+	}
+	return pathDepths;
+}
+
 // Dijksta
 std::list<int> computePath(
 			const std::multimap<int, Link> & links,

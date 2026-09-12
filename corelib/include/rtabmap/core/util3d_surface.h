@@ -150,7 +150,8 @@ pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT createTextureMesh(
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0, // For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don't correspond to pose ids, they are indexes from 0 to total camera models and texture's materials.
-		bool distanceToCamPolicy = false);
+		bool distanceToCamPolicy = false,
+		int numThreads = 1); // number of threads used to compute the visible faces of the cameras (1=sequential)
 pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
@@ -163,7 +164,8 @@ pcl::TextureMesh::Ptr RTABMAP_CORE_EXPORT createTextureMesh(
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0, // For each point, we have a list of cameras with corresponding pixel in it. Beware that the camera ids don't correspond to pose ids, they are indexes from 0 to total camera models and texture's materials.
-		bool distanceToCamPolicy = false);
+		bool distanceToCamPolicy = false,
+		int numThreads = 1); // number of threads used to compute the visible faces of the cameras (1=sequential)
 
 /**
  * Remove not textured polygon clusters. If minClusterSize<0, only the largest cluster is kept.

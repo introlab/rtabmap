@@ -42,6 +42,9 @@
 #include <pcl18/surface/texture_mapping.h>
 #include <pcl/search/octree.h>
 #include <pcl/common/common.h> // for getAngle3D
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointInT> std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> >
@@ -1051,7 +1054,8 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		const pcl::texture_mapping::CameraVector &cameras,
 		const rtabmap::ProgressState * state,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels,
-		bool distanceToCamPolicy)
+		bool distanceToCamPolicy,
+		int numThreads)
 {
 
 	if (mesh.tex_polygons.size () != 1)
@@ -1081,7 +1085,17 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		UWARN("Texturing cancelled!");
 		return false;
 	}
-	for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
+	// Visible faces of a camera don't depend on the other cameras, so they are computed by batch
+	// in parallel below, then merged sequentially (in camera order) to keep the same output.
+	struct CameraVisibility
+	{
+		std::vector<int> keptFaces; // faces kept for that camera, in increasing face index
+		int occludedFaces = 0;
+		int spuriousFaces = 0;
+		int projectedFaces = 0;
+	};
+
+	auto computeVisibleFaces = [&](unsigned int current_cam, CameraVisibility & out)
 	{
 		UDEBUG("Texture camera %d...", current_cam);
 
@@ -1259,7 +1273,6 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
 			{
 				polygonsKept.insert(polygon_to_face_index[*jter]);
-				faceCameras[polygon_to_face_index[*jter]].push_back(current_cam);
 			}
 		}
 
@@ -1276,14 +1289,55 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			}
 		}
 
-		msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), (int)occludedFaces.size(), clusterFaces, (int)visibilityIndices.size());
-		UINFO("%s", msg.c_str());
-		if(state && !state->callback(msg))
+		out.keptFaces = std::vector<int>(polygonsKept.begin(), polygonsKept.end());
+		out.occludedFaces = (int)occludedFaces.size();
+		out.spuriousFaces = clusterFaces;
+		out.projectedFaces = (int)visibilityIndices.size();
+	};
+
+#ifdef _OPENMP
+	const int usedThreads = numThreads>1?numThreads:1;
+#else
+	const int usedThreads = 1;
+#endif
+	// More cameras than threads are batched so that a thread getting a cheap camera can pick up
+	// more work. With a single thread, cameras are processed one by one.
+	const size_t chunkSize = usedThreads>1?usedThreads*4:1;
+	std::vector<CameraVisibility> chunkVisibility;
+	bool canceled = false;
+	for(size_t chunkStart=0; chunkStart<cameras.size() && !canceled; chunkStart+=chunkSize)
+	{
+		size_t chunkCams = std::min(chunkSize, cameras.size()-chunkStart);
+		chunkVisibility.assign(chunkCams, CameraVisibility());
+
+		#pragma omp parallel for schedule(dynamic) num_threads(usedThreads)
+		for(int i=0; i<(int)chunkCams; ++i)
 		{
-			//cancelled!
-			UWARN("Texturing cancelled!");
-			return false;
+			computeVisibleFaces((unsigned int)(chunkStart+i), chunkVisibility[i]);
 		}
+
+		for(size_t i=0; i<chunkCams && !canceled; ++i)
+		{
+			unsigned int current_cam = (unsigned int)(chunkStart+i);
+			const CameraVisibility & visibility = chunkVisibility[i];
+			for(size_t j=0; j<visibility.keptFaces.size(); ++j)
+			{
+				faceCameras[visibility.keptFaces[j]].push_back(current_cam);
+			}
+
+			msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), visibility.occludedFaces, visibility.spuriousFaces, visibility.projectedFaces);
+			UINFO("%s", msg.c_str());
+			if(state && !state->callback(msg))
+			{
+				//cancelled!
+				canceled = true;
+			}
+		}
+	}
+	if(canceled)
+	{
+		UWARN("Texturing cancelled!");
+		return false;
 	}
 
 	msg = uFormat("Texturing %d polygons...", (int)faces.size());

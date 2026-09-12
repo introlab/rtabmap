@@ -137,6 +137,20 @@ IF(BUILD_PERF_TESTS)
 	set_tests_properties(test_bayesfilter_perf PROPERTIES
 			TIMEOUT ${_perf_timeout}
 			LABELS  "performance")
+
+	# Comparison of the two ways of getting the graph depth of every node of a map, which
+	# is what the RGBD/ProximityMaxGraphDepth filtering needs: one graph::computePath()
+	# (A*) per candidate against one graph::computePathDepths() (BFS) for all of them,
+	# over spiral graphs, where the straight line to the goal tells A* nothing:
+	#   bin/test_graph_perf
+	#   bin/test_graph_perf --gtest_filter=*ProximityLinks*
+	add_executable(test_graph_perf perf_graph.cpp)
+	target_link_libraries(test_graph_perf gtest_main rtabmap_core)
+
+	add_test(NAME test_graph_perf COMMAND test_graph_perf)
+	set_tests_properties(test_graph_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
 ENDIF(BUILD_PERF_TESTS)
 
 # Rtabmap end-to-end replay of sample DBs (test data fetched by

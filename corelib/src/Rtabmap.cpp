@@ -2746,7 +2746,6 @@ bool Rtabmap::process(
 				std::map<int, Transform> nearestPoses;
 				std::map<int, Transform> optimizedPosesWithOdomCache;
 				std::multimap<int, int> links;
-				std::map<int, Transform> * refPoses = &_optimizedPoses;
 				if(_memory->isIncremental() && _proximityMaxGraphDepth>0)
 				{
 					// get bidirectional links
@@ -2765,7 +2764,6 @@ bool Rtabmap::process(
 						// mapping mode while being localized on the previous session.
 						optimizedPosesWithOdomCache = _optimizedPoses;
 						optimizedPosesWithOdomCache.insert(_odomCachePoses.begin(), _odomCachePoses.end());
-						refPoses = &optimizedPosesWithOdomCache;
 						for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end(); ++iter)
 						{
 							if(uContains(optimizedPosesWithOdomCache, iter->second.from()) && 
@@ -2778,18 +2776,23 @@ bool Rtabmap::process(
 						}
 					}
 				}
+				std::map<int, int> proximityPathDepths;
+				if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
+				{
+					proximityPathDepths = graph::computePathDepths(links, signature->id(), _proximityMaxGraphDepth);
+				}
 				for(std::map<int, float>::iterator iter=nearestIds.lower_bound(1); iter!=nearestIds.end(); ++iter)
 				{
 					if(_memory->getStMem().find(iter->first) == _memory->getStMem().end())
 					{
 						if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
 						{
-							std::list<std::pair<int, Transform> > path = graph::computePath(*refPoses, links, signature->id(), iter->first);
-							UDEBUG("Graph depth to %d = %ld", iter->first, path.size());
-							if(!path.empty() && (int)path.size() <= _proximityMaxGraphDepth)
+							std::map<int, int>::const_iterator depthIter = proximityPathDepths.find(iter->first);
+							if(depthIter == proximityPathDepths.end())
 							{
-								nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
+								continue;
 							}
+							nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
 						}
 						else
 						{

@@ -201,6 +201,7 @@ public:
 	 *        structures ignoring it
 	 * @param eps Search for eps-approximate neighbors
 	 * @param sorted Give the neighbors back by increasing distance
+	 * @param cores Threads for the batch search (0 = all available)
 	 */
 	void knnSearch(
 			const cv::Mat & query,
@@ -209,8 +210,8 @@ public:
 	        int knn,
 			int checks = 32,
 			float eps = 0.0,
-			bool sorted = true) const;
-
+			bool sorted = true,
+			int cores = 1) const;
 	/**
 	 * @brief Search the neighbors of each query within a radius
 	 * @param query One feature per row, of the type and dimension the index was
@@ -225,6 +226,7 @@ public:
 	 *        structures ignoring it
 	 * @param eps Search for eps-approximate neighbors
 	 * @param sorted Give the neighbors back by increasing distance
+	 * @param cores Threads for the batch search (0 = all available)
 	 */
 	void radiusSearch(
 			const cv::Mat & query,
@@ -234,7 +236,8 @@ public:
 			int maxNeighbors = 0,
 			int checks = 32,
 			float eps = 0.0,
-			bool sorted = true) const;
+			bool sorted = true,
+			int cores = 1) const;
 
 private:
 	void * index_;               // rtflann backend
