@@ -10,6 +10,7 @@
 #include <rtabmap/core/RegistrationInfo.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/VWDictionary.h>
@@ -4159,4 +4160,249 @@ TEST_F(MemoryFixture, ComputeIcpTransformMultiRejectsScansTooFarApart)
 	ASSERT_FALSE(info.rejectedMsg.empty()) << "declined without a reason";
 	EXPECT_NE(info.rejectedMsg.find("Too far"), std::string::npos)
 			<< "unexpected reason: " << info.rejectedMsg;
+}
+
+// ---------------------------------------------------------------------------
+// createSignature() reuses the caller's compressed blob instead of
+// re-compressing, but only while the pixels it would store are provably the
+// ones that blob already encodes. Two separate mechanisms keep that true, and
+// these tests pin both:
+//   - decimation leaves `data` untouched and is caught by a buffer-identity
+//     check on the local image,
+//   - rectification/rotation go through SensorData::setRGBDImage(), which
+//     clears the compressed blob so there is nothing left to reuse.
+// A regression in either one stores pixels that don't match the signature.
+
+namespace {
+
+// A SensorData carrying both the raw image and the blob that encodes it, the
+// shape produced by SensorData::uncompressData() when reprocessing a database.
+SensorData dataWithRawAndCompressed(const cv::Mat & raw, const cv::Mat & blob)
+{
+	SensorData data(blob);     // 1-row CV_8UC1 is detected as compressed
+	data.setImageRaw(raw);     // setImageRaw() does not clear the blob
+	return data;
+}
+
+SensorData dataWithRawAndCompressed(const cv::Mat & raw, const cv::Mat & blob, const CameraModel & model)
+{
+	SensorData data(blob, model);
+	data.setImageRaw(raw);
+	return data;
+}
+
+cv::Mat texture(int rows, int cols)
+{
+	cv::Mat image(rows, cols, CV_8UC1);
+	cv::randu(image, cv::Scalar(0), cv::Scalar(255));
+	return image;
+}
+
+bool sameBytes(const cv::Mat & a, const cv::Mat & b)
+{
+	return a.size() == b.size() && a.type() == b.type() && cv::countNonZero(a != b) == 0;
+}
+
+// What createSignature() ended up storing for `data`.
+SensorData storedData(Memory & memory, SensorData & data)
+{
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	if(!memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance))
+	{
+		return SensorData();
+	}
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	return s ? s->sensorData() : SensorData();
+}
+
+cv::Mat storedBlob(Memory & memory, SensorData & data)
+{
+	return storedData(memory, data).imageCompressed();
+}
+
+}  // namespace
+
+TEST(MemoryTest, CreateSignatureReusesCompressedImageWhenPixelsUnchanged)
+{
+	// Nothing decimates, rectifies or rotates the image, so the blob the caller
+	// supplied still encodes exactly what gets stored: it must be passed through
+	// byte for byte rather than re-compressed. Both compression paths are
+	// exercised -- the reuse flags gate the threaded branch and the serial one
+	// separately.
+	for(int parallelized = 0; parallelized <= 1; ++parallelized)
+	{
+		SCOPED_TRACE(std::string(Parameters::kMemCompressionParallelized()) +
+				"=" + (parallelized ? "true" : "false"));
+
+		ParametersMap params = defaultMemoryParams();
+		params[Parameters::kMemBinDataKept()] = "true";
+		params[Parameters::kMemImagePostDecimation()] = "1";
+		params[Parameters::kMemCompressionParallelized()] = parallelized ? "true" : "false";
+		Memory memory(params);
+
+		const cv::Mat raw = texture(32, 32);
+		const cv::Mat blob = compressImage2(raw, ".png");
+		ASSERT_FALSE(blob.empty());
+
+		SensorData data = dataWithRawAndCompressed(raw, blob);
+		ASSERT_FALSE(data.imageRaw().empty());
+		ASSERT_FALSE(data.imageCompressed().empty());
+
+		const cv::Mat stored = storedBlob(memory, data);
+		ASSERT_FALSE(stored.empty()) << "no compressed image was kept";
+		EXPECT_TRUE(sameBytes(stored, blob))
+				<< "the caller's blob was re-compressed instead of reused ("
+				<< blob.cols << " bytes in, " << stored.cols << " bytes stored)";
+	}
+}
+
+TEST(MemoryTest, CreateSignatureRecompressesWhenPostDecimationChangesPixels)
+{
+	// Decimation never touches the SensorData, so its blob is still there and
+	// still non-empty; only the buffer-identity check stands between it and a
+	// signature whose stored image is twice the size of its own pixels.
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "2";
+	Memory memory(params);
+
+	const cv::Mat raw = texture(32, 32);
+	const cv::Mat blob = compressImage2(raw, ".png");
+	SensorData data = dataWithRawAndCompressed(raw, blob);
+
+	const cv::Mat stored = storedBlob(memory, data);
+	ASSERT_FALSE(stored.empty()) << "no compressed image was kept";
+	EXPECT_FALSE(sameBytes(stored, blob))
+			<< "the full-resolution blob was stored for a decimated signature";
+
+	const cv::Mat decoded = uncompressImage(stored);
+	EXPECT_EQ(decoded.cols, raw.cols / 2);
+	EXPECT_EQ(decoded.rows, raw.rows / 2);
+}
+
+TEST(MemoryTest, CreateSignatureRecompressesAfterRectification)
+{
+	// Rectification replaces the raw image through setRGBDImage(), whose
+	// clearPreviousData argument defaults to true and drops the blob. Were that
+	// default to change, the buffer-identity check would not save us: the local
+	// image is read back out of the SensorData after rectification, so the
+	// pointers would match and the unrectified blob would be stored against
+	// rectified pixels.
+	const int size = 32;
+	const double f = 16.0, c = 16.0;
+	const cv::Mat K = (cv::Mat_<double>(3, 3) << f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0);
+	const cv::Mat D = (cv::Mat_<double>(1, 4) << -0.3, 0.1, 0.001, -0.001);
+	const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+	const cv::Mat P = (cv::Mat_<double>(3, 4) << f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
+	const CameraModel model("rectifiable", cv::Size(size, size), K, D, R, P);
+	ASSERT_TRUE(model.isValidForRectification());
+
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "1";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "false";
+	Memory memory(params);
+
+	const cv::Mat raw = texture(size, size);
+	const cv::Mat blob = compressImage2(raw, ".png");
+	SensorData data = dataWithRawAndCompressed(raw, blob, model);
+
+	const cv::Mat stored = storedBlob(memory, data);
+	ASSERT_FALSE(stored.empty()) << "no compressed image was kept";
+	EXPECT_FALSE(sameBytes(stored, blob))
+			<< "the unrectified blob was stored for a rectified signature";
+
+	const cv::Mat decoded = uncompressImage(stored);
+	ASSERT_EQ(decoded.size(), raw.size());
+	EXPECT_GT(cv::countNonZero(decoded != raw), 0)
+			<< "stored image still holds the unrectified pixels";
+}
+
+TEST(MemoryTest, CreateSignatureRecompressesAfterUpsideUpRotation)
+{
+	// Same setter, different caller: rotating the image upright also replaces it
+	// through setRGBDImage() and so drops the blob. Rectification is left on
+	// (already rectified) so only the rotation can account for the difference.
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "1";
+	params[Parameters::kMemRotateImagesUpsideUp()] = "true";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true";
+	Memory memory(params);
+
+	// 8 rows x 16 cols, with the camera rolled +pi/2: the upright correction is a
+	// 90 deg rotation, so the stored image must come back 16 rows x 8 cols. That
+	// swap is what makes a reused blob unmistakable here -- it would still decode
+	// at the original 8x16.
+	const cv::Mat raw = texture(8, 16);
+	const cv::Mat blob = compressImage2(raw, ".png");
+	const Transform rolled(0.0f, 0.0f, 0.0f, (float)M_PI / 2.0f, 0.0f, 0.0f);
+	const CameraModel model(10.0, 10.0, 8.0, 4.0,
+			rolled * CameraModel::opticalRotation(), 0.0, cv::Size(16, 8));
+
+	SensorData data = dataWithRawAndCompressed(raw, blob, model);
+
+	const cv::Mat stored = storedBlob(memory, data);
+	ASSERT_FALSE(stored.empty()) << "no compressed image was kept";
+	EXPECT_FALSE(sameBytes(stored, blob))
+			<< "the unrotated blob was stored for a rotated signature";
+
+	const cv::Mat decoded = uncompressImage(stored);
+	EXPECT_EQ(decoded.rows, raw.cols);
+	EXPECT_EQ(decoded.cols, raw.rows);
+}
+
+TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
+{
+	// The stereo branch rectifies both images and hands them to setStereoImage(),
+	// which clears the left blob AND the right one. This is the only test that
+	// covers reuseCompressedDepth, since for a stereo pair the "depth" slot
+	// carries the right image.
+	const int size = 32;
+	const double f = 16.0, c = 16.0, baseline = 0.1;
+	const cv::Mat K = (cv::Mat_<double>(3, 3) << f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0);
+	const cv::Mat D = (cv::Mat_<double>(1, 4) << -0.3, 0.1, 0.001, -0.001);
+	const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+	const cv::Mat Pleft = (cv::Mat_<double>(3, 4) <<
+			f, 0.0, c, baseline * f, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
+	const cv::Mat Pright = (cv::Mat_<double>(3, 4) <<
+			f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
+	const cv::Mat T = (cv::Mat_<double>(3, 1) << -baseline, 0.0, 0.0);
+	const StereoCameraModel model("stereo",
+			CameraModel("left", cv::Size(size, size), K, D, R, Pleft),
+			CameraModel("right", cv::Size(size, size), K, D, R, Pright),
+			cv::Mat::eye(3, 3, CV_64FC1), T);
+	ASSERT_TRUE(model.isValidForRectification());
+
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "1";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "false";
+	Memory memory(params);
+
+	const cv::Mat left = texture(size, size);
+	const cv::Mat right = texture(size, size);
+	const cv::Mat leftBlob = compressImage2(left, ".png");
+	const cv::Mat rightBlob = compressImage2(right, ".png");
+
+	SensorData data;
+	data.setStereoImage(leftBlob, rightBlob, std::vector<StereoCameraModel>{model});
+	data.setImageRaw(left);          // neither setter clears the blobs
+	data.setDepthOrRightRaw(right);
+	ASSERT_FALSE(data.imageCompressed().empty());
+	ASSERT_FALSE(data.depthOrRightCompressed().empty());
+
+	const SensorData stored = storedData(memory, data);
+	ASSERT_FALSE(stored.imageCompressed().empty()) << "no left image was kept";
+	ASSERT_FALSE(stored.depthOrRightCompressed().empty()) << "no right image was kept";
+
+	EXPECT_FALSE(sameBytes(stored.imageCompressed(), leftBlob))
+			<< "the unrectified left blob was stored for a rectified signature";
+	EXPECT_FALSE(sameBytes(stored.depthOrRightCompressed(), rightBlob))
+			<< "the unrectified right blob was stored for a rectified signature";
+
+	EXPECT_GT(cv::countNonZero(uncompressImage(stored.imageCompressed()) != left), 0)
+			<< "stored left image still holds the unrectified pixels";
+	EXPECT_GT(cv::countNonZero(uncompressImage(stored.depthOrRightCompressed()) != right), 0)
+			<< "stored right image still holds the unrectified pixels";
 }
