@@ -779,6 +779,24 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 
 
+		// Features that came with the frame are placed in the full size image, while what
+		// is about to be registered is the decimated one and the calibration that goes
+		// with it, so bring them along. They are scaled back below with whatever the
+		// registration returns, leaving the caller its own frame of reference.
+		if(!decimatedData.keypoints().empty())
+		{
+			std::vector<cv::KeyPoint> decimatedKpts = decimatedData.keypoints();
+			double log2value = log(double(_imageDecimation))/log(2.0);
+			for(unsigned int i=0; i<decimatedKpts.size(); ++i)
+			{
+				decimatedKpts[i].pt.x /= _imageDecimation;
+				decimatedKpts[i].pt.y /= _imageDecimation;
+				decimatedKpts[i].size /= _imageDecimation;
+				decimatedKpts[i].octave -= log2value;
+			}
+			decimatedData.setFeatures(decimatedKpts, decimatedData.keypoints3D(), decimatedData.descriptors());
+		}
+
 		// compute transform
 		t = this->computeTransform(decimatedData, guess, info);
 
