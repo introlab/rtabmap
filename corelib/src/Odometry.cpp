@@ -817,7 +817,14 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 	}
-	else if(!data.imageRaw().empty() || !data.laserScanRaw().isEmpty() || (this->canProcessAsyncIMU() && !data.imu().empty()))
+	// A frame that brings its own features carries no image, and a frame whose scene was
+	// empty carries no feature either, so neither says whether there is a frame at all.
+	// The calibration does: it is there when a camera produced this data.
+	else if(!data.imageRaw().empty() ||
+			!data.cameraModels().empty() ||
+			!data.stereoCameraModels().empty() ||
+			!data.laserScanRaw().isEmpty() ||
+			(this->canProcessAsyncIMU() && !data.imu().empty()))
 	{
 		t = this->computeTransform(data, guess, info);
 	}
