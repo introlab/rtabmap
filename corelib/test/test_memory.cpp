@@ -2844,6 +2844,53 @@ TEST_F(MemoryFixture, CreateSignatureAutoIncrementsIdWhenGenerateIdsOn)
 	EXPECT_EQ(memory_->getLastSignatureId(), id1 + 1);
 }
 
+TEST(MemoryTest, PreDecimationGivesBackProvidedKeypointsAsTheyCameIn)
+{
+	// Keypoints provided with the frame are found in the full size image, so
+	// createSignature scales them into the pre-decimated one it describes them in, and
+	// scales them back to the final image size afterwards. With no post-decimation the
+	// two undo each other, which is the whole of what this test knows: what comes out is
+	// what went in, the octave included -- it moves down with the image and back up
+	// again, a decimated image being that many pyramid levels down already.
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kKpMaxFeatures()] = "100";                  // let descriptors be extracted
+	params[Parameters::kMemUseOdomFeatures()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "2";
+	params[Parameters::kMemImagePostDecimation()] = "1";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	// Big enough that the keypoint stays far from the border of the decimated image,
+	// where a descriptor cannot be computed and the keypoint would be dropped.
+	cv::Mat image(256, 256, CV_8UC1);
+	cv::RNG rng(7);
+	rng.fill(image, cv::RNG::UNIFORM, 0, 255);
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(100.0, 100.0, 128.0, 128.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(256, 256));
+
+	SensorData data;
+	data.setRGBDImage(image, cv::Mat(), std::vector<CameraModel>{model});
+	data.setId(0);
+
+	// No descriptors: that is what sends createSignature down the branch where the
+	// provided keypoints are described from the image rather than taken wholesale.
+	cv::KeyPoint kpt(128.0f, 120.0f, 8.0f);
+	kpt.octave = 2;
+	data.setFeatures(std::vector<cv::KeyPoint>(1, kpt),
+			std::vector<cv::Point3f>(1, cv::Point3f(0.0f, 0.0f, 1.0f)),
+			cv::Mat());
+
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	ASSERT_EQ(s->getWordsKpts().size(), 1u);
+	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.x, kpt.pt.x);
+	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.y, kpt.pt.y);
+	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].size, kpt.size);
+	EXPECT_EQ(s->getWordsKpts()[0].octave, kpt.octave);
+}
+
 TEST(MemoryTest, CreateSignaturePostDecimatesImageWhenPostDecimationGreaterThanOne)
 {
 	// kMemImagePostDecimation > 1 causes createSignature to downsample the RGB image

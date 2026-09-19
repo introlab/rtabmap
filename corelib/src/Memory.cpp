@@ -5660,7 +5660,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                 if(_imagePreDecimation > 1 || useProvided3dPoints)
                 {
                     float decimationRatio = 1.0f / float(_imagePreDecimation);
-                    double log2value = log(double(_imagePreDecimation))/log(2.0);
+                    // The octave a feature was found at moves with the image it is
+                    // expressed in, by the same ratio as its position: a decimated
+                    // image is already that many pyramid levels down, so scaling the
+                    // keypoints into it lowers their octave.
+                    double log2value = log(double(decimationRatio))/log(2.0);
                     for(unsigned int i=0; i < keypoints.size(); ++i)
                     {
                         cv::KeyPoint & kpt = keypoints[i];
@@ -6246,7 +6250,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
 		float decimationRatio = float(preDecimation) / float(_imagePostDecimation);
-		double log2value = log(double(preDecimation))/log(2.0);
+		// Same ratio the positions are remapped by, which is what keeps a keypoint at
+		// the scale it was found at: log2(pre/post), and not log2(pre), those two
+		// agreeing only when the final image is not decimated at all.
+		double log2value = log(double(decimationRatio))/log(2.0);
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];
