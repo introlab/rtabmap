@@ -792,7 +792,9 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				decimatedKpts[i].pt.x /= _imageDecimation;
 				decimatedKpts[i].pt.y /= _imageDecimation;
 				decimatedKpts[i].size /= _imageDecimation;
-				decimatedKpts[i].octave -= log2value;
+				// Never below the finest level of the decimated image, which is as fine
+				// as its detail goes; ORB refuses a negative octave outright.
+				decimatedKpts[i].octave = std::max(0, int(decimatedKpts[i].octave - log2value));
 			}
 			decimatedData.setFeatures(decimatedKpts, decimatedData.keypoints3D(), decimatedData.descriptors());
 		}

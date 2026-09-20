@@ -5673,7 +5673,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                             kpt.pt.x *= decimationRatio;
                             kpt.pt.y *= decimationRatio;
                             kpt.size *= decimationRatio;
-                            kpt.octave += log2value;
+                            // Never below the finest level of the image it is now
+                            // expressed in: the detail it was found at is not in there
+                            // any more, and ORB refuses a negative octave outright.
+                            kpt.octave = std::max(0, int(kpt.octave + log2value));
                         }
                         if(useProvided3dPoints)
                         {
@@ -6263,7 +6266,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				kpt.pt.x *= decimationRatio;
 				kpt.pt.y *= decimationRatio;
 				kpt.size *= decimationRatio;
-				kpt.octave += log2value;
+				kpt.octave = std::max(0, int(kpt.octave + log2value));
 			}
 			words.insert(std::make_pair(*iter, words.size()));
 			wordsKpts.push_back(kpt);
