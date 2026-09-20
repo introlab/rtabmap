@@ -101,6 +101,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_stereoFromMotion(Parameters::defaultMemStereoFromMotion()),
     _imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
+	_legacyDecimatedOctave(false),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
@@ -220,6 +221,28 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		if(_dbDriver->openConnection(dbUrl, dbOverwritten, isReadOnly()))
 		{
 			success = true;
+
+			// Before 0.23.12 the octave of a keypoint scaled into a decimated image was
+			// moved the wrong way, which changes the pyramid level its descriptor is
+			// taken from. A map filled that way stays self-consistent only if we keep
+			// filling it that way; a new one gets the corrected scaling.
+			_legacyDecimatedOctave =
+					uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.12") < 0;
+			// Only worth saying where the two scalings actually differ: on keypoints
+			// provided by odometry and scaled into a pre-decimated image, and on the
+			// remap to a post-decimated one, which used to move the octave by the wrong
+			// amount rather than the wrong way. Pre-decimation on its own changes
+			// nothing, features found in the decimated image being at its own levels.
+			if(_legacyDecimatedOctave &&
+			   ((_useOdometryFeatures && _imagePreDecimation > 1) ||
+				(_imagePostDecimation > 1 && _imagePreDecimation != _imagePostDecimation)))
+			{
+				UWARN("Database \"%s\" was created by version %s, before the octave of "
+						"decimated keypoints was corrected (0.23.12). Its features keep "
+						"being described the old way so that they stay comparable with "
+						"those already in it. Start a new map to get the corrected one.",
+						dbUrl.c_str(), _dbDriver->getDatabaseVersion().c_str());
+			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));
 		}
 		else
@@ -5663,8 +5686,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                     // The octave a feature was found at moves with the image it is
                     // expressed in, by the same ratio as its position: a decimated
                     // image is already that many pyramid levels down, so scaling the
-                    // keypoints into it lowers their octave.
-                    double log2value = log(double(decimationRatio))/log(2.0);
+                    // keypoints into it lowers their octave. Databases older than
+                    // 0.23.12 were filled with it raised instead; see _legacyDecimatedOctave.
+                    double log2value = log(double(_legacyDecimatedOctave?
+                            double(_imagePreDecimation):double(decimationRatio)))/log(2.0);
                     for(unsigned int i=0; i < keypoints.size(); ++i)
                     {
                         cv::KeyPoint & kpt = keypoints[i];
@@ -6255,8 +6280,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		float decimationRatio = float(preDecimation) / float(_imagePostDecimation);
 		// Same ratio the positions are remapped by, which is what keeps a keypoint at
 		// the scale it was found at: log2(pre/post), and not log2(pre), those two
-		// agreeing only when the final image is not decimated at all.
-		double log2value = log(double(decimationRatio))/log(2.0);
+		// agreeing only when the final image is not decimated at all. Databases older
+		// than 0.23.12 were filled with log2(pre); see _legacyDecimatedOctave.
+		double log2value = log(double(_legacyDecimatedOctave?
+				double(preDecimation):double(decimationRatio)))/log(2.0);
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];

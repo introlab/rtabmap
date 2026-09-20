@@ -2844,28 +2844,31 @@ TEST_F(MemoryFixture, CreateSignatureAutoIncrementsIdWhenGenerateIdsOn)
 	EXPECT_EQ(memory_->getLastSignatureId(), id1 + 1);
 }
 
-TEST(MemoryTest, PreDecimationGivesBackProvidedKeypointsAsTheyCameIn)
+namespace {
+
+// Mem/ImagePreDecimation with keypoints provided by odometry: createSignature scales them
+// into the decimated image it describes them in, and back to the final image size after.
+// These parameters and this frame are what the four tests below vary the surroundings of.
+ParametersMap decimatedOctaveParams()
 {
-	// Keypoints provided with the frame are found in the full size image, so
-	// createSignature scales them into the pre-decimated one it describes them in, and
-	// scales them back to the final image size afterwards. With no post-decimation the
-	// two undo each other, which is the whole of what this test knows: what comes out is
-	// what went in, the octave included -- it moves down with the image and back up
-	// again, a decimated image being that many pyramid levels down already.
 	ParametersMap params = defaultMemoryParams();
 	params[Parameters::kKpMaxFeatures()] = "100";                  // let descriptors be extracted
 	params[Parameters::kMemUseOdomFeatures()] = "true";
 	params[Parameters::kMemImagePreDecimation()] = "2";
 	params[Parameters::kMemImagePostDecimation()] = "1";
 	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
-	Memory memory(params);
+	return params;
+}
 
-	// Big enough that the keypoint stays far from the border of the decimated image,
-	// where a descriptor cannot be computed and the keypoint would be dropped.
+// One keypoint at @p octave, with its 3D point but no descriptor -- the missing descriptor
+// is what sends createSignature down the branch that describes provided keypoints from the
+// image. The image is big enough that the keypoint stays far from the border of the
+// decimated one, where a descriptor cannot be computed and the keypoint would be dropped.
+SensorData decimatedOctaveFrame(int octave)
+{
 	cv::Mat image(256, 256, CV_8UC1);
 	cv::RNG rng(7);
 	rng.fill(image, cv::RNG::UNIFORM, 0, 255);
-	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
 	const CameraModel model(100.0, 100.0, 128.0, 128.0,
 			CameraModel::opticalRotation(), 0.0, cv::Size(256, 256));
 
@@ -2873,65 +2876,110 @@ TEST(MemoryTest, PreDecimationGivesBackProvidedKeypointsAsTheyCameIn)
 	data.setRGBDImage(image, cv::Mat(), std::vector<CameraModel>{model});
 	data.setId(0);
 
-	// No descriptors: that is what sends createSignature down the branch where the
-	// provided keypoints are described from the image rather than taken wholesale.
 	cv::KeyPoint kpt(128.0f, 120.0f, 8.0f);
-	kpt.octave = 2;
+	kpt.octave = octave;
 	data.setFeatures(std::vector<cv::KeyPoint>(1, kpt),
 			std::vector<cv::Point3f>(1, cv::Point3f(0.0f, 0.0f, 1.0f)),
 			cv::Mat());
+	return data;
+}
 
-	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+const cv::KeyPoint & theOnlyWord(const Memory & memory)
+{
 	const Signature * s = memory.getSignature(memory.getLastSignatureId());
-	ASSERT_NE(s, nullptr);
-	ASSERT_EQ(s->getWordsKpts().size(), 1u);
-	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.x, kpt.pt.x);
-	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.y, kpt.pt.y);
-	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].size, kpt.size);
-	EXPECT_EQ(s->getWordsKpts()[0].octave, kpt.octave);
+	UASSERT(s != 0 && s->getWordsKpts().size() == 1);
+	return s->getWordsKpts()[0];
+}
+
+} // namespace
+
+TEST(MemoryTest, PreDecimationGivesBackProvidedKeypointsAsTheyCameIn)
+{
+	// With no post-decimation the two conversions undo each other, which is the whole of
+	// what this test knows: what comes out is what went in, the octave included -- it
+	// moves down with the image and back up again, a decimated image being that many
+	// pyramid levels down already.
+	Memory memory(decimatedOctaveParams());
+	const SensorData sent = decimatedOctaveFrame(2);
+	SensorData data = sent;
+
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0),
+			cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	const cv::KeyPoint & word = theOnlyWord(memory);
+	EXPECT_FLOAT_EQ(word.pt.x, sent.keypoints()[0].pt.x);
+	EXPECT_FLOAT_EQ(word.pt.y, sent.keypoints()[0].pt.y);
+	EXPECT_FLOAT_EQ(word.size, sent.keypoints()[0].size);
+	EXPECT_EQ(word.octave, sent.keypoints()[0].octave);
 }
 
 TEST(MemoryTest, PreDecimationKeepsProvidedKeypointsAtTheFinestLevelAvailable)
 {
-	// The companion of the test above, for a keypoint found at the finest level there is.
-	// Scaling it into a decimated image would put it below level 0, which does not exist
-	// -- the detail it was found at was decimated away -- and which ORB rejects outright
-	// rather than describing. It stays at 0 instead, and so cannot come back at 0: the
-	// level it would need to return to is the one that was lost.
-	ParametersMap params = defaultMemoryParams();
-	params[Parameters::kKpMaxFeatures()] = "100";
-	params[Parameters::kMemUseOdomFeatures()] = "true";
-	params[Parameters::kMemImagePreDecimation()] = "2";
-	params[Parameters::kMemImagePostDecimation()] = "1";
-	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true";
-	Memory memory(params);
+	// The same for a keypoint found at the finest level there is. Scaling it into a
+	// decimated image would put it below level 0, which does not exist -- the detail it
+	// was found at was decimated away -- and which ORB rejects outright rather than
+	// describing. It stays at 0 instead, and so cannot come back at 0: the level it would
+	// need to return to is the one that was lost.
+	Memory memory(decimatedOctaveParams());
+	const SensorData sent = decimatedOctaveFrame(0);
+	SensorData data = sent;
 
-	cv::Mat image(256, 256, CV_8UC1);
-	cv::RNG rng(7);
-	rng.fill(image, cv::RNG::UNIFORM, 0, 255);
-	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
-	const CameraModel model(100.0, 100.0, 128.0, 128.0,
-			CameraModel::opticalRotation(), 0.0, cv::Size(256, 256));
-
-	SensorData data;
-	data.setRGBDImage(image, cv::Mat(), std::vector<CameraModel>{model});
-	data.setId(0);
-
-	cv::KeyPoint kpt(128.0f, 120.0f, 8.0f);
-	kpt.octave = 0;
-	data.setFeatures(std::vector<cv::KeyPoint>(1, kpt),
-			std::vector<cv::Point3f>(1, cv::Point3f(0.0f, 0.0f, 1.0f)),
-			cv::Mat());
-
-	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
-	const Signature * s = memory.getSignature(memory.getLastSignatureId());
-	ASSERT_NE(s, nullptr);
-	ASSERT_EQ(s->getWordsKpts().size(), 1u);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0),
+			cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	const cv::KeyPoint & word = theOnlyWord(memory);
 	// Where it is and how big it is are unaffected, those having room to scale.
-	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.x, kpt.pt.x);
-	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.y, kpt.pt.y);
-	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].size, kpt.size);
-	EXPECT_GE(s->getWordsKpts()[0].octave, 0);
+	EXPECT_FLOAT_EQ(word.pt.x, sent.keypoints()[0].pt.x);
+	EXPECT_FLOAT_EQ(word.pt.y, sent.keypoints()[0].pt.y);
+	EXPECT_FLOAT_EQ(word.size, sent.keypoints()[0].size);
+	EXPECT_GE(word.octave, 0);
+}
+
+TEST(MemoryTest, PreDecimationOnANewDatabaseUsesTheCorrectedOctaveScaling)
+{
+	// A database this version created is filled the corrected way. Worth its own test
+	// because the choice is made from the database's version string: were that to come
+	// back empty or unreadable, every map would silently be treated as an old one.
+	const std::string dbPath = uniqueDbPath();
+	Memory memory(decimatedOctaveParams());
+	ASSERT_TRUE(memory.init(dbPath, true));
+
+	SensorData data = decimatedOctaveFrame(2);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0),
+			cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	EXPECT_EQ(theOnlyWord(memory).octave, 2);
+
+	memory.close(false);
+	UFile::erase(dbPath);
+}
+
+TEST(MemoryTest, PreDecimationOnAnOlderDatabaseKeepsTheScalingItWasFilledWith)
+{
+	// A map made before 0.23.12 holds features described one pyramid level too coarse.
+	// Adding to it keeps doing that, so that what goes in now can still be matched
+	// against what is already there; the corrected scaling starts with a new map. Here
+	// the octave comes back at 2+1+1 rather than 2-1+1.
+	const std::string source =
+			std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/pr2_scan2d_corridor_50s.db";
+	if(!UFile::exists(source))
+	{
+		GTEST_SKIP() << "Test data not found: " << source
+				<< " (run scripts/fetch_test_data.sh to populate)";
+	}
+	const std::string dbPath = uniqueDbPath();
+	UFile::copy(source, dbPath);
+
+	Memory memory(decimatedOctaveParams());
+	ASSERT_TRUE(memory.init(dbPath));
+	ASSERT_LT(uStrNumCmp(memory.getDatabaseVersion(), "0.23.12"), 0)
+			<< "this fixture is supposed to predate the correction";
+
+	SensorData data = decimatedOctaveFrame(2);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0),
+			cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	EXPECT_EQ(theOnlyWord(memory).octave, 4)
+			<< "an older map has to keep being filled the way it was";
+
+	memory.close(false);
+	UFile::erase(dbPath);
 }
 
 TEST(MemoryTest, CreateSignaturePostDecimatesImageWhenPostDecimationGreaterThanOne)
