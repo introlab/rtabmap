@@ -228,19 +228,14 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			// filling it that way; a new one gets the corrected scaling.
 			_legacyDecimatedOctave =
 					uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.12") < 0;
-			// Only worth saying where the two scalings actually differ: on keypoints
-			// provided by odometry and scaled into a pre-decimated image, and on the
-			// remap to a post-decimated one, which used to move the octave by the wrong
-			// amount rather than the wrong way. Pre-decimation on its own changes
-			// nothing, features found in the decimated image being at its own levels.
-			if(_legacyDecimatedOctave &&
-			   ((_useOdometryFeatures && _imagePreDecimation > 1) ||
-				(_imagePostDecimation > 1 && _imagePreDecimation != _imagePostDecimation)))
+			// Only where the descriptors stored in the map end up different: keypoints
+			// from odometry, scaled into the pre-decimated image before being described.
+			if(_legacyDecimatedOctave && _useOdometryFeatures && _imagePreDecimation > 1)
 			{
 				UWARN("Database \"%s\" was created by version %s, before the octave of "
 						"decimated keypoints was corrected (0.23.12). Its features keep "
 						"being described the old way so that they stay comparable with "
-						"those already in it. Start a new map to get the corrected one.",
+						"those already in it.",
 						dbUrl.c_str(), _dbDriver->getDatabaseVersion().c_str());
 			}
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));
@@ -6278,12 +6273,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
 		float decimationRatio = float(preDecimation) / float(_imagePostDecimation);
-		// Same ratio the positions are remapped by, which is what keeps a keypoint at
-		// the scale it was found at: log2(pre/post), and not log2(pre), those two
-		// agreeing only when the final image is not decimated at all. Databases older
-		// than 0.23.12 were filled with log2(pre); see _legacyDecimatedOctave.
-		double log2value = log(double(_legacyDecimatedOctave?
-				double(preDecimation):double(decimationRatio)))/log(2.0);
+		double log2value = log(double(decimationRatio))/log(2.0);
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];
