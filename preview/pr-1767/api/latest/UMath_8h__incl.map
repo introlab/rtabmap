@@ -1,0 +1,9 @@
+<map id="utilite/include/rtabmap/utilite/UMath.h" name="utilite/include/rtabmap/utilite/UMath.h">
+<area shape="rect" id="Node000001" title="Basic mathematics functions." alt="" coords="29,5,199,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,68,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,47,60,85,56,82,93,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="93,93,135,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="117,46,117,79,111,79,111,46"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="160,93,223,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="135,44,172,82,168,85,131,47"/>
+</map>

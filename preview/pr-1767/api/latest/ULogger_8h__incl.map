@@ -1,0 +1,35 @@
+<map id="utilite/include/rtabmap/utilite/ULogger.h" name="utilite/include/rtabmap/utilite/ULogger.h">
+<area shape="rect" id="Node000001" title="ULogger class and convenient macros." alt="" coords="859,5,1029,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="359,167,521,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="858,31,696,37,506,49,342,68,286,81,256,95,249,108,248,119,254,129,265,139,301,155,346,168,345,173,299,160,262,143,250,133,243,120,243,106,253,91,284,76,341,63,505,44,695,32,858,26"/>
+<area shape="rect" id="Node000003" href="$UMutex_8h_source.html" title=" " alt="" coords="5,93,192,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="858,37,211,96,206,96,205,91,210,91,858,32"/>
+<area shape="rect" id="Node000006" href="$UDestroyer_8h_source.html" title=" " alt="" coords="267,93,475,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="859,41,468,94,467,89,858,36"/>
+<area shape="rect" id="Node000007" href="$UEvent_8h_source.html" title=" " alt="" coords="499,93,682,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="860,48,656,93,655,88,859,43"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="625,174,684,199"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="862,48,804,68,748,96,706,129,674,164,670,161,703,125,745,91,802,63,861,43"/>
+<area shape="rect" id="Node000009" href="$UException_8h_source.html" title=" " alt="" coords="758,93,967,119"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="926,47,887,85,883,82,922,44"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="992,93,1059,119"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="966,44,1005,82,1001,85,962,47"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1083,93,1147,119"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="986,43,1078,85,1076,90,984,48"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="1171,93,1234,119"/>
+<area shape="poly" id="edge14_Node000001_Node000013" title=" " alt="" coords="1007,43,1159,89,1157,94,1005,48"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="1259,93,1309,119"/>
+<area shape="poly" id="edge15_Node000001_Node000014" title=" " alt="" coords="1030,41,1246,91,1244,96,1029,46"/>
+<area shape="rect" id="Node000015" title=" " alt="" coords="1333,93,1376,119"/>
+<area shape="poly" id="edge16_Node000001_Node000015" title=" " alt="" coords="1030,35,1163,57,1321,91,1320,96,1162,62,1029,41"/>
+<area shape="rect" id="Node000016" title=" " alt="" coords="1400,93,1475,119"/>
+<area shape="poly" id="edge17_Node000001_Node000016" title=" " alt="" coords="1030,35,1191,58,1387,91,1386,96,1191,63,1029,40"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="15,174,83,199"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,120,66,164,62,161,89,117"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="107,174,191,199"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="108,117,137,161,132,164,104,120"/>
+<area shape="poly" id="edge7_Node000007_Node000002" title=" " alt="" coords="570,121,490,163,487,158,567,116"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="602,117,639,162,634,165,598,121"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="819,174,906,199"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="865,119,865,160,860,160,860,119"/>
+</map>
