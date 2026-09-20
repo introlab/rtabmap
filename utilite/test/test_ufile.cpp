@@ -3,6 +3,8 @@
 #include "rtabmap/utilite/UDirectory.h"
 #include <fstream>
 #include <cstdio>
+#include <iterator>
+#include <string>
 
 TEST(UFileTest, Exists)
 {
@@ -103,6 +105,33 @@ TEST(UFileTest, Copy)
     EXPECT_TRUE(UFile::exists(destFile));
     EXPECT_EQ(UFile::length(destFile), static_cast<long>(content.size()));
     
+    // Cleanup
+    std::remove(sourceFile.c_str());
+    std::remove(destFile.c_str());
+}
+
+TEST(UFileTest, CopyKeepsBinaryContentByteForByte)
+{
+    // The bytes a text-mode copy does not survive on Windows: a lone \n, which it turns
+    // into \r\n, and 0x1A, which it reads as end of file and truncates at. A database or
+    // an image copied that way comes out corrupted.
+    const std::string sourceFile = "test_file_binary_source.bin";
+    const std::string destFile = "test_file_binary_dest.bin";
+    const std::string content("a\nb\r\nc\x1a" "d", 8);
+
+    std::ofstream file(sourceFile.c_str(), std::ios::binary);
+    file.write(content.data(), content.size());
+    file.close();
+
+    UFile::copy(sourceFile, destFile);
+
+    std::ifstream copied(destFile.c_str(), std::ios::binary);
+    const std::string copiedContent(
+            (std::istreambuf_iterator<char>(copied)), std::istreambuf_iterator<char>());
+    copied.close();
+
+    EXPECT_EQ(copiedContent, content);
+
     // Cleanup
     std::remove(sourceFile.c_str());
     std::remove(destFile.c_str());
