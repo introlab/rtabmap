@@ -1469,6 +1469,25 @@ Transform OdometryF2M::computeTransform(
 						}
 					}
 
+					const int scanMaxPoints = lastFrame_->sensorData().laserScanRaw().maxPoints();
+					if(frameValid && scanMaxPoints > 0)
+					{
+						float correspondenceRatio = Parameters::defaultIcpCorrespondenceRatio();
+						Parameters::parse(parameters_, Parameters::kIcpCorrespondenceRatio(), correspondenceRatio);
+						if(float(lastFrame_->sensorData().laserScanRaw().size()) <
+								float(scanMaxPoints) * correspondenceRatio)
+						{
+							UWARN("Scan has %d points of the %d of a full sweep, under the %s=%f "
+									"that a registration against it would have to reach, so no "
+									"later scan could be matched to it. Not initializing on it.",
+									(int)lastFrame_->sensorData().laserScanRaw().size(),
+									scanMaxPoints,
+									Parameters::kIcpCorrespondenceRatio().c_str(),
+									correspondenceRatio);
+							frameValid = false;
+						}
+					}
+
 					if(frameValid)
 					{
 						if (scanMapMaxRange_ > 0 ){
