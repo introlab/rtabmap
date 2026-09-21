@@ -470,7 +470,7 @@ public:
 	 * @brief Checks if the sensor data is valid
 	 * 
 	 * Returns true if the sensor data contains at least one of:
-	 * - Valid ID (> 0) or non-zero stamp
+	 * - Valid ID (> 0)
 	 * - Images (raw or compressed)
 	 * - Depth/right images (raw or compressed)
 	 * - Depth confidence (raw or compressed)
@@ -483,8 +483,14 @@ public:
 	 * @return True if the sensor data contains any valid information, false otherwise
 	 */
 	bool isValid() const {
+		bool hasCameraModel = false;
+		for (size_t i=0; i < _cameraModels.size() && !hasCameraModel; ++i)
+			hasCameraModel = _cameraModels[i].isValidForProjection();
+		if (!hasCameraModel)
+			for (size_t i=0; i < _stereoCameraModels.size() && !hasCameraModel; ++i)
+				hasCameraModel = _stereoCameraModels[i].isValidForProjection();
+
 		return !(_id == 0 &&
-			_stamp == 0.0 &&
 			_imageRaw.empty() &&
 			_imageCompressed.empty() &&
 			_depthOrRightRaw.empty() &&
@@ -493,8 +499,7 @@ public:
 			_depthConfidenceCompressed.empty() &&
 			_laserScanRaw.isEmpty() &&
 			_laserScanCompressed.isEmpty() &&
-			_cameraModels.empty() &&
-			_stereoCameraModels.empty() &&
+			!hasCameraModel &&
 			_userDataRaw.empty() &&
 			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
