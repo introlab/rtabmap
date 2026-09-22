@@ -98,6 +98,10 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     cd && \
     rm -r opengv
 
+# ld.so.conf.d is read in filename order: <arch>-linux-gnu.conf sorts before
+# libc.conf (/usr/local/lib) on arm64, so source builds lose to the distro ones.
+RUN echo /usr/local/lib > /etc/ld.so.conf.d/00-usr-local.conf && ldconfig
+
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 RUN echo -e '#!/bin/bash\nset -e\n\n# setup ros2 environment\nsource "/opt/ros/humble/setup.bash" --\nexec "$@"' > /ros_entrypoint.sh
