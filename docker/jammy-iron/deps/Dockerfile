@@ -74,6 +74,10 @@ RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
     cd ../.. && \
     rm -rf opencv opencv_contrib
 
+# ld.so.conf.d is read in filename order: <arch>-linux-gnu.conf sorts before
+# libc.conf (/usr/local/lib) on arm64, so source builds lose to the distro ones.
+RUN echo /usr/local/lib > /etc/ld.so.conf.d/00-usr-local.conf && ldconfig
+
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 COPY ./docker/jammy-iron/deps/ros_entrypoint.sh /ros_entrypoint.sh
