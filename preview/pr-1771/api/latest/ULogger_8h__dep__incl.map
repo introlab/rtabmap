@@ -1,0 +1,111 @@
+<map id="utilite/include/rtabmap/utilite/ULogger.h" name="utilite/include/rtabmap/utilite/ULogger.h">
+<area shape="rect" id="Node000001" title="ULogger class and convenient macros." alt="" coords="6700,5,6871,45"/>
+<area shape="rect" id="Node000002" href="$Landmark_8h_source.html" title=" " alt="" coords="6097,93,6273,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="6686,43,6274,102,6273,97,6686,38"/>
+<area shape="rect" id="Node000029" href="$OdometryEvent_8h_source.html" title=" " alt="" coords="6500,269,6676,309"/>
+<area shape="poly" id="edge48_Node000001_Node000029" title=" " alt="" coords="6765,58,6604,271,6600,267,6761,55"/>
+<area shape="rect" id="Node000084" href="$ParticleFilter_8h_source.html" title=" " alt="" coords="6823,93,6999,133"/>
+<area shape="poly" id="edge49_Node000001_Node000084" title=" " alt="" coords="6826,51,6884,91,6881,95,6823,56"/>
+<area shape="rect" id="Node000085" href="$ProgressState_8h_source.html" title=" " alt="" coords="6871,181,7047,221"/>
+<area shape="poly" id="edge50_Node000001_Node000085" title=" " alt="" coords="6788,59,6795,96,6802,115,6813,132,6846,160,6885,179,6883,184,6843,164,6809,135,6797,117,6790,98,6783,60"/>
+<area shape="rect" id="Node000083" href="$LocalMapMaker_8hpp_source.html" title=" " alt="" coords="3266,93,3486,133"/>
+<area shape="poly" id="edge54_Node000001_Node000083" title=" " alt="" coords="6686,32,3486,112,3486,107,6686,26"/>
+<area shape="rect" id="Node000087" href="$UEventsManager_8h_source.html" title=" " alt="" coords="7082,93,7273,133"/>
+<area shape="poly" id="edge56_Node000001_Node000087" title=" " alt="" coords="6885,46,7092,91,7091,96,6884,51"/>
+<area shape="rect" id="Node000089" href="$UtiLite_8h_source.html" title=" " alt="" coords="7308,181,7479,221"/>
+<area shape="poly" id="edge59_Node000001_Node000089" title=" " alt="" coords="6885,30,6990,38,7106,51,7212,68,7254,79,7287,91,7317,110,7344,134,7383,180,7378,183,7340,138,7314,114,7284,96,7253,84,7211,73,7106,56,6990,43,6884,35"/>
+<area shape="rect" id="Node000003" href="$SensorData_8h_source.html" title=" " alt="" coords="5748,181,5924,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="6096,139,5913,184,5912,179,6095,134"/>
+<area shape="rect" id="Node000004" href="$DBDriver_8h_source.html" title=" " alt="" coords="5049,269,5225,309"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="5735,215,5509,239,5244,272,5226,275,5225,269,5244,267,5509,233,5734,210"/>
+<area shape="rect" id="Node000006" href="$Features2d_8h_source.html" title=" " alt="" coords="5500,269,5676,309"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="5769,228,5643,272,5641,267,5768,223"/>
+<area shape="rect" id="Node000007" href="$Memory_8h_source.html" title=" " alt="" coords="5655,357,5831,397"/>
+<area shape="poly" id="edge9_Node000003_Node000007" title=" " alt="" coords="5786,231,5764,249,5748,271,5740,292,5738,315,5741,357,5736,357,5732,315,5735,291,5743,268,5760,245,5782,227"/>
+<area shape="rect" id="Node000008" href="$GlobalDescriptorExtractor_8h_source.html" title=" " alt="" coords="6039,269,6276,309"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="5920,222,6088,267,6086,272,5919,227"/>
+<area shape="rect" id="Node000009" href="$Image_8h_source.html" title=" " alt="" coords="6300,269,6476,309"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="5938,214,6288,267,6300,269,6299,274,6288,272,5937,219"/>
+<area shape="rect" id="Node000010" href="$Odometry_8h_source.html" title=" " alt="" coords="2940,269,3116,309"/>
+<area shape="poly" id="edge10_Node000003_Node000010" title=" " alt="" coords="5734,208,3116,288,3116,283,5734,203"/>
+<area shape="poly" id="edge28_Node000003_Node000029" title=" " alt="" coords="5938,208,6189,231,6488,267,6500,268,6499,274,6488,272,6188,236,5938,213"/>
+<area shape="rect" id="Node000030" href="$RtabmapThread_8h_source.html" title=" " alt="" coords="6079,357,6255,397"/>
+<area shape="poly" id="edge32_Node000003_Node000030" title=" " alt="" coords="5810,233,5796,252,5787,271,5784,290,5791,308,5809,322,5837,334,5911,353,5997,364,6079,370,6078,376,5996,370,5910,358,5835,339,5807,327,5787,311,5779,291,5782,270,5792,249,5805,230"/>
+<area shape="rect" id="Node000031" href="$OdometryThread_8h_source.html" title=" " alt="" coords="5250,357,5430,397"/>
+<area shape="poly" id="edge30_Node000003_Node000031" title=" " alt="" coords="5734,211,5605,219,5466,232,5349,250,5310,260,5290,271,5284,281,5282,291,5288,314,5303,336,5321,355,5317,359,5299,339,5284,316,5277,291,5279,279,5286,267,5308,255,5348,245,5465,227,5604,214,5734,205"/>
+<area shape="rect" id="Node000032" href="$Rtabmap_8h_source.html" title=" " alt="" coords="6900,269,7076,309"/>
+<area shape="poly" id="edge31_Node000003_Node000032" title=" " alt="" coords="5938,202,6354,220,6620,239,6888,267,6900,268,6899,274,6888,272,6620,244,6353,226,5938,208"/>
+<area shape="rect" id="Node000033" href="$SensorCapture_8h_source.html" title=" " alt="" coords="6700,269,6876,309"/>
+<area shape="poly" id="edge33_Node000003_Node000033" title=" " alt="" coords="5938,204,6272,225,6480,243,6688,267,6700,268,6699,274,6688,272,6479,248,6271,230,5937,210"/>
+<area shape="rect" id="Node000064" href="$SensorEvent_8h_source.html" title=" " alt="" coords="5300,269,5476,309"/>
+<area shape="poly" id="edge36_Node000003_Node000064" title=" " alt="" coords="5735,225,5477,274,5476,269,5734,219"/>
+<area shape="rect" id="Node000066" href="$Signature_8h_source.html" title=" " alt="" coords="405,269,581,309"/>
+<area shape="poly" id="edge39_Node000003_Node000066" title=" " alt="" coords="5734,207,582,289,582,284,5734,202"/>
+<area shape="rect" id="Node000079" href="$slam__calibrator_8h_source.html" title=" " alt="" coords="5801,269,6015,309"/>
+<area shape="poly" id="edge45_Node000003_Node000079" title=" " alt="" coords="5863,230,5894,267,5890,271,5859,234"/>
+<area shape="rect" id="Node000080" href="$util3d_8h_source.html" title=" " alt="" coords="7100,269,7276,309"/>
+<area shape="poly" id="edge46_Node000003_Node000080" title=" " alt="" coords="5938,201,6148,205,6434,216,6759,235,7088,267,7100,268,7099,274,7088,272,6759,241,6434,221,6148,211,5938,206"/>
+<area shape="rect" id="Node000005" href="$DBDriverSqlite3_8h_source.html" title=" " alt="" coords="5049,357,5225,397"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="5140,323,5140,357,5135,357,5135,323"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="5635,314,5710,355,5708,360,5633,318"/>
+<area shape="rect" id="Node000011" href="$OdometryCuVSLAM_8h_source.html" title=" " alt="" coords="2547,357,2813,397"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="2939,315,2757,360,2756,355,2938,310"/>
+<area shape="rect" id="Node000012" href="$OdometryDVO_8h_source.html" title=" " alt="" coords="2837,357,3067,397"/>
+<area shape="poly" id="edge12_Node000010_Node000012" title=" " alt="" coords="3004,322,2971,359,2967,355,3000,318"/>
+<area shape="rect" id="Node000013" href="$OdometryF2F_8h_source.html" title=" " alt="" coords="605,357,829,397"/>
+<area shape="poly" id="edge13_Node000010_Node000013" title=" " alt="" coords="2927,295,1899,316,1289,335,1034,347,842,360,830,361,829,356,841,355,1034,341,1289,330,1899,310,2927,289"/>
+<area shape="rect" id="Node000014" href="$OdometryF2M_8h_source.html" title=" " alt="" coords="1583,445,1814,485"/>
+<area shape="poly" id="edge14_Node000010_Node000014" title=" " alt="" coords="3060,318,3075,337,3087,358,3090,379,3081,399,3062,408,3026,416,2909,429,2745,440,2552,448,2143,460,1814,465,1814,460,2143,454,2552,443,2745,434,2908,423,3025,410,3060,403,3077,395,3085,379,3082,360,3071,340,3056,321"/>
+<area shape="rect" id="Node000015" href="$OdometryFLOAM_8h_source.html" title=" " alt="" coords="3143,357,3391,397"/>
+<area shape="poly" id="edge15_Node000010_Node000015" title=" " alt="" coords="3094,312,3215,355,3214,360,3093,317"/>
+<area shape="rect" id="Node000016" href="$OdometryFovis_8h_source.html" title=" " alt="" coords="3414,357,3650,397"/>
+<area shape="poly" id="edge16_Node000010_Node000016" title=" " alt="" coords="3130,305,3422,355,3421,360,3129,311"/>
+<area shape="rect" id="Node000017" href="$OdometryLIOSAM_8h_source.html" title=" " alt="" coords="3675,357,3928,397"/>
+<area shape="poly" id="edge17_Node000010_Node000017" title=" " alt="" coords="3130,298,3662,355,3675,356,3674,362,3661,360,3129,303"/>
+<area shape="rect" id="Node000018" href="$OdometryLOAM_8h_source.html" title=" " alt="" coords="3952,357,4192,397"/>
+<area shape="poly" id="edge18_Node000010_Node000018" title=" " alt="" coords="3130,293,3489,316,3714,333,3940,355,3952,356,3952,361,3940,360,3713,338,3488,321,3130,299"/>
+<area shape="rect" id="Node000019" href="$OdometryMSCKF_8h_source.html" title=" " alt="" coords="4217,357,4463,397"/>
+<area shape="poly" id="edge19_Node000010_Node000019" title=" " alt="" coords="3130,291,3595,311,3898,329,4204,355,4217,356,4216,361,4204,360,3898,335,3595,316,3130,296"/>
+<area shape="rect" id="Node000020" href="$OdometryMono_8h_source.html" title=" " alt="" coords="4487,357,4726,397"/>
+<area shape="poly" id="edge20_Node000010_Node000020" title=" " alt="" coords="3130,289,3369,295,3702,306,4086,325,4475,355,4488,356,4487,361,4474,360,4085,330,3702,311,3369,300,3130,295"/>
+<area shape="rect" id="Node000021" href="$OdometryORBSLAM2_8h_source.html" title=" " alt="" coords="4751,357,5025,397"/>
+<area shape="poly" id="edge21_Node000010_Node000021" title=" " alt="" coords="3130,289,3407,294,3805,304,4267,324,4738,355,4751,356,4750,361,4737,360,4266,329,3804,310,3407,299,3130,294"/>
+<area shape="rect" id="Node000022" href="$OdometryORBSLAM3_8h_source.html" title=" " alt="" coords="853,357,1128,397"/>
+<area shape="poly" id="edge22_Node000010_Node000022" title=" " alt="" coords="2926,294,2624,297,2182,307,1667,327,1401,342,1140,360,1128,361,1128,356,1140,355,1400,336,1666,322,2182,302,2623,292,2926,288"/>
+<area shape="rect" id="Node000023" href="$OdometryOkvis_8h_source.html" title=" " alt="" coords="1153,357,1391,397"/>
+<area shape="poly" id="edge23_Node000010_Node000023" title=" " alt="" coords="2926,294,2661,298,2284,308,1847,328,1623,342,1403,360,1392,361,1391,356,1402,355,1622,337,1847,322,2283,303,2660,293,2926,289"/>
+<area shape="rect" id="Node000024" href="$OdometryOpen3D_8h_source.html" title=" " alt="" coords="1415,357,1670,397"/>
+<area shape="poly" id="edge24_Node000010_Node000024" title=" " alt="" coords="2926,295,2394,314,2041,333,1683,360,1670,361,1670,356,1682,355,2041,328,2394,309,2926,290"/>
+<area shape="rect" id="Node000025" href="$OdometryOpenVINS_8h_source.html" title=" " alt="" coords="1695,357,1961,397"/>
+<area shape="poly" id="edge25_Node000010_Node000025" title=" " alt="" coords="2926,298,2510,319,2243,337,1974,360,1962,361,1961,356,1973,355,2243,332,2510,314,2926,292"/>
+<area shape="rect" id="Node000026" href="$OdometryVINSFusion_8h_source.html" title=" " alt="" coords="1985,357,2260,397"/>
+<area shape="poly" id="edge26_Node000010_Node000026" title=" " alt="" coords="2926,301,2632,326,2272,360,2260,361,2260,356,2272,355,2632,320,2926,296"/>
+<area shape="rect" id="Node000028" href="$OdometryViso2_8h_source.html" title=" " alt="" coords="2285,357,2523,397"/>
+<area shape="poly" id="edge27_Node000010_Node000028" title=" " alt="" coords="2926,307,2535,360,2524,362,2523,356,2534,355,2926,302"/>
+<area shape="poly" id="edge29_Node000029_Node000030" title=" " alt="" coords="6487,314,6255,361,6254,356,6486,309"/>
+<area shape="rect" id="Node000034" href="$Camera_8h_source.html" title=" " alt="" coords="6789,357,6965,397"/>
+<area shape="poly" id="edge34_Node000033_Node000034" title=" " alt="" coords="6820,317,6859,355,6856,359,6816,321"/>
+<area shape="rect" id="Node000062" href="$Lidar_8h_source.html" title=" " alt="" coords="6589,357,6765,397"/>
+<area shape="poly" id="edge35_Node000033_Node000062" title=" " alt="" coords="6754,320,6703,359,6700,355,6751,316"/>
+<area shape="poly" id="edge38_Node000064_Node000031" title=" " alt="" coords="5373,323,5353,358,5348,356,5368,320"/>
+<area shape="rect" id="Node000065" href="$CameraEvent_8h_source.html" title=" " alt="" coords="5455,357,5631,397"/>
+<area shape="poly" id="edge37_Node000064_Node000065" title=" " alt="" coords="5435,314,5510,355,5508,360,5433,318"/>
+<area shape="poly" id="edge44_Node000066_Node000013" title=" " alt="" coords="556,312,669,355,667,360,554,317"/>
+<area shape="rect" id="Node000067" href="$LocalGridMaker_8h_source.html" title=" " alt="" coords="5,357,181,397"/>
+<area shape="poly" id="edge40_Node000066_Node000067" title=" " alt="" coords="393,315,181,360,180,355,392,310"/>
+<area shape="rect" id="Node000068" href="$Optimizer_8h_source.html" title=" " alt="" coords="205,357,381,397"/>
+<area shape="poly" id="edge41_Node000066_Node000068" title=" " alt="" coords="438,317,338,360,336,355,436,312"/>
+<area shape="rect" id="Node000074" href="$Registration_8h_source.html" title=" " alt="" coords="405,357,581,397"/>
+<area shape="poly" id="edge43_Node000066_Node000074" title=" " alt="" coords="496,323,496,357,491,357,491,323"/>
+<area shape="poly" id="edge42_Node000068_Node000014" title=" " alt="" coords="396,395,737,427,1072,446,1365,457,1583,461,1583,466,1365,462,1072,452,737,432,395,400"/>
+<area shape="rect" id="Node000081" href="$util3d__mapping_8hpp_source.html" title=" " alt="" coords="7078,357,7298,397"/>
+<area shape="poly" id="edge47_Node000080_Node000081" title=" " alt="" coords="7191,323,7191,357,7185,357,7185,323"/>
+<area shape="poly" id="edge51_Node000085_Node000032" title=" " alt="" coords="6972,234,6984,268,6979,270,6967,235"/>
+<area shape="poly" id="edge52_Node000085_Node000080" title=" " alt="" coords="7022,224,7139,267,7137,272,7021,229"/>
+<area shape="rect" id="Node000086" href="$util3d__surface_8h_source.html" title=" " alt="" coords="7300,269,7476,309"/>
+<area shape="poly" id="edge53_Node000085_Node000086" title=" " alt="" coords="7061,220,7300,268,7299,273,7060,226"/>
+<area shape="poly" id="edge55_Node000083_Node000067" title=" " alt="" coords="3253,119,2678,130,1850,156,1415,176,1008,202,657,234,513,252,394,272,321,290,250,314,135,360,133,355,248,309,320,285,393,267,512,247,657,228,1008,197,1415,171,1849,151,2678,125,3253,114"/>
+<area shape="rect" id="Node000088" href="$UObjDeletionThread_8h_source.html" title=" " alt="" coords="7071,181,7283,221"/>
+<area shape="poly" id="edge57_Node000087_Node000088" title=" " alt="" coords="7180,147,7180,181,7175,181,7175,147"/>
+<area shape="poly" id="edge58_Node000087_Node000089" title=" " alt="" coords="7238,136,7347,179,7345,184,7236,141"/>
+</map>

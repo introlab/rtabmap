@@ -1,0 +1,59 @@
+\documentclass{article}
+\usepackage{ifthen}
+\usepackage{epsfig}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\usepackage{newunicodechar}
+  \makeatletter
+    \def\doxynewunicodechar#1#2{%
+    \@tempswafalse
+    \edef\nuc@tempa{\detokenize{#1}}%
+    \if\relax\nuc@tempa\relax
+      \nuc@emptyargerr
+    \else
+      \edef\@tempb{\expandafter\@car\nuc@tempa\@nil}%
+      \nuc@check
+      \if@tempswa
+        \@namedef{u8:\nuc@tempa}{#2}%
+      \fi
+    \fi
+  }
+  \makeatother
+  \doxynewunicodechar{⁻}{${}^{-}$}% Superscript minus
+  \doxynewunicodechar{²}{${}^{2}$}% Superscript two
+  \doxynewunicodechar{³}{${}^{3}$}% Superscript three
+
+\pagestyle{empty}
+\begin{document}
+\[
+\text{FoV}_x = 2 \cdot \tan^{-1}\left(\frac{\text{image width}}{2 \cdot f_x}\right)
+\]
+\pagebreak
+
+\[
+\text{FoV}_y = 2 \cdot \tan^{-1}\left(\frac{\text{image height}}{2 \cdot f_y}\right)
+\]
+\pagebreak
+
+\[
+    \text{depth} = \frac{\text{baseline} \times f_x}{\text{disparity} + (c_{x_{right}} - c_{x_{left}})}
+\]
+\pagebreak
+
+\[
+    \text{disparity} = \frac{\text{baseline} \times f_x}{\text{depth}} - (c_{x_{right}} - c_{x_{left}})
+\]
+\pagebreak
+
+\[
+    \text{disparity} = \frac{\text{baseline} \times f_x}{\text{depth (meters)}} - (c_{x_{right}} - c_{x_{left}})
+\]
+\pagebreak
+
+\[ \text{depth} = \frac{\text{baseline} \times \text{focal length}}{\text{disparity}} \]
+\pagebreak
+
+\[ Z = \frac{baseline \times f}{disparity + (cx1 - cx0)} \]
+\pagebreak
+
+\end{document}

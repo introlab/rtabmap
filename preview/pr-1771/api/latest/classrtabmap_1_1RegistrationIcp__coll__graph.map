@@ -1,0 +1,5 @@
+<map id="rtabmap::RegistrationIcp" name="rtabmap::RegistrationIcp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,79,188,104"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Registration.html" title="Abstract base for registering two observations (visual, ICP, or both)." alt="" coords="15,5,179,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,44,99,79,94,79,94,44"/>
+</map>
