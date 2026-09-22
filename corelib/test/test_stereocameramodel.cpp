@@ -7,6 +7,7 @@
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UFile.h"
 #include <cmath>
+#include <limits>
 
 using namespace rtabmap;
 
@@ -234,6 +235,94 @@ TEST_F(StereoCameraModelTest, ComputeDisparityZeroDepth)
     unsigned short depthMM = 0;
     float disparityMM = model.computeDisparity(depthMM);
     EXPECT_EQ(disparityMM, 0.0f);
+}
+
+// Reprojection Tests
+
+TEST_F(StereoCameraModelTest, Reproject)
+{
+    StereoCameraModel model(fx_, fy_, cx_, cy_, baseline_);
+
+    // a point 2 m in front of the left camera, off its optical axis
+    float x = 0.3f, y = -0.2f, z = 2.0f;
+
+    float uLeft, vLeft, uRight, vRight;
+    model.reproject(x, y, z, uLeft, vLeft, uRight, vRight);
+
+    // the left camera has no Tx, so its image point is the one of the left model alone
+    float u, v;
+    model.left().reproject(x, y, z, u, v);
+    EXPECT_DOUBLE_EQ(model.left().Tx(), 0.0);
+    EXPECT_FLOAT_EQ(uLeft, u);
+    EXPECT_FLOAT_EQ(vLeft, v);
+    EXPECT_FLOAT_EQ(uLeft, static_cast<float>(fx_*x/z + cx_));
+    EXPECT_FLOAT_EQ(vLeft, static_cast<float>(fy_*y/z + cy_));
+
+    // rectified pair: same row in both images, right point shifted by the disparity
+    EXPECT_FLOAT_EQ(vRight, vLeft);
+    EXPECT_NEAR(uLeft - uRight, model.computeDisparity(z), 0.001f);
+    EXPECT_NEAR(uLeft - uRight, static_cast<float>(baseline_*fx_/z), 0.001f);
+}
+
+TEST_F(StereoCameraModelTest, ReprojectDisparityDecreasesWithDepth)
+{
+    StereoCameraModel model(fx_, fy_, cx_, cy_, baseline_);
+
+    float previousDisparity = std::numeric_limits<float>::max();
+    for(float z=1.0f; z<=10.0f; z+=1.0f)
+    {
+        float uLeft, vLeft, uRight, vRight;
+        model.reproject(0.0f, 0.0f, z, uLeft, vLeft, uRight, vRight);
+
+        // on the optical axis, the left point is the principal point
+        EXPECT_FLOAT_EQ(uLeft, static_cast<float>(cx_));
+        EXPECT_FLOAT_EQ(vLeft, static_cast<float>(cy_));
+
+        float disparity = uLeft - uRight;
+        EXPECT_GT(disparity, 0.0f); // right camera on the right of the left one
+        EXPECT_LT(disparity, previousDisparity);
+        EXPECT_NEAR(model.computeDepth(disparity), z, 0.001f);
+        previousDisparity = disparity;
+    }
+}
+
+TEST_F(StereoCameraModelTest, ReprojectInt)
+{
+    StereoCameraModel model(fx_, fy_, cx_, cy_, baseline_);
+
+    float x = 0.3f, y = -0.2f, z = 2.0f;
+
+    float uLeftF, vLeftF, uRightF, vRightF;
+    model.reproject(x, y, z, uLeftF, vLeftF, uRightF, vRightF);
+
+    int uLeft, vLeft, uRight, vRight;
+    model.reproject(x, y, z, uLeft, vLeft, uRight, vRight);
+
+    EXPECT_EQ(uLeft, static_cast<int>(uLeftF));
+    EXPECT_EQ(vLeft, static_cast<int>(vLeftF));
+    EXPECT_EQ(uRight, static_cast<int>(uRightF));
+    EXPECT_EQ(vRight, static_cast<int>(vRightF));
+}
+
+TEST_F(StereoCameraModelTest, ReprojectProjectRoundTrip)
+{
+    StereoCameraModel model(fx_, fy_, cx_, cy_, baseline_);
+
+    float x = -0.45f, y = 0.25f, z = 3.7f;
+
+    float uLeft, vLeft, uRight, vRight;
+    model.reproject(x, y, z, uLeft, vLeft, uRight, vRight);
+
+    // the disparity of the reprojected pair gives the depth back...
+    float depth = model.computeDepth(uLeft - uRight);
+    EXPECT_NEAR(depth, z, 0.001f);
+
+    // ... and the left image point gives the 3D point back
+    float x2, y2, z2;
+    model.left().project(uLeft, vLeft, depth, x2, y2, z2);
+    EXPECT_NEAR(x2, x, 0.001f);
+    EXPECT_NEAR(y2, y, 0.001f);
+    EXPECT_NEAR(z2, z, 0.001f);
 }
 
 // Getter Tests
