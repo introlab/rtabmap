@@ -170,6 +170,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: ${{ matrix.docker_platform }}
           file: ./docker/${{ matrix.docker_dir }}/Dockerfile
+          build-args: |
+            RUN_TESTS=1
           tags: introlab3it/rtabmap:${{ matrix.docker_dir }}-${{ matrix.arch }}
           cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_dir }}-${{ matrix.arch }}
           cache-to: type=inline
