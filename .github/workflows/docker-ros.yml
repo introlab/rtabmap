@@ -39,6 +39,10 @@ jobs:
     # Normally skipped on pull requests; built and pushed only from master
     # (push or manual dispatch), since it pushes the :*-deps tags to Docker Hub.
     #
+    # focal is deliberately absent: its ROS1/noetic deps are frozen, so
+    # :focal-deps is built by hand on the rare occasion it changes. The focal
+    # runtime image below still builds here, FROM the published :focal-deps.
+    #
     # TEMPORARY (revert before merge): also run on pull requests, without
     # pushing, purely to measure how long a cold native deps build takes on CI.
     # The resulting images are discarded -- the docker job below still pulls the
@@ -50,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        docker_dir: [focal, jammy, noble, noble-kilted, resolute]
+        docker_dir: [jammy, noble, noble-kilted, resolute]
         arch: [amd64, arm64]
         include:
         - arch: amd64
@@ -99,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        docker_dir: [focal, jammy, noble, noble-kilted, resolute]
+        docker_dir: [jammy, noble, noble-kilted, resolute]
 
     steps:
       -
