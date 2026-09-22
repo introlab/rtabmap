@@ -24,6 +24,8 @@ var classrtabmap_1_1StereoCameraModel =
     [ "computeDepth", "classrtabmap_1_1StereoCameraModel.html#a514f7d1baff8b4be96d760b27279f5d6", null ],
     [ "computeDisparity", "classrtabmap_1_1StereoCameraModel.html#aecf8b2a628ead0bc422dbf791d683f5b", null ],
     [ "computeDisparity", "classrtabmap_1_1StereoCameraModel.html#a28230b8236ed778729ed1e1ceb590f31", null ],
+    [ "reproject", "classrtabmap_1_1StereoCameraModel.html#a084e3e40c8b0caf66269d508a8fcffbc", null ],
+    [ "reproject", "classrtabmap_1_1StereoCameraModel.html#a626b8f54940ebc77ec504921004dda3a", null ],
     [ "R", "classrtabmap_1_1StereoCameraModel.html#a7afd347afb3909a2039f154b3a048035", null ],
     [ "T", "classrtabmap_1_1StereoCameraModel.html#a82d60ddca8d0cdbe939b043ed02334b6", null ],
     [ "E", "classrtabmap_1_1StereoCameraModel.html#a8ab6c698248837e4dcfe36c2e7b02546", null ],

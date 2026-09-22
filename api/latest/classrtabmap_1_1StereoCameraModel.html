@@ -184,6 +184,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a28230b8236ed778729ed1e1ceb590f31" id="r_a28230b8236ed778729ed1e1ceb590f31"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1StereoCameraModel.html#a28230b8236ed778729ed1e1ceb590f31">computeDisparity</a> (unsigned short depth) const</td></tr>
 <tr class="memdesc:a28230b8236ed778729ed1e1ceb590f31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the disparity value from a depth given in unsigned short format (millimeters).  <br /></td></tr>
 <tr class="separator:a28230b8236ed778729ed1e1ceb590f31"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a084e3e40c8b0caf66269d508a8fcffbc" id="r_a084e3e40c8b0caf66269d508a8fcffbc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1StereoCameraModel.html#a084e3e40c8b0caf66269d508a8fcffbc">reproject</a> (float x, float y, float z, float &amp;uLeft, float &amp;vLeft, float &amp;uRight, float &amp;vRight) const</td></tr>
+<tr class="memdesc:a084e3e40c8b0caf66269d508a8fcffbc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reprojects a 3D point of the left camera frame into both image planes (floating-point).  <br /></td></tr>
+<tr class="separator:a084e3e40c8b0caf66269d508a8fcffbc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a626b8f54940ebc77ec504921004dda3a" id="r_a626b8f54940ebc77ec504921004dda3a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1StereoCameraModel.html#a626b8f54940ebc77ec504921004dda3a">reproject</a> (float x, float y, float z, int &amp;uLeft, int &amp;vLeft, int &amp;uRight, int &amp;vRight) const</td></tr>
+<tr class="memdesc:a626b8f54940ebc77ec504921004dda3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reprojects a 3D point of the left camera frame into both image planes (rounded to int).  <br /></td></tr>
+<tr class="separator:a626b8f54940ebc77ec504921004dda3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7afd347afb3909a2039f154b3a048035" id="r_a7afd347afb3909a2039f154b3a048035"><td class="memItemLeft" align="right" valign="top">const cv::Mat &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1StereoCameraModel.html#a7afd347afb3909a2039f154b3a048035">R</a> () const</td></tr>
 <tr class="memdesc:a7afd347afb3909a2039f154b3a048035"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> extrinsic rotation matrix.  <br /></td></tr>
 <tr class="separator:a7afd347afb3909a2039f154b3a048035"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1307,6 +1313,157 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 </div>
 </div>
+<a id="a084e3e40c8b0caf66269d508a8fcffbc" name="a084e3e40c8b0caf66269d508a8fcffbc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a084e3e40c8b0caf66269d508a8fcffbc">&#9670;&#160;</a></span>reproject() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::StereoCameraModel::reproject </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>y</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>z</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float &amp;&#160;</td>
+          <td class="paramname"><em>uLeft</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float &amp;&#160;</td>
+          <td class="paramname"><em>vLeft</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float &amp;&#160;</td>
+          <td class="paramname"><em>uRight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float &amp;&#160;</td>
+          <td class="paramname"><em>vRight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reprojects a 3D point of the left camera frame into both image planes (floating-point). </p>
+<p>The point is given in the rectified left camera frame (/camera_link), the same frame used by <a class="el" href="classrtabmap_1_1CameraModel.html#a637a730717e42939449cd9f09e20db26" title="Reprojects a 3D point in the camera frame (/camera_link) into 2D image coordinates (floating-point).">CameraModel::reproject()</a> of <a class="el" href="classrtabmap_1_1StereoCameraModel.html#a064d29601c0ba13fc47584849e26b81b" title="Returns the left camera model.">left()</a>. The baseline is taken from the Tx of the rectified projection matrices, so the horizontal shift between uLeft and uRight is the disparity of that point. On a rectified stereo pair the rows are aligned, thus vRight equals vLeft.</p>
+<dl class="section note"><dt>Note</dt><dd>Unlike this function, <a class="el" href="classrtabmap_1_1CameraModel.html#a637a730717e42939449cd9f09e20db26" title="Reprojects a 3D point in the camera frame (/camera_link) into 2D image coordinates (floating-point).">CameraModel::reproject()</a> ignores Tx, because a Tx set on a single camera model is also used to tag a left camera having stereo observations (see the stereo edges built by the BA optimizers).</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">x</td><td>X coordinate in the left camera space. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">y</td><td>Y coordinate in the left camera space. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">z</td><td>Z coordinate in the left camera space (must be non-zero). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">uLeft</td><td>Output horizontal image coordinate in the left image (float). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">vLeft</td><td>Output vertical image coordinate in the left image (float). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">uRight</td><td>Output horizontal image coordinate in the right image (float). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">vRight</td><td>Output vertical image coordinate in the right image (float).</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section pre"><dt>Precondition</dt><dd><code>z != 0</code></dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1CameraModel.html#a637a730717e42939449cd9f09e20db26" title="Reprojects a 3D point in the camera frame (/camera_link) into 2D image coordinates (floating-point).">CameraModel::reproject()</a>, reproject(int&amp;, int&amp;, int&amp;, int&amp;) </dd></dl>
+
+</div>
+</div>
+<a id="a626b8f54940ebc77ec504921004dda3a" name="a626b8f54940ebc77ec504921004dda3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a626b8f54940ebc77ec504921004dda3a">&#9670;&#160;</a></span>reproject() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::StereoCameraModel::reproject </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>y</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>z</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>uLeft</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>vLeft</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>uRight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>vRight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reprojects a 3D point of the left camera frame into both image planes (rounded to int). </p>
+<p>This version of <code><a class="el" href="classrtabmap_1_1StereoCameraModel.html#a084e3e40c8b0caf66269d508a8fcffbc" title="Reprojects a 3D point of the left camera frame into both image planes (floating-point).">reproject()</a></code> returns integer pixel indices, computed from the 3D position.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">x</td><td>X coordinate in the left camera space. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">y</td><td>Y coordinate in the left camera space. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">z</td><td>Z coordinate in the left camera space (must be non-zero). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">uLeft</td><td>Output horizontal image coordinate in the left image (integer pixel). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">vLeft</td><td>Output vertical image coordinate in the left image (integer pixel). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">uRight</td><td>Output horizontal image coordinate in the right image (integer pixel). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">vRight</td><td>Output vertical image coordinate in the right image (integer pixel).</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section pre"><dt>Precondition</dt><dd><code>z != 0</code></dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classrtabmap_1_1CameraModel.html#a637a730717e42939449cd9f09e20db26" title="Reprojects a 3D point in the camera frame (/camera_link) into 2D image coordinates (floating-point).">CameraModel::reproject()</a>, reproject(float&amp;, float&amp;, float&amp;, float&amp;) </dd></dl>
+
+</div>
+</div>
 <a id="a7afd347afb3909a2039f154b3a048035" name="a7afd347afb3909a2039f154b3a048035"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7afd347afb3909a2039f154b3a048035">&#9670;&#160;</a></span>R()</h2>
 
@@ -1332,7 +1489,7 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p><a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> extrinsic rotation matrix. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00430">430</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00475">475</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1361,7 +1518,7 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p><a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> extrinsic translation vector. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00431">431</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00476">476</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1390,7 +1547,7 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p>Essential matrix. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00432">432</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00477">477</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1419,7 +1576,7 @@ If the serialized data type is not stereo (type != 1), deserialization will fail
 
 <p>Fundamental matrix. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00433">433</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00478">478</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1511,7 +1668,7 @@ Only valid camera models are adjusted. Invalid models are left unchanged. </dd><
 
 <p>Sets the local transform from left camera to robot base. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00466">466</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00511">511</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1540,7 +1697,7 @@ Only valid camera models are adjusted. Invalid models are left unchanged. </dd><
 
 <p>Gets the local transform from left camera to robot base. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00471">471</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00516">516</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1597,7 +1754,7 @@ Only valid camera models are adjusted. Invalid models are left unchanged. </dd><
 
 <p>Returns the left camera model. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00502">502</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00547">547</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1626,7 +1783,7 @@ Only valid camera models are adjusted. Invalid models are left unchanged. </dd><
 
 <p>Returns the right camera model. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00506">506</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00551">551</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1655,7 +1812,7 @@ Only valid camera models are adjusted. Invalid models are left unchanged. </dd><
 
 <p>Gets the suffix used for the left camera calibration file. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00511">511</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00556">556</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
@@ -1684,7 +1841,7 @@ Only valid camera models are adjusted. Invalid models are left unchanged. </dd><
 
 <p>Gets the suffix used for the right camera calibration file. </p>
 
-<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00515">515</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="StereoCameraModel_8h_source.html#l00560">560</a> of file <a class="el" href="StereoCameraModel_8h_source.html">StereoCameraModel.h</a>.</p>
 
 </div>
 </div>
