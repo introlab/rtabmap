@@ -36,18 +36,13 @@ jobs:
     # https://github.com/introlab/rtabmap/issues/1454) and had to be built by
     # hand from a 20.04 box with an upgraded qemu-user-static. Building each
     # arch natively removes that cause.
-    # Normally skipped on pull requests; built and pushed only from master
-    # (push or manual dispatch), since it pushes the :*-deps tags to Docker Hub.
+    # Skipped on pull requests; built and pushed only from master (push or
+    # manual dispatch), since it pushes the :*-deps tags to Docker Hub.
     #
     # focal is deliberately absent: its ROS1/noetic deps are frozen, so
     # :focal-deps is built by hand on the rare occasion it changes. The focal
     # runtime image below still builds here, FROM the published :focal-deps.
-    #
-    # TEMPORARY (revert before merge): also run on pull requests, without
-    # pushing, purely to measure how long a cold native deps build takes on CI.
-    # The resulting images are discarded -- the docker job below still pulls the
-    # :*-deps manifests already on Docker Hub.
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/master'
 
     runs-on: ${{ matrix.runner }}
 
@@ -73,8 +68,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
       -
         name: Login to DockerHub
-        # TEMPORARY (revert before merge): condition added with the PR-timing run.
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -84,8 +77,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # TEMPORARY (revert before merge): was `push: true`.
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           platforms: ${{ matrix.docker_platform }}
           file: ./docker/${{ matrix.docker_dir }}/deps/Dockerfile
           tags: introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-${{ matrix.arch }}
@@ -125,12 +117,7 @@ jobs:
     # Run even when the deps jobs are skipped (they are, on pull requests):
     # the runtime Dockerfiles then pull the :*-deps manifest already on Docker Hub.
     # A manual dispatch is honored only on master, the only ref we push from.
-    #
-    # TEMPORARY (revert before merge): the `github.event_name == 'pull_request'`
-    # escape keeps these builds running even if the PR-only timing build of
-    # docker_deps fails, since its images are discarded anyway. On master a deps
-    # failure still blocks this job.
-    if: ${{ !cancelled() && (github.event_name == 'pull_request' || !failure()) && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ${{ matrix.runner }}
 
     strategy:
