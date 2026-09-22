@@ -9,9 +9,24 @@ on:
   push:
     branches:
       - 'master'
+    paths: &android_paths
+      # What an Android build actually compiles: CMakeLists.txt adds only
+      # utilite, corelib and app under IF(ANDROID), and rtabmap.bash builds with
+      # WITH_OPENGV=OFF, BUILD_EXAMPLES=OFF, BUILD_TOOLS=OFF.
+      - 'CMakeLists.txt'
+      - 'Version.h.in'
+      - 'RTABMapConfig.cmake.in'
+      - 'cmake_uninstall.cmake.in'
+      - 'cmake_modules/**'
+      - 'utilite/**'
+      - 'corelib/**'
+      - 'app/**'
+      - 'docker/noble/android/**'
+      - '.github/workflows/android.yml'
   pull_request:
     branches:
       - '**'
+    paths: *android_paths
   workflow_dispatch:
 
 concurrency:
