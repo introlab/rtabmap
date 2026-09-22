@@ -15,7 +15,8 @@ RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
     cmake -DWITH_ALICE_VISION=ON -DWITH_OPENGV=ON -DBUILD_TESTING=$RUN_TESTS .. && \
     make -j4 && \
-    if [ "$RUN_TESTS" = "1" ]; then ctest --output-on-failure -LE "long|performance"; fi && \
+    # ldconfig first: source-installed deps (GTSAM) are not yet in the loader cache.
+    if [ "$RUN_TESTS" = "1" ]; then ldconfig && ctest --output-on-failure -LE "long|performance"; fi && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \
