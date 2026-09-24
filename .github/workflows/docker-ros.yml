@@ -1,0 +1,227 @@
+name: docker-ros
+
+# ROS images: focal/noetic (ROS1) and jammy/humble, noble/jazzy, noble-kilted,
+# resolute (ROS2). Android images live in android.yml.
+#
+# Every arch is built natively: amd64 on an x86 runner, arm64 on a GitHub
+# arm64 runner, so no QEMU emulation is involved. Because a single Docker Hub
+# tag cannot hold two independently pushed architectures, each build pushes an
+# arch-suffixed tag (e.g. :resolute-amd64 / :resolute-arm64) and a final job
+# joins them into the real multi-arch tag (:resolute) with `imagetools create`.
+#
+# The runner image only hosts the build; it does not have to match the Ubuntu
+# release inside the image, so ubuntu-26.04{,-arm} is used for all of them
+# (ubuntu-22.04{,-arm} and ubuntu-24.04{,-arm} also exist, if ever needed).
+# That is also why focal can sit in this matrix: a 20.04 userland runs fine on
+# a newer host kernel, and ros:noetic-perception publishes a native arm64 image.
+
+on:
+  push:
+    branches:
+      - 'master'
+    paths-ignore: &platform_only
+      - '.github/workflows/android.yml'
+      - '.github/workflows/ios.yml'
+      - 'app/android/**'
+      - 'app/ios/**'
+      - 'docker/noble/android/**'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore: *platform_only
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  docker_deps:
+
+    # The ###-deps images used to be too flaky to build here at all (seg faults,
+    # arm64 build timeouts under QEMU -- see
+    # https://github.com/introlab/rtabmap/issues/1454) and had to be built by
+    # hand from a 20.04 box with an upgraded qemu-user-static. Building each
+    # arch natively removes that cause.
+    # Skipped on pull requests; built and pushed only from master (push or
+    # manual dispatch), since it pushes the :*-deps tags to Docker Hub.
+    #
+    # focal is deliberately absent: its ROS1/noetic deps are frozen, so
+    # :focal-deps is built by hand on the rare occasion it changes. The focal
+    # runtime image below still builds here, FROM the published :focal-deps.
+    if: github.ref == 'refs/heads/master'
+
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_dir: [jammy, noble, noble-kilted, resolute]
+        arch: [amd64, arm64]
+        include:
+        - arch: amd64
+          runner: ubuntu-26.04
+          docker_platform: linux/amd64
+        - arch: arm64
+          runner: ubuntu-26.04-arm
+          docker_platform: linux/arm64
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.docker_platform }}
+          file: ./docker/${{ matrix.docker_dir }}/deps/Dockerfile
+          tags: introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-${{ matrix.arch }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-${{ matrix.arch }}
+          cache-to: type=inline
+
+  docker_deps_manifest:
+    needs: docker_deps
+    # Same gate as docker_deps, so both are skipped together on pull requests
+    # (github.ref is refs/pull/<n>/merge there): the per-arch -deps tags this
+    # joins are only ever pushed from master.
+    if: ${{ !cancelled() && !failure() && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-26.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_dir: [jammy, noble, noble-kilted, resolute]
+
+    steps:
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Create multi-arch manifest
+        run: |
+          docker buildx imagetools create \
+            -t introlab3it/rtabmap:${{ matrix.docker_dir }}-deps \
+            introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-amd64 \
+            introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-arm64
+
+  docker:
+    needs: docker_deps_manifest
+    # Run even when the deps jobs are skipped (they are, on pull requests):
+    # the runtime Dockerfiles then pull the :*-deps manifest already on Docker Hub.
+    # A manual dispatch is honored only on master, the only ref we push from.
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_dir: [focal, jammy, noble, noble-kilted, resolute]
+        arch: [amd64, arm64]
+        include:
+        - arch: amd64
+          runner: ubuntu-26.04
+          docker_platform: linux/amd64
+        - arch: arm64
+          runner: ubuntu-26.04-arm
+          docker_platform: linux/arm64
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to DockerHub
+        # Only needed when pushing; skipped on pull requests (secrets are
+        # unavailable for fork PRs and we don't push there anyway).
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          platforms: ${{ matrix.docker_platform }}
+          file: ./docker/${{ matrix.docker_dir }}/Dockerfile
+          build-args: |
+            RUN_TESTS=1
+          tags: introlab3it/rtabmap:${{ matrix.docker_dir }}-${{ matrix.arch }}
+          cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_dir }}-${{ matrix.arch }}
+          cache-to: type=inline
+
+  docker_manifest:
+    needs: docker
+    # Nothing to join on pull requests, where the per-arch tags are never pushed.
+    if: ${{ !cancelled() && !failure() && github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    runs-on: ubuntu-26.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        docker_dir: [focal, jammy, noble, noble-kilted, resolute]
+        include:
+        - docker_dir: focal
+          docker_tags: |
+            introlab3it/rtabmap:focal
+            introlab3it/rtabmap:20.04
+        - docker_dir: jammy
+          docker_tags: |
+            introlab3it/rtabmap:jammy
+            introlab3it/rtabmap:22.04
+        - docker_dir: noble
+          docker_tags: |
+            introlab3it/rtabmap:noble
+            introlab3it/rtabmap:24.04
+        - docker_dir: noble-kilted
+          docker_tags: |
+            introlab3it/rtabmap:noble-kilted
+        # :latest tracks the newest ROS2 image (currently resolute, ROS2 lyrical
+        # on ubuntu 26.04) -- move it along with the next distro bump.
+        - docker_dir: resolute
+          docker_tags: |
+            introlab3it/rtabmap:resolute
+            introlab3it/rtabmap:26.04
+            introlab3it/rtabmap:latest
+
+    steps:
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Create multi-arch manifest
+        env:
+          DOCKER_TAGS: ${{ matrix.docker_tags }}
+        run: |
+          tag_args=()
+          while read -r tag; do
+            if [ -n "$tag" ]; then
+              tag_args+=(-t "$tag")
+            fi
+          done <<< "$DOCKER_TAGS"
+          docker buildx imagetools create "${tag_args[@]}" \
+            introlab3it/rtabmap:${{ matrix.docker_dir }}-amd64 \
+            introlab3it/rtabmap:${{ matrix.docker_dir }}-arm64

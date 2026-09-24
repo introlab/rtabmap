@@ -700,7 +700,7 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 				kpts[i].pt.x /= _imageDecimation;
 				kpts[i].pt.y /= _imageDecimation;
 				kpts[i].size /= _imageDecimation;
-				kpts[i].octave -= log2value;
+				kpts[i].octave = std::max(0, int(kpts[i].octave - log2value));
 			}
 			data.setFeatures(kpts, data.keypoints3D(), data.descriptors());
 		}

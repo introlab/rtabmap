@@ -496,6 +496,11 @@ private:
 	float _rebalancingFactor;
 	
 	/**
+	 * @brief Threads for FLANN batched kNN search (0 = all available)
+	 */
+	int _flannThreads;
+	
+	/**
 	 * @brief Whether to convert descriptors from byte to float format
 	 */
 	bool _byteToFloat;

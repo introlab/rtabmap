@@ -847,6 +847,7 @@ private:
 	bool _stereoFromMotion;
 	unsigned int _imagePreDecimation;
 	unsigned int _imagePostDecimation;
+	bool _legacyDecimatedOctave;
 	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	float _laserScanVoxelSize;

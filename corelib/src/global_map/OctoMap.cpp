@@ -479,6 +479,11 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 	{
 		float rangeMaxSqrd = rangeMax_*rangeMax_;
 		float cellSize = octree_->getResolution();
+		int not3DCount = 0;
+		int not3DFirstId = 0;
+		int not3DGroundType = 0;
+		int not3DObstaclesType = 0;
+		int not3DEmptyType = 0;
 		for(std::list<std::pair<int, Transform> >::const_iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
 		{
 			std::map<int, LocalGrid>::const_iterator localGridIter;
@@ -491,8 +496,13 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 
 				if(!localGridIter->second.is3D())
 				{
-					UWARN("It seems the local occupancy grids are not 3d, cannot update OctoMap! (ground type=%d, obstacles type=%d, empty type=%d)",
-											ground.type(), obstacles.type(), emptyCells.type());
+					if(++not3DCount == 1)
+					{
+						not3DFirstId = iter->first;
+						not3DGroundType = ground.type();
+						not3DObstaclesType = obstacles.type();
+						not3DEmptyType = emptyCells.type();
+					}
 					continue;
 				}
 
@@ -761,6 +771,12 @@ void OctoMap::assemble(const std::list<std::pair<int, Transform> > & newPoses)
 			{
 				UDEBUG("Did not find %d in cache", iter->first);
 			}
+		}
+		if(not3DCount)
+		{
+			UWARN("It seems the local occupancy grids are not 3d, cannot update OctoMap! "
+					"(%d local grid(s) ignored, first one (id=%d) had ground type=%d, obstacles type=%d, empty type=%d)",
+					not3DCount, not3DFirstId, not3DGroundType, not3DObstaclesType, not3DEmptyType);
 		}
 	}
 

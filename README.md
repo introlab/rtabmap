@@ -42,7 +42,8 @@ This project is supported by [IntRoLab - Intelligent / Interactive / Integrated 
            <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-windows.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-windows.yml/badge.svg" alt="CMake Windows Build Status"/> <br> 
            <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-macos.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-macos.yml/badge.svg" alt="CMake MaCOS Build Status"/> <br> 
            <a href="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/cmake-ros.yml/badge.svg" alt="CMake ROS Build Status"/> <br> 
-           <a href="https://github.com/introlab/rtabmap/actions/workflows/docker.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/docker.yml/badge.svg" alt="Docker Build Status"/>
+           <a href="https://github.com/introlab/rtabmap/actions/workflows/docker-ros.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/docker-ros.yml/badge.svg" alt="Docker ROS Build Status"/> <br> 
+           <a href="https://github.com/introlab/rtabmap/actions/workflows/android.yml"><img src="https://github.com/introlab/rtabmap/actions/workflows/android.yml/badge.svg" alt="Android Build Status"/>
            </td>
         </tr>
      </tbody>
