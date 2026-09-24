@@ -169,6 +169,12 @@ target_link_libraries(test_rtabmap_integration gtest_main rtabmap_core)
 #  `ctest -L long`.
 add_test(NAME test_rtabmap_integration COMMAND test_rtabmap_integration)
 math(EXPR _integration_timeout "1800 * ${_test_timeout_scale}")
+# The Windows runners replay the sample DBs far slower than the Linux and macOS
+# ones (the rest of the suite takes ~3 min there, this test alone went over 30),
+# so they get twice the budget rather than lowering the bar for every platform.
+IF(WIN32)
+	math(EXPR _integration_timeout "${_integration_timeout} * 2")
+ENDIF(WIN32)
 set_tests_properties(test_rtabmap_integration PROPERTIES
         TIMEOUT ${_integration_timeout}
         LABELS  "long")

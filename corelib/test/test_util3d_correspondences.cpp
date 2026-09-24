@@ -2,6 +2,7 @@
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/CameraModel.h"
+#include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UConversion.h"
 #include <pcl/io/pcd_io.h>
@@ -82,44 +83,93 @@ TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesNoCommonIDs) {
     EXPECT_TRUE(cloud2.empty());
 }
 
+// Reprojects a fixed non-planar 3D scene in both images of a rectified stereo
+// camera. The two-view geometry must be generic: with a planar scene or a pure
+// image translation, all correspondences are related by a homography and the
+// fundamental matrix is then only defined up to a 1-parameter family
+// (F = [e']x * H for any epipole e'). RANSAC can pick a member of that family
+// which also fits an outlier, making the inlier count depend on floating-point
+// details of the platform and of the OpenCV version. Here the points span a
+// range of depths, so their disparities differ and the geometry is well
+// constrained.
+static void reprojectStereoPair(int index, pcl::PointXYZ & left, pcl::PointXYZ & right)
+{
+	static const float points3d[12][3] = {
+		{-0.50f, -0.40f, 2.0f}, { 0.40f, -0.30f, 3.5f}, {-0.20f,  0.50f, 2.8f},
+		{ 0.60f,  0.20f, 5.0f}, {-0.60f,  0.10f, 4.2f}, { 0.10f, -0.50f, 6.5f},
+		{ 0.30f,  0.45f, 3.0f}, {-0.35f, -0.15f, 7.5f}, { 0.50f, -0.05f, 2.2f},
+		{-0.10f,  0.30f, 5.8f}, { 0.25f,  0.35f, 4.6f}, {-0.45f,  0.20f, 3.3f}};
+
+	static const StereoCameraModel model(500.0, 500.0, 320.0, 240.0, 0.12);
+
+	float uLeft, vLeft, uRight, vRight;
+	model.reproject(points3d[index][0], points3d[index][1], points3d[index][2],
+			uLeft, vLeft, uRight, vRight);
+
+	// extractXYZCorrespondencesRANSAC() only uses x and y, as image coordinates
+	left = pcl::PointXYZ(uLeft, vLeft, 0.0f);
+	right = pcl::PointXYZ(uRight, vRight, 0.0f);
+}
+
 TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRANSACAcceptsCleanMatches) {
 	std::multimap<int, pcl::PointXYZ> words1;
 	std::multimap<int, pcl::PointXYZ> words2;
 
-	// 10 consistent matches
-	for (int i = 0; i < 10; ++i) {
-		words1.insert({i, pcl::PointXYZ(i * 1.0f, exp2(i)/10.0f, 0.0f)});
-		words2.insert({i, pcl::PointXYZ(i * 1.0f + 1.1f, exp2(i)/10.0f + 1.1f, 0.0f)});  // Slight noise
+	// 12 consistent matches
+	for (int i = 0; i < 12; ++i) {
+		pcl::PointXYZ left, right;
+		reprojectStereoPair(i, left, right);
+		words1.insert({i, left});
+		words2.insert({i, right});
 	}
 
 	pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
 	util3d::extractXYZCorrespondencesRANSAC(words1, words2, cloud1, cloud2);
 
 	EXPECT_EQ(cloud1.size(), cloud2.size());
-	EXPECT_GE(cloud1.size(), 8); // At least 8 inliers from 10 consistent matches
+	EXPECT_EQ(cloud1.size(), 12); // every match is on its epipolar line
 }
 
 TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRANSACRejectsOutliers) {
 	std::multimap<int, pcl::PointXYZ> words1;
 	std::multimap<int, pcl::PointXYZ> words2;
 
-	// 8 inliers
-	for (int i = 0; i < 8; ++i) {
-		words1.insert({i, pcl::PointXYZ(i * 1.0f, exp2(i)/10.0f, 0.0f)});
-		words2.insert({i, pcl::PointXYZ(i * 1.0f + 1.1f, exp2(i)/10.0f + 1.1f, 0.0f)});  // Slight noise
+	// 12 inliers
+	for (int i = 0; i < 12; ++i) {
+		pcl::PointXYZ left, right;
+		reprojectStereoPair(i, left, right);
+		words1.insert({i, left});
+		words2.insert({i, right});
 	}
 
-	// 2 outliers
-	words1.insert({100, pcl::PointXYZ(0.0f, 0.0f, 0.0f)});
-	words2.insert({100, pcl::PointXYZ(100.0f, 100.0f, 0.0f)});
-	words1.insert({101, pcl::PointXYZ(1.0f, 1.0f, 0.0f)});
-	words2.insert({101, pcl::PointXYZ(200.0f, -50.0f, 0.0f)});
+	// 3 outliers: correct point in the left image, right point moved far away from
+	// the corresponding epipolar line (horizontal on a rectified stereo camera)
+	const int outlierSources[3] = {0, 4, 8};
+	const float outlierOffsets[3][2] = {{0.0f, 120.0f}, {0.0f, -150.0f}, {40.0f, 90.0f}};
+	for (int i = 0; i < 3; ++i) {
+		pcl::PointXYZ left, right;
+		reprojectStereoPair(outlierSources[i], left, right);
+		right.x += outlierOffsets[i][0];
+		right.y += outlierOffsets[i][1];
+		words1.insert({100+i, left});
+		words2.insert({100+i, right});
+	}
 
 	pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
 	util3d::extractXYZCorrespondencesRANSAC(words1, words2, cloud1, cloud2);
 
 	EXPECT_EQ(cloud1.size(), cloud2.size());
-	EXPECT_EQ(cloud1.size(), 8);  // RANSAC should reject 2 outliers
+	EXPECT_EQ(cloud1.size(), 12);  // RANSAC should reject the 3 outliers
+
+	// none of the outliers should have survived
+	for (unsigned int i = 0; i < cloud2.size(); ++i) {
+		for (int j = 0; j < 3; ++j) {
+			pcl::PointXYZ left, right;
+			reprojectStereoPair(outlierSources[j], left, right);
+			EXPECT_FALSE(cloud2[i].x == right.x + outlierOffsets[j][0] &&
+						 cloud2[i].y == right.y + outlierOffsets[j][1]);
+		}
+	}
 }
 
 TEST(Util3dCorrespondencesTest, ExtractXYZCorrespondencesRANSACFailsGracefullyOnTooFewMatches) {

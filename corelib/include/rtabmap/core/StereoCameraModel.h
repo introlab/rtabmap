@@ -427,6 +427,51 @@ public:
 	 */
 	float computeDisparity(unsigned short depth) const; // mm
 
+	/**
+	 * @brief Reprojects a 3D point of the left camera frame into both image planes (floating-point).
+	 *
+	 * The point is given in the rectified left camera frame (/camera_link), the same frame used
+	 * by CameraModel::reproject() of left(). The baseline is taken from the Tx of the rectified
+	 * projection matrices, so the horizontal shift between uLeft and uRight is the disparity of
+	 * that point. On a rectified stereo pair the rows are aligned, thus vRight equals vLeft.
+	 *
+	 * @note Unlike this function, CameraModel::reproject() ignores Tx, because a Tx set on a
+	 *       single camera model is also used to tag a left camera having stereo observations
+	 *       (see the stereo edges built by the BA optimizers).
+	 *
+	 * @param x X coordinate in the left camera space.
+	 * @param y Y coordinate in the left camera space.
+	 * @param z Z coordinate in the left camera space (must be non-zero).
+	 * @param[out] uLeft Output horizontal image coordinate in the left image (float).
+	 * @param[out] vLeft Output vertical image coordinate in the left image (float).
+	 * @param[out] uRight Output horizontal image coordinate in the right image (float).
+	 * @param[out] vRight Output vertical image coordinate in the right image (float).
+	 *
+	 * @pre `z != 0`
+	 *
+	 * @see CameraModel::reproject(), reproject(int&, int&, int&, int&)
+	 */
+	void reproject(float x, float y, float z, float & uLeft, float & vLeft, float & uRight, float & vRight) const;
+
+	/**
+	 * @brief Reprojects a 3D point of the left camera frame into both image planes (rounded to int).
+	 *
+	 * This version of `reproject()` returns integer pixel indices, computed from the 3D position.
+	 *
+	 * @param x X coordinate in the left camera space.
+	 * @param y Y coordinate in the left camera space.
+	 * @param z Z coordinate in the left camera space (must be non-zero).
+	 * @param[out] uLeft Output horizontal image coordinate in the left image (integer pixel).
+	 * @param[out] vLeft Output vertical image coordinate in the left image (integer pixel).
+	 * @param[out] uRight Output horizontal image coordinate in the right image (integer pixel).
+	 * @param[out] vRight Output vertical image coordinate in the right image (integer pixel).
+	 *
+	 * @pre `z != 0`
+	 *
+	 * @see CameraModel::reproject(), reproject(float&, float&, float&, float&)
+	 */
+	void reproject(float x, float y, float z, int & uLeft, int & vLeft, int & uRight, int & vRight) const;
+
 	const cv::Mat & R() const {return R_;} ///< Stereo extrinsic rotation matrix.
 	const cv::Mat & T() const {return T_;} ///< Stereo extrinsic translation vector.
 	const cv::Mat & E() const {return E_;} ///< Essential matrix.

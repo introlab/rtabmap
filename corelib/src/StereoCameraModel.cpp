@@ -598,6 +598,30 @@ float StereoCameraModel::computeDisparity(unsigned short depth) const
 	return baseline() * left().fx() / (float(depth)/1000.0f) - right().cx() + left().cx();
 }
 
+void StereoCameraModel::reproject(float x, float y, float z, float & uLeft, float & vLeft, float & uRight, float & vRight) const
+{
+	UASSERT(z!=0.0f);
+	float invZ = 1.0f/z;
+	// CameraModel::reproject() doesn't apply Tx, as a camera model with a Tx set is
+	// also used to tag a left camera having stereo observations (see the stereo edges
+	// of the BA optimizers). Here Tx is the baseline of the rectified projection
+	// matrices (0 for the left camera, -fx*baseline for the right one), so that
+	// (uLeft-uRight) is the disparity of the point.
+	uLeft = (left_.fx()*x + left_.Tx())*invZ + left_.cx();
+	vLeft = (left_.fy()*y)*invZ + left_.cy();
+	uRight = (right_.fx()*x + right_.Tx())*invZ + right_.cx();
+	vRight = (right_.fy()*y)*invZ + right_.cy();
+}
+void StereoCameraModel::reproject(float x, float y, float z, int & uLeft, int & vLeft, int & uRight, int & vRight) const
+{
+	float uLeftF, vLeftF, uRightF, vRightF;
+	this->reproject(x, y, z, uLeftF, vLeftF, uRightF, vRightF);
+	uLeft = uLeftF;
+	vLeft = vLeftF;
+	uRight = uRightF;
+	vRight = vRightF;
+}
+
 Transform StereoCameraModel::stereoTransform() const
 {
 	if(!R_.empty() && !T_.empty())
