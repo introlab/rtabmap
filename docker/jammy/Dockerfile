@@ -8,11 +8,15 @@ RUN mkdir -p /root/Documents/RTAB-Map && chmod 777 /root/Documents/RTAB-Map
 # Copy current source code
 COPY . /root/rtabmap
 
+ARG RUN_TESTS=0
+
 # Build RTAB-Map project
 RUN source /ros_entrypoint.sh && \
     cd rtabmap/build && \
-    cmake -DWITH_OPENGV=ON .. && \
+    cmake -DWITH_OPENGV=ON -DBUILD_TESTING=$RUN_TESTS .. && \
     make -j4 && \
+    # ldconfig first: source-installed deps (GTSAM) are not yet in the loader cache.
+    if [ "$RUN_TESTS" = "1" ]; then ldconfig && ctest --output-on-failure -LE "long|performance"; fi && \
     make install && \
     cd ../.. && \
     rm -rf rtabmap && \

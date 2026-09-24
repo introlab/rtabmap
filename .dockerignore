@@ -1,2 +1,10 @@
 build/*
 build_*
+
+data/tests/*.db
+data/tests/*.7z
+data/tests/*.zip
+data/tests/*.pt
+data/tests/*.pth
+data/tests/*.py
+data/tests/__pycache__/

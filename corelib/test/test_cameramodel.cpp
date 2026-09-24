@@ -298,6 +298,45 @@ TEST_F(CameraModelTest, ReprojectInt)
     EXPECT_NEAR(v, static_cast<int>(cy_), 1);
 }
 
+TEST_F(CameraModelTest, ReprojectIgnoresTx)
+{
+    // A Tx set on a single camera model tags a left camera having stereo
+    // observations (the BA optimizers read the baseline from it to build their
+    // stereo edges), so reprojection stays that of the camera itself. Use
+    // StereoCameraModel::reproject() to get both images of a stereo pair.
+    double baseline = 0.12;
+    CameraModel withTx(fx_, fy_, cx_, cy_, CameraModel::opticalRotation(), -baseline*fx_, imageSize_);
+    CameraModel withoutTx(fx_, fy_, cx_, cy_, CameraModel::opticalRotation(), 0.0, imageSize_);
+    EXPECT_DOUBLE_EQ(withTx.Tx(), -baseline*fx_);
+
+    float x = 0.3f, y = -0.2f, z = 2.0f;
+
+    float u, v, uNoTx, vNoTx;
+    withTx.reproject(x, y, z, u, v);
+    withoutTx.reproject(x, y, z, uNoTx, vNoTx);
+
+    EXPECT_FLOAT_EQ(u, uNoTx);
+    EXPECT_FLOAT_EQ(v, vNoTx);
+    EXPECT_FLOAT_EQ(u, static_cast<float>(fx_*x/z + cx_));
+    EXPECT_FLOAT_EQ(v, static_cast<float>(fy_*y/z + cy_));
+}
+
+TEST_F(CameraModelTest, ReprojectProjectRoundTripNoTx)
+{
+    CameraModel model(fx_, fy_, cx_, cy_, CameraModel::opticalRotation(), 0.0, imageSize_);
+
+    float x = 0.35f, y = -0.15f, z = 2.5f;
+
+    float u, v;
+    model.reproject(x, y, z, u, v);
+
+    float x2, y2, z2;
+    model.project(u, v, z, x2, y2, z2);
+    EXPECT_NEAR(x2, x, 0.001f);
+    EXPECT_NEAR(y2, y, 0.001f);
+    EXPECT_FLOAT_EQ(z2, z);
+}
+
 // Field of View Tests
 
 TEST_F(CameraModelTest, FieldOfView)

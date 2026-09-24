@@ -2282,20 +2282,6 @@ std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, con
 		_gftt->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 	}
 
-	if(!_useHarrisDetector && _qualityLevel>0.0)
-	{
-		std::vector<cv::KeyPoint> bestKeypoints;
-		bestKeypoints.reserve(keypoints.size());
-		for(size_t i=0; i<keypoints.size(); ++i)
-		{
-			if(keypoints[i].response > _qualityLevel)
-			{
-				bestKeypoints.push_back(keypoints[i]);
-			}
-		}
-		
-		return bestKeypoints;
-	}
 	return keypoints;
 }
 
