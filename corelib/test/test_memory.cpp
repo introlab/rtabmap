@@ -3131,6 +3131,50 @@ TEST(MemoryTest, GetNodeDataReturnsInMemoryPayloadsWhenSignatureNotSaved)
 	EXPECT_EQ(r.imageCompressed().cols, s->sensorData().imageCompressed().cols);
 }
 
+TEST(MemoryTest, GetNodeDataLoadsTheGridOfASavedSignatureFromDatabase)
+{
+	// Once a signature still in WM is saved (Rtabmap::process() does it right after
+	// adding it, when the database is not in memory), saveLocationData() drops its
+	// compressed data but keeps the raw grid cells, so gridCellSize() stays set. A
+	// request for the grid alone must not be answered from memory on the strength of
+	// that cell size: it would return the raw cells only, and callers that only read
+	// the compressed ones (e.g., rtabmap_ros's conversion to messages) would get an
+	// empty grid. It has to be loaded from the database, like the other payloads.
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kRGBDCreateOccupancyGrid()] = "true";
+	Memory memory(params);
+	ASSERT_TRUE(memory.init(dbPath));
+
+	SensorData data(cv::Mat(8, 8, CV_8UC1, cv::Scalar(128)));
+	cv::Mat obstacles(1, 3, CV_32FC3);
+	for(int i = 0; i < 3; ++i)
+	{
+		obstacles.at<cv::Vec3f>(0, i) = cv::Vec3f(float(i) * 0.1f, 0.0f, 0.0f);
+	}
+	const float kCellSize = 0.05f;
+	data.setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), kCellSize, cv::Point3f(0, 0, 0));
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	const int id = memory.getLastSignatureId();
+
+	memory.saveLocationData(id);
+	const Signature * s = memory.getSignature(id);
+	ASSERT_NE(s, nullptr);
+	ASSERT_TRUE(s->isSaved());
+	ASSERT_TRUE(s->sensorData().gridObstacleCellsCompressed().empty()); // dropped by the save
+	ASSERT_FLOAT_EQ(s->sensorData().gridCellSize(), kCellSize);         // but still set
+	memory.emptyTrash(); // flush the async writer so the row can be read back
+
+	SensorData r = memory.getNodeData(id, /*images=*/false, /*scan=*/false, /*userData=*/false, /*occupancyGrid=*/true);
+	EXPECT_FALSE(r.gridObstacleCellsCompressed().empty());
+	EXPECT_FLOAT_EQ(r.gridCellSize(), kCellSize);
+	EXPECT_EQ(r.imageCompressed().rows, 0);
+
+	memory.close(false);
+	UFile::erase(dbPath);
+}
+
 TEST(MemoryTest, GetNodeDataMasksFieldsThatWereNotRequested)
 {
 	// Even when a signature has all payloads populated, getNodeData must clear the
@@ -3270,6 +3314,7 @@ TEST(MemoryTest, GetNodeDataLoadsEachPayloadTypeFromDatabase)
 		expectScanEmpty(r.laserScanCompressed());
 		EXPECT_EQ(r.userDataCompressed().rows, 0);
 		EXPECT_FLOAT_EQ(r.gridCellSize(), kCellSize);
+		EXPECT_FALSE(r.gridObstacleCellsCompressed().empty()); // the cells, not just the cell size
 	}
 
 	// All four together.

@@ -4795,7 +4795,10 @@ SensorData Memory::getNodeData(int locationId, bool images, bool scan, bool user
 			((!images || !s->sensorData().imageCompressed().empty()) &&
 			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
 			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
-			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
+			 (!occupancyGrid ||
+				!s->sensorData().gridGroundCellsCompressed().empty() ||
+				!s->sensorData().gridObstacleCellsCompressed().empty() ||
+				!s->sensorData().gridEmptyCellsCompressed().empty()))))
 	{
 		r = s->sensorData();
 		if(!images)
