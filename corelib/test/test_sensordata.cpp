@@ -1,6 +1,6 @@
-#include <rtabmap/core/Compression.h>
 #include <gtest/gtest.h>
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Compression.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/LaserScan.h>
