@@ -3131,6 +3131,94 @@ TEST(MemoryTest, GetNodeDataReturnsInMemoryPayloadsWhenSignatureNotSaved)
 	EXPECT_EQ(r.imageCompressed().cols, s->sensorData().imageCompressed().cols);
 }
 
+TEST(MemoryTest, UpdateKeepsUserDataThatArrivesCompressed)
+{
+	// User data can reach update() already compressed, with no raw copy -- as it does
+	// from a serialized SensorData (e.g., rtabmap_ros's SensorData messages). It must be
+	// stored as it is, like already-compressed images, rather than dropped for lack of
+	// raw data to compress. Checked with and without Mem/BinDataKept, which build the
+	// signature in two different branches, and with and without parallel compression.
+	const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+	for(const char * binDataKept : {"true", "false"})
+	{
+		for(const char * parallel : {"true", "false"})
+		{
+			SCOPED_TRACE(std::string("Mem/BinDataKept=") + binDataKept +
+					" Mem/CompressionParallelized=" + parallel);
+			ParametersMap params = defaultMemoryParams();
+			params[Parameters::kMemBinDataKept()] = binDataKept;
+			params[Parameters::kMemCompressionParallelized()] = parallel;
+			Memory memory(params);
+
+			SensorData data(cv::Mat(8, 8, CV_8UC1, cv::Scalar(128)));
+			data.setUserData(compressData2(userData)); // bytes: taken as already compressed
+			ASSERT_TRUE(data.userDataRaw().empty());
+			ASSERT_FALSE(data.userDataCompressed().empty());
+
+			ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+			const Signature * s = memory.getSignature(memory.getLastSignatureId());
+			ASSERT_NE(s, nullptr);
+			ASSERT_FALSE(s->sensorData().userDataCompressed().empty());
+			const cv::Mat stored = uncompressData(s->sensorData().userDataCompressed());
+			ASSERT_EQ(stored.size(), userData.size());
+			ASSERT_EQ(stored.type(), userData.type());
+			EXPECT_EQ(0.0, cv::norm(stored, userData, cv::NORM_INF));
+		}
+	}
+}
+
+TEST(MemoryTest, UpdateReusesTheGivenCompressedScanUnlessItFiltersIt)
+{
+	// A scan given both raw and compressed is not compressed again: the compressed copy
+	// given is stored as is, sharing its buffer -- but only while Memory has not filtered
+	// the scan, since a filtered scan no longer matches the compressed one given.
+	cv::Mat points(1, 10, CV_32FC3);
+	for(int i = 0; i < points.cols; ++i)
+	{
+		points.at<cv::Vec3f>(0, i) = cv::Vec3f(1.0f + i, 0.5f * i, 0.0f);
+	}
+	for(const char * binDataKept : {"true", "false"})
+	{
+		for(const char * parallel : {"true", "false"})
+		{
+			for(const char * downsample : {"1", "2"})
+			{
+				SCOPED_TRACE(std::string("Mem/BinDataKept=") + binDataKept +
+						" Mem/CompressionParallelized=" + parallel +
+						" Mem/LaserScanDownsampleStepSize=" + downsample);
+				ParametersMap params = defaultMemoryParams();
+				params[Parameters::kMemBinDataKept()] = binDataKept;
+				params[Parameters::kMemCompressionParallelized()] = parallel;
+				params[Parameters::kMemLaserScanDownsampleStepSize()] = downsample;
+				Memory memory(params);
+
+				SensorData data(cv::Mat(8, 8, CV_8UC1, cv::Scalar(128)));
+				const LaserScan compressedScan(compressData2(points), points.cols, 10.0f, LaserScan::kXYZ);
+				data.setLaserScan(compressedScan);
+				data.setLaserScan(LaserScan(points, points.cols, 10.0f, LaserScan::kXYZ), false);
+				ASSERT_FALSE(data.laserScanRaw().isEmpty());
+				ASSERT_FALSE(data.laserScanCompressed().isEmpty());
+
+				ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+				const Signature * s = memory.getSignature(memory.getLastSignatureId());
+				ASSERT_NE(s, nullptr);
+
+				const LaserScan & stored = s->sensorData().laserScanCompressed();
+				ASSERT_FALSE(stored.isEmpty());
+				if(std::string(downsample) == "1")
+				{
+					EXPECT_EQ(stored.data().data, compressedScan.data().data);
+				}
+				else
+				{
+					EXPECT_NE(stored.data().data, compressedScan.data().data);
+					EXPECT_EQ(uncompressData(stored.data()).cols, points.cols / 2);
+				}
+			}
+		}
+	}
+}
+
 TEST(MemoryTest, GetNodeDataLoadsTheGridOfASavedSignatureFromDatabase)
 {
 	// Once a signature still in WM is saved (Rtabmap::process() does it right after

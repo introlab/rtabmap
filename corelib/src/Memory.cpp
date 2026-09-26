@@ -6672,6 +6672,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		bool reuseCompressedDepthConfidence =
 				depthConfidence.data == data.depthConfidenceRaw().data &&
 				!data.depthConfidenceCompressed().empty();
+		bool reuseCompressedUserData = !data.userDataCompressed().empty();
+		bool reuseCompressedScan =
+				laserScan.data().data == data.laserScanRaw().data().data &&
+				!data.laserScanCompressed().isEmpty();
 
 		cv::Mat compressedImage;
 		cv::Mat compressedDepth;
@@ -6697,11 +6701,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				ctDepthConfidence.start();
 			}
-			if(!laserScan.isEmpty())
+			if(!laserScan.isEmpty() && !reuseCompressedScan)
 			{
 				ctLaserScan.start();
 			}
-			if(!data.userDataRaw().empty())
+			if(!data.userDataRaw().empty() && !reuseCompressedUserData)
 			{
 				ctUserData.start();
 			}
@@ -6714,16 +6718,16 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			compressedImage = ctImage.getCompressedData();
 			compressedDepth = ctDepth.getCompressedData();
 			compressedDepthConfidence = ctDepthConfidence.getCompressedData();
-			compressedScan = ctLaserScan.getCompressedData();
-			compressedUserData = ctUserData.getCompressedData();
+			compressedScan = reuseCompressedScan?data.laserScanCompressed().data():ctLaserScan.getCompressedData();
+			compressedUserData = reuseCompressedUserData?data.userDataCompressed():ctUserData.getCompressedData();
 		}
 		else
 		{
 			compressedImage = reuseCompressedImage?cv::Mat():compressImage2(image, _rgbCompressionFormat);
 			compressedDepth = reuseCompressedDepth?cv::Mat():compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
 			compressedDepthConfidence = reuseCompressedDepthConfidence?cv::Mat():compressData2(depthConfidence);
-			compressedScan = compressData2(laserScan.data());
-			compressedUserData = compressData2(data.userDataRaw());
+			compressedScan = reuseCompressedScan?data.laserScanCompressed().data():compressData2(laserScan.data());
+			compressedUserData = reuseCompressedUserData?data.userDataCompressed():compressData2(data.userDataRaw());
 		}
 
 		s = new Signature(id,
@@ -6787,28 +6791,32 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		// just compress user data and laser scan (scans can be used for local scan matching)
 		cv::Mat compressedScan;
 		cv::Mat compressedUserData;
+		bool reuseCompressedUserData = !data.userDataCompressed().empty();
+		bool reuseCompressedScan =
+				laserScan.data().data == data.laserScanRaw().data().data &&
+				!data.laserScanCompressed().isEmpty();
 		if(_compressionParallelized)
 		{
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
 			rtabmap::CompressionThread ctLaserScan(laserScan.data());
-			if(!data.userDataRaw().empty() && !isIntermediateNode)
+			if(!data.userDataRaw().empty() && !isIntermediateNode && !reuseCompressedUserData)
 			{
 				ctUserData.start();
 			}
-			if(!laserScan.isEmpty() && !isIntermediateNode)
+			if(!laserScan.isEmpty() && !isIntermediateNode && !reuseCompressedScan)
 			{
 				ctLaserScan.start();
 			}
 			ctUserData.join();
 			ctLaserScan.join();
 
-			compressedScan = ctLaserScan.getCompressedData();
-			compressedUserData = ctUserData.getCompressedData();
+			compressedScan = reuseCompressedScan?data.laserScanCompressed().data():ctLaserScan.getCompressedData();
+			compressedUserData = reuseCompressedUserData && !isIntermediateNode?data.userDataCompressed():ctUserData.getCompressedData();
 		}
 		else
 		{
-			compressedScan = compressData2(laserScan.data());
-			compressedUserData = compressData2(data.userDataRaw());
+			compressedScan = reuseCompressedScan?data.laserScanCompressed().data():compressData2(laserScan.data());
+			compressedUserData = reuseCompressedUserData?data.userDataCompressed():compressData2(data.userDataRaw());
 		}
 
 		s = new Signature(id,
