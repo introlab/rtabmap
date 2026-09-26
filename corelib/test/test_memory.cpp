@@ -3167,11 +3167,11 @@ TEST(MemoryTest, UpdateKeepsUserDataThatArrivesCompressed)
 	}
 }
 
-TEST(MemoryTest, UpdateReusesTheGivenCompressedScanUnlessItFiltersIt)
+TEST(MemoryTest, UpdateReusesTheGivenCompressedData)
 {
-	// A scan given both raw and compressed is not compressed again: the compressed copy
-	// given is stored as is, sharing its buffer -- but only while Memory has not filtered
-	// the scan, since a filtered scan no longer matches the compressed one given.
+	// Data given both raw and compressed is not compressed again: the compressed copy
+	// given is stored as is, sharing its buffer. For the scan, only while Memory has not
+	// filtered it, since a filtered scan no longer matches the compressed one given.
 	cv::Mat points(1, 10, CV_32FC3);
 	for(int i = 0; i < points.cols; ++i)
 	{
@@ -3196,12 +3196,16 @@ TEST(MemoryTest, UpdateReusesTheGivenCompressedScanUnlessItFiltersIt)
 				const LaserScan compressedScan(compressData2(points), points.cols, 10.0f, LaserScan::kXYZ);
 				data.setLaserScan(compressedScan);
 				data.setLaserScan(LaserScan(points, points.cols, 10.0f, LaserScan::kXYZ), false);
+				data.setUserData(points.t()); // raw, several rows: compressed by setUserData()
+				ASSERT_FALSE(data.userDataCompressed().empty());
 				ASSERT_FALSE(data.laserScanRaw().isEmpty());
 				ASSERT_FALSE(data.laserScanCompressed().isEmpty());
 
 				ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
 				const Signature * s = memory.getSignature(memory.getLastSignatureId());
 				ASSERT_NE(s, nullptr);
+
+				EXPECT_EQ(s->sensorData().userDataCompressed().data, data.userDataCompressed().data);
 
 				const LaserScan & stored = s->sensorData().laserScanCompressed();
 				ASSERT_FALSE(stored.isEmpty());
