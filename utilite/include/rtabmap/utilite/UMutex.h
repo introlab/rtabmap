@@ -177,6 +177,17 @@ public:
  * }
  * @endcode
  *
+ * The object must be named: a temporary would be destroyed, and the mutex unlocked,
+ * at the end of the expression. lock(), lockTry() and unlock() can only be called on
+ * a named object, so that `if(UScopeMutex(m, false).lockTry() == 0)` doesn't compile.
+ * In C++17, the object can be scoped to an if statement instead:
+ * @code
+ * if(UScopeMutex sm(m, false); sm.lockTry() == 0)
+ * {
+ *    // locked here
+ * } // unlocked here, only if lockTry() succeeded
+ * @endcode
+ *
  * @see UMutex
  */
 class UScopeMutex
@@ -215,7 +226,7 @@ public:
 	 * Lock the mutex, if this object doesn't hold it already.
 	 * @return 0 on success, an error code otherwise.
 	 */
-	int lock()
+	int lock() &
 	{
 		if(locked_)
 		{
@@ -232,7 +243,7 @@ public:
 	 * @return 0 if the mutex is held by this object, EBUSY (or another
 	 *         error code) otherwise.
 	 */
-	int lockTry()
+	int lockTry() &
 	{
 		if(locked_)
 		{
@@ -248,7 +259,7 @@ public:
 	 * Unlock the mutex before this object goes out of scope, only if this object locked it.
 	 * @return 0 on success (or if this object didn't hold the mutex), an error code otherwise.
 	 */
-	int unlock()
+	int unlock() &
 	{
 		if(!locked_)
 		{

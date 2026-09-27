@@ -3,6 +3,8 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 TEST(UMutexTest, Constructor)
@@ -148,6 +150,15 @@ TEST(UMutexTest, UScopeMutexWithPointer)
     });
     t.join();
 }
+
+// lock(), lockTry() and unlock() can only be called on a named UScopeMutex: a temporary
+// would unlock the mutex at the end of the expression, before the code it should protect.
+template<typename T, typename = void>
+struct CanLockTry : std::false_type {};
+template<typename T>
+struct CanLockTry<T, decltype(void(std::declval<T>().lockTry()))> : std::true_type {};
+static_assert(CanLockTry<UScopeMutex &>::value, "lockTry() must be callable on a named UScopeMutex");
+static_assert(!CanLockTry<UScopeMutex>::value, "lockTry() must not be callable on a temporary UScopeMutex");
 
 TEST(UMutexTest, UScopeMutexDeferredIsNotLocked)
 {
