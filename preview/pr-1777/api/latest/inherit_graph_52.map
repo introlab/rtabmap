@@ -1,0 +1,7 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$classrtabmap_1_1StereoDense.html" title="Abstract base class for dense stereo matching algorithms." alt="" coords="5,31,173,56"/>
+<area shape="rect" id="Node000001" href="$classrtabmap_1_1StereoBM.html" title="Block Matching algorithm for dense stereo matching." alt="" coords="231,5,379,31"/>
+<area shape="poly" id="edge78_Node000000_Node000001" title=" " alt="" coords="187,29,230,24,231,29,187,35"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1StereoSGBM.html" title="Semi&#45;Global Block Matching algorithm for dense stereo matching." alt="" coords="221,55,388,80"/>
+<area shape="poly" id="edge79_Node000000_Node000002" title=" " alt="" coords="187,52,221,55,221,61,187,57"/>
+</map>

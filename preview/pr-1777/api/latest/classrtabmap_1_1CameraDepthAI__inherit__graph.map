@@ -1,0 +1,7 @@
+<map id="rtabmap::CameraDepthAI" name="rtabmap::CameraDepthAI">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,152,193,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Camera.html" title=" " alt="" coords="31,79,167,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,118,102,152,97,152,97,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1SensorCapture.html" title="Abstract base class for sensor data capture (cameras, lidars, etc.)" alt="" coords="9,5,189,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="102,44,102,79,97,79,97,44"/>
+</map>
