@@ -144,7 +144,7 @@ bool Signature::hasLink(int idTo, Link::Type type) const
 	}
 	else
 	{
-		for(std::multimap<int, Link>::const_iterator iter=_links.find(idTo); iter!=_links.end() && iter->first == idTo; ++iter)
+		for(std::multimap<int, Link>::const_iterator iter=_links.lower_bound(idTo); iter!=_links.end() && iter->first == idTo; ++iter)
 		{
 			if(type == iter->second.type())
 			{
@@ -157,7 +157,7 @@ bool Signature::hasLink(int idTo, Link::Type type) const
 
 void Signature::changeLinkIds(int idFrom, int idTo)
 {
-	std::multimap<int, Link>::iterator iter = _links.find(idFrom);
+	std::multimap<int, Link>::iterator iter = _links.lower_bound(idFrom);
 	while(iter != _links.end() && iter->first == idFrom)
 	{
 		Link link = iter->second;

@@ -1073,7 +1073,7 @@ std::multimap<int, Link>::iterator findLink(
 		bool checkBothWays,
 		Link::Type type)
 {
-	std::multimap<int, Link>::iterator iter = links.find(from);
+	std::multimap<int, Link>::iterator iter = links.lower_bound(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second.to() == to && (type==Link::kUndef || type == iter->second.type()))
@@ -1086,7 +1086,7 @@ std::multimap<int, Link>::iterator findLink(
 	if(checkBothWays)
 	{
 		// let's try to -> from
-		iter = links.find(to);
+		iter = links.lower_bound(to);
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
@@ -1106,7 +1106,7 @@ std::multimap<int, std::pair<int, Link::Type> >::iterator findLink(
 		bool checkBothWays,
 		Link::Type type)
 {
-	std::multimap<int, std::pair<int, Link::Type> >::iterator iter = links.find(from);
+	std::multimap<int, std::pair<int, Link::Type> >::iterator iter = links.lower_bound(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
@@ -1119,7 +1119,7 @@ std::multimap<int, std::pair<int, Link::Type> >::iterator findLink(
 	if(checkBothWays)
 	{
 		// let's try to -> from
-		iter = links.find(to);
+		iter = links.lower_bound(to);
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
@@ -1138,7 +1138,7 @@ std::multimap<int, int>::iterator findLink(
 		int to,
 		bool checkBothWays)
 {
-	std::multimap<int, int>::iterator iter = links.find(from);
+	std::multimap<int, int>::iterator iter = links.lower_bound(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second == to)
@@ -1151,7 +1151,7 @@ std::multimap<int, int>::iterator findLink(
 	if(checkBothWays)
 	{
 		// let's try to -> from
-		iter = links.find(to);
+		iter = links.lower_bound(to);
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second == from)
@@ -1170,7 +1170,7 @@ std::multimap<int, Link>::const_iterator findLink(
 		bool checkBothWays,
 		Link::Type type)
 {
-	std::multimap<int, Link>::const_iterator iter = links.find(from);
+	std::multimap<int, Link>::const_iterator iter = links.lower_bound(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second.to() == to && (type==Link::kUndef || type == iter->second.type()))
@@ -1183,7 +1183,7 @@ std::multimap<int, Link>::const_iterator findLink(
 	if(checkBothWays)
 	{
 		// let's try to -> from
-		iter = links.find(to);
+		iter = links.lower_bound(to);
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.to() == from && (type==Link::kUndef || type == iter->second.type()))
@@ -1203,7 +1203,7 @@ std::multimap<int, std::pair<int, Link::Type> >::const_iterator findLink(
 		bool checkBothWays,
 		Link::Type type)
 {
-	std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter = links.find(from);
+	std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter = links.lower_bound(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second.first == to && (type==Link::kUndef || type == iter->second.second))
@@ -1216,7 +1216,7 @@ std::multimap<int, std::pair<int, Link::Type> >::const_iterator findLink(
 	if(checkBothWays)
 	{
 		// let's try to -> from
-		iter = links.find(to);
+		iter = links.lower_bound(to);
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second.first == from && (type==Link::kUndef || type == iter->second.second))
@@ -1235,7 +1235,7 @@ std::multimap<int, int>::const_iterator findLink(
 		int to,
 		bool checkBothWays)
 {
-	std::multimap<int, int>::const_iterator iter = links.find(from);
+	std::multimap<int, int>::const_iterator iter = links.lower_bound(from);
 	while(iter != links.end() && iter->first == from)
 	{
 		if(iter->second == to)
@@ -1248,7 +1248,7 @@ std::multimap<int, int>::const_iterator findLink(
 	if(checkBothWays)
 	{
 		// let's try to -> from
-		iter = links.find(to);
+		iter = links.lower_bound(to);
 		while(iter != links.end() && iter->first == to)
 		{
 			if(iter->second == from)
@@ -1611,7 +1611,7 @@ void reduceGraph(
 					posesToHyperNodes.insert(std::make_pair(id, hyperNodeId));
 					hyperNodes.insert(std::make_pair(hyperNodeId, id));
 
-					for(std::multimap<int, Link>::const_iterator jter=bidirectionalLoopClosureLinks.find(id); jter!=bidirectionalLoopClosureLinks.end() && jter->first==id; ++jter)
+					for(std::multimap<int, Link>::const_iterator jter=bidirectionalLoopClosureLinks.lower_bound(id); jter!=bidirectionalLoopClosureLinks.end() && jter->first==id; ++jter)
 					{
 						if(posesToHyperNodes.find(jter->second.to()) == posesToHyperNodes.end() &&
 						   loopClosuresAdded.find(jter->second.to()) == loopClosuresAdded.end())
