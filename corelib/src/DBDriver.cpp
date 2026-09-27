@@ -337,10 +337,10 @@ void DBDriver::emptyTrashes(bool async)
 		visualWords = _trashVisualWords;
 		_trashSignatures.clear();
 		_trashVisualWords.clear();
-
-		_dbSafeAccessMutex.lock();
 	}
 	_trashesMutex.unlock();
+
+	_dbSafeAccessMutex.lock();
 
 	if(signatures.size() || visualWords.size())
 	{
