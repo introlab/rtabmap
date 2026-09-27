@@ -149,6 +149,120 @@ TEST(UMutexTest, UScopeMutexWithPointer)
     t.join();
 }
 
+TEST(UMutexTest, UScopeMutexDeferredIsNotLocked)
+{
+    UMutex mutex;
+    {
+        UScopeMutex scopeMutex(mutex, false);
+        EXPECT_FALSE(scopeMutex.isLocked());
+
+        std::thread t([&mutex]() {
+            EXPECT_EQ(mutex.lockTry(), 0); // Not locked by the scope mutex
+            mutex.unlock();
+        });
+        t.join();
+    }
+    // The destructor must not unlock a mutex the scope mutex didn't lock
+    mutex.lock();
+    std::thread t([&mutex]() {
+        EXPECT_NE(mutex.lockTry(), 0); // Still locked by this thread
+    });
+    t.join();
+    mutex.unlock();
+}
+
+TEST(UMutexTest, UScopeMutexDeferredLock)
+{
+    UMutex mutex;
+    {
+        UScopeMutex scopeMutex(mutex, false);
+        EXPECT_EQ(scopeMutex.lock(), 0);
+        EXPECT_TRUE(scopeMutex.isLocked());
+
+        std::thread t([&mutex]() {
+            EXPECT_NE(mutex.lockTry(), 0); // Should fail
+        });
+        t.join();
+    }
+    std::thread t([&mutex]() {
+        EXPECT_EQ(mutex.lockTry(), 0); // Unlocked by the destructor
+        mutex.unlock();
+    });
+    t.join();
+}
+
+TEST(UMutexTest, UScopeMutexLockTrySucceeds)
+{
+    UMutex mutex;
+    {
+        UScopeMutex scopeMutex(mutex, false);
+        EXPECT_EQ(scopeMutex.lockTry(), 0);
+        EXPECT_TRUE(scopeMutex.isLocked());
+        EXPECT_EQ(scopeMutex.lockTry(), 0); // Already held: not locked a second time
+    }
+    std::thread t([&mutex]() {
+        EXPECT_EQ(mutex.lockTry(), 0); // Unlocked once by the destructor, and free
+        mutex.unlock();
+    });
+    t.join();
+}
+
+TEST(UMutexTest, UScopeMutexLockTryFails)
+{
+    UMutex mutex;
+    std::atomic<bool> locked(false);
+    std::atomic<bool> release(false);
+    std::thread owner([&]() {
+        mutex.lock();
+        locked = true;
+        while(!release) { std::this_thread::yield(); }
+        mutex.unlock();
+    });
+    while(!locked) { std::this_thread::yield(); }
+
+    {
+        UScopeMutex scopeMutex(mutex, false);
+        EXPECT_NE(scopeMutex.lockTry(), 0); // Held by the other thread
+        EXPECT_FALSE(scopeMutex.isLocked());
+    }
+    // The destructor didn't unlock the other thread's lock
+    std::thread t([&mutex]() {
+        EXPECT_NE(mutex.lockTry(), 0);
+    });
+    t.join();
+
+    release = true;
+    owner.join();
+    EXPECT_EQ(mutex.lockTry(), 0);
+    mutex.unlock();
+}
+
+TEST(UMutexTest, UScopeMutexEarlyUnlock)
+{
+    UMutex mutex;
+    {
+        UScopeMutex scopeMutex(mutex);
+        EXPECT_TRUE(scopeMutex.isLocked());
+        EXPECT_EQ(scopeMutex.unlock(), 0);
+        EXPECT_FALSE(scopeMutex.isLocked());
+        EXPECT_EQ(scopeMutex.unlock(), 0); // Nothing to unlock anymore
+
+        std::thread t([&mutex]() {
+            EXPECT_EQ(mutex.lockTry(), 0); // Released before the end of the scope
+            mutex.unlock();
+        });
+        t.join();
+
+        mutex.lock(); // Locked by this thread, not by the scope mutex
+    }
+    // The destructor must not unlock it
+    std::thread t([&mutex]() {
+        EXPECT_NE(mutex.lockTry(), 0);
+    });
+    t.join();
+    mutex.unlock();
+}
+
 TEST(UMutexTest, MultipleMutexes)
 {
     UMutex mutex1;

@@ -159,28 +159,120 @@ public:
  *
  * @endcode
  *
+ * The lock can also be deferred, for example to only try locking it. The destructor
+ * then unlocks the mutex only if this object locked it:
+ * @code
+ * void callback()
+ * {
+ *    UScopeMutex sm(m, false); // not locked yet
+ *    if(sm.lockTry() == 0)
+ *    {
+ *       if(cond1)
+ *       {
+ *          return; // automatically unlock the mutex m
+ *       }
+ *       ...
+ *    }
+ *    // the mutex m is unlocked only if lockTry() succeeded
+ * }
+ * @endcode
+ *
  * @see UMutex
  */
 class UScopeMutex
 {
 public:
-	UScopeMutex(const UMutex & mutex) :
-		mutex_(mutex)
+	/**
+	 * @param mutex the mutex to lock.
+	 * @param lockNow if true (default), the mutex is locked here. If false, it is not
+	 *        locked until lock() or lockTry() is called.
+	 */
+	UScopeMutex(const UMutex & mutex, bool lockNow = true) :
+		mutex_(mutex),
+		locked_(false)
 	{
-		mutex_.lock();
+		if(lockNow)
+		{
+			lock();
+		}
 	}
 	// backward compatibility
 	UScopeMutex(UMutex * mutex) :
-		mutex_(*mutex)
+		mutex_(*mutex),
+		locked_(false)
 	{
-		mutex_.lock();
+		lock();
 	}
+	/**
+	 * Unlock the mutex, only if this object locked it.
+	 */
 	~UScopeMutex()
 	{
-		mutex_.unlock();
+		unlock();
 	}
+
+	/**
+	 * Lock the mutex, if this object doesn't hold it already.
+	 * @return 0 on success, an error code otherwise.
+	 */
+	int lock()
+	{
+		if(locked_)
+		{
+			return 0;
+		}
+		int r = mutex_.lock();
+		locked_ = r == 0;
+		return r;
+	}
+
+#if !defined(_WIN32) || (_WIN32_WINNT >= 0x0400)
+	/**
+	 * Try locking the mutex, if this object doesn't hold it already.
+	 * @return 0 if the mutex is held by this object, EBUSY (or another
+	 *         error code) otherwise.
+	 */
+	int lockTry()
+	{
+		if(locked_)
+		{
+			return 0;
+		}
+		int r = mutex_.lockTry();
+		locked_ = r == 0;
+		return r;
+	}
+#endif
+
+	/**
+	 * Unlock the mutex before this object goes out of scope, only if this object locked it.
+	 * @return 0 on success (or if this object didn't hold the mutex), an error code otherwise.
+	 */
+	int unlock()
+	{
+		if(!locked_)
+		{
+			return 0;
+		}
+		locked_ = false;
+		return mutex_.unlock();
+	}
+
+	/**
+	 * @return true if this object currently holds the mutex.
+	 */
+	bool isLocked() const
+	{
+		return locked_;
+	}
+
+private:
+	UScopeMutex(const UScopeMutex &);
+	void operator=(const UScopeMutex &);
+
 private:
 	const UMutex & mutex_;
+	bool locked_;
 };
 
 #endif // UMUTEX_H
