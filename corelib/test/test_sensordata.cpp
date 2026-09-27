@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Compression.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/LaserScan.h>
@@ -593,6 +594,43 @@ TEST(SensorDataTest, SetUserData)
     EXPECT_FALSE(data.userDataRaw().empty());
     EXPECT_EQ(data.userDataRaw().rows, 100);
     EXPECT_EQ(data.userDataRaw().cols, 100);
+}
+
+TEST(SensorDataTest, SetUserDataCompressesRawData)
+{
+    SensorData data;
+    const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+
+    data.setUserData(userData);
+
+    ASSERT_FALSE(data.userDataCompressed().empty());
+    EXPECT_EQ(0.0, cv::norm(uncompressData(data.userDataCompressed()), userData, cv::NORM_INF));
+}
+
+// Without clearing, the raw data of compressed user data already set is added to it:
+// the compressed copy is kept rather than compressed again, as setLaserScan() and
+// setRGBDImage() do. With nothing compressed yet, the raw data is still compressed.
+TEST(SensorDataTest, SetUserDataWithoutClearingKeepsTheCompressedCopy)
+{
+    const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+    const cv::Mat compressed = compressData2(userData);
+
+    SensorData data;
+    data.setUserData(compressed);
+    ASSERT_TRUE(data.userDataRaw().empty());
+    data.setUserData(userData, false);
+    EXPECT_EQ(data.userDataRaw().data, userData.data);
+    EXPECT_EQ(data.userDataCompressed().data, compressed.data);
+
+    SensorData fresh;
+    fresh.setUserData(userData, false);
+    ASSERT_FALSE(fresh.userDataCompressed().empty());
+    EXPECT_EQ(0.0, cv::norm(uncompressData(fresh.userDataCompressed()), userData, cv::NORM_INF));
+
+    // Clearing, the default, compresses the new data again.
+    data.setUserData(userData);
+    EXPECT_NE(data.userDataCompressed().data, compressed.data);
+    EXPECT_EQ(0.0, cv::norm(uncompressData(data.userDataCompressed()), userData, cv::NORM_INF));
 }
 
 // Occupancy Grid Tests

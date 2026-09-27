@@ -5920,6 +5920,11 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 				s.sensorData().setGlobalDescriptors(globalDescriptors);
 			}
 		}
+		if(!withGlobalDescriptors)
+		{
+			// Node data taken from memory comes with its global descriptors.
+			s.sensorData().clearGlobalDescriptors();
+		}
 		if(velocity.size()==6)
 		{
 			s.setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);

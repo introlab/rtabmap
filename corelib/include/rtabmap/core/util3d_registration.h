@@ -41,10 +41,6 @@ namespace rtabmap
 namespace util3d
 {
 
-int RTABMAP_CORE_EXPORT getCorrespondencesCount(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
-							const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
-							float maxDistance);
-
 /**
  * @brief Estimates the rigid 3D transformation between two point clouds using SVD.
  *

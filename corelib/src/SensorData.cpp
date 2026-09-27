@@ -568,7 +568,7 @@ void SensorData::setUserData(const cv::Mat & userData, bool clearPreviousData)
 	else
 	{
 		_userDataRaw = userData;
-		if(!userData.empty())
+		if(!userData.empty() && _userDataCompressed.empty())
 		{
 			_userDataCompressed = compressData2(userData);
 		}

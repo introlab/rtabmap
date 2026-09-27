@@ -1024,6 +1024,47 @@ TEST(Util3dTest, LaserScanFromPointCloudXYZINormal) {
     EXPECT_FLOAT_EQ(pt.normal_z, 1.0f);
 }
 
+// laserScanToPointCloud2() and laserScanFromPointCloud() are each other's inverse, in
+// every format: the per-point time and ring included, which no PCL point type holds, and
+// 2D scans, which come back 2D when is2D is set.
+TEST(Util3dTest, LaserScanPointCloud2RoundTripEveryFormat) {
+    for(int f = LaserScan::kXY; f <= LaserScan::kXYZIRT; ++f)
+    {
+        const LaserScan::Format format = (LaserScan::Format)f;
+        SCOPED_TRACE(LaserScan::formatName(format));
+        const int channels = LaserScan::channels(format);
+
+        // Small integers: exact through float and through the ring's UINT16 field.
+        cv::Mat points(1, 3, CV_32FC(channels));
+        for(int i = 0; i < points.cols; ++i)
+        {
+            float * p = points.ptr<float>(0, i);
+            for(int c = 0; c < channels; ++c)
+            {
+                p[c] = float(1 + i + c);
+            }
+        }
+        const LaserScan scan(points, 360, 10.0f, format);
+        if(scan.hasRGB())
+        {
+            for(int i = 0; i < points.cols; ++i)
+            {
+                const uint32_t rgb = 0x00102030u + i; // packed 0x00RRGGBB, as PCL stores it
+                memcpy(points.ptr<float>(0, i) + scan.getRGBOffset(), &rgb, sizeof(float));
+            }
+        }
+
+        pcl::PCLPointCloud2::Ptr cloud = util3d::laserScanToPointCloud2(scan);
+        ASSERT_EQ(cloud->width * cloud->height, (unsigned int)points.cols);
+        const LaserScan out = util3d::laserScanFromPointCloud(*cloud, true, scan.is2d());
+
+        EXPECT_EQ(out.format(), format);
+        ASSERT_EQ(out.data().size(), scan.data().size());
+        ASSERT_EQ(out.data().type(), scan.data().type());
+        EXPECT_EQ(0, memcmp(out.data().data, scan.data().data, scan.data().total() * scan.data().elemSize()));
+    }
+}
+
 TEST(Util3dTest, LaserScan2dFromPointCloudXYZ) {
     pcl::PointCloud<pcl::PointXYZ> cloud;
     cloud.push_back(pcl::PointXYZ(1.0f, 2.0f, 3.0f));
