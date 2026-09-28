@@ -17,8 +17,9 @@ var searchData=
   ['_7eueventshandler_14',['~UEventsHandler',['../classUEventsHandler.html#a15ac2bf243e938c411fac0dff7db2f51',1,'UEventsHandler']]],
   ['_7euobjdeletionthread_15',['~UObjDeletionThread',['../classUObjDeletionThread.html#a44e27bada40a7fdb67ebad9270da8192',1,'UObjDeletionThread']]],
   ['_7euprocessinfo_16',['~UProcessInfo',['../classUProcessInfo.html#a4b4a0da3c612692790191b914e37b1a4',1,'UProcessInfo']]],
-  ['_7euthread_17',['~UThread',['../classUThread.html#a437580d224111e60cbe2626f0e4cb12e',1,'UThread']]],
-  ['_7euvariant_18',['~UVariant',['../classUVariant.html#aeeaef6c17460567dec089740e276f50a',1,'UVariant']]],
-  ['_7evisualword_19',['~VisualWord',['../classrtabmap_1_1VisualWord.html#adc2dc719d2e6ed06ff92a2370d9955b2',1,'rtabmap::VisualWord']]],
-  ['_7evwdictionary_20',['~VWDictionary',['../classrtabmap_1_1VWDictionary.html#af7f669f103368e30e31a028efbcac89d',1,'rtabmap::VWDictionary']]]
+  ['_7euscopemutex_17',['~UScopeMutex',['../classUScopeMutex.html#a39bf03b3225db08d8a07da0777aee5f5',1,'UScopeMutex']]],
+  ['_7euthread_18',['~UThread',['../classUThread.html#a437580d224111e60cbe2626f0e4cb12e',1,'UThread']]],
+  ['_7euvariant_19',['~UVariant',['../classUVariant.html#aeeaef6c17460567dec089740e276f50a',1,'UVariant']]],
+  ['_7evisualword_20',['~VisualWord',['../classrtabmap_1_1VisualWord.html#adc2dc719d2e6ed06ff92a2370d9955b2',1,'rtabmap::VisualWord']]],
+  ['_7evwdictionary_21',['~VWDictionary',['../classrtabmap_1_1VWDictionary.html#af7f669f103368e30e31a028efbcac89d',1,'rtabmap::VWDictionary']]]
 ];

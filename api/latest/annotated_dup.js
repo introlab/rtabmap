@@ -173,7 +173,7 @@ var annotated_dup =
     [ "UObjDeletedEvent", "classUObjDeletedEvent.html", "classUObjDeletedEvent" ],
     [ "UObjDeletionThread", "classUObjDeletionThread.html", "classUObjDeletionThread" ],
     [ "UProcessInfo", "classUProcessInfo.html", "classUProcessInfo" ],
-    [ "UScopeMutex", "classUScopeMutex.html", null ],
+    [ "UScopeMutex", "classUScopeMutex.html", "classUScopeMutex" ],
     [ "USemaphore", "classUSemaphore.html", "classUSemaphore" ],
     [ "UThread", "classUThread.html", "classUThread" ],
     [ "UThreadC", "classUThreadC.html", null ],
