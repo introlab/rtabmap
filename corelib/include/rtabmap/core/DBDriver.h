@@ -331,6 +331,12 @@ protected:
 	/**
 	 * @name Backend implementation (subclass responsibility)
 	 * @brief Pure virtual SQL/backend hooks invoked by public wrappers above.
+	 *
+	 * These are called with \c _dbSafeAccessMutex locked. Implementations must not
+	 * call public methods that look in the trash (they lock \c _trashesMutex), as it
+	 * would invert the lock order used by emptyTrashes() and could deadlock. Call the
+	 * corresponding \c *Query() method directly instead (e.g., getLastIdQuery("Word", id)
+	 * instead of getLastWordId(id)).
 	 * @{*/
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false, bool readOnly = false) = 0;
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "") = 0;
@@ -457,6 +463,9 @@ private:
 	UMutex _transactionMutex;
 	std::map<int, Signature *> _trashSignatures;//<id, Signature*>
 	std::map<int, VisualWord *> _trashVisualWords; //<id, VisualWord*>
+	// Lock order: _trashesMutex -> _dbSafeAccessMutex -> _transactionMutex.
+	// emptyTrashes() locks _dbSafeAccessMutex before releasing _trashesMutex, so that
+	// an item not found in the trash is guaranteed to be readable from the database.
 	UMutex _trashesMutex;
 	UMutex _dbSafeAccessMutex;
 	USemaphore _addSem;
