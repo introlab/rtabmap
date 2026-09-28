@@ -202,6 +202,21 @@ TEST(UMutexTest, UScopeMutexDeferredLock)
     t.join();
 }
 
+TEST(UMutexTest, UScopeMutexLockWhenHeld)
+{
+    UMutex mutex;
+    {
+        UScopeMutex scopeMutex(mutex); // locked by the constructor
+        EXPECT_EQ(scopeMutex.lock(), 0); // Already held: not locked a second time
+        EXPECT_TRUE(scopeMutex.isLocked());
+    }
+    std::thread t([&mutex]() {
+        EXPECT_EQ(mutex.lockTry(), 0); // Unlocked once by the destructor, and free
+        mutex.unlock();
+    });
+    t.join();
+}
+
 TEST(UMutexTest, UScopeMutexLockTrySucceeds)
 {
     UMutex mutex;
