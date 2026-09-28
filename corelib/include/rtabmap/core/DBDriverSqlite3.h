@@ -156,6 +156,40 @@ public:
 	void setTempStore(int tempStore);
 
 protected:
+	/**
+	 * @name Trash-checking DBDriver methods, hidden on purpose
+	 * @brief These public DBDriver methods lock the trash mutex. They are hidden here so that
+	 * *Query() implementations, which are called with the database mutex already locked,
+	 * cannot call them by mistake (it would invert the lock order with DBDriver::emptyTrashes()
+	 * and could deadlock). Call the corresponding *Query() method instead.
+	 *
+	 * To call them from outside, use a DBDriver pointer or reference (e.g., DBDriver::create()).
+	 * @{*/
+	void asyncSave(Signature * s) = delete;
+	void asyncSave(VisualWord * vw) = delete;
+	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0, bool loadWordIdsOnly = false) = delete;
+	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws) = delete;
+	void loadNodeData(Signature & signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const = delete;
+	void loadNodeData(std::list<Signature *> & signatures, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const = delete;
+	void getNodeData(int signatureId, SensorData & data, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const = delete;
+	bool getCalibration(int signatureId, std::vector<CameraModel> & models, std::vector<StereoCameraModel> & stereoModels) const = delete;
+	bool getLaserScanInfo(int signatureId, LaserScan & info) const = delete;
+	bool getNodeInfo(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps, EnvSensors & sensors) const = delete;
+	void getLocalFeatures(int signatureId, std::multimap<int, int> & words, std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & points, cv::Mat & descriptors) const = delete;
+	void loadLinks(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const = delete;
+	void getWeight(int signatureId, int & weight) const = delete;
+	void getAllNodeIds(std::set<int> & ids, bool ignoreChildren = false, bool ignoreBadSignatures = false, bool ignoreIntermediateNodes = false) const = delete;
+	void getAllOdomPoses(std::map<int, Transform> & poses, bool ignoreChildren = false, bool ignoreIntermediateNodes = false) const = delete;
+	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const = delete;
+	void getLastNodeId(int & id) const = delete;
+	void getLastMapId(int & mapId) const = delete;
+	void getLastWordId(int & id) const = delete;
+	void getInvertedIndexNi(int signatureId, int & ni) const = delete;
+	void getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const = delete;
+	void getNodeIdByLabel(const std::string & label, int & id) const = delete;
+	void getAllLabels(std::map<int, std::string> & labels) const = delete;
+	/** @} */
+
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false, bool readOnly = false);
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "");
 	virtual bool isConnectedQuery() const;

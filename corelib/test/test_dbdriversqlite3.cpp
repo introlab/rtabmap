@@ -50,9 +50,12 @@ protected:
 		}
 	}
 
+	// Trash-checking methods are hidden in DBDriverSqlite3, call them through the base class
+	DBDriver * db() const { return driver_; }
+
 	void saveSignature(Signature * s)
 	{
-		driver_->asyncSave(s);
+		db()->asyncSave(s);
 		driver_->emptyTrashes(false);
 	}
 
@@ -103,7 +106,7 @@ TEST(DBDriverSqlite3Test, ParseParametersEnablesInMemory)
 	EXPECT_TRUE(driver.isInMemory());
 	EXPECT_TRUE(driver.isConnected());
 
-	driver.asyncSave(new Signature(1));
+	static_cast<DBDriver &>(driver).asyncSave(new Signature(1));
 	driver.emptyTrashes(false);
 	EXPECT_EQ(driver.getTotalNodesSize(), 1);
 
@@ -121,7 +124,7 @@ TEST(DBDriverSqlite3Test, InMemorySaveToFileOnClose)
 	ASSERT_TRUE(driver.openConnection(path, true));
 	EXPECT_TRUE(driver.isInMemory());
 
-	driver.asyncSave(new Signature(1, 5, 1, 50.0, "sqlite_mem", Transform(1.f, 0.f, 0.f, 0.f, 0.f, 0.f)));
+	static_cast<DBDriver &>(driver).asyncSave(new Signature(1, 5, 1, 50.0, "sqlite_mem", Transform(1.f, 0.f, 0.f, 0.f, 0.f, 0.f)));
 	driver.emptyTrashes(false);
 	driver.closeConnection(true, path);
 
@@ -233,7 +236,7 @@ TEST_F(DBDriverSqlite3Fixture, SavesAndLoadsRichSensorData)
 	saveSignature(s);
 
 	std::list<Signature *> loaded;
-	driver_->loadSignatures(std::list<int>(1, 10), loaded);
+	db()->loadSignatures(std::list<int>(1, 10), loaded);
 	ASSERT_EQ(1u, loaded.size());
 	Signature * back = loaded.front();
 	EXPECT_EQ(10, back->id());
@@ -244,7 +247,7 @@ TEST_F(DBDriverSqlite3Fixture, SavesAndLoadsRichSensorData)
 
 	// Payloads come back compressed; ask the driver to fill them in.
 	std::list<Signature *> toFill(1, back);
-	driver_->loadNodeData(toFill);
+	db()->loadNodeData(toFill);
 	back->sensorData().uncompressData();
 	EXPECT_FALSE(back->sensorData().imageRaw().empty()) << "image blob did not round-trip";
 	EXPECT_FALSE(back->sensorData().depthRaw().empty()) << "depth blob did not round-trip";
@@ -320,9 +323,9 @@ TEST_F(DBDriverSqlite3Fixture, RawOnlySensorDataIsNotPersisted)
 	saveSignature(new Signature(42, 0, 1, 1.0, "", Transform::getIdentity(), Transform(), raw));
 
 	std::list<Signature *> loaded;
-	driver_->loadSignatures(std::list<int>(1, 42), loaded);
+	db()->loadSignatures(std::list<int>(1, 42), loaded);
 	ASSERT_EQ(1u, loaded.size());
-	driver_->loadNodeData(loaded);
+	db()->loadNodeData(loaded);
 	loaded.front()->sensorData().uncompressData();
 	EXPECT_TRUE(loaded.front()->sensorData().imageRaw().empty())
 			<< "raw-only image unexpectedly survived a save/load round trip";
@@ -363,9 +366,12 @@ protected:
 		UFile::erase(dbPath_.c_str());
 	}
 
+	// Trash-checking methods are hidden in DBDriverSqlite3, call them through the base class
+	DBDriver * db() const { return driver_; }
+
 	void saveSignature(Signature * s)
 	{
-		driver_->asyncSave(s);
+		db()->asyncSave(s);
 		driver_->emptyTrashes(false);
 	}
 
@@ -400,11 +406,11 @@ TEST_P(DBSchemaVersionTest, NodesAndLinksSurviveARoundTrip)
 	EXPECT_FALSE(driver_->getDatabaseVersion().empty());
 
 	std::list<Signature *> loaded;
-	driver_->loadSignatures(std::list<int>{1, 2}, loaded);
+	db()->loadSignatures(std::list<int>{1, 2}, loaded);
 	ASSERT_EQ(2u, loaded.size()) << "nodes did not survive the round trip";
 
 	// Payloads
-	driver_->loadNodeData(loaded);
+	db()->loadNodeData(loaded);
 	for(Signature * s : loaded)
 	{
 		s->sensorData().uncompressData();
@@ -415,7 +421,7 @@ TEST_P(DBSchemaVersionTest, NodesAndLinksSurviveARoundTrip)
 	// Links: the second node must still point back at the first, with the
 	// variances recovered from whatever columns this schema uses.
 	std::multimap<int, Link> links;
-	driver_->loadLinks(2, links);
+	db()->loadLinks(2, links);
 	ASSERT_FALSE(links.empty()) << "link did not survive the round trip";
 	const Link & link = links.begin()->second;
 	EXPECT_EQ(1, link.to());
