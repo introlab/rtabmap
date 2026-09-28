@@ -124,6 +124,29 @@ TEST(GraphTest, FindLinkForwardAndReverse)
 	EXPECT_NE(graph::findLink(links, 1, 2, true, Link::kNeighbor), links.end());
 }
 
+TEST(GraphTest, FindLinkWithManyLinksPerNode)
+{
+	// multimap::find() may return any element with the key (recent libc++ does),
+	// so lookups must start from lower_bound() to see every link of a node.
+	std::multimap<int, Link> links;
+	std::multimap<int, std::pair<int, Link::Type> > biLinks;
+	std::multimap<int, int> intLinks;
+	for(int to=2; to<=40; ++to)
+	{
+		insertLink(links, Link(1, to, to%2?Link::kGlobalClosure:Link::kNeighbor, Transform::getIdentity()));
+		biLinks.insert(std::make_pair(1, std::make_pair(to, to%2?Link::kGlobalClosure:Link::kNeighbor)));
+		intLinks.insert(std::make_pair(1, to));
+	}
+	for(int to=2; to<=40; ++to)
+	{
+		Link::Type type = to%2?Link::kGlobalClosure:Link::kNeighbor;
+		EXPECT_NE(graph::findLink(links, 1, to, false, type), links.end()) << "to=" << to;
+		EXPECT_NE(graph::findLink(links, to, 1, true, type), links.end()) << "to=" << to;
+		EXPECT_NE(graph::findLink(biLinks, 1, to, false, type), biLinks.end()) << "to=" << to;
+		EXPECT_NE(graph::findLink(intLinks, 1, to), intLinks.end()) << "to=" << to;
+	}
+}
+
 TEST(GraphTest, FindLinkIntMultimap)
 {
 	std::multimap<int, int> links;
