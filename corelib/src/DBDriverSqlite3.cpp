@@ -3624,8 +3624,8 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly, b
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		// Get Last word id
-		getLastWordId(id);
+		// Get Last word id (query directly: _dbSafeAccessMutex is already locked by DBDriver::load())
+		getLastIdQuery("Word", id);
 		dictionary.setLastWordId(id);
 
 		if(!idsOnly && uStrNumCmp(_version, "0.23.0") >= 0) {
