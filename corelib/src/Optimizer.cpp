@@ -277,7 +277,7 @@ void Optimizer::getConnectedGraph(
 		posesOut.insert(std::make_pair(currentId, currentPose));
 
 		// add prior links
-		for(std::multimap<int, Link>::const_iterator pter=linksIn.find(currentId); pter!=linksIn.end() && pter->first==currentId; ++pter)
+		for(std::multimap<int, Link>::const_iterator pter=linksIn.lower_bound(currentId); pter!=linksIn.end() && pter->first==currentId; ++pter)
 		{
 			if(pter->second.from() == pter->second.to() && (!priorsIgnored() || pter->second.type() != Link::kPosePrior))
 			{
@@ -285,7 +285,7 @@ void Optimizer::getConnectedGraph(
 			}
 		}
 
-		for(std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter=biLinks.find(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
+		for(std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter=biLinks.lower_bound(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
 		{
 			int toId = iter->second.first;
 			Link::Type type = iter->second.second;

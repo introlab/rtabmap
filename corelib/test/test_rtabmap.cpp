@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/Rtabmap.h>
+#include <rtabmap/core/GlobalDescriptor.h>
 #include <rtabmap/core/GPS.h>
 #include <rtabmap/core/Landmark.h>
 #include <rtabmap/core/Memory.h>
@@ -1335,6 +1336,49 @@ TEST(RtabmapTest, GetSignatureCopyReturnsRequestedPayloads)
 	EXPECT_EQ(s.getWords().size(), 0u);
 
 	rtabmap.close(false);
+}
+
+TEST(RtabmapTest, GetSignatureCopyReturnsOnlyTheSavedGridWhenAskedAlone)
+{
+	// With a database on disk, process() saves each new node right away, which drops its
+	// compressed data from memory but keeps its global descriptors and its raw grid. A
+	// copy asking for the grid alone must still return the compressed grid, and must not
+	// return global descriptors that were not asked for.
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kRGBDCreateOccupancyGrid()] = "true";
+	Rtabmap rtabmap;
+	rtabmap.init(params, dbPath);
+
+	SensorData data(cv::Mat(8, 8, CV_8UC1, cv::Scalar(128)));
+	data.setId(1);
+	cv::Mat obstacles(1, 3, CV_32FC3);
+	for(int i = 0; i < 3; ++i)
+	{
+		obstacles.at<cv::Vec3f>(0, i) = cv::Vec3f(float(i) * 0.1f, 0.0f, 0.0f);
+	}
+	data.setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), 0.05f, cv::Point3f(0, 0, 0));
+	data.setGlobalDescriptors(std::vector<GlobalDescriptor>(1, GlobalDescriptor(1, cv::Mat::ones(1, 8, CV_32FC1))));
+	ASSERT_TRUE(rtabmap.process(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	const int id = rtabmap.getLastLocationId();
+	ASSERT_NE(rtabmap.getMemory()->getSignature(id), nullptr);
+	ASSERT_TRUE(rtabmap.getMemory()->getSignature(id)->isSaved());
+
+	const Signature grid = rtabmap.getSignatureCopy(id, /*images=*/false,
+			/*scan=*/false, /*userData=*/false, /*occupancyGrid=*/true,
+			/*withWords=*/false, /*withGlobalDescriptors=*/false);
+	EXPECT_FALSE(grid.sensorData().gridObstacleCellsCompressed().empty());
+	EXPECT_FLOAT_EQ(grid.sensorData().gridCellSize(), 0.05f);
+	EXPECT_TRUE(grid.sensorData().globalDescriptors().empty());
+
+	const Signature descriptors = rtabmap.getSignatureCopy(id, /*images=*/false,
+			/*scan=*/false, /*userData=*/false, /*occupancyGrid=*/true,
+			/*withWords=*/false, /*withGlobalDescriptors=*/true);
+	EXPECT_EQ(descriptors.sensorData().globalDescriptors().size(), 1u);
+
+	rtabmap.close(false);
+	UFile::erase(dbPath);
 }
 
 TEST(RtabmapTest, GetSignatureCopyOmitsImageWhenNotRequested)

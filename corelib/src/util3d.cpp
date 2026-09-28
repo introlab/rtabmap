@@ -2328,9 +2328,58 @@ pcl::PCLPointCloud2::Ptr laserScanToPointCloud2(const LaserScan & laserScan, con
 	{
 		pcl::toPCLPointCloud2(*laserScanToPointCloud(laserScan, transform), *cloud);
 	}
-	else if(laserScan.format() == LaserScan::kXYI || laserScan.format() == LaserScan::kXYZI || laserScan.format() == LaserScan::kXYZIT || laserScan.format() == LaserScan::kXYZIRT)
+	else if(laserScan.format() == LaserScan::kXYI || laserScan.format() == LaserScan::kXYZI)
 	{
 		pcl::toPCLPointCloud2(*laserScanToPointCloudI(laserScan, transform), *cloud);
+	}
+	else if(laserScan.format() == LaserScan::kXYZIT || laserScan.format() == LaserScan::kXYZIRT)
+	{
+		// PCL has no point type with time (and ring): append them to the XYZI fields, with
+		// the types laserScanFromPointCloud() reads back (time FLOAT32, ring UINT16).
+		pcl::PCLPointCloud2 xyzi;
+		pcl::toPCLPointCloud2(*laserScanToPointCloudI(laserScan, transform), xyzi);
+		const bool hasRing = laserScan.format() == LaserScan::kXYZIRT;
+
+		cloud->header = xyzi.header;
+		cloud->height = xyzi.height;
+		cloud->width = xyzi.width;
+		cloud->is_bigendian = xyzi.is_bigendian;
+		cloud->is_dense = xyzi.is_dense;
+		cloud->fields = xyzi.fields;
+		pcl::PCLPointField time;
+		time.name = "time";
+		time.offset = xyzi.point_step;
+		time.datatype = pcl::PCLPointField::FLOAT32;
+		time.count = 1;
+		cloud->fields.push_back(time);
+		cloud->point_step = xyzi.point_step + 4;
+		pcl::PCLPointField ring;
+		if(hasRing)
+		{
+			ring.name = "ring";
+			ring.offset = cloud->point_step;
+			ring.datatype = pcl::PCLPointField::UINT16;
+			ring.count = 1;
+			cloud->fields.push_back(ring);
+			cloud->point_step += 4; // keep points 4-byte aligned
+		}
+		cloud->row_step = cloud->point_step * cloud->width;
+		cloud->data.resize(size_t(cloud->row_step) * cloud->height, 0);
+
+		const int cols = laserScan.data().cols;
+		const size_t points = size_t(cloud->width) * cloud->height;
+		for(size_t i=0; i<points; ++i)
+		{
+			unsigned char * dst = &cloud->data[i * cloud->point_step];
+			memcpy(dst, &xyzi.data[i * xyzi.point_step], xyzi.point_step);
+			const float * src = laserScan.data().ptr<float>(int(i) / cols, int(i) % cols);
+			memcpy(dst + time.offset, src + laserScan.getTimeOffset(), sizeof(float));
+			if(hasRing)
+			{
+				const std::uint16_t r = (std::uint16_t)src[laserScan.getRingOffset()];
+				memcpy(dst + ring.offset, &r, sizeof(r));
+			}
+		}
 	}
 	else if(laserScan.format() == LaserScan::kXYNormal || laserScan.format() == LaserScan::kXYZNormal)
 	{

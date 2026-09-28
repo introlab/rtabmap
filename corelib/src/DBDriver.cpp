@@ -707,7 +707,10 @@ void DBDriver::getNodeData(
 			((!images || !s->sensorData().imageCompressed().empty()) &&
 			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
 			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
-			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
+			 (!occupancyGrid ||
+				!s->sensorData().gridGroundCellsCompressed().empty() ||
+				!s->sensorData().gridObstacleCellsCompressed().empty() ||
+				!s->sensorData().gridEmptyCellsCompressed().empty()))))
 		{
 			data = (SensorData)s->sensorData();
 			if(!images)

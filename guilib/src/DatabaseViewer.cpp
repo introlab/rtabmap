@@ -2029,7 +2029,7 @@ void DatabaseViewer::updateIds()
 		envSensors_.insert(std::make_pair(ids_[i], sensors));
 		if(w>=0)
 		{
-			for(std::multimap<int, Link>::iterator iter=links.find(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
+			for(std::multimap<int, Link>::iterator iter=links.lower_bound(ids_[i]); iter!=links.end() && iter->first==ids_[i]; ++iter)
 			{
 				// Make compatible with old databases, when "weight=-1" was not yet introduced to identify ignored nodes
 				if(iter->second.type() == Link::kNeighbor || iter->second.type() == Link::kNeighborMerged)
@@ -2070,7 +2070,7 @@ void DatabaseViewer::updateIds()
 		previousPose=p;
 
 		//links
-		for(std::multimap<int, Link>::iterator jter=links.find(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
+		for(std::multimap<int, Link>::iterator jter=links.lower_bound(ids_[i]); jter!=links.end() && jter->first == ids_[i]; ++jter)
 		{
 			if(jter->second.type() == Link::kNeighborMerged)
 			{
@@ -4852,7 +4852,7 @@ void DatabaseViewer::updateCovariances(const QList<Link> & links)
 					infMatrix.clone(),
 					currentLink.userDataCompressed());
 			bool updated = false;
-			std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+			std::multimap<int, Link>::iterator iter = linksRefined_.lower_bound(currentLink.from());
 			while(iter != linksRefined_.end() && iter->first == currentLink.from())
 			{
 				if(iter->second.to() == currentLink.to() &&
@@ -6681,7 +6681,7 @@ void DatabaseViewer::editConstraint()
 			{
 				cv::Mat covariance = dialog.getCovariance();
 				Link newLink(link.from(), link.to(), link.type(), dialog.getTransform(), covariance.inv());
-				std::multimap<int, Link>::iterator iter = linksRefined_.find(link.from());
+				std::multimap<int, Link>::iterator iter = linksRefined_.lower_bound(link.from());
 				while(iter != linksRefined_.end() && iter->first == link.from())
 				{
 					if(iter->second.to() == link.to() &&
@@ -9462,7 +9462,7 @@ void DatabaseViewer::refineConstraint(int from, int to, Registration * reg, Regi
 		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.covariance.inv(), currentLink.userDataCompressed());
 
 		bool updated = false;
-		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
+		std::multimap<int, Link>::iterator iter = linksRefined_.lower_bound(currentLink.from());
 		while(iter != linksRefined_.end() && iter->first == currentLink.from())
 		{
 			if(iter->second.to() == currentLink.to() &&

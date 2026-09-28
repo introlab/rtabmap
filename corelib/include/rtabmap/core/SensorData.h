@@ -736,11 +736,15 @@ public:
 
 	/**
 	 * Set user data. Detect automatically if raw or compressed. If raw, the data is
-	 * compressed too. A matrix of type CV_8UC1 with 1 row is considered as compressed.
+	 * compressed too, unless compressed user data is already set (only possible with
+	 * @p clearPreviousData=false), which is then assumed to be that raw data compressed
+	 * and kept as is. A matrix of type CV_8UC1 with 1 row is considered as compressed.
 	 * If you have one dimension unsigned 8 bits raw data, make sure to transpose it
 	 * (to have multiple rows instead of multiple columns) in order to be detected as
 	 * not compressed.
 	 * @param clearPreviousData, clear previous raw and compressed user data before setting the new one.
+	 *        With false, setting the raw data of compressed user data already set keeps
+	 *        the compressed one, like setLaserScan() and setRGBDImage() do.
 	 */
 	void setUserData(const cv::Mat & userData, bool clearPreviousData = true);
 	const cv::Mat & userDataRaw() const {return _userDataRaw;}

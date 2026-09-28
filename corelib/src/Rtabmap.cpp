@@ -4664,7 +4664,7 @@ bool Rtabmap::process(
 				int lastId = signaturesRemoved.front();
 				UDEBUG("Detected that only last signature has been removed (lastId=%d)", lastId);
 				_optimizedPoses.erase(lastId);
-				for(std::multimap<int, Link>::iterator iter=_constraints.find(lastId); iter!=_constraints.end() && iter->first==lastId;++iter)
+				for(std::multimap<int, Link>::iterator iter=_constraints.lower_bound(lastId); iter!=_constraints.end() && iter->first==lastId;++iter)
 				{
 					if(iter->second.to() != iter->second.from())
 					{
@@ -5919,6 +5919,11 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 			{
 				s.sensorData().setGlobalDescriptors(globalDescriptors);
 			}
+		}
+		if(!withGlobalDescriptors)
+		{
+			// Node data taken from memory comes with its global descriptors.
+			s.sensorData().clearGlobalDescriptors();
 		}
 		if(velocity.size()==6)
 		{

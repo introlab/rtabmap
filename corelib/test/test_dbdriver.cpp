@@ -956,6 +956,53 @@ TEST_F(DbDriverFixture, LabelAndGraphQueries)
 	EXPECT_TRUE(lastNodeIds.count(4));
 }
 
+// getNodeData() answers from the trash -- signatures waiting to be written -- when it can.
+// For a saved signature, that is only when the compressed payload asked for is still in
+// it: saving drops a signature's compressed occupancy grid but keeps the raw cells, and so
+// the cell size, which alone does not mean the compressed grid is there.
+TEST_F(DbDriverFixture, GetNodeDataTakesTheGridFromTheTrashOnlyIfCompressed)
+{
+	cv::Mat obstacles(1, 3, CV_32FC3);
+	for(int i = 0; i < 3; ++i)
+	{
+		obstacles.at<cv::Vec3f>(0, i) = cv::Vec3f(float(i) * 0.1f, 0.0f, 0.0f);
+	}
+
+	// Node 1 in the database, with its compressed grid.
+	Signature * written = new Signature(1);
+	attachSensorDataForDatabaseSave(*written);
+	written->sensorData().setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), 0.05f, cv::Point3f());
+	saveSignature(written);
+
+	// Node 2, saved but only in the trash, with its compressed grid: taken from there.
+	Signature * pending = new Signature(2);
+	pending->sensorData().setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), 0.05f, cv::Point3f());
+	pending->setSaved(true);
+	driver_->asyncSave(pending);
+	{
+		SensorData data;
+		driver_->getNodeData(2, data, false, false, false, true);
+		EXPECT_FALSE(data.gridObstacleCellsCompressed().empty());
+		EXPECT_FLOAT_EQ(0.05f, data.gridCellSize());
+	}
+
+	// A copy of node 1 in the trash, its compressed grid dropped as saving does, the raw
+	// cells and the cell size kept: the grid comes from the database instead.
+	Signature * stale = new Signature(1);
+	stale->sensorData().setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), 0.05f, cv::Point3f());
+	stale->sensorData().clearCompressedData(false, false, false, true);
+	stale->setSaved(true);
+	ASSERT_TRUE(stale->sensorData().gridObstacleCellsCompressed().empty());
+	ASSERT_FLOAT_EQ(0.05f, stale->sensorData().gridCellSize());
+	driver_->asyncSave(stale);
+	{
+		SensorData data;
+		driver_->getNodeData(1, data, false, false, false, true);
+		EXPECT_FALSE(data.gridObstacleCellsCompressed().empty());
+		EXPECT_FLOAT_EQ(0.05f, data.gridCellSize());
+	}
+}
+
 TEST_F(DbDriverFixture, GetNodeDataAndLocalFeatures)
 {
 	Signature * sig = new Signature(1);
