@@ -464,7 +464,8 @@ Protected Member Functions</h2></td></tr>
 <tr class="memdesc:a5f90eb62bb559d42611dbe7ffe11328e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Protected constructor for subclasses. <br /></td></tr>
 <tr class="separator:a5f90eb62bb559d42611dbe7ffe11328e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr><td colspan="2"><div class="groupHeader">Backend implementation (subclass responsibility)</div></td></tr>
-<tr><td colspan="2"><div class="groupText"><p>Pure virtual SQL/backend hooks invoked by public wrappers above. </p>
+<tr><td colspan="2"><div class="groupText"><p>Pure virtual SQL/backend hooks invoked by public wrappers above.</p>
+<p>These are called with <code>_dbSafeAccessMutex</code> locked. Implementations must not call public methods that look in the trash (they lock <code>_trashesMutex</code>), as it would invert the lock order used by <a class="el" href="classrtabmap_1_1DBDriver.html#ab4a0036162994c2ef76d4236e2a7ea0a" title="Flush queued signatures and visual words to the database.">emptyTrashes()</a> and could deadlock. Call the corresponding <code>*Query</code>() method directly instead (e.g., getLastIdQuery("Word", id) instead of getLastWordId(id)). </p>
 </div></td></tr>
 <tr class="memitem:ad26be8fe4acdd961b33d1c459a6c3379" id="r_ad26be8fe4acdd961b33d1c459a6c3379"><td class="memItemLeft" align="right" valign="top"><a id="ad26be8fe4acdd961b33d1c459a6c3379" name="ad26be8fe4acdd961b33d1c459a6c3379"></a>
 virtual bool&#160;</td><td class="memItemRight" valign="bottom"><b>connectDatabaseQuery</b> (const std::string &amp;url, bool overwritten=false, bool readOnly=false)=0</td></tr>

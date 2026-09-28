@@ -573,6 +573,79 @@ Protected Member Functions</h2></td></tr>
 <tr class="separator:a36587d7c8db78b3a8ba71c9188d14a0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7de5f4e43e26f783841485c9f02b4d7e" id="r_a7de5f4e43e26f783841485c9f02b4d7e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#a7de5f4e43e26f783841485c9f02b4d7e">getAllLabelsQuery</a> (std::map&lt; int, std::string &gt; &amp;labels) const</td></tr>
 <tr class="separator:a7de5f4e43e26f783841485c9f02b4d7e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Trash-checking DBDriver methods, hidden on purpose</div></td></tr>
+<tr><td colspan="2"><div class="groupText"><p>These public <a class="el" href="classrtabmap_1_1DBDriver.html" title="Abstract database driver for RTAB-Map maps (signatures, links, words, statistics).">DBDriver</a> methods lock the trash mutex. They are hidden here so that *Query() implementations, which are called with the database mutex already locked, cannot call them by mistake (it would invert the lock order with <a class="el" href="classrtabmap_1_1DBDriver.html#ab4a0036162994c2ef76d4236e2a7ea0a" title="Flush queued signatures and visual words to the database.">DBDriver::emptyTrashes()</a> and could deadlock). Call the corresponding *Query() method instead.</p>
+<p>To call them from outside, use a <a class="el" href="classrtabmap_1_1DBDriver.html" title="Abstract database driver for RTAB-Map maps (signatures, links, words, statistics).">DBDriver</a> pointer or reference (e.g., <a class="el" href="classrtabmap_1_1DBDriver.html#a1f75e440b35243ccad645052bc4a12f9" title="Factory: returns a SQLite database driver (DBDriverSqlite3).">DBDriver::create()</a>). </p>
+</div></td></tr>
+<tr class="memitem:a9680e86b8fa749a7e5d9bc33c1a2756a" id="r_a9680e86b8fa749a7e5d9bc33c1a2756a"><td class="memItemLeft" align="right" valign="top"><a id="a9680e86b8fa749a7e5d9bc33c1a2756a" name="a9680e86b8fa749a7e5d9bc33c1a2756a"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>asyncSave</b> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> *s)=delete</td></tr>
+<tr class="separator:a9680e86b8fa749a7e5d9bc33c1a2756a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a284655ed75c4b45a1875865cb6c0b294" id="r_a284655ed75c4b45a1875865cb6c0b294"><td class="memItemLeft" align="right" valign="top"><a id="a284655ed75c4b45a1875865cb6c0b294" name="a284655ed75c4b45a1875865cb6c0b294"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>asyncSave</b> (<a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> *vw)=delete</td></tr>
+<tr class="separator:a284655ed75c4b45a1875865cb6c0b294"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8618b0d158999aaeb40f6139d5824616" id="r_a8618b0d158999aaeb40f6139d5824616"><td class="memItemLeft" align="right" valign="top"><a id="a8618b0d158999aaeb40f6139d5824616" name="a8618b0d158999aaeb40f6139d5824616"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadSignatures</b> (const std::list&lt; int &gt; &amp;ids, std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, std::set&lt; int &gt; *loadedFromTrash=0, bool loadWordIdsOnly=false)=delete</td></tr>
+<tr class="separator:a8618b0d158999aaeb40f6139d5824616"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf9c3693a95b68daf59c9c149d7efba7" id="r_adf9c3693a95b68daf59c9c149d7efba7"><td class="memItemLeft" align="right" valign="top"><a id="adf9c3693a95b68daf59c9c149d7efba7" name="adf9c3693a95b68daf59c9c149d7efba7"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWords</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws)=delete</td></tr>
+<tr class="separator:adf9c3693a95b68daf59c9c149d7efba7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a64613f9e5e9ee8d86f0732ba26a4f898" id="r_a64613f9e5e9ee8d86f0732ba26a4f898"><td class="memItemLeft" align="right" valign="top"><a id="a64613f9e5e9ee8d86f0732ba26a4f898" name="a64613f9e5e9ee8d86f0732ba26a4f898"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadNodeData</b> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;signature, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const =delete</td></tr>
+<tr class="separator:a64613f9e5e9ee8d86f0732ba26a4f898"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0b3e48bb4e63c6477abb111207610e14" id="r_a0b3e48bb4e63c6477abb111207610e14"><td class="memItemLeft" align="right" valign="top"><a id="a0b3e48bb4e63c6477abb111207610e14" name="a0b3e48bb4e63c6477abb111207610e14"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadNodeData</b> (std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const =delete</td></tr>
+<tr class="separator:a0b3e48bb4e63c6477abb111207610e14"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8ab1d9034de8857a39825eda9ccdf68" id="r_ab8ab1d9034de8857a39825eda9ccdf68"><td class="memItemLeft" align="right" valign="top"><a id="ab8ab1d9034de8857a39825eda9ccdf68" name="ab8ab1d9034de8857a39825eda9ccdf68"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getNodeData</b> (int signatureId, <a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;data, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const =delete</td></tr>
+<tr class="separator:ab8ab1d9034de8857a39825eda9ccdf68"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a95892da5d71bdb79d3d4e89d00d8aed3" id="r_a95892da5d71bdb79d3d4e89d00d8aed3"><td class="memItemLeft" align="right" valign="top"><a id="a95892da5d71bdb79d3d4e89d00d8aed3" name="a95892da5d71bdb79d3d4e89d00d8aed3"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>getCalibration</b> (int signatureId, std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &amp;models, std::vector&lt; <a class="el" href="classrtabmap_1_1StereoCameraModel.html">StereoCameraModel</a> &gt; &amp;stereoModels) const =delete</td></tr>
+<tr class="separator:a95892da5d71bdb79d3d4e89d00d8aed3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed88bdf206640ebc0f90275c782be28a" id="r_aed88bdf206640ebc0f90275c782be28a"><td class="memItemLeft" align="right" valign="top"><a id="aed88bdf206640ebc0f90275c782be28a" name="aed88bdf206640ebc0f90275c782be28a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>getLaserScanInfo</b> (int signatureId, <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;info) const =delete</td></tr>
+<tr class="separator:aed88bdf206640ebc0f90275c782be28a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad08fc61ea1831937c3fc6a02394d184f" id="r_ad08fc61ea1831937c3fc6a02394d184f"><td class="memItemLeft" align="right" valign="top"><a id="ad08fc61ea1831937c3fc6a02394d184f" name="ad08fc61ea1831937c3fc6a02394d184f"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>getNodeInfo</b> (int signatureId, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;pose, int &amp;mapId, int &amp;weight, std::string &amp;label, double &amp;stamp, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;groundTruthPose, std::vector&lt; float &gt; &amp;velocity, <a class="el" href="classrtabmap_1_1GPS.html">GPS</a> &amp;gps, <a class="el" href="namespacertabmap.html#ac175ef40b7a4acb632232d3d96a1199a">EnvSensors</a> &amp;sensors) const =delete</td></tr>
+<tr class="separator:ad08fc61ea1831937c3fc6a02394d184f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9873102db85fd6d6f2ed907f7cd479d5" id="r_a9873102db85fd6d6f2ed907f7cd479d5"><td class="memItemLeft" align="right" valign="top"><a id="a9873102db85fd6d6f2ed907f7cd479d5" name="a9873102db85fd6d6f2ed907f7cd479d5"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getLocalFeatures</b> (int signatureId, std::multimap&lt; int, int &gt; &amp;words, std::vector&lt; cv::KeyPoint &gt; &amp;keypoints, std::vector&lt; cv::Point3f &gt; &amp;points, cv::Mat &amp;descriptors) const =delete</td></tr>
+<tr class="separator:a9873102db85fd6d6f2ed907f7cd479d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aab64180a9b162147a144b63aab549c9c" id="r_aab64180a9b162147a144b63aab549c9c"><td class="memItemLeft" align="right" valign="top"><a id="aab64180a9b162147a144b63aab549c9c" name="aab64180a9b162147a144b63aab549c9c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLinks</b> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=<a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a>) const =delete</td></tr>
+<tr class="separator:aab64180a9b162147a144b63aab549c9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60d7c2e47066bc6113eaeb03f0997255" id="r_a60d7c2e47066bc6113eaeb03f0997255"><td class="memItemLeft" align="right" valign="top"><a id="a60d7c2e47066bc6113eaeb03f0997255" name="a60d7c2e47066bc6113eaeb03f0997255"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getWeight</b> (int signatureId, int &amp;weight) const =delete</td></tr>
+<tr class="separator:a60d7c2e47066bc6113eaeb03f0997255"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac894260ae3e599de3af3a3d30eb4a255" id="r_ac894260ae3e599de3af3a3d30eb4a255"><td class="memItemLeft" align="right" valign="top"><a id="ac894260ae3e599de3af3a3d30eb4a255" name="ac894260ae3e599de3af3a3d30eb4a255"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getAllNodeIds</b> (std::set&lt; int &gt; &amp;ids, bool ignoreChildren=false, bool ignoreBadSignatures=false, bool ignoreIntermediateNodes=false) const =delete</td></tr>
+<tr class="separator:ac894260ae3e599de3af3a3d30eb4a255"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa230b19a1b1603a5dc2f42ca848c089c" id="r_aa230b19a1b1603a5dc2f42ca848c089c"><td class="memItemLeft" align="right" valign="top"><a id="aa230b19a1b1603a5dc2f42ca848c089c" name="aa230b19a1b1603a5dc2f42ca848c089c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getAllOdomPoses</b> (std::map&lt; int, <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &gt; &amp;poses, bool ignoreChildren=false, bool ignoreIntermediateNodes=false) const =delete</td></tr>
+<tr class="separator:aa230b19a1b1603a5dc2f42ca848c089c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8e8af2de686d52e9ad5729fac4750fb8" id="r_a8e8af2de686d52e9ad5729fac4750fb8"><td class="memItemLeft" align="right" valign="top"><a id="a8e8af2de686d52e9ad5729fac4750fb8" name="a8e8af2de686d52e9ad5729fac4750fb8"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getAllLinks</b> (std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, bool ignoreNullLinks=true, bool withLandmarks=false) const =delete</td></tr>
+<tr class="separator:a8e8af2de686d52e9ad5729fac4750fb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9228daa61b91d8475f8bcd90a859ae9b" id="r_a9228daa61b91d8475f8bcd90a859ae9b"><td class="memItemLeft" align="right" valign="top"><a id="a9228daa61b91d8475f8bcd90a859ae9b" name="a9228daa61b91d8475f8bcd90a859ae9b"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastNodeId</b> (int &amp;id) const =delete</td></tr>
+<tr class="separator:a9228daa61b91d8475f8bcd90a859ae9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adb5870246f8ee7b2b4f1bfcdec2708a9" id="r_adb5870246f8ee7b2b4f1bfcdec2708a9"><td class="memItemLeft" align="right" valign="top"><a id="adb5870246f8ee7b2b4f1bfcdec2708a9" name="adb5870246f8ee7b2b4f1bfcdec2708a9"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastMapId</b> (int &amp;mapId) const =delete</td></tr>
+<tr class="separator:adb5870246f8ee7b2b4f1bfcdec2708a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab803789d31edc09608c6502e19ac5a78" id="r_ab803789d31edc09608c6502e19ac5a78"><td class="memItemLeft" align="right" valign="top"><a id="ab803789d31edc09608c6502e19ac5a78" name="ab803789d31edc09608c6502e19ac5a78"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastWordId</b> (int &amp;id) const =delete</td></tr>
+<tr class="separator:ab803789d31edc09608c6502e19ac5a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a55832efd56a15e7a3a1329253664cbdb" id="r_a55832efd56a15e7a3a1329253664cbdb"><td class="memItemLeft" align="right" valign="top"><a id="a55832efd56a15e7a3a1329253664cbdb" name="a55832efd56a15e7a3a1329253664cbdb"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getInvertedIndexNi</b> (int signatureId, int &amp;ni) const =delete</td></tr>
+<tr class="separator:a55832efd56a15e7a3a1329253664cbdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac3b130474442afda546e3108f4f6cdfe" id="r_ac3b130474442afda546e3108f4f6cdfe"><td class="memItemLeft" align="right" valign="top"><a id="ac3b130474442afda546e3108f4f6cdfe" name="ac3b130474442afda546e3108f4f6cdfe"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getNodesObservingLandmark</b> (int landmarkId, std::map&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;nodes) const =delete</td></tr>
+<tr class="separator:ac3b130474442afda546e3108f4f6cdfe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedba9e307cb443d2fc8c1d576e2db914" id="r_aedba9e307cb443d2fc8c1d576e2db914"><td class="memItemLeft" align="right" valign="top"><a id="aedba9e307cb443d2fc8c1d576e2db914" name="aedba9e307cb443d2fc8c1d576e2db914"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getNodeIdByLabel</b> (const std::string &amp;label, int &amp;id) const =delete</td></tr>
+<tr class="separator:aedba9e307cb443d2fc8c1d576e2db914"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a42aa86a61c9a4fb7af868420ef81b4a3" id="r_a42aa86a61c9a4fb7af868420ef81b4a3"><td class="memItemLeft" align="right" valign="top"><a id="a42aa86a61c9a4fb7af868420ef81b4a3" name="a42aa86a61c9a4fb7af868420ef81b4a3"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>getAllLabels</b> (std::map&lt; int, std::string &gt; &amp;labels) const =delete</td></tr>
+<tr class="separator:a42aa86a61c9a4fb7af868420ef81b4a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_methods_classrtabmap_1_1DBDriver"><td colspan="2" onclick="javascript:toggleInherit('pro_methods_classrtabmap_1_1DBDriver')"><img src="closed.png" alt="-"/>&#160;Protected Member Functions inherited from <a class="el" href="classrtabmap_1_1DBDriver.html">rtabmap::DBDriver</a></td></tr>
 <tr class="memitem:a5f90eb62bb559d42611dbe7ffe11328e inherit pro_methods_classrtabmap_1_1DBDriver" id="r_a5f90eb62bb559d42611dbe7ffe11328e"><td class="memItemLeft" align="right" valign="top">
 &#160;</td><td class="memItemRight" valign="bottom"><b>DBDriver</b> (const <a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a> &amp;parameters=<a class="el" href="namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55">ParametersMap</a>())</td></tr>
@@ -3256,7 +3329,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Open SQLite connection (null when disconnected) </p>
 
-<p class="definition">Definition at line <a class="el" href="DBDriverSqlite3_8h_source.html#l00307">307</a> of file <a class="el" href="DBDriverSqlite3_8h_source.html">DBDriverSqlite3.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="DBDriverSqlite3_8h_source.html#l00341">341</a> of file <a class="el" href="DBDriverSqlite3_8h_source.html">DBDriverSqlite3.h</a>.</p>
 
 </div>
 </div>
@@ -3282,7 +3355,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Schema version read from the database. </p>
 
-<p class="definition">Definition at line <a class="el" href="DBDriverSqlite3_8h_source.html#l00308">308</a> of file <a class="el" href="DBDriverSqlite3_8h_source.html">DBDriverSqlite3.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="DBDriverSqlite3_8h_source.html#l00342">342</a> of file <a class="el" href="DBDriverSqlite3_8h_source.html">DBDriverSqlite3.h</a>.</p>
 
 </div>
 </div>
