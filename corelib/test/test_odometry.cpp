@@ -543,3 +543,44 @@ TEST_P(OdometryStrategyTest, IcpConvergesFromOffsetGuess)
 			<< guess.prettyPrint() << "); ICP did not converge";
 	expectPoseNear(pose, motion, 0.002f, 0.2f, "2D corner, offset guess");
 }
+
+// A sweep that arrives far short of the points it should have cannot be
+// registered against: Icp/CorrespondenceRatio is measured against a full sweep,
+// so even matching every point it does have would leave it under the ratio.
+// F2M refuses such a scan as the first keyframe rather than starting a map that
+// nothing can be matched to. maxPoints is what says how big a full sweep is, so
+// the check is only possible when a driver reported it.
+TEST(OdometryTest, RefusesAFirstScanTooSmallForTheCorrespondenceRatio)
+{
+	const ParametersMap parameters =
+			icpOdometryParameters(Odometry::kTypeF2M, /*force3DoF=*/false, /*guessMotion=*/false);
+	const LaserScan corner = makeCorner3D();   // 1200 points
+
+	// The same points three ways. First as a twentieth of the sweep they should be,
+	// which no registration could reach the 0.1 ratio against.
+	const LaserScan tooFewPoints(
+			corner.data(), 20*(int)corner.size(), /*maxRange=*/0.0f, corner.format());
+	std::unique_ptr<Odometry> refusing(Odometry::create(parameters));
+	ASSERT_TRUE(refusing.get() != 0);
+	SensorData refusingData = makeScanData(tooFewPoints, 1, 0.0);
+	EXPECT_TRUE(refusing->process(refusingData).isNull())
+			<< "a map was started on a scan no later one could be registered to";
+
+	// Then as everything a sweep has, which is what a full one looks like.
+	const LaserScan wholeSweep(
+			corner.data(), (int)corner.size(), /*maxRange=*/0.0f, corner.format());
+	std::unique_ptr<Odometry> accepting(Odometry::create(parameters));
+	ASSERT_TRUE(accepting.get() != 0);
+	SensorData acceptingData = makeScanData(wholeSweep, 1, 0.0);
+	EXPECT_FALSE(accepting->process(acceptingData).isNull())
+			<< "a full sweep was refused as the first keyframe";
+
+	// And last as makeCorner3D() builds it, with maxPoints left at 0: a driver that
+	// never said how big a sweep is, so there is no ratio to fall under and the check
+	// does not apply.
+	std::unique_ptr<Odometry> unchecked(Odometry::create(parameters));
+	ASSERT_TRUE(unchecked.get() != 0);
+	SensorData uncheckedData = makeScanData(corner, 1, 0.0);
+	EXPECT_FALSE(unchecked->process(uncheckedData).isNull())
+			<< "a scan of unknown sweep size was refused";
+}
