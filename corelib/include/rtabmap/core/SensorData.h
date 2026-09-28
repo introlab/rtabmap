@@ -475,11 +475,17 @@ public:
 	 * - Depth/right images (raw or compressed)
 	 * - Depth confidence (raw or compressed)
 	 * - Laser scan (raw or compressed)
-	 * - Camera models (mono or stereo)
+	 * - Camera models (mono or stereo), at least one valid for projection
+	 *   (see CameraModel::isValidForProjection() and StereoCameraModel::isValidForProjection())
 	 * - User data (raw or compressed)
 	 * - Keypoints and descriptors
+	 * - Occupancy grid cells (ground, obstacles or empty)
 	 * - IMU data
-	 * 
+	 *
+	 * @note The stamp is not considered: a SensorData with only a stamp set is not valid
+	 *       (e.g., an empty message converted from ROS still has its header stamp
+	 *       and a camera model created from an empty camera info).
+	 *
 	 * @return True if the sensor data contains any valid information, false otherwise
 	 */
 	bool isValid() const {

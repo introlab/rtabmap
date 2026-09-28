@@ -187,10 +187,43 @@ TEST(SensorDataTest, IsValidWithId)
 
 TEST(SensorDataTest, IsValidWithStamp)
 {
+    // A stamp alone doesn't make the data valid
     SensorData data;
     EXPECT_FALSE(data.isValid());
-    
+
     data.setStamp(12345.0);
+    EXPECT_FALSE(data.isValid());
+}
+
+TEST(SensorDataTest, IsValidWithCameraModel)
+{
+    SensorData data;
+    data.setRGBDImage(cv::Mat(), cv::Mat(), CameraModel());
+    EXPECT_FALSE(data.cameraModels().empty());
+    EXPECT_FALSE(data.isValid()); // not valid for projection
+
+    data.setRGBDImage(cv::Mat(), cv::Mat(), CameraModel(525.0, 525.0, 320.0, 240.0));
+    EXPECT_TRUE(data.isValid());
+
+    // At least one valid model among multiple cameras
+    std::vector<CameraModel> models;
+    models.push_back(CameraModel());
+    models.push_back(CameraModel(525.0, 525.0, 320.0, 240.0));
+    data.setRGBDImage(cv::Mat(), cv::Mat(), models);
+    EXPECT_TRUE(data.isValid());
+}
+
+TEST(SensorDataTest, IsValidWithStereoCameraModel)
+{
+    SensorData data;
+    data.setStereoImage(cv::Mat(), cv::Mat(), StereoCameraModel());
+    EXPECT_FALSE(data.stereoCameraModels().empty());
+    EXPECT_FALSE(data.isValid()); // not valid for projection
+
+    data.setStereoImage(cv::Mat(), cv::Mat(), StereoCameraModel(525.0, 525.0, 320.0, 240.0, 0.0));
+    EXPECT_FALSE(data.isValid()); // null baseline
+
+    data.setStereoImage(cv::Mat(), cv::Mat(), StereoCameraModel(525.0, 525.0, 320.0, 240.0, 0.12));
     EXPECT_TRUE(data.isValid());
 }
 
