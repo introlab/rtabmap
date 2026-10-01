@@ -111,6 +111,11 @@ namespace gtsam {
 // Define Key to be Testable by specializing gtsam::traits
 template<typename T> struct traits;
 template<> struct traits<vertigo::SwitchVariableLinear> {
+  // Manifold concept, required by noiseModel::Unit::Create() in recent gtsam
+  typedef manifold_tag structure_category;
+  typedef vertigo::SwitchVariableLinear ManifoldType;
+  enum { dimension = 1 };
+
   static void Print(const vertigo::SwitchVariableLinear& key, const std::string& str = "") {
     key.print(str);
   }

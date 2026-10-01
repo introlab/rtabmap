@@ -628,6 +628,18 @@ IF(WITH_GTSAM)
          MESSAGE(STATUS "GTSAM with NoiseModelFactorN.h")
          ADD_DEFINITIONS("-DGTSAM_WITH_NOISE_MODEL_FACTOR_N")
       ENDIF(GTSAM_NOISE_MODEL_FACTOR_N_FILE)
+      # Pose3AttitudeFactor has been replaced by AttitudeFactor<Pose3> in some
+      # 4.3 pre-releases still reporting version 4.3.0, so check the header directly.
+      FIND_FILE(GTSAM_ATTITUDE_FACTOR_FILE gtsam/navigation/AttitudeFactor.h
+         PATHS ${GTSAM_INCLUDE_DIR}
+         NO_DEFAULT_PATH)
+      IF(GTSAM_ATTITUDE_FACTOR_FILE)
+         FILE(STRINGS ${GTSAM_ATTITUDE_FACTOR_FILE} GTSAM_POSE3_ATTITUDE_FACTOR_LINE REGEX "Pose3AttitudeFactor")
+         IF(NOT GTSAM_POSE3_ATTITUDE_FACTOR_LINE)
+            MESSAGE(STATUS "GTSAM with templated AttitudeFactor")
+            ADD_DEFINITIONS("-DGTSAM_WITH_TEMPLATED_ATTITUDE_FACTOR")
+         ENDIF(NOT GTSAM_POSE3_ATTITUDE_FACTOR_LINE)
+      ENDIF(GTSAM_ATTITUDE_FACTOR_FILE)
     ENDIF(GTSAM_FOUND)
 ENDIF(WITH_GTSAM)
 
