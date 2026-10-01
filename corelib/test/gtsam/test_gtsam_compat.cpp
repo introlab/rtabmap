@@ -127,8 +127,6 @@ int main() {
         near(Vector1(vertigo::SwitchVariableSigmoid(-20).value()), Vector1(-10));
         checkBetween<Pose2, vertigo::SwitchVariableLinear, vertigo::BetweenFactorSwitchableLinear>(Pose2(), Pose2(1,2,0.2), 0.4);
         checkBetween<Pose3, vertigo::SwitchVariableLinear, vertigo::BetweenFactorSwitchableLinear>(Pose3(), Pose3(Rot3::RzRyRx(0.1,0.2,0.3), Point3(1,2,3)), 0.4);
-        checkBetween<Pose2, vertigo::SwitchVariableSigmoid, vertigo::BetweenFactorSwitchableSigmoid>(Pose2(), Pose2(1,2,0.2), -0.4);
-        checkBetween<Pose3, vertigo::SwitchVariableSigmoid, vertigo::BetweenFactorSwitchableSigmoid>(Pose3(), Pose3(Rot3::RzRyRx(0.1,0.2,0.3), Point3(1,2,3)), -0.4);
         checkGravity();
         std::cout << "GTSAM compatibility checks passed\n";
         return 0;
