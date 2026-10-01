@@ -220,3 +220,8 @@ IF(libLAS_FOUND)
 	target_include_directories(test_laswriter PRIVATE ${libLAS_INCLUDE_DIRS})
 	add_test(NAME test_laswriter COMMAND test_laswriter)
 ENDIF(libLAS_FOUND)
+
+# This header-only compatibility test also builds independently of corelib.
+IF(GTSAM_FOUND)
+    ADD_SUBDIRECTORY(gtsam)
+ENDIF()

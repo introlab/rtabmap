@@ -13,6 +13,7 @@
 // DerivedValue.h removed from gtsam repo (Dec 2018): https://github.com/borglab/gtsam/commit/e550f4f2aec423cb3f2791b81cb5858b8826ebac
 #include "DerivedValue.h"
 #include <gtsam/base/Lie.h>
+#include <gtsam/base/Manifold.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 namespace vertigo {
@@ -45,6 +46,7 @@ namespace vertigo {
     }
 
     // Manifold requirements
+    static constexpr int dimension = 1;
 
     /** Returns dimensionality of the tangent space */
     inline size_t dim() const { return 1; }
@@ -61,7 +63,13 @@ namespace vertigo {
     }
 
     /** @return the local coordinates of another object */
-    inline gtsam::Vector localCoordinates(const SwitchVariableSigmoid& t2) const { return gtsam::Vector1(t2.value() - value()); }
+    inline gtsam::Vector1 localCoordinates(const SwitchVariableSigmoid& t2,
+        gtsam::OptionalJacobian<1, 1> H1 = {},
+        gtsam::OptionalJacobian<1, 1> H2 = {}) const {
+      if (H1) *H1 = -gtsam::Matrix11::Identity();
+      if (H2) *H2 = gtsam::Matrix11::Identity();
+      return gtsam::Vector1(t2.value() - value());
+    }
 
     // Group requirements
 
@@ -109,45 +117,9 @@ namespace vertigo {
 
 
 namespace gtsam {
-// Define Key to be Testable by specializing gtsam::traits
-template<typename T> struct traits;
-template<> struct traits<vertigo::SwitchVariableSigmoid> {
-  // Manifold concept, required by noiseModel::Unit::Create() in recent gtsam
-  typedef manifold_tag structure_category;
-  typedef vertigo::SwitchVariableSigmoid ManifoldType;
-  enum { dimension = 1 };
-
-  static void Print(const vertigo::SwitchVariableSigmoid& key, const std::string& str = "") {
-    key.print(str);
-  }
-  static bool Equals(const vertigo::SwitchVariableSigmoid& key1, const vertigo::SwitchVariableSigmoid& key2, double tol = 1e-8) {
-    return key1.equals(key2, tol);
-  }
-  static int GetDimension(const vertigo::SwitchVariableSigmoid & key) {return key.Dim();}
-
-  typedef OptionalJacobian<1, 1> ChartJacobian;
-  typedef gtsam::Vector TangentVector;
-  static TangentVector Local(const vertigo::SwitchVariableSigmoid& origin, const vertigo::SwitchVariableSigmoid& other,
-#if GTSAM_VERSION_NUMERIC >= 40300
-	  ChartJacobian Horigin = {}, ChartJacobian Hother = {}) {
-#else
-	  ChartJacobian Horigin = boost::none, ChartJacobian Hother = boost::none) {
-#endif
-    if(Horigin) *Horigin = -gtsam::Matrix11::Identity();
-    if(Hother) *Hother = gtsam::Matrix11::Identity();
-    return origin.localCoordinates(other);
-  }
-  static vertigo::SwitchVariableSigmoid Retract(const vertigo::SwitchVariableSigmoid& g, const TangentVector& v,
-#if GTSAM_VERSION_NUMERIC >= 40300
-        ChartJacobian H1 = {}, ChartJacobian H2 = {}) {
-#else
-        ChartJacobian H1 = boost::none, ChartJacobian H2 = boost::none) {
-#endif
-      if(H1) *H1 = gtsam::Matrix11::Identity();
-      if(H2) *H2 = gtsam::Matrix11::Identity();
-      return g.retract(v);
-    }
-};
+// Use the scalar manifold's dimension, category and chart operations.
+template<> struct traits<vertigo::SwitchVariableSigmoid>
+    : internal::Manifold<vertigo::SwitchVariableSigmoid> {};
 }
 
 #endif /* SWITCHVARIABLESIGMOID_H_ */

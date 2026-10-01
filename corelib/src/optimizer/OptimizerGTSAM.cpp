@@ -504,10 +504,10 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					gtsam::Unit3 nZ(0,0,1);
 					gtsam::Unit3 bGMeas = nRbMeas.unrotate(nZ);
 					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(2, gravitySigma());
-#ifdef GTSAM_WITH_TEMPLATED_ATTITUDE_FACTOR
-					graph.add(gtsam::AttitudeFactor<gtsam::Pose3>(iter->first, nZ, model, bGMeas));
-#else
+#ifndef RTABMAP_GTSAM_HAS_ATTITUDE_FACTOR_TEMPLATE
 					graph.add(gtsam::Pose3AttitudeFactor(iter->first, nZ, model, bGMeas));
+#else
+					graph.add(gtsam::AttitudeFactor<gtsam::Pose3>(iter->first, nZ, model, bGMeas));
 #endif
 					lastAddedConstraints_.push_back(ConstraintToFactor(iter->first, iter->first, -1));
 				}
