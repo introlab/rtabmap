@@ -3532,13 +3532,13 @@ void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes, bool lo
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		ULOGGER_DEBUG("Loading %d signatures...", ids.size());
+		ULOGGER_DEBUG("Loading %d signatures...", (int)ids.size());
 		this->loadSignaturesQuery(ids, nodes, loadWordIdsOnly);
-		ULOGGER_DEBUG("loaded=%d, Time=%fs", nodes.size(), timer.ticks());
+		ULOGGER_DEBUG("loaded=%d, Time=%fs", (int)nodes.size(), timer.ticks());
 	}
 }
 
-void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) const
+void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly, bool idsOnly) const
 {
 	ULOGGER_DEBUG("");
 	if(_ppDb)
@@ -3552,7 +3552,12 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) c
 		std::list<VisualWord *> visualWords;
 
 		// Get the visual words
-		query << "SELECT id, descriptor_size, descriptor FROM Word ";
+		query << "SELECT id";
+		if(!idsOnly)
+		{
+			query << ", descriptor_size, descriptor";
+		}
+		query << " FROM Word ";
 		if(lastStateOnly)
 		{
 			if(uStrNumCmp(_version, "0.11.11") >= 0)
@@ -3581,27 +3586,29 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) c
 			int index=0;
 			id = sqlite3_column_int(ppStmt, index++); 			// VisualWord Id
 
-			descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
-			descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
-			dRealSize = sqlite3_column_bytes(ppStmt, index++);
-
 			cv::Mat d;
-			if(dRealSize == descriptorSize)
-			{
-				// CV_8U binary descriptors
-				d = cv::Mat(1, descriptorSize, CV_8U);
-			}
-			else if(dRealSize/int(sizeof(float)) == descriptorSize)
-			{
-				// CV_32F
-				d = cv::Mat(1, descriptorSize, CV_32F);
-			}
-			else
-			{
-				UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-			}
+			if(!idsOnly) {
+				descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
+				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
+				dRealSize = sqlite3_column_bytes(ppStmt, index++);
 
-			memcpy(d.data, descriptor, dRealSize);
+				if(dRealSize == descriptorSize)
+				{
+					// CV_8U binary descriptors
+					d = cv::Mat(1, descriptorSize, CV_8U);
+				}
+				else if(dRealSize/int(sizeof(float)) == descriptorSize)
+				{
+					// CV_32F
+					d = cv::Mat(1, descriptorSize, CV_32F);
+				}
+				else
+				{
+					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
+				}
+
+				memcpy(d.data, descriptor, dRealSize);
+			}
 			VisualWord * vw = new VisualWord(id, d);
 			vw->setSaved(true);
 			dictionary.addWord(vw);
@@ -3617,11 +3624,11 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) c
 		rc = sqlite3_finalize(ppStmt);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-		// Get Last word id
-		getLastWordId(id);
+		// Get Last word id (query directly: _dbSafeAccessMutex is already locked by DBDriver::load())
+		getLastIdQuery("Word", id);
 		dictionary.setLastWordId(id);
 
-		if(uStrNumCmp(_version, "0.23.0") >= 0) {
+		if(!idsOnly && uStrNumCmp(_version, "0.23.0") >= 0) {
 			// load dictionary index
 			std::stringstream query3;
 			query3 << "SELECT dictionary_index "
@@ -3646,8 +3653,15 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) c
 				dataSize = sqlite3_column_bytes(ppStmt, index++);
 				if(dataSize>4 && data)
 				{
-					UDEBUG("A flann index was saved in the database (size=%ld).", dataSize);
-					dictionary.deserializeIndex((const unsigned char*)data, dataSize);
+					UDEBUG("A flann index was saved in the database (size=%ld).", (long)dataSize);
+					if(!dictionary.deserializeIndex((const unsigned char*)data, dataSize))
+					{
+						UERROR("Failed to deserialize dictionary's index! See previous logs for reason.");
+					}
+					else
+					{
+						UINFO("Sucessfully loaded dictionary's index.");
+					}
 				}
 				else {
 					UDEBUG("No flann index was saved in the database.");
@@ -3669,7 +3683,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly) c
 //may be slower than the previous version but don't have a limit of words that can be loaded at the same time
 void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const
 {
-	ULOGGER_DEBUG("size=%d", wordIds.size());
+	ULOGGER_DEBUG("size=%d", (int)wordIds.size());
 	if(_ppDb && wordIds.size())
 	{
 		std::string type;
@@ -3757,7 +3771,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 					UDEBUG("Not found word %d", *iter);
 				}
 			}
-			UERROR("Query (%d) doesn't match loaded words (%d)", wordIds.size(), loaded.size());
+			UERROR("Query (%d) doesn't match loaded words (%d)", (int)wordIds.size(), (int)loaded.size());
 		}
 	}
 }
@@ -4343,7 +4357,7 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 
 void DBDriverSqlite3::updateQuery(const std::list<Signature *> & nodes, bool updateTimestamp) const
 {
-	UDEBUG("nodes = %d, updateTimestamp = %s", nodes.size(), updateTimestamp?"true":"false");
+	UDEBUG("nodes = %d, updateTimestamp = %s", (int)nodes.size(), updateTimestamp?"true":"false");
 	if(_ppDb && nodes.size())
 	{
 		UTimer timer;
@@ -4651,10 +4665,18 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			query = queryStepSensorData();
 			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			UDEBUG("Saving %d images", signatures.size());
+			UDEBUG("Saving %d images", (int)signatures.size());
 
 			for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 			{
+				if(((*i)->sensorData().imageCompressed().empty() && !(*i)->sensorData().imageRaw().empty()) ||
+				   ((*i)->sensorData().depthOrRightCompressed().empty() && !(*i)->sensorData().depthOrRightRaw().empty()) ||
+				   ((*i)->sensorData().laserScanCompressed().isEmpty() && !(*i)->sensorData().laserScanRaw().isEmpty()))
+				{
+					UWARN("Node %d carries raw sensor data but no compressed data. Only compressed "
+						  "buffers are saved, so that payload will be empty in the database. Compress "
+						  "it first (see compressImage2() / compressData2()).", (*i)->id());
+				}
 				if(!(*i)->sensorData().imageCompressed().empty() ||
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
 				   !(*i)->sensorData().depthConfidenceCompressed().empty() ||
@@ -4679,7 +4701,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			query = queryStepImage();
 			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			UDEBUG("Saving %d images", signatures.size());
+			UDEBUG("Saving %d images", (int)signatures.size());
 
 			for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 			{
@@ -4718,7 +4740,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 
 void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 {
-	UDEBUG("visualWords size=%d", words.size());
+	UDEBUG("visualWords size=%d", (int)words.size());
 	if(_ppDb)
 	{
 		std::string type;

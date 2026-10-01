@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+/** @brief Parameter keys mapped to their values, as used by every configurable class (see @ref Parameters). */
 typedef std::map<std::string, std::string> ParametersMap; // Key, value
+/** @brief A single parameter key/value pair, the entry type of @ref ParametersMap. */
 typedef std::pair<std::string, std::string> ParametersPair;
 
 /**
@@ -63,8 +65,11 @@ typedef std::pair<std::string, std::string> ParametersPair;
  */
 #define RTABMAP_PARAM(PREFIX, NAME, TYPE, DEFAULT_VALUE, DESCRIPTION) \
     public: \
+        /** @brief Key of parameter PREFIX##/##NAME: DESCRIPTION Default value: DEFAULT_VALUE (TYPE). */ \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+        /** @brief Default value of parameter PREFIX##/##NAME: DEFAULT_VALUE. */ \
         static TYPE default##PREFIX##NAME() {return (TYPE)DEFAULT_VALUE;} \
+        /** @brief Type of parameter PREFIX##/##NAME, as a string: TYPE. */ \
         static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
     private: \
         class Dummy##PREFIX##NAME { \
@@ -97,8 +102,11 @@ typedef std::pair<std::string, std::string> ParametersPair;
  */
 #define RTABMAP_PARAM_STR(PREFIX, NAME, DEFAULT_VALUE, DESCRIPTION) \
     public: \
+        /** @brief Key of parameter PREFIX##/##NAME: DESCRIPTION Default value: DEFAULT_VALUE (string). */ \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+        /** @brief Default value of parameter PREFIX##/##NAME: DEFAULT_VALUE. */ \
         static std::string default##PREFIX##NAME() {return DEFAULT_VALUE;} \
+        /** @brief Type of parameter PREFIX##/##NAME, as a string: string. */ \
         static std::string type##PREFIX##NAME() {return std::string("string");} \
     private: \
         class Dummy##PREFIX##NAME { \
@@ -130,8 +138,11 @@ typedef std::pair<std::string, std::string> ParametersPair;
  */
 #define RTABMAP_PARAM_COND(PREFIX, NAME, TYPE, COND, DEFAULT_VALUE1, DEFAULT_VALUE2, DESCRIPTION) \
     public: \
+        /** @brief Key of parameter PREFIX##/##NAME: DESCRIPTION Default value: DEFAULT_VALUE1 if COND, DEFAULT_VALUE2 otherwise (TYPE). */ \
         static std::string k##PREFIX##NAME() {return std::string(#PREFIX "/" #NAME);} \
+        /** @brief Default value of parameter PREFIX##/##NAME: DEFAULT_VALUE1 if COND, DEFAULT_VALUE2 otherwise. */ \
         static TYPE default##PREFIX##NAME() {return COND?DEFAULT_VALUE1:DEFAULT_VALUE2;} \
+        /** @brief Type of parameter PREFIX##/##NAME, as a string: TYPE. */ \
         static std::string type##PREFIX##NAME() {return std::string(#TYPE);} \
     private: \
         class Dummy##PREFIX##NAME { \
@@ -165,7 +176,8 @@ typedef std::pair<std::string, std::string> ParametersPair;
  *         std::string strValue = Util::value(Parameters::getDefaultParameters(), theKey); // strValue = "640"
  * @endcode
  * @see getDefaultParameters()
- * TODO Add a detailed example with simple classes
+ * @see The @ref parameters "Parameter reference" page, which lists every parameter
+ *      with its type, default value and description.
  */
 class RTABMAP_CORE_EXPORT Parameters
 {
@@ -240,10 +252,11 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, RotateImagesUpsideUp,        bool, false,    "Rotate images so that upside is up if they are not already. This can be useful in case the robots don't have all same camera orientation but are using the same map, so that not rotation-invariant visual features can still be used across the fleet.");
 
     // KeypointMemory (Keypoint-based)
-    RTABMAP_PARAM(Kp, NNStrategy,               int, 1,       "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
+    RTABMAP_PARAM(Kp, NNStrategy,               int, 1,       "FLANN Linear=0, FLANN KdTree=1, FLANN LSH=2, Brute Force=3, Brute Force GPU=4, FLANN KdTree Single=5, NanoFLANN KdTree=6");
     RTABMAP_PARAM(Kp, IncrementalDictionary,    bool, true,   "");
-    RTABMAP_PARAM(Kp, IncrementalFlann,         bool, true,   uFormat("When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary increases of the factor \"%s\" in size).", kKpFlannRebalancingFactor().c_str()));
-    RTABMAP_PARAM(Kp, FlannRebalancingFactor,   float, 2.0,   uFormat("Factor used when rebuilding the incremental FLANN index (see \"%s\"). Set <=1 to disable.", kKpIncrementalFlann().c_str()));
+    RTABMAP_PARAM(Kp, IncrementalFlann,         bool, true,   uFormat("When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is only rebuilt when too many of its features have been removed, see \"%s\").", kKpFlannRebalancingFactor().c_str()));
+    RTABMAP_PARAM(Kp, FlannRebalancingFactor,   float, 2.0,   uFormat("Rebuild the incremental FLANN index (see \"%s\") once the ratio (factor-1)/factor of its features has been removed, e.g. half of them for a factor of 2. Rebuilding frees the memory of the removed features and speeds up the searches. Features are mostly removed when memory management is enabled (\"%s\" or \"%s\"). Set to 1 to never rebuild, which also uses less memory as the features don't have to be referenced one by one.", kKpIncrementalFlann().c_str(), kRtabmapTimeThr().c_str(), kRtabmapMemoryThr().c_str()));
+    RTABMAP_PARAM(Kp, FlannThreads,             int, 1,       "Number of threads used for FLANN kNN search (batched queries). Set to 0 for all available.");
     RTABMAP_PARAM(Kp, ByteToFloat,              bool, false,  uFormat("For %s=1, binary descriptors are converted to float by converting each byte to float instead of converting each bit to float. When converting bytes instead of bits, less memory is used and search is faster at the cost of slightly less accurate matching.", kKpNNStrategy().c_str()));
     RTABMAP_PARAM(Kp, MaxDepth,                 float, 0,     "Filter extracted keypoints by depth (0=inf).");
     RTABMAP_PARAM(Kp, MinDepth,                 float, 0,     "Filter extracted keypoints by depth.");
@@ -272,10 +285,26 @@ class RTABMAP_CORE_EXPORT Parameters
 
     //Database
     RTABMAP_PARAM(DbSqlite3, InMemory,     bool, false,      "Using database in the memory instead of a file on the hard disk.");
-    RTABMAP_PARAM(DbSqlite3, CacheSize, unsigned int, 10000, "Sqlite cache size (default is 2000).");
-    RTABMAP_PARAM(DbSqlite3, JournalMode,  int, 3,           "0=DELETE, 1=TRUNCATE, 2=PERSIST, 3=MEMORY, 4=OFF (see sqlite3 doc : \"PRAGMA journal_mode\")");
-    RTABMAP_PARAM(DbSqlite3, Synchronous,  int, 0,           "0=OFF, 1=NORMAL, 2=FULL (see sqlite3 doc : \"PRAGMA synchronous\")");
-    RTABMAP_PARAM(DbSqlite3, TempStore,    int, 2,           "0=DEFAULT, 1=FILE, 2=MEMORY (see sqlite3 doc : \"PRAGMA temp_store\")");
+    RTABMAP_PARAM(DbSqlite3, CacheSize, unsigned int, 10000,
+            "PRAGMA cache_size: number of database pages kept in SQLite's page cache (approx. cacheSize * page_size bytes, often ~4 KiB per page). "
+            "Larger values reduce disk I/O when the working set fits in RAM. SQLite built-in default is typically 2000 pages.");
+    RTABMAP_PARAM(DbSqlite3, JournalMode,  int, 3,
+            "PRAGMA journal_mode: rollback journal storage. See sqlite.org/pragma.html#pragma_journal_mode for more details. "
+            "0=DELETE (SQLite default): journal file deleted after each commit. "
+            "1=TRUNCATE: journal truncated to zero length. "
+            "2=PERSIST: journal file kept, header zeroed after commit. "
+            "3=MEMORY: journal in RAM only; faster, weaker crash safety. "
+            "4=OFF: no journal; fastest, risk of corruption on crash.");
+    RTABMAP_PARAM(DbSqlite3, Synchronous,  int, 0,
+            "PRAGMA synchronous: how aggressively SQLite syncs the database to disk. See sqlite.org/pragma.html#pragma_synchronous for more details. "
+            "0=OFF: no wait for persistent storage; fastest, corruption possible on power loss. "
+            "1=NORMAL: sync at critical moments (common SQLite default with WAL). "
+            "2=FULL (SQLite safest default): sync after every commit; slowest.");
+    RTABMAP_PARAM(DbSqlite3, TempStore,    int, 2,
+            "PRAGMA temp_store: where SQLite stores temporary tables and indices. See sqlite.org/pragma.html#pragma_temp_store for more details. "
+            "0=DEFAULT: SQLite compile-time default (often on-disk temp files). "
+            "1=FILE: temporary files in the system temp directory. "
+            "2=MEMORY: temporary data in RAM when possible.");
     RTABMAP_PARAM_STR(Db, TargetVersion,   "",               "Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., 0.19 vs 0.20 or 1.0 vs 2.0). Patch version is ignored (e.g., 0.20.1 and 0.20.3 will generate a 0.20 database).");
 
     // Keypoints descriptors/detectors
@@ -359,9 +388,10 @@ class RTABMAP_CORE_EXPORT Parameters
 	RTABMAP_PARAM(PyDetector, Cuda,           bool, true,   "Use cuda.");
 
     // BayesFilter
-    RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");
-    RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}.");
+    RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior. Considering that we are at a new place, this is the prior probability to move again to a new place (unvisited location). The prior probability to move to a previously visited location is 1 - VirtualPlacePriorThr (split equally against all previously visited locations).");
+    RTABMAP_PARAM_STR(Bayes, PredictionLC, "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", "Prediction of loop closures (Gaussian-like, here with sigma=1.6) - Format: {VirtualPlaceProb, LoopClosureProb, NeighborLvl1, NeighborLvl2, ...}. Considering we are at a previously visited location, the first value is the probability to move to a new place (unvisited location), the second value is the probability to stay at the same location, the third value is the probability to move to a neighbor or loop closure at the first depth level, the fourth value is the probability to move to a neighbor or loop closure at the second depth level, etc. If the sum of the values is not 1, the difference is normalized against all remaining visited locations. Normally, the sum of these values should be 1.");
     RTABMAP_PARAM(Bayes, FullPredictionUpdate, bool, false, "Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).");
+    RTABMAP_PARAM(Bayes, SparsePrediction, bool, true, uFormat("Use a sparse representation of the prediction instead of a dense matrix, which significantly reduces memory usage and processing time on large maps. Ignored when the values of %s sum to less than 1, as the prediction is then not sparse.", kBayesPredictionLC().c_str()).c_str());
 
     // Verify hypotheses
     RTABMAP_PARAM(VhEp, Enabled, bool, false,       uFormat("Verify visual loop closure hypothesis by computing a fundamental matrix. This is done prior to transformation computation when %s is enabled.", kRGBDEnabled().c_str()));
@@ -442,7 +472,7 @@ class RTABMAP_CORE_EXPORT Parameters
 #endif
     RTABMAP_PARAM(Optimizer, VarianceIgnored, bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
     RTABMAP_PARAM(Optimizer, Robust,          bool, false,     "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
-    RTABMAP_PARAM(Optimizer, PriorsIgnored,   bool, true,      "Ignore prior constraints (global pose or GPS) while optimizing. Currently only g2o and gtsam optimization supports this.");
+    RTABMAP_PARAM(Optimizer, PriorsIgnored,   bool, true,      "Ignore prior constraints (global pose, GPS or marker priors) while optimizing. Currently only g2o and gtsam optimization supports this.");
     RTABMAP_PARAM(Optimizer, LandmarksIgnored,   bool, false,  "Ignore landmark constraints while optimizing. Currently only g2o and gtsam optimization supports this.");
 #if defined(RTABMAP_G2O) || defined(RTABMAP_GTSAM)
     RTABMAP_PARAM(Optimizer, GravitySigma,    float, 0.3,      uFormat("Gravity sigma value (>=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies (see %s).", kOptimizerStrategy().c_str()));
@@ -456,9 +486,11 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(g2o, Solver,            int, 0,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
 #endif
     RTABMAP_PARAM(g2o, Optimizer,         int, 0,          "0=Levenberg 1=GaussNewton");
-    RTABMAP_PARAM(g2o, PixelVariance,     double, 1.0,     "Pixel variance used for bundle adjustment.");
-    RTABMAP_PARAM(g2o, RobustKernelDelta, double, 8,       "Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.");
-    RTABMAP_PARAM(g2o, Baseline,          double, 0.075,   "When doing bundle adjustment with RGB-D data, we can set a fake baseline (m) to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.");
+
+    RTABMAP_PARAM(Optimizer, Baseline,           double, 0.075,   "When doing bundle adjustment with RGB-D data (mono camera + depth), set a fake baseline (m) so the BA backend treats depth as stereo disparity. Applies to all BA-capable backends (g2o, GTSAM, Ceres). Set to 0 to keep the problem mono (depth observations are ignored). For real stereo data the baseline in the calibration (Tx) is used directly.");
+    RTABMAP_PARAM(Optimizer, PixelVariance,     double, 1.0,     "Pixel variance used on the u/v axes of every bundle adjustment reprojection edge. Applies to all BA-capable backends (g2o, GTSAM, Ceres). Should approximate the squared 1-sigma keypoint localization error in pixels. Set higher (e.g. 4-9) if features are noisy (low texture, motion blur, low light, or large detector scale). Set lower (e.g. 0.01-0.1) if features are sub-pixel refined (Lucas-Kanade tracking, parabolic peak interpolation). Intuition: the lower the pixel variance, the more the optimizer trusts the keypoint positions.");
+    RTABMAP_PARAM(Optimizer, DisparityVariance, double, 1.0,     "Disparity variance used on the disparity axis (u - u_right) of stereo / RGB-D bundle adjustment edges. Applies to all BA-capable backends (g2o, GTSAM, Ceres). Defaults to the same value as PixelVariance for backward compatibility. Set higher (e.g. 2-4) if your depth source is noisier than your feature detector's u/v precision (typical for stereo block matchers / SGM at long range). Set lower (e.g. 0.01-0.1) if your depth source is more accurate than the u/v detector (typical for ToF / LiDAR-fused depth where range is measured directly rather than triangulated). Intuition: the lower the disparity variance, the more the optimizer trusts the depth measurements. Geometric note: wider baseline and/or higher image resolution improve a block matcher's effective disparity precision (larger disparity magnitudes and finer sub-pixel refinement), so wide-baseline high-resolution stereo pairs can usually afford a lower disparity variance (e.g. 0.1-0.5); narrow-baseline low-resolution pairs should keep it higher (e.g. 1-4).");
+    RTABMAP_PARAM(Optimizer, RobustKernelDelta, double, 8,       "Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Applies to all BA-capable backends (g2o, GTSAM, Ceres). Observations with chi2 over this threshold will be ignored in the second optimization pass.");
 
     RTABMAP_PARAM(GTSAM, Optimizer,       int, 1,          "0=Levenberg 1=GaussNewton 2=Dogleg");
     RTABMAP_PARAM(GTSAM, Incremental,     bool, false,     uFormat("Do graph optimization incrementally (iSAM2) to increase optimization speed on loop closures. Note that only GaussNewton and Dogleg optimization algorithms are supported (%s) in this mode.", kGTSAMOptimizer().c_str()));
@@ -499,9 +531,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OdomF2M, ScanRange,           float, 0,     "[Geometry] Distance Range used to filter points of local map (when > 0). 0 means local map is updated using time and not range.");
     RTABMAP_PARAM(OdomF2M, ValidDepthRatio,     float, 0.75,  "If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.");
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
-    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, uFormat("Local bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #else
-    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, uFormat("Local bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #endif
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 10, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMinMotion, float, 0.0, "To create a new keyframe with bundle adjustment, a minimum motion (in pixels) can be required. The motion is computed by the average distance between inliers of the previous keyframe and new frame.");
@@ -750,7 +782,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, GridRows,                  int,   1,     uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, GridCols,                  int,   1,     uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                   int,   0,     "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-    RTABMAP_PARAM(Vis, CorNNType,                 int,   1,     uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7. Used for features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNType,                 int,   1,     uFormat("[%s=0] FLANN Linear=0, FLANN KdTree=1, FLANN LSH=2, Brute Force=3, Brute Force GPU=4, Brute Force Cross Check=5, SuperGlue=6, GMS=7, FLANN KdTree Single=8, NanoFLANN KdTree=9. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                   float, 0.8,   uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,           int,   40,    uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessMatchToProjection, bool,  false, uFormat("[%s=0] Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.", kVisCorType().c_str()));
@@ -763,9 +795,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, CorFlowErrorThreshold,     float, 20,    uFormat("[%s=false] Filter out features with error greater than this threshold.", kVisCorFlowUseMinEigenVals().c_str()));
     RTABMAP_PARAM(Vis, CorFlowGpu,                bool,  false, uFormat("[%s=1] Enable GPU version of the optical flow approach (only available if OpenCV is built with CUDA). Note that %s is not used in the GPU implementation.", kVisCorType().c_str(), kVisCorFlowUseMinEigenVals().c_str()));
     #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
-    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   1,     "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   1,     uFormat("Optimization with bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #else
-    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   0,     "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
+    RTABMAP_PARAM(Vis, BundleAdjustment,          int,   0,     uFormat("Optimization with bundle adjustment. Value matches the %s parameter: 0=disabled (TORO is not BA-capable), 1=g2o, 2=GTSAM, 3=Ceres, 4=cvsba.", kOptimizerStrategy().c_str()));
 #endif
 
     // Features matching approaches
@@ -815,8 +847,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Icp, PointToPlaneRadius,          float, 0.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneGroundNormalsUp, float, 0.0,   "Invert normals on ground if they are pointing down (useful for ring-like 3D LiDARs). 0 means disabled, 1 means only normals perfectly aligned with -z axis. This is only done with 3D scans.");
     RTABMAP_PARAM(Icp, PointToPlaneMinComplexity,   float, 0.02,  uFormat("Minimum structural complexity (0.0=low, 1.0=high) of the scan to do PointToPlane registration, otherwise PointToPoint registration is done instead and strategy from %s is used. This check is done only when %s=true.", kIcpPointToPlaneLowComplexityStrategy().c_str(), kIcpPointToPlane().c_str()));
-    RTABMAP_PARAM(Icp, PointToPlaneLowComplexityStrategy, int, 1, uFormat("If structural complexity is below %s: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept \"as is\" the transform computed by PointToPoint.", kIcpPointToPlaneMinComplexity().c_str()));
-    RTABMAP_PARAM(Icp, OutlierRatio,                float, 0.85,   uFormat("Outlier ratio used with %s>0. For libpointmatcher, this parameter set TrimmedDistOutlierFilter/ratio for convenience when configuration file is not set. For CCCoreLib, this parameter set the \"finalOverlapRatio\". The value should be between 0 and 1.", kIcpStrategy().c_str()));
+    RTABMAP_PARAM(Icp, PointToPlaneComplexityCentered, bool, false, uFormat("If false (default), the complexity metric uses the uncentered second-moment matrix (1/N) * sum(n_i * n_i^T), whose smallest eigenvalue directly measures how well the surface normals span R^N. If true, uses centered PCA (cv::PCA covariance) for backwards compatibility -- but the centered metric is known to mis-classify perpendicular-surface scenes as degenerate when normals are consistently viewpoint-flipped (only N distinct directions in N-D collapse to rank N-1 after centering). For true degeneracies (parallel surfaces, e.g. corridors) the two metrics agree because the normal mean is zero. The %s threshold of 0.02 works under either setting.", kIcpPointToPlaneMinComplexity().c_str()));
+    RTABMAP_PARAM(Icp, PointToPlaneLowComplexityStrategy, int, 1, uFormat("If structural complexity is below %s: set to 0 so that the transform is automatically rejected, set to 1 (default, legacy) to recompute the transform with PointToPoint and limit its correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to recompute the transform with PointToPoint and accept it \"as is\", set to 3 to keep the PointToPlane transform and apply the same axis-constrained projection as strategy 1.", kIcpPointToPlaneMinComplexity().c_str()));
+    RTABMAP_PARAM(Icp, OutlierRatio,                float, 0.85,   uFormat("Outlier ratio. For libpointmatcher (%s=1), sets TrimmedDistOutlierFilter/ratio for convenience when configuration file is not set. For CCCoreLib (%s=2), sets \"finalOverlapRatio\". For PCL (%s=0), if 0<value<1, installs a RANSAC correspondence rejector with inlier threshold = value * %s. The value should be between 0 and 1.", kIcpStrategy().c_str(), kIcpStrategy().c_str(), kIcpStrategy().c_str(), kIcpMaxCorrespondenceDistance().c_str()));
     RTABMAP_PARAM_STR(Icp, DebugExportFormat,       "",           "Export scans used for ICP in the specified format (a warning on terminal will be shown with the file paths used). Supported formats are \"pcd\", \"ply\" or \"vtk\". If logger level is debug, from and to scans will stamped, so previous files won't be overwritten.");
 
     // libpointmatcher
@@ -928,7 +961,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Marker, VarianceOrientationIgnored, bool, false, uFormat("When this setting is false, the landmark's orientation is optimized during graph optimization. When this setting is true, only the position of the landmark is optimized. This can be useful when the landmark's orientation estimation is not reliable. Note that for %s=1 (g2o), only %s needs be set if we ignore orientation. For %s=2 (GTSAM), instead of optimizing the landmark's position directly, a bearing/range factor is used, with %s as the variance of the range factor (with 9999 to optimize the position with only a bearing factor) and %s as the variance of the bearing factor (pitch/yaw).", kOptimizerStrategy().c_str(), kMarkerVarianceLinear().c_str(), kOptimizerStrategy().c_str(), kMarkerVarianceLinear().c_str(), kMarkerVarianceAngular().c_str()));
     RTABMAP_PARAM(Marker, MaxRange,               float, 0.0,   "Maximum range in which markers will be detected. <=0 for unlimited range.");
     RTABMAP_PARAM(Marker, MinRange,               float, 0.0,   "Miniminum range in which markers will be detected. <=0 for unlimited range.");
-    RTABMAP_PARAM_STR(Marker, Priors,             "",           "World prior locations of the markers. The map will be transformed in marker's world frame when a tag is detected. Format is the marker's ID followed by its position (angles in rad), multiple markers are separated by vertical line (\"id1 x y z roll pitch yaw|id2 x y z roll pitch yaw\"). Example:  \"1 0 0 1 0 0 0|2 1 0 1 0 0 1.57\" (marker 2 is 1 meter forward than marker 1 with 90 deg yaw rotation).");
+    RTABMAP_PARAM_STR(Marker, Priors,             "",           uFormat("World prior locations of the markers. The map will be transformed in marker's world frame when a tag is detected. Format is the marker's ID followed by its position (angles in rad), multiple markers are separated by vertical line (\"id1 x y z roll pitch yaw|id2 x y z roll pitch yaw\"). Example:  \"1 0 0 1 0 0 0|2 1 0 1 0 0 1.57\" (marker 2 is 1 meter forward than marker 1 with 90 deg yaw rotation). The priors are used only if %s is false.", kOptimizerPriorsIgnored().c_str()));
     RTABMAP_PARAM(Marker, PriorsVarianceLinear,   float, 0.001, "Linear variance to set on marker priors.");
     RTABMAP_PARAM(Marker, PriorsVarianceAngular,  float, 0.001, "Angular variance to set on marker priors.");
 

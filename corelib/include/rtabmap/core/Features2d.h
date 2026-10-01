@@ -32,7 +32,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <list>
 #include <numeric>
 #include "rtabmap/core/Parameters.h"
@@ -70,6 +74,10 @@ class BriefDescriptorExtractor;
 class SIFT;
 #endif
 class SURF;
+#if (CV_MAJOR_VERSION == 5)
+class BRISK;
+class KAZE;
+#endif
 }
 namespace cuda {
 class FastFeatureDetector;
@@ -89,7 +97,13 @@ typedef cv::xfeatures2d::FREAK CV_FREAK;
 typedef cv::xfeatures2d::DAISY CV_DAISY;
 typedef cv::GFTTDetector CV_GFTT;
 typedef cv::xfeatures2d::BriefDescriptorExtractor CV_BRIEF;
+#if (CV_MAJOR_VERSION < 5)
 typedef cv::BRISK CV_BRISK;
+typedef cv::KAZE CV_KAZE;
+#else
+typedef cv::xfeatures2d::BRISK CV_BRISK;
+typedef cv::xfeatures2d::KAZE CV_KAZE;
+#endif
 typedef cv::ORB CV_ORB;
 typedef cv::cuda::SURF_CUDA CV_SURF_GPU;
 typedef cv::cuda::ORB CV_ORB_GPU;
@@ -111,9 +125,26 @@ class Stereo;
 class CV_ORB;
 #endif
 
-// Feature2D
+/**
+ * @class Feature2D
+ * @brief Abstract 2D feature detector and descriptor extractor for visual SLAM.
+ *
+ * Factory @ref create() builds a concrete detector from @ref Type or from
+ * **Kp/DetectorStrategy** in a @ref ParametersMap. Common tuning keys include
+ * **Kp/MaxFeatures**, **Kp/GridRows**, **Kp/GridCols**, **Kp/SSC**, depth filters
+ * (**Kp/MinDepth**, **Kp/MaxDepth**), ROI (**Kp/RoiRatios**), and sub-pixel refinement.
+ *
+ * Pipeline: @ref generateKeypoints() (grid + ROI + optional mask) then
+ * @ref generateDescriptors(). Static helpers filter or cap keypoints before/after
+ * matching. @ref generateKeypoints3D() projects features using stereo or depth when
+ * available in @ref SensorData.
+ *
+ * @see Memory
+ * @see RegistrationVis
+ */
 class RTABMAP_CORE_EXPORT Feature2D {
 public:
+	/** @brief Built-in detector/descriptor strategy (Kp/DetectorStrategy). */
 	enum Type {kFeatureUndef=-1,
 		kFeatureSurf=0,
 		kFeatureSift=1,
@@ -131,8 +162,10 @@ public:
 		kFeatureGfttDaisy=13, //new 0.20.6
 		kFeatureSurfDaisy=14,  //new 0.20.6
 		kFeaturePyDetector=15, //new 0.20.8
-		kFeatureSuperPointRpautrat=16}; // new 0.23.3
+		kFeatureSuperPointRpautrat=16, // new 0.23.3
+		kFeatureEnd}; // Sentinel: always keep last. Used to iterate through types.
 
+	/** @return Human-readable name for @p type (e.g. `"ORB"`, `"GFTT+BRIEF"`). */
 	static std::string typeName(Type type)
 	{
 		switch(type){
@@ -166,6 +199,8 @@ public:
 			return "GFTT+Daisy";
 		case kFeatureSurfDaisy:
 			return "SURF+Daisy";
+		case kFeaturePyDetector:
+			return "PyDetector";
 		case kFeatureSuperPointRpautrat:
 			return "SUPERPOINT-RPAUTRAT";
 		default:
@@ -173,9 +208,15 @@ public:
 		}
 	}
 
+	/** @brief Creates a detector from **Kp/DetectorStrategy** in @p parameters. Caller owns the pointer. */
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
-	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
+	/** @brief Creates a detector of the given @p type. Caller owns the pointer. */
+	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap());
 
+	/** @brief Returns true if @p type is available (RTAB-Map is built with it). */
+	static bool isAvailable(Feature2D::Type type);
+
+	/** @brief Keeps keypoints whose depth at (u,v) is in (@p minDepth, @p maxDepth). */
 	static void filterKeypointsByDepth(
 				std::vector<cv::KeyPoint> & keypoints,
 				const cv::Mat & depth,
@@ -194,6 +235,7 @@ public:
 			float minDepth,
 			float maxDepth);
 
+	/** @brief Keeps keypoints with stereo disparity ≥ @p minDisparity. */
 	static void filterKeypointsByDisparity(
 				std::vector<cv::KeyPoint> & keypoints,
 				const cv::Mat & disparity,
@@ -204,12 +246,14 @@ public:
 			const cv::Mat & disparity,
 			float minDisparity);
 
+	/** @brief Reduces keypoint count (by response or SSC spatial distribution). */
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize = cv::Size(), bool ssc = false);
 	static void limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints, const cv::Size & imageSize, int gridRows, int gridCols, bool ssc = false);
 
+	/** @brief ROI from **Kp/RoiRatios** string (`"left top right bottom"` fractions). */
 	static cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios);
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
@@ -223,12 +267,15 @@ public:
 public:
 	virtual ~Feature2D();
 
+	/** @brief Detects keypoints in a grayscale @p image (CV_8UC1); optional depth or 8U mask. */
 	std::vector<cv::KeyPoint> generateKeypoints(
 			const cv::Mat & image,
 			const cv::Mat & mask = cv::Mat());
+	/** @brief Computes descriptors for @p keypoints (may shrink the list in some detectors). */
 	cv::Mat generateDescriptors(
 			const cv::Mat & image,
 			std::vector<cv::KeyPoint> & keypoints) const;
+	/** @brief Back-projects keypoints to 3D using depth or stereo in @p data. */
 	std::vector<cv::Point3f> generateKeypoints3D(
 			const SensorData & data,
 			const std::vector<cv::KeyPoint> & keypoints) const;
@@ -236,6 +283,15 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual const ParametersMap & getParameters() const {return parameters_;}
 	virtual Feature2D::Type getType() const = 0;
+
+	/** @brief Returns true when a GPU/CUDA code path **could** be used by
+	 *  this detector on this host: i.e. the build was compiled with the
+	 *  matching GPU support AND a CUDA-capable device is detected at
+	 *  runtime. This is a capability probe -- it does NOT reflect whether
+	 *  the current instance is actually configured to run on GPU (that
+	 *  depends on per-detector parameters like SURF/GpuVersion). Defaults
+	 *  to false; subclasses with a GPU backend override it. */
+	virtual bool isGpuAvailable() const {return false;}
 
 protected:
 	Feature2D(const ParametersMap & parameters = ParametersMap());
@@ -260,19 +316,20 @@ private:
 	Stereo * _stereo;
 };
 
-//SURF
+/** @brief SURF detector and descriptor (non-free / xfeatures2d depending on OpenCV build). */
 class RTABMAP_CORE_EXPORT SURF : public Feature2D
 {
 public:
 	SURF(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSurf;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSurf;}
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	double hessianThreshold_;
@@ -287,19 +344,20 @@ private:
 	cv::Ptr<CV_SURF_GPU> _gpuSurf;
 };
 
-//SIFT
+/** @brief SIFT detector and descriptor (optional GPU / CudaSift). */
 class RTABMAP_CORE_EXPORT SIFT : public Feature2D
 {
 public:
 	SIFT(const ParametersMap & parameters = ParametersMap());
 	virtual ~SIFT();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSift;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSift;}
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int nOctaveLayers_;
@@ -321,19 +379,20 @@ private:
 	bool cudaSiftUpscaling_;
 };
 
-//ORB
+/** @brief ORB detector and descriptor (optional GPU). */
 class RTABMAP_CORE_EXPORT ORB : public Feature2D
 {
 public:
 	ORB(const ParametersMap & parameters = ParametersMap());
 	virtual ~ORB();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureOrb;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureOrb;}
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	float scaleFactor_;
@@ -352,19 +411,20 @@ private:
 	cv::Ptr<CV_ORB_GPU> _gpuOrb;
 };
 
-//FAST
+/** @brief FAST corner detector only (no descriptor). */
 class RTABMAP_CORE_EXPORT FAST : public Feature2D
 {
 public:
 	FAST(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureUndef;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureUndef;}
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat &, std::vector<cv::KeyPoint> &) const {return cv::Mat();}
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat &, std::vector<cv::KeyPoint> &) const override {return cv::Mat();}
 
 private:
 	int threshold_;
@@ -388,18 +448,18 @@ private:
 	cv::Ptr<CV_FAST_GPU> _gpuFast;
 };
 
-//FAST_BRIEF
+/** @brief FAST corners + BRIEF descriptors. */
 class RTABMAP_CORE_EXPORT FAST_BRIEF : public FAST
 {
 public:
 	FAST_BRIEF(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST_BRIEF();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureFastBrief;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureFastBrief;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int bytes_;
@@ -407,18 +467,18 @@ private:
 	cv::Ptr<CV_BRIEF> _brief;
 };
 
-//FAST_FREAK
+/** @brief FAST corners + FREAK descriptors. */
 class RTABMAP_CORE_EXPORT FAST_FREAK : public FAST
 {
 public:
 	FAST_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~FAST_FREAK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureFastFreak;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureFastFreak;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -429,17 +489,18 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
-//GFTT
+/** @brief Good-features-to-track detector (Shi–Tomasi / Harris). */
 class RTABMAP_CORE_EXPORT GFTT : public Feature2D
 {
 public:
 	GFTT(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT();
 
-	virtual void parseParameters(const ParametersMap & parameters);
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
 
 private:
 	double _qualityLevel;
@@ -453,18 +514,18 @@ private:
 	cv::Ptr<CV_GFTT_GPU> _gpuGftt;
 };
 
-//GFTT_BRIEF
+/** @brief GFTT corners + BRIEF descriptors. */
 class RTABMAP_CORE_EXPORT GFTT_BRIEF : public GFTT
 {
 public:
 	GFTT_BRIEF(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_BRIEF();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttBrief;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttBrief;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int bytes_;
@@ -472,18 +533,18 @@ private:
 	cv::Ptr<CV_BRIEF> _brief;
 };
 
-//GFTT_FREAK
+/** @brief GFTT corners + FREAK descriptors. */
 class RTABMAP_CORE_EXPORT GFTT_FREAK : public GFTT
 {
 public:
 	GFTT_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_FREAK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttFreak;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttFreak;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -494,18 +555,18 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
-//SURF_FREAK
+/** @brief SURF detector + FREAK descriptors. */
 class RTABMAP_CORE_EXPORT SURF_FREAK : public SURF
 {
 public:
 	SURF_FREAK(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF_FREAK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSurfFreak;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSurfFreak;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -516,36 +577,36 @@ private:
 	cv::Ptr<CV_FREAK> _freak;
 };
 
-//GFTT_ORB
+/** @brief GFTT corners + ORB descriptors (common default when SURF is unavailable). */
 class RTABMAP_CORE_EXPORT GFTT_ORB : public GFTT
 {
 public:
 	GFTT_ORB(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_ORB();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttOrb;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttOrb;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	ORB _orb;
 };
 
-//BRISK
+/** @brief BRISK detector and descriptor. */
 class RTABMAP_CORE_EXPORT BRISK : public Feature2D
 {
 public:
 	BRISK(const ParametersMap & parameters = ParametersMap());
 	virtual ~BRISK();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureBrisk;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureBrisk;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	int thresh_;
@@ -555,19 +616,19 @@ private:
 	cv::Ptr<CV_BRISK> brisk_;
 };
 
-//KAZE
+/** @brief KAZE detector and descriptor (OpenCV 3+). */
 class RTABMAP_CORE_EXPORT KAZE : public Feature2D
 {
 public:
 	KAZE(const ParametersMap & parameters = ParametersMap());
 	virtual ~KAZE();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const { return kFeatureKaze; }
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureKaze; }
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool extended_;
@@ -578,23 +639,23 @@ private:
 	int diffusivity_;
 
 #if CV_MAJOR_VERSION > 2
-	cv::Ptr<cv::KAZE> kaze_;
+	cv::Ptr<CV_KAZE> kaze_;
 #endif
 };
 
-//ORB OCTREE
+/** @brief ORB with octree spatial distribution (RTAB-Map must be built with OCTREE enabled). */
 class RTABMAP_CORE_EXPORT ORBOctree : public Feature2D
 {
 public:
 	ORBOctree(const ParametersMap & parameters = ParametersMap());
 	virtual ~ORBOctree();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureOrbOctree;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureOrbOctree;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	float scaleFactor_;
@@ -608,19 +669,20 @@ private:
 	cv::Mat descriptors_;
 };
 
-//SuperPointTorch
+/** @brief SuperPoint via LibTorch (RTAB-Map must be built with libtorch support). */
 class RTABMAP_CORE_EXPORT SuperPointTorch : public Feature2D
 {
 public:
 	SuperPointTorch(const ParametersMap & parameters = ParametersMap());
 	virtual ~SuperPointTorch();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const { return kFeatureSuperPointTorch; }
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureSuperPointTorch; }
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 	cv::Ptr<SPDetector> superPoint_;
 
@@ -631,19 +693,20 @@ private:
 	bool cuda_;
 };
 
-//SuperPointRpautrat
+/** @brief SuperPoint (rpautrat) via Torch + Python (RTAB-Map must be built with libtorch and Python support). */
 class RTABMAP_CORE_EXPORT SuperPointRpautrat : public Feature2D
 {
 public:
 	SuperPointRpautrat(const ParametersMap & parameters = ParametersMap());
 	virtual ~SuperPointRpautrat();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const { return kFeatureSuperPointRpautrat; }
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureSuperPointRpautrat; }
+	virtual bool isGpuAvailable() const override;
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat());
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 	cv::Ptr<SPDetectorRpautrat> superPoint_;
 
@@ -656,18 +719,18 @@ private:
 	bool cuda_;
 };
 
-//GFTT_DAISY
+/** @brief GFTT corners + DAISY descriptors (OpenCV 3+ xfeatures2d). */
 class RTABMAP_CORE_EXPORT GFTT_DAISY : public GFTT
 {
 public:
 	GFTT_DAISY(const ParametersMap & parameters = ParametersMap());
 	virtual ~GFTT_DAISY();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureGfttDaisy;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureGfttDaisy;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;
@@ -680,18 +743,18 @@ private:
 #endif
 };
 
-//SURF_DAISY
+/** @brief SURF detector + DAISY descriptors (OpenCV 3+ xfeatures2d). */
 class RTABMAP_CORE_EXPORT SURF_DAISY : public SURF
 {
 public:
 	SURF_DAISY(const ParametersMap & parameters = ParametersMap());
 	virtual ~SURF_DAISY();
 
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureSurfDaisy;}
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override {return kFeatureSurfDaisy;}
 
 private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
 
 private:
 	bool orientationNormalized_;

@@ -278,6 +278,11 @@ std::string UDirectory::getDir(const std::string & filePath)
 	{
 		if(dir[i] == '/' || dir[i] == '\\')
 		{
+			if(i == 0)
+			{
+				// leading /
+				break;
+			}
 			//remove separators...
 			dir[i] = 0;
 			--i;

@@ -1,0 +1,21 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e671b87..2e2538e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -121,7 +121,7 @@ set( NANOFLANN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE )
+ set( NANOFLANN_BUILD_TESTS OFF CACHE BOOL "" FORCE )
+ add_subdirectory( extern/nanoflann EXCLUDE_FROM_ALL )
+ target_link_libraries( CCCoreLib
+-	PUBLIC
++	PRIVATE
+ 		nanoflann::nanoflann
+ )
+ 
+@@ -236,6 +236,7 @@ install(
+ 		CCCoreLib
+ 	EXPORT
+ 		CCCoreLib-targets
++	RUNTIME DESTINATION bin
+ 	LIBRARY DESTINATION lib
+ 	ARCHIVE DESTINATION lib
+ 	INCLUDES DESTINATION include

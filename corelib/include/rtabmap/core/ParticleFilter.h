@@ -69,7 +69,7 @@ std::vector<double> resample(const std::vector<double> & p, // particles
 	std::vector<double> np; //new particles
 	if(p.size() != w.size() || p.size() == 0)
 	{
-		UERROR("particles (%d) and weights (%d) are not the same size", p.size(), w.size());
+		UERROR("particles (%d) and weights (%d) are not the same size", (int)p.size(), (int)w.size());
 		return np;
 	}
 

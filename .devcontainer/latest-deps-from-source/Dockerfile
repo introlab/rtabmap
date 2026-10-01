@@ -34,6 +34,7 @@ RUN set -ex && \
 RUN mkdir -p /home/${USERNAME}/Documents/RTAB-Map
 
 RUN echo "source /usr/share/bash-completion/completions/git" >> /home/${USERNAME}/.bashrc
+RUN echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> /home/${USERNAME}/.bashrc
 
 WORKDIR /home/${USERNAME}/
 

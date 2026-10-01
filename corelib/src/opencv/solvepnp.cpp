@@ -53,7 +53,7 @@ class PnPRansacCallback : public PointSetRegistrator::Callback
 
 public:
 
-    PnPRansacCallback(Mat _cameraMatrix=Mat(3,3,CV_64F), Mat _distCoeffs=Mat(4,1,CV_64F), int _flags=CV_ITERATIVE,
+    PnPRansacCallback(Mat _cameraMatrix=Mat(3,3,CV_64F), Mat _distCoeffs=Mat(4,1,CV_64F), int _flags=cv::SOLVEPNP_ITERATIVE,
             bool _useExtrinsicGuess=false, Mat _rvec=Mat(), Mat _tvec=Mat() )
         : cameraMatrix(_cameraMatrix), distCoeffs(_distCoeffs), flags(_flags), useExtrinsicGuess(_useExtrinsicGuess),
           rvec(_rvec), tvec(_tvec) {}
@@ -142,12 +142,12 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
     Mat cameraMatrix = _cameraMatrix.getMat(), distCoeffs = _distCoeffs.getMat();
 
     int model_points = 6;
-    int ransac_kernel_method = CV_EPNP;
+    int ransac_kernel_method = cv::SOLVEPNP_EPNP;
 
     if( npoints == 4 )
     {
         model_points = 4;
-        ransac_kernel_method = CV_P3P;
+        ransac_kernel_method = cv::SOLVEPNP_P3P;
     }
 
     Ptr<PointSetRegistrator::Callback> cb; // pointer to callback
@@ -178,7 +178,7 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
         opoints_inliers.resize(npoints1);
         ipoints_inliers.resize(npoints1);
         result = solvePnP(opoints_inliers, ipoints_inliers, cameraMatrix,
-                          distCoeffs, rvec, tvec, useExtrinsicGuess, flags == CV_P3P ? CV_EPNP : flags) ? 1 : -1;
+                          distCoeffs, rvec, tvec, useExtrinsicGuess, flags == cv::SOLVEPNP_P3P ? cv::SOLVEPNP_EPNP : flags) ? 1 : -1;
     }
 
     if( result <= 0 || _local_model.rows <= 0)
@@ -213,7 +213,7 @@ bool solvePnPRansac(InputArray _opoints, InputArray _ipoints,
 int RANSACUpdateNumIters( double p, double ep, int modelPoints, int maxIters )
 {
     if( modelPoints <= 0 )
-        CV_Error( 0, "the number of model points should be positive" );
+        CV_Error( cv::Error::Code::StsBadArg, "the number of model points should be positive" );
 
     p = MAX(p, 0.);
     p = MIN(p, 1.);

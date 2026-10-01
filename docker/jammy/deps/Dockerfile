@@ -68,9 +68,12 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then echo "Installing zed-open-cap
     cd && \
     rm -r zed-open-capture; fi
     
+# Ubuntu 22.04 is the only release whose OpenCV carries an ABI suffix in its SONAME:
+# libopencv_core.so.4.5d. 
 RUN git clone --branch 4.5.4 https://github.com/opencv/opencv.git && \
     git clone --branch 4.5.4 https://github.com/opencv/opencv_contrib.git && \
     cd opencv && \
+    sed -i '/OPENCV_SOVERSION/s/}")/}d")/' cmake/OpenCVVersion.cmake && \
     mkdir build && \
     cd build && \
     cmake -DWITH_TBB=ON -DWITH_OPENMP=ON -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DOPENCV_ENABLE_NONFREE=ON -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules .. && \
@@ -94,6 +97,10 @@ RUN git clone https://github.com/laurentkneip/opengv.git && \
     make install && \
     cd && \
     rm -r opengv
+
+# ld.so.conf.d is read in filename order: <arch>-linux-gnu.conf sorts before
+# libc.conf (/usr/local/lib) on arm64, so source builds lose to the distro ones.
+RUN echo /usr/local/lib > /etc/ld.so.conf.d/00-usr-local.conf && ldconfig
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 

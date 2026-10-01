@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraStereoDC1394.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_DC1394
 #include <dc1394/dc1394.h>
@@ -295,8 +294,8 @@ public:
 
 			//DC1394_COLOR_CODING_RAW16:
 			//DC1394_COLOR_FILTER_BGGR
-			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer), left, CV_BayerRG2BGR);
-			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer+image.total()), right, CV_BayerRG2GRAY);
+			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer), left, cv::COLOR_BayerRG2BGR);
+			cv::cvtColor(cv::Mat(frame->size[1], frame->size[0], CV_8UC1, capture_buffer+image.total()), right, cv::COLOR_BayerRG2GRAY);
 
 			dc1394_capture_enqueue(camera_, frame);
 

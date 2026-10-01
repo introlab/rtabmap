@@ -19,7 +19,5 @@ RUN set -ex && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
 
 RUN mkdir -p /home/${USERNAME}/Documents/RTAB-Map && chown -R ${USERNAME} /home/${USERNAME}
-
 RUN echo "source /usr/share/bash-completion/completions/git" >> /home/${USERNAME}/.bashrc
-
-
+RUN echo 'source /opt/ros/$ROS_DISTRO/setup.bash' >> /home/${USERNAME}/.bashrc

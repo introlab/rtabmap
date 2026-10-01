@@ -34,6 +34,41 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+namespace {
+
+// The compressed blob trailer stores the cv::Mat type as a raw int, and the
+// database keeps those blobs forever. OpenCV 5 changed CV_CN_SHIFT from 3 to 5,
+// so the very same type has a different numeric value across major versions
+// (CV_32FC2 is 13 under OpenCV 4 but 37 under OpenCV 5). Reading an OpenCV 4
+// database with an OpenCV 5 build would decode 13 as a 1-channel Mat of a
+// nonsense depth.
+//
+// Persist the OpenCV 4 encoding in both cases: existing databases stay
+// readable, and databases written by an OpenCV 5 build stay readable by
+// OpenCV 4 builds. Under OpenCV 4 both helpers are the identity.
+const int kSerializedCnShift = 3;
+const int kSerializedDepthMask = (1 << kSerializedCnShift) - 1;
+
+int serializeMatType(int type)
+{
+	const int depth = CV_MAT_DEPTH(type);
+	// Only the 8 original depths (CV_8U..CV_16F) fit the on-disk encoding;
+	// rtabmap never persists the types OpenCV 5 added beyond them.
+	UASSERT_MSG(depth <= kSerializedDepthMask,
+			uFormat("Cannot serialize cv::Mat depth %d (type %d): the database "
+					"format only supports depths 0-%d.",
+					depth, type, kSerializedDepthMask).c_str());
+	return depth + ((CV_MAT_CN(type) - 1) << kSerializedCnShift);
+}
+
+int deserializeMatType(int serializedType)
+{
+	return CV_MAKETYPE(serializedType & kSerializedDepthMask,
+			((serializedType >> kSerializedCnShift) & 511) + 1);
+}
+
+}  // namespace
+
 // format : ".jpg" ".png" ".rvl" "" (empty is general)
 CompressionThread::CompressionThread(const cv::Mat & mat, const std::string & format) :
 	uncompressedData_(mat),
@@ -222,7 +257,7 @@ std::vector<unsigned char> compressData(const cv::Mat & data)
 		bytes.resize(destLen+3*sizeof(int));
 		*((int*)&bytes[destLen]) = data.rows;
 		*((int*)&bytes[destLen+sizeof(int)]) = data.cols;
-		*((int*)&bytes[destLen+2*sizeof(int)]) = data.type();
+		*((int*)&bytes[destLen+2*sizeof(int)]) = serializeMatType(data.type());
 
 		if(errCode == Z_MEM_ERROR)
 		{
@@ -252,7 +287,7 @@ cv::Mat compressData2(const cv::Mat & data)
 		bytes = cv::Mat(bytes, cv::Rect(0,0, destLen+3*sizeof(int), 1));
 		*((int*)&bytes.data[destLen]) = data.rows;
 		*((int*)&bytes.data[destLen+sizeof(int)]) = data.cols;
-		*((int*)&bytes.data[destLen+2*sizeof(int)]) = data.type();
+		*((int*)&bytes.data[destLen+2*sizeof(int)]) = serializeMatType(data.type());
 
 		if(errCode == Z_MEM_ERROR)
 		{
@@ -285,7 +320,7 @@ cv::Mat uncompressData(const unsigned char * bytes, unsigned long size)
 		//last 3 int elements are matrix size and type
 		int height = *((int*)&bytes[size-3*sizeof(int)]);
 		int width = *((int*)&bytes[size-2*sizeof(int)]);
-		int type = *((int*)&bytes[size-1*sizeof(int)]);
+		int type = deserializeMatType(*((int*)&bytes[size-1*sizeof(int)]));
 
 		data = cv::Mat(height, width, type);
 		uLongf totalUncompressed = uLongf(data.total())*uLongf(data.elemSize());
@@ -331,6 +366,10 @@ std::string uncompressString(const cv::Mat & bytes)
 
 std::string compressedDepthFormat(const cv::Mat & bytes)
 {
+	if(bytes.empty())
+	{
+		return std::string();
+	}
 	return compressedDepthFormat(bytes.data, bytes.rows * bytes.cols * bytes.elemSize());
 }
 std::string compressedDepthFormat(const std::vector<unsigned char> & bytes)

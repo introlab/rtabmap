@@ -1,0 +1,218 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+    # Publishing commits to the gh-pages branch, so only run when something that
+    # affects the documentation actually changed. Use the manual "Run workflow"
+    # button if a deploy is needed outside of these paths.
+    paths: &docs_paths
+      - '.github/workflows/docs.yml'
+      - 'CMakeLists.txt'
+      - 'Doxyfile.in'
+      - 'docs-report.sh'
+      - 'website/**'
+      - 'doxygen/**'
+      - 'package.xml'
+      - 'corelib/include/**'
+      - 'utilite/include/**'
+  pull_request:
+    branches:
+      - '**'
+    paths: *docs_paths
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build site (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+
+    outputs:
+      version: ${{ steps.site.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y \
+            doxygen \
+            graphviz \
+            cmake \
+            libopencv-dev \
+            libpcl-dev \
+            libyaml-cpp-dev \
+            git
+
+      # Configures build-docs (CMake generates the export headers that are part
+      # of Doxygen's INPUT), runs Doxygen into build-docs/api/latest/. Same
+      # script used locally, so a local preview matches what gets published.
+      - name: Generate C++ API documentation (Doxygen)
+        run: ./docs-report.sh
+
+      # The theme emits absolute asset links built from site.baseurl, which
+      # GitHub's own Jekyll infers from the repository (/rtabmap). A PR preview
+      # is served from a deeper path, so those links would 404 there. Pin
+      # baseurl to the path this particular build gets published to.
+      - name: Set Jekyll baseurl
+        run: |
+          set -eux
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            baseurl="/${{ github.event.repository.name }}/preview/pr-${{ github.event.number }}"
+          else
+            baseurl="/${{ github.event.repository.name }}"
+          fi
+          echo "baseurl: ${baseurl}" >> website/_config.yml
+
+      # Landing page: built here rather than by GitHub's own Jekyll, so that
+      # .nojekyll can be set below and the Doxygen output is served untouched.
+      - name: Build landing page (Jekyll)
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./website
+          destination: ./_site
+
+      - name: Assemble site
+        id: site
+        run: |
+          set -eux
+          # jekyll-build-pages is a container action running as root, so _site
+          # comes back owned by root and the steps below (running as the runner
+          # user) cannot write into it.
+          sudo chown -R "$(id -u):$(id -g)" _site
+
+          # Serve everything verbatim: the site is already built, and Jekyll
+          # would otherwise skip Doxygen files/folders starting with '_'.
+          touch _site/.nojekyll
+
+          mkdir -p _site/api
+          cp -r build-docs/api/latest _site/api/latest
+
+          # On a release tag (plain X.Y.Z, not the ROS-distro variants such as
+          # 0.23.7-jazzy), also publish under the version number. Older versions
+          # already on the branch are preserved by keep_files when publishing.
+          version=""
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            version="${GITHUB_REF_NAME}"
+            cp -r build-docs/api/latest "_site/api/${version}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+          # The dropdown list is maintained by hand in the repository (one entry
+          # per release) and shared by every published version -- see the header
+          # comment in doxygen/versions.js.
+          cp doxygen/versions.js _site/api/versions.js
+
+          # /api/ has no content of its own: send it to the current docs so a
+          # bare .../api/ link lands somewhere useful instead of a 404. The
+          # target is relative, so it works at the site root and under a
+          # preview prefix alike.
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<meta charset="utf-8">' \
+            '<title>RTAB-Map API documentation</title>' \
+            '<meta http-equiv="refresh" content="0; url=latest/">' \
+            '<link rel="canonical" href="latest/">' \
+            '<p>Redirecting to the <a href="latest/">latest API documentation</a>.</p>' \
+            > _site/api/index.html
+
+          test -f _site/index.html
+          test -f _site/api/index.html
+          test -f _site/api/latest/index.html
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-site
+          path: _site
+          # include-hidden-files keeps .nojekyll, which the publish job needs.
+          include-hidden-files: true
+          retention-days: 14
+
+  publish:
+    name: Publish to gh-pages
+    needs: build
+    # Forks are skipped for pull requests: their GITHUB_TOKEN is read-only, and
+    # granting write access to a workflow that builds untrusted code would be a
+    # security hole.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+
+    # Serialize every push to gh-pages, including the preview cleanup workflow,
+    # and never cancel one in flight: two concurrent pushes would collide.
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download site
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation-site
+          path: _site
+
+      # Pull requests go to preview/pr-<number>/, everything else to the site
+      # root. keep_files preserves what this run does not carry: the published
+      # version folders (api/0.23.x/) and the other PRs' previews.
+      - name: Publish
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./_site
+          destination_dir: ${{ github.event_name == 'pull_request' && format('preview/pr-{0}', github.event.number) || '' }}
+          keep_files: true
+          # Do not let the action drop a .nojekyll at the *branch root*: that
+          # disables Jekyll for everything on the branch, including content
+          # published outside this deployment. The site we publish carries its
+          # own .nojekyll inside destination_dir, which is the only place it
+          # should apply.
+          enable_jekyll: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: >-
+            ${{ github.event_name == 'pull_request'
+                && format('Preview for PR #{0}', github.event.number)
+                || format('Update documentation ({0})', needs.build.outputs.version || 'latest') }}
+
+      - name: Link the site
+        run: |
+          base="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            url="${base}/preview/pr-${{ github.event.number }}"
+            note="Removed automatically when this pull request is closed."
+          else
+            url="${base}"
+            note=""
+          fi
+          {
+            echo "### Documentation"
+            echo ""
+            echo "- Landing page: ${url}/"
+            echo "- C++ API: ${url}/api/latest/"
+            # An `if` rather than `[[ ... ]] && { ... }`: as the last command in
+            # the group, a false test would make the group (and so the whole
+            # step) exit 1. `note` is empty on push, which failed every master
+            # run while pull requests passed.
+            if [[ -n "${note}" ]]; then
+              echo ""
+              echo "${note}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

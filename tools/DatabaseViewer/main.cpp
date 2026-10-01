@@ -28,9 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/utilite/ULogger.h"
-#ifdef RTABMAP_PYTHON
-#include <rtabmap/core/PythonInterface.h>
-#endif
 
 #include <vtkObject.h>
 #include <vtkVersionMacros.h>
@@ -53,9 +50,11 @@ int main(int argc, char * argv[])
     QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
 #endif
 
-#ifdef RTABMAP_PYTHON
-	rtabmap::PythonInterface pythonInterface;
-#endif
+	// Recommended by VTK when using QVTKOpenGLNativeWidget (a QOpenGLWidget): let all VTK
+	// render widgets share a single OpenGL context, which is needed for correct rendering
+	// when render widgets live in / move across multiple top-level windows. Must be set
+	// before QApplication is constructed.
+	QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
 	QApplication * app = new QApplication(argc, argv);
 	rtabmap::DatabaseViewer * mainWindow = new rtabmap::DatabaseViewer();
