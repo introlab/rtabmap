@@ -207,7 +207,22 @@
          <widget class="QComboBox" name="comboBox_sbaType">
           <item>
            <property name="text">
+            <string>TORO</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>g2o</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>GTSAM</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ceres</string>
            </property>
           </item>
           <item>

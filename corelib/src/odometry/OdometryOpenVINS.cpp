@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include <opencv2/core/eigen.hpp>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OPENVINS
 #include "core/VioManager.h"
@@ -419,7 +418,7 @@ Transform OdometryOpenVINS::computeTransform(
 
 			cv::Mat image;
 			if(data.imageRaw().type() == CV_8UC3)
-				cv::cvtColor(data.imageRaw(), image, CV_BGR2GRAY);
+				cv::cvtColor(data.imageRaw(), image, cv::COLOR_BGR2GRAY);
 			else if(data.imageRaw().type() == CV_8UC1)
 				image = data.imageRaw().clone();
 			else
@@ -450,7 +449,7 @@ Transform OdometryOpenVINS::computeTransform(
 			if(!data.rightRaw().empty())
 			{
 				if(data.rightRaw().type() == CV_8UC3)
-					cv::cvtColor(data.rightRaw(), image, CV_BGR2GRAY);
+					cv::cvtColor(data.rightRaw(), image, cv::COLOR_BGR2GRAY);
 				else if(data.rightRaw().type() == CV_8UC1)
 					image = data.rightRaw().clone();
 				else

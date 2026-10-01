@@ -43,12 +43,17 @@ public:
 			bool slam2d            = Parameters::defaultRegForce3DoF(),
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
 			double epsilon         = Parameters::defaultOptimizerEpsilon()) :
-		Optimizer(iterations, slam2d, covarianceIgnored, epsilon) {}
-	OptimizerCeres(const ParametersMap & parameters) :
-		Optimizer(parameters) {}
+		Optimizer(iterations, slam2d, covarianceIgnored, epsilon),
+		pixelVariance_(Parameters::defaultOptimizerPixelVariance()),
+		disparityVariance_(Parameters::defaultOptimizerDisparityVariance()),
+		robustKernelDelta_(Parameters::defaultOptimizerRobustKernelDelta()),
+		baseline_(Parameters::defaultOptimizerBaseline()) {}
+	OptimizerCeres(const ParametersMap & parameters);
 	virtual ~OptimizerCeres() {}
 
 	virtual Type type() const {return kTypeCeres;}
+
+	virtual void parseParameters(const ParametersMap & parameters);
 
 	virtual std::map<int, Transform> optimize(
 			int rootId,
@@ -66,7 +71,13 @@ public:
 			const std::map<int, std::vector<CameraModel> > & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
 			const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
-			std::set<int> * outliers = 0);
+			BAOutliers * outliers = 0);
+
+private:
+	double pixelVariance_;
+	double disparityVariance_;
+	double robustKernelDelta_;
+	double baseline_;
 };
 
 } /* namespace rtabmap */

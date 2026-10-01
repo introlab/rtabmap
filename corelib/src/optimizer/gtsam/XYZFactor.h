@@ -59,6 +59,10 @@ public:
 #else
 		  boost::optional<gtsam::Matrix&> H = boost::none) const {
 #endif
+    if(H)
+    {
+      *H = gtsam::Matrix::Identity(3, 3);
+    }
     return (gtsam::Vector3() << p.x() - mx_, p.y() - my_, p.z() - mz_).finished();
   }
 };

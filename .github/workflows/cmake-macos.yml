@@ -4,9 +4,17 @@ on:
   push:
     branches: 
       - master
+    paths-ignore: &platform_only
+      - '.github/workflows/android.yml'
+      - '.github/workflows/ios.yml'
+      - 'app/android/**'
+      - 'app/ios/**'
+      - 'docker/noble/android/**'
   pull_request:
-    branches: 
+    branches:
       - '**'
+    paths-ignore: *platform_only
+  workflow_dispatch:
 
 env:
   BUILD_TYPE: Release
@@ -22,36 +30,76 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [macos-sequoia-intel, macos-sequoia-apple-silicon, macos-tahoe-intel, macos-tahoe-apple-silicon]
+        build_name: [macos-sequoia-apple-silicon, macos-tahoe-apple-silicon, macos-tahoe-apple-silicon-cv5]
         include:
-        - build_name: macos-sequoia-intel
-          os: macos-15-intel
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+        # macos-sequoia-intel temporarily disabled. Had some g2o optimizer issues.
+        #- build_name: macos-sequoia-intel
+        #  os: macos-15-intel
+        #  cv: opencv@4
         - build_name: macos-sequoia-apple-silicon
           os: macos-15
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
-        - build_name: macos-tahoe-intel
-          os: macos-26-intel
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
+          cv: opencv@4
+        # - build_name: macos-tahoe-intel
+        #   os: macos-26-intel
+        #   cv: opencv@4
         - build_name: macos-tahoe-apple-silicon
           os: macos-26
-          extra_deps: ""
-          extra_cmake_def: '-DBUILD_AS_BUNDLE=ON'
-
+          cv: opencv@4
+        # - build_name: macos-tahoe-intel-cv5
+        #   os: macos-26-intel
+        #   cv: opencv
+        - build_name: macos-tahoe-apple-silicon-cv5
+          os: macos-26
+          cv: opencv
     steps:
     - uses: actions/checkout@v4
+
+    - name: Restore test data
+      id: cache-testdata
+      uses: actions/cache@v4
+      with:
+        # SQLite DBs are binary-portable -> share the cache across
+        # linux / macos / windows. Key omits runner.os on purpose so all
+        # three OSes hit the same entry.
+        path: data/tests/*.db
+        key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+    - name: Fetch test data
+      if: steps.cache-testdata.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/fetch_test_data.sh
 
     - name: Install Brew Dependencies
       run: |
         # Update brew and install from Brewfile if present, or specific packages
-        brew install pcl opencv octomap g2o pdal
+        brew install pcl octomap pdal yaml-cpp librealsense libfreenect libusb zlib libomp suite-sparse ceres-solver ${{ matrix.cv }}
+
+    - name: Install Source Dependencies
+      # Build (and per-dependency cache) the source-only deps not available from
+      # Homebrew, then install them into /usr/local. See the composite action.
+      uses: ./.github/actions/install-macos-source-deps
+      with:
+        os: ${{ matrix.os }}
+        build_type: ${{ env.BUILD_TYPE }}
 
     - name: Configure CMake
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ matrix.extra_cmake_def }}
+        # Apple clang has no built-in OpenMP; point find_package(OpenMP) at
+        # Homebrew's keg-only libomp so PCL/g2o/rtabmap enable OpenMP instead of
+        # repeatedly logging "Could NOT find OpenMP".
+        LIBOMP=$(brew --prefix libomp)
+        cmake -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DBUILD_TESTING=ON \
+          -DBUILD_AS_BUNDLE=ON \
+          -DWITH_ORBBEC_SDK=ON \
+          -DWITH_DEPTHAI=ON \
+          -DWITH_CERES=ON \
+          -DOpenMP_C_FLAGS="-Xclang -fopenmp -I$LIBOMP/include" \
+          -DOpenMP_C_LIB_NAMES=omp \
+          -DOpenMP_CXX_FLAGS="-Xclang -fopenmp -I$LIBOMP/include" \
+          -DOpenMP_CXX_LIB_NAMES=omp \
+          -DOpenMP_omp_LIBRARY="$LIBOMP/lib/libomp.dylib"
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
@@ -61,23 +109,59 @@ jobs:
       run: |
         ./rtabmap-console --version
 
-#    - name: Build MacOS Package
-#      run: |
-#        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+    - name: Build MacOS Package
+      run: |
+        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
 
-#    - name: Upload RTABMap Artifacts (DMG)
-#      uses: actions/upload-artifact@v4
-#      with:
-#        name: RTABMap-Binaries-${{ matrix.build_name }}-zip
-#        path: |
-#          build/RTABMap-*.dmg
-#        compression-level: 0
-#        if-no-files-found: warn
-#        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+    - name: Upload RTABMap Artifacts (DMG)
+      uses: actions/upload-artifact@v4
+      with:
+        name: RTABMap-Binaries-${{ matrix.build_name }}-nonsigned-zip
+        path: |
+          build/RTABMap-*.dmg
+        compression-level: 0
+        if-no-files-found: warn
+        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
 
-#    - name: Test
-#      working-directory: ${{github.workspace}}/build
-#      # Execute tests defined by the CMake configuration.  
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest -C ${{env.BUILD_TYPE}}
-      
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      # PYTHONNOUSERSITE=1: prevent the embedded Python interpreter from
+      # loading numpy / other site-packages from the user's site that were
+      # compiled against a different ABI than the build-time Python.
+      env:
+        PYTHONNOUSERSITE: 1
+      run: |
+        ctest -C ${{env.BUILD_TYPE}} -V -LE performance
+
+    # A ctest SEGFAULT is reported as just "SEGFAULT" with no backtrace, which
+    # makes a crash inside a long integration test invisible -- the log simply
+    # stops mid-test. macOS's ReportCrash writes a symbolized .ips report for
+    # every crashed process, so surface any that appeared during this job.
+    - name: Dump macOS crash reports on failure
+      if: failure()
+      run: |
+        # ReportCrash can lag the process death by a few seconds.
+        sleep 20
+        found=0
+        for d in "$HOME/Library/Logs/DiagnosticReports" /Library/Logs/DiagnosticReports; do
+          [ -d "$d" ] || continue
+          while IFS= read -r f; do
+            found=1
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+          done < <(find "$d" -type f \( -name '*.ips' -o -name '*.crash' \) -mtime -1 2>/dev/null | sort)
+        done
+        if [ "$found" = 0 ]; then
+          echo "No crash reports found -- the job may have failed without a crash."
+        fi
+
+    - name: Upload ctest log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ctest-log-${{ matrix.build_name }}
+        path: build/Testing/Temporary/LastTest.log
+        if-no-files-found: warn
+        retention-days: 7
+

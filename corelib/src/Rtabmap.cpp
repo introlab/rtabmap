@@ -180,11 +180,15 @@ Rtabmap::Rtabmap() :
 	_pathGoalIndex(0),
 	_pathTransformToGoal(Transform::getIdentity()),
 	_pathStuckCount(0),
-	_pathStuckDistance(0.0f)
-#ifdef RTABMAP_PYTHON
-	,_python(new PythonInterface())
-#endif
+	_pathStuckDistance(0.0f),
+	_dummyDictionary(false)
 {
+#ifdef RTABMAP_PYTHON
+	// Ensure the embedded Python interpreter is up. The first call here will
+	// assert that it runs on the main thread; callers building Rtabmap on a
+	// worker thread should construct the singleton in main() beforehand.
+	PythonInterface::instance("Rtabmap");
+#endif
 }
 
 Rtabmap::~Rtabmap() {
@@ -302,7 +306,7 @@ void Rtabmap::flushStatisticLogs()
 {
 	if(_foutFloat && _bufferedLogsF.size())
 	{
-		UDEBUG("_bufferedLogsF.size=%d", _bufferedLogsF.size());
+		UDEBUG("_bufferedLogsF.size=%d", (int)_bufferedLogsF.size());
 		for(std::list<std::string>::iterator iter = _bufferedLogsF.begin(); iter!=_bufferedLogsF.end(); ++iter)
 		{
 			fprintf(_foutFloat, "%s", iter->c_str());
@@ -311,7 +315,7 @@ void Rtabmap::flushStatisticLogs()
 	}
 	if(_foutInt && _bufferedLogsI.size())
 	{
-		UDEBUG("_bufferedLogsI.size=%d", _bufferedLogsI.size());
+		UDEBUG("_bufferedLogsI.size=%d", (int)_bufferedLogsI.size());
 		for(std::list<std::string>::iterator iter = _bufferedLogsI.begin(); iter!=_bufferedLogsI.end(); ++iter)
 		{
 			fprintf(_foutInt, "%s", iter->c_str());
@@ -360,6 +364,10 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	if(!_memory)
 	{
 		_memory = new Memory(allParameters);
+		if(_dummyDictionary)
+		{
+			_memory->setDummyDictionary(true);
+		}
 		_memory->init(_databasePath, false, allParameters, true);
 	}
 
@@ -378,9 +386,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
 	if(!_memory->isIncremental())
 	{
-		if(_optimizedPoses.empty() &&
-			_memory->getWorkingMem().size()>1 &&
-			_memory->getWorkingMem().lower_bound(1)!=_memory->getWorkingMem().end())
+		if(_optimizedPoses.empty() && _memory->getWorkingMemSize(true) > 0)
 		{
 			cv::Mat cov;
 			this->optimizeCurrentMap(
@@ -397,7 +403,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 			_lastLocalizationPose = lastPose;
 
 			UINFO("Loaded optimizedPoses=%d firstPose %d=%s lastLocalizationPose=%s",
-					_optimizedPoses.size(),
+					(int)_optimizedPoses.size(),
 					_optimizedPoses.lower_bound(1)->first,
 					_optimizedPoses.lower_bound(1)->second.prettyPrint().c_str(),
 					_lastLocalizationPose.prettyPrint().c_str());
@@ -810,7 +816,7 @@ int Rtabmap::getWMSize() const
 {
 	if(_memory)
 	{
-		return (int)_memory->getWorkingMem().size()-1; // remove virtual place
+		return (int)_memory->getWorkingMemSize(false);
 	}
 	return 0;
 }
@@ -1252,7 +1258,6 @@ bool Rtabmap::process(
 	std::map<int, float> adjustedLikelihood;
 	std::map<int, float> likelihood;
 	std::map<int, int> weights;
-	std::map<int, float> posterior;
 	std::list<std::pair<int, float> > reactivateHypotheses;
 
 	std::map<int, int> childCount;
@@ -1314,7 +1319,7 @@ bool Rtabmap::process(
 						odomPose.r21(), odomPose.r22(), odomPose.r23(), odomPose.o24(),
 						odomPose.r31(), odomPose.r32(), odomPose.r33(), odomPose.o34());
 				odomPose.normalizeRotation();
-				UASSERT_MSG(odomPose.isInvertible(), uFormat("Odometry pose is not invertible!\n"
+				UASSERT_MSG(odomPose.isInvertible(), uFormat("Odometry pose is not invertible! %s\n"
 						"[%f %f %f %f;\n"
 						" %f %f %f %f;\n"
 						" %f %f %f %f;\n"
@@ -1998,7 +2003,7 @@ bool Rtabmap::process(
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to
 		// fill the short-time memory before a signature is added to the working memory).
-		if(_memory->getWorkingMem().size())
+		if(_memory->getWorkingMemSize(true))
 		{
 			//============================================================
 			// Likelihood computation
@@ -2132,7 +2137,7 @@ bool Rtabmap::process(
 			ULOGGER_INFO("getting posterior...");
 
 			// Compute the posterior
-			posterior = _bayesFilter->computePosterior(_memory, likelihood);
+			_bayesFilter->computePosterior(_memory, likelihood);
 			timePosteriorCalculation = timer.ticks();
 			ULOGGER_INFO("timePosteriorCalculation=%fs",timePosteriorCalculation);
 
@@ -2146,17 +2151,20 @@ bool Rtabmap::process(
 			// Select the highest hypothesis
 			//============================================================
 			ULOGGER_INFO("creating hypotheses...");
-			if(posterior.size())
+			const std::vector<int> & posteriorIds = _bayesFilter->getPosteriorIds();
+			const std::vector<float> & posteriorValues = _bayesFilter->getPosteriorValues();
+			if(posteriorIds.size())
 			{
-				for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
+				// Highest id first, so the highest id wins on equal probabilities.
+				for(size_t i=posteriorIds.size(); i-- > 0;)
 				{
-					if(iter->first > 0 && iter->second > _highestHypothesis.second)
+					if(posteriorIds[i] > 0 && posteriorValues[i] > _highestHypothesis.second)
 					{
-						_highestHypothesis = *iter;
+						_highestHypothesis = std::make_pair(posteriorIds[i], posteriorValues[i]);
 					}
 				}
 				// With the virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
-				_highestHypothesis.second = 1-posterior.begin()->second;
+				_highestHypothesis.second = 1-posteriorValues[0];
 			}
 			timeHypothesesCreation = timer.ticks();
 			ULOGGER_INFO("Highest hypothesis=%d, value=%f, timeHypothesesCreation=%fs", _highestHypothesis.first, _highestHypothesis.second, timeHypothesesCreation);
@@ -2174,7 +2182,7 @@ bool Rtabmap::process(
 				}
 				if(	(( _memory->isIncremental() && !uContains(_optimizedPoses, _highestHypothesis.first)) || // not linked to previous map of that hypothesis
 					 (!_memory->isIncremental() && !hasLoopClosureConstraints)) && // not yet localized to any previous sessions
-					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
+					_memory->getWorkingMemSize(true)>0 && // should have an old map
 					_rgbdSlamMode &&
 					loopThr > _aggressiveLoopThr)
 				{
@@ -2187,7 +2195,7 @@ bool Rtabmap::process(
 				if(_highestHypothesis.second >= loopThr)
 				{
 					rejectedLoopClosure = true;
-					if(posterior.size() <= 2 && loopThr>0.0f)
+					if(_bayesFilter->getPosteriorIds().size() <= 2 && loopThr>0.0f)
 					{
 						// Ignore loop closure if there is only one loop closure hypothesis
 						UDEBUG("rejected hypothesis: single hypothesis");
@@ -2227,7 +2235,7 @@ bool Rtabmap::process(
 				hypothesisRatio = _loopClosureHypothesis.second>0?_highestHypothesis.second/_loopClosureHypothesis.second:0;
 			}
 		} // if(_memory->getWorkingMemSize())
-	}// !isBadSignature
+	} // !isBadSignature
 	else if(!signature->isBadSignature() && signature->getWeight()>=0 && (smallDisplacement || tooFastMovement))
 	{
 		_highestHypothesis = lastHighestHypothesis;
@@ -2259,12 +2267,12 @@ bool Rtabmap::process(
 	if(_maxTimeAllowed != 0 || _maxMemoryAllowed != 0)
 	{
 		// with memory management, we have to immunize some nodes
-		maxLocalLocationsImmunized = _localImmunizationRatio * float(_memory->getWorkingMem().size());
+		maxLocalLocationsImmunized = _localImmunizationRatio * float(_memory->getWorkingMemSize(true));
 	}
 	// no need to do retrieval or immunization of locations if memory management
 	// is disabled and all nodes are in WM.
 	// Also skip memory mangement on intermediate nodes
-	if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0) && signature->getWeight()>=0)
+	if(!((_memory->allNodesInWM() || _maxRetrieved==0) && maxLocalLocationsImmunized==0) && signature->getWeight()>=0)
 	{
 		if(retrievalId > 0)
 		{
@@ -2320,7 +2328,13 @@ bool Rtabmap::process(
 							//immunized locations in the neighborhood from being transferred
 							if(immunizedLocations.insert(iter->first).second)
 							{
-								++immunizedGlobally;
+								// Count only non-intermediate nodes (intermediate nodes are still
+								// immunized but don't consume the immunization budget/statistic).
+								const Signature * sImmunized = _memory->getSignature(iter->first);
+								if(sImmunized == 0 || sImmunized->getWeight() >= 0)
+								{
+									++immunizedGlobally;
+								}
 							}
 
 							//UDEBUG("nt=%d m=%d immunized=1", iter->first, iter->second);
@@ -2390,7 +2404,7 @@ bool Rtabmap::process(
 					"nbDirectNeighborsInDb=%d, "
 					"time=%fs (%fs %fs)",
 					neighborhoodSize,
-					reactivatedIds.size(),
+					(int)reactivatedIds.size(),
 					(int)nbLoadedFromDb,
 					nbDirectNeighborsInDb,
 					timeGetN.ticks(),
@@ -2423,9 +2437,12 @@ bool Rtabmap::process(
 					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
 				}
 
-				if(_memory->getSignature(_path[i].first) != 0)
+				const Signature * sPath = _memory->getSignature(_path[i].first);
+				if(sPath != 0)
 				{
-					if(immunizedLocations.insert(_path[i].first).second)
+					// Count only non-intermediate nodes (intermediate nodes are still
+					// immunized but don't consume the immunization budget/statistic).
+					if(immunizedLocations.insert(_path[i].first).second && sPath->getWeight() >= 0)
 					{
 						++immunizedLocally;
 					}
@@ -2447,7 +2464,7 @@ bool Rtabmap::process(
 			}
 		}
 
-		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized == 0))
+		if(!(_memory->allNodesInWM() && maxLocalLocationsImmunized==0))
 		{
 			// immunize the path from the nearest local location to the current location
 			if(immunizedLocally < maxLocalLocationsImmunized &&
@@ -2498,15 +2515,16 @@ bool Rtabmap::process(
 									{
 										UWARN("Could not immunize the whole local path (%d) between "
 											  "%d and %d (max location immunized=%d). You may want "
-											  "to increase RGBD/LocalImmunizationRatio (current=%f (%d of WM=%d)) "
+											  "to increase %s (current=%f (%d of WM=%d)) "
 											  "to be able to immunize longer paths.",
 												(int)path.size(),
 												nearestId,
 												signature->id(),
 												maxLocalLocationsImmunized,
+												Parameters::kRGBDLocalImmunizationRatio().c_str(),
 												_localImmunizationRatio,
 												maxLocalLocationsImmunized,
-												(int)_memory->getWorkingMem().size());
+												(int)_memory->getWorkingMemSize(true));
 									}
 									break;
 								}
@@ -2514,7 +2532,13 @@ bool Rtabmap::process(
 								{
 									if(immunizedLocations.insert(iter->first).second)
 									{
-										++immunizedLocally;
+										// Count only non-intermediate nodes (intermediate nodes are still
+										// immunized but don't consume the immunization budget/statistic).
+										const Signature * sLocal = _memory->getSignature(iter->first);
+										if(sLocal == 0 || sLocal->getWeight() >= 0)
+										{
+											++immunizedLocally;
+										}
 									}
 									//UDEBUG("local node %d on path immunized=1", iter->first);
 								}
@@ -2538,7 +2562,7 @@ bool Rtabmap::process(
 					maxLocalLocationsImmunized,
 					immunizedLocally,
 					_localImmunizationRatio,
-					(int)_memory->getWorkingMem().size());
+					(int)_memory->getWorkingMemSize(true));
 			std::list<int> retrievalLocalIdsIntermediate;
 			for(std::multimap<float, int>::iterator iter=nearNodesByDist.begin();
 				iter!=nearNodesByDist.end() && (retrievalLocalIds.size() < _maxLocalRetrieved || immunizedLocally < maxLocalLocationsImmunized);
@@ -2574,7 +2598,9 @@ bool Rtabmap::process(
 					}
 					if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
 					{
-						if(immunizedLocations.insert(s->id()).second)
+						// Count only non-intermediate nodes (intermediate nodes are still
+						// immunized but don't consume the immunization budget/statistic).
+						if(immunizedLocations.insert(s->id()).second && s->getWeight() >= 0)
 						{
 							++immunizedLocally;
 						}
@@ -2685,7 +2711,7 @@ bool Rtabmap::process(
 	   signature->getWeight() >= 0) // not an intermediate node
 	{
 		if(_startNewMapOnLoopClosure &&
-			_memory->getWorkingMem().size()>=2 && // must have an old map (+1 virtual place)
+			_memory->getWorkingMemSize(true)>0 && // must have an old map
 			_localizationCovariance.empty() && // if we didn't localize yet
 			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0) // alone in new session
 		{
@@ -2720,7 +2746,6 @@ bool Rtabmap::process(
 				std::map<int, Transform> nearestPoses;
 				std::map<int, Transform> optimizedPosesWithOdomCache;
 				std::multimap<int, int> links;
-				std::map<int, Transform> * refPoses = &_optimizedPoses;
 				if(_memory->isIncremental() && _proximityMaxGraphDepth>0)
 				{
 					// get bidirectional links
@@ -2739,7 +2764,6 @@ bool Rtabmap::process(
 						// mapping mode while being localized on the previous session.
 						optimizedPosesWithOdomCache = _optimizedPoses;
 						optimizedPosesWithOdomCache.insert(_odomCachePoses.begin(), _odomCachePoses.end());
-						refPoses = &optimizedPosesWithOdomCache;
 						for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end(); ++iter)
 						{
 							if(uContains(optimizedPosesWithOdomCache, iter->second.from()) && 
@@ -2752,18 +2776,23 @@ bool Rtabmap::process(
 						}
 					}
 				}
+				std::map<int, int> proximityPathDepths;
+				if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
+				{
+					proximityPathDepths = graph::computePathDepths(links, signature->id(), _proximityMaxGraphDepth);
+				}
 				for(std::map<int, float>::iterator iter=nearestIds.lower_bound(1); iter!=nearestIds.end(); ++iter)
 				{
 					if(_memory->getStMem().find(iter->first) == _memory->getStMem().end())
 					{
 						if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
 						{
-							std::list<std::pair<int, Transform> > path = graph::computePath(*refPoses, links, signature->id(), iter->first);
-							UDEBUG("Graph depth to %d = %ld", iter->first, path.size());
-							if(!path.empty() && (int)path.size() <= _proximityMaxGraphDepth)
+							std::map<int, int>::const_iterator depthIter = proximityPathDepths.find(iter->first);
+							if(depthIter == proximityPathDepths.end())
 							{
-								nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
+								continue;
 							}
+							nearestPoses.insert(std::make_pair(iter->first, _optimizedPoses.at(iter->first)));
 						}
 						else
 						{
@@ -4170,7 +4199,9 @@ bool Rtabmap::process(
 	}
 
 	// Posterior is empty if a bad signature is detected
-	float vpHypothesis = posterior.size()?posterior.at(Memory::kIdVirtual):0.0f;
+	// The virtual place is the first location of the posterior when it is one of them.
+	const std::vector<int> & vpIds = _bayesFilter->getPosteriorIds();
+	float vpHypothesis = (vpIds.size() && vpIds[0]==Memory::kIdVirtual)?_bayesFilter->getPosteriorValues()[0]:0.0f;
 	int loopId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId;
 
 	// prepare statistics
@@ -4387,6 +4418,13 @@ bool Rtabmap::process(
 				statistics_.setWeights(weights);
 				if(_publishPdf)
 				{
+					const std::vector<int> & ids = _bayesFilter->getPosteriorIds();
+					const std::vector<float> & values = _bayesFilter->getPosteriorValues();
+					std::map<int, float> posterior;
+					for(size_t i=0; i<ids.size(); ++i)
+					{
+						posterior.insert(posterior.end(), std::make_pair(ids[i], values[i]));
+					}
 					statistics_.setPosterior(posterior);
 				}
 				if(_publishLikelihood)
@@ -4418,8 +4456,13 @@ bool Rtabmap::process(
 	}
 	if(!_publishLastSignatureData)
 	{
+		// Keep the occupancy grid (compressed AND raw) on the published copy:
+		// downstream consumers rely on it to generate global occupancy grid
+		// in the same process (e.g. the raw occupancy grid used by the MainWindow 
+		// or ROS rtabmap_slam) or on an external process (the compressed occupancy
+		// grid published over ROS rtabmap_msgs/MapData).
 		lastSignatureData.sensorData().clearCompressedData(true, true, true, false);
-		lastSignatureData.sensorData().clearRawData();
+		lastSignatureData.sensorData().clearRawData(true, true, true, false);
 	}
 	if(!_rawDataKept)
 	{
@@ -4451,7 +4494,7 @@ bool Rtabmap::process(
 			_memory->isIncremental() &&              // only in mapping mode
 			graph::filterLinks(signature->getLinks(), Link::kSelfRefLink).size() == 0 &&      // alone in the current map
 			(landmarksDetected.empty() || rejectedLoopClosure) &&      // if we re not seeing a landmark from a previous map
-			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
+			_memory->getWorkingMemSize(true)>0)       // The working memory should not be empty
 		{
 			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
 					signature->id());
@@ -4538,26 +4581,29 @@ bool Rtabmap::process(
 	//============================================================
 	double totalTime = timerTotal.ticks();
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
-	if(!lastSignatureWasIntermediateNode && // skip memory management on intermediate nodes
-		((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
-		 (_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)))
+	if(!lastSignatureWasIntermediateNode) // skip memory management on intermediate nodes
 	{
-		if(_maxTimeAllowed!=0 && totalTime*1000>_maxTimeAllowed)
+		size_t workingMemSize = _memory->getWorkingMemSize(true);
+		if((_maxTimeAllowed != 0 && totalTime*1000 > _maxTimeAllowed) ||
+			(_maxMemoryAllowed != 0 && workingMemSize > _maxMemoryAllowed))
 		{
-			ULOGGER_INFO("Removing old signatures because time limit is reached %f ms > %f ms...",
-				totalTime*1000, _maxTimeAllowed);
-		}
-		if(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed)
-		{
-			ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
-				_memory->getWorkingMem().size(), _maxMemoryAllowed);
-		}
-		immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
-		std::list<int> transferred = _memory->forget(immunizedLocations);
-		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
-		if(!_someNodesHaveBeenTransferred && transferred.size())
-		{
-			_someNodesHaveBeenTransferred = true; // only used to hide a warning on close nodes immunization
+			if(_maxTimeAllowed!=0 && totalTime*1000 > _maxTimeAllowed)
+			{
+				ULOGGER_INFO("Removing old signatures because time limit is reached %f ms > %f ms...",
+					totalTime*1000, _maxTimeAllowed);
+			}
+			if(_maxMemoryAllowed != 0 && workingMemSize > _maxMemoryAllowed)
+			{
+				ULOGGER_INFO("Removing old signatures because memory limit is reached %d > %d...",
+					(int)workingMemSize, _maxMemoryAllowed);
+			}
+			immunizedLocations.insert(_lastLocalizationNodeId); // keep the latest localization in working memory
+			std::list<int> transferred = _memory->forget(immunizedLocations);
+			signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
+			if(!_someNodesHaveBeenTransferred && transferred.size())
+			{
+				_someNodesHaveBeenTransferred = true; // only used to hide a warning on close nodes immunization
+			}
 		}
 	}
 	_lastProcessTime = totalTime;
@@ -4618,7 +4664,7 @@ bool Rtabmap::process(
 				int lastId = signaturesRemoved.front();
 				UDEBUG("Detected that only last signature has been removed (lastId=%d)", lastId);
 				_optimizedPoses.erase(lastId);
-				for(std::multimap<int, Link>::iterator iter=_constraints.find(lastId); iter!=_constraints.end() && iter->first==lastId;++iter)
+				for(std::multimap<int, Link>::iterator iter=_constraints.lower_bound(lastId); iter!=_constraints.end() && iter->first==lastId;++iter)
 				{
 					if(iter->second.to() != iter->second.from())
 					{
@@ -4709,8 +4755,10 @@ bool Rtabmap::process(
 		statistics_.addStatistic(Statistics::kMemoryImmunized_locally_max(), maxLocalLocationsImmunized);
 
 		// place after transfer because the memory/local graph may have changed
-		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
-		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
+		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMemSize(true));
+		statistics_.addStatistic(Statistics::kMemoryWorking_memory_inter_size(), _memory->getWorkingMemIntermediateNodesCount());
+		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size()-_memory->getStMemIntermediateNodesCount());
+		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_inter_size(), _memory->getStMemIntermediateNodesCount());
 		statistics_.addStatistic(Statistics::kMemoryDatabase_memory_used(), _memory->getDatabaseMemoryUsed());
 
 		// Set local graph
@@ -4859,7 +4907,7 @@ bool Rtabmap::process(
 		}
 
 		std::vector<int> ids;
-		ids.reserve(_memory->getWorkingMem().size() + _memory->getStMem().size());
+		ids.reserve(_memory->getWorkingMemSize(false) + _memory->getStMem().size());
 		for(std::set<int>::const_iterator iter=_memory->getStMem().begin(); iter!=_memory->getStMem().end(); ++iter)
 		{
 			ids.push_back(*iter);
@@ -4921,7 +4969,7 @@ bool Rtabmap::process(
 									0,
 									refWordsCount,
 									dictionarySize,
-									int(_memory->getWorkingMem().size()),
+									int(_memory->getWorkingMemSize(false)),
 									rejectedLoopClosure?1:0,
 									0,
 									0,
@@ -4993,7 +5041,14 @@ void Rtabmap::setMemoryThreshold(int maxMemoryAllowed)
 
 void Rtabmap::setWorkingDirectory(std::string path)
 {
-	path = uReplaceChar(path, '~', UDirectory::homeDir());
+	// Expand leading "~" to the user's home directory (shell convention).
+	// We do NOT replace every "~" in the path -- Windows 8.3 short names
+	// embed "~" in the middle (e.g. C:\Users\RUNNER~1\...), and a blanket
+	// uReplaceChar would corrupt those.
+	if(!path.empty() && path[0] == '~')
+	{
+		path = UDirectory::homeDir() + path.substr(1);
+	}
 	if(!path.empty() && UDirectory::exists(path))
 	{
 		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());
@@ -5669,7 +5724,7 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 
 void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 {
-	ULOGGER_DEBUG("likelihood.size()=%d", likelihood.size());
+	ULOGGER_DEBUG("likelihood.size()=%d", (int)likelihood.size());
 	UTimer timer;
 	timer.start();
 	if(likelihood.size()==0)
@@ -5688,7 +5743,7 @@ void Rtabmap::adjustLikelihood(std::map<int, float> & likelihood) const
 			values.push_back(iter->second);
 		}
 	}
-	UDEBUG("values.size=%d", values.size());
+	UDEBUG("values.size=%d", (int)values.size());
 
 	float mean = uMean(values);
 	float stdDev = std::sqrt(uVariance(values, mean));
@@ -5865,6 +5920,11 @@ Signature Rtabmap::getSignatureCopy(int id, bool images, bool scan, bool userDat
 				s.sensorData().setGlobalDescriptors(globalDescriptors);
 			}
 		}
+		if(!withGlobalDescriptors)
+		{
+			// Node data taken from memory comes with its global descriptors.
+			s.sensorData().clearGlobalDescriptors();
+		}
 		if(velocity.size()==6)
 		{
 			s.setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
@@ -5948,7 +6008,7 @@ void Rtabmap::getGraph(
 			}
 		}
 	}
-	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))
+	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMemSize(!global) > 0))
 	{
 		UERROR("Last working signature is null!?");
 	}
@@ -6309,11 +6369,11 @@ int Rtabmap::detectMoreLoopClosures(
 									links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, inf)));
 									loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, inf));
 									std::string msg = uFormat("Iteration %d/%d: Added loop closure %d->%d! (%d/%d)", n+1, iterations, from, to, i+1, (int)clusters.size());
-									UINFO(msg.c_str());
+									UINFO("%s", msg.c_str());
 
 									if(processState)
 									{
-										UINFO(msg.c_str());
+										UINFO("%s", msg.c_str());
 										if(!processState->callback(msg))
 										{
 											return -1;
@@ -6330,7 +6390,7 @@ int Rtabmap::detectMoreLoopClosures(
 		if(processState)
 		{
 			std::string msg = uFormat("Iteration %d/%d: Detected %d total loop closures!", n+1, iterations, (int)addedLinks.size()/2);
-			UINFO(msg.c_str());
+			UINFO("%s", msg.c_str());
 			if(!processState->callback(msg))
 			{
 				return -1;
@@ -6393,17 +6453,17 @@ bool Rtabmap::globalBundleAdjustment(
 	if(!_optimizedPoses.empty() && !_constraints.empty())
 	{
 		int iterations = Parameters::defaultOptimizerIterations();
-		float pixelVariance = Parameters::defaultg2oPixelVariance();
+		float pixelVariance = Parameters::defaultOptimizerPixelVariance();
 		ParametersMap params = _parameters;
 		Parameters::parse(params, Parameters::kOptimizerIterations(), iterations);
-		Parameters::parse(params, Parameters::kg2oPixelVariance(), pixelVariance);
+		Parameters::parse(params, Parameters::kOptimizerPixelVariance(), pixelVariance);
 		if(iterations > 0)
 		{
 			uInsert(params, ParametersPair(Parameters::kOptimizerIterations(), uNumber2Str(iterations)));
 		}
 		if(pixelVariance > 0.0f)
 		{
-			uInsert(params, ParametersPair(Parameters::kg2oPixelVariance(), uNumber2Str(pixelVariance)));
+			uInsert(params, ParametersPair(Parameters::kOptimizerPixelVariance(), uNumber2Str(pixelVariance)));
 		}
 
 		std::map<int, Signature> signatures;
@@ -6913,6 +6973,18 @@ void Rtabmap::addNodesToRepublish(const std::vector<int> & ids)
 	}
 }
 
+void Rtabmap::setDummyDictionary(bool enabled)
+{
+	if(_memory && enabled) {
+		UERROR("Memory is already initialized, cannot set dummy dictionary. This "
+			"function can only be called after Rtabmap object is created, but "
+			"before init() is called.");
+	}
+	else {
+		_dummyDictionary = enabled;
+	}
+}
+
 void Rtabmap::clearPath(int status)
 {
 	UINFO("status=%d", status);
@@ -7003,6 +7075,33 @@ bool Rtabmap::computePath(int targetNode, bool global)
 			{
 				if(iter->first > 0)
 				{
+					// Skip intermediate nodes (weight==-1). They are not navigable
+					// waypoints and updateGoalIndex would otherwise abort the
+					// plan when it sees them. The poses of the remaining real
+					// nodes already account for cumulative transform through any
+					// intermediate chain (relative poses from graph::computePath).
+					int weight = 0;
+					const Signature * s = _memory->getSignature(iter->first);
+					if(s)
+					{
+						weight = s->getWeight();
+					}
+					else
+					{
+						// For nodes in LTM, fetch weight from the database.
+						Transform p, gt;
+						int mapId = 0;
+						std::string label;
+						double stamp = 0.0;
+						std::vector<float> vel;
+						GPS gps;
+						EnvSensors envs;
+						_memory->getNodeInfo(iter->first, p, mapId, weight, label, stamp, gt, vel, gps, envs, true);
+					}
+					if(weight == -1)
+					{
+						continue;
+					}
 					// just keep nodes in the path
 					_path[oi].first = iter->first;
 					_path[oi++].second = t * iter->second;
@@ -7276,17 +7375,13 @@ void Rtabmap::updateGoalIndex()
 	if( _memory && _path.size())
 	{
 		// remove all previous virtual links
-		bool hasIntermediateNodes = false;
 		for(unsigned int i=0; i<_pathCurrentIndex && i<_path.size(); ++i)
 		{
 			const Signature * s = _memory->getSignature(_path[i].first);
 			if(s)
 			{
+				UASSERT_MSG(s->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i, _path[i].first).c_str());
 				_memory->removeVirtualLinks(s->id());
-			}
-			if(s->getWeight() == -1)
-			{
-				hasIntermediateNodes = true;
 			}
 		}
 
@@ -7313,51 +7408,42 @@ void Rtabmap::updateGoalIndex()
 			}
 		}
 
-		// Make sure the next signatures on the path are linked together
+		// Make sure the next signatures on the path are linked together.
+		// Intermediate nodes have been filtered out of _path by computePath, so
+		// every entry is a real node here.
 		float distanceSoFar = 0.0f;
-		for(unsigned int i=_pathCurrentIndex+1;
-			i<_path.size() && !hasIntermediateNodes;
-			++i)
+		for(unsigned int i=_pathCurrentIndex+1; i<_path.size(); ++i)
 		{
-			if(i>0)
+			if(_localRadius > 0.0f)
 			{
-				if(_localRadius > 0.0f)
+				distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
+			}
+
+			if(_path[i].first != _path[i-1].first)
+			{
+				const Signature * s = _memory->getSignature(_path[i].first);
+				if(s)
 				{
-					distanceSoFar += _path[i-1].second.getDistance(_path[i].second);
-				}
-				
-				if(_path[i].first != _path[i-1].first)
-				{
-					const Signature * s = _memory->getSignature(_path[i].first);
-					if(s)
+					UASSERT_MSG(s->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i, _path[i].first).c_str());
+					const Signature * sPrev = _memory->getSignature(_path[i-1].first);
+					if(sPrev)
 					{
-						if(s->getWeight() == -1)
-						{
-							hasIntermediateNodes = true;
-							break;
-						}
-						if(!s->hasLink(_path[i-1].first) && _memory->getSignature(_path[i-1].first) != 0)
-						{
-							Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
-							_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
-							UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
-						}
+						UASSERT_MSG(sPrev->getWeight() != -1, uFormat("path[%u] id=%d is intermediate; computePath should have filtered it", i-1, _path[i-1].first).c_str());
+					}
+					if(!s->hasLink(_path[i-1].first) && sPrev != 0)
+					{
+						Transform virtualLoop = _path[i].second.inverse() * _path[i-1].second;
+						_memory->addLink(Link(_path[i].first, _path[i-1].first, Link::kVirtualClosure, virtualLoop, cv::Mat::eye(6,6,CV_64FC1)*0.01)); // on the optimized path
+						UINFO("Added Virtual link between %d and %d", _path[i-1].first, _path[i].first);
 					}
 				}
-
-				if(distanceSoFar > _localRadius)
-				{
-					UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
-					break;
-				}
 			}
-		}
 
-		if(hasIntermediateNodes)
-		{
-			UERROR("Cannot follow a path with a map containing intermediate nodes (not supported: don't use intermediate nodes if rtabmap's planner has to be used). Aborting current plan!");
-			this->clearPath(-1);
-			return;
+			if(distanceSoFar > _localRadius)
+			{
+				UDEBUG("Farthest goal=%d : %f m", _path[i].first, distanceSoFar);
+				break;
+			}
 		}
 
 		UDEBUG("current node = %d current goal = %d", _path[_pathCurrentIndex].first, _path[_pathGoalIndex].first);

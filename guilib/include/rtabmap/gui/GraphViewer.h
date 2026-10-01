@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QGraphicsView>
 #include <QtCore/QMap>
 #include <QtCore/QSettings>
+#include <QTimer>
+#include <QGraphicsPixmapItem>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/GPS.h>
 #include <opencv2/opencv.hpp>
@@ -55,6 +57,7 @@ class RTABMAP_GUI_EXPORT GraphViewer : public QGraphicsView {
 
 public:
 	enum ViewPlane {XY, XZ, YZ};
+	enum InteractionMode {HandMode, SelectionMode};
 
 public:
 	GraphViewer(QWidget * parent = 0);
@@ -130,6 +133,7 @@ public:
 	bool isOrientationENU() const;
 	ViewPlane getViewPlane() const;
 	bool isEnsureFrameVisible() const;
+	int getFastZoomMinNodes() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -169,13 +173,21 @@ public:
 	void setOdomCacheOverlayVisible(bool visible);
 	void setOrientationENU(bool enabled);
 	void setViewPlane(ViewPlane plane);
+	void setInteractionMode(InteractionMode mode);
+	InteractionMode getInteractionMode() const {return _interactionMode;}
+	std::set<int> getSelectedNodeIds();
+	void selectNodesFromIds(const std::set<int> & ids);
 	void setEnsureFrameVisible(bool visible);
+	void setFastZoomMinNodes(int value);
+	QPointF getNodeScenePosition(int id) const;
+	void centerOnNode(int id);
 
 Q_SIGNALS:
 	void configChanged();
 	void mapShownRequested();
 	void nodeSelected(int);
 	void linkSelected(int, int);
+	void nodesSelected(); // Nodes selected by rubber band, call getSelectedNodeIds() to get ids selected
 
 public Q_SLOTS:
 	void restoreDefaults();
@@ -184,11 +196,14 @@ protected:
 	virtual void wheelEvent ( QWheelEvent * event );
 	virtual void mouseMoveEvent(QMouseEvent * event);
 	virtual void mousePressEvent(QMouseEvent * event);
+	virtual void mouseReleaseEvent(QMouseEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
 private:
 	void setupGraphicsScene();
-
+	void startZoomOverlay();
+	void updateZoomOverlay();
+	void stopZoomOverlay();
 private:
 	QString _workingDirectory;
 	QColor _nodeColor;
@@ -246,8 +261,14 @@ private:
 	bool _orientationENU;
 	bool _mouseTracking;
 	ViewPlane _viewPlane;
+	InteractionMode _interactionMode;
 	bool _ensureFrameVisible;
 	QPoint _previousMousePos;
+	QPoint _initialMousePos;
+	QTimer _zoomDebounceTimer;
+	QGraphicsPixmapItem * _zoomOverlayItem;
+	bool _zoomOverlayActive;
+	int _fastZoomMinNodes;
 };
 
 } /* namespace rtabmap */

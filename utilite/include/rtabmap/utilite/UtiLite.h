@@ -20,7 +20,7 @@
 #ifndef UTILITE_H
 #define UTILITE_H
 
-/** \mainpage UtiLite
+/** \defgroup UtiLite
   *
   * \section intro Introduction
   * <a href="http://utilite.googlecode.com">UtiLite</a> is a simple library to create small cross-platform
@@ -29,7 +29,7 @@
   *
   * UtiLite provides a utility application called \ref uResourceGeneratorPage "uResourceGenerator" to generate resources to include in an executable. For example:
   * @code
-  * $ ./uresourcegenerator DatabaseSchema.sql
+  * $ rtabmap-res_tool DatabaseSchema.sql
   * @endcode
   * This will generate a HEX file "DatabaseSchema_sql.h" which can be included in source files.
   * Data of the file is global and can be accessed by the generated const char * DATABASESCHEMA_SQL.
@@ -43,7 +43,6 @@
   * std::vector<char> bytes = uHex2Bytes(hex);
   * @endcode
   *
-  * A generated \ref findUtilitePage "FindUtiLite.cmake" is also provided for easy linking with the library.
   *
   *
   * \section logger ULogger
@@ -163,47 +162,12 @@
   * \section processinfo UProcessInfo
   * This class can be used to get the process memory usage: UProcessInfo::getMemoryUsage().
   *
-  * \section qtLib Qt Widgets (libutilite_qt.so : OPTIONAL)
-  * If Qt is found on the system, the UtiLite Qt library (libutilite_qt.so, libutilite_qt.dll) with
-  * useful widgets is built. Use class UPlot to create a plot like MATLAB, and incrementally add
-  * new values like a scope. USpectrogram is used to
-  * show audio frequency frames.
-  * - UPlot,
-  * - USpectrogram,
-  * - UImageView.
-  * @image html UPlot.gif
-  * @image html USpectrogram.png
-  *
-  * \section audioLib Audio stuff (libutilite_audio.so : OPTIONAL)
-  * If FMOD is found on the system, the UtiLite audio
-  * library is built (libutilite_audio.so, libutilite_audio.dll). It is a wrapper
-  * of FMOD methods with a convenient interface to extract audio frames.
-  * - UAudioCapture,
-  * - UAudioCaptureFile,
-  * - UAudioCaptureMic,
-  * - UAudioCaptureFFT,
-  * - UAudioPlayer,
-  * - UAudioPlayerTone,
-  * - UWav,
-  * - UMp3Encoder (only if Lame is also found on the system).
-  *
-  * \section cvLib OpenCV stuff (libutilite_cv.so : OPTIONAL)
-  * If OpenCV is found on the system, the UtiLite cv
-  * library is built (libutilite_cv.so, libutilite_cv.dll). It provides
-  * image capture classes used to read from a webcam, a video file
-  * or a directory of images. If UtiLite is also built with Qt, a
-  * convenient function uCvMat2QImage() can be used to convert a cv::Mat
-  * image to a QImage.
-  * - UVideoCapture,
-  * - UImageFolderCapture,
-  * - UColorTable,
-  * - uCvMat2QImage() (only if Qt is also found on the system).
   */
 
 /*! \page uResourceGeneratorPage uResourceGenerator
  * UtiLite provides a utility application called \ref uResourceGeneratorPage "uResourceGenerator" to generate resources to include in an executable. For example:
  * @code
- * $ ./uresourcegenerator DatabaseSchema.sql
+ * $ rtabmap-res_tool DatabaseSchema.sql
  * @endcode
  * This will generate a HEX file "DatabaseSchema_sql.h" which can be included in source files.
  * Data of the file is global and can be accessed by the generated const char * DATABASESCHEMA_SQL.
@@ -221,7 +185,7 @@
  * @code
  * ADD_CUSTOM_COMMAND(
  *    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/DatabaseSchema_sql.h
- *    COMMAND ${URESOURCEGENERATOR_EXEC} -n my_namespace -p ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/DatabaseSchema.sql
+ *    COMMAND ${RTABMAP_RES_TOOL} -n my_namespace -p ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/DatabaseSchema.sql
  *    COMMENT "[Creating database resource]"
  *    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/DatabaseSchema.sql
  * )
@@ -231,7 +195,9 @@
  * ADD_LIBRARY(mylib ${SRC_FILES} ${RESOURCES})
  * ADD_EXECUTABLE(myexecutable ${SRC_FILES} ${RESOURCES})
  * @endcode
- * The variable URESOURCEGENERATOR_EXEC is set when FIND_PACKAGE(UtiLite) is done, you would need to add \ref findUtilitePage "FindUtiLite.cmake".
+ * The tool is installed as `rtabmap-res_tool`. It is not exported by FIND_PACKAGE(RTABMap),
+ * so locate it with FIND_PROGRAM(RTABMAP_RES_TOOL rtabmap-res_tool). Inside RTAB-Map's own
+ * build, the `res_tool` CMake target can be used directly as the COMMAND instead.
  */
 
 #include "rtabmap/utilite/UStl.h"

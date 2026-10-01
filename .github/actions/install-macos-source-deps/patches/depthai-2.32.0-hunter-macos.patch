@@ -1,0 +1,41 @@
+diff --git a/cmake/depthaiDependencies.cmake b/cmake/depthaiDependencies.cmake
+index 6b0b44f98..672c26402 100644
+--- a/cmake/depthaiDependencies.cmake
++++ b/cmake/depthaiDependencies.cmake
+@@ -17,7 +17,9 @@ else()
+     hunter_add_package(FP16)
+     hunter_add_package(libarchive-luxonis)
+     hunter_add_package(spdlog)
+-    hunter_add_package(ZLIB)
++    # ZLIB: use the system/Homebrew copy instead of Hunter's (the old pinned
++    # zlib fork fails to build against the modern macOS SDK). Found below via
++    # the standard FindZLIB module, which provides the same ZLIB::ZLIB target.
+     if(DEPTHAI_ENABLE_BACKWARD)
+         hunter_add_package(Backward)
+     endif()
+@@ -45,8 +47,23 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
+     # libarchive for firmware packages
+     find_package(archive_static ${_QUIET} CONFIG REQUIRED)
+     find_package(lzma ${_QUIET} CONFIG REQUIRED)
+-    # ZLIB for compressing Apps
+-    find_package(ZLIB CONFIG REQUIRED)
++    # ZLIB for compressing Apps.
++    # Use the system/Homebrew zlib directly instead of Hunter's: Hunter's pinned
++    # zlib fork fails to build against the modern macOS SDK, and Hunter also
++    # intercepts find_package(ZLIB) via its own FindZLIB on the module path, so
++    # we locate it manually and expose the ZLIB::zlib target depthai expects.
++    find_path(SYSTEM_ZLIB_INCLUDE_DIR NAMES zlib.h)
++    find_library(SYSTEM_ZLIB_LIBRARY NAMES z)
++    if(NOT SYSTEM_ZLIB_INCLUDE_DIR OR NOT SYSTEM_ZLIB_LIBRARY)
++        message(FATAL_ERROR "System zlib not found (looked for zlib.h and libz). Install via: brew install zlib")
++    endif()
++    if(NOT TARGET ZLIB::zlib)
++        add_library(ZLIB::zlib UNKNOWN IMPORTED)
++        set_target_properties(ZLIB::zlib PROPERTIES
++            IMPORTED_LOCATION "${SYSTEM_ZLIB_LIBRARY}"
++            INTERFACE_INCLUDE_DIRECTORIES "${SYSTEM_ZLIB_INCLUDE_DIR}"
++        )
++    endif()
+ 
+     # spdlog for library and device logging
+     find_package(spdlog ${_QUIET} CONFIG REQUIRED)

@@ -1,0 +1,205 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore: &platform_only
+      - '.github/workflows/android.yml'
+      - '.github/workflows/ios.yml'
+      - 'app/android/**'
+      - 'app/ios/**'
+      - 'docker/noble/android/**'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore: *platform_only
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  BUILD_TYPE: Debug
+
+jobs:
+  coverage:
+    name: Coverage (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore test data
+        id: cache-testdata
+        uses: actions/cache@v4
+        with:
+          # Same key as the other workflows so all of them share one entry.
+          path: data/tests/*.db
+          key: testdata-${{ hashFiles('data/tests/manifest.txt') }}
+
+      - name: Fetch test data
+        if: steps.cache-testdata.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch_test_data.sh
+
+      - name: Install Linux dependencies
+        run: |
+          DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y \
+            lcov \
+            libopencv-dev \
+            libpcl-dev \
+            git \
+            cmake \
+            software-properties-common \
+            libyaml-cpp-dev \
+            libg2o-dev \
+            libceres-dev \
+            curl \
+            gnupg \
+            lsb-release
+
+          # GTSAM and libpointmatcher are not in the Ubuntu archive, and
+          # borglab's gtsam PPAs have no noble packages (gtsam-release-4.2 has
+          # no noble suite; gtsam-develop's noble Packages index is empty). The
+          # ROS 2 repo ships both for noble, which is also what the ROS CI jobs
+          # test against, so take them from there.
+          sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" \
+            | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y \
+            ros-jazzy-gtsam \
+            ros-jazzy-libpointmatcher
+
+      - name: Configure CMake
+        run: |
+          cmake -B ${{ github.workspace }}/build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DENABLE_COVERAGE=ON \
+            -DCMAKE_PREFIX_PATH=/opt/ros/jazzy \
+            -DBUILD_TESTING=ON \
+            -DBUILD_APP=OFF \
+            -DBUILD_TOOLS=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DWITH_QT=OFF \
+            -DWITH_PYTHON=OFF \
+            -DWITH_CERES=ON \
+            -DWITH_G2O=ON \
+            -DWITH_GTSAM=ON \
+            -DWITH_MRPT=OFF \
+            -DWITH_CVSBA=OFF \
+            -DWITH_POINTMATCHER=ON \
+            -DWITH_CCCORELIB=OFF \
+            -DWITH_OPEN3D=OFF \
+            -DWITH_LOAM=OFF \
+            -DWITH_FLOAM=OFF \
+            -DWITH_LIOSAM=OFF \
+            -DWITH_FLYCAPTURE2=OFF \
+            -DWITH_ZED=OFF \
+            -DWITH_ZEDOC=OFF \
+            -DWITH_REALSENSE=OFF
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build -j$(nproc)
+
+      - name: Test
+        working-directory: ${{ github.workspace }}/build
+        run: |
+          # The ROS packages are not on the default loader path. Both
+          # directories are needed: GTSAM and libpointmatcher land in
+          # /opt/ros/jazzy/lib, but gtsam's own libmetis-gtsam.so goes to the
+          # multiarch subdirectory, and libgtsam.so carries no RUNPATH, so the
+          # loader can only find it through LD_LIBRARY_PATH.
+          ROS_LIB=/opt/ros/jazzy/lib
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/bin:${ROS_LIB}:${ROS_LIB}/$(gcc -dumpmachine)${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          find ${{ github.workspace }}/build -name '*.gcda' -delete
+          # Unit tests only ("long" is the end-to-end replay suite).
+          #
+          # Two reasons. It costs ~90 min in this instrumented -O0 build, 94% of
+          # the job's test time, for ~3 points of coverage. And running it on
+          # some events but not others makes the numbers incomparable: Codecov
+          # measures a pull request against master, so a unit-only PR report
+          # against a full master report reads as a coverage regression on every
+          # PR. Same scope everywhere keeps the comparison meaningful.
+          #
+          # The replays still run (and gate) in the cmake-linux / macos /
+          # windows jobs; they are just not measured here.
+          ctest -V -LE "long|performance"
+
+      - name: Generate LCOV report
+        run: |
+          GCOV_VER="$(gcc -dumpversion | cut -d. -f1)"
+          if command -v "gcov-${GCOV_VER}" >/dev/null 2>&1; then
+            GCOV_TOOL="gcov-${GCOV_VER}"
+          else
+            GCOV_TOOL="gcov"
+          fi
+          LCOV_IGNORE=(--ignore-errors gcov,source,graph,mismatch,unused)
+
+          # The whole of corelib/utilite, test objects included, not just their src/.
+          # An inline function defined in a header is emitted in whichever
+          # translation unit wins comdat folding, which is often a test one, and
+          # its counters then live in that unit's .gcda: capturing only src/
+          # reports such a function as uncovered however often it is called. The
+          # test sources themselves are dropped below, after the counters are read.
+          lcov --gcov-tool "$GCOV_TOOL" "${LCOV_IGNORE[@]}" \
+            --capture \
+            --directory ${{ github.workspace }}/build/corelib \
+            --directory ${{ github.workspace }}/build/utilite \
+            --output-file lcov.info
+
+          lcov "${LCOV_IGNORE[@]}" --extract lcov.info \
+            '${{ github.workspace }}/*' \
+            --output-file lcov.info
+          # The test sources are the instrument, not the subject: a line in a
+          # test counts as uncovered only when the test skipped it (a defensive
+          # cleanup branch, a platform guard), which says nothing about the
+          # library. They are also near-fully covered by construction, so
+          # leaving them in inflates the overall number. Excluded here, before
+          # the upload, so the HTML artifact, the summary below and Codecov all
+          # report the same figure. Kept in sync with coverage-report.sh.
+          lcov "${LCOV_IGNORE[@]}" --remove lcov.info \
+            '*/sqlite3/*' \
+            '*/rtflann/*' \
+            '*/corelib/test/*' \
+            '*/utilite/test/*' \
+            '*/_deps/*' \
+            --output-file lcov.info
+
+          lcov --summary lcov.info
+
+      - name: HTML coverage report
+        run: genhtml --ignore-errors source,mismatch lcov.info --output-directory coverage-html --legend --demangle-cpp
+
+      - name: Upload HTML coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html
+          retention-days: 14
+
+      - name: Upload to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          # Upload ONLY lcov.info. By default the CLI also searches the tree and
+          # runs gcov over every .gcno it finds, uploading those .gcov files
+          # alongside -- which re-introduced corelib/test and utilite/test on
+          # Codecov even though the lcov --remove step had dropped them (the
+          # HTML artifact, built from the same lcov.info, was correctly clean).
+          disable_search: true
+          plugins: noop
+          token: ${{ env.CODECOV_TOKEN }}
+          fail_ci_if_error: false

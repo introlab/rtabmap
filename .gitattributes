@@ -1,0 +1,53 @@
+# This repository has a historical mix of CRLF and LF files. Letting git convert
+# line endings (core.autocrlf, or a "text=auto" policy) would rewrite whole files
+# on checkout/commit and bury real changes under thousands of ending-only diff
+# lines -- and it would do so at unpredictable times, on whichever file happens
+# to be touched next. Keep every file's bytes exactly as committed.
+#
+# This also keeps LF-only files LF on Windows checkouts, which data/tests/manifest.txt
+# relies on: scripts/fetch_test_data.sh tab-splits it and a trailing CR breaks SHA
+# matching. No per-file exception is needed for that.
+#
+# Note this does not stop an editor or script from rewriting a file's endings; it
+# only stops git from doing it.
+* -text
+
+# -----------------------------------------------------------------------------
+# Migrating to the standard LF policy (a future MR, on its own)
+# -----------------------------------------------------------------------------
+# LF is what git stores natively and what essentially every C++ project on GitHub
+# uses (LLVM, OpenCV, PCL, Qt). The rule above only freezes the current mix; it is
+# a holding position, not the destination. To finish the job:
+#
+#   1. Replace the `* -text` line above with:
+#
+#          * text=auto
+#          # Files that must stay LF even in a Windows working tree:
+#          *.sh    text eol=lf
+#          *.bash  text eol=lf
+#
+#      (`text=auto` = store LF in the repo, check out native line endings.)
+#
+#   2. Rewrite the working tree and stage it, in the same commit as step 1:
+#
+#          git add --renormalize .
+#
+#   3. Verify nothing but line endings changed -- this must print nothing:
+#
+#          git diff --cached --ignore-cr-at-eol
+#
+#   4. Commit alone, with no other change in the MR, then record the SHA so
+#      `git blame` (and GitHub's blame view) skips over it:
+#
+#          echo "<sha of the normalization commit>" >> .git-blame-ignore-revs
+#
+#      Add a follow-up commit for that file; also set it locally with
+#      `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+#
+# Cost, measured on the tree at the time of writing: 227 CRLF files + 7 with mixed
+# endings, ~138k of ~634k lines rewritten (22%), across 234 files. The commit
+# itself is mechanical and safe -- the real cost is every open branch that touches
+# one of those files, which will conflict over the whole file on rebase. Merge or
+# rebase those with `-X renormalize` (merge) / `--strategy-option renormalize`.
+#
+# Best moment: right after a release, when the branch backlog is smallest.
