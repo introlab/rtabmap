@@ -33,8 +33,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UMath.h"
 
 #include <opencv2/core/core.hpp>
-#include <opencv2/core/core_c.h>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/geometry.hpp>
+#endif
 #include <iostream>
 
 namespace rtabmap
@@ -91,12 +94,12 @@ bool EpipolarGeometry::check(const Signature * ssA, const Signature * ssB)
 	int inliers = uSum(status);
 	if(inliers < _matchCountMinAccepted)
 	{
-		ULOGGER_DEBUG("Epipolar constraint failed A : not enough inliers (%d/%d), min is %d", inliers, pairs.size(), _matchCountMinAccepted);
+		ULOGGER_DEBUG("Epipolar constraint failed A : not enough inliers (%d/%d), min is %d", inliers, (int)pairs.size(), _matchCountMinAccepted);
 		return false;
 	}
 	else
 	{
-		UDEBUG("inliers = %d/%d", inliers, pairs.size());
+		UDEBUG("inliers = %d/%d", inliers, (int)pairs.size());
 		return true;
 	}
 }

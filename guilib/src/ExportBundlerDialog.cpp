@@ -38,6 +38,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+namespace {
+
+// Combo box order matches Optimizer::Type 1:1 (TORO=0, g2o=1, GTSAM=2,
+// Ceres=3, CVSBA=4). TORO is shown but disabled because it's not BA-capable;
+// keeping it in the dropdown lets the combo index equal the Optimizer::Type
+// integer directly (no translation needed). We persist the Optimizer::Type
+// integer in QSettings so future reordering of the .ui (should we want to
+// drop TORO entirely) stays decoupled from saved preferences.
+Optimizer::Type sbaIndexToType(int index)
+{
+	return static_cast<Optimizer::Type>(index);
+}
+
+// PixelVariance is consumed by every BA backend except CVSBA (which feeds
+// observations into cvsba's Sba::run() directly without an info-matrix knob).
+bool sbaIndexUsesPixelVariance(int index)
+{
+	return sbaIndexToType(index) != Optimizer::kTypeCVSBA;
+}
+
+}  // namespace
+
 ExportBundlerDialog::ExportBundlerDialog(QWidget * parent) :
 	QDialog(parent)
 {
@@ -58,20 +80,31 @@ ExportBundlerDialog::ExportBundlerDialog(QWidget * parent) :
 	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateVisibility()));
 	connect(_ui->sba_rematchFeatures, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
-	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA) && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	// Disable TORO (kept in the dropdown only so the combo index lines up
+	// 1:1 with Optimizer::Type) and any backend that wasn't compiled in.
+	// Remember the first available index so we can default to it.
+	int firstAvailable = -1;
+	for(int i = 0; i < _ui->comboBox_sbaType->count(); ++i)
+	{
+		const Optimizer::Type type = sbaIndexToType(i);
+		const bool usable = type != Optimizer::kTypeTORO && Optimizer::isAvailable(type);
+		if(usable)
+		{
+			if(firstAvailable < 0) firstAvailable = i;
+		}
+		else
+		{
+			_ui->comboBox_sbaType->setItemData(i, 0, Qt::UserRole - 1);
+		}
+	}
+	if(firstAvailable < 0)
 	{
 		_ui->groupBox_export_points->setEnabled(false);
 		_ui->groupBox_export_points->setChecked(false);
 	}
-	else if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	else
 	{
-		_ui->comboBox_sbaType->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_sbaType->setCurrentIndex(0);
-	}
-	else if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
-	{
-		_ui->comboBox_sbaType->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_sbaType->setCurrentIndex(1);
+		_ui->comboBox_sbaType->setCurrentIndex(firstAvailable);
 	}
 
 	_ui->lineEdit_path->setText(QDir::currentPath());
@@ -95,7 +128,9 @@ void ExportBundlerDialog::saveSettings(QSettings & settings, const QString & gro
 	settings.setValue("laplacianThr", _ui->doubleSpinBox_laplacianVariance->value());
 	settings.setValue("exportPoints", _ui->groupBox_export_points->isChecked());
 	settings.setValue("sba_iterations", _ui->sba_iterations->value());
-	settings.setValue("sba_type", _ui->comboBox_sbaType->currentIndex());
+	// Persist the Optimizer::Type rather than the combo index so reordering
+	// the dropdown in the future doesn't reshuffle saved preferences.
+	settings.setValue("sba_type", static_cast<int>(sbaIndexToType(_ui->comboBox_sbaType->currentIndex())));
 	settings.setValue("sba_variance", _ui->sba_variance->value());
 	settings.setValue("sba_rematch_features", _ui->sba_rematchFeatures->isChecked());
 	if(!group.isEmpty())
@@ -115,7 +150,25 @@ void ExportBundlerDialog::loadSettings(QSettings & settings, const QString & gro
 	_ui->doubleSpinBox_laplacianVariance->setValue(settings.value("laplacianThr", _ui->doubleSpinBox_laplacianVariance->value()).toDouble());
 	_ui->groupBox_export_points->setChecked(settings.value("exportPoints", _ui->groupBox_export_points->isChecked()).toBool());
 	_ui->sba_iterations->setValue(settings.value("sba_iterations", _ui->sba_iterations->value()).toInt());
-	_ui->comboBox_sbaType->setCurrentIndex((Optimizer::Type)settings.value("sba_type", _ui->comboBox_sbaType->currentIndex()).toInt());
+	{
+		// "sba_type" used to be the combo index (0=g2o, 1=cvsba) when only
+		// those two backends were exposed. The combo index now lines up 1:1
+		// with Optimizer::Type, so we read the saved value as a Type
+		// directly. Legacy 0 (= kTypeTORO in the new encoding, but TORO is
+		// disabled in the combo) is reinterpreted as the previous g2o
+		// selection; legacy 1 (= old cvsba index) collides with the new
+		// kTypeG2O encoding -- users who had cvsba selected will see g2o on
+		// first load and need to re-pick cvsba once.
+		int saved = settings.value("sba_type", static_cast<int>(Optimizer::kTypeG2O)).toInt();
+		if(saved == static_cast<int>(Optimizer::kTypeTORO))
+		{
+			saved = static_cast<int>(Optimizer::kTypeG2O);
+		}
+		if(saved >= 0 && saved < _ui->comboBox_sbaType->count())
+		{
+			_ui->comboBox_sbaType->setCurrentIndex(saved);
+		}
+	}
 	_ui->sba_variance->setValue(settings.value("sba_variance", _ui->sba_variance->value()).toDouble());
 	_ui->sba_rematchFeatures->setChecked(settings.value("sba_rematch_features", _ui->sba_rematchFeatures->isChecked()).toBool());
 	if(!group.isEmpty())
@@ -136,14 +189,20 @@ void ExportBundlerDialog::restoreDefaults()
 	_ui->doubleSpinBox_laplacianVariance->setValue(0);
 	_ui->groupBox_export_points->setChecked(false);
 	_ui->sba_iterations->setValue(20);
-	if(Optimizer::isAvailable(Optimizer::kTypeG2O) || !Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	// Default to the first compiled-in BA-capable backend (combo index
+	// matches Optimizer::Type, so we skip TORO at index 0). Falls back to
+	// index 1 (g2o) if nothing is available -- the group box is disabled in
+	// that case anyway.
+	int defaultIndex = static_cast<int>(Optimizer::kTypeG2O);
+	for(int i = 1; i < _ui->comboBox_sbaType->count(); ++i)
 	{
-		_ui->comboBox_sbaType->setCurrentIndex(0);
+		if(Optimizer::isAvailable(sbaIndexToType(i)))
+		{
+			defaultIndex = i;
+			break;
+		}
 	}
-	else
-	{
-		_ui->comboBox_sbaType->setCurrentIndex(1);
-	}
+	_ui->comboBox_sbaType->setCurrentIndex(defaultIndex);
 
 	_ui->sba_variance->setValue(1.0);
 	_ui->sba_rematchFeatures->setChecked(true);
@@ -151,8 +210,9 @@ void ExportBundlerDialog::restoreDefaults()
 
 void ExportBundlerDialog::updateVisibility()
 {
-	_ui->sba_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
-	_ui->label_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
+	const bool usesPixelVariance = sbaIndexUsesPixelVariance(_ui->comboBox_sbaType->currentIndex());
+	_ui->sba_variance->setVisible(usesPixelVariance);
+	_ui->label_variance->setVisible(usesPixelVariance);
 }
 
 void ExportBundlerDialog::getPath()
@@ -189,11 +249,11 @@ void ExportBundlerDialog::exportBundler(
 		{
 			std::map<int, Transform> posesOut;
 			std::multimap<int, Link> linksOut;
-			Optimizer::Type sbaType = _ui->comboBox_sbaType->currentIndex()==0?Optimizer::kTypeG2O:Optimizer::kTypeCVSBA;
+			Optimizer::Type sbaType = sbaIndexToType(_ui->comboBox_sbaType->currentIndex());
 			UASSERT(Optimizer::isAvailable(sbaType));
 			ParametersMap parametersSBA = parameters;
 			uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(_ui->sba_iterations->value())));
-			uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(_ui->sba_variance->value())));
+			uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerPixelVariance(), uNumber2Str(_ui->sba_variance->value())));
 			std::shared_ptr<Optimizer> sba(Optimizer::create(sbaType, parametersSBA));
 			sba->getConnectedGraph(poses.begin()->first, poses, links, posesOut, linksOut);
 			// set input poses as initial optimization guess

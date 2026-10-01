@@ -29,6 +29,7 @@
 
 #ifdef _WIN32
 #include "rtabmap/utilite/Win32/UWin32.h"
+#include <atomic>
 #define SEM_VALUE_MAX ((int) ((~0u) >> 1))
 #else
 #include <pthread.h>
@@ -59,6 +60,9 @@ public:
 	 * @param n number to initialize
 	 */
 	USemaphore( int initValue = 0 )
+#ifdef _WIN32
+		: _count(initValue)
+#endif
 	{
 #ifdef _WIN32
 		S = CreateSemaphore(0,initValue,SEM_VALUE_MAX,0);
@@ -94,6 +98,9 @@ public:
 		while(n-- > 0 && rt==0)
 		{
 			rt = WaitForSingleObject((HANDLE)S, ms<=0?INFINITE:ms);
+			if(rt == 0) {
+				--_count;
+			}
 		}
 		return rt == 0;
 	}
@@ -133,44 +140,67 @@ public:
 
 	/*
 	 * Try to acquire the semaphore, not a blocking call.
-	 * @return false if the semaphore can't be taken without waiting (value <= 0), true otherwise
+	 * @return 0 if the semaphore was acquired, EAGAIN if it couldn't be taken
+	 *         without waiting.
+	 * @note The Windows overload takes no argument (it always acquires 1).
 	 */
 #ifdef _WIN32
 	int acquireTry() const
 	{
-		return ((WaitForSingleObject((HANDLE)S,INFINITE)==WAIT_OBJECT_0)?0:EAGAIN);
+		// Non-blocking try-acquire: timeout 0, not INFINITE. INFINITE here
+		// turned this into a blocking acquire and hung tests when the count
+		// reached 0.
+		if(WaitForSingleObject((HANDLE)S, 0) == WAIT_OBJECT_0)
+		{
+			--_count;
+			return 0;
+		}
+		return EAGAIN;
 	}
 #else
+	/**
+	 * @param n the number to acquire.
+	 */
 	int acquireTry(int n)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		if(n > _available)
 		{
 			pthread_mutex_unlock(&_waitMutex);
-			return false;
+			return EAGAIN;
 		}
 		_available -= n;
 		pthread_mutex_unlock(&_waitMutex);
-		return true;
+		return 0;
 	}
 #endif
 
 	/**
-	 * Release the semaphore, increasing its value by 1 and
+	 * Release the semaphore, increasing its value by n and
 	 * signaling waiting threads (which called acquire()).
+	 * @param n the number to release.
+	 * @return 0 on success, ERANGE if the release would push the semaphore over
+	 *         SEM_VALUE_MAX (the count is then left unchanged). The Unix
+	 *         implementation cannot fail and always returns 0.
 	 */
 #ifdef _WIN32
 	int release(int n = 1) const
 	{
-		return (ReleaseSemaphore((HANDLE)S,n,0)?0:ERANGE);
+		if(ReleaseSemaphore((HANDLE)S, n, 0))
+		{
+			_count += n;
+			return 0;
+		}
+		return ERANGE;
 	}
 #else
-	void release(int n = 1)
+	int release(int n = 1)
 	{
 		pthread_mutex_lock(&_waitMutex);
 		_available += n;
 		pthread_cond_broadcast(&_cond);
 		pthread_mutex_unlock(&_waitMutex);
+		return 0;
 	}
 #endif
 
@@ -181,7 +211,11 @@ public:
 #ifdef _WIN32
 	int value() const
 	{
-		LONG V = -1; ReleaseSemaphore((HANDLE)S,0,&V); return V;
+		// ReleaseSemaphore(S, 0, &V) returns FALSE on Windows (release count
+		// must be >= 1) and never writes V, so we mirror the count in an atomic
+		// instead. The value is eventually-consistent under concurrent
+		// acquire/release but accurate at quiescence.
+		return (int)_count.load();
 	}
 #else
 	int value()
@@ -204,6 +238,7 @@ public:
 	{
 		CloseHandle(S);
 		S = CreateSemaphore(0,init,SEM_VALUE_MAX,0);
+		_count = init;
 	}
 #endif
 
@@ -212,6 +247,7 @@ private:
 #ifdef _WIN32
 	USemaphore(const USemaphore &S){}
 	HANDLE S;
+	mutable std::atomic<long> _count;
 #else
 	USemaphore(const USemaphore &):_available(0){}
 	pthread_mutex_t _waitMutex;

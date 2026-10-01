@@ -25,6 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <algorithm>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
@@ -160,9 +161,10 @@ OptimizerG2O::OptimizerG2O(const ParametersMap & parameters) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
-		pixelVariance_(Parameters::defaultg2oPixelVariance()),
-		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
-		baseline_(Parameters::defaultg2oBaseline())
+		pixelVariance_(Parameters::defaultOptimizerPixelVariance()),
+		disparityVariance_(Parameters::defaultOptimizerDisparityVariance()),
+		robustKernelDelta_(Parameters::defaultOptimizerRobustKernelDelta()),
+		baseline_(Parameters::defaultOptimizerBaseline())
 {
 #ifdef RTABMAP_G2O
 	// Issue on android, have to explicitly register this type when using fixed root prior below
@@ -184,10 +186,12 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kg2oSolver(), solver_);
 	Parameters::parse(parameters, Parameters::kg2oOptimizer(), optimizer_);
-	Parameters::parse(parameters, Parameters::kg2oPixelVariance(), pixelVariance_);
-	Parameters::parse(parameters, Parameters::kg2oRobustKernelDelta(), robustKernelDelta_);
-	Parameters::parse(parameters, Parameters::kg2oBaseline(), baseline_);
+	Parameters::parse(parameters, Parameters::kOptimizerPixelVariance(), pixelVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerDisparityVariance(), disparityVariance_);
+	Parameters::parse(parameters, Parameters::kOptimizerRobustKernelDelta(), robustKernelDelta_);
+	Parameters::parse(parameters, Parameters::kOptimizerBaseline(), baseline_);
 	UASSERT(pixelVariance_ > 0.0);
+	UASSERT(disparityVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
 
 #ifdef RTABMAP_ORB_SLAM
@@ -361,7 +365,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					if(!priorsIgnored() && iter->second.type() == Link::kPosePrior)
 					{
 						if(rootId!=0) {
-							UDEBUG("Removed rootId=%d because there are priors.");
+							UDEBUG("Removed rootId=%d because there are priors.", rootId);
 						}
 						rootId = 0;
 						break;
@@ -1187,7 +1191,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				if(i>0 && optimizer.activeRobustChi2() > 1000000000000.0)
 				{
-					UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
+					UERROR("g2o: Large optimization error detected (%f), aborting optimization!",
+							optimizer.activeRobustChi2());
 					return optimizedPoses;
 				}
 
@@ -1236,7 +1241,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UERROR("g2o: Large optimization error detected (%f), aborting optimization!");
+			UERROR("g2o: Large optimization error detected (%f), aborting optimization!",
+					optimizer.activeRobustChi2());
 			return optimizedPoses;
 		}
 
@@ -1433,9 +1439,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
+	if(outliers)
+	{
+		outliers->clear();
+	}
 #if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
 	UDEBUG("Optimizing graph...");
 
@@ -1539,6 +1549,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 
 		UDEBUG("fill %ld poses to g2o... (rootId=%d hasGravityConstraints=%d isSlam2d=%d)", poses.size(), rootId, hasGravityConstraints?1:0, isSlam2d()?1:0);
+		int freeCamVertices = 0;
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first > 0)
@@ -1645,8 +1656,24 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							iterModel->second[i].Tx(),
 							iterModel->second[i].Tx()<0.0?-iterModel->second[i].Tx()/iterModel->second[i].fx():baseline_,
 							camPose.prettyPrint().c_str());*/
+
+					if(!vCam->fixed())
+					{
+						++freeCamVertices;
+					}
 				}
 			}
+		}
+
+		// Every camera fixed leaves BlockSolver_6_3's pose block empty and g2o
+		// dereferences it unconditionally (fillCSparse -> SIGSEGV). Reachable via
+		// a negative rootId whose -rootId isn't in poses, so refuse instead.
+		if(freeCamVertices == 0)
+		{
+			UERROR("BA has no free camera vertex (rootId=%d, poses=%d): every pose "
+				   "is fixed, there is nothing for g2o to solve. Not optimizing.",
+					rootId, (int)poses.size());
+			return optimizedPoses;
 		}
 
 		UDEBUG("fill edges to g2o...");
@@ -1804,7 +1831,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			negVertexOffset += wordReferences.rbegin()->first;
 		}
 		UDEBUG("stepVertexId=%d, negVertexOffset=%d", stepVertexId, negVertexOffset);
-		std::list<g2o::OptimizableGraph::Edge*> edges;
+		struct EdgeReference
+		{
+			g2o::OptimizableGraph::Edge* edge;
+			int wordId;
+			int poseId;
+		};
+		std::list<EdgeReference> edges;
 		for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
 			int id = iter->first;
@@ -1861,14 +1894,22 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						double variance = pixelVariance_;
 						if(uIsFinite(depth) && depth > 0.0 && baseline > 0.0)
 						{
+							// Stereo edge: per-axis info -- u, v use pixelVariance,
+							// disparity (u - u_right) uses disparityVariance.
+							// This keeps the depth measurement channel from being
+							// over-trusted relative to the u/v feature detector
+							// precision (or vice versa).
+							Eigen::Matrix3d stereoInfo = Eigen::Matrix3d::Zero();
+							stereoInfo(0, 0) = 1.0 / variance;
+							stereoInfo(1, 1) = 1.0 / variance;
+							stereoInfo(2, 2) = 1.0 / disparityVariance_;
 							// stereo edge
 #ifdef RTABMAP_ORB_SLAM
 							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
 							float disparity = baseline * iterModel->second[camIndex].fx() / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
-							//variance *= log(exp(1)+disparity);
-							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->setInformation(stereoInfo);
 							es->fx = iterModel->second[camIndex].fx();
 							es->fy = iterModel->second[camIndex].fy();
 							es->cx = iterModel->second[camIndex].cx();
@@ -1880,8 +1921,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							float disparity = baseline * vcam->estimate().Kcam(0,0) / depth;
 							Eigen::Vector3d obs( pt.kpt.pt.x, pt.kpt.pt.y, pt.kpt.pt.x-disparity);
 							es->setMeasurement(obs);
-							//variance *= log(exp(1)+disparity);
-							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->setInformation(stereoInfo);
 							e = es;
 #endif
 						}
@@ -1920,12 +1960,24 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						if(robustKernelDelta_ > 0.0)
 						{
 							g2o::RobustKernelHuber* kernel = new g2o::RobustKernelHuber;
+							// Huber reads delta in |r| units but
+							// Optimizer/RobustKernelDelta is a chi^2 threshold, so the
+							// knee deliberately sits above the rejection threshold:
+							// pass 1 then only caps gross outliers, which keeps its
+							// estimate a good basis for deciding what to reject.
+							// Matching them throttles legitimate noise and costs
+							// accuracy on weakly constrained far points.
 							kernel->setDelta(robustKernelDelta_);
 							e->setRobustKernel(kernel);
 						}
 
-						optimizer.addEdge(e);
-						edges.push_back(e);
+						if(!optimizer.addEdge(e))
+						{
+							delete e;
+							UERROR("Failed adding BA observation for word %d in pose %d.", id, poseId);
+							return optimizedPoses;
+						}
+						edges.push_back(EdgeReference{e, id, poseId});
 					}
 				}
 			}
@@ -1945,7 +1997,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		for(int i=0; i<(robustKernelDelta_>0.0?2:1); ++i)
 		{
-			it += optimizer.optimize(i==0&&robustKernelDelta_>0.0?5:iterations());
+			// Pass 1 only needs to expose the bad residuals; pass 2 gets the full
+			// budget. std::min so a caller asking for fewer than 5 gets that.
+			it += optimizer.optimize(i==0&&robustKernelDelta_>0.0?std::min(5, iterations()):iterations());
 
 			// early stop condition
 			optimizer.computeActiveErrors();
@@ -1961,51 +2015,31 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(i>0 && (optimizer.activeRobustChi2() > 1000000000000.0 || !uIsFinite(optimizer.activeRobustChi2())))
 			{
-				UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
+				UWARN("g2o: Large optimization error detected (%f), aborting optimization!",
+						optimizer.activeRobustChi2());
 				return optimizedPoses;
 			}
 
 			if(robustKernelDelta_>0.0)
 			{
-				for(std::list<g2o::OptimizableGraph::Edge*>::iterator iter=edges.begin(); iter!=edges.end();++iter)
+				for(std::list<EdgeReference>::iterator iter=edges.begin(); iter!=edges.end();++iter)
 				{
-					if((*iter)->level() == 0 && (*iter)->chi2() > (*iter)->robustKernel()->delta())
+					if(iter->edge->level() == 0 && iter->edge->chi2() > iter->edge->robustKernel()->delta())
 					{
-						(*iter)->setLevel(1);
+						iter->edge->setLevel(1);
 						++outliersCount;
 						double d = 0.0;
-#ifdef RTABMAP_ORB_SLAM
-						if(dynamic_cast<g2o::EdgeStereoSE3ProjectXYZ*>(*iter) != 0)
+	#ifdef RTABMAP_ORB_SLAM
+						if(dynamic_cast<g2o::EdgeStereoSE3ProjectXYZ*>(iter->edge) != 0)
 						{
-							d = ((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[2];
+							d = ((g2o::EdgeStereoSE3ProjectXYZ*)iter->edge)->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)iter->edge)->measurement()[2];
 						}
-						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
-#else
-						if(dynamic_cast<g2o::EdgeProjectP2SC*>(*iter) != 0)
+	#else
+						if(dynamic_cast<g2o::EdgeProjectP2SC*>(iter->edge) != 0)
 						{
-							d = ((g2o::EdgeProjectP2SC*)(*iter))->measurement()[0]-((g2o::EdgeProjectP2SC*)(*iter))->measurement()[2];
+							d = ((g2o::EdgeProjectP2SC*)iter->edge)->measurement()[0]-((g2o::EdgeProjectP2SC*)iter->edge)->measurement()[2];
 						}
-						//UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
-#endif
-
-						int id=-1;
-						if((*iter)->vertex(0)->id() > negVertexOffset)
-						{
-							id = negVertexOffset - (*iter)->vertex(0)->id();
-						}
-						else
-						{
-							id = (*iter)->vertex(0)->id() - stepVertexId;
-						}
-						UASSERT_MSG(points3DMap.find(id) != points3DMap.end(), uFormat("word id=%d points3DMap=%ld vertex id=%d (negVertexOffset=%d stepVertexId=%d)",
-							id, points3DMap.size(), (*iter)->vertex(0)->id(), negVertexOffset, stepVertexId).c_str());
-						cv::Point3f pt3d = points3DMap.at(id);
-						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
-
-						if(outliers)
-						{
-							outliers->insert((*iter)->vertex(0)->id()-stepVertexId);
-						}
+	#endif
 						if(d < 5.0)
 						{
 							outliersCountFar++;
@@ -2018,11 +2052,41 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				UDEBUG("outliers=%d outliersCountFar=%d", outliersCount, outliersCountFar);
 			}
 		}
+
+		std::map<int, int> edgesPerWord;
+		std::map<int, int> outlierEdgesPerWord;
+		for(std::list<EdgeReference>::const_iterator iter=edges.begin(); iter!=edges.end(); ++iter)
+		{
+			++edgesPerWord[iter->wordId];
+			if(iter->edge->level() != 0)
+			{
+				++outlierEdgesPerWord[iter->wordId];
+				if(outliers)
+				{
+					(*outliers)[iter->wordId].insert(iter->poseId);
+				}
+			}
+		}
+		std::set<int> pointsToRestore;
+		for(std::map<int, int>::const_iterator iter=outlierEdgesPerWord.begin(); iter!=outlierEdgesPerWord.end(); ++iter)
+		{
+			if(iter->second == edgesPerWord.at(iter->first))
+			{
+				pointsToRestore.insert(iter->first);
+			}
+		}
+		// Landmarks keeping at least one active projection are re-optimized; only
+		// the fully rejected ones fall back to the caller's estimate.
+		UDEBUG("words=%d, with rejected observations=%d (partially=%d, fully=%d)",
+				(int)edgesPerWord.size(), (int)outlierEdgesPerWord.size(),
+				(int)(outlierEdgesPerWord.size() - pointsToRestore.size()),
+				(int)pointsToRestore.size());
 		UDEBUG("g2o optimizing end (%d iterations done, error=%f, outliers=%d/%d (delta=%f) time = %f s)", it, optimizer.activeRobustChi2(), outliersCount, (int)edges.size(), robustKernelDelta_, timer.ticks());
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
+			UWARN("g2o: Large optimization error detected (%f), aborting optimization!",
+					optimizer.activeRobustChi2());
 			return optimizedPoses;
 		}
 
@@ -2106,9 +2170,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			if(v)
 			{
-				cv::Point3f p(v->estimate()[0], v->estimate()[1], v->estimate()[2]);
-				//UDEBUG("%d from=%f,%f,%f to=%f,%f,%f", iter->first, iter->second.x, iter->second.y, iter->second.z, p.x, p.y, p.z);
-				iter->second = p;
+				// Keep an optimized landmark when at least one projection remains active.
+				// Otherwise, leave its input estimate untouched.
+				if(pointsToRestore.find(id) == pointsToRestore.end())
+				{
+					cv::Point3f p(v->estimate()[0], v->estimate()[1], v->estimate()[2]);
+					iter->second = p;
+				}
 			}
 			else
 			{
@@ -2174,6 +2242,27 @@ bool OptimizerG2O::loadGraph(
 	std::vector<VertexEntry> verticesList;
 	std::vector<EdgeEntry> edgesList;
 
+	// The type of a link, which saveGraph() appends as a column past the fields the
+	// format defines: g2o's own loader reads the fields it knows and ignores what
+	// follows, so the column travels with the file without breaking it. A file written
+	// by anything else has no such column, and the type stays the one its tag implies.
+	// This is the only place the type of an edge can come from: the format has no field
+	// for it, so a loop closure and an odometry link are otherwise the same EDGE_SE2.
+	const auto readType = [](const std::vector<std::string> & v, size_t definedSize, Link::Type fallback)
+	{
+		if(v.size() > definedSize)
+		{
+			const int type = atoi(v[definedSize].c_str());
+			if(type >= 0 && type < Link::kEnd)
+			{
+				return (Link::Type)type;
+			}
+			UWARN("Ignoring link type \"%s\", not one of the %d types.",
+					v[definedSize].c_str(), (int)Link::kEnd);
+		}
+		return fallback;
+	};
+
 	char line[2048];
 	while(fgets(line, 2048, file) != NULL)
 	{
@@ -2233,7 +2322,7 @@ bool OptimizerG2O::loadGraph(
 			e.definitelyLandmark = true;
 			verticesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE2" && v.size() == 12)
+		else if(tag == "EDGE_SE2" && v.size() >= 12)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2246,12 +2335,13 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[9]);
 			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[10]);
 			e.info.at<double>(5, 5) = uStr2Double(v[11]);
-			e.type = Link::kUndef; // disambiguated after we know landmarkOffset
+			// kUndef is disambiguated after we know landmarkOffset
+			e.type = readType(v, 12, Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE2_XY" && v.size() == 8)
+		else if(tag == "EDGE_SE2_XY" && v.size() >= 8)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2261,12 +2351,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(0, 0) = uStr2Double(v[5]);
 			e.info.at<double>(0, 1) = e.info.at<double>(1, 0) = uStr2Double(v[6]);
 			e.info.at<double>(1, 1) = uStr2Double(v[7]);
-			e.type = Link::kLandmark;
+			e.type = readType(v, 8, Link::kLandmark);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = true;
 			edgesList.push_back(e);
 		}
-		else if((tag == "EDGE_SE3:QUAT" || tag == "EDGE_SE3") && v.size() == 31)
+		else if((tag == "EDGE_SE3:QUAT" || tag == "EDGE_SE3") && v.size() >= 31)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2285,12 +2375,12 @@ bool OptimizerG2O::loadGraph(
 			}
 			// EDGE_SE3 (no :QUAT) is the landmark variant emitted by saveGraph
 			bool landmarkTag = (tag == "EDGE_SE3");
-			e.type = landmarkTag ? Link::kLandmark : Link::kUndef;
+			e.type = readType(v, 31, landmarkTag ? Link::kLandmark : Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = landmarkTag;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE3_TRACKXYZ" && v.size() == 13)
+		else if(tag == "EDGE_SE3_TRACKXYZ" && v.size() >= 13)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2304,12 +2394,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[10]);
 			e.info.at<double>(1, 2) = e.info.at<double>(2, 1) = uStr2Double(v[11]);
 			e.info.at<double>(2, 2) = uStr2Double(v[12]);
-			e.type = Link::kLandmark;
+			e.type = readType(v, 13, Link::kLandmark);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = true;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_PRIOR_SE2" && v.size() == 11)
+		else if(tag == "EDGE_PRIOR_SE2" && v.size() >= 11)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2322,12 +2412,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[8]);
 			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[9]);
 			e.info.at<double>(5, 5) = uStr2Double(v[10]);
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 11, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_PRIOR_SE2_XY" && v.size() == 7)
+		else if(tag == "EDGE_PRIOR_SE2_XY" && v.size() >= 7)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2339,12 +2429,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[6]);
 			// no orientation info on this prior
 			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 7, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE3_PRIOR" && v.size() == 31)
+		else if(tag == "EDGE_SE3_PRIOR" && v.size() >= 31)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2362,12 +2452,12 @@ bool OptimizerG2O::loadGraph(
 					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
 				}
 			}
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 31, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_POINTXYZ_PRIOR" && v.size() == 11)
+		else if(tag == "EDGE_POINTXYZ_PRIOR" && v.size() >= 11)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2382,12 +2472,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(2, 2) = uStr2Double(v[10]);
 			// no orientation info on this prior
 			e.info.at<double>(3, 3) = e.info.at<double>(4, 4) = e.info.at<double>(5, 5) = 1.0 / 9999.0;
-			e.type = Link::kPosePrior;
+			e.type = readType(v, 11, Link::kPosePrior);
 			e.isPrior = true;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE2_SWITCHABLE" && v.size() == 13)
+		else if(tag == "EDGE_SE2_SWITCHABLE" && v.size() >= 13)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2401,12 +2491,12 @@ bool OptimizerG2O::loadGraph(
 			e.info.at<double>(1, 1) = uStr2Double(v[10]);
 			e.info.at<double>(1, 5) = e.info.at<double>(5, 1) = uStr2Double(v[11]);
 			e.info.at<double>(5, 5) = uStr2Double(v[12]);
-			e.type = Link::kUndef;
+			e.type = readType(v, 13, Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
 		}
-		else if(tag == "EDGE_SE3_SWITCHABLE" && v.size() == 32)
+		else if(tag == "EDGE_SE3_SWITCHABLE" && v.size() >= 32)
 		{
 			EdgeEntry e;
 			e.from = atoi(v[1].c_str());
@@ -2424,7 +2514,7 @@ bool OptimizerG2O::loadGraph(
 					if(r != c) e.info.at<double>(c, r) = e.info.at<double>(r, c);
 				}
 			}
-			e.type = Link::kUndef;
+			e.type = readType(v, 32, Link::kUndef);
 			e.isPrior = false;
 			e.hasLandmarkEndpoint = false;
 			edgesList.push_back(e);
@@ -2675,20 +2765,51 @@ bool OptimizerG2O::saveGraph(
 		}
 
 		int virtualVertexId = landmarkOffset - (poses.size()&&poses.rbegin()->first<0?poses.rbegin()->first:0);
+
+		// A link is stored on both of the nodes it connects, so a caller iterating them
+		// hands us each one twice, once per direction. g2o has no notion of a reverse
+		// edge: it would read the two lines as two independent constraints and count the
+		// information of every link twice. Only the first direction of a pair is written,
+		// which is also half the file. Links on a single node (a prior, gravity) are not
+		// pairs and are left alone.
+		std::set<std::pair<int, int> > writtenPairs;
+
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
+			if(iter->second.from() != iter->second.to())
+			{
+				const std::pair<int, int> pair(
+						std::min(iter->second.from(), iter->second.to()),
+						std::max(iter->second.from(), iter->second.to()));
+				if(!writtenPairs.insert(pair).second)
+				{
+					continue;
+				}
+			}
+
+			// The type of the link, as a column past the fields the format defines. g2o's
+			// own loader reads the fields it knows and ignores what follows, so this
+			// travels with the file without breaking it, and loadGraph() reads it back.
+			// Without it the type is lost on export, and the type is what tells a loop
+			// closure from an odometry link.
+			const std::string typeSuffix = uFormat(" %d", (int)iter->second.type());
+
 			if (iter->second.type() == Link::kLandmark)
 			{
 				if (this->landmarksIgnored())
 				{
 					continue;
 				}
+				// Look up landmark info by landmark id (the negative endpoint),
+				// not by the multimap key -- callers may key landmark links
+				// either by from() or by the landmark id.
+				const int landmarkId = iter->second.from() < 0 ? iter->second.from() : iter->second.to();
 				if(isSlam2d())
 				{
-					if(uValue(isLandmarkWithRotation, iter->first, false))
+					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f%s\n",
 								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 								iter->second.transform().x(),
@@ -2699,28 +2820,30 @@ bool OptimizerG2O::saveGraph(
 								iter->second.infMatrix().at<double>(0, 5),
 								iter->second.infMatrix().at<double>(1, 1),
 								iter->second.infMatrix().at<double>(1, 5),
-								iter->second.infMatrix().at<double>(5, 5));
+								iter->second.infMatrix().at<double>(5, 5),
+								typeSuffix.c_str());
 					}
 					else
 					{
 						// EDGE_SE2_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
-						fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE2_XY %d %d %f %f %f %f %f%s\n",
 							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 							iter->second.transform().x(),
 							iter->second.transform().y(),
 							iter->second.infMatrix().at<double>(0, 0),
 							iter->second.infMatrix().at<double>(0, 1),
-							iter->second.infMatrix().at<double>(1, 1));
+							iter->second.infMatrix().at<double>(1, 1),
+							typeSuffix.c_str());
 					}
 				}
 				else
 				{
-					if(uValue(isLandmarkWithRotation, iter->first, false))
+					if(uValue(isLandmarkWithRotation, landmarkId, false))
 					{
 						// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 						Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-						fprintf(file, "EDGE_SE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f%s\n",
 								iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 								iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 								iter->second.transform().x(),
@@ -2750,12 +2873,13 @@ bool OptimizerG2O::saveGraph(
 								iter->second.infMatrix().at<double>(3, 5),
 								iter->second.infMatrix().at<double>(4, 4),
 								iter->second.infMatrix().at<double>(4, 5),
-								iter->second.infMatrix().at<double>(5, 5));
+								iter->second.infMatrix().at<double>(5, 5),
+								typeSuffix.c_str());
 					}
 					else
 					{
 						// EDGE_SE3_TRACKXYZ observed_vertex_id observing_vertex_id param_offset x y z inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-						fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f\n",
+						fprintf(file, "EDGE_SE3_TRACKXYZ %d %d %d %f %f %f %f %f %f %f %f %f%s\n",
 							iter->second.from()<0?landmarkOffset-iter->second.from():iter->second.from(),
 							iter->second.to()<0?landmarkOffset-iter->second.to():iter->second.to(),
 							PARAM_OFFSET,
@@ -2767,7 +2891,8 @@ bool OptimizerG2O::saveGraph(
 							iter->second.infMatrix().at<double>(0, 2),
 							iter->second.infMatrix().at<double>(1, 1),
 							iter->second.infMatrix().at<double>(1, 2),
-							iter->second.infMatrix().at<double>(2, 2));
+							iter->second.infMatrix().at<double>(2, 2),
+							typeSuffix.c_str());
 					}
 				}
 				continue;
@@ -2839,7 +2964,7 @@ bool OptimizerG2O::saveGraph(
 				{
 					// EDGE_SE2 observed_vertex_id observing_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
 					// EDGE_SE2_PRIOR observed_vertex_id x y qx qy qz qw inf_11 inf_12 inf_13 inf_22 inf_23 inf_33
-					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2852,13 +2977,14 @@ bool OptimizerG2O::saveGraph(
         					iter->second.infMatrix().at<double>(0, 5),
         					iter->second.infMatrix().at<double>(1, 1),
         					iter->second.infMatrix().at<double>(1, 5),
-        					iter->second.infMatrix().at<double>(5, 5));
+        					iter->second.infMatrix().at<double>(5, 5),
+        					typeSuffix.c_str());
 				}
 				else
 				{
 					// EDGE_XY observed_vertex_id observing_vertex_id x y inf_11 inf_12 inf_22
 					// EDGE_POINTXY_PRIOR x y inf_11 inf_12 inf_22
-					fprintf(file, "%s %d%s%s %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2867,7 +2993,8 @@ bool OptimizerG2O::saveGraph(
         					iter->second.transform().y(),
         					iter->second.infMatrix().at<double>(0, 0),
         					iter->second.infMatrix().at<double>(0, 1),
-        					iter->second.infMatrix().at<double>(1, 1));
+        					iter->second.infMatrix().at<double>(1, 1),
+        					typeSuffix.c_str());
 				}
 			}
 			else
@@ -2877,7 +3004,7 @@ bool OptimizerG2O::saveGraph(
 					// EDGE_SE3 observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 					// EDGE_SE3_PRIOR observed_vertex_id offset_parameter_id x y z qx qy qz qw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
 					Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
-					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2909,13 +3036,14 @@ bool OptimizerG2O::saveGraph(
         					iter->second.infMatrix().at<double>(3, 5),
         					iter->second.infMatrix().at<double>(4, 4),
         					iter->second.infMatrix().at<double>(4, 5),
-        					iter->second.infMatrix().at<double>(5, 5));
+        					iter->second.infMatrix().at<double>(5, 5),
+        					typeSuffix.c_str());
 				}
 				else
 				{
 					// EDGE_XYZ observed_vertex_id observing_vertex_id x y z qx qy qz qw inf_11 inf_12 .. inf_13 inf_22 .. inf_33
 					// EDGE_POINTXYZ_PRIOR observed_vertex_id x y z inf_11 inf_12 .. inf_13 inf_22 .. inf_33
-					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f\n",
+					fprintf(file, "%s %d%s%s %f %f %f %f %f %f %f %f %f%s\n",
         					prefix.c_str(),
         					iter->second.from(),
         					to.c_str(),
@@ -2928,7 +3056,8 @@ bool OptimizerG2O::saveGraph(
         					iter->second.infMatrix().at<double>(0, 2),
         					iter->second.infMatrix().at<double>(1, 1),
         					iter->second.infMatrix().at<double>(1, 2),
-        					iter->second.infMatrix().at<double>(2, 2));
+        					iter->second.infMatrix().at<double>(2, 2),
+        					typeSuffix.c_str());
 				}
 			}
 		}

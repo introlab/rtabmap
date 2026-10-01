@@ -10,13 +10,14 @@
 #include <opencv2/core/types.hpp>
 #include <opencv2/core/mat.hpp>
 #include "rtabmap/core/PythonInterface.h"
+#include "rtabmap/core/rtabmap_core_export.h"
 #include <vector>
 #include <Python.h>
 
 namespace rtabmap
 {
 
-class PyMatcher
+class RTABMAP_CORE_EXPORT PyMatcher
 {
 public:
   PyMatcher(const std::string & pythonMatcherPath,

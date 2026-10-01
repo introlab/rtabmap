@@ -21,16 +21,24 @@ class gil_scoped_release;
 namespace rtabmap {
 
 /**
- * Create a single PythonInterface on main thread at
- * global scope before any Python classes.
+ * Process-wide singleton owning the embedded Python interpreter.
+ * Call PythonInterface::instance() from the main thread (typically near
+ * the top of main()) before any Python-using class is constructed.
  */
 class RTABMAP_CORE_EXPORT PythonInterface
 {
 public:
-	PythonInterface();
-	virtual ~PythonInterface();
+	// Pass a caller tag (e.g. class name) so the main-thread assertion
+	// can report who triggered the first construction.
+	static PythonInterface & instance(const std::string & caller = "");
+
+	PythonInterface(const PythonInterface &) = delete;
+	PythonInterface & operator=(const PythonInterface &) = delete;
 
 private:
+	explicit PythonInterface(const std::string & caller);
+	~PythonInterface();
+
 	pybind11::scoped_interpreter* guard_;
 	pybind11::gil_scoped_release* release_;
 };

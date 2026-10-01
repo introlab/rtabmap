@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UThreadC.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Compression.h>
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_K4A
 #include <k4a/k4a.h>
@@ -159,7 +158,7 @@ bool CameraK4A::init(const std::string & calibrationFolder, const std::string & 
 		}
 
 		uint64_t recording_length = k4a_playback_get_recording_length_usec((k4a_playback_t)playbackHandle_);
-		UINFO("Recording is %lld seconds long", recording_length / 1000000);
+		UINFO("Recording is %lld seconds long", (long long)(recording_length / 1000000));
 
 		k4a_record_configuration_t config;
 		if(k4a_playback_get_record_configuration((k4a_playback_t)playbackHandle_, &config))
@@ -508,7 +507,7 @@ SensorData CameraK4A::captureImage(SensorCaptureInfo * info)
 						CV_8UC4,
 						(void*)k4a_image_get_buffer(rgb_image_));
 
-				cv::cvtColor(bgra, bgrCV, CV_BGRA2BGR);
+				cv::cvtColor(bgra, bgrCV, cv::COLOR_BGRA2BGR);
 			}
 			bgrCV = model_.rectifyImage(bgrCV);
 

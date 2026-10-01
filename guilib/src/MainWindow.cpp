@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/MainWindow.h"
 
 #include "ui_mainWindow.h"
+#include "GuiUtil.h"
 
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
@@ -78,6 +79,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QFileInfo>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QProgressDialog>
+#include <QLabel>
 #include <QGraphicsEllipseItem>
 #include <QDockWidget>
 #include <QtCore/QBuffer>
@@ -90,6 +93,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QSplashScreen>
 #include <QInputDialog>
 #include <QToolButton>
+
+#if CV_MAJOR_VERSION >= 5
+#include <opencv2/geometry.hpp>
+#endif
 
 //RGB-D stuff
 #include "rtabmap/core/CameraRGBD.h"
@@ -121,10 +128,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_GRIDMAP
 #include <rtabmap/core/global_map/GridMap.h>
-#endif
-
-#ifdef HAVE_OPENCV_ARUCO
-#include <opencv2/aruco.hpp>
 #endif
 
 #define LOG_FILE_NAME "LogRtabmap.txt"
@@ -958,7 +961,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		else
 		{
 			Q_EMIT cameraInfoReceived(sensorEvent->info());
-			if (_odomThread == 0 && (_sensorCapture->odomProvided()) && _preferencesDialog->isRGBDMode())
+			if (_odomThread == 0 && _sensorCapture && _sensorCapture->odomProvided() && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
 				odomInfo.reg.covariance = sensorEvent->info().odomCovariance;
@@ -1504,7 +1507,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					{
 						for(size_t i=0; i<10; ++i)
 						{
-							std::string subFrustumId = uFormat("f_odom_%d", iter->first*10+i);
+							std::string subFrustumId = uFormat("f_odom_%d", (int)(iter->first*10+i));
 							_cloudViewer->updateFrustumPose(subFrustumId, _odometryCorrection*iter->second);
 						}
 					}
@@ -1517,7 +1520,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 							if(!t.isNull())
 							{
 								QColor color = Qt::yellow;
-								std::string subFrustumId = uFormat("f_odom_%d", iter->first*10+i);
+								std::string subFrustumId = uFormat("f_odom_%d", (int)(iter->first*10+i));
 								_cloudViewer->addOrUpdateFrustum(subFrustumId, _odometryCorrection*iter->second, t, _cloudViewer->getFrustumScale(), color, models[i].fovX(), models[i].fovY());
 							}
 						}
@@ -2296,7 +2299,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_cachedLocalizationsCount[matchId] += 1.0f;
 			}
-			UDEBUG("time= %d ms (update detection ui)", time.restart());
+			UDEBUG("time= %d ms (update detection ui)", (int)time.restart());
 
 			//update image views
 			if(!signature.sensorData().imageRaw().empty() ||
@@ -2348,7 +2351,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				qimageLoopThread.join();
 				QImage img = qimageThread.getQImage();
 				QImage lcImg = qimageLoopThread.getQImage();
-				UDEBUG("time= %d ms (convert image to qt)", time.restart());
+				UDEBUG("time= %d ms (convert image to qt)", (int)time.restart());
 
 				if(!img.isNull())
 				{
@@ -2396,7 +2399,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
 			}
 
-			UDEBUG("time= %d ms (update detection imageviews)", time.restart());
+			UDEBUG("time= %d ms (update detection imageviews)", (int)time.restart());
 
 			if(_ui->imageView_source->isFeaturesShown() || _ui->imageView_loopClosure->isFeaturesShown() || 
 			   (_ui->imageView_source->isLinesShown() && _ui->imageView_loopClosure->isLinesShown()))
@@ -2430,7 +2433,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_lastIds.clear();
 			}
 
-			UDEBUG("time= %d ms (draw keypoints)", time.restart());
+			UDEBUG("time= %d ms (draw keypoints)", (int)time.restart());
 
 			// loop closure view
 			if((stat.loopClosureId() > 0 || stat.proximityDetectionId() > 0)  &&
@@ -2452,7 +2455,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					}
 				}
 
-				UDEBUG("time= %d ms (update loop closure viewer)", time.restart());
+				UDEBUG("time= %d ms (update loop closure viewer)", (int)time.restart());
 			}
 		}
 		else if(rehearsedSimilarity)
@@ -2486,7 +2489,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			_rawLikelihoodCurve->setData(QMap<int, float>(stat.rawLikelihood()), QMap<int, int>(stat.weights()));
 		}
-		UDEBUG("time= %d ms (update likelihood and posterior)", time.restart());
+		UDEBUG("time= %d ms (update likelihood and posterior)", (int)time.restart());
 
 		// Update statistics tool box
 		if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
@@ -2503,7 +2506,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 		}
 
-		UDEBUG("time= %d ms (update stats toolbox)", time.restart());
+		UDEBUG("time= %d ms (update stats toolbox)", (int)time.restart());
 
 		//======================
 		// RGB-D Mapping stuff
@@ -2544,9 +2547,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			std::map<int, Transform> poses = stat.poses();
 
-			UDEBUG("time= %d ms (update gt-gps stuff)", time.restart());
+			UDEBUG("time= %d ms (update gt-gps stuff)", (int)time.restart());
 
-			UDEBUG("%d %d %d", poses.size(), poses.size()?poses.rbegin()->first:0, stat.refImageId());
+			UDEBUG("%d %d %d", (int)poses.size(), poses.size()?poses.rbegin()->first:0, stat.refImageId());
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
 			{
 				if(_cloudViewer->isVisible())
@@ -2622,7 +2625,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_odometryReceived = false;
 
-			UDEBUG("time= %d ms (update map cloud)", time.restart());
+			UDEBUG("time= %d ms (update map cloud)", (int)time.restart());
 
 			if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 			{
@@ -2708,7 +2711,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
 			}
-			UDEBUG("time= %d ms (update graph view)", time.restart());
+			UDEBUG("time= %d ms (update graph view)", (int)time.restart());
 		}
 
 		if(_multiSessionLocWidget->isVisible())
@@ -2764,7 +2767,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 		}
 
-		UDEBUG("time= %d ms (update cache)", time.restart());
+		UDEBUG("time= %d ms (update cache)", (int)time.restart());
 	}
 	else if(!stat.extended() && stat.loopClosureId()>0)
 	{
@@ -2965,7 +2968,7 @@ void MainWindow::updateMapCloud(
 	}
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
-	UDEBUG("Update map with %d locations", poses.size());
+	UDEBUG("Update map with %d locations", (int)poses.size());
 	QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
 	std::set<std::string> viewerLines = _cloudViewer->getAddedLines();
 	int i=1;
@@ -4391,7 +4394,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 
 	if(_createdFeatures.find(nodeId) != _createdFeatures.end())
 	{
-		UDEBUG("Features cloud %d already created.");
+		UDEBUG("Features cloud %d already created.", nodeId);
 		return;
 	}
 
@@ -4416,7 +4419,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		int oi=0;
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
 		float maxDepth = _preferencesDialog->getCloudMaxDepth(0);
-		UDEBUG("rgb.channels()=%d");
+		UDEBUG("rgb.channels()=%d", rgb.channels());
 		if(!iter->getWords3().empty() && iter->getWords3().size() == iter->getWordsKpts().size())
 		{
 			Transform invLocalTransform = Transform::getIdentity();
@@ -4665,14 +4668,14 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 						if(QFile::rename(_newDatabasePath, _newDatabasePathOutput))
 						{
 							std::string msg = uFormat("Database saved to \"%s\".", _newDatabasePathOutput.toStdString().c_str());
-							UINFO(msg.c_str());
+							UINFO("%s", msg.c_str());
 							QMessageBox::information(this, tr("Database saved!"), QString(msg.c_str()));
 						}
 						else
 						{
 							std::string msg = uFormat("Failed to rename temporary database from \"%s\" to \"%s\".",
 									_newDatabasePath.toStdString().c_str(), _newDatabasePathOutput.toStdString().c_str());
-							UERROR(msg.c_str());
+							UERROR("%s", msg.c_str());
 							QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
 						}
 					}
@@ -4680,7 +4683,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 					{
 						std::string msg = uFormat("Failed to overwrite the database \"%s\". The temporary database is still correctly saved at \"%s\".",
 								_newDatabasePathOutput.toStdString().c_str(), _newDatabasePath.toStdString().c_str());
-						UERROR(msg.c_str());
+						UERROR("%s", msg.c_str());
 						QMessageBox::critical(this, tr("Closing failed!"), QString(msg.c_str()));
 					}
 				}
@@ -4697,7 +4700,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 			else if(!_openedDatabasePath.isEmpty())
 			{
 				std::string msg = uFormat("Database \"%s\" updated.", _openedDatabasePath.toStdString().c_str());
-				UINFO(msg.c_str());
+				UINFO("%s", msg.c_str());
 				QMessageBox::information(this, tr("Database updated!"), QString(msg.c_str()));
 			}
 		}
@@ -5065,7 +5068,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	UTimer timer;
 
 	timer.start();
-	ULOGGER_DEBUG("refWords.size() = %d", refWords.size());
+	ULOGGER_DEBUG("refWords.size() = %d", (int)refWords.size());
 	_ui->imageView_source->clearFeatures();
 	if(_ui->imageView_source->isFeaturesShown())
 	{
@@ -5109,7 +5112,7 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	ULOGGER_DEBUG("source time (shown=%d) = %f s", _ui->imageView_source->isFeaturesShown()?1:0, timer.ticks());
 
 	timer.start();
-	ULOGGER_DEBUG("loopWords.size() = %d", loopWords.size());
+	ULOGGER_DEBUG("loopWords.size() = %d", (int)loopWords.size());
 	QList<QPair<cv::Point2f, cv::Point2f> > uniqueCorrespondences;
 	_ui->imageView_loopClosure->clearFeatures();
 	if(_ui->imageView_loopClosure->isFeaturesShown())
@@ -5496,7 +5499,7 @@ void MainWindow::updateParameters(const ParametersMap & parameters)
 							.arg(iter->first.c_str())
 							.arg(iter->second.c_str());
 			_ui->widget_console->appendMsg(msg);
-			UWARN(msg.toStdString().c_str());
+			UWARN("%s", msg.toStdString().c_str());
 		}
 		QMessageBox::StandardButton button = QMessageBox::question(this,
 				tr("Parameters"),
@@ -5528,6 +5531,10 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveSettings();
 	this->saveFigures();
 	this->setWindowModified(false);
+
+	// If running under sudo, the above writes recreate rtabmap.ini as root;
+	// restore ownership so non-root runs can still save preferences.
+	PreferencesDialog::restoreConfigOwnership(_preferencesDialog->getIniFilePath());
 }
 
 void MainWindow::newDatabase()
@@ -5702,7 +5709,7 @@ void MainWindow::openDatabase(const QString & path, const ParametersMap & overri
 											.arg(iter->second.c_str())
 											.arg(jter->second.c_str());
 							_ui->widget_console->appendMsg(msg);
-							UWARN(msg.toStdString().c_str());
+							UWARN("%s", msg.toStdString().c_str());
 						}
 					}
 				}
@@ -5932,6 +5939,29 @@ void MainWindow::startDetection()
 	Camera * camera = 0;
 	Lidar * lidar = 0;
 
+	// Creating the sensors below opens the devices (createLidar/createCamera/createOdomSensor ->
+	// init(), a few seconds for ZED/RealSense) on the GUI thread; show a busy dialog (min==max==0
+	// => indeterminate) so the window isn't just frozen. Hidden once all sensors are created below.
+	QString startLabel = tr("Starting sensor...");
+	QString initWarn = _preferencesDialog->getSourceInitWarningMsg();
+	if(!initWarn.isEmpty())
+	{
+		startLabel += "\n\n" + initWarn;
+	}
+	QProgressDialog progress(startLabel, QString(), 0, 0, this);
+	if(!initWarn.isEmpty())
+	{
+		QLabel * wrapLabel = new QLabel(startLabel);
+		wrapLabel->setWordWrap(true);
+		progress.setLabel(wrapLabel); // QProgressDialog takes ownership
+		progress.setMinimumWidth(450);
+	}
+	progress.setWindowModality(Qt::ApplicationModal);
+	progress.setCancelButton(0);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+	showAndWaitExposed(&progress);
+
 	if(_preferencesDialog->getLidarSourceDriver() != PreferencesDialog::kSrcUndef)
 	{
 		lidar = _preferencesDialog->createLidar();
@@ -5988,6 +6018,8 @@ void MainWindow::startDetection()
 			odomSensor = camera;
 		}
 	}
+
+	progress.hide(); // all sensors created/opened
 
 	_sensorCapture = new SensorCaptureThread(lidar, camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, waitTime, parameters);
 
@@ -6229,6 +6261,22 @@ void MainWindow::stopDetection()
 	}
 
 	ULOGGER_DEBUG("");
+
+	// Closing the camera runs on the GUI thread in "delete _sensorCapture" below (via
+	// ~SensorCaptureThread -> ~Camera::close()) and can block for a while - e.g. the first 2-3
+	// RealSense closes per launch stall ~20s in the Motion Module stop() (librealsense warm-up).
+	// Show a busy dialog (min==max==0 => indeterminate) so the window isn't just frozen. It is
+	// declared here so it stays visible across the joins/deletes and closes on scope exit.
+	QProgressDialog progress(tr("Stopping sensor..."), QString(), 0, 0, this);
+	if(_sensorCapture)
+	{
+		progress.setWindowModality(Qt::ApplicationModal);
+		progress.setCancelButton(0);
+		progress.setMinimumDuration(0);
+		progress.setValue(0);
+		showAndWaitExposed(&progress);
+	}
+
 	// kill the processes
 	if(_imuThread)
 	{
@@ -6648,7 +6696,7 @@ void MainWindow::postProcessing(
 	{
 		QString msg = tr("Some data missing in the cache to respect the constraints chosen. "
 				   "Try \"Edit->Download all clouds\" to update the cache and try again.");
-		UWARN(msg.toStdString().c_str());
+		UWARN("%s", msg.toStdString().c_str());
 		if(abortIfDataMissing)
 		{
 			QMessageBox::warning(this, tr("Not all data available in the GUI..."), msg);
@@ -6827,7 +6875,8 @@ void MainWindow::postProcessing(
 											{
 												UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
 														"images. Update the cache.",
-													Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+													Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
+													signatureFrom.id(), signatureTo.id());
 											}
 											else
 											{
@@ -7120,7 +7169,7 @@ void MainWindow::postProcessing(
 
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
-		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
+		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerPixelVariance(), uNumber2Str(sbaVariance)));
 		Optimizer * sbaOptimizer = Optimizer::create(sbaType, parametersSBA);
 		std::map<int, Transform>  newPoses = sbaOptimizer->optimizeBA(
 			optimizedPoses.begin()->first,

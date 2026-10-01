@@ -56,6 +56,43 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
+// Whether the strategy searches with a FlannIndex, as opposed to the brute
+// force ones matching against the _dataTree matrix.
+static bool isFlannStrategy(VWDictionary::NNStrategy strategy)
+{
+	return strategy == VWDictionary::kNNFlannNaive ||
+		   strategy == VWDictionary::kNNFlannKdTree ||
+		   strategy == VWDictionary::kNNFlannLSH ||
+		   strategy == VWDictionary::kNNNanoFlannKdTree ||
+		   strategy == VWDictionary::kNNFlannKdTreeSingle;
+}
+
+// Whether the strategy indexes float descriptors in a kd-tree, in which case
+// binary descriptors have to be converted first.
+static bool isKdTreeStrategy(VWDictionary::NNStrategy strategy)
+{
+	return strategy == VWDictionary::kNNFlannKdTree ||
+		   strategy == VWDictionary::kNNNanoFlannKdTree ||
+		   strategy == VWDictionary::kNNFlannKdTreeSingle;
+}
+
+static FlannIndex::flann_algorithm_t flannAlgorithm(VWDictionary::NNStrategy strategy)
+{
+	switch(strategy)
+	{
+	case VWDictionary::kNNFlannNaive:
+		return FlannIndex::FLANN_INDEX_LINEAR;
+	case VWDictionary::kNNFlannLSH:
+		return FlannIndex::FLANN_INDEX_LSH;
+	case VWDictionary::kNNNanoFlannKdTree:
+		return FlannIndex::NANOFLANN_INDEX_KDTREE_SINGLE;
+	case VWDictionary::kNNFlannKdTreeSingle:
+		return FlannIndex::FLANN_INDEX_KDTREE_SINGLE;
+	default:
+		return FlannIndex::FLANN_INDEX_KDTREE; // kNNFlannKdTree
+	}
+}
+
 const int VWDictionary::ID_START = 1;
 const int VWDictionary::ID_INVALID = 0;
 
@@ -64,6 +101,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
 	_incrementalFlann(Parameters::defaultKpIncrementalFlann()),
 	_rebalancingFactor(Parameters::defaultKpFlannRebalancingFactor()),
+	_flannThreads(Parameters::defaultKpFlannThreads()),
 	_byteToFloat(Parameters::defaultKpByteToFloat()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
 	_newDictionaryPath(Parameters::defaultKpDictionaryPath()),
@@ -93,6 +131,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpSerializeWithChecksum(), _serializeWithChecksum);
 	Parameters::parse(parameters, Parameters::kKpIncrementalFlann(), _incrementalFlann);
 	Parameters::parse(parameters, Parameters::kKpFlannRebalancingFactor(), _rebalancingFactor);
+	Parameters::parse(parameters, Parameters::kKpFlannThreads(), _flannThreads);
 	bool byteToFloat = _byteToFloat;
 	Parameters::parse(parameters, Parameters::kKpByteToFloat(), _byteToFloat);
 
@@ -108,20 +147,27 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 		incrementalDictionary = uStr2Bool((*iter).second.c_str());
 	}
 
-	// Verifying hypotheses strategy
+	// Verifying NN strategy
 	bool treeUpdated = false;
 	if((iter=parameters.find(Parameters::kKpNNStrategy())) != parameters.end())
 	{
 		NNStrategy nnStrategy = (NNStrategy)std::atoi((*iter).second.c_str());
 		treeUpdated = this->setNNStrategy(nnStrategy);
 	}
-	if(!treeUpdated && byteToFloat!=_byteToFloat && _strategy == kNNFlannKdTree)
+	if(_strategy == kNNFlannKdTreeSingle && _incrementalDictionary && _incrementalFlann)
+	{
+		UWARN("%s=%d (%s) rebuilds its whole index every time a word is added, which "
+			  "is very slow with %s=true. It is meant for an index built once and "
+			  "searched once, like the one matching the features of two frames.",
+			  Parameters::kKpNNStrategy().c_str(), (int)_strategy,
+			  nnStrategyName(_strategy).c_str(),
+			  Parameters::kKpIncrementalFlann().c_str());
+	}
+
+	if(!treeUpdated && byteToFloat!=_byteToFloat && isKdTreeStrategy(_strategy))
 	{
 		UINFO("KDTree: Binary to Float conversion approach has changed, re-initialize kd-tree.");
-		_dataTree = cv::Mat();
-		_notIndexedWords = uKeysSet(_visualWords);
-		_removedIndexedWords.clear();
-		this->update();
+		this->rebuildIndex();
 	}
 
 	if(incrementalDictionary)
@@ -138,7 +184,7 @@ void VWDictionary::setIncrementalDictionary()
 		_incrementalDictionary = true;
 		if(_visualWords.size())
 		{
-			UWARN("Incremental dictionary set: already loaded visual words (%d) from the fixed dictionary will be included in the incremental one.", _visualWords.size());
+			UWARN("Incremental dictionary set: already loaded visual words (%d) from the fixed dictionary will be included in the incremental one.", (int)_visualWords.size());
 		}
 	}
 	_dictionaryPath = "";
@@ -259,7 +305,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 			if(_visualWords.size() == 0)
 			{
 				_incrementalDictionary = _visualWords.size()==0;
-				UWARN("No words loaded, cannot set a fixed dictionary.", (int)_visualWords.size());
+				UWARN("No words loaded, cannot set a fixed dictionary.");
 			}
 			else
 			{
@@ -276,7 +322,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 		}
 		else
 		{
-			UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", _visualWords.size());
+			UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", (int)_visualWords.size());
 		}
 	}
 	else if(_incrementalDictionary && _visualWords.size())
@@ -296,11 +342,20 @@ bool VWDictionary::isModified() const
 	return _modified;
 }
 
+void VWDictionary::rebuildIndex()
+{
+	UDEBUG("Re-indexing all %ld words...", _visualWords.size());
+	_dataTree = cv::Mat();
+	_notIndexedWords = uKeysSet(_visualWords);
+	_removedIndexedWords.clear();
+	this->update();
+}
+
 bool VWDictionary::setNNStrategy(NNStrategy strategy)
 {
 #if CV_MAJOR_VERSION < 3
 #ifdef HAVE_OPENCV_GPU
-	if(strategy == kNNBruteForceGPU && !cv::gpu::getCudaEnabledDeviceCount())
+	if(strategy == kNNBruteForceGPU && cv::gpu::getCudaEnabledDeviceCount() <= 0)
 	{
 		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
 		strategy = kNNBruteForce;
@@ -314,7 +369,7 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-	if(strategy == kNNBruteForceGPU && !cv::cuda::getCudaEnabledDeviceCount())
+	if(strategy == kNNBruteForceGPU && cv::cuda::getCudaEnabledDeviceCount() <= 0)
 	{
 		UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");
 		strategy = kNNBruteForce;
@@ -330,7 +385,7 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 
 	if(strategy>=kNNUndef)
 	{
-		UERROR("Nearest neighobr strategy \"%d\" chosen but this strategy cannot be used with a dictionary! Doing \"kNNBruteForce\" instead.");
+		UERROR("Nearest neighbor strategy \"%d\" chosen but this strategy cannot be used with a dictionary! Doing \"kNNBruteForce\" instead.", (int)strategy);
 		strategy = kNNBruteForce;
 	}
 
@@ -377,13 +432,16 @@ unsigned long VWDictionary::getMemoryUsed() const
 {
 	long memoryUsage = sizeof(VWDictionary);
 	memoryUsage += getIndexMemoryUsed();
-	memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	if(!_dataTree.empty())
+	{
+		memoryUsage += _dataTree.total()*_dataTree.elemSize();
+	}
 	if(!_visualWords.empty())
 	{
 		memoryUsage += _visualWords.size()*(sizeof(int) + _visualWords.rbegin()->second->getMemoryUsed() + sizeof(std::map<int, VisualWord *>::iterator)) + sizeof(std::map<int, VisualWord *>);
 		if(_dataTree.empty() &&
 			_visualWords.begin()->second->getDescriptor().type() == CV_8U &&
-			_strategy == kNNFlannKdTree)
+			isKdTreeStrategy(_strategy))
 		{
 			// Binary descriptors were converted to float, and not included in _dataTree
 			memoryUsage += _visualWords.size() * _visualWords.begin()->second->getDescriptor().total() * sizeof(float) * (_byteToFloat?1:8);
@@ -498,7 +556,7 @@ void VWDictionary::update()
 
 		if(!firstUpdate &&
 			_incrementalFlann &&
-		   _strategy < kNNBruteForce &&
+		   isFlannStrategy(_strategy) &&
 		   _visualWords.size())
 		{
 			ULOGGER_DEBUG("Incremental FLANN: Removing %d words...", (int)_removedIndexedWords.size());
@@ -516,7 +574,7 @@ void VWDictionary::update()
 			{
 				UTimer timer;
 				timer.start();
-				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words...", (int)_notIndexedWords.size(), _byteToFloat?"true":"false");
+				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words (byteToFloat=%s)...", (int)_notIndexedWords.size(), _byteToFloat?"true":"false");
 				for(std::set<int>::iterator iter=_notIndexedWords.begin(); iter!=_notIndexedWords.end(); ++iter)
 				{
 					VisualWord* w = uValue(_visualWords, *iter, (VisualWord*)0);
@@ -526,7 +584,7 @@ void VWDictionary::update()
 					if(w->getDescriptor().type() == CV_8U)
 					{
 						useDistanceL1_ = true;
-						if(_strategy == kNNFlannKdTree)
+						if(isKdTreeStrategy(_strategy))
 						{
 							descriptor = convertBinTo32F(w->getDescriptor(), _byteToFloat);
 						}
@@ -546,9 +604,7 @@ void VWDictionary::update()
 						UDEBUG("Building FLANN index... (strategy=%s, byteToFloat=%s, useDistanceL1=%s, rebalancingFactor=%f)",
 							nnStrategyName(_strategy).c_str(), _byteToFloat?"true":"false", useDistanceL1_?"true":"false", _rebalancingFactor);
 						_flannIndex->buildIndex(
-							_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-							_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-							FlannIndex::FLANN_INDEX_KDTREE, // kNNFlannKdTree
+							flannAlgorithm(_strategy),
 							descriptor, useDistanceL1_, _rebalancingFactor);
 						UDEBUG("Building FLANN index... done!");
 					}
@@ -568,7 +624,7 @@ void VWDictionary::update()
 				ULOGGER_DEBUG("Incremental FLANN: Inserting %d words... done! (in %f s)", (int)_notIndexedWords.size(), timer.ticks());
 			}
 		}
-		else if(_strategy >= kNNBruteForce &&
+		else if(!isFlannStrategy(_strategy) &&
 				_notIndexedWords.size() &&
 				_removedIndexedWords.size() == 0 &&
 				_visualWords.size())
@@ -578,8 +634,8 @@ void VWDictionary::update()
 			if(_dataTree.rows >= IMGIDX_ONE)
 			{
 				UWARN("%s=%d is not a FLANN strategy and the number of words in the vocabulary (%d) is over %d (IMGIDX_ONE), so opencv may "
-					"assert on an IMGIDX_ONE check when adding new words. Use a FLANN strategy instead (%s<%d).",
-					Parameters::kKpNNStrategy().c_str(), _strategy, _dataTree.rows, IMGIDX_ONE, Parameters::kKpNNStrategy().c_str(), kNNBruteForce);
+					"assert on an IMGIDX_ONE check when adding new words. Use a FLANN strategy instead (e.g. %s=%d).",
+					Parameters::kKpNNStrategy().c_str(), _strategy, _dataTree.rows, IMGIDX_ONE, Parameters::kKpNNStrategy().c_str(), kNNFlannKdTree);
 			}
 
 			//just add not indexed words
@@ -624,7 +680,7 @@ void VWDictionary::update()
 				if(_visualWords.begin()->second->getDescriptor().type() == CV_8U)
 				{
 					useDistanceL1_ = true;
-					if(_strategy == kNNFlannKdTree)
+					if(isKdTreeStrategy(_strategy))
 					{
 						type = CV_32F;
 						if(!_byteToFloat)
@@ -653,7 +709,7 @@ void VWDictionary::update()
 					cv::Mat descriptor;
 					if(iter->second->getDescriptor().type() == CV_8U)
 					{
-						if(_strategy == kNNFlannKdTree)
+						if(isKdTreeStrategy(_strategy))
 						{
 							descriptor = convertBinTo32F(iter->second->getDescriptor(), _byteToFloat);
 						}
@@ -675,21 +731,22 @@ void VWDictionary::update()
 					_mapIdIndex.insert(_mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
 				}
 
-				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",_mapIndexId.size(), _visualWords.size(), dim);
+				ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d",(int)_mapIndexId.size(), (int)_visualWords.size(), dim);
 				ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
-				_flannIndex->buildIndex(
-					_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-						_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-							FlannIndex::FLANN_INDEX_KDTREE, // kNNFlannKdTree
-					_dataTree,
-					useDistanceL1_,
-					_incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
-				ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+				if(isFlannStrategy(_strategy))
+				{
+					_flannIndex->buildIndex(
+						flannAlgorithm(_strategy),
+						_dataTree,
+						useDistanceL1_,
+						_incrementalDictionary&&_incrementalFlann?_rebalancingFactor:1);
+					ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+				}
 			}
 		}
 		UDEBUG("Dictionary updated! (size=%d added=%d removed=%d)",
-				_dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
+				_dataTree.rows, (int)_notIndexedWords.size(), (int)_removedIndexedWords.size());
 	}
 	else
 	{
@@ -702,7 +759,7 @@ void VWDictionary::update()
 
 std::vector<unsigned char> VWDictionary::serializeIndex() const
 {
-	if(_strategy >= kNNBruteForce) {
+	if(!isFlannStrategy(_strategy)) {
 		UINFO("Not flann strategy, ignoring serialization...");
 		return std::vector<unsigned char>();
 	}
@@ -714,38 +771,38 @@ std::vector<unsigned char> VWDictionary::serializeIndex() const
 	return _flannIndex->serializeIndex(_serializeWithChecksum);
 }
 
-void VWDictionary::deserializeIndex(const std::vector<unsigned char> & data)
+bool VWDictionary::deserializeIndex(const std::vector<unsigned char> & data)
 {
-	deserializeIndex(data.data(), data.size());
+	return deserializeIndex(data.data(), data.size());
 }
 
-void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
+bool VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 {
 	if(data== NULL || size == 0)
 	{
 		UWARN("Trying to deserialize empty data, aborting.");
-		return;
+		return false;
 	}
 	UDEBUG("Loading flann index... (data size=%ld bytes)", size);
-	if(_strategy >= kNNBruteForce) {
+	if(!isFlannStrategy(_strategy)) {
 		//ignore
-		return;
+		return false;
 	}
 
 	if(_flannIndex->isBuilt()) {
 		UERROR("Flann index is already built, cannot deserialize data!");
-		return;
+		return false;
 	}
 
 	if(_visualWords.empty()) {
 		UERROR("Descriptors should be added before deserializing flann index! See VWDictionary::addWord()");
-		return;
+		return false;
 	}
 
 	if(!(_removedIndexedWords.empty() && _visualWords.size() == _notIndexedWords.size())) {
 		UERROR("State of dictionary not as expected before deserializing. (removed words=%ld, words=%ld, not indexed=%ld)", 
 			_removedIndexedWords.size(), _visualWords.size(), _notIndexedWords.size());
-		return;
+		return false;
 	}
 		
 	std::map<int, int> mapIndexId;
@@ -760,7 +817,7 @@ void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 	if(_visualWords.begin()->second->getDescriptor().type() == CV_8U)
 	{
 		useDistanceL1_ = true;
-		if(_strategy == kNNFlannKdTree)
+		if(isKdTreeStrategy(_strategy))
 		{
 			type = CV_32F;
 			if(!_byteToFloat)
@@ -789,7 +846,7 @@ void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 		cv::Mat descriptor;
 		if(iter->second->getDescriptor().type() == CV_8U)
 		{
-			if(_strategy == kNNFlannKdTree)
+			if(isKdTreeStrategy(_strategy))
 			{
 				descriptor = convertBinTo32F(iter->second->getDescriptor(), _byteToFloat);
 			}
@@ -811,16 +868,14 @@ void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 		mapIdIndex.insert(mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
 	}
 
-	ULOGGER_DEBUG("mapIndexId.size() = %d, words.size()=%d, dim=%d", mapIndexId.size(), _visualWords.size(), dim);
+	ULOGGER_DEBUG("mapIndexId.size() = %d, words.size()=%d, dim=%d", (int)mapIndexId.size(), (int)_visualWords.size(), dim);
 	ULOGGER_DEBUG("copying data = %f s", timer.ticks());
 
 	std::string errorMsg;
 	if(_flannIndex->loadIndex(
 		data,
 		size,
-		_strategy == kNNFlannNaive ? FlannIndex::FLANN_INDEX_LINEAR:
-			_strategy == kNNFlannLSH ? FlannIndex::FLANN_INDEX_LSH:
-				FlannIndex::FLANN_INDEX_KDTREE, 
+		flannAlgorithm(_strategy),
 		dataTree, 
 		useDistanceL1_,
 		_incrementalDictionary && _incrementalFlann ? _rebalancingFactor:1,
@@ -835,9 +890,11 @@ void VWDictionary::deserializeIndex(const unsigned char * data, size_t size)
 	else {
 		UWARN("Failed deserializing flann index data (error: %s), the index will be rebuilt on next update.", errorMsg.c_str());
 		_flannIndex->release(); // reset to initial state
+		return false;
 	}
 
 	ULOGGER_DEBUG("Time to load flann index = %f s", timer.ticks());
+	return true;
 }
 
 void VWDictionary::clear(bool printWarningsIfNotEmpty)
@@ -961,7 +1018,7 @@ std::list<int> VWDictionary::addNewWords(
 	if(descriptorsIn.type() == CV_8U)
 	{
 		useDistanceL1_ = true;
-		if(_strategy == kNNFlannKdTree)
+		if(isKdTreeStrategy(_strategy))
 		{
 			descriptors = convertBinTo32F(descriptorsIn, _byteToFloat);
 		}
@@ -1017,9 +1074,9 @@ std::list<int> VWDictionary::addNewWords(
 		//Find nearest neighbors
 		UDEBUG("newPts.total()=%d _strategy=%d", descriptors.rows, _strategy);
 
-		if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
+		if(isFlannStrategy(_strategy))
 		{
-			_flannIndex->knnSearch(descriptors, results, dists, k, KNN_CHECKS);
+			_flannIndex->knnSearch(descriptors, results, dists, k, KNN_CHECKS, 0.0f, true, _flannThreads);
 		}
 		else if(_strategy == kNNBruteForce)
 		{
@@ -1094,14 +1151,9 @@ std::list<int> VWDictionary::addNewWords(
 			for(int j=0; j<dists.cols; ++j)
 			{
 				float d = dists.at<float>(i,j);
-				int index;
-				if (sizeof(size_t) == 8)
-				{
-					index = *((size_t*)&results.at<double>(i, j));
-				}
-				else
-				{
-					index = *((size_t*)&results.at<int>(i, j));
+				int index = results.at<int>(i, j);
+				if(index<0) {
+					continue;
 				}
 				int id = uValue(_mapIndexId, index);
 				if(d >= 0.0f && id != 0)
@@ -1219,7 +1271,7 @@ std::list<int> VWDictionary::addNewWords(
 	}
 	ULOGGER_DEBUG("naive search and add ref/words time = %f s", timerLocal.ticks());
 
-	ULOGGER_DEBUG("%d new words added...", _notIndexedWords.size());
+	ULOGGER_DEBUG("%d new words added...", (int)_notIndexedWords.size());
 	ULOGGER_DEBUG("%d duplicated words added (from current image = %d)...",
 			dupWordsCountFromDict+dupWordsCountFromLast, dupWordsCountFromLast);
 	UDEBUG("total time %fs", timer.ticks());
@@ -1299,7 +1351,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 		cv::Mat query;
 		if(queryIn.type() == CV_8U)
 		{
-			if(_strategy == kNNFlannKdTree)
+			if(isKdTreeStrategy(_strategy))
 			{
 				query = convertBinTo32F(queryIn, _byteToFloat);
 			}
@@ -1344,9 +1396,9 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 			//Find nearest neighbors
 			UDEBUG("query.rows=%d ", query.rows);
 
-			if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
+			if(isFlannStrategy(_strategy))
 			{
-				_flannIndex->knnSearch(query, results, dists, k, KNN_CHECKS);
+				_flannIndex->knnSearch(query, results, dists, k, KNN_CHECKS, 0.0f, true, _flannThreads);
 			}
 			else if(_strategy == kNNBruteForce)
 			{
@@ -1427,7 +1479,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				cv::Mat descriptor;
 				if(vw->getDescriptor().type() == CV_8U)
 				{
-					if(_strategy == kNNFlannKdTree)
+					if(isKdTreeStrategy(_strategy))
 					{
 						descriptor = convertBinTo32F(vw->getDescriptor(), _byteToFloat);
 					}
@@ -1459,15 +1511,9 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				for(int j=0; j<dists.cols; ++j)
 				{
 					float d = dists.at<float>(i,j);
-					int index;
-
-					if (sizeof(size_t) == 8)
-					{
-						index = *((size_t*)&results.at<double>(i, j));
-					}
-					else
-					{
-						index = *((size_t*)&results.at<int>(i, j));
+					int index = results.at<int>(i, j);
+					if(index < 0) {
+						continue;
 					}
 					int id = uValue(_mapIndexId, index);
 					if(d >= 0.0f && id != 0)
@@ -1656,7 +1702,7 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
 		}
 	}
 
-	UDEBUG("Export %d words...", _visualWords.size());
+	UDEBUG("Export %d words...", (int)_visualWords.size());
     for(std::map<int, VisualWord *>::const_iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
     {
     	// References
