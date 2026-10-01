@@ -88,10 +88,23 @@ jobs:
         ls "$root"/tests/*.db >/dev/null || { echo "::error::no test databases in $root/tests"; exit 1; }
         echo "root=$root" >> "$GITHUB_OUTPUT"
 
+    # The osrf/ros image ships ros2-apt-source (main), which conflicts with the
+    # ros2-testing-apt-source package setup-ros tries to install. Remove it so
+    # setup-ros can switch the image to the testing repo.
+    - name: Remove ROS main apt source
+      if: matrix.use_ros2_testing
+      run: dpkg --purge ros2-apt-source
+
     - uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: ${{ matrix.ros_distribution }}
         use-ros2-testing: ${{ matrix.use_ros2_testing }}
+
+    # setup-ros doesn't upgrade on noble/resolute, so the packages preinstalled
+    # in the image would stay at their main versions. Upgrade them to testing.
+    - name: Upgrade ROS packages to testing
+      if: matrix.use_ros2_testing
+      run: apt-get update && apt-get dist-upgrade -y
     - uses: ros-tooling/action-ros-ci@v0.4
       with:
         package-name: rtabmap
