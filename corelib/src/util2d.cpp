@@ -1029,8 +1029,9 @@ float getDepth(
 						}
 						else
 						{
-							float depthError = depthErrorRatio * tmp;
-							if(fabs(d - tmp/float(count)) < depthError)
+							float mean = tmp/float(count);
+							float depthError = depthErrorRatio * mean;
+							if(fabs(d - mean) < depthError)
 
 							{
 								tmp += d;

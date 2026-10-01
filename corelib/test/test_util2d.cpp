@@ -508,6 +508,31 @@ TEST(Util2dTest, GetDepthEstimationFromNeighbors16U) {
     EXPECT_NEAR(result, 1.5f, 1e-3f);
 }
 
+TEST(Util2dTest, GetDepthEstimationFromNeighborsRejectsOutlier) {
+    // Neighbors are visited as (2,1), (1,2), (3,2), (2,3). The last one is
+    // 25% away from the mean of the first three and must be ignored.
+    cv::Mat depth = cv::Mat::zeros(5, 5, CV_32FC1);
+    depth.at<float>(2, 1) = 1.00f;
+    depth.at<float>(1, 2) = 1.02f;
+    depth.at<float>(3, 2) = 0.98f;
+    depth.at<float>(2, 3) = 1.25f;
+
+    float result = util2d::getDepth(depth, 2.0f, 2.0f, false, 0.1f, true);
+    EXPECT_NEAR(result, 1.0f, 1e-5f);
+
+    cv::Mat depth16U = util2d::cvtDepthFromFloat(depth);
+    result = util2d::getDepth(depth16U, 2.0f, 2.0f, false, 0.1f, true);
+    EXPECT_NEAR(result, 1.0f, 1e-3f);
+
+    // Same with the default ratio (0.02): the last neighbor is 5% away.
+    depth.at<float>(2, 1) = 1.00f;
+    depth.at<float>(1, 2) = 1.01f;
+    depth.at<float>(3, 2) = 0.99f;
+    depth.at<float>(2, 3) = 1.05f;
+    result = util2d::getDepth(depth, 2.0f, 2.0f, false, 0.02f, true);
+    EXPECT_NEAR(result, 1.0f, 1e-5f);
+}
+
 TEST(Util2dTest, GetDepthOutOfBounds) {
     cv::Mat depth = cv::Mat::ones(5, 5, CV_32FC1);
 
