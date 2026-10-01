@@ -1,0 +1,54 @@
+name: Documentation preview cleanup
+
+# Removes the per-PR documentation preview published by docs.yml under
+# gh-pages:preview/pr-<number>/ once the pull request is closed (merged or not).
+#
+# Deliberately has no `paths` filter: docs.yml only publishes a preview when
+# documentation-related files changed, but this must fire for every close so a
+# preview can never be orphaned on the branch.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: Remove PR preview
+    # Forks never get a preview (their token is read-only), so nothing to clean.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+
+    # Same group as docs.yml's publish job: both push to gh-pages, and two
+    # concurrent pushes would collide.
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 1
+
+      - name: Remove preview directory
+        env:
+          PREVIEW_DIR: preview/pr-${{ github.event.number }}
+        run: |
+          set -eux
+          if [[ ! -d "${PREVIEW_DIR}" ]]; then
+            echo "No preview at ${PREVIEW_DIR}, nothing to do."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git rm -r --quiet "${PREVIEW_DIR}"
+          # Drop the parent too once the last preview is gone.
+          rmdir preview 2>/dev/null || true
+          git commit -m "Remove preview for PR #${{ github.event.number }}"
+          git push

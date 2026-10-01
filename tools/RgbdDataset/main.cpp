@@ -228,7 +228,7 @@ int main(int argc, char * argv[])
 	else {
 		printf("ERROR: Dataset %s is not supported. Update rgbd_dataset tool to include the right calibration parameter for this dataset!\n", sequenceName.c_str());
 	}
-	//parameters.insert(ParametersPair(Parameters::kg2oBaseline(), uNumber2Str(40.0f/model.fx())));
+	//parameters.insert(ParametersPair(Parameters::kOptimizerBaseline(), uNumber2Str(40.0f/model.fx())));
 	model.save(path);
 
 	SensorCaptureThread cameraThread(new

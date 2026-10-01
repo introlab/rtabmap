@@ -40,7 +40,13 @@ if(NOT Eigen3_FIND_VERSION)
 endif()
 
 macro(_eigen3_check_version)
-  file(READ "${EIGEN3_INCLUDE_DIR}/Eigen/src/Core/util/Macros.h" _eigen3_version_header)
+  # Since Eigen 5.0.0 the version macros moved from Eigen/src/Core/util/Macros.h
+  # to a dedicated Eigen/Version header, so check the new location first.
+  if(EXISTS "${EIGEN3_INCLUDE_DIR}/Eigen/Version")
+    file(READ "${EIGEN3_INCLUDE_DIR}/Eigen/Version" _eigen3_version_header)
+  else()
+    file(READ "${EIGEN3_INCLUDE_DIR}/Eigen/src/Core/util/Macros.h" _eigen3_version_header)
+  endif()
 
   string(REGEX MATCH "define[ \t]+EIGEN_WORLD_VERSION[ \t]+([0-9]+)" _eigen3_world_version_match "${_eigen3_version_header}")
   set(EIGEN3_WORLD_VERSION "${CMAKE_MATCH_1}")

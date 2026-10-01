@@ -22,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 23)
-SET(RTABMAP_PATCH_VERSION 7)
+SET(RTABMAP_PATCH_VERSION 13)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -63,10 +63,6 @@ ELSE()
     option(FLANN_KDTREE_MEM_OPT  "Disable multi-threaded FLANN kd-tree to minimize memory allocations"   ON)
 ENDIF()
 
-IF(FLANN_KDTREE_MEM_OPT)
-    ADD_DEFINITIONS("-DFLANN_KDTREE_MEM_OPT")
-ENDIF(FLANN_KDTREE_MEM_OPT)
-
 IF(WIN32 AND NOT MINGW)
     ADD_DEFINITIONS("-DNOMINMAX")
     ADD_DEFINITIONS("-wd4100 -wd4127 -wd4150 -wd4191 -wd4242 -wd4244 -wd4251 -wd4305 -wd4365 -wd4512 -wd4514 -wd4548 -wd4571 -wd4619 -wd4625 -wd4626 -wd4628 -wd4668 -wd4710 -wd4711 -wd4738 -wd4820 -wd4946 -wd4986")
@@ -84,6 +80,11 @@ endif()
 # To suppress g2o related opengl warning
 if(POLICY CMP0072)
     cmake_policy(SET CMP0072 NEW)
+endif()
+# Timestamp the files extracted from a FetchContent URL download at extraction
+# time, so a changed URL actually triggers a rebuild of what depends on them.
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
 endif()
 
 IF(MINGW)
@@ -167,6 +168,68 @@ ENDIF(APPLE OR WIN32)
 OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
+# Off by default: it downloads the Doxygen theme at configure time, which an
+# ordinary build has no reason to need. Set by docs-report.sh.
+OPTION(BUILD_DOCUMENTATION "Prepare the API documentation build (downloads the Doxygen theme)" OFF)
+
+# The unit tests are host executables run by ctest, which can't be done from a
+# cross-compiled Android/iOS build.
+if(ANDROID OR IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+   set(BUILD_TESTING OFF CACHE BOOL "Build the testing tree." FORCE)
+endif()
+
+# Performance tests are benchmarks: they report times, memory and recall
+# instead of asserting on them, as those depend on the machine. They are built
+# by default so they cannot rot, but are labelled "performance" so that a run
+# opts in with `ctest -L performance` and CI opts out with `ctest -LE
+# performance`. They can also be run directly, e.g. bin/test_flann_index_perf.
+OPTION(BUILD_PERF_TESTS "Build the performance tests (see ctest -L performance)" ON)
+
+include(CTest)
+if(BUILD_TESTING)
+   # Add GTest using FetchContent
+   include(FetchContent)
+   FetchContent_Declare(
+       googletest
+       URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+   )
+   FetchContent_GetProperties(googletest)
+   if(NOT googletest_POPULATED)
+     FetchContent_Populate(googletest)
+     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+   endif()
+   include(GoogleTest)
+   set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data"
+       CACHE PATH "Root directory holding the test fixtures (data/tests/*.db)")
+endif()
+
+OPTION(ENABLE_COVERAGE "Build with gcov/lcov coverage (GCC/Clang, Debug only; see coverage-report.sh)" OFF)
+IF(ENABLE_COVERAGE)
+   IF(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+      MESSAGE(FATAL_ERROR "ENABLE_COVERAGE requires GCC or Clang with gcov/lcov (current: ${CMAKE_CXX_COMPILER_ID}).")
+   ENDIF()
+   IF(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+      MESSAGE(FATAL_ERROR "ENABLE_COVERAGE requires CMAKE_BUILD_TYPE=Debug (current: \"${CMAKE_BUILD_TYPE}\").")
+   ENDIF()
+   MESSAGE(STATUS "Coverage instrumentation enabled")
+   ADD_COMPILE_OPTIONS(--coverage -O0 -g)
+   ADD_LINK_OPTIONS(--coverage)
+ENDIF()
+
+# Check UDEBUG/UINFO/UWARN/UERROR/uFormat format strings against their
+# arguments.
+# -Wno-format-zero-length: UDEBUG("") is used deliberately as a trace point
+# -Wformat-security: non-literal format strings, e.g. UERROR(uFormat(...).c_str())
+OPTION(ENABLE_FORMAT_ERRORS "Treat log/uFormat format-string mismatches as errors (GCC/Clang)" OFF)
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+   ADD_COMPILE_OPTIONS(-Wformat -Wformat-security -Wno-format-zero-length)
+   IF(ENABLE_FORMAT_ERRORS)
+      MESSAGE(STATUS "Format-string mismatches are errors")
+      ADD_COMPILE_OPTIONS(-Werror=format -Werror=format-security)
+   ENDIF()
+ELSEIF(ENABLE_FORMAT_ERRORS)
+   MESSAGE(WARNING "ENABLE_FORMAT_ERRORS has no effect on ${CMAKE_CXX_COMPILER_ID} (needs GCC/Clang)")
+ENDIF()
 
 ####### DEPENDENCIES #######
 IF(MOBILE_BUILD)
@@ -208,7 +271,7 @@ option(WITH_REALSENSE     "Include RealSense support"            ON)
 option(WITH_REALSENSE_SLAM "Include RealSenseSlam support"       ON)
 option(WITH_REALSENSE2    "Include RealSense2 support"           ON)
 option(WITH_MYNTEYE       "Include mynteye-s support"            ON)
-option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
+option(WITH_DEPTHAI       "Include depthai-core v2 support"      OFF)
 option(WITH_XVSDK         "Include XVisio SDK support"           OFF)
 option(WITH_ORBBEC_SDK    "Include Orbbec SDK v2 support"        OFF)
 option(WITH_OCTOMAP       "Include OctoMap support"              ON)
@@ -241,7 +304,25 @@ option(BUILD_WITH_RPATH_NOT_RUNPATH "Explicitly disable usage of RUNPATH for the
 set(RTABMAP_QT_VERSION AUTO CACHE STRING "Force a specific Qt version.")
 set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 
-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core calib3d imgproc highgui stitching photo video videoio OPTIONAL_COMPONENTS aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+# OpenCV components. calib3d was split into "calib" + "geometry" in OpenCV 5.
+# These lists are reused below to generate RTABMapConfig.cmake so downstream
+# find_package(RTABMap) requests the same components this build used.
+SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video videoio calib geometry)
+SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5 objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4 aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+
+# Probe OpenCV without a version constraint first, then request the components
+# matching the detected major version. A version-constrained find that fails to
+# match (e.g. asking for 5 when only 4 is present) resets OpenCV_DIR to NOTFOUND,
+# which breaks toolchain builds that rely on a -DOpenCV_DIR hint (e.g. Android,
+# where CMAKE_FIND_ROOT_PATH restricts the search).
+FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core)
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ELSE()
+  FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4})
+ENDIF()
 
 IF(WITH_QT)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
@@ -539,14 +620,7 @@ IF(WITH_GTSAM)
     # Force config mode to ignore PCL's findGTSAM.cmake file
     FIND_PACKAGE(GTSAM CONFIG QUIET)
     IF(GTSAM_FOUND)
-      # For issue https://github.com/introlab/rtabmap/pull/1626
-      FIND_FILE(GTSAM_NOISE_MODEL_FACTOR_N_FILE gtsam/nonlinear/NoiseModelFactorN.h
-         PATHS ${GTSAM_INCLUDE_DIR}
-         NO_DEFAULT_PATH)
-      IF(GTSAM_NOISE_MODEL_FACTOR_N_FILE)
-         MESSAGE(STATUS "GTSAM with NoiseModelFactorN.h")
-         ADD_DEFINITIONS("-DGTSAM_WITH_NOISE_MODEL_FACTOR_N")
-      ENDIF(GTSAM_NOISE_MODEL_FACTOR_N_FILE)
+      INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/CheckGTSAMFeatures.cmake)
     ENDIF(GTSAM_FOUND)
 ENDIF(WITH_GTSAM)
 
@@ -711,7 +785,9 @@ IF(WITH_MYNTEYE)
 ENDIF(WITH_MYNTEYE)
 
 IF(WITH_DEPTHAI)
-    FIND_PACKAGE(depthai 2.24)
+    # Force DepthAI major version 2 (>=2.24, <3.0): the v3 API is not yet
+    # supported (see CameraDepthAI).
+    FIND_PACKAGE(depthai 2.24...<3.0)
     IF(depthai_FOUND)
        MESSAGE(STATUS "Found depthai-core (targets)")
     ENDIF(depthai_FOUND)
@@ -981,6 +1057,7 @@ IF(NOT MSVC)
 ENDIF()
 
 
+
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
   IF(Qt6_FOUND OR Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
@@ -1243,6 +1320,15 @@ ENDIF()
 
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
+# API documentation (Doxygen). Off by default: preparing it downloads the theme,
+# spawns Doxygen to regenerate the HTML header and runs the parameter-page
+# generator, none of which an ordinary build needs. docs-report.sh turns it on;
+# see also .github/workflows/docs.yml.
+IF(BUILD_DOCUMENTATION)
+   INCLUDE(RTABMapDocumentation)
+   RTABMAP_SETUP_DOCUMENTATION()
+ENDIF(BUILD_DOCUMENTATION)
+
 ADD_SUBDIRECTORY( utilite )
 ADD_SUBDIRECTORY( corelib )
 
@@ -1318,6 +1404,18 @@ install(EXPORT rtabmapTargets
 ####
 # Setup RTABMapConfig.cmake
 ####
+IF(OpenCV_VERSION_MAJOR GREATER 4)
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5})
+  SET(CONF_OPENCV_OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ELSE()
+  SET(CONF_OPENCV_COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_4})
+  SET(CONF_OPENCV_OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4})
+ENDIF()
+STRING(REPLACE ";" " " CONF_OPENCV_COMPONENTS "${CONF_OPENCV_COMPONENTS}")
+STRING(REPLACE ";" " " CONF_OPENCV_OPTIONAL_COMPONENTS "${CONF_OPENCV_OPTIONAL_COMPONENTS}")
+# Pin the OpenCV major version so downstream projects find the same major RTAB-Map was
+# built against
+SET(CONF_OPENCV_VERSION_MAJOR ${OpenCV_VERSION_MAJOR})
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
@@ -1463,6 +1561,10 @@ MESSAGE(STATUS "  CMAKE_INSTALL_LIBDIR = ${CMAKE_INSTALL_LIBDIR}")
 MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
+MESSAGE(STATUS "  BUILD_PERF_TESTS =     ${BUILD_PERF_TESTS}")
+MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
+MESSAGE(STATUS "  ENABLE_FORMAT_ERRORS = ${ENABLE_FORMAT_ERRORS}")
 IF(NOT WIN32)
     # see comment above for the BUILD_SHARED_LIBS option on Windows
     MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")
@@ -1484,7 +1586,8 @@ ENDIF(PCL_COMPILE_OPTIONS)
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Optional dependencies ('*' affects some default parameters) :")
 IF(OpenCV_FOUND)
-  IF(OPENCV_ARUCO_FOUND)
+  IF((OpenCV_VERSION_MAJOR LESS 4 AND OPENCV_ARUCO_FOUND) OR 
+     (OpenCV_VERSION_MAJOR GREATER 4 AND OPENCV_OBJDETECT_FOUND))
     set(ARUCO_STR "YES")
   ELSE()
     set(ARUCO_STR "NO")
@@ -1877,7 +1980,7 @@ MESSAGE(STATUS "  With DepthAI ${depthai_VERSION}       = YES (License: MIT)")
 ELSEIF(NOT WITH_DEPTHAI)
 MESSAGE(STATUS "  With DepthAI              = NO (WITH_DEPTHAI=OFF)")
 ELSE()
-MESSAGE(STATUS "  With DepthAI              = NO (depthai-core not found)")
+MESSAGE(STATUS "  With DepthAI              = NO (depthai-core v2 not found)")
 ENDIF()
 
 IF(xvsdk_FOUND)

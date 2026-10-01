@@ -1,0 +1,102 @@
+diff --git a/freenect2.cmake.in b/freenect2.cmake.in
+index 05df1af..2195bb4 100644
+--- a/freenect2.cmake.in
++++ b/freenect2.cmake.in
+@@ -1,10 +1,15 @@
++# Resolve paths relative to this config file (<prefix>/lib/cmake/freenect2/) so the
++# install tree stays relocatable (e.g. when shipped/unzipped as a prebuilt bundle).
++get_filename_component(_freenect2_prefix "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
++get_filename_component(_freenect2_prefix "${_freenect2_prefix}" DIRECTORY)
++get_filename_component(_freenect2_prefix "${_freenect2_prefix}" DIRECTORY)
+ FIND_LIBRARY(freenect2_LIBRARY freenect2
+-    PATHS @CMAKE_INSTALL_PREFIX@/lib
++    PATHS "${_freenect2_prefix}/lib"
+     NO_DEFAULT_PATH
+ )
+ SET(freenect2_LIBRARIES ${freenect2_LIBRARY} @LIBFREENECT2_THREADING_LIBRARIES@)
+ FIND_PATH(freenect2_INCLUDE_DIR @PROJECT_NAME@/libfreenect2.hpp
+-    PATHS @CMAKE_INSTALL_PREFIX@/include
++    PATHS "${_freenect2_prefix}/include"
+     NO_DEFAULT_PATH
+ )
+ SET(freenect2_INCLUDE_DIRS ${freenect2_INCLUDE_DIR})
+diff --git a/src/cuda_depth_packet_processor.cu b/src/cuda_depth_packet_processor.cu
+index 7ca5974..95c8e11 100644
+--- a/src/cuda_depth_packet_processor.cu
++++ b/src/cuda_depth_packet_processor.cu
+@@ -779,12 +779,7 @@ public:
+ 
+       cudaDeviceProp prop;
+       CHECK_CUDA(cudaGetDeviceProperties(&prop, i));
+-      LOG_INFO << "device " << i << ": " << prop.name << " @ " << (prop.clockRate / 1000) << "MHz Memory " << (prop.totalGlobalMem >> 20) << "MB";
+-
+-      if (prop.computeMode == cudaComputeModeProhibited) {
+-        LOG_INFO << " Compute Mode Prohibited";
+-        continue;
+-      }
++      LOG_INFO << "device " << i << ": " << prop.name << " Memory " << (prop.totalGlobalMem >> 20) << "MB";
+ 
+       if (prop.major < 1) {
+         LOG_INFO << " does not support CUDA";
+diff --git a/src/cuda_kde_depth_packet_processor.cu b/src/cuda_kde_depth_packet_processor.cu
+index 0a16f55..bca00cc 100644
+--- a/src/cuda_kde_depth_packet_processor.cu
++++ b/src/cuda_kde_depth_packet_processor.cu
+@@ -1192,12 +1192,7 @@ public:
+ 
+       cudaDeviceProp prop;
+       CHECK_CUDA(cudaGetDeviceProperties(&prop, i));
+-      LOG_INFO << "device " << i << ": " << prop.name << " @ " << (prop.clockRate / 1000) << "MHz Memory " << (prop.totalGlobalMem >> 20) << "MB";
+-
+-      if (prop.computeMode == cudaComputeModeProhibited) {
+-        LOG_INFO << " Compute Mode Prohibited";
+-        continue;
+-      }
++      LOG_INFO << "device " << i << ": " << prop.name << " Memory " << (prop.totalGlobalMem >> 20) << "MB";
+ 
+       if (prop.major < 1) {
+         LOG_INFO << " does not support CUDA";
+diff --git a/src/opencl_depth_packet_processor.cpp b/src/opencl_depth_packet_processor.cpp
+index d8db14d..51d0883 100644
+--- a/src/opencl_depth_packet_processor.cpp
++++ b/src/opencl_depth_packet_processor.cpp
+@@ -251,7 +251,7 @@ public:
+     newIrFrame();
+     newDepthFrame();
+ 
+-    const int CL_ICDL_VERSION = 2;
++    const int clIcdlVersion = 2;
+     typedef cl_int (*icdloader_func)(int, size_t, void*, size_t*);
+ #ifdef _MSC_VER
+ #pragma warning(push)
+@@ -269,7 +269,7 @@ public:
+     if (clGetICDLoaderInfoOCLICD != NULL)
+     {
+       char buf[16];
+-      if (clGetICDLoaderInfoOCLICD(CL_ICDL_VERSION, sizeof(buf), buf, NULL) == CL_SUCCESS)
++      if (clGetICDLoaderInfoOCLICD(clIcdlVersion, sizeof(buf), buf, NULL) == CL_SUCCESS)
+       {
+         if (strcmp(buf, "2.2.4") < 0 && strlen(buf) <= 5)
+           LOG_WARNING << "Your ocl-icd has deadlock bugs. Update to 2.2.4+ is recommended.";
+diff --git a/src/opencl_kde_depth_packet_processor.cpp b/src/opencl_kde_depth_packet_processor.cpp
+index 98dbdff..97fbc6d 100644
+--- a/src/opencl_kde_depth_packet_processor.cpp
++++ b/src/opencl_kde_depth_packet_processor.cpp
+@@ -259,7 +259,7 @@ public:
+     newIrFrame();
+     newDepthFrame();
+ 
+-    const int CL_ICDL_VERSION = 2;
++    const int clIcdlVersion = 2;
+     typedef cl_int (*icdloader_func)(int, size_t, void*, size_t*);
+ #ifdef _MSC_VER
+ #pragma warning(push)
+@@ -277,7 +277,7 @@ public:
+     if (clGetICDLoaderInfoOCLICD != NULL)
+     {
+       char buf[16];
+-      if (clGetICDLoaderInfoOCLICD(CL_ICDL_VERSION, sizeof(buf), buf, NULL) == CL_SUCCESS)
++      if (clGetICDLoaderInfoOCLICD(clIcdlVersion, sizeof(buf), buf, NULL) == CL_SUCCESS)
+       {
+         if (strcmp(buf, "2.2.4") < 0)
+           LOG_WARNING << "Your ocl-icd has deadlock bugs. Update to 2.2.4+ is recommended.";

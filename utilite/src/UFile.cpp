@@ -87,7 +87,7 @@ std::string UFile::getName(const std::string & filePath)
 std::string UFile::getExtension(const std::string &filePath)
 {
 	std::list<std::string> list = uSplit(filePath, '.');
-	if(list.size())
+	if(list.size()>1)
 	{
 		return list.back();
 	}
@@ -96,8 +96,10 @@ std::string UFile::getExtension(const std::string &filePath)
 
 void UFile::copy(const std::string & from, const std::string & to)
 {
-	std::ifstream src(from.c_str());
-	std::ofstream dst(to.c_str());
+	// Binary, or Windows translates line endings and stops at the first 0x1A, which
+	// silently truncates or corrupts anything that is not text -- a database, an image.
+	std::ifstream src(from.c_str(), std::ios::binary);
+	std::ofstream dst(to.c_str(), std::ios::binary);
 
 	dst << src.rdbuf();
 }

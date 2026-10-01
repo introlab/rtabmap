@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/OdometryInfo.h"
-#include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/util3d.h"
@@ -41,8 +40,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UMath.h"
+#include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/geometry.hpp>
+#endif
 #include <rtabmap/core/odometry/OdometryF2M.h>
 #include <pcl/common/io.h>
 
@@ -110,13 +114,15 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	ParametersMap bundleParameters = parameters;
 	if(bundleAdjustment_ > 0)
 	{
-		if((bundleAdjustment_==1 && Optimizer::isAvailable(Optimizer::kTypeG2O)) ||
-		(bundleAdjustment_==2 && Optimizer::isAvailable(Optimizer::kTypeCVSBA)) ||
-		(bundleAdjustment_==3 && Optimizer::isAvailable(Optimizer::kTypeCeres)))
+		// The BundleAdjustment int matches the Optimizer/Strategy parameter
+		// 1:1 (g2o=1, GTSAM=2, Ceres=3, CVSBA=4). 0 = "disabled" -- it's
+		// the TORO slot, which isn't BA-capable.
+		const Optimizer::Type sbaType = static_cast<Optimizer::Type>(bundleAdjustment_);
+		if(Optimizer::isAvailable(sbaType))
 		{
 			// disable bundle in RegistrationVis as we do it already here
 			uInsert(bundleParameters, ParametersPair(Parameters::kVisBundleAdjustment(), "0"));
-			sba_ = Optimizer::create(bundleAdjustment_==3?Optimizer::kTypeCeres:bundleAdjustment_==2?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O, bundleParameters);
+			sba_ = Optimizer::create(sbaType, bundleParameters);
 		}
 		else
 		{
@@ -467,14 +473,23 @@ Transform OdometryF2M::computeTransform(
 
 							UDEBUG("sba...start");
 							// set root negative to fix all other poses
-							std::set<int> sbaOutliers;
+							BAOutliers sbaOutliers;
 							UTimer bundleTimer;
 							bundlePoses = sba_->optimizeBA(-lastFrame_->id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 							bundleTime = bundleTimer.ticks();
 							UDEBUG("sba...end");
-							totalBundleOutliers = (int)sbaOutliers.size();
+							int sbaOutliersCount = 0;
+							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
+							{
+								BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
+								if(iter != sbaOutliers.end() && iter->second.find(lastFrame_->id()) != iter->second.end())
+								{
+									++sbaOutliersCount;
+								}
+							}
+							totalBundleOutliers = sbaOutliersCount;
 
-							UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime, (int)bundlePoses.size(), (int)bundleWordReferences_.size(), (int)sbaOutliers.size());
+							UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime, (int)bundlePoses.size(), (int)bundleWordReferences_.size(), sbaOutliersCount);
 							if(info)
 							{
 								info->localBundlePoses = bundlePoses;
@@ -491,14 +506,15 @@ Transform OdometryF2M::computeTransform(
 									{
 										info->localBundleOutliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 									}
-									if(sbaOutliers.size())
+									if(sbaOutliersCount)
 									{
 										regInfo.inliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 										std::vector<int> newInliers(regInfo.inliersIDs.size());
 										int oi=0;
 										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 										{
-											if(sbaOutliers.find(regInfo.inliersIDs[i]) == sbaOutliers.end())
+											BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
+											if(iter == sbaOutliers.end() || iter->second.find(lastFrame_->id()) == iter->second.end())
 											{
 												newInliers[oi++] = regInfo.inliersIDs[i];
 												regInfo.inliersPerCam[wordReferences.at(regInfo.inliersIDs[i]).at(lastFrame_->id()).cameraIndex] += 1;
@@ -509,7 +525,7 @@ Transform OdometryF2M::computeTransform(
 											}
 										}
 										newInliers.resize(oi);
-										UDEBUG("BA outliers ratio %f", float(sbaOutliers.size())/float(regInfo.inliersIDs.size()));
+										UDEBUG("BA outliers ratio %f", float(sbaOutliersCount)/float(regInfo.inliersIDs.size()));
 										regInfo.inliers = (int)newInliers.size();
 										regInfo.inliersIDs = newInliers;
 									}
@@ -1450,6 +1466,25 @@ Transform OdometryF2M::computeTransform(
 						else
 						{
 							frameValid = true;
+						}
+					}
+
+					const int scanMaxPoints = lastFrame_->sensorData().laserScanRaw().maxPoints();
+					if(frameValid && scanMaxPoints > 0)
+					{
+						float correspondenceRatio = Parameters::defaultIcpCorrespondenceRatio();
+						Parameters::parse(parameters_, Parameters::kIcpCorrespondenceRatio(), correspondenceRatio);
+						if(float(lastFrame_->sensorData().laserScanRaw().size()) <
+								float(scanMaxPoints) * correspondenceRatio)
+						{
+							UWARN("Scan has %d points of the %d of a full sweep, under the %s=%f "
+									"that a registration against it would have to reach, so no "
+									"later scan could be matched to it. Not initializing on it.",
+									(int)lastFrame_->sensorData().laserScanRaw().size(),
+									scanMaxPoints,
+									Parameters::kIcpCorrespondenceRatio().c_str(),
+									correspondenceRatio);
+							frameValid = false;
 						}
 					}
 

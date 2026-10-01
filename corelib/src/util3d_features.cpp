@@ -54,19 +54,6 @@ namespace util3d
 std::vector<cv::Point3f> generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		const CameraModel & cameraModel,
-		float minDepth,
-		float maxDepth)
-{
-	UASSERT(cameraModel.isValidForProjection());
-	std::vector<CameraModel> models;
-	models.push_back(cameraModel);
-	return generateKeypoints3DDepth(keypoints, depth, models, minDepth, maxDepth);
-}
-
-std::vector<cv::Point3f> generateKeypoints3DDepth(
-		const std::vector<cv::KeyPoint> & keypoints,
-		const cv::Mat & depth,
 		const std::vector<CameraModel> & cameraModels,
 		float minDepth,
 		float maxDepth)
@@ -117,6 +104,19 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		}
 	}
 	return keypoints3d;
+}
+
+std::vector<cv::Point3f> generateKeypoints3DDepth(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & depth,
+		const CameraModel & cameraModel,
+		float minDepth,
+		float maxDepth)
+{
+	UASSERT(cameraModel.isValidForProjection());
+	std::vector<CameraModel> models;
+	models.push_back(cameraModel);
+	return generateKeypoints3DDepth(keypoints, depth, models, minDepth, maxDepth);
 }
 
 std::vector<cv::Point3f> generateKeypoints3DDisparity(
@@ -416,6 +416,7 @@ std::multimap<int, cv::KeyPoint> aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints)
 {
+	UASSERT(wordIds.size() == keypoints.size());
 	std::multimap<int, cv::KeyPoint> words;
 	std::vector<cv::KeyPoint>::const_iterator kpIter = keypoints.begin();
 	for(std::list<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
