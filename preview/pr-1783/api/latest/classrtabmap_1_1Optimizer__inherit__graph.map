@@ -1,0 +1,13 @@
+<map id="rtabmap::Optimizer" name="rtabmap::Optimizer">
+<area shape="rect" id="Node000001" title="Abstract base for pose&#45;graph and bundle&#45;adjustment optimizers." alt="" coords="5,104,155,129"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1OptimizerCVSBA.html" title=" " alt="" coords="205,5,398,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,94,151,66,202,40,235,28,237,33,204,44,154,70,111,98"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1OptimizerCeres.html" title=" " alt="" coords="208,55,395,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="150,98,243,77,244,83,152,104"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1OptimizerG2O.html" title=" " alt="" coords="213,104,390,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="168,114,212,114,212,119,168,119"/>
+<area shape="rect" id="Node000005" href="$classrtabmap_1_1OptimizerGTSAM.html" title=" " alt="" coords="203,153,400,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="152,130,244,151,243,156,150,135"/>
+<area shape="rect" id="Node000006" href="$classrtabmap_1_1OptimizerTORO.html" title=" " alt="" coords="208,203,395,228"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="112,135,154,162,204,188,241,200,239,205,202,192,152,167,109,140"/>
+</map>

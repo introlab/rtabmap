@@ -1,0 +1,5 @@
+<map id="rtabmap::RtabmapColorOcTreeNode" name="rtabmap::RtabmapColorOcTreeNode">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,79,261,104"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="34,5,233,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,44,136,79,131,79,131,44"/>
+</map>
